@@ -1,0 +1,15 @@
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="180dp"
+    android:minHeight="80dp"
+    android:targetCellWidth="3"
+    android:targetCellHeight="1"
+    android:maxResizeWidth="360dp"
+    android:maxResizeHeight="160dp"
+    android:updatePeriodMillis="60000"
+    android:description="@string/live_match_widget_description"
+    android:previewLayout="@layout/widget_live_match_preview"
+    android:initialLayout="@layout/widget_live_match"
+    android:resizeMode="horizontal|vertical"
+    android:widgetCategory="home_screen|keyguard"
+    android:widgetFeatures="reconfigurable|configuration_optional">
+</appwidget-provider>

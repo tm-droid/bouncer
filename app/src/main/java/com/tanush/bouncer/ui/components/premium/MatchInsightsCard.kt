@@ -1,0 +1,441 @@
+package com.tanush.bouncer.ui.components.premium
+
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Lightbulb
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.tanush.bouncer.ui.theme.*
+
+/**
+ * Match insights card showing key analysis points
+ */
+
+data class MatchInsightDetail(
+    val title: String,
+    val value: String,
+    val subtext: String,
+    val insightType: InsightType,
+    val trend: InsightTrend,
+)
+
+enum class InsightType {
+    BATTING, BOWLING, PARTNERSHIP, POWERPLAY, DEATH_OVERS, FIELDING, MOMENTUM
+}
+
+enum class InsightTrend {
+    POSITIVE, NEGATIVE, NEUTRAL
+}
+
+@Composable
+fun MatchInsightsCard(
+    matchTitle: String,
+    currentPhase: String,
+    insights: List<MatchInsightDetail>,
+    keyHighlight: String,
+    modifier: Modifier = Modifier,
+) {
+    val animatedProgress = remember { Animatable(0f) }
+
+    val infiniteTransition = rememberInfiniteTransition(label = "insight")
+    val lightPulse by infiniteTransition.animateFloat(
+        initialValue = 0.8f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1500, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "pulse",
+    )
+
+    LaunchedEffect(insights) {
+        animatedProgress.animateTo(
+            targetValue = 1f,
+            animationSpec = tween(durationMillis = 1000, easing = FastOutSlowInEasing),
+        )
+    }
+
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.05f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp),
+        ) {
+            // Header
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(44.dp)
+                            .clip(CircleShape)
+                            .background(
+                                Brush.linearGradient(
+                                    colors = listOf(
+                                        WarningYellow.copy(alpha = lightPulse),
+                                        Color(0xFFFF9800).copy(alpha = lightPulse),
+                                    ),
+                                ),
+                            ),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            Icons.Default.Lightbulb,
+                            contentDescription = null,
+                            tint = Color.Black,
+                            modifier = Modifier.size(24.dp),
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(14.dp))
+
+                    Column {
+                        Text(
+                            text = "MATCH INSIGHTS",
+                            color = ShinyGoldLight,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.5.sp,
+                        )
+                        Text(
+                            text = currentPhase,
+                            color = Color.White,
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                    }
+                }
+
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(ChartBlue.copy(alpha = 0.2f))
+                        .padding(horizontal = 10.dp, vertical = 4.dp),
+                ) {
+                    Text(
+                        text = "LIVE",
+                        color = ChartBlue,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Key highlight banner
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(
+                        Brush.horizontalGradient(
+                            colors = listOf(
+                                ShinyGoldDeep.copy(alpha = 0.3f),
+                                ShinyGoldMid.copy(alpha = 0.1f),
+                            ),
+                        ),
+                    )
+                    .padding(14.dp),
+            ) {
+                Row(verticalAlignment = Alignment.Top) {
+                    Text(
+                        text = "💡",
+                        fontSize = 24.sp,
+                    )
+
+                    Spacer(modifier = Modifier.width(14.dp))
+
+                    Column {
+                        Text(
+                            text = "KEY INSIGHT",
+                            color = ShinyGoldLight,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.sp,
+                        )
+
+                        Spacer(modifier = Modifier.height(4.dp))
+
+                        Text(
+                            text = keyHighlight,
+                            color = Color.White,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium,
+                            lineHeight = 20.sp,
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // Insights grid
+            Column(
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                insights.chunked(2).forEach { rowInsights ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        rowInsights.forEach { insight ->
+                            InsightGridItem(
+                                insight = insight,
+                                progress = animatedProgress.value,
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
+
+                        // Fill empty space if odd number
+                        if (rowInsights.size == 1) {
+                            Spacer(modifier = Modifier.weight(1f))
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Phase analysis
+            PhaseAnalysisRow(currentPhase = currentPhase, progress = animatedProgress.value)
+        }
+    }
+}
+
+@Composable
+private fun InsightGridItem(
+    insight: MatchInsightDetail,
+    progress: Float,
+    modifier: Modifier = Modifier,
+) {
+    val trendColor = when (insight.trend) {
+        InsightTrend.POSITIVE -> SuccessGreen
+        InsightTrend.NEGATIVE -> WicketRed
+        InsightTrend.NEUTRAL -> Color.Gray
+    }
+
+    val typeEmoji = when (insight.insightType) {
+        InsightType.BATTING -> "🏏"
+        InsightType.BOWLING -> "⚾"
+        InsightType.PARTNERSHIP -> "🤝"
+        InsightType.POWERPLAY -> "⚡"
+        InsightType.DEATH_OVERS -> "🎯"
+        InsightType.FIELDING -> "🧤"
+        InsightType.MOMENTUM -> "📈"
+    }
+
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(12.dp))
+            .background(Color.White.copy(alpha = 0.06f))
+            .padding(14.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = typeEmoji,
+                fontSize = 18.sp,
+            )
+
+            Box(
+                modifier = Modifier
+                    .size(8.dp)
+                    .clip(CircleShape)
+                    .background(trendColor),
+            )
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        Text(
+            text = insight.title,
+            color = Color.Gray,
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Medium,
+        )
+
+        Spacer(modifier = Modifier.height(4.dp))
+
+        Text(
+            text = insight.value,
+            color = Color.White,
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Bold,
+        )
+
+        Spacer(modifier = Modifier.height(2.dp))
+
+        Text(
+            text = insight.subtext,
+            color = trendColor,
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Medium,
+        )
+    }
+}
+
+@Composable
+private fun PhaseAnalysisRow(
+    currentPhase: String,
+    progress: Float,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(Color.White.copy(alpha = 0.06f))
+            .padding(14.dp),
+    ) {
+        Text(
+            text = "MATCH PHASES",
+            color = Color.Gray,
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 1.sp,
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+        ) {
+            listOf(
+                "Powerplay" to (currentPhase.contains("Powerplay")),
+                "Middle" to (currentPhase.contains("Middle")),
+                "Death" to (currentPhase.contains("Death") || currentPhase.contains("Final")),
+            ).forEach { (phase, isActive) ->
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .background(
+                                if (isActive) {
+                                    Brush.linearGradient(
+                                        colors = listOf(ShinyGoldMid, ShinyGoldDeep),
+                                    )
+                                } else {
+                                    Brush.linearGradient(
+                                        colors = listOf(Color.White.copy(alpha = 0.10f), Color.White.copy(alpha = 0.05f)),
+                                    )
+                                },
+                            ),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = when (phase) {
+                                "Powerplay" -> "PP"
+                                "Middle" -> "MO"
+                                "Death" -> "DO"
+                                else -> "--"
+                            },
+                            color = if (isActive) Color.Black else Color.Gray,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    Text(
+                        text = phase,
+                        color = if (isActive) ShinyGoldLight else Color.Gray,
+                        fontSize = 10.sp,
+                        fontWeight = if (isActive) FontWeight.Bold else FontWeight.Normal,
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // Progress bar
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(6.dp)
+                .clip(RoundedCornerShape(3.dp)),
+        ) {
+            Row(modifier = Modifier.fillMaxSize()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .weight(0.3f)
+                        .background(
+                            if (currentPhase.contains("Powerplay")) {
+                                ShinyGoldMid
+                            } else if (progress > 0.3f) {
+                                SuccessGreen.copy(alpha = 0.5f)
+                            } else {
+                                Color.White.copy(alpha = 0.08f)
+                            },
+                        ),
+                )
+                Spacer(modifier = Modifier.width(2.dp))
+                Box(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .weight(0.4f)
+                        .background(
+                            if (currentPhase.contains("Middle")) {
+                                ShinyGoldMid
+                            } else if (progress > 0.7f) {
+                                SuccessGreen.copy(alpha = 0.5f)
+                            } else {
+                                Color.White.copy(alpha = 0.08f)
+                            },
+                        ),
+                )
+                Spacer(modifier = Modifier.width(2.dp))
+                Box(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .weight(0.3f)
+                        .background(
+                            if (currentPhase.contains("Death") || currentPhase.contains("Final")) {
+                                ShinyGoldMid
+                            } else {
+                                Color.White.copy(alpha = 0.08f)
+                            },
+                        ),
+                )
+            }
+        }
+    }
+}

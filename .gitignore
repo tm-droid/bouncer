@@ -1,0 +1,63 @@
+# Built application files
+*.apk
+*.ap_
+*.aab
+
+# Files for the ART/Dalvik VM
+*.dex
+
+# Java class files
+*.class
+
+# Generated files
+bin/
+gen/
+out/
+build/
+
+# Gradle files
+.gradle/
+build/
+
+# Local configuration file (contains API keys - DO NOT COMMIT)
+local.properties
+
+# Android Studio
+*.iml
+.idea/
+*.log
+
+# Kotlin
+.kotlin/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Signing files
+*.jks
+*.keystore
+
+# Proguard
+proguard/
+
+# Crashlytics
+crashlytics.properties
+crashlytics-build.properties
+fabric.properties
+
+# Sentry Config File
+sentry.properties
+
+# Accidentally created ~ directory (Android SDK symlink artifact)
+~/
+
+# Design mockups
+design/
+
+# Agent docs (internal only)
+agents/
+agents.md
+
+# Sentry wizard binary
+sentry-wizard

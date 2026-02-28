@@ -1,0 +1,175 @@
+package com.tanush.bouncer.ui.components.premium
+
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Gavel
+import androidx.compose.material.icons.filled.TrackChanges
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.*
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.tanush.bouncer.models.DRSReviewData
+import com.tanush.bouncer.ui.theme.*
+
+/**
+ * DRS Review Card - "Elite" Dramatic UI (v2.0).
+ * Matches Mockup: Neon Cyan, Dramatic Verdict, and Delivery Metrics.
+ */
+
+@Composable
+fun DRSReviewCard(
+    review: DRSReviewData,
+    modifier: Modifier = Modifier,
+) {
+    val infiniteTransition = rememberInfiniteTransition(label = "drs_elite")
+    val neonPulse by infiniteTransition.animateFloat(
+        initialValue = 0.4f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(800), repeatMode = RepeatMode.Reverse),
+        label = "neon"
+    )
+
+    Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(20.dp)) {
+        // Dramatic DRS Visualization
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(260.dp)
+                .clip(RoundedCornerShape(24.dp))
+                .background(Color.Black)
+                .border(1.dp, GlassBorderLight),
+            contentAlignment = Alignment.Center
+        ) {
+            // 3D Pitch Background (Simulated with Gradient)
+            Box(
+                modifier = Modifier.fillMaxSize().background(
+                    Brush.radialGradient(listOf(ChartCyan.copy(alpha = 0.1f), Color.Transparent))
+                )
+            )
+            
+            // "Review In Progress" Header
+            Box(
+                modifier = Modifier
+                    .padding(16.dp)
+                    .align(Alignment.TopStart)
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(Color.Black.copy(alpha = 0.6f))
+                    .border(1.dp, ChartCyan.copy(alpha = 0.3f), RoundedCornerShape(4.dp))
+                    .padding(horizontal = 8.dp, vertical = 4.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Box(modifier = Modifier.size(6.dp).alpha(neonPulse).background(ChartCyan, CircleShape).shadow(4.dp, spotColor = ChartCyan))
+                    Text("REVIEW IN PROGRESS", color = ChartCyan, fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
+                }
+            }
+
+            // Ball Tracking Visualization
+            Canvas(modifier = Modifier.size(200.dp)) {
+                val centerX = size.width / 2
+                val centerY = size.height / 2
+                
+                // Draw Stumps (Elite Metallic Gold)
+                listOf(-20.dp, 0.dp, 20.dp).forEach { offset ->
+                    drawRect(
+                        brush = GoldGradient,
+                        topLeft = Offset(centerX + offset.toPx() - 4.dp.toPx(), centerY - 40.dp.toPx()),
+                        size = Size(8.dp.toPx(), 120.dp.toPx())
+                    )
+                }
+
+                // Neon Trajectory Path
+                val path = Path().apply {
+                    moveTo(0f, size.height)
+                    quadraticTo(centerX * 0.5f, centerY, centerX, centerY + 20.dp.toPx())
+                }
+                drawPath(path, ChartCyan, style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round))
+                drawPath(path, ChartCyan.copy(alpha = 0.2f * neonPulse), style = Stroke(width = 12.dp.toPx(), cap = StrokeCap.Round))
+            }
+
+            // Bottom Labels (Pitching, Impact, Wickets)
+            Column(
+                modifier = Modifier.padding(16.dp).align(Alignment.BottomEnd),
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                DrsStatusRow("PITCHING", "IN LINE", ChartCyan)
+                DrsStatusRow("IMPACT", "IN LINE", ChartCyan)
+                DrsStatusRow("WICKETS", "HITTING", ShinyGoldDeep)
+            }
+        }
+
+        // Dramatic Verdict
+        Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                text = if (review.isSuccessful) "OUT" else "NOT OUT",
+                color = ShinyGoldDeep,
+                fontSize = 52.sp,
+                fontWeight = FontWeight.Black,
+                fontStyle = FontStyle.Italic,
+                letterSpacing = (-2).sp,
+                modifier = Modifier.shadow(20.dp, spotColor = ShinyGoldDeep.copy(alpha = 0.4f))
+            )
+            Text(
+                "UMPIRE'S DECISION OVERTURNED",
+                color = TextSecondary,
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 2.sp
+            )
+        }
+
+        // Delivery Metrics
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            MetricGlassCard("Impact Speed", review.impactSpeed, Icons.Default.TrackChanges, modifier = Modifier.weight(1f))
+            MetricGlassCard("Turn Degree", review.turnDegree, Icons.Default.TrackChanges, modifier = Modifier.weight(1f))
+            MetricGlassCard("Confidence", review.confidence, Icons.Default.AutoAwesome, modifier = Modifier.weight(1f))
+        }
+    }
+}
+
+@Composable
+private fun DrsStatusRow(label: String, value: String, color: Color) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(label, color = Color.White.copy(alpha = 0.6f), fontSize = 10.sp, fontWeight = FontWeight.Bold)
+        Text(value, color = color, fontSize = 10.sp, fontWeight = FontWeight.Black)
+    }
+}
+
+@Composable
+private fun MetricGlassCard(label: String, value: String, icon: androidx.compose.ui.graphics.vector.ImageVector, modifier: Modifier) {
+    Surface(
+        modifier = modifier.height(100.dp),
+        shape = RoundedCornerShape(16.dp),
+        color = Color.White.copy(alpha = 0.03f),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.05f))
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Box(modifier = Modifier.size(32.dp).background(Color.White.copy(alpha = 0.05f), CircleShape), contentAlignment = Alignment.Center) {
+                Icon(icon, null, tint = ShinyGoldDeep, modifier = Modifier.size(16.dp))
+            }
+            Spacer(modifier = Modifier.weight(1f))
+            Text(label, color = TextSecondary, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+            Text(value, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Black)
+        }
+    }
+}

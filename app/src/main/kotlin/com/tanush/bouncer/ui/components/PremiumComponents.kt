@@ -1,0 +1,357 @@
+package com.tanush.bouncer.ui.components
+
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.FiberManualRecord
+import androidx.compose.material3.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.tanush.bouncer.ui.theme.*
+
+/**
+ * Premium section divider with animated shimmer and title
+ */
+@Composable
+fun SectionDivider(
+    title: String,
+    modifier: Modifier = Modifier,
+    showShimmer: Boolean = true
+) {
+    val infiniteTransition = rememberInfiniteTransition(label = "sectionShimmer")
+    val shimmerAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.6f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2000, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "shimmerAlpha"
+    )
+
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        // Decorative Dot
+        Box(
+            modifier = Modifier
+                .size(6.dp)
+                .background(ShinyGoldDeep, CircleShape)
+                .graphicsLayer { alpha = shimmerAlpha }
+        )
+        
+        // Title
+        Text(
+            text = title.uppercase(),
+            color = ShinyGoldDeep,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Black,
+            letterSpacing = 2.sp,
+            modifier = Modifier.graphicsLayer { alpha = shimmerAlpha }
+        )
+        
+        // Extended gradient line
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .height(1.dp)
+                .background(
+                    Brush.horizontalGradient(
+                        colors = listOf(
+                            ShinyGoldDeep.copy(alpha = 0.6f),
+                            ShinyGoldDeep.copy(alpha = 0.1f),
+                            Color.Transparent
+                        )
+                    )
+                )
+        )
+    }
+}
+
+/**
+ * A premium section divider with gold gradient and optional title
+ */
+@Composable
+fun GoldSectionDivider(
+    modifier: Modifier = Modifier,
+    title: String? = null
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 20.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Left line
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .height(1.5.dp)
+                .background(
+                    Brush.horizontalGradient(
+                        colors = listOf(
+                            Color.Transparent,
+                            ShinyGoldDeep.copy(alpha = 0.5f)
+                        )
+                    )
+                )
+        )
+        
+        if (title != null) {
+            Spacer(modifier = Modifier.width(20.dp))
+            Text(
+                text = title.uppercase(),
+                color = ShinyGoldMid,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Black,
+                letterSpacing = 2.5.sp
+            )
+            Spacer(modifier = Modifier.width(20.dp))
+        }
+        
+        // Right line
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .height(1.5.dp)
+                .background(
+                    Brush.horizontalGradient(
+                        colors = listOf(
+                            ShinyGoldDeep.copy(alpha = 0.5f),
+                            Color.Transparent
+                        )
+                    )
+                )
+        )
+    }
+}
+
+/**
+ * Premium live indicator badge with pulsing animation
+ */
+@Composable
+fun LiveBadge(
+    modifier: Modifier = Modifier,
+    text: String = "LIVE"
+) {
+    val infiniteTransition = rememberInfiniteTransition(label = "liveBadge")
+    val pulse by infiniteTransition.animateFloat(
+        initialValue = 0.8f,
+        targetValue = 1.1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1000, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "livePulse"
+    )
+    
+    val glowAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.4f,
+        targetValue = 0.8f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1000, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "liveGlow"
+    )
+
+    Surface(
+        modifier = modifier
+            .shadow(
+                elevation = 16.dp,
+                shape = RoundedCornerShape(12.dp),
+                spotColor = ErrorRed.copy(alpha = glowAlpha)
+            ),
+        color = ErrorRed,
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(8.dp)
+                    .graphicsLayer { 
+                        scaleX = pulse
+                        scaleY = pulse 
+                    }
+                    .background(Color.White, CircleShape)
+                    .shadow(4.dp, CircleShape, spotColor = Color.White)
+            )
+            Text(
+                text = text.uppercase(),
+                color = Color.White,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Black,
+                letterSpacing = 1.2.sp
+            )
+        }
+    }
+}
+
+/**
+ * Premium stat card for displaying statistics
+ */
+@Composable
+fun StatCard(
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier,
+    accentColor: Color = ShinyGoldDeep,
+    isHighlighted: Boolean = false
+) {
+    Surface(
+        modifier = modifier
+            .shadow(
+                elevation = if (isHighlighted) 16.dp else 8.dp,
+                shape = RoundedCornerShape(20.dp),
+                spotColor = if (isHighlighted) accentColor.copy(alpha = 0.4f) else Color.Black.copy(alpha = 0.3f)
+            ),
+        shape = RoundedCornerShape(20.dp),
+        color = if (isHighlighted) Color.White.copy(alpha = 0.08f) else Color.White.copy(alpha = 0.05f),
+        border = androidx.compose.foundation.BorderStroke(
+            1.dp,
+            if (isHighlighted) accentColor.copy(alpha = 0.5f) else CardBorder.copy(alpha = 0.3f)
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = value,
+                color = if (isHighlighted) accentColor else TextPrimary,
+                fontSize = 28.sp,
+                fontWeight = FontWeight.Black,
+                letterSpacing = (-1).sp
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = label.uppercase(),
+                color = TextTertiary,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 1.5.sp
+            )
+        }
+    }
+}
+
+/**
+ * Premium progress indicator with gold styling
+ */
+@Composable
+fun GoldProgressBar(
+    progress: Float,
+    modifier: Modifier = Modifier,
+    height: Dp = 10.dp,
+    backgroundColor: Color = Color.White.copy(alpha = 0.06f),
+    showLabel: Boolean = true
+) {
+    Column(modifier = modifier) {
+        if (showLabel) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "WIN PROBABILITY",
+                    color = TextSecondary,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = 1.sp
+                )
+                Text(
+                    text = "${(progress * 100).toInt()}%",
+                    color = ShinyGoldMid,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Black
+                )
+            }
+        }
+        
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(height)
+                .clip(RoundedCornerShape(50))
+                .background(backgroundColor)
+                .border(0.5.dp, CardBorder.copy(alpha = 0.5f), RoundedCornerShape(50))
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(progress.coerceIn(0f, 1f))
+                    .fillMaxHeight()
+                    .background(
+                        Brush.horizontalGradient(
+                            colors = listOf(ShinyGoldDark, ShinyGoldDeep, ShinyGoldLight)
+                        ),
+                        RoundedCornerShape(50)
+                    )
+            )
+        }
+    }
+}
+
+@Composable
+fun GlowingIconButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    glowColor: Color = ShinyGoldDeep,
+    backgroundColor: Color = Color.White.copy(alpha = 0.06f),
+    content: @Composable () -> Unit
+) {
+    val infiniteTransition = rememberInfiniteTransition(label = "iconGlow")
+    val glowAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.3f,
+        targetValue = 0.6f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1500),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "glowAlpha"
+    )
+
+    Box(
+        modifier = modifier
+            .shadow(
+                elevation = 12.dp,
+                shape = CircleShape,
+                spotColor = glowColor.copy(alpha = glowAlpha)
+            )
+            .background(backgroundColor, CircleShape)
+            .border(1.dp, glowColor.copy(alpha = 0.4f), CircleShape)
+            .clip(CircleShape)
+            .clickable { onClick() }
+            .padding(12.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        content()
+    }
+}

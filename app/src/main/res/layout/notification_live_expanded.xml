@@ -1,0 +1,365 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Expanded Live Match Notification Layout - iOS Live Activity Style -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="#050505"
+    android:padding="16dp">
+
+    <!-- Header: Teams & Match Info -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <!-- Team 1 -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/team1_name"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="India"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:textColor="#FFD700"
+                android:letterSpacing="0.02" />
+
+            <TextView
+                android:id="@+id/team1_score"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="185/4 (18.3)"
+                android:textSize="20sp"
+                android:textStyle="bold"
+                android:textColor="#FFFFFF"
+                android:layout_marginTop="4dp" />
+        </LinearLayout>
+
+        <!-- VS & Status -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp">
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center"
+                android:background="@android:color/transparent"
+                android:paddingStart="8dp"
+                android:paddingEnd="8dp"
+                android:paddingTop="4dp"
+                android:paddingBottom="4dp">
+
+                <!-- Live Pulse Indicator -->
+                <FrameLayout
+                    android:layout_width="8dp"
+                    android:layout_height="8dp"
+                    android:background="@android:color/holo_red_light"
+                    android:layout_marginEnd="6dp" />
+
+                <TextView
+                    android:id="@+id/match_status"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="LIVE"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:textColor="#EF4444"
+                    android:letterSpacing="0.1" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/match_info"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="T20I"
+                android:textSize="10sp"
+                android:textColor="#64748B"
+                android:layout_marginTop="4dp" />
+        </LinearLayout>
+
+        <!-- Team 2 -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="end">
+
+            <TextView
+                android:id="@+id/team2_name"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Australia"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:textColor="#94A3B8"
+                android:letterSpacing="0.02" />
+
+            <TextView
+                android:id="@+id/team2_score"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Target: 201"
+                android:textSize="16sp"
+                android:textColor="#94A3B8"
+                android:layout_marginTop="4dp" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- Batsmen Container (iOS Live Activity Parity) -->
+    <LinearLayout
+        android:id="@+id/batsmen_container"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="12dp"
+        android:background="#0A0A0A"
+        android:padding="10dp"
+        android:visibility="gone">
+
+        <!-- Batsman 1 (Striker) -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/batsman1_name"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Kohli*"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:textColor="#FFFFFF"
+                android:ellipsize="end"
+                android:maxLines="1" />
+
+            <TextView
+                android:id="@+id/batsman1_stats"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="65(42)"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:textColor="#FFD700"
+                android:layout_marginStart="8dp" />
+        </LinearLayout>
+
+        <FrameLayout
+            android:layout_width="1dp"
+            android:layout_height="match_parent"
+            android:background="#1A1A1A"
+            android:layout_marginStart="12dp"
+            android:layout_marginEnd="12dp" />
+
+        <!-- Batsman 2 (Non-striker) -->
+        <LinearLayout
+            android:id="@+id/batsman2_container"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="horizontal"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/batsman2_name"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Jadeja"
+                android:textSize="12sp"
+                android:textColor="#94A3B8"
+                android:ellipsize="end"
+                android:maxLines="1" />
+
+            <TextView
+                android:id="@+id/batsman2_stats"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="23(18)"
+                android:textSize="12sp"
+                android:textColor="#94A3B8"
+                android:layout_marginStart="8dp" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- Bowler Container (iOS Live Activity Parity) -->
+    <LinearLayout
+        android:id="@+id/bowler_container"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="8dp"
+        android:background="#0A0A0A"
+        android:padding="10dp"
+        android:visibility="gone">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="BWL"
+            android:textSize="9sp"
+            android:textColor="#64748B"
+            android:letterSpacing="0.1" />
+
+        <TextView
+            android:id="@+id/bowler_name"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Starc"
+            android:textSize="12sp"
+            android:textColor="#2DD4BF"
+            android:layout_marginStart="8dp"
+            android:ellipsize="end"
+            android:maxLines="1" />
+
+        <TextView
+            android:id="@+id/bowler_stats"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="2/34 (3.4)"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:textColor="#2DD4BF" />
+    </LinearLayout>
+
+    <!-- Recent Balls Strip (iOS Live Activity Parity) -->
+    <LinearLayout
+        android:id="@+id/recent_balls_container"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="10dp"
+        android:gravity="center_vertical"
+        android:visibility="gone">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="THIS OVER"
+            android:textSize="9sp"
+            android:textColor="#64748B"
+            android:letterSpacing="0.1" />
+
+        <TextView
+            android:id="@+id/recent_balls_text"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="1  4  0  W  2  6"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:textColor="#FFFFFF"
+            android:textAlignment="center"
+            android:letterSpacing="0.15"
+            android:layout_marginStart="12dp" />
+    </LinearLayout>
+
+    <!-- Win Probability Bar -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_marginTop="12dp">
+
+        <!-- Labels -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/win_prob_team1"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="65%"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:textColor="#22C55E" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="WIN PROBABILITY"
+                android:textSize="9sp"
+                android:textColor="#64748B"
+                android:letterSpacing="0.1" />
+
+            <TextView
+                android:id="@+id/win_prob_team2"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="35%"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:textColor="#EF4444"
+                android:gravity="end" />
+        </LinearLayout>
+
+        <!-- Progress Bar Background -->
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="8dp"
+            android:layout_marginTop="6dp"
+            android:background="#1A1A1A">
+
+            <!-- Team 1 Progress (Will be set programmatically) -->
+            <FrameLayout
+                android:id="@+id/win_prob_bar_team1"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="#FFD700" />
+        </FrameLayout>
+    </LinearLayout>
+
+    <!-- Last Event Container -->
+    <LinearLayout
+        android:id="@+id/last_event_container"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginTop="12dp"
+        android:background="#0F0F0F"
+        android:padding="10dp"
+        android:visibility="gone">
+
+        <!-- Event Icon Indicator -->
+        <FrameLayout
+            android:id="@+id/last_event_indicator"
+            android:layout_width="4dp"
+            android:layout_height="24dp"
+            android:background="#8B5CF6"
+            android:layout_marginEnd="10dp" />
+
+        <TextView
+            android:id="@+id/last_event_text"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Kohli hits Starc for SIX! Over deep midwicket!"
+            android:textSize="12sp"
+            android:textColor="#FFFFFF"
+            android:maxLines="2"
+            android:ellipsize="end" />
+    </LinearLayout>
+
+</LinearLayout>

@@ -1,0 +1,364 @@
+package com.tanush.bouncer.ui.screens
+
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.*
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.tanush.bouncer.models.CricketMatch
+import com.tanush.bouncer.ui.components.BallPrediction
+import com.tanush.bouncer.ui.components.PredictiveBallCard
+import com.tanush.bouncer.ui.theme.*
+
+/**
+ * MCP Predictive Forecast Screen - Elite "Masterpiece" Implementation.
+ * Matches Mockup Specs: Conic rings, critical alerts, and high-density telemetry.
+ */
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun McpPredictiveForecastScreen(
+    match: CricketMatch,
+    onBackClick: () -> Unit
+) {
+    val scrollState = rememberScrollState()
+    
+    // Derived from mockup data
+    val battingTeam = match.teams.firstOrNull { it.isBatting } ?: match.teams.firstOrNull()
+    val currentOverStr = battingTeam?.overs ?: "14.0"
+    val currentOver = currentOverStr.toDoubleOrNull()?.toInt() ?: 14
+    
+    val predictions = remember {
+        listOf(
+            BallPrediction("${currentOver + 1}.1", 78, "Dot Ball"),
+            BallPrediction("${currentOver + 1}.2", 45, "1 Run"),
+            BallPrediction("${currentOver + 1}.3", 92, "Wicket", isCritical = true),
+            BallPrediction("${currentOver + 1}.4", 60, "2 Runs"),
+            BallPrediction("${currentOver + 1}.5", 30, "Dot"),
+            BallPrediction("${currentOver + 1}.6", 88, "Boundary")
+        )
+    }
+
+    Scaffold(
+        containerColor = BlackBackground,
+        topBar = {
+            TopAppBar(
+                title = {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            "MCP LIVE ENGINE",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = 2.sp,
+                            color = Color.White
+                        )
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            val pulse = rememberInfiniteTransition(label = "conn_pulse")
+                            val alpha by pulse.animateFloat(
+                                initialValue = 1f,
+                                targetValue = 0.3f,
+                                animationSpec = infiniteRepeatable(tween(1000), RepeatMode.Reverse),
+                                label = "alpha"
+                            )
+                            Box(modifier = Modifier.size(6.dp).alpha(alpha).background(ShinyGoldDeep, CircleShape).shadow(4.dp, spotColor = ShinyGoldDeep))
+                            Text(
+                                "LIVE CONNECTION",
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = ShinyGoldDeep
+                            )
+                        }
+                    }
+                },
+                navigationIcon = {
+                    IconButton(onClick = onBackClick) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = Color.White)
+                    }
+                },
+                actions = {
+                    IconButton(onClick = {}) {
+                        Icon(Icons.Default.Settings, "Settings", tint = Color.White.copy(alpha = 0.6f))
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
+            )
+        }
+    ) { padding ->
+        Box(modifier = Modifier.fillMaxSize().padding(padding)) {
+            // Depth Gradient
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(CardDarkBlue.copy(alpha = 0.2f), BlackBackground)
+                        )
+                    )
+            )
+
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(scrollState)
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(28.dp)
+            ) {
+                // Match Score Card (Elite Glass)
+                EliteForecastHero(match)
+
+                // Next Over Forecast Section
+                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            "Next Over (${currentOver + 1}th) Forecast",
+                            color = Color.White,
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Black
+                        )
+                        TextButton(onClick = {}) {
+                            Text("View History", color = ShinyGoldDeep, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            Icon(Icons.Default.ChevronRight, null, tint = ShinyGoldDeep, modifier = Modifier.size(16.dp))
+                        }
+                    }
+                    
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        contentPadding = PaddingValues(horizontal = 4.dp)
+                    ) {
+                        items(predictions) { prediction ->
+                            PredictiveBallCard(prediction)
+                        }
+                    }
+                }
+
+                // Global Confidence & Pitch Stats
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    EliteEngineConfidenceCard(
+                        modifier = Modifier.weight(1f),
+                        confidence = 0.84f,
+                        trend = "+2.1%"
+                    )
+                    ElitePitchAnalysisCard(modifier = Modifier.weight(1f))
+                }
+
+                // Map Visualization
+                EliteActiveFieldMap()
+
+                // Legal Footer
+                Text(
+                    text = "Predictions are for informational and entertainment purposes only. Bouncer does not facilitate gambling or betting. Calculations based on historical data and real-time telemetry.",
+                    color = Color.White.copy(alpha = 0.2f),
+                    fontSize = 10.sp,
+                    textAlign = TextAlign.Center,
+                    lineHeight = 16.sp,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp)
+                )
+                
+                Spacer(modifier = Modifier.height(120.dp))
+            }
+
+            // Fixed Action Bar (Mockup Spec)
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(Color.Transparent, BlackBackground.copy(alpha = 0.9f), BlackBackground)
+                        )
+                    )
+                    .padding(24.dp)
+            ) {
+                Button(
+                    onClick = { },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp)
+                        .shadow(20.dp, spotColor = ShinyGoldDeep.copy(alpha = 0.3f)),
+                    colors = ButtonDefaults.buttonColors(containerColor = ShinyGoldDeep),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Icon(Icons.Default.Analytics, null, tint = Color.Black)
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text("UNLOCK FULL ANALYSIS", color = Color.Black, fontWeight = FontWeight.Black, fontSize = 14.sp, letterSpacing = 1.sp)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun EliteForecastHero(match: CricketMatch) {
+    val battingTeam = match.teams.firstOrNull { it.isBatting } ?: match.teams.firstOrNull()
+    val striker = match.scrapedBatsmen?.find { it.isStriker } ?: match.scrapedBatsmen?.firstOrNull()
+    val bowler = match.currentBowler
+
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        color = Color.White.copy(alpha = 0.05f),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.05f))
+    ) {
+        Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Column {
+                    Text("LIVE ${match.matchType.uppercase()} MATCH", color = TextTertiary, fontSize = 10.sp, fontWeight = FontWeight.Black, letterSpacing = 1.5.sp)
+                    Text(
+                        text = "${match.teams.getOrNull(0)?.acronym ?: "IND"} vs ${match.teams.getOrNull(1)?.acronym ?: "AUS"}",
+                        color = Color.White,
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.Black
+                    )
+                }
+                Column(horizontalAlignment = Alignment.End) {
+                    Text(battingTeam?.score ?: "145/3", color = ShinyGoldDeep, fontSize = 24.sp, fontWeight = FontWeight.Black)
+                    Text("${battingTeam?.overs ?: "14.0"} OVERS", color = TextSecondary, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+
+            Box(modifier = Modifier.fillMaxWidth().height(2.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.05f))) {
+                Box(modifier = Modifier.fillMaxWidth(0.52f).fillMaxHeight().background(ShinyGoldDeep))
+            }
+
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("ON STRIKE", color = TextTertiary, fontSize = 9.sp, fontWeight = FontWeight.Black)
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text(striker?.name ?: "V. Kohli", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                        Text("${striker?.runs ?: "56"}*", color = ShinyGoldDeep, fontSize = 14.sp, fontWeight = FontWeight.Black)
+                    }
+                    Text("SR: ${striker?.strikeRate ?: "142.5"}", color = TextSecondary, fontSize = 10.sp)
+                }
+                Box(modifier = Modifier.width(1.dp).height(32.dp).background(Color.White.copy(alpha = 0.05f)).align(Alignment.CenterVertically))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("BOWLER", color = TextTertiary, fontSize = 9.sp, fontWeight = FontWeight.Black)
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text(bowler?.name ?: "M. Starc", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                        Text("${bowler?.wickets ?: "1"}/${bowler?.runs ?: "24"}", color = ShinyGoldDeep, fontSize = 14.sp, fontWeight = FontWeight.Black)
+                    }
+                    Text("ECON: ${bowler?.economy ?: "6.8"}", color = TextSecondary, fontSize = 10.sp)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun EliteEngineConfidenceCard(modifier: Modifier, confidence: Float, trend: String) {
+    Surface(
+        modifier = modifier.height(130.dp),
+        shape = RoundedCornerShape(16.dp),
+        color = Color.White.copy(alpha = 0.05f),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.05f))
+    ) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.SpaceBetween) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text("ENGINE\nCONFIDENCE", color = TextSecondary, fontSize = 10.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
+                Icon(Icons.Default.Psychology, null, tint = ShinyGoldDeep, modifier = Modifier.size(20.dp))
+            }
+            Column {
+                Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text("${(confidence * 100).toInt()}%", color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Black)
+                    Text(trend, color = SuccessGreen, fontSize = 10.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(bottom = 4.dp))
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                Box(modifier = Modifier.fillMaxWidth().height(2.dp).background(Color.White.copy(alpha = 0.05f))) {
+                    Box(modifier = Modifier.fillMaxWidth(confidence).fillMaxHeight().background(ShinyGoldDeep))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ElitePitchAnalysisCard(modifier: Modifier) {
+    Surface(
+        modifier = modifier.height(130.dp),
+        shape = RoundedCornerShape(16.dp),
+        color = Color.White.copy(alpha = 0.05f),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.05f))
+    ) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.SpaceBetween) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text("PITCH\nANALYSIS", color = TextSecondary, fontSize = 10.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
+                Icon(Icons.Default.Landscape, null, tint = TextTertiary, modifier = Modifier.size(20.dp))
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                PitchTelemetryItem("Humidity", "65%", Color.White)
+                PitchTelemetryItem("Fatigue", "Low", SuccessGreen)
+                PitchTelemetryItem("Dew", "High", ErrorRed)
+            }
+        }
+    }
+}
+
+@Composable
+private fun PitchTelemetryItem(label: String, value: String, color: Color) {
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        Text(label, color = TextTertiary, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+        Text(value, color = color, fontSize = 10.sp, fontWeight = FontWeight.Black)
+    }
+}
+
+@Composable
+private fun EliteActiveFieldMap() {
+    Surface(
+        modifier = Modifier.fillMaxWidth().height(140.dp),
+        shape = RoundedCornerShape(16.dp),
+        color = Color.White.copy(alpha = 0.05f),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.05f))
+    ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                drawCircle(color = ShinyGoldDeep.copy(alpha = 0.03f), radius = size.maxDimension / 2, center = Offset(size.width, size.height / 2))
+            }
+            Row(
+                modifier = Modifier.fillMaxSize().padding(24.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column {
+                    Text("ACTIVE FIELD SETUP", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Black)
+                    Text("Powerplay Off side focused", color = TextSecondary, fontSize = 12.sp)
+                }
+                Surface(
+                    color = Color.White.copy(alpha = 0.05f),
+                    shape = RoundedCornerShape(8.dp),
+                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.1f)),
+                    onClick = {}
+                ) {
+                    Text("VIEW MAP", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp))
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,60 @@
+<resources>
+    <string name="app_name">Bouncer</string>
+    <string name="live_match_widget_description">Real-time cricket updates and live match scores.</string>
+    <string name="title_stats_detail">Statistics Details</string>
+    <string name="title_reminders">Match Reminders</string>
+    <string name="onboarding_title">Welcome to Bouncer</string>
+    
+    <!-- Navigation -->
+    <string name="nav_home">Dashboard</string>
+    <string name="nav_stats">Analysis</string>
+    <string name="nav_achievements">Milestones</string>
+    <string name="nav_settings">Settings</string>
+    <string name="nav_matches">Live Matches</string>
+    <string name="nav_news">Trending News</string>
+    <string name="nav_quick_action">Quick Action</string>
+    
+    <!-- Sections -->
+    <string name="section_more_matches">Upcoming Fixtures</string>
+    <string name="section_quick_actions">Quick Actions</string>
+    <string name="section_insights">Match Insights</string>
+    <string name="section_activity">Recent Activity</string>
+    <string name="section_trending_news">Trending News</string>
+    
+    <!-- Tab Titles -->
+    <string name="tab_live">Live</string>
+    <string name="tab_scorecard">Scorecard</string>
+    <string name="tab_lineups">Lineups</string>
+    <string name="tab_overs">Overs</string>
+    <string name="tab_info">Match Info</string>
+    
+    <!-- Actions -->
+    <string name="action_refresh">Refresh Data</string>
+    <string name="action_back">Return</string>
+    <string name="action_view_all">View All</string>
+    <string name="action_clear">Clear All</string>
+    <string name="action_share">Share Match</string>
+    
+    <!-- States -->
+    <string name="state_loading">Fetching latest data…</string>
+    <string name="state_no_matches_title">No Matches Found</string>
+    <string name="state_no_matches_desc">There are currently no active matches to display.</string>
+    <string name="state_error_title">Connection Error</string>
+    <string name="state_error_desc">We couldn’t load the data. Please check your connection and try again.</string>
+    
+    <!-- Alerts & Events -->
+    <string name="event_wicket">Wicket</string>
+    <string name="event_boundary">Boundary</string>
+    <string name="event_powerplay">Powerplay Active</string>
+    <string name="event_milestone">Milestone Achieved</string>
+    
+    <!-- Accessibility -->
+    <string name="cd_match_card">Match card for %1$s versus %2$s</string>
+    <string name="cd_team_logo">Official logo for %1$s</string>
+    <string name="cd_live_indicator">Live match active indicator</string>
+    <string name="cd_notifications">Manage notifications</string>
+    <string name="cd_settings">Open app settings</string>
+    <string name="cd_profile">View user profile</string>
+    <string name="cd_back_button">Navigate back</string>
+    <string name="cd_share_button">Share match details</string>
+</resources>

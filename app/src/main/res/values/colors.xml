@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- BOUNCER PREMIUM PALETTE -->
+    <color name="black_background">#0A0A0A</color>
+    <color name="card_surface">#12121A</color>
+    <color name="card_surface_light">#1E1E2A</color>
+    <color name="shiny_gold_deep">#D4AF37</color>
+    <color name="shiny_gold_light">#F9E498</color>
+    <color name="shiny_gold_mid">#E6C35C</color>
+    <color name="shiny_gold_dark">#997A24</color>
+    <color name="shiny_gold_bronze">#CD7F32</color>
+
+    <!-- SYSTEM -->
+    <color name="text_primary">#FFFFFF</color>
+    <color name="text_secondary">#B0B0B0</color>
+    <color name="text_tertiary">#666666</color>
+    <color name="live_blue">#007AFF</color>
+    <color name="live_blue_bright">#4DA3FF</color>
+    <color name="success_green">#4CAF50</color>
+    <color name="warning_orange">#FF9800</color>
+    <color name="error_red">#FF3B30</color>
+    <color name="error_red_muted">#4D1A1A</color>
+    <color name="card_border">#2A2A3A</color>
+    <color name="card_dark_blue">#0D1117</color>
+
+    <!-- LEGACY COMPAT -->
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+</resources>
