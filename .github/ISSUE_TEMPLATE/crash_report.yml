@@ -1,0 +1,60 @@
+name: 💥 Crash / ANR Report
+description: Report a crash or Application Not Responding (ANR)
+title: "[Crash] "
+labels: ["bug", "crash", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        If you have a Sentry error ID from the app, please include it — it helps a lot.
+
+  - type: input
+    id: sentry_id
+    attributes:
+      label: Sentry Error ID (if available)
+      placeholder: e.g. BOUNCER-ANDROID-1A2B3C
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: What were you doing when it crashed?
+      placeholder: e.g. Scrolling through live matches on the home screen after tapping the Favourites tab
+    validations:
+      required: true
+
+  - type: textarea
+    id: stacktrace
+    attributes:
+      label: Stack Trace / Logcat
+      render: shell
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: App Version
+      placeholder: e.g. 1.0 (build 5)
+    validations:
+      required: true
+
+  - type: input
+    id: device
+    attributes:
+      label: Device & Android Version
+      placeholder: e.g. Samsung Galaxy S24 — One UI 7.0 / Android 15
+    validations:
+      required: true
+
+  - type: dropdown
+    id: frequency
+    attributes:
+      label: Crash Frequency
+      options:
+        - Every time (100%)
+        - Often (>50%)
+        - Sometimes (10-50%)
+        - Rarely (<10%)
+        - Once
+    validations:
+      required: true
