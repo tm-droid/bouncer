@@ -39,8 +39,8 @@ jobs:
       - name: Create local.properties
         run: |
           echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
-          echo "OPENROUTER_API_KEY=" >> local.properties
-          echo "RAPIDAPI_KEY=" >> local.properties
+          echo "OPENROUTER_API_KEY=${{ secrets.OPENROUTER_API_KEY }}" >> local.properties
+          echo "RAPIDAPI_KEY=${{ secrets.RAPIDAPI_KEY }}" >> local.properties
 
       - name: Make gradlew executable
         run: chmod +x ./gradlew
