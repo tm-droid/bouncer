@@ -1,0 +1,12 @@
+# Global owner — all files require review from tm-droid
+* @tm-droid
+
+# Core analysis engine
+/app/src/main/kotlin/com/tanush/bouncer/analysis/ @tm-droid
+
+# Network & data layer
+/app/src/main/kotlin/com/tanush/bouncer/network/ @tm-droid
+/app/src/main/kotlin/com/tanush/bouncer/data/ @tm-droid
+
+# CI/CD
+/.github/workflows/ @tm-droid
