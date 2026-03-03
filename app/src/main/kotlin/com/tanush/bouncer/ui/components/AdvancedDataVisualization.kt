@@ -40,8 +40,8 @@ fun WinProbabilityDial(
     team1Name: String,
     team2Name: String,
     team1Probability: Float,
-    team1Color: Color = ShinyGoldDeep,
-    team2Color: Color = ChartBlue,
+    team1Color: Color = GoldPrimary,
+    team2Color: Color = StatusInfo,
     modifier: Modifier = Modifier
 ) {
     val animatedProbability by animateFloatAsState(
@@ -49,6 +49,7 @@ fun WinProbabilityDial(
         animationSpec = tween(1500, easing = FastOutSlowInEasing),
         label = "probability"
     )
+    val colors = BouncerDesignSystem.colors
     
     val infiniteTransition = rememberInfiniteTransition(label = "dial")
     val glowPulse by infiniteTransition.animateFloat(
@@ -66,10 +67,10 @@ fun WinProbabilityDial(
             .shadow(
                 elevation = 16.dp,
                 shape = RoundedCornerShape(24.dp),
-                spotColor = ShinyGoldDeep.copy(alpha = 0.2f)
+                spotColor = colors.goldPrimary.copy(alpha = 0.2f)
             ),
         shape = RoundedCornerShape(24.dp),
-        color = Color.White.copy(alpha = 0.05f)
+        color = colors.glassSurface
     ) {
         Column(
             modifier = Modifier
@@ -84,7 +85,7 @@ fun WinProbabilityDial(
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 1.5.sp,
-                color = ShinyGoldDeep
+                color = colors.goldPrimary
             )
             
             // Dial
@@ -101,7 +102,7 @@ fun WinProbabilityDial(
                     
                     // Background arc
                     drawArc(
-                        color = CardBorder,
+                        color = colors.glassBorder,
                         startAngle = 180f,
                         sweepAngle = 180f,
                         useCenter = false,
@@ -152,7 +153,7 @@ fun WinProbabilityDial(
                     drawCircle(
                         brush = Brush.radialGradient(
                             colors = listOf(
-                                Color.White.copy(alpha = glowPulse * 0.5f),
+                                colors.textPrimary.copy(alpha = glowPulse * 0.5f),
                                 Color.Transparent
                             ),
                             center = center,
@@ -164,7 +165,7 @@ fun WinProbabilityDial(
                     
                     // Needle line
                     drawLine(
-                        color = Color.White,
+                        color = colors.textPrimary,
                         start = center,
                         end = Offset(
                             center.x + cos(needleAngle) * needleLength,
@@ -176,7 +177,7 @@ fun WinProbabilityDial(
                     
                     // Center dot
                     drawCircle(
-                        color = Color.White,
+                        color = colors.textPrimary,
                         radius = 6.dp.toPx(),
                         center = center
                     )
@@ -231,21 +232,22 @@ fun OverComparisonChart(
     team2Runs: List<Int>,
     team1Name: String,
     team2Name: String,
-    team1Color: Color = ShinyGoldDeep,
-    team2Color: Color = ChartBlue,
+    team1Color: Color = GoldPrimary,
+    team2Color: Color = StatusInfo,
     modifier: Modifier = Modifier
 ) {
     val maxRuns = maxOf(team1Runs.maxOrNull() ?: 0, team2Runs.maxOrNull() ?: 0, 12)
     var selectedOver by remember { mutableStateOf<Int?>(null) }
+    val colors = BouncerDesignSystem.colors
     
     Surface(
         modifier = modifier.shadow(
             elevation = 12.dp,
             shape = RoundedCornerShape(20.dp),
-            spotColor = ShinyGoldDeep.copy(alpha = 0.15f)
+            spotColor = colors.goldPrimary.copy(alpha = 0.15f)
         ),
         shape = RoundedCornerShape(20.dp),
-        color = Color.White.copy(alpha = 0.05f)
+        color = colors.glassSurface
     ) {
         Column(
             modifier = Modifier
@@ -264,7 +266,7 @@ fun OverComparisonChart(
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 1.5.sp,
-                    color = ShinyGoldDeep
+                    color = colors.goldPrimary
                 )
                 
                 // Legend
@@ -295,7 +297,7 @@ fun OverComparisonChart(
                 for (i in 0..4) {
                     val y = size.height * (1f - i / 4f)
                     drawLine(
-                        color = CardBorder.copy(alpha = 0.3f),
+                        color = colors.glassBorder.copy(alpha = 0.3f),
                         start = Offset(0f, y),
                         end = Offset(size.width, y),
                         strokeWidth = 1f
@@ -347,7 +349,7 @@ fun OverComparisonChart(
                 selectedOver?.let { over ->
                     Surface(
                         shape = RoundedCornerShape(12.dp),
-                        color = CardDarkBlue
+                        color = colors.surface1
                     ) {
                         Row(
                             modifier = Modifier
@@ -356,7 +358,7 @@ fun OverComparisonChart(
                             horizontalArrangement = Arrangement.SpaceEvenly
                         ) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text("Over ${over + 1}", fontSize = 10.sp, color = TextMuted)
+                                Text("Over ${over + 1}", fontSize = 10.sp, color = colors.textMuted)
                             }
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text(team1Name, fontSize = 10.sp, color = team1Color)
@@ -364,7 +366,7 @@ fun OverComparisonChart(
                                     "${team1Runs.getOrNull(over) ?: "-"} runs",
                                     fontSize = 14.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = Color.White
+                                    color = colors.textPrimary
                                 )
                             }
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -373,7 +375,7 @@ fun OverComparisonChart(
                                     "${team2Runs.getOrNull(over) ?: "-"} runs",
                                     fontSize = 14.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = Color.White
+                                    color = colors.textPrimary
                                 )
                             }
                         }
@@ -386,6 +388,7 @@ fun OverComparisonChart(
 
 @Composable
 private fun LegendItem(color: Color, label: String) {
+    val colors = BouncerDesignSystem.colors
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp)
@@ -399,7 +402,7 @@ private fun LegendItem(color: Color, label: String) {
             text = label,
             fontSize = 10.sp,
             fontWeight = FontWeight.Medium,
-            color = TextTertiary
+            color = colors.textTertiary
         )
     }
 }
@@ -419,13 +422,14 @@ fun BoundaryDistributionChart(
 ) {
     val total = fours + sixes + dots + singles + doubles + triples
     if (total == 0) return
+    val colors = BouncerDesignSystem.colors
     
     val data = listOf(
-        ChartSegment("6s", sixes, BoundarySix),
-        ChartSegment("4s", fours, BoundaryFour),
-        ChartSegment("3s", triples, ChartPurple),
-        ChartSegment("2s", doubles, LiveBlue),
-        ChartSegment("1s", singles, SuccessGreen),
+        ChartSegment("6s", sixes, colors.goldPrimary),
+        ChartSegment("4s", fours, colors.statusInfo),
+        ChartSegment("3s", triples, colors.statusInfo),
+        ChartSegment("2s", doubles, colors.statusInfo),
+        ChartSegment("1s", singles, colors.statusSuccess),
         ChartSegment("Dots", dots, DotBall)
     ).filter { it.value > 0 }
     
@@ -446,10 +450,10 @@ fun BoundaryDistributionChart(
         modifier = modifier.shadow(
             elevation = 12.dp,
             shape = RoundedCornerShape(20.dp),
-            spotColor = ShinyGoldDeep.copy(alpha = 0.15f)
+            spotColor = colors.goldPrimary.copy(alpha = 0.15f)
         ),
         shape = RoundedCornerShape(20.dp),
-        color = Color.White.copy(alpha = 0.05f)
+        color = colors.glassSurface
     ) {
         Column(
             modifier = Modifier
@@ -462,7 +466,7 @@ fun BoundaryDistributionChart(
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 1.5.sp,
-                color = ShinyGoldDeep
+                color = colors.goldPrimary
             )
             
             Row(
@@ -497,7 +501,7 @@ fun BoundaryDistributionChart(
                         
                         // Inner circle for donut effect
                         drawCircle(
-                            color = CardSurface,
+                            color = colors.surface1,
                             radius = size.minDimension / 3
                         )
                     }
@@ -508,12 +512,12 @@ fun BoundaryDistributionChart(
                             text = total.toString(),
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Black,
-                            color = Color.White
+                            color = colors.textPrimary
                         )
                         Text(
                             text = "balls",
                             fontSize = 10.sp,
-                            color = TextMuted
+                            color = colors.textMuted
                         )
                     }
                 }
@@ -536,12 +540,12 @@ fun BoundaryDistributionChart(
                                 text = "${segment.label}: ${segment.value}",
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Medium,
-                                color = TextSecondary
+                                color = colors.textSecondary
                             )
                             Text(
                                 text = "(${((segment.value.toFloat() / total) * 100).toInt()}%)",
                                 fontSize = 10.sp,
-                                color = TextMuted
+                                color = colors.textMuted
                             )
                         }
                     }
@@ -569,6 +573,7 @@ fun InningsProgressTracker(
     modifier: Modifier = Modifier
 ) {
     val progress = (currentOver / totalOvers).coerceIn(0f, 1f)
+    val colors = BouncerDesignSystem.colors
     
     val animatedProgress by animateFloatAsState(
         targetValue = progress,
@@ -591,10 +596,10 @@ fun InningsProgressTracker(
         modifier = modifier.shadow(
             elevation = 12.dp,
             shape = RoundedCornerShape(20.dp),
-            spotColor = ShinyGoldDeep.copy(alpha = 0.15f)
+            spotColor = colors.goldPrimary.copy(alpha = 0.15f)
         ),
         shape = RoundedCornerShape(20.dp),
-        color = Color.White.copy(alpha = 0.05f)
+        color = colors.glassSurface
     ) {
         Column(
             modifier = Modifier
@@ -612,19 +617,19 @@ fun InningsProgressTracker(
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 1.5.sp,
-                    color = ShinyGoldDeep
+                    color = colors.goldPrimary
                 )
                 
                 if (projectedScore != null) {
                     Surface(
                         shape = RoundedCornerShape(8.dp),
-                        color = ShinyGoldDeep.copy(alpha = 0.12f)
+                        color = colors.goldPrimary.copy(alpha = 0.12f)
                     ) {
                         Text(
                             text = "Projected: $projectedScore",
                             fontSize = 11.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = ShinyGoldDeep,
+                            color = colors.goldPrimary,
                             modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
                         )
                     }
@@ -644,7 +649,7 @@ fun InningsProgressTracker(
                         .height(8.dp)
                         .align(Alignment.Center)
                         .clip(RoundedCornerShape(4.dp))
-                        .background(CardBorder)
+                        .background(colors.glassBorder)
                 )
                 
                 // Progress
@@ -657,9 +662,9 @@ fun InningsProgressTracker(
                         .background(
                             Brush.horizontalGradient(
                                 colors = listOf(
-                                    ShinyGoldDark,
-                                    ShinyGoldDeep,
-                                    ShinyGoldMid
+                                    colors.goldDark,
+                                    colors.goldPrimary,
+                                    colors.goldLight
                                 )
                             )
                         )
@@ -676,22 +681,22 @@ fun InningsProgressTracker(
                             drawCircle(
                                 brush = Brush.radialGradient(
                                     colors = listOf(
-                                        ShinyGoldDeep.copy(alpha = 0.5f),
+                                        colors.goldPrimary.copy(alpha = 0.5f),
                                         Color.Transparent
                                     )
                                 ),
                                 radius = size.maxDimension
                             )
                         }
-                        .background(ShinyGoldDeep, CircleShape)
-                        .border(2.dp, Color.White, CircleShape),
+                        .background(colors.goldPrimary, CircleShape)
+                        .border(2.dp, colors.textPrimary, CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = "${currentOver.toInt()}",
                         fontSize = 8.sp,
                         fontWeight = FontWeight.Bold,
-                        color = BlackBackground
+                        color = colors.backgroundBase
                     )
                 }
                 
@@ -707,7 +712,7 @@ fun InningsProgressTracker(
                             text = over.toString(),
                             fontSize = 9.sp,
                             fontWeight = FontWeight.Medium,
-                            color = TextMuted
+                            color = colors.textMuted
                         )
                     }
                 }
@@ -728,18 +733,19 @@ fun InningsProgressTracker(
 
 @Composable
 private fun StatPill(label: String, value: String) {
+    val colors = BouncerDesignSystem.colors
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
             text = value,
             fontSize = 18.sp,
             fontWeight = FontWeight.Black,
-            color = Color.White
+            color = colors.textPrimary
         )
         Text(
             text = label,
             fontSize = 10.sp,
             fontWeight = FontWeight.Medium,
-            color = TextMuted
+            color = colors.textMuted
         )
     }
 }

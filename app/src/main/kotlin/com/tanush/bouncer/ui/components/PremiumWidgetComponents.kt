@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.TrendingDown
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -52,6 +54,7 @@ fun StatSummaryWidget(
     trendValue: String = "",
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "stat")
     
     val shimmer by infiniteTransition.animateFloat(
@@ -79,7 +82,7 @@ fun StatSummaryWidget(
                 brush = Brush.linearGradient(
                     colors = listOf(
                         Color.Transparent,
-                        ShinyGoldMid.copy(alpha = 0.05f),
+                        colors.goldDark.copy(alpha = 0.05f),
                         Color.Transparent
                     ),
                     start = Offset(shimmer * 200, 0f),
@@ -88,7 +91,7 @@ fun StatSummaryWidget(
             )
             .border(
                 width = 1.dp,
-                color = ShinyGoldMid.copy(alpha = 0.2f),
+                color = colors.goldDark.copy(alpha = 0.2f),
                 shape = RoundedCornerShape(16.dp)
             )
             .padding(16.dp)
@@ -121,7 +124,7 @@ fun StatSummaryWidget(
                     if (subtitle.isNotEmpty()) {
                         Text(
                             text = subtitle,
-                            color = ShinyGoldMid,
+                            color = colors.goldDark,
                             fontSize = 12.sp
                         )
                     }
@@ -131,13 +134,13 @@ fun StatSummaryWidget(
                     modifier = Modifier
                         .size(48.dp)
                         .clip(CircleShape)
-                        .background(ShinyGoldMid.copy(alpha = 0.15f)),
+                        .background(colors.goldDark.copy(alpha = 0.15f)),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = icon,
                         contentDescription = null,
-                        tint = ShinyGoldMid,
+                        tint = colors.goldDark,
                         modifier = Modifier.size(24.dp)
                     )
                 }
@@ -150,8 +153,8 @@ fun StatSummaryWidget(
                 ) {
                     Icon(
                         imageVector = when (trend) {
-                            TrendDirection.UP -> Icons.Default.TrendingUp
-                            TrendDirection.DOWN -> Icons.Default.TrendingDown
+                            TrendDirection.UP -> Icons.AutoMirrored.Filled.TrendingUp
+                            TrendDirection.DOWN -> Icons.AutoMirrored.Filled.TrendingDown
                             else -> Icons.Default.Remove
                         },
                         contentDescription = null,
@@ -187,7 +190,7 @@ fun CircularStatWidget(
     maxValue: Float = 100f,
     label: String,
     centerText: String,
-    color: Color = ShinyGoldMid,
+    color: Color = BouncerDesignSystem.colors.goldDark,
     size: Dp = 120.dp,
     modifier: Modifier = Modifier
 ) {
@@ -277,6 +280,7 @@ fun CompactMatchWidget(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "match")
     
     val livePulse by infiniteTransition.animateFloat(
@@ -296,7 +300,7 @@ fun CompactMatchWidget(
             .background(Color.White.copy(alpha = 0.05f))
             .border(
                 width = 1.dp,
-                color = if (isLive) Color(0xFFEF4444).copy(alpha = 0.5f) else ShinyGoldMid.copy(alpha = 0.2f),
+                color = if (isLive) Color(0xFFEF4444).copy(alpha = 0.5f) else colors.goldDark.copy(alpha = 0.2f),
                 shape = RoundedCornerShape(12.dp)
             )
             .clickable { onClick() }
@@ -390,6 +394,7 @@ fun QuickStatsRow(
     stats: List<Pair<String, String>>,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -421,7 +426,7 @@ fun QuickStatsRow(
                     modifier = Modifier
                         .width(1.dp)
                         .height(32.dp)
-                        .background(ShinyGoldMid.copy(alpha = 0.2f))
+                        .background(colors.goldDark.copy(alpha = 0.2f))
                 )
             }
         }
@@ -438,20 +443,21 @@ fun UpcomingMatchWidget(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(16.dp))
             .background(
                 brush = Brush.linearGradient(
                     colors = listOf(
-                        ShinyGoldMid.copy(alpha = 0.1f),
+                        colors.goldDark.copy(alpha = 0.1f),
                         Color.White.copy(alpha = 0.05f)
                     )
                 )
             )
             .border(
                 width = 1.dp,
-                color = ShinyGoldMid.copy(alpha = 0.3f),
+                color = colors.goldDark.copy(alpha = 0.3f),
                 shape = RoundedCornerShape(16.dp)
             )
             .clickable { onClick() }
@@ -473,12 +479,12 @@ fun UpcomingMatchWidget(
                     Icon(
                         imageVector = Icons.Default.Schedule,
                         contentDescription = null,
-                        tint = ShinyGoldMid,
+                        tint = colors.goldDark,
                         modifier = Modifier.size(16.dp)
                     )
                     Text(
                         text = matchTime,
-                        color = ShinyGoldMid,
+                        color = colors.goldDark,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -508,7 +514,7 @@ fun UpcomingMatchWidget(
                 
                 Text(
                     text = "vs",
-                    color = ShinyGoldMid.copy(alpha = 0.7f),
+                    color = colors.goldDark.copy(alpha = 0.7f),
                     fontSize = 12.sp,
                     modifier = Modifier.padding(horizontal = 12.dp)
                 )
@@ -555,6 +561,7 @@ fun DashboardHeader(
     onProfileClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "header")
     
     val shimmer by infiniteTransition.animateFloat(
@@ -593,7 +600,7 @@ fun DashboardHeader(
             if (subtitle.isNotEmpty()) {
                 Text(
                     text = subtitle,
-                    color = ShinyGoldMid,
+                    color = colors.goldDark,
                     fontSize = 13.sp
                 )
             }
@@ -606,8 +613,8 @@ fun DashboardHeader(
                 .background(
                     brush = Brush.linearGradient(
                         colors = listOf(
-                            ShinyGoldMid.copy(alpha = 0.3f),
-                            ShinyGoldLight.copy(alpha = 0.1f)
+                            colors.goldDark.copy(alpha = 0.3f),
+                            colors.goldLight.copy(alpha = 0.1f)
                         ),
                         start = Offset(shimmer * 100, 0f),
                         end = Offset((shimmer + 1) * 100, 100f)
@@ -616,7 +623,7 @@ fun DashboardHeader(
                 .border(
                     width = 2.dp,
                     brush = Brush.linearGradient(
-                        colors = listOf(ShinyGoldMid, ShinyGoldLight)
+                        colors = listOf(colors.goldDark, colors.goldLight)
                     ),
                     shape = CircleShape
                 )
@@ -625,7 +632,7 @@ fun DashboardHeader(
         ) {
             Text(
                 text = userName.take(2).uppercase(),
-                color = ShinyGoldMid,
+                color = colors.goldDark,
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold
             )
@@ -641,13 +648,14 @@ fun ActionTile(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(16.dp))
             .background(Color.White.copy(alpha = 0.05f))
             .border(
                 width = 1.dp,
-                color = ShinyGoldMid.copy(alpha = 0.2f),
+                color = colors.goldDark.copy(alpha = 0.2f),
                 shape = RoundedCornerShape(16.dp)
             )
             .clickable { onClick() }
@@ -660,13 +668,13 @@ fun ActionTile(
                 modifier = Modifier
                     .size(44.dp)
                     .clip(RoundedCornerShape(12.dp))
-                    .background(ShinyGoldMid.copy(alpha = 0.15f)),
+                    .background(colors.goldDark.copy(alpha = 0.15f)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
-                    tint = ShinyGoldMid,
+                    tint = colors.goldDark,
                     modifier = Modifier.size(24.dp)
                 )
             }
@@ -703,6 +711,7 @@ fun SummarySection(
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit
 ) {
+    val colors = BouncerDesignSystem.colors
     Column(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -727,14 +736,14 @@ fun SummarySection(
                 ) {
                     Text(
                         text = actionLabel,
-                        color = ShinyGoldMid,
+                        color = colors.goldDark,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Medium
                     )
                     Icon(
                         imageVector = Icons.Default.ChevronRight,
                         contentDescription = null,
-                        tint = ShinyGoldMid,
+                        tint = colors.goldDark,
                         modifier = Modifier.size(16.dp)
                     )
                 }

@@ -40,6 +40,8 @@ fun CricketBallLoader(
     showText: Boolean = true,
     loadingText: String = "SYNCHRONIZING TELEMETRY..."
 ) {
+    val colors = BouncerDesignSystem.colors
+    val goldPrimaryColor = colors.goldPrimary
     val infiniteTransition = rememberInfiniteTransition(label = "loader")
     
     val rotation by infiniteTransition.animateFloat(
@@ -67,13 +69,13 @@ fun CricketBallLoader(
                 modifier = Modifier
                     .size(size)
                     .blur(30.dp)
-                    .background(ShinyGoldDeep.copy(alpha = 0.1f * glowAlpha), CircleShape)
+                    .background(goldPrimaryColor.copy(alpha = 0.1f * glowAlpha), CircleShape)
             )
 
             Canvas(modifier = Modifier.size(size)) {
                 // Outer Technical Ring
                 drawCircle(
-                    color = ShinyGoldDeep.copy(alpha = 0.1f),
+                    color = goldPrimaryColor.copy(alpha = 0.1f),
                     style = Stroke(width = 1.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 10f))),
                     radius = size.toPx() / 2
                 )
@@ -81,7 +83,7 @@ fun CricketBallLoader(
                 // Animated Scanning Arc
                 rotate(rotation) {
                     drawArc(
-                        brush = Brush.sweepGradient(listOf(Color.Transparent, ShinyGoldDeep, Color.Transparent)),
+                        brush = Brush.sweepGradient(listOf(Color.Transparent, goldPrimaryColor, Color.Transparent)),
                         startAngle = 0f,
                         sweepAngle = 120f,
                         useCenter = false,
@@ -92,7 +94,7 @@ fun CricketBallLoader(
                 
                 // Central Core
                 drawCircle(
-                    color = ShinyGoldDeep.copy(alpha = 0.8f * glowAlpha),
+                    color = goldPrimaryColor.copy(alpha = 0.8f * glowAlpha),
                     radius = 4.dp.toPx(),
                     center = center
                 )
@@ -103,7 +105,7 @@ fun CricketBallLoader(
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = loadingText,
-                color = ShinyGoldDeep,
+                color = goldPrimaryColor,
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Black,
                 letterSpacing = 2.sp
@@ -116,16 +118,18 @@ fun CricketBallLoader(
 fun CricketBallLoadingScreen(
     loadingText: String = "SYNCHRONIZING MATCH ANALYTICS..."
 ) {
+    val colors = BouncerDesignSystem.colors
+    val goldPrimaryColor = colors.goldPrimary
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(BlackBackground),
+            .background(colors.backgroundBase),
         contentAlignment = Alignment.Center
     ) {
         // Ambient Background Texture
         Canvas(modifier = Modifier.fillMaxSize()) {
             drawCircle(
-                brush = Brush.radialGradient(listOf(ShinyGoldDeep.copy(alpha = 0.05f), Color.Transparent)),
+                brush = Brush.radialGradient(listOf(goldPrimaryColor.copy(alpha = 0.05f), Color.Transparent)),
                 radius = size.width * 0.6f,
                 center = Offset(size.width * 0.5f, size.height * 0.5f)
             )
@@ -137,6 +141,7 @@ fun CricketBallLoadingScreen(
 
 @Composable
 fun MiniCricketBallLoader(modifier: Modifier = Modifier, size: Dp = 24.dp) {
+    val goldPrimaryColor = BouncerDesignSystem.colors.goldPrimary
     val rotation by rememberInfiniteTransition(label = "mini").animateFloat(
         initialValue = 0f,
         targetValue = 360f,
@@ -146,7 +151,7 @@ fun MiniCricketBallLoader(modifier: Modifier = Modifier, size: Dp = 24.dp) {
     
     Canvas(modifier = modifier.size(size).rotate(rotation)) {
         drawArc(
-            color = ShinyGoldDeep,
+            color = goldPrimaryColor,
             startAngle = 0f,
             sweepAngle = 270f,
             useCenter = false,

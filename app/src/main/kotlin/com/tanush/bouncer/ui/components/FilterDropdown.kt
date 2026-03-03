@@ -99,20 +99,21 @@ private fun MultiSelectChip(
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
+    val colors = BouncerDesignSystem.colors
     val backgroundColor by animateColorAsState(
-        targetValue = if (isSelected) ShinyGoldDeep.copy(alpha = 0.15f) else Color.White.copy(alpha = 0.05f),
+        targetValue = if (isSelected) colors.goldPrimary.copy(alpha = 0.15f) else Color.White.copy(alpha = 0.05f),
         animationSpec = tween(200),
         label = "chipBg"
     )
     
     val borderColor by animateColorAsState(
-        targetValue = if (isSelected) ShinyGoldDeep.copy(alpha = 0.5f) else Color.White.copy(alpha = 0.08f),
+        targetValue = if (isSelected) colors.goldPrimary.copy(alpha = 0.5f) else Color.White.copy(alpha = 0.08f),
         animationSpec = tween(200),
         label = "chipBorder"
     )
     
     val textColor by animateColorAsState(
-        targetValue = if (isSelected) ShinyGoldDeep else TextSecondary,
+        targetValue = if (isSelected) colors.goldPrimary else colors.textSecondary,
         animationSpec = tween(200),
         label = "chipText"
     )
@@ -125,7 +126,7 @@ private fun MultiSelectChip(
         modifier = Modifier.shadow(
             elevation = if (isSelected) 4.dp else 0.dp,
             shape = RoundedCornerShape(20.dp),
-            spotColor = ShinyGoldDeep.copy(alpha = 0.2f)
+            spotColor = colors.goldPrimary.copy(alpha = 0.2f)
         )
     ) {
         Row(
@@ -137,7 +138,7 @@ private fun MultiSelectChip(
                 Box(
                     modifier = Modifier
                         .size(14.dp)
-                        .background(ShinyGoldDeep, CircleShape),
+                        .background(colors.goldPrimary, CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
@@ -185,6 +186,7 @@ fun FilterDropdown(
     selectedOption: String,
     onOptionSelected: (String) -> Unit
 ) {
+    val colors = BouncerDesignSystem.colors
     var expanded by remember { mutableStateOf(false) }
     val isFiltered = selectedOption != "All"
     val haptic = rememberHapticFeedback()
@@ -192,8 +194,8 @@ fun FilterDropdown(
     val backgroundBrush = if (isFiltered) {
         Brush.horizontalGradient(
             colors = listOf(
-                ShinyGoldDeep.copy(alpha = 0.2f),
-                ShinyGoldBronze.copy(alpha = 0.1f)
+                colors.goldPrimary.copy(alpha = 0.2f),
+                colors.goldDark.copy(alpha = 0.1f)
             )
         )
     } else {
@@ -211,16 +213,16 @@ fun FilterDropdown(
                 .shadow(
                     elevation = if (isFiltered) 8.dp else 2.dp,
                     shape = RoundedCornerShape(16.dp),
-                    spotColor = if (isFiltered) ShinyGoldDeep.copy(alpha = 0.4f) else Color.Transparent
+                    spotColor = if (isFiltered) colors.goldPrimary.copy(alpha = 0.4f) else Color.Transparent
                 )
                 .clip(RoundedCornerShape(16.dp))
                 .background(backgroundBrush)
                 .border(
                     width = 1.dp,
                     brush = if (isFiltered) {
-                        Brush.linearGradient(listOf(ShinyGoldDeep.copy(alpha = 0.5f), Color.Transparent))
+                        Brush.linearGradient(listOf(colors.goldPrimary.copy(alpha = 0.5f), Color.Transparent))
                     } else {
-                        Brush.linearGradient(listOf(CardBorder.copy(alpha = 0.4f), Color.Transparent))
+                        Brush.linearGradient(listOf(colors.glassBorder.copy(alpha = 0.4f), Color.Transparent))
                     },
                     shape = RoundedCornerShape(16.dp)
                 )
@@ -234,13 +236,13 @@ fun FilterDropdown(
             Icon(
                 imageVector = Icons.Default.FilterList,
                 contentDescription = null,
-                tint = if (isFiltered) ShinyGoldDeep else TextMuted,
+                tint = if (isFiltered) colors.goldPrimary else colors.textMuted,
                 modifier = Modifier.size(14.dp)
             )
             Spacer(modifier = Modifier.width(10.dp))
             Text(
                 text = if (selectedOption == "All") label else selectedOption,
-                color = if (isFiltered) ShinyGoldLight else TextSecondary,
+                color = if (isFiltered) colors.goldLight else colors.textSecondary,
                 fontSize = 13.sp,
                 fontWeight = if (isFiltered) FontWeight.Black else FontWeight.Bold,
                 letterSpacing = 0.5.sp
@@ -249,7 +251,7 @@ fun FilterDropdown(
             Icon(
                 imageVector = Icons.Default.ArrowDropDown,
                 contentDescription = null,
-                tint = if (isFiltered) ShinyGoldDeep else TextTertiary,
+                tint = if (isFiltered) colors.goldPrimary else colors.textTertiary,
                 modifier = Modifier.size(18.dp)
             )
         }
@@ -264,7 +266,7 @@ fun FilterDropdown(
                     ),
                     RoundedCornerShape(16.dp)
                 )
-                .border(1.dp, CardBorder.copy(alpha = 0.5f), RoundedCornerShape(16.dp))
+                .border(1.dp, colors.glassBorder.copy(alpha = 0.5f), RoundedCornerShape(16.dp))
                 .padding(vertical = 8.dp)
         ) {
             options.forEach { option ->
@@ -273,14 +275,14 @@ fun FilterDropdown(
                     text = {
                         Text(
                             text = option,
-                            color = if (isSelected) ShinyGoldLight else TextPrimary,
+                            color = if (isSelected) colors.goldLight else colors.textPrimary,
                             fontWeight = if (isSelected) FontWeight.Black else FontWeight.Medium,
                             fontSize = 14.sp,
                             letterSpacing = 0.5.sp
                         )
                     },
                     modifier = Modifier.background(
-                        if (isSelected) ShinyGoldDeep.copy(alpha = 0.1f) else Color.Transparent
+                        if (isSelected) colors.goldPrimary.copy(alpha = 0.1f) else Color.Transparent
                     ),
                     onClick = {
                         haptic.click()

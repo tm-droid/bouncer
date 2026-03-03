@@ -45,6 +45,7 @@ fun PremiumBottomNavigation(
     onItemSelected: (NavigationItem) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "navShimmer")
     val shimmerOffset by infiniteTransition.animateFloat(
         initialValue = 0f,
@@ -69,7 +70,7 @@ fun PremiumBottomNavigation(
                 .shadow(
                     elevation = Elevation.high,
                     shape = RoundedCornerShape(CornerRadius.lg),
-                    spotColor = ShinyGoldDeep.copy(alpha = 0.15f),
+                    spotColor = colors.goldPrimary.copy(alpha = 0.15f),
                     ambientColor = Color.Black.copy(alpha = 0.5f)
                 )
                 .clip(RoundedCornerShape(CornerRadius.lg))
@@ -85,11 +86,11 @@ fun PremiumBottomNavigation(
                     BorderWidth.hairline,
                     Brush.linearGradient(
                         colors = listOf(
-                            ShinyGoldDeep.copy(alpha = 0.3f + shimmerOffset * 0.2f),
+                            colors.goldPrimary.copy(alpha = 0.3f + shimmerOffset * 0.2f),
                             Color.Transparent,
-                            ShinyGoldDeep.copy(alpha = 0.15f),
+                            colors.goldPrimary.copy(alpha = 0.15f),
                             Color.Transparent,
-                            ShinyGoldDeep.copy(alpha = 0.25f)
+                            colors.goldPrimary.copy(alpha = 0.25f)
                         ),
                         start = Offset(shimmerOffset * 500, 0f),
                         end = Offset(shimmerOffset * 500 + 300, 100f)
@@ -106,9 +107,9 @@ fun PremiumBottomNavigation(
                         Brush.horizontalGradient(
                             colors = listOf(
                                 Color.Transparent,
-                                ShinyGoldLight.copy(alpha = 0.3f),
-                                ShinyGoldDeep.copy(alpha = 0.4f),
-                                ShinyGoldLight.copy(alpha = 0.3f),
+                                colors.goldLight.copy(alpha = 0.3f),
+                                colors.goldPrimary.copy(alpha = 0.4f),
+                                colors.goldLight.copy(alpha = 0.3f),
                                 Color.Transparent
                             )
                         )
@@ -141,6 +142,7 @@ private fun PremiumNavItem(
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
+    val colors = BouncerDesignSystem.colors
     val interactionSource = remember { MutableInteractionSource() }
     
     val scale by animateFloatAsState(
@@ -153,7 +155,7 @@ private fun PremiumNavItem(
     )
     
     val iconColor by animateColorAsState(
-        targetValue = if (isSelected) ShinyGoldDeep else TextMuted,
+        targetValue = if (isSelected) colors.goldPrimary else colors.textMuted,
         animationSpec = tween(200),
         label = "iconColor"
     )
@@ -192,8 +194,8 @@ private fun PremiumNavItem(
                     .background(
                         Brush.radialGradient(
                             colors = listOf(
-                                ShinyGoldDeep.copy(alpha = glowAlpha * 0.3f),
-                                ShinyGoldDeep.copy(alpha = glowAlpha * 0.1f),
+                                colors.goldPrimary.copy(alpha = glowAlpha * 0.3f),
+                                colors.goldPrimary.copy(alpha = glowAlpha * 0.1f),
                                 Color.Transparent
                             )
                         ),
@@ -221,7 +223,7 @@ private fun PremiumNavItem(
                 Text(
                     text = item.title,
                     fontSize = 10.sp,
-                    color = ShinyGoldDeep,
+                    color = colors.goldPrimary,
                     letterSpacing = 0.3.sp
                 )
             }
@@ -237,8 +239,8 @@ fun PremiumFloatingActionButton(
     onClick: () -> Unit,
     icon: ImageVector,
     modifier: Modifier = Modifier,
-    containerColor: Color = ShinyGoldDeep,
-    contentColor: Color = BlackBackground
+    containerColor: Color = BouncerDesignSystem.colors.goldPrimary,
+    contentColor: Color = BouncerDesignSystem.colors.backgroundBase
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "fabGlow")
     val glowAlpha by infiniteTransition.animateFloat(
@@ -343,7 +345,7 @@ fun SpeedDialFAB(
                             text = item.label,
                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                             fontSize = 13.sp,
-                            color = TextPrimary
+                            color = BouncerDesignSystem.colors.textPrimary
                         )
                     }
 
@@ -354,7 +356,7 @@ fun SpeedDialFAB(
                             item.onClick()
                         },
                         containerColor = item.color,
-                        contentColor = BlackBackground,
+                        contentColor = BouncerDesignSystem.colors.backgroundBase,
                         shape = CircleShape,
                         modifier = Modifier.size(44.dp)
                     ) {
@@ -380,6 +382,6 @@ fun SpeedDialFAB(
 data class SpeedDialItem(
     val label: String,
     val icon: ImageVector,
-    val color: Color = ShinyGoldDeep,
+    val color: Color = Color(0xFFD4AF37),
     val onClick: () -> Unit
 )

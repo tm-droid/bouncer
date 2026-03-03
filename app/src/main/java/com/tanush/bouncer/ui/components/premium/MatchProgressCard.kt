@@ -34,6 +34,7 @@ import com.tanush.bouncer.ui.theme.ChartBlue
 import com.tanush.bouncer.ui.theme.ShinyGoldDeep
 import com.tanush.bouncer.ui.theme.ShinyGoldMid
 import com.tanush.bouncer.ui.theme.SuccessGreen
+import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 
 /**
  * Match Progress Card
@@ -75,6 +76,7 @@ fun MatchProgressCard(
     totalOvers: Float,
     modifier: Modifier = Modifier,
 ) {
+    val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "progress")
 
     val clockPulse by infiniteTransition.animateFloat(
@@ -120,7 +122,7 @@ fun MatchProgressCard(
                             .clip(RoundedCornerShape(12.dp))
                             .background(
                                 Brush.linearGradient(
-                                    colors = listOf(ChartBlue, ChartBlue.copy(alpha = 0.6f)),
+                                    colors = listOf(colors.statusInfo, colors.statusInfo.copy(alpha = 0.6f)),
                                 ),
                             ),
                         contentAlignment = Alignment.Center,
@@ -143,7 +145,7 @@ fun MatchProgressCard(
                     Column {
                         Text(
                             text = "MATCH PROGRESS",
-                            color = ShinyGoldMid,
+                            color = colors.goldDark,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.5.sp,
@@ -161,7 +163,7 @@ fun MatchProgressCard(
                 Column(horizontalAlignment = Alignment.End) {
                     Text(
                         text = progressInfo.estimatedTimeRemaining,
-                        color = ShinyGoldMid,
+                        color = colors.goldDark,
                         fontSize = 22.sp,
                         fontWeight = FontWeight.Bold,
                     )
@@ -199,7 +201,7 @@ fun MatchProgressCard(
                 )
                 Text(
                     text = "${progressInfo.oversRemaining} overs remaining",
-                    color = ChartBlue,
+                    color = colors.statusInfo,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Medium,
                 )
@@ -219,7 +221,7 @@ fun MatchProgressCard(
                 TimeStatColumn(
                     label = "Session Time",
                     value = progressInfo.currentSessionTime,
-                    color = ChartBlue,
+                    color = colors.statusInfo,
                 )
 
                 Box(
@@ -232,7 +234,7 @@ fun MatchProgressCard(
                 TimeStatColumn(
                     label = "Total Time",
                     value = progressInfo.totalMatchTime,
-                    color = ShinyGoldMid,
+                    color = colors.goldDark,
                 )
 
                 Box(
@@ -245,7 +247,7 @@ fun MatchProgressCard(
                 TimeStatColumn(
                     label = "Next Break",
                     value = progressInfo.nextBreak ?: "None",
-                    color = SuccessGreen,
+                    color = colors.statusSuccess,
                 )
             }
 
@@ -286,6 +288,11 @@ private fun MatchProgressVisualization(
     oversBowled: Float,
     modifier: Modifier = Modifier,
 ) {
+    val colors = BouncerDesignSystem.colors
+    val statusInfoC = colors.statusInfo
+    val goldDarkC = colors.goldDark
+    val goldPrimaryC = colors.goldPrimary
+    val statusSuccessC = colors.statusSuccess
     Canvas(modifier = modifier) {
         val barHeight = 20.dp.toPx()
         val barY = (size.height - barHeight) / 2
@@ -301,7 +308,7 @@ private fun MatchProgressVisualization(
         // Progress bar
         drawRoundRect(
             brush = Brush.horizontalGradient(
-                colors = listOf(ChartBlue, ShinyGoldMid, SuccessGreen),
+                colors = listOf(statusInfoC, goldDarkC, statusSuccessC),
             ),
             topLeft = Offset(0f, barY),
             size = androidx.compose.ui.geometry.Size(size.width * progress, barHeight),
@@ -326,7 +333,7 @@ private fun MatchProgressVisualization(
         val currentX = size.width * progress
         drawCircle(
             brush = Brush.radialGradient(
-                colors = listOf(ShinyGoldMid, ShinyGoldDeep),
+                colors = listOf(goldDarkC, goldPrimaryC),
             ),
             radius = 10.dp.toPx(),
             center = Offset(currentX, barY + barHeight / 2),
@@ -346,6 +353,7 @@ private fun TimeStatColumn(
     value: String,
     color: Color,
 ) {
+    val colors = BouncerDesignSystem.colors
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
             text = value,
@@ -366,13 +374,14 @@ private fun BreakChip(
     breakInfo: MatchBreakInfo,
     modifier: Modifier = Modifier,
 ) {
+    val colors = BouncerDesignSystem.colors
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(8.dp))
             .background(
                 if (breakInfo.breakActive) {
                     Brush.horizontalGradient(
-                        colors = listOf(ShinyGoldMid.copy(alpha = 0.2f), ShinyGoldDeep.copy(alpha = 0.2f)),
+                        colors = listOf(colors.goldDark.copy(alpha = 0.2f), colors.goldPrimary.copy(alpha = 0.2f)),
                     )
                 } else {
                     Brush.horizontalGradient(
@@ -386,7 +395,7 @@ private fun BreakChip(
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
                 text = breakInfo.breakType,
-                color = if (breakInfo.breakActive) ShinyGoldMid else Color.White.copy(alpha = 0.7f),
+                color = if (breakInfo.breakActive) colors.goldDark else Color.White.copy(alpha = 0.7f),
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Medium,
             )

@@ -12,8 +12,9 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.tanush.bouncer.models.AchievementKind
 import com.tanush.bouncer.models.CricketMatch
+import com.tanush.bouncer.ui.components.PremiumBottomNavBar
+import com.tanush.bouncer.ui.components.navDestinations
 import com.tanush.bouncer.ui.screens.*
 import com.tanush.bouncer.ui.theme.*
 import com.tanush.bouncer.viewmodels.LiveActivityViewModel
@@ -81,8 +82,20 @@ fun MainAppContainer(
     viewModel: LiveActivityViewModel = viewModel(),
     onMatchClick: (CricketMatch) -> Unit
 ) {
-    var selectedTab by remember { mutableStateOf(NavigationItem.HOME) }
-    var currentSubScreen by remember { mutableStateOf<String?>(null) }
+    // Route-based navigation matching PremiumBottomNavBar destinations
+    var currentRoute by remember { mutableStateOf("home") }
+
+    // Track previous route index for slide direction
+    val routeIndex = remember(currentRoute) {
+        navDestinations.indexOfFirst { it.route == currentRoute }.coerceAtLeast(0)
+    }
+    var previousIndex by remember { mutableIntStateOf(0) }
+
+    // Determine if viewModel has live matches for badge
+    val currentMatches by viewModel.currentMatches.collectAsState()
+    val hasLiveMatches = remember(currentMatches) {
+        currentMatches.any { it.isLive }
+    }
 
     Box(
         modifier = Modifier
@@ -97,63 +110,95 @@ fun MainAppContainer(
                 )
             )
     ) {
-        // Content Area
+        // Content Area — padded at bottom for nav bar clearance
         AnimatedContent(
-            targetState = selectedTab,
+            targetState = currentRoute,
             transitionSpec = {
-                val direction = if (targetState.ordinal > initialState.ordinal) 1 else -1
+                val direction = if (
+                    navDestinations.indexOfFirst { it.route == targetState }
+                    > previousIndex
+                ) 1 else -1
                 (fadeIn(tween(300)) + slideInHorizontally(
-                    initialOffsetX = { it * direction / 2 },
-                    animationSpec = tween(400, easing = FastOutSlowInEasing)
+                    initialOffsetX = { it * direction / 4 },
+                    animationSpec = tween(350, easing = FastOutSlowInEasing)
                 )).togetherWith(
                     fadeOut(tween(200)) + slideOutHorizontally(
-                        targetOffsetX = { -it * direction / 2 },
-                        animationSpec = tween(400, easing = FastOutSlowInEasing)
+                        targetOffsetX = { -it * direction / 4 },
+                        animationSpec = tween(350, easing = FastOutSlowInEasing)
                     )
                 )
             },
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(bottom = 80.dp),  // clearance for bottom nav bar
             label = "tabNavigation"
-        ) { tab ->
-            when (tab) {
-                NavigationItem.HOME -> {
+        ) { route ->
+            when (route) {
+                "home" -> {
                     HomeScreen(
                         viewModel = viewModel,
                         onMatchClick = onMatchClick,
-                        onMoreMatchesClick = { currentSubScreen = "all_matches" },
-                        onAchievementsClick = { selectedTab = NavigationItem.ACHIEVEMENTS }
+                        onMoreMatchesClick = {
+                            previousIndex = routeIndex
+                            currentRoute = "all_matches"
+                        },
+                        onAchievementsClick = {
+                            previousIndex = routeIndex
+                            currentRoute = "stats"
+                        }
                     )
                 }
-                NavigationItem.FAVORITES -> {
+                "all_matches" -> {
+                    AllMatchesScreen(
+                        viewModel = viewModel,
+                        onBackClick = {
+                            previousIndex = routeIndex
+                            currentRoute = "home"
+                        }
+                    )
+                }
+                "favourites" -> {
                     FavoritesScreen(
-                        onBackClick = { selectedTab = NavigationItem.HOME },
-                        onTeamClick = { /* Handle team click if needed */ }
+                        onBackClick = {
+                            previousIndex = routeIndex
+                            currentRoute = "home"
+                        },
+                        onTeamClick = { /* Handle team click */ }
                     )
                 }
-                NavigationItem.ACHIEVEMENTS -> {
-                    AchievementsScreen(
-                        unlockedAchievements = emptySet(),
-                        onBackClick = { selectedTab = NavigationItem.HOME }
+                "stats" -> {
+                    TrophyRoomScreen(
+                        onBackClick = {
+                            previousIndex = routeIndex
+                            currentRoute = "home"
+                        }
                     )
                 }
-                NavigationItem.SETTINGS -> {
-                    SettingsScreen(
-                        onBackClick = { selectedTab = NavigationItem.HOME },
-                        onFavoritesClick = { selectedTab = NavigationItem.FAVORITES },
-                        onAchievementsClick = { selectedTab = NavigationItem.ACHIEVEMENTS },
-                        onAboutClick = { /* Handle about click */ }
+                "more" -> {
+                    MoreScreen(
+                        onSettingsClick = { /* push settings sub-screen */ },
+                        onAchievementsClick = {
+                            previousIndex = routeIndex
+                            currentRoute = "stats"
+                        },
+                        onActivityClick = { /* push activity sub-screen */ },
+                        onArTrackingClick = { /* push AR tracking */ },
+                        onAboutClick = { /* push about sub-screen */ },
+                        onDevToolsClick = { /* push dev tools */ }
                     )
                 }
             }
         }
 
-        // All Matches Screen Slide-up
-        AnimatedVisibility(
-            visible = currentSubScreen == "all_matches",
-            enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
-            exit = slideOutVertically(targetOffsetY = { it }) + fadeOut()
-        ) {
-            AllMatchesScreen(onBackClick = { currentSubScreen = null })
-        }
+        // ── Bottom Navigation Bar (v3.0) ──
+        PremiumBottomNavBar(
+            currentRoute = currentRoute,
+            onNavigate = { route ->
+                previousIndex = routeIndex
+                currentRoute = route
+            },
+            hasLiveMatches = hasLiveMatches,
+            modifier = Modifier.align(Alignment.BottomCenter)
+        )
     }
 }

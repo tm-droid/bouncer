@@ -32,11 +32,12 @@ fun shimmerBrush(
     targetValue: Float = 1000f,
     showShimmer: Boolean = true
 ): Brush {
+    val colors = BouncerDesignSystem.colors
     return if (showShimmer) {
         val shimmerColors = listOf(
-            Color.White.copy(alpha = 0.08f).copy(alpha = 0.3f),
-            ShinyGoldDeep.copy(alpha = 0.2f),
-            Color.White.copy(alpha = 0.08f).copy(alpha = 0.3f)
+            Surface1.copy(alpha = 0.3f),
+            colors.goldPrimary.copy(alpha = 0.15f),
+            Surface1.copy(alpha = 0.3f)
         )
         
         val transition = rememberInfiniteTransition(label = "shimmer")
@@ -78,7 +79,7 @@ fun PremiumShimmerBox(
     Box(
         modifier = modifier
             .clip(shape)
-            .background(Color.White.copy(alpha = 0.08f).copy(alpha = 0.5f))
+            .background(Surface1)
             .background(brush)
     )
 }
@@ -90,17 +91,19 @@ fun PremiumShimmerBox(
 fun PremiumMatchCardSkeleton(
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     Card(
         modifier = modifier
             .fillMaxWidth()
+            .height(160.dp)
             .shadow(
                 elevation = 16.dp,
-                shape = RoundedCornerShape(24.dp),
-                spotColor = ShinyGoldDeep.copy(alpha = 0.08f),
+                shape = RoundedCornerShape(12.dp),
+                spotColor = colors.goldPrimary.copy(alpha = 0.08f),
                 ambientColor = Color.Black.copy(alpha = 0.2f)
             ),
-        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.05f)),
-        shape = RoundedCornerShape(24.dp)
+        colors = CardDefaults.cardColors(containerColor = Surface1),
+        shape = RoundedCornerShape(12.dp)
     ) {
         Column(
             modifier = Modifier.padding(20.dp)
@@ -210,15 +213,16 @@ fun PremiumMatchCardSkeleton(
 fun CommentarySkeleton(
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     Card(
         modifier = modifier
             .fillMaxWidth()
             .shadow(
                 elevation = 8.dp,
                 shape = RoundedCornerShape(16.dp),
-                spotColor = ShinyGoldDeep.copy(alpha = 0.05f)
+                spotColor = colors.goldPrimary.copy(alpha = 0.05f)
             ),
-        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.05f)),
+        colors = CardDefaults.cardColors(containerColor = Surface1),
         shape = RoundedCornerShape(16.dp)
     ) {
         Column(
@@ -265,15 +269,16 @@ fun GraphSkeleton(
     modifier: Modifier = Modifier,
     height: Dp = 200.dp
 ) {
+    val colors = BouncerDesignSystem.colors
     Card(
         modifier = modifier
             .fillMaxWidth()
             .shadow(
                 elevation = 12.dp,
                 shape = RoundedCornerShape(24.dp),
-                spotColor = ShinyGoldDeep.copy(alpha = 0.08f)
+                spotColor = colors.goldPrimary.copy(alpha = 0.08f)
             ),
-        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.05f)),
+        colors = CardDefaults.cardColors(containerColor = Surface1),
         shape = RoundedCornerShape(24.dp)
     ) {
         Column(
@@ -315,7 +320,7 @@ fun GraphSkeleton(
 @Composable
 fun PulsingLoader(
     modifier: Modifier = Modifier,
-    color: Color = ShinyGoldDeep,
+    color: Color = BouncerDesignSystem.colors.goldPrimary,
     size: Dp = 48.dp
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "pulse")
@@ -385,6 +390,9 @@ fun CricketBallSpinner(
     modifier: Modifier = Modifier,
     size: Dp = 56.dp
 ) {
+    val colors = BouncerDesignSystem.colors
+    val goldLight = colors.goldLight
+    val goldPrimary = colors.goldPrimary
     val infiniteTransition = rememberInfiniteTransition(label = "ball_spin")
     
     val rotation by infiniteTransition.animateFloat(
@@ -422,8 +430,8 @@ fun CricketBallSpinner(
         drawCircle(
             brush = Brush.radialGradient(
                 colors = listOf(
-                    Color(0xFFDC2626),
-                    Color(0xFF991B1B)
+                    goldLight,
+                    goldPrimary
                 ),
                 center = center.copy(
                     x = center.x - radius * 0.2f,
@@ -490,7 +498,7 @@ fun CricketBallSpinner(
 @Composable
 fun DotWaveLoader(
     modifier: Modifier = Modifier,
-    color: Color = ShinyGoldDeep,
+    color: Color = BouncerDesignSystem.colors.goldPrimary,
     dotCount: Int = 5,
     dotSize: Dp = 10.dp
 ) {
@@ -584,6 +592,7 @@ fun FullScreenLoader(
     message: String = "Loading...",
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -601,13 +610,13 @@ fun FullScreenLoader(
             androidx.compose.material3.Text(
                 text = message,
                 style = androidx.compose.material3.MaterialTheme.typography.titleMedium,
-                color = TextPrimary
+                color = colors.textPrimary
             )
             
             Spacer(modifier = Modifier.height(16.dp))
             
             DotWaveLoader(
-                color = ShinyGoldDeep,
+                color = colors.goldPrimary,
                 dotCount = 3,
                 dotSize = 8.dp
             )
@@ -623,6 +632,8 @@ fun PremiumRefreshIndicator(
     isRefreshing: Boolean,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
+    val goldPrimary = colors.goldPrimary
     val rotation by animateFloatAsState(
         targetValue = if (isRefreshing) 360f else 0f,
         animationSpec = if (isRefreshing) {
@@ -642,20 +653,20 @@ fun PremiumRefreshIndicator(
             .background(
                 Brush.radialGradient(
                     colors = listOf(
-                        ShinyGoldDeep.copy(alpha = 0.2f),
-                        ShinyGoldDeep.copy(alpha = 0.05f)
+                        goldPrimary.copy(alpha = 0.2f),
+                        goldPrimary.copy(alpha = 0.05f)
                     )
                 ),
                 CircleShape
             )
-            .border(1.dp, ShinyGoldDeep.copy(alpha = 0.3f), CircleShape)
+            .border(1.dp, goldPrimary.copy(alpha = 0.3f), CircleShape)
             .graphicsLayer { rotationZ = rotation },
         contentAlignment = Alignment.Center
     ) {
         Icon(
             Icons.Default.Refresh,
             contentDescription = "Refreshing",
-            tint = ShinyGoldDeep,
+            tint = goldPrimary,
             modifier = Modifier.size(20.dp)
         )
     }

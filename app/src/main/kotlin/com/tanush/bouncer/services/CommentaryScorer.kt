@@ -1,5 +1,7 @@
 package com.tanush.bouncer.services
 
+import io.sentry.Sentry
+
 class CommentaryScorer {
     // Example keywords for excitement/sentiment
     private val excitementWords = setOf(
@@ -33,75 +35,85 @@ class CommentaryScorer {
      * Returns true if it appears to be actual ball commentary
      */
     fun isBallByBallCommentary(snippet: String): Boolean {
-        if (snippet.isBlank()) return false
+        try {
+            if (snippet.isBlank()) return false
         
-        val lower = snippet.lowercase().trim()
+            val lower = snippet.lowercase().trim()
         
-        // Check for non-ball keywords
-        for (keyword in nonBallKeywords) {
-            if (lower.contains(keyword)) {
-                return false
+            // Check for non-ball keywords
+            for (keyword in nonBallKeywords) {
+                if (lower.contains(keyword)) {
+                    return false
+                }
             }
+        
+            // Check if it starts with or contains ball number format
+            val hasBallNumber = ballNumberPattern.containsMatchIn(snippet) ||
+                               snippet.contains(Regex("\\d{1,2}\\.\\d\\s"))
+        
+            // Check for typical ball-by-ball indicators
+            val hasBallIndicators = lower.contains("to ") || // "bowler to batsman"
+                                   lower.contains("runs") ||
+                                   lower.contains("dot") ||
+                                   lower.contains("single") ||
+                                   lower.contains("double") ||
+                                   lower.contains("boundary") ||
+                                   lower.contains("bowled") ||
+                                   lower.contains("lbw") ||
+                                   lower.contains("caught") ||
+                                   lower.contains("stumped") ||
+                                   lower.contains("run out") ||
+                                   lower.contains("no ball") ||
+                                   lower.contains("wide") ||
+                                   lower.contains("appeal")
+        
+            return hasBallNumber || hasBallIndicators
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
         }
-        
-        // Check if it starts with or contains ball number format
-        val hasBallNumber = ballNumberPattern.containsMatchIn(snippet) ||
-                           snippet.contains(Regex("\\d{1,2}\\.\\d\\s"))
-        
-        // Check for typical ball-by-ball indicators
-        val hasBallIndicators = lower.contains("to ") || // "bowler to batsman"
-                               lower.contains("runs") ||
-                               lower.contains("dot") ||
-                               lower.contains("single") ||
-                               lower.contains("double") ||
-                               lower.contains("boundary") ||
-                               lower.contains("bowled") ||
-                               lower.contains("lbw") ||
-                               lower.contains("caught") ||
-                               lower.contains("stumped") ||
-                               lower.contains("run out") ||
-                               lower.contains("no ball") ||
-                               lower.contains("wide") ||
-                               lower.contains("appeal")
-        
-        return hasBallNumber || hasBallIndicators
     }
     
     /**
      * Categorizes the type of non-ball commentary
      */
     fun categorizeCommentary(snippet: String): CommentaryType {
-        if (snippet.isBlank()) return CommentaryType.UNKNOWN
+        try {
+            if (snippet.isBlank()) return CommentaryType.UNKNOWN
         
-        val lower = snippet.lowercase().trim()
+            val lower = snippet.lowercase().trim()
         
-        // Check for pre-match content
-        val preMatchKeywords = setOf("toss", "pitch report", "pitch condition", "playing xi", 
-            "playing 11", "team news", "preview", "coin", "elected to", "won the toss")
-        if (preMatchKeywords.any { lower.contains(it) }) {
-            return CommentaryType.PRE_MATCH
+            // Check for pre-match content
+            val preMatchKeywords = setOf("toss", "pitch report", "pitch condition", "playing xi", 
+                "playing 11", "team news", "preview", "coin", "elected to", "won the toss")
+            if (preMatchKeywords.any { lower.contains(it) }) {
+                return CommentaryType.PRE_MATCH
+            }
+        
+            // Check for post-match content
+            val postMatchKeywords = setOf("interview", "presentation", "man of the match", 
+                "player of the match", "post-match", "post match", "ceremony", "trophy")
+            if (postMatchKeywords.any { lower.contains(it) }) {
+                return CommentaryType.POST_MATCH
+            }
+        
+            // Check for match break content
+            val breakKeywords = setOf("innings break", "strategic timeout", "drinks break", 
+                "rain delay", "bad light", "covers")
+            if (breakKeywords.any { lower.contains(it) }) {
+                return CommentaryType.MATCH_BREAK
+            }
+        
+            // If it has ball indicators, it's ball-by-ball
+            if (isBallByBallCommentary(snippet)) {
+                return CommentaryType.BALL_BY_BALL
+            }
+        
+            return CommentaryType.UNKNOWN
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
         }
-        
-        // Check for post-match content
-        val postMatchKeywords = setOf("interview", "presentation", "man of the match", 
-            "player of the match", "post-match", "post match", "ceremony", "trophy")
-        if (postMatchKeywords.any { lower.contains(it) }) {
-            return CommentaryType.POST_MATCH
-        }
-        
-        // Check for match break content
-        val breakKeywords = setOf("innings break", "strategic timeout", "drinks break", 
-            "rain delay", "bad light", "covers")
-        if (breakKeywords.any { lower.contains(it) }) {
-            return CommentaryType.MATCH_BREAK
-        }
-        
-        // If it has ball indicators, it's ball-by-ball
-        if (isBallByBallCommentary(snippet)) {
-            return CommentaryType.BALL_BY_BALL
-        }
-        
-        return CommentaryType.UNKNOWN
     }
     
     enum class CommentaryType {
@@ -117,48 +129,53 @@ class CommentaryScorer {
      * Also considers whether it's ball-by-ball content
      */
     fun score(snippet: String, keyNames: List<String>, recentHistory: List<String>, requireBallByBall: Boolean = true): Double {
-        var score = 0.0
+        try {
+            var score = 0.0
         
-        // Heavily penalize non-ball-by-ball content when expecting ball commentary
-        if (requireBallByBall && !isBallByBallCommentary(snippet)) {
-            score -= 5.0
-        }
+            // Heavily penalize non-ball-by-ball content when expecting ball commentary
+            if (requireBallByBall && !isBallByBallCommentary(snippet)) {
+                score -= 5.0
+            }
         
-        // Length: prefer 40-180 chars
-        val length = snippet.length
-        if (length in 41..179) {
-            score += 1.0
-        } else if (length >= 180) {
-            score += 0.5
-        } else {
-            score -= 0.5
-        }
+            // Length: prefer 40-180 chars
+            val length = snippet.length
+            if (length in 41..179) {
+                score += 1.0
+            } else if (length >= 180) {
+                score += 0.5
+            } else {
+                score -= 0.5
+            }
 
-        // Sentiment/excitement
-        val lower = snippet.lowercase()
-        if (excitementWords.any { lower.contains(it) }) {
-            score += 1.0
-        }
-        if (snippet.contains("!")) {
-            score += 0.5
-        }
-
-        // Key player/team names
-        for (name in keyNames) {
-            if (lower.contains(name.lowercase())) {
+            // Sentiment/excitement
+            val lower = snippet.lowercase()
+            if (excitementWords.any { lower.contains(it) }) {
+                score += 1.0
+            }
+            if (snippet.contains("!")) {
                 score += 0.5
             }
-        }
 
-        // Repetition: penalize if similar to recent
-        val recentToCheck = recentHistory.takeLast(3)
-        for (recent in recentToCheck) {
-            if (recent.lowercase().trim() == lower.trim()) {
-                score -= 1.0
+            // Key player/team names
+            for (name in keyNames) {
+                if (lower.contains(name.lowercase())) {
+                    score += 0.5
+                }
             }
-        }
 
-        return score
+            // Repetition: penalize if similar to recent
+            val recentToCheck = recentHistory.takeLast(3)
+            for (recent in recentToCheck) {
+                if (recent.lowercase().trim() == lower.trim()) {
+                    score -= 1.0
+                }
+            }
+
+            return score
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
 
     enum class ComparisonResult {

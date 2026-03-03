@@ -1,15 +1,32 @@
 package com.tanush.bouncer.viewmodels
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.network.CricBuzzScraper
+import com.tanush.bouncer.network.CricBuzzUrls
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
+/**
+ * Error state for the match list UI
+ */
+sealed class MatchLoadState {
+    object Idle : MatchLoadState()
+    object Loading : MatchLoadState()
+    data class Error(val message: String, val isRetryable: Boolean = true) : MatchLoadState()
+    object Success : MatchLoadState()
+}
+
 class MainViewModel : ViewModel() {
+    companion object {
+        private const val TAG = "MainViewModel"
+    }
+
     private val scraper = CricBuzzScraper()
 
     private val _currentMatches = MutableStateFlow<List<CricketMatch>>(emptyList())
@@ -20,6 +37,12 @@ class MainViewModel : ViewModel() {
 
     private val _selectedCategories = MutableStateFlow<Set<String>>(setOf("International", "League", "Domestic", "Women"))
     val selectedCategories: StateFlow<Set<String>> = _selectedCategories.asStateFlow()
+
+    private val _loadState = MutableStateFlow<MatchLoadState>(MatchLoadState.Idle)
+    val loadState: StateFlow<MatchLoadState> = _loadState.asStateFlow()
+
+    private val _isLoading = MutableStateFlow(false)
+    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
     init {
         fetchMatches("Live")
@@ -40,17 +63,52 @@ class MainViewModel : ViewModel() {
         _selectedCategories.value = current
     }
 
+    /**
+     * Retry the last failed fetch
+     */
+    fun retry() {
+        fetchMatches(_selectedStatus.value)
+    }
+
     private fun fetchMatches(status: String) {
         viewModelScope.launch {
-            val url = when (status) {
-                "Live" -> "https://www.cricbuzz.com/cricket-match/live-scores"
-                "Recent" -> "https://www.cricbuzz.com/cricket-match/live-scores/recent-matches"
-                "Upcoming" -> "https://www.cricbuzz.com/cricket-match/live-scores/upcoming-matches"
-                else -> "https://www.cricbuzz.com/cricket-match/live-scores"
+            _isLoading.value = true
+            _loadState.value = MatchLoadState.Loading
+
+            val url = CricBuzzUrls.urlForStatus(status)
+
+            try {
+                val matches = scraper.fetchLiveMatches(url, status)
+                _currentMatches.value = matches
+                _loadState.value = if (matches.isEmpty()) {
+                    MatchLoadState.Success // Empty but no error
+                } else {
+                    MatchLoadState.Success
+                }
+                Log.d(TAG, "Fetched ${matches.size} matches for $status")
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: java.net.UnknownHostException) {
+                Log.e(TAG, "No internet connection", e)
+                _loadState.value = MatchLoadState.Error(
+                    message = "No internet connection. Check your network and try again.",
+                    isRetryable = true
+                )
+            } catch (e: java.net.SocketTimeoutException) {
+                Log.e(TAG, "Request timed out", e)
+                _loadState.value = MatchLoadState.Error(
+                    message = "Request timed out. Try again.",
+                    isRetryable = true
+                )
+            } catch (e: Exception) {
+                Log.e(TAG, "Error fetching matches for $status", e)
+                _loadState.value = MatchLoadState.Error(
+                    message = "Failed to load matches: ${e.localizedMessage ?: "Unknown error"}",
+                    isRetryable = true
+                )
+            } finally {
+                _isLoading.value = false
             }
-            
-            val matches = scraper.fetchLiveMatches(url, status)
-            _currentMatches.value = matches
         }
     }
 }

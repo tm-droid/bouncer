@@ -23,6 +23,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.ui.theme.*
+import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 
 /**
  * Match alerts card showing important notifications
@@ -46,7 +47,7 @@ fun MatchAlertsCard(
     alerts: List<MatchAlert>,
     modifier: Modifier = Modifier,
 ) {
-    val colors = BouncerDesign.colors
+    val colors = BouncerDesignSystem.colors
     val dimens = BouncerDesign.dimens
     val typography = BouncerDesign.typography
 
@@ -151,13 +152,13 @@ fun MatchAlertsCard(
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(8.dp))
-                            .background(LiveBlue.copy(alpha = 0.2f))
-                            .border(1.dp, LiveBlue, RoundedCornerShape(8.dp))
+                            .background(colors.statusInfo.copy(alpha = 0.2f))
+                            .border(1.dp, colors.statusInfo, RoundedCornerShape(8.dp))
                             .padding(horizontal = 10.dp, vertical = 4.dp),
                     ) {
                         Text(
                             text = "$newAlerts NEW",
-                            color = LiveBlue,
+                            color = colors.statusInfo,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
                         )
@@ -202,14 +203,15 @@ private fun AlertItem(
     alert: MatchAlert,
     alpha: Float,
 ) {
+    val colors = BouncerDesignSystem.colors
     val alertConfig = when (alert.type) {
-        AlertType.WICKET -> AlertConfig(WicketRed, "W", "Wicket")
-        AlertType.BOUNDARY -> AlertConfig(BoundarySix, "B", "Boundary")
-        AlertType.MILESTONE -> AlertConfig(GoldPrimary, "M", "Milestone")
-        AlertType.RAIN -> AlertConfig(ChartBlue, "R", "Weather")
-        AlertType.INJURY -> AlertConfig(WarningYellow, "I", "Injury")
+        AlertType.WICKET -> AlertConfig(colors.statusLive, "W", "Wicket")
+        AlertType.BOUNDARY -> AlertConfig(BouncerDesignSystem.colors.statusWarning, "B", "Boundary")
+        AlertType.MILESTONE -> AlertConfig(colors.goldPrimary, "M", "Milestone")
+        AlertType.RAIN -> AlertConfig(BouncerDesignSystem.colors.statusInfo, "R", "Weather")
+        AlertType.INJURY -> AlertConfig(colors.statusWarning, "I", "Injury")
         AlertType.REVIEW -> AlertConfig(Color(0xFF9C27B0), "V", "Review")
-        AlertType.POWERPLAY -> AlertConfig(SuccessGreen, "P", "Powerplay")
+        AlertType.POWERPLAY -> AlertConfig(colors.statusSuccess, "P", "Powerplay")
         AlertType.DRINKS -> AlertConfig(Color(0xFF00BCD4), "D", "Drinks")
         AlertType.STRATEGIC_TIMEOUT -> AlertConfig(Color(0xFF607D8B), "T", "Timeout")
     }
@@ -271,7 +273,7 @@ private fun AlertItem(
                         Box(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(4.dp))
-                                .background(LiveBlue)
+                                .background(colors.statusInfo)
                                 .padding(horizontal = 6.dp, vertical = 2.dp),
                         ) {
                             Text(

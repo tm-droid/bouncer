@@ -27,6 +27,7 @@ import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
 import androidx.compose.material3.windowsizeclass.WindowHeightSizeClass
 import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi
 import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
+import io.sentry.Sentry
 
 /**
  * Adaptive Layouts for Bouncer Cricket App
@@ -378,11 +379,21 @@ class ListDetailState<T>(
         private set
     
     fun selectItem(item: T?) {
-        selectedItem = item
+        try {
+            selectedItem = item
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     fun clearSelection() {
-        selectedItem = null
+        try {
+            selectedItem = null
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
 }
 
@@ -612,10 +623,15 @@ fun Modifier.adaptivePadding(
     vertical: Boolean = true
 ): Modifier {
     val horizontalPadding = if (horizontal) {
-        when (windowSizeInfo.widthClass) {
-            BouncerWindowSizeClass.Compact -> 16.dp
-            BouncerWindowSizeClass.Medium -> 24.dp
-            BouncerWindowSizeClass.Expanded -> 32.dp
+        try {
+            when (windowSizeInfo.widthClass) {
+                BouncerWindowSizeClass.Compact -> 16.dp
+                BouncerWindowSizeClass.Medium -> 24.dp
+                BouncerWindowSizeClass.Expanded -> 32.dp
+            }
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
         }
     } else 0.dp
     

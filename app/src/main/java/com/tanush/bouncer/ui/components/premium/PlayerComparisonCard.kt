@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.ui.components.CoilImage
 import com.tanush.bouncer.ui.theme.*
 import kotlin.math.*
+import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 
 /**
  * Player comparison card for head-to-head stats
@@ -74,6 +75,7 @@ fun PlayerComparisonCard(
     format: String,
     modifier: Modifier = Modifier,
 ) {
+    val colors = BouncerDesignSystem.colors
     val animatedProgress = remember { Animatable(0f) }
 
     LaunchedEffect(comparisonData) {
@@ -107,7 +109,7 @@ fun PlayerComparisonCard(
                             .clip(CircleShape)
                             .background(
                                 Brush.linearGradient(
-                                    colors = listOf(ShinyGoldMid, ShinyGoldDeep),
+                                    colors = listOf(colors.goldDark, colors.goldPrimary),
                                 ),
                             ),
                         contentAlignment = Alignment.Center,
@@ -125,7 +127,7 @@ fun PlayerComparisonCard(
                     Column {
                         Text(
                             text = "PLAYER COMPARISON",
-                            color = ShinyGoldLight,
+                            color = colors.goldLight,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.5.sp,
@@ -150,7 +152,7 @@ fun PlayerComparisonCard(
                 // Player 1
                 PlayerCompareHeader(
                     player = comparisonData.player1,
-                    color = ChartBlue,
+                    color = colors.statusInfo,
                     modifier = Modifier.weight(1f),
                     alignment = Alignment.Start,
                 )
@@ -165,7 +167,7 @@ fun PlayerComparisonCard(
                 ) {
                     Text(
                         text = "VS",
-                        color = ShinyGoldMid,
+                        color = colors.goldDark,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Black,
                     )
@@ -174,7 +176,7 @@ fun PlayerComparisonCard(
                 // Player 2
                 PlayerCompareHeader(
                     player = comparisonData.player2,
-                    color = WicketRed,
+                    color = colors.statusLive,
                     modifier = Modifier.weight(1f),
                     alignment = Alignment.End,
                 )
@@ -225,7 +227,7 @@ fun PlayerComparisonCard(
                     ) {
                         Text(
                             text = "$player1Wins",
-                            color = if (player1Wins > player2Wins) SuccessGreen else Color.White,
+                            color = if (player1Wins > player2Wins) colors.statusSuccess else Color.White,
                             fontSize = 28.sp,
                             fontWeight = FontWeight.Black,
                         )
@@ -251,7 +253,7 @@ fun PlayerComparisonCard(
                     ) {
                         Text(
                             text = "$player2Wins",
-                            color = if (player2Wins > player1Wins) SuccessGreen else Color.White,
+                            color = if (player2Wins > player1Wins) colors.statusSuccess else Color.White,
                             fontSize = 28.sp,
                             fontWeight = FontWeight.Black,
                         )
@@ -274,6 +276,7 @@ private fun PlayerCompareHeader(
     modifier: Modifier = Modifier,
     alignment: Alignment.Horizontal,
 ) {
+    val colors = BouncerDesignSystem.colors
     Column(
         modifier = modifier,
         horizontalAlignment = alignment,
@@ -333,6 +336,7 @@ private fun CompareStatRow(
     stat: CompareStatItem,
     progress: Float,
 ) {
+    val colors = BouncerDesignSystem.colors
     val total = stat.player1Value + stat.player2Value
     val player1Ratio = if (total > 0) stat.player1Value / total else 0.5f
 
@@ -351,7 +355,7 @@ private fun CompareStatRow(
         ) {
             Text(
                 text = stat.displayValue1,
-                color = if (player1IsWinner) SuccessGreen else Color.White,
+                color = if (player1IsWinner) colors.statusSuccess else Color.White,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
             )
@@ -365,7 +369,7 @@ private fun CompareStatRow(
 
             Text(
                 text = stat.displayValue2,
-                color = if (!player1IsWinner) SuccessGreen else Color.White,
+                color = if (!player1IsWinner) colors.statusSuccess else Color.White,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
             )
@@ -386,7 +390,7 @@ private fun CompareStatRow(
                     .fillMaxHeight()
                     .weight((player1Ratio * progress).coerceAtLeast(0.05f))
                     .background(
-                        if (player1IsWinner) SuccessGreen else ChartBlue,
+                        if (player1IsWinner) colors.statusSuccess else colors.statusInfo,
                     ),
             )
 
@@ -398,7 +402,7 @@ private fun CompareStatRow(
                     .fillMaxHeight()
                     .weight(((1f - player1Ratio) * progress).coerceAtLeast(0.05f))
                     .background(
-                        if (!player1IsWinner) SuccessGreen else WicketRed,
+                        if (!player1IsWinner) colors.statusSuccess else colors.statusLive,
                     ),
             )
         }
@@ -407,6 +411,7 @@ private fun CompareStatRow(
 
 @Composable
 fun PlayerComparisonCardPreview() {
+    val colors = BouncerDesignSystem.colors
     PlayerComparisonCard(
         comparisonData = PlayerCompareData(
             player1 = ComparePlayerInfo(

@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import io.sentry.Sentry
 
 class McpViewModel : ViewModel() {
     private val config = McpConfig()
@@ -18,16 +19,26 @@ class McpViewModel : ViewModel() {
     val searchResult: StateFlow<String> = _searchResult
 
     fun callEcho(message: String) {
-        viewModelScope.launch {
-            _echoResult.value = "Loading..."
-            _echoResult.value = client.callEchoTool(message)
+        try {
+            viewModelScope.launch {
+                _echoResult.value = "Loading..."
+                _echoResult.value = client.callEchoTool(message)
+            }
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
         }
     }
 
     fun callSearch(query: String) {
-        viewModelScope.launch {
-            _searchResult.value = "Loading..."
-            _searchResult.value = client.callSearchTool(query)
+        try {
+            viewModelScope.launch {
+                _searchResult.value = "Loading..."
+                _searchResult.value = client.callSearchTool(query)
+            }
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
         }
     }
 
@@ -35,9 +46,14 @@ class McpViewModel : ViewModel() {
     val analyzeResult: StateFlow<String> = _analyzeResult
 
     fun callAnalyze(topic: String) {
-        viewModelScope.launch {
-            _analyzeResult.value = "Loading..."
-            _analyzeResult.value = client.callAnalyzeTool(topic)
+        try {
+            viewModelScope.launch {
+                _analyzeResult.value = "Loading..."
+                _analyzeResult.value = client.callAnalyzeTool(topic)
+            }
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
         }
     }
 }

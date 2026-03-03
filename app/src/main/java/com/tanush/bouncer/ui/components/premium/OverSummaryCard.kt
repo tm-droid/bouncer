@@ -26,6 +26,7 @@ import com.tanush.bouncer.ui.theme.SuccessGreen
 import com.tanush.bouncer.ui.theme.WarningYellow
 import com.tanush.bouncer.ui.theme.WicketRed
 import kotlin.math.*
+import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 
 /**
  * Over summary card showing ball-by-ball for a specific over
@@ -70,6 +71,7 @@ fun OverSummaryCard(
     previousOverData: OverSummaryData?,
     modifier: Modifier = Modifier,
 ) {
+    val colors = BouncerDesignSystem.colors
     val animatedProgress = remember { Animatable(0f) }
 
     LaunchedEffect(overData) {
@@ -88,10 +90,10 @@ fun OverSummaryCard(
     }
 
     val qualityColor = when {
-        overData.wicketsInOver > 0 -> WicketRed
-        overData.runsInOver <= 4 -> SuccessGreen
-        overData.runsInOver >= 15 -> WicketRed
-        else -> ChartBlue
+        overData.wicketsInOver > 0 -> colors.statusLive
+        overData.runsInOver <= 4 -> colors.statusSuccess
+        overData.runsInOver >= 15 -> colors.statusLive
+        else -> colors.statusInfo
     }
 
     Card(
@@ -132,7 +134,7 @@ fun OverSummaryCard(
                     Column {
                         Text(
                             text = "OVER ${overData.overNumber}",
-                            color = ShinyGoldLight,
+                            color = colors.goldLight,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.5.sp,
@@ -219,9 +221,9 @@ fun OverSummaryCard(
                         label = "Runs",
                         value = "${overData.runsInOver}",
                         color = if (overData.runsInOver >= 15) {
-                            WicketRed
+                            colors.statusLive
                         } else if (overData.runsInOver <= 4) {
-                            SuccessGreen
+                            colors.statusSuccess
                         } else {
                             Color.White
                         },
@@ -230,22 +232,22 @@ fun OverSummaryCard(
                     OverStatItem(
                         label = "Wickets",
                         value = "${overData.wicketsInOver}",
-                        color = if (overData.wicketsInOver > 0) WicketRed else Color.Gray,
+                        color = if (overData.wicketsInOver > 0) colors.statusLive else Color.Gray,
                     )
 
                     OverStatItem(
                         label = "Extras",
                         value = "${overData.deliveries.count { it.isWide || it.isNoBall }}",
-                        color = if (overData.deliveries.any { it.isWide || it.isNoBall }) WarningYellow else Color.Gray,
+                        color = if (overData.deliveries.any { it.isWide || it.isNoBall }) colors.statusWarning else Color.Gray,
                     )
 
                     OverStatItem(
                         label = "Boundaries",
                         value = "${overData.deliveries.count { it.isFour || it.isSix }}",
                         color = if (overData.deliveries.any { it.isSix }) {
-                            BoundarySix
+                            colors.statusWarning
                         } else if (overData.deliveries.any { it.isFour }) {
-                            BoundaryFour
+                            colors.statusWarning
                         } else {
                             Color.Gray
                         },
@@ -264,8 +266,8 @@ fun OverSummaryCard(
                     else -> "Same as last over"
                 }
                 val diffColor = when {
-                    runDiff < 0 -> SuccessGreen
-                    runDiff > 0 -> WicketRed
+                    runDiff < 0 -> colors.statusSuccess
+                    runDiff > 0 -> colors.statusLive
                     else -> Color.Gray
                 }
 
@@ -296,13 +298,14 @@ private fun DeliveryBall(
     delivery: DeliveryOutcome,
     modifier: Modifier = Modifier,
 ) {
+    val colors = BouncerDesignSystem.colors
     val backgroundColor = when {
-        delivery.isWicket -> WicketRed
-        delivery.isSix -> BoundarySix
-        delivery.isFour -> BoundaryFour
-        delivery.isWide || delivery.isNoBall -> WarningYellow
+        delivery.isWicket -> colors.statusLive
+        delivery.isSix -> colors.statusWarning
+        delivery.isFour -> colors.statusWarning
+        delivery.isWide || delivery.isNoBall -> colors.statusWarning
         delivery.runs == 0 -> Color(0xFF3D3D55)
-        else -> ChartBlue
+        else -> colors.statusInfo
     }
 
     val displayText = when {
@@ -339,6 +342,7 @@ private fun OverStatItem(
     value: String,
     color: Color,
 ) {
+    val colors = BouncerDesignSystem.colors
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
             text = value,
@@ -356,6 +360,7 @@ private fun OverStatItem(
 
 @Composable
 fun OverSummaryCardPreview() {
+    val colors = BouncerDesignSystem.colors
     val deliveries = listOf(
         DeliveryOutcome(1, 1, false, false, false, false, false, false, false, "Kohli"),
         DeliveryOutcome(2, 6, false, false, false, false, false, true, false, "Kohli"),

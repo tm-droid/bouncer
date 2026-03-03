@@ -44,6 +44,7 @@ import kotlin.math.abs
 import kotlin.math.atan2
 import kotlin.math.roundToInt
 import kotlin.math.sqrt
+import io.sentry.Sentry
 
 /**
  * Spring configurations for gesture animations
@@ -112,37 +113,42 @@ fun Modifier.twoFingerRotation(
     enabled: Boolean = true
 ): Modifier = if (enabled) {
     this.pointerInput(Unit) {
-        awaitEachGesture {
-            var rotation = 0f
-            var pastTouchSlop = false
-            val touchSlop = viewConfiguration.touchSlop
+        try {
+            awaitEachGesture {
+                var rotation = 0f
+                var pastTouchSlop = false
+                val touchSlop = viewConfiguration.touchSlop
 
-            awaitFirstDown(requireUnconsumed = false)
+                awaitFirstDown(requireUnconsumed = false)
             
-            do {
-                val event = awaitPointerEvent()
-                val canceled = event.changes.any { it.isConsumed }
+                do {
+                    val event = awaitPointerEvent()
+                    val canceled = event.changes.any { it.isConsumed }
                 
-                if (!canceled && event.changes.size >= 2) {
-                    val rotationChange = event.calculateRotation()
+                    if (!canceled && event.changes.size >= 2) {
+                        val rotationChange = event.calculateRotation()
                     
-                    if (!pastTouchSlop) {
-                        rotation += rotationChange
-                        if (abs(rotation) > touchSlop / 10) {
-                            pastTouchSlop = true
+                        if (!pastTouchSlop) {
+                            rotation += rotationChange
+                            if (abs(rotation) > touchSlop / 10) {
+                                pastTouchSlop = true
+                            }
                         }
-                    }
                     
-                    if (pastTouchSlop) {
-                        onRotationChange(rotationChange)
-                        event.changes.forEach { 
-                            if (it.positionChanged()) {
-                                it.consume()
+                        if (pastTouchSlop) {
+                            onRotationChange(rotationChange)
+                            event.changes.forEach { 
+                                if (it.positionChanged()) {
+                                    it.consume()
+                                }
                             }
                         }
                     }
-                }
-            } while (event.changes.any { it.pressed })
+                } while (event.changes.any { it.pressed })
+            }
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
         }
     }
 } else this
@@ -278,8 +284,13 @@ fun Modifier.longPressWithMenu(
 ): Modifier = this.pointerInput(Unit) {
     detectTapGestures(
         onLongPress = { offset ->
-            onLongPress(offset)
-            onShowMenu(offset)
+            try {
+                onLongPress(offset)
+                onShowMenu(offset)
+            } catch (e: Exception) {
+                Sentry.captureException(e)
+                throw e
+            }
         }
     )
 }

@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.dp
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
+import io.sentry.Sentry
 
 // ==========================================
 // BOUNCER – Animated Gradient System
@@ -491,20 +492,25 @@ fun Modifier.multiPointRadialGradient(
     points: List<GradientPoint> = defaultGradientPoints()
 ): Modifier = drawBehind {
     points.forEach { point ->
-        val center = Offset(size.width * point.centerX, size.height * point.centerY)
-        val radius = size.maxDimension * point.radius
+        try {
+            val center = Offset(size.width * point.centerX, size.height * point.centerY)
+            val radius = size.maxDimension * point.radius
         
-        drawCircle(
-            brush = Brush.radialGradient(
-                colors = listOf(
-                    point.color.copy(alpha = point.alpha),
-                    point.color.copy(alpha = point.alpha * 0.3f),
-                    Color.Transparent
-                ),
-                center = center,
-                radius = radius
+            drawCircle(
+                brush = Brush.radialGradient(
+                    colors = listOf(
+                        point.color.copy(alpha = point.alpha),
+                        point.color.copy(alpha = point.alpha * 0.3f),
+                        Color.Transparent
+                    ),
+                    center = center,
+                    radius = radius
+                )
             )
-        )
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
 }
 
@@ -615,17 +621,22 @@ fun Modifier.conicGradient(
     val radius = size.minDimension / 2
     
     segments.forEachIndexed { index, segment ->
-        val startAngle = segments.take(index).sumOf { it.weight.toDouble() }.toFloat() * 360f
-        val sweepAngle = segment.weight * 360f
+        try {
+            val startAngle = segments.take(index).sumOf { it.weight.toDouble() }.toFloat() * 360f
+            val sweepAngle = segment.weight * 360f
         
-        drawArc(
-            color = segment.color,
-            startAngle = startAngle - 90f,
-            sweepAngle = sweepAngle,
-            useCenter = true,
-            topLeft = Offset(center.x - radius, center.y - radius),
-            size = Size(radius * 2, radius * 2)
-        )
+            drawArc(
+                color = segment.color,
+                startAngle = startAngle - 90f,
+                sweepAngle = sweepAngle,
+                useCenter = true,
+                topLeft = Offset(center.x - radius, center.y - radius),
+                size = Size(radius * 2, radius * 2)
+            )
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
 }
 
@@ -648,20 +659,25 @@ fun Modifier.gradientMesh(
     meshPoints: List<MeshPoint> = defaultMeshPoints()
 ): Modifier = drawBehind {
     meshPoints.forEach { point ->
-        val center = Offset(size.width * point.x, size.height * point.y)
-        val radius = size.maxDimension * point.influence
+        try {
+            val center = Offset(size.width * point.x, size.height * point.y)
+            val radius = size.maxDimension * point.influence
         
-        drawCircle(
-            brush = Brush.radialGradient(
-                colors = listOf(
-                    point.color.copy(alpha = point.alpha),
-                    point.color.copy(alpha = point.alpha * 0.4f),
-                    Color.Transparent
-                ),
-                center = center,
-                radius = radius
+            drawCircle(
+                brush = Brush.radialGradient(
+                    colors = listOf(
+                        point.color.copy(alpha = point.alpha),
+                        point.color.copy(alpha = point.alpha * 0.4f),
+                        Color.Transparent
+                    ),
+                    center = center,
+                    radius = radius
+                )
             )
-        )
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
 }
 
@@ -746,14 +762,19 @@ fun Modifier.noiseGradient(
     // Simulate noise with multiple small gradients
     val noisePoints = 20
     for (i in 0 until noisePoints) {
-        val x = (i * 73.0f) % size.width
-        val y = (i * 137.0f) % size.height
+        try {
+            val x = (i * 73.0f) % size.width
+            val y = (i * 137.0f) % size.height
         
-        drawCircle(
-            color = Color.White.copy(alpha = noiseAlpha * ((i % 3 + 1) * 0.33f)),
-            radius = 1.5f,
-            center = Offset(x, y)
-        )
+            drawCircle(
+                color = Color.White.copy(alpha = noiseAlpha * ((i % 3 + 1) * 0.33f)),
+                radius = 1.5f,
+                center = Offset(x, y)
+            )
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
 }
 

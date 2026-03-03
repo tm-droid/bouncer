@@ -56,11 +56,12 @@ data class HeadToHeadStats(
 fun HeadToHeadCard(
     match: CricketMatch,
     stats: HeadToHeadStats,
-    team1Color: Color = ShinyGoldDeep,
-    team2Color: Color = ChartBlue,
+    team1Color: Color = GoldPrimary,
+    team2Color: Color = BouncerDesignSystem.colors.statusInfo,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val colors = BouncerDesignSystem.colors
     val team1 = match.teams.firstOrNull()
     val team2 = match.teams.getOrNull(1)
     
@@ -81,17 +82,17 @@ fun HeadToHeadCard(
             .shadow(
                 elevation = 20.dp,
                 shape = RoundedCornerShape(28.dp),
-                spotColor = ShinyGoldDeep.copy(alpha = 0.2f)
+                spotColor = colors.goldPrimary.copy(alpha = 0.2f)
             ),
-        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.05f)),
+        colors = CardDefaults.cardColors(containerColor = colors.glassSurface),
         shape = RoundedCornerShape(28.dp),
         border = BorderStroke(
             0.5.dp,
             Brush.linearGradient(
                 colors = listOf(
-                    ShinyGoldLight.copy(alpha = 0.3f * shimmerOffset),
-                    CardBorder.copy(alpha = 0.3f),
-                    ShinyGoldLight.copy(alpha = 0.3f * (1 - shimmerOffset))
+                    colors.goldLight.copy(alpha = 0.3f * shimmerOffset),
+                    colors.glassBorder.copy(alpha = 0.3f),
+                    colors.goldLight.copy(alpha = 0.3f * (1 - shimmerOffset))
                 )
             )
         )
@@ -108,13 +109,13 @@ fun HeadToHeadCard(
                 Icon(
                     Icons.AutoMirrored.Filled.CompareArrows,
                     contentDescription = null,
-                    tint = ShinyGoldDeep,
+                    tint = colors.goldPrimary,
                     modifier = Modifier.size(22.dp)
                 )
                 Spacer(modifier = Modifier.width(10.dp))
                 Text(
                     "HEAD TO HEAD",
-                    color = ShinyGoldDeep,
+                    color = colors.goldPrimary,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Black,
                     letterSpacing = 2.sp
@@ -147,7 +148,7 @@ fun HeadToHeadCard(
             )
             
             Spacer(modifier = Modifier.height(24.dp))
-            HorizontalDivider(color = CardBorder.copy(alpha = 0.2f))
+            HorizontalDivider(color = colors.glassBorder.copy(alpha = 0.2f))
             Spacer(modifier = Modifier.height(20.dp))
             
             // Match stats grid
@@ -173,13 +174,13 @@ fun HeadToHeadCard(
             }
             
             Spacer(modifier = Modifier.height(24.dp))
-            HorizontalDivider(color = CardBorder.copy(alpha = 0.2f))
+            HorizontalDivider(color = colors.glassBorder.copy(alpha = 0.2f))
             Spacer(modifier = Modifier.height(20.dp))
             
             // Last 5 matches
             Text(
                 "LAST 5 MATCHES",
-                color = TextTertiary,
+                color = colors.textTertiary,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 1.sp,
@@ -195,7 +196,7 @@ fun HeadToHeadCard(
             )
             
             Spacer(modifier = Modifier.height(24.dp))
-            HorizontalDivider(color = CardBorder.copy(alpha = 0.2f))
+            HorizontalDivider(color = colors.glassBorder.copy(alpha = 0.2f))
             Spacer(modifier = Modifier.height(20.dp))
             
             // Score records
@@ -224,6 +225,7 @@ private fun TeamWinsComparison(
     team2Color: Color,
     context: android.content.Context
 ) {
+    val colors = BouncerDesignSystem.colors
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -244,18 +246,18 @@ private fun TeamWinsComparison(
                 .background(
                     Brush.radialGradient(
                         colors = listOf(
-                            Color.White.copy(alpha = 0.08f),
-                            Color.White.copy(alpha = 0.05f)
+                            colors.glassBorderHighlight,
+                            colors.glassSurface
                         )
                     ),
                     CircleShape
                 )
-                .border(1.dp, CardBorder.copy(alpha = 0.3f), CircleShape)
+                .border(1.dp, colors.glassBorder.copy(alpha = 0.3f), CircleShape)
                 .padding(16.dp)
         ) {
             Text(
                 "VS",
-                color = TextSecondary,
+                color = colors.textSecondary,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 1.sp
@@ -281,6 +283,7 @@ private fun TeamWinColumn(
     context: android.content.Context,
     alignment: Alignment.Horizontal
 ) {
+    val colors = BouncerDesignSystem.colors
     Column(
         horizontalAlignment = alignment,
         modifier = Modifier.width(100.dp)
@@ -319,7 +322,7 @@ private fun TeamWinColumn(
         // Team name
         Text(
             team?.acronym ?: team?.name?.take(3)?.uppercase() ?: "TM",
-            color = TextPrimary,
+            color = colors.textPrimary,
             fontSize = 14.sp,
             fontWeight = FontWeight.Bold,
             maxLines = 1,
@@ -347,6 +350,7 @@ private fun WinPercentageBar(
     team1Color: Color,
     team2Color: Color
 ) {
+    val colors = BouncerDesignSystem.colors
     val total = (team1Wins + team2Wins + draws).coerceAtLeast(1)
     val team1Percent = team1Wins.toFloat() / total
     val team2Percent = team2Wins.toFloat() / total
@@ -396,7 +400,7 @@ private fun WinPercentageBar(
             
             // Background
             drawRoundRect(
-                color = CardDarkBlue,
+                color = colors.surface1,
                 size = size,
                 cornerRadius = androidx.compose.ui.geometry.CornerRadius(5.dp.toPx())
             )
@@ -439,6 +443,7 @@ private fun StatColumn(
     value: String,
     icon: androidx.compose.ui.graphics.vector.ImageVector
 ) {
+    val colors = BouncerDesignSystem.colors
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(6.dp)
@@ -446,18 +451,18 @@ private fun StatColumn(
         Icon(
             icon,
             contentDescription = null,
-            tint = TextTertiary,
+            tint = colors.textTertiary,
             modifier = Modifier.size(18.dp)
         )
         Text(
             value,
-            color = TextPrimary,
+            color = colors.textPrimary,
             fontSize = 20.sp,
             fontWeight = FontWeight.Bold
         )
         Text(
             label,
-            color = TextTertiary,
+            color = colors.textTertiary,
             fontSize = 11.sp,
             fontWeight = FontWeight.Medium
         )
@@ -472,6 +477,7 @@ private fun LastFiveResults(
     team1Color: Color,
     team2Color: Color
 ) {
+    val colors = BouncerDesignSystem.colors
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceEvenly
@@ -480,7 +486,7 @@ private fun LastFiveResults(
             val (color, text) = when (result) {
                 "W1" -> team1Color to team1Name
                 "W2" -> team2Color to team2Name
-                else -> TextTertiary to "D"
+                else -> colors.textTertiary to "D"
             }
             
             Box(
@@ -504,13 +510,13 @@ private fun LastFiveResults(
             Box(
                 modifier = Modifier
                     .size(48.dp)
-                    .background(CardDarkBlue, RoundedCornerShape(12.dp))
-                    .border(0.5.dp, CardBorder.copy(alpha = 0.2f), RoundedCornerShape(12.dp)),
+                    .background(colors.surface1, RoundedCornerShape(12.dp))
+                    .border(0.5.dp, colors.glassBorder.copy(alpha = 0.2f), RoundedCornerShape(12.dp)),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     "-",
-                    color = TextMuted,
+                    color = colors.textMuted,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -530,6 +536,7 @@ private fun ScoreRecords(
     team1Color: Color,
     team2Color: Color
 ) {
+    val colors = BouncerDesignSystem.colors
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween
@@ -540,7 +547,7 @@ private fun ScoreRecords(
         ) {
             Text(
                 "HIGHEST SCORE",
-                color = TextTertiary,
+                color = colors.textTertiary,
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 0.5.sp
@@ -550,16 +557,16 @@ private fun ScoreRecords(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(team1Name, color = team1Color, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                Text(": ", color = TextTertiary, fontSize = 12.sp)
-                Text(team1Highest, color = TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                Text(": ", color = colors.textTertiary, fontSize = 12.sp)
+                Text(team1Highest, color = colors.textPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
             }
             Spacer(modifier = Modifier.height(4.dp))
             Row(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(team2Name, color = team2Color, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                Text(": ", color = TextTertiary, fontSize = 12.sp)
-                Text(team2Highest, color = TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                Text(": ", color = colors.textTertiary, fontSize = 12.sp)
+                Text(team2Highest, color = colors.textPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
             }
         }
         
@@ -568,7 +575,7 @@ private fun ScoreRecords(
             modifier = Modifier
                 .width(1.dp)
                 .height(60.dp)
-                .background(CardBorder.copy(alpha = 0.2f))
+                .background(colors.glassBorder.copy(alpha = 0.2f))
         )
         
         // Lowest scores
@@ -578,7 +585,7 @@ private fun ScoreRecords(
         ) {
             Text(
                 "LOWEST SCORE",
-                color = TextTertiary,
+                color = colors.textTertiary,
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 0.5.sp
@@ -587,16 +594,16 @@ private fun ScoreRecords(
             Row(
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(team1Lowest, color = TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                Text(" :", color = TextTertiary, fontSize = 12.sp)
+                Text(team1Lowest, color = colors.textPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                Text(" :", color = colors.textTertiary, fontSize = 12.sp)
                 Text(team1Name, color = team1Color, fontSize = 12.sp, fontWeight = FontWeight.Bold)
             }
             Spacer(modifier = Modifier.height(4.dp))
             Row(
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(team2Lowest, color = TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                Text(" :", color = TextTertiary, fontSize = 12.sp)
+                Text(team2Lowest, color = colors.textPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                Text(" :", color = colors.textTertiary, fontSize = 12.sp)
                 Text(team2Name, color = team2Color, fontSize = 12.sp, fontWeight = FontWeight.Bold)
             }
         }
@@ -614,11 +621,12 @@ fun HeadToHeadChip(
     team2Abbrev: String,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     Surface(
         modifier = modifier,
-        color = Color.White.copy(alpha = 0.08f),
+        color = colors.glassBorderHighlight,
         shape = RoundedCornerShape(8.dp),
-        border = BorderStroke(0.5.dp, CardBorder.copy(alpha = 0.3f))
+        border = BorderStroke(0.5.dp, colors.glassBorder.copy(alpha = 0.3f))
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
@@ -628,12 +636,12 @@ fun HeadToHeadChip(
             Icon(
                 Icons.AutoMirrored.Filled.CompareArrows,
                 contentDescription = null,
-                tint = TextTertiary,
+                tint = colors.textTertiary,
                 modifier = Modifier.size(14.dp)
             )
             Text(
                 "$team1Abbrev $team1Wins-$team2Wins $team2Abbrev",
-                color = TextSecondary,
+                color = colors.textSecondary,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.SemiBold
             )

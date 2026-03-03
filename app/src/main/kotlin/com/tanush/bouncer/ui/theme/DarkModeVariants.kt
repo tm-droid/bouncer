@@ -49,6 +49,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import io.sentry.Sentry
 
 // ==========================================
 // BOUNCER - Dark Mode Variants System (v1.0)
@@ -183,12 +184,17 @@ object DimmedModeScheme {
     )
     
     private fun Color.dimmed(factor: Float): Color {
-        return Color(
-            red = this.red * factor,
-            green = this.green * factor,
-            blue = this.blue * factor,
-            alpha = this.alpha
-        )
+        try {
+            return Color(
+                red = this.red * factor,
+                green = this.green * factor,
+                blue = this.blue * factor,
+                alpha = this.alpha
+            )
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
 }
 
@@ -196,12 +202,17 @@ object DimmedModeScheme {
  * Extension function to dim a color
  */
 fun Color.dimmed(factor: Float): Color {
-    return Color(
-        red = this.red * factor,
-        green = this.green * factor,
-        blue = this.blue * factor,
-        alpha = this.alpha
-    )
+    try {
+        return Color(
+            red = this.red * factor,
+            green = this.green * factor,
+            blue = this.blue * factor,
+            alpha = this.alpha
+        )
+    } catch (e: Exception) {
+        Sentry.captureException(e)
+        throw e
+    }
 }
 
 val LocalDarkModeVariant = staticCompositionLocalOf { DarkModeVariant.Standard }
@@ -446,7 +457,12 @@ fun Modifier.perComponentBrightness(
     brightness: Float = 1f
 ): Modifier = this
     .graphicsLayer {
-        alpha = brightness.coerceIn(0f, 1f)
+        try {
+            alpha = brightness.coerceIn(0f, 1f)
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
 
 /**

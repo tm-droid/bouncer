@@ -51,10 +51,10 @@ data class BowlerPerformance(
 }
 
 enum class EconomyCategory(val label: String, val color: Color) {
-    EXCELLENT("Excellent", SuccessGreen),
-    GOOD("Good", ChartBlue),
-    AVERAGE("Average", WarningYellow),
-    EXPENSIVE("Expensive", ErrorRed)
+    EXCELLENT("Excellent", StatusSuccess),
+    GOOD("Good", StatusInfo),
+    AVERAGE("Average", StatusWarning),
+    EXPENSIVE("Expensive", StatusLive)
 }
 
 /**
@@ -65,9 +65,10 @@ enum class EconomyCategory(val label: String, val color: Color) {
 fun BowlingPerformanceCard(
     bowlers: List<BowlerPerformance>,
     teamName: String,
-    teamColor: Color = ChartBlue,
+    teamColor: Color = StatusInfo,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     Card(
         modifier = modifier
             .fillMaxWidth()
@@ -76,9 +77,9 @@ fun BowlingPerformanceCard(
                 shape = RoundedCornerShape(28.dp),
                 spotColor = teamColor.copy(alpha = 0.15f)
             ),
-        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.05f)),
+        colors = CardDefaults.cardColors(containerColor = colors.glassSurface),
         shape = RoundedCornerShape(28.dp),
-        border = BorderStroke(0.5.dp, CardBorder.copy(alpha = 0.3f))
+        border = BorderStroke(0.5.dp, colors.glassBorder.copy(alpha = 0.3f))
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
             // Header
@@ -99,7 +100,7 @@ fun BowlingPerformanceCard(
                     )
                     Text(
                         "BOWLING ANALYSIS",
-                        color = TextPrimary,
+                        color = colors.textPrimary,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 1.sp
@@ -147,6 +148,7 @@ private fun BowlerRow(
     bowler: BowlerPerformance,
     teamColor: Color
 ) {
+    val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "bowler")
     
     val pulseAlpha by infiniteTransition.animateFloat(
@@ -161,10 +163,10 @@ private fun BowlerRow(
     
     Surface(
         shape = RoundedCornerShape(16.dp),
-        color = if (bowler.isBowling) teamColor.copy(alpha = 0.1f) else Color.White.copy(alpha = 0.08f),
+        color = if (bowler.isBowling) teamColor.copy(alpha = 0.1f) else colors.glassBorderHighlight,
         border = BorderStroke(
             0.5.dp,
-            if (bowler.isBowling) teamColor.copy(alpha = pulseAlpha) else CardBorder.copy(alpha = 0.2f)
+            if (bowler.isBowling) teamColor.copy(alpha = pulseAlpha) else colors.glassBorder.copy(alpha = 0.2f)
         ),
         modifier = Modifier.fillMaxWidth()
     ) {
@@ -215,18 +217,18 @@ private fun BowlerRow(
                         ) {
                             Text(
                                 text = bowler.name,
-                                color = TextPrimary,
+                                color = colors.textPrimary,
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Bold
                             )
                             if (bowler.isBowling) {
                                 Surface(
                                     shape = RoundedCornerShape(4.dp),
-                                    color = SuccessGreen.copy(alpha = 0.2f)
+                                    color = colors.statusSuccess.copy(alpha = 0.2f)
                                 ) {
                                     Text(
                                         text = "BOWLING",
-                                        color = SuccessGreen,
+                                        color = colors.statusSuccess,
                                         fontSize = 8.sp,
                                         fontWeight = FontWeight.Bold,
                                         modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
@@ -250,13 +252,13 @@ private fun BowlerRow(
                     ) {
                         Text(
                             text = "${bowler.wickets}",
-                            color = if (bowler.wickets >= 3) BoundarySix else teamColor,
+                            color = if (bowler.wickets >= 3) colors.goldPrimary else teamColor,
                             fontSize = 24.sp,
                             fontWeight = FontWeight.Black
                         )
                         Text(
                             text = "/${bowler.runs}",
-                            color = TextSecondary,
+                            color = colors.textSecondary,
                             fontSize = 14.sp,
                             modifier = Modifier.padding(bottom = 2.dp)
                         )
@@ -288,13 +290,13 @@ private fun BowlerRow(
                     MiniStatBox(
                         value = "${bowler.dots}",
                         label = "Dots",
-                        color = SuccessGreen
+                        color = colors.statusSuccess
                     )
                     if (bowler.wides + bowler.noBalls > 0) {
                         MiniStatBox(
                             value = "${bowler.wides + bowler.noBalls}",
                             label = "Extras",
-                            color = WarningYellow
+                            color = colors.statusWarning
                         )
                     }
                 }
@@ -312,6 +314,7 @@ private fun EconomyGauge(
     category: EconomyCategory,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val animatedEconomy by animateFloatAsState(
         targetValue = economy,
         animationSpec = tween(800, easing = FastOutSlowInEasing),
@@ -326,7 +329,7 @@ private fun EconomyGauge(
         ) {
             Text(
                 text = "Economy",
-                color = TextTertiary,
+                color = colors.textTertiary,
                 fontSize = 10.sp
             )
             Row(
@@ -368,16 +371,16 @@ private fun EconomyGauge(
             
             // Background
             drawRoundRect(
-                color = CardBorder.copy(alpha = 0.2f),
+                color = GlassBorder.copy(alpha = 0.2f),
                 cornerRadius = CornerRadius(4.dp.toPx())
             )
             
             // Economy zones
             val zones = listOf(
-                0f to 0.3f to SuccessGreen,
-                0.3f to 0.5f to ChartBlue,
-                0.5f to 0.7f to WarningYellow,
-                0.7f to 1f to ErrorRed
+                0f to 0.3f to StatusSuccess,
+                0.3f to 0.5f to StatusInfo,
+                0.5f to 0.7f to StatusWarning,
+                0.7f to 1f to StatusLive
             )
             
             zones.forEach { (range, color) ->
@@ -411,6 +414,7 @@ private fun EconomyGauge(
  */
 @Composable
 private fun MiniStatBox(value: String, label: String, color: Color) {
+    val colors = BouncerDesignSystem.colors
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
             text = value,
@@ -420,7 +424,7 @@ private fun MiniStatBox(value: String, label: String, color: Color) {
         )
         Text(
             text = label,
-            color = TextTertiary,
+            color = colors.textTertiary,
             fontSize = 9.sp
         )
     }
@@ -437,17 +441,18 @@ private fun BowlingSummary(bowlers: List<BowlerPerformance>, teamColor: Color) {
     val totalDots = bowlers.sumOf { it.dots }
     val teamEconomy = if (totalOvers > 0) totalRuns / totalOvers else 0f
     val bestBowler = bowlers.maxByOrNull { it.wickets * 100 - it.runs }
+    val colors = BouncerDesignSystem.colors
     
     Surface(
         shape = RoundedCornerShape(12.dp),
-        color = Color.White.copy(alpha = 0.08f),
-        border = BorderStroke(0.5.dp, CardBorder.copy(alpha = 0.2f)),
+        color = colors.glassBorderHighlight,
+        border = BorderStroke(0.5.dp, colors.glassBorder.copy(alpha = 0.2f)),
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
             Text(
                 text = "TEAM BOWLING",
-                color = TextTertiary,
+                color = colors.textTertiary,
                 fontSize = 10.sp,
                 letterSpacing = 0.5.sp,
                 modifier = Modifier.padding(bottom = 10.dp)
@@ -466,7 +471,7 @@ private fun BowlingSummary(bowlers: List<BowlerPerformance>, teamColor: Color) {
                     )
                     Text(
                         text = "Wickets",
-                        color = TextTertiary,
+                        color = colors.textTertiary,
                         fontSize = 9.sp
                     )
                 }
@@ -474,13 +479,13 @@ private fun BowlingSummary(bowlers: List<BowlerPerformance>, teamColor: Color) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
                         text = String.format("%.2f", teamEconomy),
-                        color = if (teamEconomy < 7) SuccessGreen else if (teamEconomy < 9) WarningYellow else ErrorRed,
+                        color = if (teamEconomy < 7) colors.statusSuccess else if (teamEconomy < 9) colors.statusWarning else colors.statusLive,
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Black
                     )
                     Text(
                         text = "Economy",
-                        color = TextTertiary,
+                        color = colors.textTertiary,
                         fontSize = 9.sp
                     )
                 }
@@ -488,13 +493,13 @@ private fun BowlingSummary(bowlers: List<BowlerPerformance>, teamColor: Color) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
                         text = "$totalDots",
-                        color = SuccessGreen,
+                        color = colors.statusSuccess,
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Black
                     )
                     Text(
                         text = "Dot Balls",
-                        color = TextTertiary,
+                        color = colors.textTertiary,
                         fontSize = 9.sp
                     )
                 }
@@ -502,7 +507,7 @@ private fun BowlingSummary(bowlers: List<BowlerPerformance>, teamColor: Color) {
             
             bestBowler?.let { bowler ->
                 Spacer(modifier = Modifier.height(12.dp))
-                HorizontalDivider(color = CardBorder.copy(alpha = 0.2f))
+                HorizontalDivider(color = colors.glassBorder.copy(alpha = 0.2f))
                 Spacer(modifier = Modifier.height(10.dp))
                 
                 Row(
@@ -513,13 +518,13 @@ private fun BowlingSummary(bowlers: List<BowlerPerformance>, teamColor: Color) {
                     Icon(
                         Icons.Default.Star,
                         contentDescription = null,
-                        tint = ShinyGoldDeep,
+                        tint = colors.goldDark,
                         modifier = Modifier.size(14.dp)
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
                         text = "Best: ${bowler.name} (${bowler.wickets}/${bowler.runs})",
-                        color = ShinyGoldDeep,
+                        color = colors.goldDark,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Medium
                     )
@@ -537,9 +542,10 @@ fun MiniBowlingCard(
     bowler: BowlerPerformance,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     Surface(
         shape = RoundedCornerShape(10.dp),
-        color = Color.White.copy(alpha = 0.08f),
+        color = colors.glassBorderHighlight,
         border = BorderStroke(0.5.dp, bowler.economyCategory.color.copy(alpha = 0.3f)),
         modifier = modifier
     ) {
@@ -551,20 +557,20 @@ fun MiniBowlingCard(
             Column {
                 Text(
                     text = bowler.name,
-                    color = TextPrimary,
+                    color = colors.textPrimary,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.SemiBold
                 )
                 Text(
                     text = "${bowler.overs} ov",
-                    color = TextTertiary,
+                    color = colors.textTertiary,
                     fontSize = 9.sp
                 )
             }
             Column(horizontalAlignment = Alignment.End) {
                 Text(
                     text = "${bowler.wickets}/${bowler.runs}",
-                    color = TextPrimary,
+                    color = colors.textPrimary,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold
                 )

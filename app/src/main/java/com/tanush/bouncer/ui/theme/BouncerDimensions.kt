@@ -17,7 +17,7 @@ import androidx.compose.ui.unit.dp
 // =============================================================================
 
 /** Standard bottom navigation bar height */
-val BottomNavHeight = 80.dp
+val BottomNavHeight = 64.dp
 
 /** Glass blur radius for glassmorphism effects */
 val GlassBlur = 24.dp
@@ -135,11 +135,11 @@ data class BouncerDimensions(
     val xxs: Dp = 2.dp,
     val xs: Dp = 4.dp,
     val sm: Dp = 8.dp,
-    val md: Dp = 12.dp,
-    val lg: Dp = 16.dp,
-    val xl: Dp = 20.dp,
-    val xxl: Dp = 24.dp,
-    val xxxl: Dp = 32.dp,
+    val md: Dp = 16.dp,
+    val lg: Dp = 24.dp,
+    val xl: Dp = 32.dp,
+    val xxl: Dp = 48.dp,
+    val xxxl: Dp = 64.dp,
     val screenHorizontal: Dp = 16.dp,
     val screenVertical: Dp = 8.dp,
     val cardSpacing: Dp = 12.dp,
@@ -325,11 +325,11 @@ object BouncerDimens {
     val xxs: Dp = 2.dp
     val xs: Dp = 4.dp
     val sm: Dp = 8.dp
-    val md: Dp = 12.dp
-    val lg: Dp = 16.dp
-    val xl: Dp = 20.dp
-    val xxl: Dp = 24.dp
-    val xxxl: Dp = 32.dp
+    val md: Dp = 16.dp
+    val lg: Dp = 24.dp
+    val xl: Dp = 32.dp
+    val xxl: Dp = 48.dp
+    val xxxl: Dp = 64.dp
     
     // Screen padding
     val screenHorizontal: Dp = 16.dp
@@ -350,7 +350,7 @@ object BouncerDimens {
     val scoreFontContainerHeight: Dp = 32.dp
     
     // Bottom navigation
-    val bottomNavHeight: Dp = 80.dp
+    val bottomNavHeight: Dp = 64.dp
     val bottomNavIconSize: Dp = 24.dp
     val bottomNavLabelSpacing: Dp = 4.dp
     

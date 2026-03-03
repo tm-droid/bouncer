@@ -29,8 +29,11 @@ import coil.request.ImageRequest
 import com.tanush.bouncer.managers.TeamLogoManager
 import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.network.SquadScraper
+import com.tanush.bouncer.ui.components.glass.GlassBloomBackground
 import com.tanush.bouncer.ui.theme.*
+import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 import kotlinx.coroutines.launch
+import io.sentry.Sentry
 
 data class Player(
     val name: String,
@@ -41,22 +44,27 @@ data class Player(
 )
 
 enum class PlayerRole(val displayName: String, val icon: @Composable () -> Unit) {
-    BATSMAN("Batsman", { Text("BAT", fontSize = 8.sp, color = BoundarySix, fontWeight = FontWeight.Bold) }),
-    BOWLER("Bowler", { Text("BWL", fontSize = 8.sp, color = WicketBlue, fontWeight = FontWeight.Bold) }),
-    ALL_ROUNDER("All-Rounder", { Text("AR", fontSize = 8.sp, color = SuccessGreen, fontWeight = FontWeight.Bold) }),
-    WICKET_KEEPER("Wicket-Keeper", { Text("WK", fontSize = 8.sp, color = ChartPurple, fontWeight = FontWeight.Bold) })
+    BATSMAN("Batsman", { Text("BAT", fontSize = 8.sp, color = BouncerDesignSystem.colors.statusWarning, fontWeight = FontWeight.Bold) }),
+    BOWLER("Bowler", { Text("BWL", fontSize = 8.sp, color = BouncerDesignSystem.colors.statusInfo, fontWeight = FontWeight.Bold) }),
+    ALL_ROUNDER("All-Rounder", { Text("AR", fontSize = 8.sp, color = BouncerDesignSystem.colors.statusSuccess, fontWeight = FontWeight.Bold) }),
+    WICKET_KEEPER("Wicket-Keeper", { Text("WK", fontSize = 8.sp, color = BouncerDesignSystem.colors.statusInfo, fontWeight = FontWeight.Bold) })
 }
 
 /**
  * Convert a role string from the scraper to a PlayerRole enum
  */
 private fun roleFromString(role: String): PlayerRole {
-    val lowerRole = role.lowercase()
-    return when {
-        lowerRole.contains("bowl") || lowerRole.contains("fast") || lowerRole.contains("spin") || lowerRole.contains("medium") -> PlayerRole.BOWLER
-        lowerRole.contains("all") || lowerRole.contains("ar") -> PlayerRole.ALL_ROUNDER
-        lowerRole.contains("keeper") || lowerRole.contains("wk") -> PlayerRole.WICKET_KEEPER
-        else -> PlayerRole.BATSMAN
+    try {
+        val lowerRole = role.lowercase()
+        return when {
+            lowerRole.contains("bowl") || lowerRole.contains("fast") || lowerRole.contains("spin") || lowerRole.contains("medium") -> PlayerRole.BOWLER
+            lowerRole.contains("all") || lowerRole.contains("ar") -> PlayerRole.ALL_ROUNDER
+            lowerRole.contains("keeper") || lowerRole.contains("wk") -> PlayerRole.WICKET_KEEPER
+            else -> PlayerRole.BATSMAN
+        }
+    } catch (e: Exception) {
+        Sentry.captureException(e)
+        throw e
     }
 }
 
@@ -64,13 +72,18 @@ private fun roleFromString(role: String): PlayerRole {
  * Convert SquadScraper.Player to screen Player
  */
 private fun SquadScraper.Player.toScreenPlayer(): Player {
-    return Player(
-        name = this.name,
-        role = if (this.isWicketKeeper) PlayerRole.WICKET_KEEPER else roleFromString(this.role),
-        isCaptain = this.isCaptain,
-        isWicketKeeper = this.isWicketKeeper,
-        imageUrl = this.imageUrl.takeIf { it.isNotEmpty() }
-    )
+    try {
+        return Player(
+            name = this.name,
+            role = if (this.isWicketKeeper) PlayerRole.WICKET_KEEPER else roleFromString(this.role),
+            isCaptain = this.isCaptain,
+            isWicketKeeper = this.isWicketKeeper,
+            imageUrl = this.imageUrl.takeIf { it.isNotEmpty() }
+        )
+    } catch (e: Exception) {
+        Sentry.captureException(e)
+        throw e
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -80,6 +93,7 @@ fun SquadScreen(
     onBackClick: () -> Unit,
     onPlayerClick: ((Player) -> Unit)? = null
 ) {
+    val colors = BouncerDesignSystem.colors
     val team1 = match.teams.firstOrNull()
     val team2 = match.teams.getOrNull(1)
     var selectedTeamIndex by remember { mutableIntStateOf(0) }
@@ -134,12 +148,12 @@ fun SquadScreen(
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Black,
                         letterSpacing = 2.sp,
-                        color = GoldDark
+                        color = colors.goldDark
                     )
                 },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = Color.White)
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = colors.textPrimary)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -148,39 +162,9 @@ fun SquadScreen(
             )
         }
     ) { paddingValues ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(BlackBackground)
+        GlassBloomBackground(
+            modifier = Modifier.fillMaxSize()
         ) {
-            // Premium Background
-            Canvas(modifier = Modifier.fillMaxSize()) {
-                drawCircle(
-                    brush = Brush.radialGradient(
-                        colors = listOf(
-                            GoldDark.copy(alpha = 0.06f),
-                            Color.Transparent
-                        ),
-                        center = Offset(size.width * 0.2f, size.height * 0.1f),
-                        radius = size.width * 0.5f
-                    ),
-                    radius = size.width * 0.5f,
-                    center = Offset(size.width * 0.2f, size.height * 0.1f)
-                )
-                drawCircle(
-                    brush = Brush.radialGradient(
-                        colors = listOf(
-                            WicketBlue.copy(alpha = 0.04f),
-                            Color.Transparent
-                        ),
-                        center = Offset(size.width * 0.9f, size.height * 0.6f),
-                        radius = size.width * 0.6f
-                    ),
-                    radius = size.width * 0.6f,
-                    center = Offset(size.width * 0.9f, size.height * 0.6f)
-                )
-            }
-
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
@@ -210,7 +194,7 @@ fun SquadScreen(
                             contentAlignment = Alignment.Center
                         ) {
                             CircularProgressIndicator(
-                                color = GoldDark,
+                                color = colors.goldDark,
                                 modifier = Modifier.size(48.dp)
                             )
                         }
@@ -222,9 +206,9 @@ fun SquadScreen(
                     item {
                         Surface(
                             modifier = Modifier.fillMaxWidth(),
-                            color = Color.White.copy(alpha = 0.05f),
+                            color = colors.glassSurface,
                             shape = RoundedCornerShape(12.dp),
-                            border = BorderStroke(0.5.dp, CardBorder.copy(alpha = 0.3f))
+                            border = BorderStroke(0.5.dp, colors.glassBorder.copy(alpha = 0.3f))
                         ) {
                             Row(
                                 modifier = Modifier.padding(16.dp),
@@ -234,13 +218,13 @@ fun SquadScreen(
                                 Icon(
                                     imageVector = Icons.Default.Info,
                                     contentDescription = null,
-                                    tint = TextTertiary,
+                                    tint = colors.textTertiary,
                                     modifier = Modifier.size(20.dp)
                                 )
                                 Text(
                                     text = errorMessage ?: "",
                                     fontSize = 14.sp,
-                                    color = TextSecondary
+                                    color = colors.textSecondary
                                 )
                             }
                         }
@@ -257,14 +241,14 @@ fun SquadScreen(
                         Icon(
                             imageVector = Icons.Default.Groups,
                             contentDescription = null,
-                            tint = GoldDark,
+                            tint = colors.goldDark,
                             modifier = Modifier.size(20.dp)
                         )
                         Text(
                             text = "PLAYING XI",
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
-                            color = TextSecondary,
+                            color = colors.textSecondary,
                             letterSpacing = 1.5.sp
                         )
                         Box(
@@ -274,21 +258,21 @@ fun SquadScreen(
                                 .background(
                                     Brush.horizontalGradient(
                                         colors = listOf(
-                                            CardBorder.copy(alpha = 0.4f),
+                                            colors.glassBorder.copy(alpha = 0.4f),
                                             Color.Transparent
                                         )
                                     )
                                 )
                         )
                         Surface(
-                            color = Color.White.copy(alpha = 0.08f),
+                            color = colors.glassBorderHighlight,
                             shape = RoundedCornerShape(8.dp)
                         ) {
                             Text(
                                 text = "${currentSquad.size} Players",
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.SemiBold,
-                                color = TextTertiary,
+                                color = colors.textTertiary,
                                 modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
                             )
                         }
@@ -333,6 +317,7 @@ private fun TeamSelectorCard(
     selectedIndex: Int,
     onTeamSelected: (Int) -> Unit
 ) {
+    val colors = BouncerDesignSystem.colors
     val context = LocalContext.current
     
     Card(
@@ -341,11 +326,11 @@ private fun TeamSelectorCard(
             .shadow(
                 elevation = 16.dp,
                 shape = RoundedCornerShape(24.dp),
-                spotColor = GoldDark.copy(alpha = 0.15f)
+                spotColor = colors.goldDark.copy(alpha = 0.15f)
             ),
-        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.05f)),
+        colors = CardDefaults.cardColors(containerColor = colors.glassSurface),
         shape = RoundedCornerShape(24.dp),
-        border = BorderStroke(0.5.dp, CardBorder.copy(alpha = 0.3f))
+        border = BorderStroke(0.5.dp, colors.glassBorder.copy(alpha = 0.3f))
     ) {
         Row(
             modifier = Modifier
@@ -371,7 +356,7 @@ private fun TeamSelectorCard(
                         Brush.verticalGradient(
                             colors = listOf(
                                 Color.Transparent,
-                                CardBorder.copy(alpha = 0.3f),
+                                colors.glassBorder.copy(alpha = 0.3f),
                                 Color.Transparent
                             )
                         )
@@ -398,6 +383,7 @@ private fun TeamSelectorItem(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val context = LocalContext.current
     val scale by animateFloatAsState(
         targetValue = if (isSelected) 1f else 0.92f,
@@ -407,9 +393,9 @@ private fun TeamSelectorItem(
 
     Surface(
         onClick = onClick,
-        color = if (isSelected) GoldDark.copy(alpha = 0.12f) else Color.Transparent,
+        color = if (isSelected) colors.goldDark.copy(alpha = 0.12f) else Color.Transparent,
         shape = RoundedCornerShape(16.dp),
-        border = if (isSelected) BorderStroke(1.dp, GoldDark.copy(alpha = 0.4f)) else null,
+        border = if (isSelected) BorderStroke(1.dp, colors.goldDark.copy(alpha = 0.4f)) else null,
         modifier = modifier.graphicsLayer { scaleX = scale; scaleY = scale }
     ) {
         Column(
@@ -422,12 +408,12 @@ private fun TeamSelectorItem(
                 modifier = Modifier
                     .size(48.dp)
                     .background(
-                        if (isSelected) GoldDark.copy(alpha = 0.15f) else CardDarkBlue,
+                        if (isSelected) colors.goldDark.copy(alpha = 0.15f) else colors.surface1,
                         CircleShape
                     )
                     .border(
                         1.dp,
-                        if (isSelected) GoldDark.copy(alpha = 0.4f) else CardBorder.copy(alpha = 0.3f),
+                        if (isSelected) colors.goldDark.copy(alpha = 0.4f) else colors.glassBorder.copy(alpha = 0.3f),
                         CircleShape
                     )
             ) {
@@ -449,7 +435,7 @@ private fun TeamSelectorItem(
                 text = teamName,
                 fontSize = 13.sp,
                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                color = if (isSelected) GoldDark else TextSecondary,
+                color = if (isSelected) colors.goldDark else colors.textSecondary,
                 textAlign = TextAlign.Center,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -464,6 +450,7 @@ private fun PlayerCard(
     onClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val context = LocalContext.current
     val infiniteTransition = rememberInfiniteTransition(label = "playerGlow")
     val glowAlpha by infiniteTransition.animateFloat(
@@ -483,22 +470,22 @@ private fun PlayerCard(
             .shadow(
                 elevation = 8.dp,
                 shape = RoundedCornerShape(18.dp),
-                spotColor = if (player.isCaptain) GoldDark.copy(alpha = 0.2f) else Color.Black.copy(alpha = 0.3f)
+                spotColor = if (player.isCaptain) colors.goldDark.copy(alpha = 0.2f) else Color.Black.copy(alpha = 0.3f)
             ),
-        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.05f)),
+        colors = CardDefaults.cardColors(containerColor = colors.glassSurface),
         shape = RoundedCornerShape(18.dp),
         border = if (player.isCaptain) {
             BorderStroke(
                 1.dp,
                 Brush.linearGradient(
                     colors = listOf(
-                        GoldLight.copy(alpha = 0.5f),
-                        GoldDark.copy(alpha = 0.3f)
+                        colors.goldLight.copy(alpha = 0.5f),
+                        colors.goldDark.copy(alpha = 0.3f)
                     )
                 )
             )
         } else {
-            BorderStroke(0.5.dp, CardBorder.copy(alpha = 0.3f))
+            BorderStroke(0.5.dp, colors.glassBorder.copy(alpha = 0.3f))
         }
     ) {
         Column(
@@ -519,19 +506,19 @@ private fun PlayerCard(
                         .background(
                             Brush.radialGradient(
                                 colors = listOf(
-                                    Color.White.copy(alpha = 0.08f),
-                                    CardDarkBlue
+                                    colors.glassBorderHighlight,
+                                    colors.surface1
                                 )
                             ),
                             CircleShape
                         )
-                        .border(1.dp, CardBorder.copy(alpha = 0.3f), CircleShape)
+                        .border(1.dp, colors.glassBorder.copy(alpha = 0.3f), CircleShape)
                 ) {
                     // Placeholder icon for player
                     Icon(
                         imageVector = Icons.Default.Person,
                         contentDescription = null,
-                        tint = TextMuted,
+                        tint = colors.textMuted,
                         modifier = Modifier.size(28.dp)
                     )
                 }
@@ -545,18 +532,18 @@ private fun PlayerCard(
                             .size(20.dp)
                             .background(
                                 Brush.linearGradient(
-                                    colors = listOf(ShinyGoldLight, ShinyGoldDeep)
+                                    colors = listOf(colors.goldLight, colors.goldDark)
                                 ),
                                 CircleShape
                             )
-                            .border(1.dp, Color.White.copy(alpha = 0.3f), CircleShape),
+                            .border(1.dp, colors.textPrimary.copy(alpha = 0.3f), CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
                             text = "C",
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Black,
-                            color = BlackBackground
+                            color = colors.backgroundBase
                         )
                     }
                 }
@@ -568,15 +555,15 @@ private fun PlayerCard(
                             .align(Alignment.TopStart)
                             .offset(x = (-4).dp, y = (-4).dp)
                             .size(20.dp)
-                            .background(ChartPurple, CircleShape)
-                            .border(1.dp, Color.White.copy(alpha = 0.3f), CircleShape),
+                            .background(colors.statusInfo, CircleShape)
+                            .border(1.dp, colors.textPrimary.copy(alpha = 0.3f), CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
                             text = "WK",
                             fontSize = 7.sp,
                             fontWeight = FontWeight.Black,
-                            color = Color.White
+                            color = colors.textPrimary
                         )
                     }
                 }
@@ -587,7 +574,7 @@ private fun PlayerCard(
                 text = player.name,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
-                color = TextPrimary,
+                color = colors.textPrimary,
                 textAlign = TextAlign.Center,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
@@ -597,10 +584,10 @@ private fun PlayerCard(
             // Role Badge
             Surface(
                 color = when (player.role) {
-                    PlayerRole.BATSMAN -> BoundarySix.copy(alpha = 0.15f)
-                    PlayerRole.BOWLER -> WicketBlue.copy(alpha = 0.15f)
-                    PlayerRole.ALL_ROUNDER -> SuccessGreen.copy(alpha = 0.15f)
-                    PlayerRole.WICKET_KEEPER -> ChartPurple.copy(alpha = 0.15f)
+                    PlayerRole.BATSMAN -> colors.statusWarning.copy(alpha = 0.15f)
+                    PlayerRole.BOWLER -> colors.statusInfo.copy(alpha = 0.15f)
+                    PlayerRole.ALL_ROUNDER -> colors.statusSuccess.copy(alpha = 0.15f)
+                    PlayerRole.WICKET_KEEPER -> colors.statusInfo.copy(alpha = 0.15f)
                 },
                 shape = RoundedCornerShape(6.dp)
             ) {
@@ -609,10 +596,10 @@ private fun PlayerCard(
                     fontSize = 9.sp,
                     fontWeight = FontWeight.Bold,
                     color = when (player.role) {
-                        PlayerRole.BATSMAN -> BoundarySix
-                        PlayerRole.BOWLER -> WicketBlue
-                        PlayerRole.ALL_ROUNDER -> SuccessGreen
-                        PlayerRole.WICKET_KEEPER -> ChartPurple
+                        PlayerRole.BATSMAN -> colors.statusWarning
+                        PlayerRole.BOWLER -> colors.statusInfo
+                        PlayerRole.ALL_ROUNDER -> colors.statusSuccess
+                        PlayerRole.WICKET_KEEPER -> colors.statusInfo
                     },
                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                 )
@@ -623,11 +610,12 @@ private fun PlayerCard(
 
 @Composable
 private fun SquadLegend() {
+    val colors = BouncerDesignSystem.colors
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = CardDarkBlue.copy(alpha = 0.6f)),
+        colors = CardDefaults.cardColors(containerColor = colors.surface1.copy(alpha = 0.6f)),
         shape = RoundedCornerShape(14.dp),
-        border = BorderStroke(0.5.dp, CardBorder.copy(alpha = 0.2f))
+        border = BorderStroke(0.5.dp, colors.glassBorder.copy(alpha = 0.2f))
     ) {
         Row(
             modifier = Modifier
@@ -635,10 +623,10 @@ private fun SquadLegend() {
                 .padding(16.dp),
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
-            LegendItem("C", "Captain", ShinyGoldDeep)
-            LegendItem("WK", "Keeper", ChartPurple)
-            LegendItem("BAT", "Batsman", BoundarySix)
-            LegendItem("BWL", "Bowler", WicketBlue)
+            LegendItem("C", "Captain", colors.goldDark)
+            LegendItem("WK", "Keeper", colors.statusInfo)
+            LegendItem("BAT", "Batsman", colors.statusWarning)
+            LegendItem("BWL", "Bowler", colors.statusInfo)
         }
     }
 }
@@ -649,6 +637,7 @@ private fun LegendItem(
     label: String,
     color: Color
 ) {
+    val colors = BouncerDesignSystem.colors
     Row(
         horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -671,27 +660,32 @@ private fun LegendItem(
             text = label,
             fontSize = 10.sp,
             fontWeight = FontWeight.Medium,
-            color = TextTertiary
+            color = colors.textTertiary
         )
     }
 }
 
 private fun generatePlaceholderSquad(teamName: String): List<Player> {
-    val batsmen = listOf("Player 1", "Player 2", "Player 3", "Player 4")
-    val allRounders = listOf("Player 5", "Player 6", "Player 7")
-    val bowlers = listOf("Player 8", "Player 9", "Player 10", "Player 11")
+    try {
+        val batsmen = listOf("Player 1", "Player 2", "Player 3", "Player 4")
+        val allRounders = listOf("Player 5", "Player 6", "Player 7")
+        val bowlers = listOf("Player 8", "Player 9", "Player 10", "Player 11")
     
-    return listOf(
-        Player(batsmen[0], PlayerRole.BATSMAN, isCaptain = true),
-        Player(batsmen[1], PlayerRole.WICKET_KEEPER, isWicketKeeper = true),
-        Player(batsmen[2], PlayerRole.BATSMAN),
-        Player(batsmen[3], PlayerRole.BATSMAN),
-        Player(allRounders[0], PlayerRole.ALL_ROUNDER),
-        Player(allRounders[1], PlayerRole.ALL_ROUNDER),
-        Player(allRounders[2], PlayerRole.ALL_ROUNDER),
-        Player(bowlers[0], PlayerRole.BOWLER),
-        Player(bowlers[1], PlayerRole.BOWLER),
-        Player(bowlers[2], PlayerRole.BOWLER),
-        Player(bowlers[3], PlayerRole.BOWLER)
-    )
+        return listOf(
+            Player(batsmen[0], PlayerRole.BATSMAN, isCaptain = true),
+            Player(batsmen[1], PlayerRole.WICKET_KEEPER, isWicketKeeper = true),
+            Player(batsmen[2], PlayerRole.BATSMAN),
+            Player(batsmen[3], PlayerRole.BATSMAN),
+            Player(allRounders[0], PlayerRole.ALL_ROUNDER),
+            Player(allRounders[1], PlayerRole.ALL_ROUNDER),
+            Player(allRounders[2], PlayerRole.ALL_ROUNDER),
+            Player(bowlers[0], PlayerRole.BOWLER),
+            Player(bowlers[1], PlayerRole.BOWLER),
+            Player(bowlers[2], PlayerRole.BOWLER),
+            Player(bowlers[3], PlayerRole.BOWLER)
+        )
+    } catch (e: Exception) {
+        Sentry.captureException(e)
+        throw e
+    }
 }

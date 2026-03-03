@@ -13,6 +13,7 @@ import androidx.compose.ui.hapticfeedback.HapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
+import io.sentry.Sentry
 
 /**
  * HapticFeedbackManager - Immersive Match Event Feedback System
@@ -58,14 +59,24 @@ class HapticFeedbackManager(private val context: Context) {
      * Check if haptic feedback is available
      */
     fun isHapticAvailable(): Boolean {
-        return vibrator.hasVibrator()
+        try {
+            return vibrator.hasVibrator()
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     /**
      * Check if amplitude control is supported (API 26+)
      */
     fun isAmplitudeControlAvailable(): Boolean {
-        return Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && vibrator.hasAmplitudeControl()
+        try {
+            return Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && vibrator.hasAmplitudeControl()
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     // ==========================================
@@ -76,49 +87,84 @@ class HapticFeedbackManager(private val context: Context) {
      * Wicket taken - Strong double vibration
      */
     fun playWicketHaptic() {
-        playPattern(PATTERN_WICKET, AMPLITUDES_WICKET)
+        try {
+            playPattern(PATTERN_WICKET, AMPLITUDES_WICKET)
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     /**
      * Six hit - Exciting triple burst
      */
     fun playSixHaptic() {
-        playPattern(PATTERN_SIX, AMPLITUDES_SIX)
+        try {
+            playPattern(PATTERN_SIX, AMPLITUDES_SIX)
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     /**
      * Four hit - Medium single pulse
      */
     fun playFourHaptic() {
-        playPattern(PATTERN_FOUR, AMPLITUDES_FOUR)
+        try {
+            playPattern(PATTERN_FOUR, AMPLITUDES_FOUR)
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     /**
      * Milestone achieved (50, 100, 5-wicket haul)
      */
     fun playMilestoneHaptic() {
-        playPattern(PATTERN_MILESTONE, AMPLITUDES_MILESTONE)
+        try {
+            playPattern(PATTERN_MILESTONE, AMPLITUDES_MILESTONE)
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     /**
      * Match/Innings won
      */
     fun playWinHaptic() {
-        playPattern(PATTERN_WIN, AMPLITUDES_WIN)
+        try {
+            playPattern(PATTERN_WIN, AMPLITUDES_WIN)
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     /**
      * Catch taken
      */
     fun playCatchHaptic() {
-        playPattern(PATTERN_CATCH, AMPLITUDES_CATCH)
+        try {
+            playPattern(PATTERN_CATCH, AMPLITUDES_CATCH)
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     /**
      * Run out
      */
     fun playRunOutHaptic() {
-        playPattern(PATTERN_RUNOUT, AMPLITUDES_RUNOUT)
+        try {
+            playPattern(PATTERN_RUNOUT, AMPLITUDES_RUNOUT)
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     // ==========================================
@@ -129,10 +175,15 @@ class HapticFeedbackManager(private val context: Context) {
      * Light click for button presses
      */
     fun playClickHaptic() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            vibrator.vibrate(VibrationEffect.createPredefined(VibrationEffect.EFFECT_CLICK))
-        } else {
-            playSimpleVibration(20)
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                vibrator.vibrate(VibrationEffect.createPredefined(VibrationEffect.EFFECT_CLICK))
+            } else {
+                playSimpleVibration(20)
+            }
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
         }
     }
     
@@ -140,10 +191,15 @@ class HapticFeedbackManager(private val context: Context) {
      * Heavy click for confirmations
      */
     fun playHeavyClickHaptic() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            vibrator.vibrate(VibrationEffect.createPredefined(VibrationEffect.EFFECT_HEAVY_CLICK))
-        } else {
-            playSimpleVibration(40)
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                vibrator.vibrate(VibrationEffect.createPredefined(VibrationEffect.EFFECT_HEAVY_CLICK))
+            } else {
+                playSimpleVibration(40)
+            }
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
         }
     }
     
@@ -151,10 +207,15 @@ class HapticFeedbackManager(private val context: Context) {
      * Double click for selections
      */
     fun playDoubleClickHaptic() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            vibrator.vibrate(VibrationEffect.createPredefined(VibrationEffect.EFFECT_DOUBLE_CLICK))
-        } else {
-            playPattern(longArrayOf(0, 20, 50, 20), null)
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                vibrator.vibrate(VibrationEffect.createPredefined(VibrationEffect.EFFECT_DOUBLE_CLICK))
+            } else {
+                playPattern(longArrayOf(0, 20, 50, 20), null)
+            }
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
         }
     }
     
@@ -162,10 +223,15 @@ class HapticFeedbackManager(private val context: Context) {
      * Tick for scrolling/swipe gestures
      */
     fun playTickHaptic() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            vibrator.vibrate(VibrationEffect.createPredefined(VibrationEffect.EFFECT_TICK))
-        } else {
-            playSimpleVibration(10)
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                vibrator.vibrate(VibrationEffect.createPredefined(VibrationEffect.EFFECT_TICK))
+            } else {
+                playSimpleVibration(10)
+            }
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
         }
     }
     
@@ -173,14 +239,24 @@ class HapticFeedbackManager(private val context: Context) {
      * Error feedback
      */
     fun playErrorHaptic() {
-        playPattern(longArrayOf(0, 50, 30, 50, 30, 100), intArrayOf(0, 200, 0, 200, 0, 150))
+        try {
+            playPattern(longArrayOf(0, 50, 30, 50, 30, 100), intArrayOf(0, 200, 0, 200, 0, 150))
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     /**
      * Success feedback
      */
     fun playSuccessHaptic() {
-        playPattern(longArrayOf(0, 30, 50, 80), intArrayOf(0, 150, 0, 220))
+        try {
+            playPattern(longArrayOf(0, 30, 50, 80), intArrayOf(0, 150, 0, 220))
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     // ==========================================
@@ -191,13 +267,18 @@ class HapticFeedbackManager(private val context: Context) {
      * Win probability shift (gentle feedback for probability changes)
      */
     fun playProbabilityShiftHaptic(magnitude: Float) {
-        val intensity = (magnitude.coerceIn(0f, 1f) * 150 + 50).toInt()
-        val duration = (magnitude.coerceIn(0f, 1f) * 50 + 20).toLong()
+        try {
+            val intensity = (magnitude.coerceIn(0f, 1f) * 150 + 50).toInt()
+            val duration = (magnitude.coerceIn(0f, 1f) * 50 + 20).toLong()
         
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            vibrator.vibrate(VibrationEffect.createOneShot(duration, intensity))
-        } else {
-            playSimpleVibration(duration)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                vibrator.vibrate(VibrationEffect.createOneShot(duration, intensity))
+            } else {
+                playSimpleVibration(duration)
+            }
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
         }
     }
     
@@ -205,10 +286,15 @@ class HapticFeedbackManager(private val context: Context) {
      * Pulse effect for live match updates
      */
     fun playLivePulseHaptic() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            vibrator.vibrate(VibrationEffect.createOneShot(30, 80))
-        } else {
-            playSimpleVibration(30)
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                vibrator.vibrate(VibrationEffect.createOneShot(30, 80))
+            } else {
+                playSimpleVibration(30)
+            }
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
         }
     }
     
@@ -216,7 +302,12 @@ class HapticFeedbackManager(private val context: Context) {
      * Cancel any ongoing vibration
      */
     fun cancel() {
-        vibrator.cancel()
+        try {
+            vibrator.cancel()
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     // ==========================================
@@ -224,24 +315,34 @@ class HapticFeedbackManager(private val context: Context) {
     // ==========================================
     
     private fun playPattern(pattern: LongArray, amplitudes: IntArray?) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            if (amplitudes != null && vibrator.hasAmplitudeControl()) {
-                vibrator.vibrate(VibrationEffect.createWaveform(pattern, amplitudes, -1))
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                if (amplitudes != null && vibrator.hasAmplitudeControl()) {
+                    vibrator.vibrate(VibrationEffect.createWaveform(pattern, amplitudes, -1))
+                } else {
+                    vibrator.vibrate(VibrationEffect.createWaveform(pattern, -1))
+                }
             } else {
-                vibrator.vibrate(VibrationEffect.createWaveform(pattern, -1))
+                @Suppress("DEPRECATION")
+                vibrator.vibrate(pattern, -1)
             }
-        } else {
-            @Suppress("DEPRECATION")
-            vibrator.vibrate(pattern, -1)
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
         }
     }
     
     private fun playSimpleVibration(durationMs: Long) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            vibrator.vibrate(VibrationEffect.createOneShot(durationMs, VibrationEffect.DEFAULT_AMPLITUDE))
-        } else {
-            @Suppress("DEPRECATION")
-            vibrator.vibrate(durationMs)
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                vibrator.vibrate(VibrationEffect.createOneShot(durationMs, VibrationEffect.DEFAULT_AMPLITUDE))
+            } else {
+                @Suppress("DEPRECATION")
+                vibrator.vibrate(durationMs)
+            }
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
         }
     }
 }
@@ -259,14 +360,19 @@ fun rememberHapticFeedbackManager(): HapticFeedbackManager {
  * Extension to trigger haptics from a View
  */
 fun View.performCricketHaptic(event: CricketHapticEvent) {
-    val feedbackConstant = when (event) {
-        CricketHapticEvent.WICKET -> HapticFeedbackConstants.LONG_PRESS
-        CricketHapticEvent.SIX -> HapticFeedbackConstants.VIRTUAL_KEY
-        CricketHapticEvent.FOUR -> HapticFeedbackConstants.KEYBOARD_TAP
-        CricketHapticEvent.MILESTONE -> HapticFeedbackConstants.LONG_PRESS
-        CricketHapticEvent.CLICK -> HapticFeedbackConstants.KEYBOARD_TAP
+    try {
+        val feedbackConstant = when (event) {
+            CricketHapticEvent.WICKET -> HapticFeedbackConstants.LONG_PRESS
+            CricketHapticEvent.SIX -> HapticFeedbackConstants.VIRTUAL_KEY
+            CricketHapticEvent.FOUR -> HapticFeedbackConstants.KEYBOARD_TAP
+            CricketHapticEvent.MILESTONE -> HapticFeedbackConstants.LONG_PRESS
+            CricketHapticEvent.CLICK -> HapticFeedbackConstants.KEYBOARD_TAP
+        }
+        performHapticFeedback(feedbackConstant)
+    } catch (e: Exception) {
+        Sentry.captureException(e)
+        throw e
     }
-    performHapticFeedback(feedbackConstant)
 }
 
 /**
@@ -284,12 +390,17 @@ enum class CricketHapticEvent {
  * Extension for Compose HapticFeedback to add cricket events
  */
 fun HapticFeedback.performCricket(event: CricketHapticEvent) {
-    val type = when (event) {
-        CricketHapticEvent.WICKET, 
-        CricketHapticEvent.SIX,
-        CricketHapticEvent.MILESTONE -> HapticFeedbackType.LongPress
-        CricketHapticEvent.FOUR,
-        CricketHapticEvent.CLICK -> HapticFeedbackType.TextHandleMove
+    try {
+        val type = when (event) {
+            CricketHapticEvent.WICKET, 
+            CricketHapticEvent.SIX,
+            CricketHapticEvent.MILESTONE -> HapticFeedbackType.LongPress
+            CricketHapticEvent.FOUR,
+            CricketHapticEvent.CLICK -> HapticFeedbackType.TextHandleMove
+        }
+        performHapticFeedback(type)
+    } catch (e: Exception) {
+        Sentry.captureException(e)
+        throw e
     }
-    performHapticFeedback(type)
 }

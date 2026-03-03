@@ -29,8 +29,8 @@ fun SwipeableCard(
     onSwipeRight: (() -> Unit)? = null,
     leftIcon: ImageVector = Icons.Default.Delete,
     rightIcon: ImageVector = Icons.Default.Favorite,
-    leftColor: Color = ErrorRed,
-    rightColor: Color = SuccessGreen,
+    leftColor: Color = StatusLive,
+    rightColor: Color = StatusSuccess,
     swipeThreshold: Float = 0.4f,
     content: @Composable () -> Unit
 ) {

@@ -70,6 +70,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.res.stringResource
 import com.tanush.bouncer.R
 import com.tanush.bouncer.ui.components.BouncerBottomNav
@@ -86,7 +87,10 @@ import com.tanush.bouncer.ui.theme.BouncerTheme
 import com.tanush.bouncer.ui.theme.TeamPrimaryColors
 import com.tanush.bouncer.ui.theme.WindowSizeClass
 import com.tanush.bouncer.ui.theme.rememberWindowSizeClass
+import com.tanush.bouncer.ui.components.glass.TeamLogoCircle
 import com.tanush.bouncer.viewmodels.LiveActivityViewModel
+import com.tanush.bouncer.viewmodels.NewsViewModel
+import com.tanush.bouncer.models.NewsArticleData
 import kotlinx.coroutines.delay
 
 // Constants
@@ -106,7 +110,7 @@ fun BouncerHomeScreen(
     onMatchClick: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val matches by viewModel.currentMatches.collectAsStateWithLifecycle()
+    val matches by viewModel.allMatchesForHome.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
     val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
     val windowSizeClass = rememberWindowSizeClass()
@@ -558,9 +562,9 @@ private fun LiveMatchCarouselCard(
                 // Team 1
                 TeamColumnCompact(
                     teamName = team1?.acronym?.ifEmpty { team1.name.take(3).uppercase() } ?: "TM1",
-                    teamCode = team1?.name ?: "",
-                    logoEmoji = if (team1?.name?.contains("India", true) == true) "🇮🇳" else "🇦🇺",
-                    accentColor = TeamPrimaryColors.getTeamColor(team1?.name ?: "")
+                    teamCode = team1?.acronym?.ifEmpty { team1.name } ?: "",
+                    logoUrl = team1?.logoUrl,
+                    accentColor = TeamPrimaryColors.getTeamColor(team1?.acronym ?: team1?.name ?: "")
                 )
 
                 // Main Score
@@ -596,9 +600,9 @@ private fun LiveMatchCarouselCard(
                 // Team 2
                 TeamColumnCompact(
                     teamName = team2?.acronym?.ifEmpty { team2.name.take(3).uppercase() } ?: "TM2",
-                    teamCode = team2?.name ?: "",
-                    logoEmoji = if (team2?.name?.contains("West Indies", true) == true) "🌴" else "🏴󠁧󠁢󠁥󠁮󠁧󠁿",
-                    accentColor = TeamPrimaryColors.getTeamColor(team2?.name ?: "")
+                    teamCode = team2?.acronym?.ifEmpty { team2.name } ?: "",
+                    logoUrl = team2?.logoUrl,
+                    accentColor = TeamPrimaryColors.getTeamColor(team2?.acronym ?: team2?.name ?: "")
                 )
             }
 
@@ -640,7 +644,7 @@ private fun LiveMatchCarouselCard(
                         modifier = Modifier.weight(1f)
                     )
                     Text(
-                        text = "WIN: ${match.winProbability.toInt()}%",
+                        text = "${(team1?.acronym ?: "TM1")}: ${match.winProbability.toInt()}%",
                         style = typography.labelSmall,
                         color = colors.goldPrimary,
                         fontWeight = FontWeight.Bold
@@ -655,7 +659,7 @@ private fun LiveMatchCarouselCard(
 private fun TeamColumnCompact(
     teamName: String,
     teamCode: String,
-    logoEmoji: String,
+    logoUrl: String?,
     accentColor: Color,
     modifier: Modifier = Modifier
 ) {
@@ -665,16 +669,13 @@ private fun TeamColumnCompact(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(dimens.spacing.sm)
     ) {
-        Box(
-            modifier = Modifier
-                .size(48.dp)
-                .clip(CircleShape)
-                .background(Color.White.copy(alpha = 0.05f))
-                .border(1.dp, Color.White.copy(alpha = 0.1f), CircleShape),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(text = logoEmoji, fontSize = 24.sp)
-        }
+        TeamLogoCircle(
+            teamCode = teamCode,
+            logoUrl = logoUrl,
+            size = 48.dp,
+            showBorder = true,
+            showGlow = true
+        )
         Text(
             text = teamName,
             style = BouncerDesignSystem.typography.labelMedium,
@@ -752,11 +753,17 @@ private fun TrendingNewsSection(
     val typography = BouncerDesignSystem.typography
     val dimens = BouncerDesignSystem.dimens
 
+    val newsViewModel: NewsViewModel = viewModel()
+    val articles by newsViewModel.articles.collectAsStateWithLifecycle()
+
+    val heroArticle = articles.firstOrNull()
+    val secondaryArticle = articles.getOrNull(1)
+
     Column(modifier = modifier) {
         SectionHeader(
             title = "Trending News",
             actionText = "View All",
-            onActionClick = { /* TODO */ }
+            onActionClick = { /* Navigate to News tab */ }
         )
 
         Spacer(modifier = Modifier.height(dimens.spacing.md))
@@ -767,14 +774,15 @@ private fun TrendingNewsSection(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(200.dp)
-                    .clickable { /* TODO */ },
-                shape = RoundedCornerShape(24.dp), // Matching rounded-2xl
+                    .clickable { /* TODO: navigate to article */ },
+                shape = RoundedCornerShape(24.dp),
                 contentPadding = PaddingValues(0.dp),
                 borderOpacity = 0.1f
             ) {
                 Box(modifier = Modifier.fillMaxSize()) {
                     AsyncImage(
-                        model = "https://images.unsplash.com/photo-1531415074968-036ba1b575da?q=80&w=640",
+                        model = heroArticle?.imageUrl
+                            ?: "https://images.unsplash.com/photo-1531415074968-036ba1b575da?q=80&w=640",
                         contentDescription = null,
                         contentScale = ContentScale.Crop,
                         modifier = Modifier.fillMaxSize().graphicsLayer { alpha = 0.6f }
@@ -815,7 +823,7 @@ private fun TrendingNewsSection(
                                 .align(Alignment.End)
                         ) {
                             Text(
-                                text = "TOP STORY",
+                                text = (heroArticle?.storyType?.uppercase() ?: "TOP STORY"),
                                 fontSize = 9.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = colors.goldPrimary,
@@ -825,7 +833,7 @@ private fun TrendingNewsSection(
 
                         Column {
                             Text(
-                                text = "Kohli smashes record-breaking century at Eden Gardens",
+                                text = heroArticle?.headline ?: "Loading latest news...",
                                 style = typography.headingMedium,
                                 color = colors.textPrimary,
                                 maxLines = 2,
@@ -849,88 +857,93 @@ private fun TrendingNewsSection(
                                         modifier = Modifier.size(12.dp)
                                     )
                                     Text(
-                                        text = "2 hours ago",
+                                        text = heroArticle?.timeAgo ?: "",
                                         style = typography.labelSmall,
                                         color = colors.textTertiary
                                     )
                                 }
-                                Box(
-                                    modifier = Modifier
-                                        .size(3.dp)
-                                        .clip(CircleShape)
-                                        .background(colors.textTertiary.copy(alpha = 0.4f))
-                                )
-                                Text(
-                                    text = "Analysis",
-                                    style = typography.labelSmall,
-                                    color = colors.textTertiary
-                                )
+                                if (heroArticle?.source?.isNotBlank() == true) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(3.dp)
+                                            .clip(CircleShape)
+                                            .background(colors.textTertiary.copy(alpha = 0.4f))
+                                    )
+                                    Text(
+                                        text = heroArticle.source,
+                                        style = typography.labelSmall,
+                                        color = colors.textTertiary
+                                    )
+                                }
                             }
                         }
                     }
                 }
             }
 
-            // Compact secondary news (from _14)
-            GlassCard(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(110.dp)
-                    .clickable { /* TODO */ },
-                shape = RoundedCornerShape(24.dp),
-                contentPadding = PaddingValues(0.dp),
-                borderOpacity = 0.08f
-            ) {
-                Row(modifier = Modifier.fillMaxSize()) {
-                    // Left content
-                    Column(
-                        modifier = Modifier
-                            .weight(1.5f)
-                            .padding(dimens.spacing.md),
-                        verticalArrangement = Arrangement.Center
-                    ) {
-                        Box(
+            // Compact secondary news card
+            if (secondaryArticle != null) {
+                GlassCard(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(110.dp)
+                        .clickable { /* TODO: navigate to article */ },
+                    shape = RoundedCornerShape(24.dp),
+                    contentPadding = PaddingValues(0.dp),
+                    borderOpacity = 0.08f
+                ) {
+                    Row(modifier = Modifier.fillMaxSize()) {
+                        // Left content
+                        Column(
                             modifier = Modifier
-                                .padding(bottom = 6.dp)
-                                .clip(RoundedCornerShape(4.dp))
-                                .background(Color.Black.copy(alpha = 0.3f))
-                                .border(0.5.dp, colors.goldPrimary.copy(alpha = 0.3f), RoundedCornerShape(4.dp))
-                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                                .weight(1.5f)
+                                .padding(dimens.spacing.md),
+                            verticalArrangement = Arrangement.Center
                         ) {
+                            Box(
+                                modifier = Modifier
+                                    .padding(bottom = 6.dp)
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .background(Color.Black.copy(alpha = 0.3f))
+                                    .border(0.5.dp, colors.goldPrimary.copy(alpha = 0.3f), RoundedCornerShape(4.dp))
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    text = secondaryArticle.storyType.uppercase().ifBlank { "NEWS" },
+                                    fontSize = 8.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = colors.goldPrimary,
+                                    letterSpacing = 0.5.sp
+                                )
+                            }
+
                             Text(
-                                text = "TRANSFER NEWS",
-                                fontSize = 8.sp,
+                                text = secondaryArticle.headline,
+                                style = typography.bodyMedium,
                                 fontWeight = FontWeight.Bold,
-                                color = colors.goldPrimary,
-                                letterSpacing = 0.5.sp
+                                color = Color.White,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis
+                            )
+
+                            Text(
+                                text = secondaryArticle.timeAgo,
+                                style = typography.labelSmall.copy(fontSize = 10.sp),
+                                color = colors.goldPrimary.copy(alpha = 0.8f),
+                                modifier = Modifier.padding(top = 4.dp)
                             )
                         }
-                        
-                        Text(
-                            text = "Star pacer ruled out of final test due to injury",
-                            style = typography.bodyMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        
-                        Text(
-                            text = "Read full report →",
-                            style = typography.labelSmall.copy(fontSize = 10.sp),
-                            color = colors.goldPrimary.copy(alpha = 0.8f),
-                            modifier = Modifier.padding(top = 4.dp)
-                        )
-                    }
-                    
-                    // Right image placeholder
-                    Box(modifier = Modifier.weight(1f)) {
-                        AsyncImage(
-                            model = "https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?q=80&w=300",
-                            contentDescription = null,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize().graphicsLayer { alpha = 0.5f }
-                        )
+
+                        // Right image
+                        Box(modifier = Modifier.weight(1f)) {
+                            AsyncImage(
+                                model = secondaryArticle.imageUrl
+                                    ?: "https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?q=80&w=300",
+                                contentDescription = null,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize().graphicsLayer { alpha = 0.5f }
+                            )
+                        }
                     }
                 }
             }
@@ -1039,30 +1052,25 @@ private fun UpcomingMatchCard(
                 // Overlapping circles as per _14
                 Box(modifier = Modifier.width(50.dp)) {
                     // Team 2 (back)
-                    Box(
-                        modifier = Modifier
-                            .size(32.dp)
-                            .align(Alignment.CenterEnd)
-                            .clip(CircleShape)
-                            .background(Color.Black.copy(alpha = 0.4f))
-                            .border(0.5.dp, Color.White.copy(alpha = 0.1f), CircleShape),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(text = if (team2?.name?.contains("Pakistan") == true) "🇵🇰" else "🇮🇳", fontSize = 16.sp)
-                    }
+                    TeamLogoCircle(
+                        teamCode = team2?.acronym?.ifEmpty { team2.name } ?: "",
+                        logoUrl = team2?.logoUrl,
+                        size = 32.dp,
+                        showBorder = true,
+                        showGlow = false,
+                        modifier = Modifier.align(Alignment.CenterEnd)
+                    )
                     // Team 1 (front)
-                    Box(
+                    TeamLogoCircle(
+                        teamCode = team1?.acronym?.ifEmpty { team1.name } ?: "",
+                        logoUrl = team1?.logoUrl,
+                        size = 32.dp,
+                        showBorder = true,
+                        showGlow = false,
                         modifier = Modifier
-                            .size(32.dp)
                             .align(Alignment.CenterStart)
-                            .clip(CircleShape)
-                            .background(Color.White.copy(alpha = 0.05f))
-                            .border(1.dp, Color.White.copy(alpha = 0.15f), CircleShape)
-                            .shadow(4.dp, CircleShape),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(text = if (team1?.name?.contains("South Africa") == true) "🇿🇦" else "🇦🇺", fontSize = 16.sp)
-                    }
+                            .shadow(4.dp, CircleShape)
+                    )
                 }
 
                 Column {

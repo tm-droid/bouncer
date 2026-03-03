@@ -16,6 +16,7 @@ import com.tanush.bouncer.ui.theme.*
 import kotlinx.coroutines.delay
 import kotlin.math.*
 import kotlin.random.Random
+import io.sentry.Sentry
 
 /**
  * Data class representing a particle with physics properties
@@ -48,7 +49,7 @@ data class ParticleEmitterConfig(
     val drag: Float = 0.01f,
     val fadeOut: Boolean = true,
     val shrink: Boolean = true,
-    val colors: List<Color> = listOf(ShinyGoldDeep, ShinyGoldMid),
+    val colors: List<Color> = listOf(GoldPrimary, GoldPrimary),
     val spread: Float = 360f, // degrees
     val direction: Float = -90f // degrees, -90 = upward
 )
@@ -124,54 +125,64 @@ fun ParticleEmitter(
 }
 
 private fun createParticle(id: Int, config: ParticleEmitterConfig, origin: Offset): Particle {
-    val angle = config.direction + (Random.nextFloat() - 0.5f) * config.spread
-    val speed = Random.nextFloat() * (config.initialSpeed.endInclusive - config.initialSpeed.start) + config.initialSpeed.start
-    val radians = Math.toRadians(angle.toDouble())
+    try {
+        val angle = config.direction + (Random.nextFloat() - 0.5f) * config.spread
+        val speed = Random.nextFloat() * (config.initialSpeed.endInclusive - config.initialSpeed.start) + config.initialSpeed.start
+        val radians = Math.toRadians(angle.toDouble())
     
-    return Particle(
-        id = id,
-        position = origin,
-        velocity = Offset(
-            (cos(radians) * speed).toFloat(),
-            (sin(radians) * speed).toFloat()
-        ),
-        size = Random.nextFloat() * (config.initialSize.endInclusive - config.initialSize.start) + config.initialSize.start,
-        color = config.colors[Random.nextInt(config.colors.size)],
-        rotation = Random.nextFloat() * 360f,
-        rotationVelocity = Random.nextFloat() * 10f - 5f,
-        lifetime = config.particleLifetime * (0.8f + Random.nextFloat() * 0.4f)
-    )
+        return Particle(
+            id = id,
+            position = origin,
+            velocity = Offset(
+                (cos(radians) * speed).toFloat(),
+                (sin(radians) * speed).toFloat()
+            ),
+            size = Random.nextFloat() * (config.initialSize.endInclusive - config.initialSize.start) + config.initialSize.start,
+            color = config.colors[Random.nextInt(config.colors.size)],
+            rotation = Random.nextFloat() * 360f,
+            rotationVelocity = Random.nextFloat() * 10f - 5f,
+            lifetime = config.particleLifetime * (0.8f + Random.nextFloat() * 0.4f)
+        )
+    } catch (e: Exception) {
+        Sentry.captureException(e)
+        throw e
+    }
 }
 
 private fun updateParticle(particle: Particle, config: ParticleEmitterConfig, deltaTime: Float): Particle? {
-    val newAge = particle.age + deltaTime
-    if (newAge > particle.lifetime) return null
+    try {
+        val newAge = particle.age + deltaTime
+        if (newAge > particle.lifetime) return null
     
-    val progress = newAge / particle.lifetime
-    val drag = 1f - config.drag
+        val progress = newAge / particle.lifetime
+        val drag = 1f - config.drag
     
-    val newVelocity = Offset(
-        particle.velocity.x * drag,
-        particle.velocity.y * drag + config.gravity
-    )
+        val newVelocity = Offset(
+            particle.velocity.x * drag,
+            particle.velocity.y * drag + config.gravity
+        )
     
-    val newPosition = Offset(
-        particle.position.x + newVelocity.x,
-        particle.position.y + newVelocity.y
-    )
+        val newPosition = Offset(
+            particle.position.x + newVelocity.x,
+            particle.position.y + newVelocity.y
+        )
     
-    val newAlpha = if (config.fadeOut) 1f - progress else particle.alpha
-    val newSize = if (config.shrink) particle.size * (1f - progress * 0.5f) else particle.size
-    val newRotation = particle.rotation + particle.rotationVelocity
+        val newAlpha = if (config.fadeOut) 1f - progress else particle.alpha
+        val newSize = if (config.shrink) particle.size * (1f - progress * 0.5f) else particle.size
+        val newRotation = particle.rotation + particle.rotationVelocity
     
-    return particle.copy(
-        position = newPosition,
-        velocity = newVelocity,
-        age = newAge,
-        alpha = newAlpha.coerceIn(0f, 1f),
-        size = newSize.coerceAtLeast(0.5f),
-        rotation = newRotation
-    )
+        return particle.copy(
+            position = newPosition,
+            velocity = newVelocity,
+            age = newAge,
+            alpha = newAlpha.coerceIn(0f, 1f),
+            size = newSize.coerceAtLeast(0.5f),
+            rotation = newRotation
+        )
+    } catch (e: Exception) {
+        Sentry.captureException(e)
+        throw e
+    }
 }
 
 /**
@@ -184,7 +195,7 @@ fun SparkParticles(
     colors: List<Color> = listOf(
         Color(0xFFFFD700),
         Color(0xFFFFA500),
-        ShinyGoldLight,
+        GoldLight,
         Color.White
     ),
     isActive: Boolean = true,
@@ -433,7 +444,7 @@ fun BurstParticle(
     colors: List<Color> = listOf(
         ChartPurple,
         SixerPurple,
-        LiveBlue,
+        StatusInfo,
         Color.White
     ),
     maxRadius: Float = 200f,
@@ -526,8 +537,8 @@ fun GlitterParticle(
     modifier: Modifier = Modifier,
     particleCount: Int = 100,
     colors: List<Color> = listOf(
-        ShinyGoldLight,
-        ShinyGoldDeep,
+        GoldLight,
+        GoldPrimary,
         Color.White,
         Color.White.copy(alpha = 0.8f)
     ),
@@ -615,8 +626,8 @@ fun BallTrailEffect(
     modifier: Modifier = Modifier,
     startPoint: Offset,
     endPoint: Offset,
-    trailColor: Color = LiveBlue,
-    ballColor: Color = ErrorRed,
+    trailColor: Color = StatusInfo,
+    ballColor: Color = StatusLive,
     isActive: Boolean = true,
     duration: Long = 800L,
     onComplete: () -> Unit = {}

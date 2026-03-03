@@ -72,10 +72,12 @@ fun PremiumPlayerCard(
         label = "border"
     )
 
+    val colors = BouncerDesignSystem.colors
+
     PremiumGlassCard(
         modifier = modifier,
         onClick = onClick,
-        accentColor = if (isOnStrike) BoundarySix else ShinyGoldDeep
+        accentColor = if (isOnStrike) colors.goldPrimary else colors.goldPrimary
     ) {
         Row(
             modifier = Modifier
@@ -94,7 +96,7 @@ fun PremiumPlayerCard(
                                 Modifier.shadow(
                                     elevation = 8.dp,
                                     shape = CircleShape,
-                                    spotColor = BoundarySix.copy(alpha = strikeGlow)
+                                    spotColor = colors.goldPrimary.copy(alpha = strikeGlow)
                                 )
                             } else Modifier
                         )
@@ -103,15 +105,15 @@ fun PremiumPlayerCard(
                             if (isOnStrike) {
                                 Brush.linearGradient(
                                     colors = listOf(
-                                        BoundarySix.copy(alpha = strikeGlow),
-                                        ShinyGoldDeep.copy(alpha = strikeGlow * 0.5f)
+                                        colors.goldPrimary.copy(alpha = strikeGlow),
+                                        colors.goldPrimary.copy(alpha = strikeGlow * 0.5f)
                                     )
                                 )
                             } else {
                                 Brush.linearGradient(
                                     colors = listOf(
-                                        ShinyGoldLight.copy(alpha = borderAlpha),
-                                        ShinyGoldDeep.copy(alpha = borderAlpha * 0.5f)
+                                        colors.goldLight.copy(alpha = borderAlpha),
+                                        colors.goldPrimary.copy(alpha = borderAlpha * 0.5f)
                                     )
                                 )
                             },
@@ -119,7 +121,7 @@ fun PremiumPlayerCard(
                         )
                         .padding(2.dp)
                         .clip(CircleShape)
-                        .background(Color.White.copy(alpha = 0.08f))
+                        .background(colors.glassBorderHighlight)
                 ) {
                     if (imageUrl != null) {
                         CoilImage(
@@ -137,7 +139,7 @@ fun PremiumPlayerCard(
                                 text = name.split(" ").map { it.first() }.take(2).joinToString(""),
                                 fontSize = 20.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = ShinyGoldDeep
+                                color = colors.goldPrimary
                             )
                         }
                     }
@@ -150,15 +152,15 @@ fun PremiumPlayerCard(
                             .align(Alignment.BottomEnd)
                             .size(18.dp)
                             .graphicsLayer { alpha = strikeGlow }
-                            .background(BoundarySix, CircleShape)
-                            .border(1.5.dp, Color.White.copy(alpha = 0.05f), CircleShape),
+                            .background(colors.goldPrimary, CircleShape)
+                            .border(1.5.dp, colors.glassSurface, CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
                             text = "*",
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Black,
-                            color = BlackBackground
+                            color = colors.backgroundBase
                         )
                     }
                 }
@@ -174,7 +176,7 @@ fun PremiumPlayerCard(
                         text = name,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
-                        color = TextPrimary,
+                        color = colors.textPrimary,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -183,14 +185,14 @@ fun PremiumPlayerCard(
                     if (isCaptain) {
                         Box(
                             modifier = Modifier
-                                .background(ShinyGoldDeep, RoundedCornerShape(4.dp))
+                                .background(colors.goldPrimary, RoundedCornerShape(4.dp))
                                 .padding(horizontal = 4.dp, vertical = 1.dp)
                         ) {
                             Text(
                                 text = "C",
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = BlackBackground
+                                color = colors.backgroundBase
                             )
                         }
                     }
@@ -199,14 +201,14 @@ fun PremiumPlayerCard(
                     if (isKeeper) {
                         Box(
                             modifier = Modifier
-                                .background(WicketBlue, RoundedCornerShape(4.dp))
+                                .background(colors.statusInfo, RoundedCornerShape(4.dp))
                                 .padding(horizontal = 4.dp, vertical = 1.dp)
                         ) {
                             Text(
                                 text = "WK",
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = Color.White
+                                color = colors.textPrimary
                             )
                         }
                     }
@@ -216,7 +218,7 @@ fun PremiumPlayerCard(
                     text = role,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Medium,
-                    color = TextSecondary
+                    color = colors.textSecondary
                 )
             }
             
@@ -229,14 +231,14 @@ fun PremiumPlayerCard(
                         text = primaryStat,
                         fontSize = 22.sp,
                         fontWeight = FontWeight.Black,
-                        color = if (isOnStrike) BoundarySix else TextPrimary
+                        color = if (isOnStrike) colors.goldPrimary else colors.textPrimary
                     )
                     if (primaryStatLabel.isNotEmpty()) {
                         Text(
                             text = primaryStatLabel,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Medium,
-                            color = TextTertiary
+                            color = colors.textTertiary
                         )
                     }
                 }
@@ -251,14 +253,14 @@ fun PremiumPlayerCard(
                         text = secondaryStat,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
-                        color = TextSecondary
+                        color = colors.textSecondary
                     )
                     if (secondaryStatLabel.isNotEmpty()) {
                         Text(
                             text = secondaryStatLabel,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Medium,
-                            color = TextTertiary
+                            color = colors.textTertiary
                         )
                     }
                 }
@@ -293,6 +295,8 @@ fun MiniScoreboard(
         label = "shimmer"
     )
 
+    val colors = BouncerDesignSystem.colors
+
     PremiumGlassCard(modifier = modifier) {
         Column(
             modifier = Modifier.padding(16.dp),
@@ -317,7 +321,7 @@ fun MiniScoreboard(
                     text = teamName,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
-                    color = TextPrimary,
+                    color = colors.textPrimary,
                     modifier = Modifier.weight(1f)
                 )
                 
@@ -325,7 +329,7 @@ fun MiniScoreboard(
                     Box(
                         modifier = Modifier
                             .background(
-                                WicketBlue.copy(alpha = 0.2f),
+                                colors.statusInfo.copy(alpha = 0.2f),
                                 RoundedCornerShape(8.dp)
                             )
                             .padding(horizontal = 8.dp, vertical = 4.dp)
@@ -334,7 +338,7 @@ fun MiniScoreboard(
                             text = "Target: $target",
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
-                            color = WicketBlue
+                            color = colors.statusInfo
                         )
                     }
                 }
@@ -351,10 +355,10 @@ fun MiniScoreboard(
                     text = score,
                     fontSize = 36.sp,
                     fontWeight = FontWeight.Black,
-                    color = ShinyGoldLight,
+                    color = colors.goldLight,
                     style = LocalTextStyle.current.copy(
                         shadow = Shadow(
-                            color = ShinyGoldDeep.copy(alpha = 0.3f),
+                            color = colors.goldPrimary.copy(alpha = 0.3f),
                             offset = Offset(0f, 2f),
                             blurRadius = 8f
                         )
@@ -367,7 +371,7 @@ fun MiniScoreboard(
                         text = "Overs: $overs",
                         fontSize = 14.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = TextSecondary
+                        color = colors.textSecondary
                     )
                     
                     // Run rate
@@ -379,7 +383,7 @@ fun MiniScoreboard(
                                 text = "CRR: $runRate",
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Medium,
-                                color = TextTertiary
+                                color = colors.textTertiary
                             )
                             
                             if (isChasing && requiredRate.isNotEmpty()) {
@@ -388,7 +392,7 @@ fun MiniScoreboard(
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.Medium,
                                     color = if (requiredRate.toFloatOrNull() ?: 0f > 12f) 
-                                        ErrorRed else ChartGreen
+                                        colors.statusLive else colors.statusSuccess
                                 )
                             }
                         }
@@ -411,9 +415,11 @@ fun LastWicketCard(
     bowlerName: String,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
+
     PremiumGlassCard(
         modifier = modifier,
-        accentColor = WicketRed
+        accentColor = colors.statusLive
     ) {
         Row(
             modifier = Modifier
@@ -426,13 +432,13 @@ fun LastWicketCard(
             Box(
                 modifier = Modifier
                     .size(40.dp)
-                    .background(WicketRed.copy(alpha = 0.2f), CircleShape),
+                    .background(colors.statusLive.copy(alpha = 0.2f), CircleShape),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = Icons.Default.SportsCricket,
                     contentDescription = null,
-                    tint = WicketRed,
+                    tint = colors.statusLive,
                     modifier = Modifier.size(22.dp)
                 )
             }
@@ -443,7 +449,7 @@ fun LastWicketCard(
                     text = "LAST WICKET",
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
-                    color = WicketRed,
+                    color = colors.statusLive,
                     letterSpacing = 1.sp
                 )
                 
@@ -451,14 +457,14 @@ fun LastWicketCard(
                     text = playerName,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Bold,
-                    color = TextPrimary
+                    color = colors.textPrimary
                 )
                 
                 Text(
                     text = howOut,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Normal,
-                    color = TextSecondary,
+                    color = colors.textSecondary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -470,13 +476,13 @@ fun LastWicketCard(
                     text = score,
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Black,
-                    color = TextPrimary
+                    color = colors.textPrimary
                 )
                 Text(
                     text = "$balls balls",
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Medium,
-                    color = TextTertiary
+                    color = colors.textTertiary
                 )
             }
         }
@@ -506,6 +512,8 @@ fun PartnershipCard(
         label = "contribution"
     )
 
+    val colors = BouncerDesignSystem.colors
+
     PremiumGlassCard(modifier = modifier) {
         Column(
             modifier = Modifier.padding(16.dp),
@@ -521,7 +529,7 @@ fun PartnershipCard(
                     text = "PARTNERSHIP",
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
-                    color = TextSecondary,
+                    color = colors.textSecondary,
                     letterSpacing = 1.sp
                 )
                 
@@ -533,13 +541,13 @@ fun PartnershipCard(
                         text = "$runs",
                         fontSize = 24.sp,
                         fontWeight = FontWeight.Black,
-                        color = ShinyGoldDeep
+                        color = colors.goldPrimary
                     )
                     Text(
                         text = "($balls)",
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Medium,
-                        color = TextSecondary
+                        color = colors.textSecondary
                     )
                 }
             }
@@ -555,13 +563,13 @@ fun PartnershipCard(
                     modifier = Modifier
                         .weight(animatedContribution.coerceAtLeast(0.01f))
                         .fillMaxHeight()
-                        .background(ChartGreen)
+                        .background(colors.statusSuccess)
                 )
                 Box(
                     modifier = Modifier
                         .weight((1f - animatedContribution).coerceAtLeast(0.01f))
                         .fillMaxHeight()
-                        .background(WicketBlue)
+                        .background(colors.statusInfo)
                 )
             }
             
@@ -575,20 +583,20 @@ fun PartnershipCard(
                         text = player1Name,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = TextPrimary
+                        color = colors.textPrimary
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text(
                             text = "$player1Runs",
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
-                            color = ChartGreen
+                            color = colors.statusSuccess
                         )
                         Text(
                             text = "($player1Balls)",
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Medium,
-                            color = TextTertiary
+                            color = colors.textTertiary
                         )
                     }
                 }
@@ -598,20 +606,20 @@ fun PartnershipCard(
                         text = player2Name,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = TextPrimary
+                        color = colors.textPrimary
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text(
                             text = "$player2Runs",
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
-                            color = WicketBlue
+                            color = colors.statusInfo
                         )
                         Text(
                             text = "($player2Balls)",
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Medium,
-                            color = TextTertiary
+                            color = colors.textTertiary
                         )
                     }
                 }
@@ -630,6 +638,8 @@ fun CurrentOverDisplay(
     bowlerName: String = "",
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
+
     PremiumGlassCard(modifier = modifier) {
         Column(
             modifier = Modifier.padding(14.dp),
@@ -645,7 +655,7 @@ fun CurrentOverDisplay(
                     text = "OVER $overNumber",
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
-                    color = TextSecondary,
+                    color = colors.textSecondary,
                     letterSpacing = 1.sp
                 )
                 
@@ -654,7 +664,7 @@ fun CurrentOverDisplay(
                         text = bowlerName,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Medium,
-                        color = TextTertiary
+                        color = colors.textTertiary
                     )
                 }
             }
@@ -673,12 +683,12 @@ fun CurrentOverDisplay(
                         modifier = Modifier
                             .size(36.dp)
                             .background(
-                                CardBorder.copy(alpha = 0.2f),
+                                colors.glassBorder.copy(alpha = 0.2f),
                                 CircleShape
                             )
                             .border(
                                 1.dp,
-                                CardBorder.copy(alpha = 0.3f),
+                                colors.glassBorder.copy(alpha = 0.3f),
                                 CircleShape
                             )
                     )
@@ -690,19 +700,21 @@ fun CurrentOverDisplay(
 
 @Composable
 private fun BallDisplay(ball: String) {
+    val colors = BouncerDesignSystem.colors
+
     val backgroundColor = when {
-        ball == "W" -> WicketRed
-        ball == "6" -> BoundarySix
-        ball == "4" -> BoundaryFour
-        ball.contains("WD") || ball.contains("NB") -> WarningOrange
-        ball == "0" -> DotBall
-        else -> Color.White.copy(alpha = 0.08f)
+        ball == "W" -> colors.statusLive
+        ball == "6" -> colors.goldPrimary
+        ball == "4" -> colors.statusInfo
+        ball.contains("WD") || ball.contains("NB") -> colors.statusWarning
+        ball == "0" -> colors.ballDot
+        else -> colors.glassBorderHighlight
     }
     
     val textColor = when {
-        ball == "W" || ball == "6" || ball == "4" -> BlackBackground
-        ball.contains("WD") || ball.contains("NB") -> BlackBackground
-        else -> TextPrimary
+        ball == "W" || ball == "6" || ball == "4" -> colors.backgroundBase
+        ball.contains("WD") || ball.contains("NB") -> colors.backgroundBase
+        else -> colors.textPrimary
     }
     
     Box(
@@ -717,8 +729,8 @@ private fun BallDisplay(ball: String) {
             .border(
                 1.dp,
                 if (ball in listOf("W", "6", "4")) 
-                    Color.White.copy(alpha = 0.3f) 
-                else CardBorder.copy(alpha = 0.3f),
+                    colors.textPrimary.copy(alpha = 0.3f) 
+                else colors.glassBorder.copy(alpha = 0.3f),
                 CircleShape
             ),
         contentAlignment = Alignment.Center
@@ -755,6 +767,8 @@ fun RunRateMini(
         label = "requiredRate"
     )
 
+    val colors = BouncerDesignSystem.colors
+
     PremiumGlassCard(modifier = modifier) {
         Column(
             modifier = Modifier.padding(14.dp),
@@ -764,7 +778,7 @@ fun RunRateMini(
                 text = "RUN RATE",
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Bold,
-                color = TextSecondary,
+                color = colors.textSecondary,
                 letterSpacing = 1.sp
             )
             
@@ -778,7 +792,7 @@ fun RunRateMini(
                     text = "CRR",
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Medium,
-                    color = TextTertiary,
+                    color = colors.textTertiary,
                     modifier = Modifier.width(30.dp)
                 )
                 
@@ -787,14 +801,14 @@ fun RunRateMini(
                         .weight(1f)
                         .height(8.dp)
                         .clip(RoundedCornerShape(4.dp))
-                        .background(CardBorder.copy(alpha = 0.3f))
+                        .background(colors.glassBorder.copy(alpha = 0.3f))
                 ) {
                     Box(
                         modifier = Modifier
                             .fillMaxHeight()
                             .fillMaxWidth(animatedCurrent)
                             .clip(RoundedCornerShape(4.dp))
-                            .background(ChartGreen)
+                            .background(colors.statusSuccess)
                     )
                 }
                 
@@ -802,7 +816,7 @@ fun RunRateMini(
                     text = String.format("%.2f", currentRate),
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
-                    color = ChartGreen,
+                    color = colors.statusSuccess,
                     modifier = Modifier.width(40.dp)
                 )
             }
@@ -818,7 +832,7 @@ fun RunRateMini(
                         text = "RRR",
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Medium,
-                        color = TextTertiary,
+                        color = colors.textTertiary,
                         modifier = Modifier.width(30.dp)
                     )
                     
@@ -827,7 +841,7 @@ fun RunRateMini(
                             .weight(1f)
                             .height(8.dp)
                             .clip(RoundedCornerShape(4.dp))
-                            .background(CardBorder.copy(alpha = 0.3f))
+                            .background(colors.glassBorder.copy(alpha = 0.3f))
                     ) {
                         Box(
                             modifier = Modifier
@@ -835,9 +849,9 @@ fun RunRateMini(
                                 .fillMaxWidth(animatedRequired)
                                 .clip(RoundedCornerShape(4.dp))
                                 .background(
-                                    if (requiredRate > 12f) ErrorRed
-                                    else if (requiredRate > 8f) WarningOrange
-                                    else WicketBlue
+                                    if (requiredRate > 12f) colors.statusLive
+                                    else if (requiredRate > 8f) colors.statusWarning
+                                    else colors.statusInfo
                                 )
                         )
                     }
@@ -846,9 +860,9 @@ fun RunRateMini(
                         text = String.format("%.2f", requiredRate),
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,
-                        color = if (requiredRate > 12f) ErrorRed
-                            else if (requiredRate > 8f) WarningOrange
-                            else WicketBlue,
+                        color = if (requiredRate > 12f) colors.statusLive
+                            else if (requiredRate > 8f) colors.statusWarning
+                            else colors.statusInfo,
                         modifier = Modifier.width(40.dp)
                     )
                 }

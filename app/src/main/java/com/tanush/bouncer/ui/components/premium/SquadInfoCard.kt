@@ -24,6 +24,7 @@ import com.tanush.bouncer.ui.components.CoilImage
 import com.tanush.bouncer.ui.components.GlassCard
 import com.tanush.bouncer.ui.components.GlassSurface
 import com.tanush.bouncer.ui.theme.*
+import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 
 /**
  * Squad info card showing team lineup.
@@ -59,6 +60,7 @@ fun SquadInfoCard(
     squadData: SquadInfoData,
     modifier: Modifier = Modifier,
 ) {
+    val colors = BouncerDesignSystem.colors
     val animatedProgress = remember { Animatable(0f) }
 
     LaunchedEffect(squadData) {
@@ -139,7 +141,7 @@ fun SquadInfoCard(
                 Column(horizontalAlignment = Alignment.End) {
                     Text(
                         text = squadData.recentForm,
-                        color = SuccessGreen,
+                        color = colors.statusSuccess,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Black,
                     )
@@ -159,11 +161,11 @@ fun SquadInfoCard(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                LeadershipBadge(Modifier.weight(1f), "CPT", squadData.captain, ShinyGoldDeep)
+                LeadershipBadge(Modifier.weight(1f), "CPT", squadData.captain, colors.goldPrimary)
                 if (squadData.viceCaptain != null) {
                     LeadershipBadge(Modifier.weight(1f), "VCP", squadData.viceCaptain, TextSecondary)
                 }
-                LeadershipBadge(Modifier.weight(1f), "WKT", squadData.wicketKeeper, ChartBlue)
+                LeadershipBadge(Modifier.weight(1f), "WKT", squadData.wicketKeeper, colors.statusInfo)
             }
 
             Spacer(modifier = Modifier.height(20.dp))
@@ -190,10 +192,10 @@ fun SquadInfoCard(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 val total = squadData.players.size.coerceAtLeast(1)
-                RoleBar(count = squadData.players.count { it.role == PlayerRole.BATSMAN }, total = total, color = BoundaryFour, label = "BAT")
-                RoleBar(count = squadData.players.count { it.role == PlayerRole.ALL_ROUNDER }, total = total, color = ShinyGoldDeep, label = "AR")
-                RoleBar(count = squadData.players.count { it.role == PlayerRole.BOWLER }, total = total, color = ChartBlue, label = "BOWL")
-                RoleBar(count = squadData.players.count { it.role == PlayerRole.WICKET_KEEPER }, total = total, color = SuccessGreen, label = "WK")
+                RoleBar(count = squadData.players.count { it.role == PlayerRole.BATSMAN }, total = total, color = colors.statusWarning, label = "BAT")
+                RoleBar(count = squadData.players.count { it.role == PlayerRole.ALL_ROUNDER }, total = total, color = colors.goldPrimary, label = "AR")
+                RoleBar(count = squadData.players.count { it.role == PlayerRole.BOWLER }, total = total, color = colors.statusInfo, label = "BOWL")
+                RoleBar(count = squadData.players.count { it.role == PlayerRole.WICKET_KEEPER }, total = total, color = colors.statusSuccess, label = "WK")
             }
 
             Spacer(modifier = Modifier.height(20.dp))
@@ -239,6 +241,7 @@ private fun LeadershipBadge(
     name: String,
     color: Color,
 ) {
+    val colors = BouncerDesignSystem.colors
     GlassSurface(
         modifier = modifier,
         importance = BouncerImportance.MINIMAL,
@@ -269,6 +272,7 @@ private fun RowScope.RoleBar(
     color: Color,
     label: String
 ) {
+    val colors = BouncerDesignSystem.colors
     val weight = (count.toFloat() / total).coerceAtLeast(0.05f)
     Box(
         modifier = Modifier
@@ -289,6 +293,7 @@ private fun PlayerChip(
     roleEmoji: String,
     modifier: Modifier = Modifier,
 ) {
+    val colors = BouncerDesignSystem.colors
     Row(
         modifier = modifier
             .clip(RoundedCornerShape(8.dp))
@@ -311,7 +316,7 @@ private fun PlayerChip(
                     modifier = Modifier.weight(1f, fill = false)
                 )
                 if (player.isCaptain) {
-                    Text(text = "©", color = ShinyGoldDeep, fontSize = 9.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(start = 2.dp))
+                    Text(text = "©", color = colors.goldPrimary, fontSize = 9.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(start = 2.dp))
                 }
             }
             Text(

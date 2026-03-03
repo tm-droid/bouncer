@@ -33,6 +33,7 @@ import com.tanush.bouncer.ui.theme.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
+import io.sentry.Sentry
 
 // ==========================================
 // BOUNCER - Micro Interactions Library
@@ -243,7 +244,7 @@ fun IconMorphAnimation(
     firstIcon: @Composable () -> Unit,
     secondIcon: @Composable () -> Unit,
     modifier: Modifier = Modifier,
-    animationDuration: Int = AnimationDuration.quick
+    animationDuration: Int = AnimationDuration.normal
 ) {
     val rotation by animateFloatAsState(
         targetValue = if (isFirstState) 0f else 180f,
@@ -297,7 +298,7 @@ fun IconMorphAnimation(
 @Composable
 fun RipplePulse(
     isActive: Boolean,
-    rippleColor: Color = ShinyGoldDeep,
+    rippleColor: Color = GoldPrimary,
     rippleCount: Int = 3,
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit
@@ -371,7 +372,7 @@ fun BounceClick(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enableHaptics: Boolean = true,
-    bounceScale: Float = PressScale.bouncy,
+    bounceScale: Float = PressScale.pronounced,
     content: @Composable () -> Unit
 ) {
     val hapticFeedback = LocalHapticFeedback.current
@@ -582,7 +583,7 @@ fun SwipeRevealActions(
 @Composable
 fun ProgressMorph(
     progress: Float,
-    progressColor: Color = ShinyGoldDeep,
+    progressColor: Color = GoldPrimary,
     backgroundColor: Color = Color.White.copy(alpha = 0.08f),
     modifier: Modifier = Modifier,
     height: Dp = 8.dp,
@@ -638,7 +639,7 @@ fun ProgressMorph(
 @Composable
 fun CircularProgressMorph(
     progress: Float,
-    progressColor: Color = ShinyGoldDeep,
+    progressColor: Color = GoldPrimary,
     modifier: Modifier = Modifier,
     size: Dp = 48.dp,
     strokeWidth: Dp = 4.dp,
@@ -659,7 +660,7 @@ fun CircularProgressMorph(
         targetValue = 360f,
         animationSpec = infiniteRepeatable(
             animation = tween(
-                durationMillis = AnimationDuration.rotate,
+                durationMillis = AnimationDuration.ambient,
                 easing = LinearEasing
             ),
             repeatMode = RepeatMode.Restart
@@ -692,7 +693,7 @@ fun CircularProgressMorph(
             modifier = Modifier
                 .size(size - strokeWidth * 2)
                 .background(
-                    color = BlackBackground,
+                    color = BackgroundBase,
                     shape = CircleShape
                 )
         )
@@ -708,7 +709,12 @@ fun Modifier.shimmerEffect(
     baseColor: Color = Color.White.copy(alpha = 0.08f)
 ): Modifier = composed {
     if (!isLoading) {
-        return@composed this
+        try {
+            return@composed this
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     val infiniteTransition = rememberInfiniteTransition(label = "shimmer")
@@ -737,7 +743,7 @@ fun Modifier.shimmerEffect(
 @Composable
 fun TouchFeedback(
     modifier: Modifier = Modifier,
-    feedbackColor: Color = ShinyGoldDeep.copy(alpha = 0.3f),
+    feedbackColor: Color = GoldPrimary.copy(alpha = 0.3f),
     onClick: () -> Unit,
     content: @Composable () -> Unit
 ) {
@@ -749,7 +755,7 @@ fun TouchFeedback(
     val rippleScale by animateFloatAsState(
         targetValue = if (showRipple) 3f else 0f,
         animationSpec = tween(
-            durationMillis = AnimationDuration.quick,
+            durationMillis = AnimationDuration.normal,
             easing = MicroEasing.StandardDecelerate
         ),
         label = "ripple_scale"
@@ -845,7 +851,7 @@ fun AnimatedScaleFade(
             animationSpec = MicroSpring.Bouncy
         ) + fadeIn(
             animationSpec = tween(
-                durationMillis = AnimationDuration.quick,
+                durationMillis = AnimationDuration.normal,
                 easing = MicroEasing.StandardDecelerate
             )
         ),

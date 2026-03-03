@@ -69,6 +69,7 @@ fun HighlightMomentsCard(
     modifier: Modifier = Modifier,
     onMomentClick: ((HighlightMoment) -> Unit)? = null
 ) {
+    val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "moments_animation")
     
     val glowAlpha by infiniteTransition.animateFloat(
@@ -115,12 +116,12 @@ fun HighlightMomentsCard(
                 }
                 
                 Surface(
-                    color = ShinyGoldDeep.copy(alpha = 0.2f),
+                    color = colors.goldPrimary.copy(alpha = 0.2f),
                     shape = RoundedCornerShape(12.dp)
                 ) {
                     Text(
                         text = "${moments.size} MOMENTS",
-                        color = ShinyGoldMid,
+                        color = colors.goldDark,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 1.sp,
@@ -218,7 +219,7 @@ fun HighlightMomentsCard(
                 ) {
                     Text(
                         text = "View all ${moments.size} moments",
-                        color = ChartBlue,
+                        color = colors.statusInfo,
                         fontSize = 13.sp
                     )
                 }
@@ -314,7 +315,12 @@ private fun MomentRow(
 
 @Composable
 private fun ImpactIndicator(impact: Float) {
+    val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "impact_animation")
+    
+    // Capture colors for Canvas scope
+    val statusLiveColor = colors.statusLive
+    val statusWarningColor = colors.statusWarning
     
     val pulseScale by infiniteTransition.animateFloat(
         initialValue = 1f,
@@ -351,8 +357,8 @@ private fun ImpactIndicator(impact: Float) {
                 // Impact arc
                 val sweepAngle = 360f * impact
                 val impactColor = when {
-                    impact > 0.8f -> WicketRed
-                    impact > 0.5f -> WarningYellow
+                    impact > 0.8f -> statusLiveColor
+                    impact > 0.5f -> statusWarningColor
                     else -> Color.Gray
                 }
                 
@@ -394,6 +400,7 @@ fun FeaturedMomentCard(
     onLike: (() -> Unit)? = null,
     onShare: (() -> Unit)? = null
 ) {
+    val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "featured_animation")
     
     val borderPhase by infiniteTransition.animateFloat(
@@ -467,7 +474,7 @@ fun FeaturedMomentCard(
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
                             text = "MOMENT OF THE MATCH",
-                            color = ShinyGoldMid,
+                            color = colors.goldDark,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 2.sp
@@ -558,7 +565,7 @@ fun FeaturedMomentCard(
                             Icon(
                                 imageVector = Icons.Filled.FavoriteBorder,
                                 contentDescription = "Like",
-                                tint = WicketRed.copy(alpha = 0.7f)
+                                tint = colors.statusLive.copy(alpha = 0.7f)
                             )
                         }
                     }
@@ -567,7 +574,7 @@ fun FeaturedMomentCard(
                             Icon(
                                 imageVector = Icons.Filled.Share,
                                 contentDescription = "Share",
-                                tint = ChartBlue.copy(alpha = 0.7f)
+                                tint = colors.statusInfo.copy(alpha = 0.7f)
                             )
                         }
                     }

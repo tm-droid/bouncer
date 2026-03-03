@@ -10,6 +10,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -45,10 +46,11 @@ fun LiveCommentaryFeedCard(
     batsmanName: String = "",
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val accentColor = when {
-        isWicket -> WicketRed
-        isBoundary && runs == "6" -> BoundarySix
-        isBoundary -> BoundaryFour
+        isWicket -> colors.statusLive
+        isBoundary && runs == "6" -> colors.goldPrimary
+        isBoundary -> colors.statusInfo
         else -> Color.White.copy(alpha = 0.6f)
     }
     
@@ -68,11 +70,11 @@ fun LiveCommentaryFeedCard(
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 4.dp),
         shape = RoundedCornerShape(16.dp),
-        color = Color.White.copy(alpha = 0.05f),
+        color = colors.glassSurface,
         border = BorderStroke(
             0.5.dp,
             if (isWicket || isBoundary) accentColor.copy(alpha = pulseAlpha) 
-            else Gold400.copy(alpha = 0.12f)
+            else colors.goldPrimary.copy(alpha = 0.12f)
         )
     ) {
         Row(
@@ -89,7 +91,7 @@ fun LiveCommentaryFeedCard(
                     .background(
                         if (isWicket || isBoundary) 
                             accentColor.copy(alpha = 0.15f) 
-                        else Color.White.copy(alpha = 0.08f)
+                        else colors.glassBorderHighlight
                     )
                     .border(
                         1.dp,
@@ -119,7 +121,7 @@ fun LiveCommentaryFeedCard(
                     if (bowlerName.isNotEmpty() && batsmanName.isNotEmpty()) {
                         Text(
                             text = "$bowlerName to $batsmanName",
-                            color = Color.White.copy(alpha = 0.5f),
+                            color = colors.textMuted,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.sp
@@ -146,7 +148,7 @@ fun LiveCommentaryFeedCard(
                 
                 Text(
                     text = description,
-                    color = Color.White.copy(alpha = 0.85f),
+                    color = colors.textPrimary.copy(alpha = 0.85f),
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Medium,
                     lineHeight = 18.sp,
@@ -170,6 +172,7 @@ fun QuickMatchStatsBar(
     lastWicket: String = "",
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     LazyRow(
         modifier = modifier.fillMaxWidth(),
         contentPadding = PaddingValues(horizontal = 16.dp),
@@ -180,7 +183,7 @@ fun QuickMatchStatsBar(
                 label = "CRR",
                 value = currentRunRate,
                 icon = Icons.Default.Speed,
-                accentColor = ShinyGoldDeep
+                accentColor = colors.goldPrimary
             )
         }
         
@@ -189,8 +192,8 @@ fun QuickMatchStatsBar(
                 QuickStatChip(
                     label = "RRR",
                     value = requiredRunRate,
-                    icon = Icons.Default.TrendingUp,
-                    accentColor = ChartBlue
+                    icon = Icons.AutoMirrored.Filled.TrendingUp,
+                    accentColor = colors.statusInfo
                 )
             }
         }
@@ -201,7 +204,7 @@ fun QuickMatchStatsBar(
                     label = "Partnership",
                     value = partnership,
                     icon = Icons.Default.Handshake,
-                    accentColor = SuccessGreen
+                    accentColor = colors.statusSuccess
                 )
             }
         }
@@ -212,7 +215,7 @@ fun QuickMatchStatsBar(
                     label = "Last Wkt",
                     value = lastWicket,
                     icon = Icons.Default.Close,
-                    accentColor = WicketRed
+                    accentColor = colors.statusLive
                 )
             }
         }
@@ -226,6 +229,7 @@ private fun QuickStatChip(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     accentColor: Color
 ) {
+    val colors = BouncerDesignSystem.colors
     Surface(
         shape = RoundedCornerShape(12.dp),
         color = Color.White.copy(alpha = 0.06f),
@@ -245,14 +249,14 @@ private fun QuickStatChip(
             Column {
                 Text(
                     text = label.uppercase(),
-                    color = Color.White.copy(alpha = 0.5f),
+                    color = colors.textMuted,
                     fontSize = 8.sp,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 1.sp
                 )
                 Text(
                     text = value,
-                    color = Color.White,
+                    color = colors.textPrimary,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Black
                 )
@@ -270,10 +274,11 @@ fun WinPredictionGauge(
     team1Name: String,
     team2Name: String,
     team1Probability: Float,
-    team1Color: Color = ChartBlue,
-    team2Color: Color = WicketRed,
+    team1Color: Color = StatusInfo,
+    team2Color: Color = StatusLive,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val team2Probability = 1f - team1Probability
     
     val animatedTeam1 by animateFloatAsState(
@@ -287,7 +292,7 @@ fun WinPredictionGauge(
             .fillMaxWidth()
             .padding(horizontal = 16.dp),
         shape = RoundedCornerShape(20.dp),
-        color = Color.White.copy(alpha = 0.05f),
+        color = colors.glassSurface,
         border = BorderStroke(0.5.dp, GoldHairline)
     ) {
         Column(
@@ -299,7 +304,7 @@ fun WinPredictionGauge(
             ) {
                 Text(
                     text = "WIN PREDICTION",
-                    color = ShinyGoldDeep,
+                    color = colors.goldPrimary,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Black,
                     letterSpacing = 2.sp
@@ -307,7 +312,7 @@ fun WinPredictionGauge(
                 Icon(
                     imageVector = Icons.Default.AutoAwesome,
                     contentDescription = null,
-                    tint = ShinyGoldDeep,
+                    tint = colors.goldPrimary,
                     modifier = Modifier.size(16.dp)
                 )
             }
@@ -329,7 +334,7 @@ fun WinPredictionGauge(
                     )
                     Text(
                         text = "${(team1Probability * 100).toInt()}%",
-                        color = Color.White,
+                        color = colors.textPrimary,
                         fontSize = 28.sp,
                         fontWeight = FontWeight.Black
                     )
@@ -345,7 +350,7 @@ fun WinPredictionGauge(
                     )
                     Text(
                         text = "${(team2Probability * 100).toInt()}%",
-                        color = Color.White,
+                        color = colors.textPrimary,
                         fontSize = 28.sp,
                         fontWeight = FontWeight.Black
                     )
@@ -409,6 +414,7 @@ fun TeamFormIndicator(
     recentForm: List<Boolean>, // true = Win, false = Loss
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     Row(
         modifier = modifier,
         verticalAlignment = Alignment.CenterVertically,
@@ -416,7 +422,7 @@ fun TeamFormIndicator(
     ) {
         Text(
             text = "FORM",
-            color = Color.White.copy(alpha = 0.4f),
+            color = colors.textMuted,
             fontSize = 9.sp,
             fontWeight = FontWeight.Bold,
             letterSpacing = 1.sp
@@ -427,11 +433,11 @@ fun TeamFormIndicator(
                 modifier = Modifier
                     .size(8.dp)
                     .clip(CircleShape)
-                    .background(if (isWin) SuccessGreen else WicketRed)
+                    .background(if (isWin) colors.statusSuccess else colors.statusLive)
                     .shadow(
                         elevation = 2.dp,
                         shape = CircleShape,
-                        spotColor = if (isWin) SuccessGreen else WicketRed
+                        spotColor = if (isWin) colors.statusSuccess else colors.statusLive
                     )
             )
         }
@@ -448,6 +454,7 @@ fun OverByOverMiniChart(
     maxOvers: Int = 20,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val maxRuns = oversData.maxOrNull() ?: 1
     
     Surface(
@@ -455,8 +462,8 @@ fun OverByOverMiniChart(
             .fillMaxWidth()
             .padding(horizontal = 16.dp),
         shape = RoundedCornerShape(16.dp),
-        color = Color.White.copy(alpha = 0.05f),
-        border = BorderStroke(0.5.dp, Gold400.copy(alpha = 0.12f))
+        color = colors.glassSurface,
+        border = BorderStroke(0.5.dp, colors.goldPrimary.copy(alpha = 0.12f))
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(
@@ -466,14 +473,14 @@ fun OverByOverMiniChart(
             ) {
                 Text(
                     text = "RUNS PER OVER",
-                    color = Color.White.copy(alpha = 0.5f),
+                    color = colors.textMuted,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Black,
                     letterSpacing = 1.5.sp
                 )
                 Text(
                     text = "${oversData.size} overs",
-                    color = ShinyGoldDeep,
+                    color = colors.goldPrimary,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -492,10 +499,10 @@ fun OverByOverMiniChart(
                 oversData.forEachIndexed { index, runs ->
                     val height = (runs.toFloat() / maxRuns.coerceAtLeast(1)) * 60
                     val color = when {
-                        runs >= 12 -> BoundarySix
-                        runs >= 8 -> BoundaryFour
+                        runs >= 12 -> colors.goldPrimary
+                        runs >= 8 -> colors.statusInfo
                         runs <= 4 -> Color.White.copy(alpha = 0.3f)
-                        else -> ShinyGoldDeep
+                        else -> colors.goldPrimary
                     }
                     
                     Box(
@@ -525,7 +532,8 @@ fun InningsSummaryCard(
     isCurrentInnings: Boolean = false,
     modifier: Modifier = Modifier
 ) {
-    val borderColor = if (isCurrentInnings) ShinyGoldDeep else Color.White.copy(alpha = 0.08f)
+    val colors = BouncerDesignSystem.colors
+    val borderColor = if (isCurrentInnings) colors.goldPrimary else colors.glassBorderHighlight
     
     val infiniteTransition = rememberInfiniteTransition(label = "inningsPulse")
     val pulseAlpha by infiniteTransition.animateFloat(
@@ -543,7 +551,7 @@ fun InningsSummaryCard(
             .fillMaxWidth()
             .padding(horizontal = 16.dp),
         shape = RoundedCornerShape(16.dp),
-        color = if (isCurrentInnings) Color.White.copy(alpha = 0.08f) else Color.White.copy(alpha = 0.05f),
+        color = if (isCurrentInnings) colors.glassBorderHighlight else colors.glassSurface,
         border = BorderStroke(
             if (isCurrentInnings) 1.dp else 0.5.dp,
             if (isCurrentInnings) borderColor.copy(alpha = pulseAlpha) else borderColor
@@ -566,12 +574,12 @@ fun InningsSummaryCard(
                             modifier = Modifier
                                 .size(8.dp)
                                 .clip(CircleShape)
-                                .background(LiveBlue)
+                                .background(colors.statusInfo)
                         )
                     }
                     Text(
                         text = teamName.uppercase(),
-                        color = Color.White,
+                        color = colors.textPrimary,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Black,
                         letterSpacing = 1.sp
@@ -595,7 +603,7 @@ fun InningsSummaryCard(
                 ) {
                     Text(
                         text = score,
-                        color = if (isCurrentInnings) ShinyGoldDeep else Color.White,
+                        color = if (isCurrentInnings) colors.goldPrimary else colors.textPrimary,
                         fontSize = 28.sp,
                         fontWeight = FontWeight.Black
                     )

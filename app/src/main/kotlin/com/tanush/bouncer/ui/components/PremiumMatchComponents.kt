@@ -40,6 +40,7 @@ fun HeroEliteLiveCard(
     match: CricketMatch,
     onClick: () -> Unit
 ) {
+    val colors = BouncerDesignSystem.colors
     val team1 = match.teams.firstOrNull()
     val team2 = match.teams.getOrNull(1)
     
@@ -56,10 +57,10 @@ fun HeroEliteLiveCard(
                 spotColor = team1Color.copy(alpha = 0.4f)
             ),
         shape = RoundedCornerShape(CornerRadius.lg),
-        color = Color.White.copy(alpha = 0.05f),
+        color = colors.glassSurface,
         border = BorderStroke(
             BorderWidth.hairline, 
-            Brush.linearGradient(colors = listOf(GoldHairline, Color.White.copy(alpha = 0.05f), team1Color.copy(alpha = 0.2f)))
+            Brush.linearGradient(colors = listOf(colors.goldPrimary.copy(alpha = 0.3f), colors.glassSurface, team1Color.copy(alpha = 0.2f)))
         ),
         onClick = onClick
     ) {
@@ -94,14 +95,14 @@ fun HeroEliteLiveCard(
                     Column {
                         Text(
                             match.matchTitle.uppercase(),
-                            color = ShinyGoldDeep,
+                            color = colors.goldPrimary,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Black,
                             letterSpacing = 2.sp
                         )
                         Text(
                             "LIVE BROADCAST FEED",
-                            color = TextSecondary,
+                            color = colors.textSecondary,
                             fontSize = 9.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.sp
@@ -123,18 +124,18 @@ fun HeroEliteLiveCard(
                     
                     // Technical Divider
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("VS", color = TextMuted, fontSize = 12.sp, fontWeight = FontWeight.Black)
+                        Text("VS", color = colors.textMuted, fontSize = 12.sp, fontWeight = FontWeight.Black)
                         Box(
                             modifier = Modifier
                                 .padding(top = 8.dp)
                                 .clip(RoundedCornerShape(6.dp))
-                                .background(ShinyGoldDeep.copy(alpha = 0.1f))
-                                .border(0.5.dp, ShinyGoldDeep.copy(alpha = 0.2f), RoundedCornerShape(6.dp))
+                                .background(colors.goldPrimary.copy(alpha = 0.1f))
+                                .border(0.5.dp, colors.goldPrimary.copy(alpha = 0.2f), RoundedCornerShape(6.dp))
                                 .padding(horizontal = 10.dp, vertical = 4.dp)
                         ) {
                             Text(
                                 "CRR ${match.score?.currentRunRate ?: "0.00"}",
-                                color = ShinyGoldDeep,
+                                color = colors.goldPrimary,
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Black
                             )
@@ -151,15 +152,15 @@ fun HeroEliteLiveCard(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(16.dp))
-                        .background(Color.White.copy(alpha = 0.03f))
-                        .border(0.5.dp, Color.White.copy(alpha = 0.05f), RoundedCornerShape(16.dp))
+                        .background(colors.glassBackground.copy(alpha = 0.03f))
+                        .border(0.5.dp, colors.glassSurface, RoundedCornerShape(16.dp))
                         .padding(16.dp)
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Icon(Icons.Default.AutoAwesome, null, tint = ShinyGoldDeep.copy(alpha = 0.6f), modifier = Modifier.size(16.dp))
+                        Icon(Icons.Default.AutoAwesome, null, tint = colors.goldPrimary.copy(alpha = 0.6f), modifier = Modifier.size(16.dp))
                         Text(
                             match.currentStatus,
-                            color = Color.White,
+                            color = colors.textPrimary,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Medium,
                             maxLines = 1,
@@ -174,6 +175,7 @@ fun HeroEliteLiveCard(
 
 @Composable
 private fun HeroTeamTechnicalDisplay(team: CricketMatch.Team?, isLeft: Boolean) {
+    val colors = BouncerDesignSystem.colors
     val teamColor: Color = remember(team?.name) { getTeamColor(team?.name) }
     
     Column(
@@ -184,11 +186,11 @@ private fun HeroTeamTechnicalDisplay(team: CricketMatch.Team?, isLeft: Boolean) 
             modifier = Modifier
                 .size(72.dp)
                 .clip(CircleShape)
-                .background(Color.White.copy(alpha = 0.08f))
+                .background(colors.glassBorderHighlight)
                 .border(
                     width = 2.dp, 
                     brush = Brush.verticalGradient(
-                        colors = listOf(if (team?.isBatting == true) ShinyGoldDeep else Color.White.copy(alpha = 0.1f), Color.Transparent)
+                        colors = listOf(if (team?.isBatting == true) colors.goldPrimary else Color.White.copy(alpha = 0.1f), Color.Transparent)
                     ), 
                     shape = CircleShape
                 ),
@@ -206,14 +208,14 @@ private fun HeroTeamTechnicalDisplay(team: CricketMatch.Team?, isLeft: Boolean) 
         Column(horizontalAlignment = if (isLeft) Alignment.Start else Alignment.End) {
             Text(
                 text = team?.acronym ?: "---", 
-                color = Color.White, 
+                color = colors.textPrimary, 
                 fontSize = 20.sp, 
                 fontWeight = FontWeight.Black,
                 letterSpacing = (-0.5).sp
             )
             Text(
                 text = team?.score ?: "---", 
-                color = if (team?.isBatting == true) ShinyGoldDeep else TextSecondary, 
+                color = if (team?.isBatting == true) colors.goldPrimary else colors.textSecondary, 
                 fontSize = 18.sp, 
                 fontWeight = FontWeight.Black,
                 letterSpacing = (-0.5).sp
@@ -224,6 +226,7 @@ private fun HeroTeamTechnicalDisplay(team: CricketMatch.Team?, isLeft: Boolean) 
 
 @Composable
 private fun LiveBadgeTechnical() {
+    val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "badgePulse")
     val alphaValue by infiniteTransition.animateFloat(
         initialValue = 1f, targetValue = 0.4f,
@@ -235,21 +238,21 @@ private fun LiveBadgeTechnical() {
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .clip(RoundedCornerShape(6.dp))
-            .background(Color.Red.copy(alpha = 0.1f))
-            .border(0.5.dp, Color.Red.copy(alpha = 0.2f), RoundedCornerShape(6.dp))
+            .background(colors.statusLive.copy(alpha = 0.1f))
+            .border(0.5.dp, colors.statusLive.copy(alpha = 0.2f), RoundedCornerShape(6.dp))
             .padding(horizontal = 10.dp, vertical = 6.dp)
     ) {
         Box(
             modifier = Modifier
                 .size(8.dp)
                 .drawBehind {
-                    drawCircle(color = Color.Red.copy(alpha = alphaValue))
+                    drawCircle(color = colors.statusLive.copy(alpha = alphaValue))
                 }
         )
         Spacer(modifier = Modifier.width(8.dp))
         Text(
             text = "LIVE",
-            color = Color.Red,
+            color = colors.statusLive,
             fontSize = 10.sp,
             fontWeight = FontWeight.Black,
             letterSpacing = 1.5.sp
@@ -265,6 +268,7 @@ fun VipBoxRail(
     matches: List<CricketMatch>,
     onMatchClick: (CricketMatch) -> Unit
 ) {
+    val colors = BouncerDesignSystem.colors
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(
             text = "EXECUTIVE SUITE",
@@ -288,7 +292,7 @@ fun VipBoxRail(
                 ) {
                     Box(modifier = Modifier.fillMaxSize()) {
                         // Subtle Corner Glow
-                        Box(modifier = Modifier.size(60.dp).align(Alignment.TopStart).blur(30.dp).background(ShinyGoldDeep.copy(alpha = 0.03f), CircleShape))
+                        Box(modifier = Modifier.size(60.dp).align(Alignment.TopStart).blur(30.dp).background(colors.goldPrimary.copy(alpha = 0.03f), CircleShape))
                         
                         Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.SpaceBetween) {
                             Text(
@@ -307,7 +311,7 @@ fun VipBoxRail(
                                                 .size(28.dp)
                                                 .clip(CircleShape)
                                                 .background(Color.White.copy(alpha = 0.05f))
-                                                .border(0.5.dp, if (team.isBatting) ShinyGoldDeep else Color.Transparent, CircleShape)
+                                                .border(0.5.dp, if (team.isBatting) colors.goldPrimary else Color.Transparent, CircleShape)
                                         ) {
                                             CoilImage(
                                                 model = TeamLogoManager.getBestLogoUrl(team.name, team.logoUrl, 64, 64), 
@@ -315,11 +319,11 @@ fun VipBoxRail(
                                                 modifier = Modifier.padding(4.dp)
                                             )
                                         }
-                                        Text(team.acronym, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                                        Text(team.acronym, color = colors.textPrimary, fontSize = 15.sp, fontWeight = FontWeight.Bold)
                                         Spacer(modifier = Modifier.weight(1f))
                                         Text(
                                             team.score, 
-                                            color = if (team.isBatting) ShinyGoldDeep else TextSecondary, 
+                                            color = if (team.isBatting) colors.goldPrimary else colors.textSecondary, 
                                             fontSize = 15.sp, 
                                             fontWeight = FontWeight.Black
                                         )
@@ -339,21 +343,22 @@ fun VipBoxRail(
  */
 @Composable
 fun EliteMarketInsights(liveMatch: CricketMatch?) {
+    val colors = BouncerDesignSystem.colors
     Surface(
         modifier = Modifier.padding(horizontal = 20.dp).fillMaxWidth(),
         shape = RoundedCornerShape(28.dp),
-        color = CardDarkBlue.copy(alpha = 0.3f),
-        border = BorderStroke(0.5.dp, ShinyGoldDeep.copy(alpha = 0.1f))
+        color = colors.surface1.copy(alpha = 0.3f),
+        border = BorderStroke(0.5.dp, colors.goldPrimary.copy(alpha = 0.1f))
     ) {
         Column(modifier = Modifier.padding(24.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Icon(Icons.Default.Analytics, null, tint = ShinyGoldDeep, modifier = Modifier.size(22.dp))
-                Text("AI MARKET INTELLIGENCE", color = ShinyGoldDeep, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.5.sp)
+                Icon(Icons.Default.Analytics, null, tint = colors.goldPrimary, modifier = Modifier.size(22.dp))
+                Text("AI MARKET INTELLIGENCE", color = colors.goldPrimary, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.5.sp)
             }
             Spacer(modifier = Modifier.height(16.dp))
             Text(
                 "Match momentum favoring ${liveMatch?.teams?.firstOrNull()?.name ?: "the host"} following high-impact middle overs. Win probability shifted +12.4% in the last 15 balls.",
-                color = Color.White.copy(alpha = 0.8f),
+                color = colors.textPrimary.copy(alpha = 0.8f),
                 fontSize = 15.sp,
                 lineHeight = 24.sp,
                 fontWeight = FontWeight.Medium
@@ -367,20 +372,21 @@ fun EliteMarketInsights(liveMatch: CricketMatch?) {
  */
 @Composable
 fun PlayerOfTheMomentCard(liveMatch: CricketMatch?) {
+    val colors = BouncerDesignSystem.colors
     val batsman = liveMatch?.scrapedBatsmen?.firstOrNull() ?: return
     
     Surface(
         modifier = Modifier.padding(horizontal = 20.dp).fillMaxWidth().height(180.dp),
         shape = RoundedCornerShape(28.dp),
         color = Color.White.copy(alpha = 0.05f),
-        border = BorderStroke(0.5.dp, GoldHairline)
+        border = BorderStroke(0.5.dp, colors.goldPrimary.copy(alpha = 0.3f))
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             // Background Decorative Star
             Icon(
                 Icons.Default.Stars, 
                 null, 
-                tint = ShinyGoldDeep.copy(alpha = 0.02f), 
+                tint = colors.goldPrimary.copy(alpha = 0.02f), 
                 modifier = Modifier.size(240.dp).align(Alignment.CenterEnd).graphicsLayer { translationX = 100f }
             )
             
@@ -389,21 +395,21 @@ fun PlayerOfTheMomentCard(liveMatch: CricketMatch?) {
                     modifier = Modifier
                         .size(96.dp)
                         .clip(CircleShape)
-                        .background(ShinyGoldDeep.copy(alpha = 0.1f))
-                        .border(1.5.dp, ShinyGoldDeep, CircleShape),
+                        .background(colors.goldPrimary.copy(alpha = 0.1f))
+                        .border(1.5.dp, colors.goldPrimary, CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(Icons.Default.Person, null, tint = ShinyGoldDeep, modifier = Modifier.size(48.dp))
+                    Icon(Icons.Default.Person, null, tint = colors.goldPrimary, modifier = Modifier.size(48.dp))
                 }
                 
                 Spacer(modifier = Modifier.width(24.dp))
                 
                 Column {
-                    Text("PLAYER OF THE MOMENT", color = ShinyGoldDeep, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.5.sp)
-                    Text(batsman.name, color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Black, letterSpacing = (-0.5).sp)
+                    Text("PLAYER OF THE MOMENT", color = colors.goldPrimary, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.5.sp)
+                    Text(batsman.name, color = colors.textPrimary, fontSize = 24.sp, fontWeight = FontWeight.Black, letterSpacing = (-0.5).sp)
                     Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Text(batsman.runs, color = Color.White, fontSize = 32.sp, fontWeight = FontWeight.Black)
-                        Text("OFF ${batsman.balls} BALLS", color = TextSecondary, fontSize = 13.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 5.dp))
+                        Text(batsman.runs, color = colors.textPrimary, fontSize = 32.sp, fontWeight = FontWeight.Black)
+                        Text("OFF ${batsman.balls} BALLS", color = colors.textSecondary, fontSize = 13.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 5.dp))
                     }
                 }
             }

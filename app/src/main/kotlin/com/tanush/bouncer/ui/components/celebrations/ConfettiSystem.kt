@@ -14,6 +14,7 @@ import com.tanush.bouncer.ui.theme.*
 import kotlinx.coroutines.delay
 import kotlin.math.*
 import kotlin.random.Random
+import io.sentry.Sentry
 
 /**
  * Shape types for confetti particles
@@ -49,11 +50,11 @@ data class ConfettiParticle(
 data class ConfettiConfig(
     val particleCount: Int = 100,
     val colors: List<Color> = listOf(
-        ShinyGoldDeep,
-        ShinyGoldMid,
+        GoldPrimary,
+        GoldLight,
         ChartPurple,
-        LiveBlue,
-        SuccessGreen
+        StatusInfo,
+        StatusSuccess
     ),
     val minSpeed: Float = 5f,
     val maxSpeed: Float = 15f,
@@ -211,7 +212,7 @@ fun ConfettiBurst(
     modifier: Modifier = Modifier,
     burstPoint: Offset,
     particleCount: Int = 80,
-    colors: List<Color> = listOf(ShinyGoldDeep, ShinyGoldMid, LiveBlue, ChartPurple),
+    colors: List<Color> = listOf(GoldPrimary, GoldLight, StatusInfo, ChartPurple),
     isActive: Boolean = true,
     onComplete: () -> Unit = {}
 ) {
@@ -239,7 +240,7 @@ fun ConfettiBurst(
 fun ConfettiRain(
     modifier: Modifier = Modifier,
     particleCount: Int = 150,
-    colors: List<Color> = listOf(ShinyGoldDeep, ShinyGoldMid, SuccessGreen, LiveBlue),
+    colors: List<Color> = listOf(GoldPrimary, GoldLight, StatusSuccess, StatusInfo),
     duration: Long = 4000L,
     isActive: Boolean = true,
     onComplete: () -> Unit = {}
@@ -316,7 +317,7 @@ fun ConfettiCannon(
     modifier: Modifier = Modifier,
     fromLeft: Boolean = true,
     particleCount: Int = 60,
-    colors: List<Color> = listOf(ShinyGoldDeep, ShinyGoldMid, ChartPurple, SuccessGreen),
+    colors: List<Color> = listOf(GoldPrimary, GoldLight, ChartPurple, StatusSuccess),
     isActive: Boolean = true,
     onComplete: () -> Unit = {}
 ) {
@@ -399,9 +400,9 @@ fun CenturyConfetti(
     val centuryColors = listOf(
         Color(0xFFFFD700), // Gold
         Color(0xFFFFA500), // Orange Gold
-        ShinyGoldDeep,
-        ShinyGoldMid,
-        ShinyGoldLight,
+        GoldPrimary,
+        GoldDark,
+        GoldLight,
         Color.White
     )
     
@@ -447,7 +448,7 @@ fun CenturyConfetti(
 fun WicketConfetti(
     modifier: Modifier = Modifier,
     wicketCount: Int = 1,
-    teamColor: Color = LiveBlue,
+    teamColor: Color = StatusInfo,
     isActive: Boolean = true,
     onComplete: () -> Unit = {}
 ) {
@@ -466,8 +467,8 @@ fun WicketConfetti(
             Color.White
         )
         else -> listOf(
-            ErrorRed,
-            WicketRed,
+            StatusLive,
+            StatusLive,
             teamColor,
             Color.White
         )

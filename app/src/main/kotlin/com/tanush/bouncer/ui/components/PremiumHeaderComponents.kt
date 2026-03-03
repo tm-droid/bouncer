@@ -6,6 +6,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.TrendingDown
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -36,6 +38,7 @@ fun PremiumAnimatedHeader(
     selectedStatus: String = "Live",
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "header")
     
     val shimmerOffset by infiniteTransition.animateFloat(
@@ -80,7 +83,7 @@ fun PremiumAnimatedHeader(
                 drawCircle(
                     brush = Brush.radialGradient(
                         colors = listOf(
-                            ShinyGoldDeep.copy(alpha = 0.05f * glowPulse),
+                            colors.goldPrimary.copy(alpha = 0.05f * glowPulse),
                             Color.Transparent
                         ),
                         center = Offset(size.width * 0.8f, size.height * 0.3f),
@@ -96,7 +99,7 @@ fun PremiumAnimatedHeader(
                 drawCircle(
                     brush = Brush.radialGradient(
                         colors = listOf(
-                            ChartPurple.copy(alpha = 0.03f * glowPulse),
+                            colors.statusInfo.copy(alpha = 0.03f * glowPulse),
                             Color.Transparent
                         ),
                         center = Offset(size.width * 0.2f, size.height * 0.7f),
@@ -112,9 +115,9 @@ fun PremiumAnimatedHeader(
                 brush = Brush.linearGradient(
                     colors = listOf(
                         Color.Transparent,
-                        ShinyGoldDeep.copy(alpha = 0.3f * glowPulse),
-                        ShinyGoldLight.copy(alpha = 0.5f * glowPulse),
-                        ShinyGoldDeep.copy(alpha = 0.3f * glowPulse),
+                        colors.goldPrimary.copy(alpha = 0.3f * glowPulse),
+                        colors.goldLight.copy(alpha = 0.5f * glowPulse),
+                        colors.goldPrimary.copy(alpha = 0.3f * glowPulse),
                         Color.Transparent
                     ),
                     start = Offset(shimmerOffset * size.width * 2 - size.width * 0.5f, 0f),
@@ -154,7 +157,7 @@ fun PremiumAnimatedHeader(
                     fontSize = 32.sp,
                     fontWeight = FontWeight.Black,
                     letterSpacing = (-1).sp,
-                    color = Color.White,
+                    color = colors.textPrimary,
                     modifier = Modifier
                         .graphicsLayer {
                             alpha = 0.9f + (glowPulse - 0.6f) * 0.25f
@@ -186,10 +189,11 @@ private fun StatusBadge(
     glowPulse: Float
 ) {
     val isLive = status.equals("Live", ignoreCase = true)
+    val colors = BouncerDesignSystem.colors
     val badgeColor = when {
-        isLive -> LiveRedPulse
-        status.equals("Upcoming", ignoreCase = true) -> ChartBlue
-        else -> SuccessGreen
+        isLive -> colors.statusLive
+        status.equals("Upcoming", ignoreCase = true) -> colors.statusInfo
+        else -> colors.statusSuccess
     }
     
     Surface(
@@ -255,6 +259,7 @@ fun PremiumSectionHeader(
     action: @Composable (() -> Unit)? = null
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "sectionHeader")
+    val colors = BouncerDesignSystem.colors
     val shimmerOffset by infiniteTransition.animateFloat(
         initialValue = 0f,
         targetValue = 1f,
@@ -280,9 +285,9 @@ fun PremiumSectionHeader(
                 .background(
                     Brush.verticalGradient(
                         colors = listOf(
-                            ShinyGoldLight.copy(alpha = 0.5f + shimmerOffset * 0.3f),
-                            ShinyGoldDeep,
-                            ShinyGoldDark.copy(alpha = 0.7f)
+                            colors.goldLight.copy(alpha = 0.5f + shimmerOffset * 0.3f),
+                            colors.goldPrimary,
+                            colors.goldDark.copy(alpha = 0.7f)
                         )
                     )
                 )
@@ -302,7 +307,7 @@ fun PremiumSectionHeader(
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 1.5.sp,
-                    color = ShinyGoldDeep
+                    color = colors.goldPrimary
                 )
             }
             
@@ -311,7 +316,7 @@ fun PremiumSectionHeader(
                     text = subtitle,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Normal,
-                    color = TextTertiary,
+                    color = colors.textTertiary,
                     modifier = Modifier.padding(top = 2.dp)
                 )
             }
@@ -332,7 +337,7 @@ fun PremiumStatCard(
     modifier: Modifier = Modifier,
     trend: StatTrend = StatTrend.NEUTRAL,
     trendValue: String? = null,
-    accentColor: Color = ShinyGoldDeep
+    accentColor: Color = GoldPrimary
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "statCard")
     val glowAlpha by infiniteTransition.animateFloat(
@@ -422,7 +427,7 @@ fun PremiumStatCard(
                         fontSize = 28.sp,
                         fontWeight = FontWeight.Black,
                         letterSpacing = (-0.5).sp,
-                        color = Color.White
+                        color = TextPrimary
                     )
                 }
             }
@@ -438,8 +443,8 @@ private fun TrendIndicator(
     value: String
 ) {
     val (icon, color) = when (trend) {
-        StatTrend.UP -> Icons.Default.TrendingUp to SuccessGreen
-        StatTrend.DOWN -> Icons.Default.TrendingDown to ErrorRed
+        StatTrend.UP -> Icons.AutoMirrored.Filled.TrendingUp to StatusSuccess
+        StatTrend.DOWN -> Icons.AutoMirrored.Filled.TrendingDown to StatusLive
         StatTrend.NEUTRAL -> Icons.Default.Remove to TextTertiary
     }
     
@@ -518,6 +523,7 @@ private fun CountdownUnit(
     label: String,
     isAnimated: Boolean = false
 ) {
+    val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "countdown")
     val pulse by infiniteTransition.animateFloat(
         initialValue = 1f,
@@ -547,7 +553,7 @@ private fun CountdownUnit(
                 text = value.toString().padStart(2, '0'),
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Black,
-                color = ShinyGoldDeep,
+                color = colors.goldPrimary,
                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
             )
         }
@@ -557,13 +563,14 @@ private fun CountdownUnit(
             fontSize = 9.sp,
             fontWeight = FontWeight.Medium,
             letterSpacing = 1.sp,
-            color = TextMuted
+            color = colors.textMuted
         )
     }
 }
 
 @Composable
 private fun CountdownSeparator() {
+    val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "separator")
     val alpha by infiniteTransition.animateFloat(
         initialValue = 0.3f,
@@ -579,7 +586,7 @@ private fun CountdownSeparator() {
         text = ":",
         fontSize = 20.sp,
         fontWeight = FontWeight.Bold,
-        color = ShinyGoldDeep.copy(alpha = alpha),
+        color = colors.goldPrimary.copy(alpha = alpha),
         modifier = Modifier.padding(bottom = 16.dp)
     )
 }

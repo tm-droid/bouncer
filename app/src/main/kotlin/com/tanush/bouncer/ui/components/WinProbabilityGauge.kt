@@ -36,12 +36,17 @@ fun WinProbabilityGauge(
     team1Name: String,
     team2Name: String,
     team1Probability: Float, // 0f to 1f
-    team1Color: Color = ShinyGoldDeep,
-    team2Color: Color = ChartBlue,
+    team1Color: Color = BouncerDesignSystem.colors.goldPrimary,
+    team2Color: Color = BouncerDesignSystem.colors.statusInfo,
     change: String? = "+4.2%",
     isPositive: Boolean = true,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
+    val goldPrimary = colors.goldPrimary
+    val statusSuccess = colors.statusSuccess
+    val statusLive = colors.statusLive
+    val glassBorder = colors.glassBorder
     val animatedProbability by animateFloatAsState(
         targetValue = team1Probability,
         animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow),
@@ -66,13 +71,13 @@ fun WinProbabilityGauge(
                     Icon(
                         Icons.Default.Analytics,
                         contentDescription = null,
-                        tint = ShinyGoldDeep,
+                        tint = goldPrimary,
                         modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         "WIN PROBABILITY".uppercase(),
-                        color = ShinyGoldDeep,
+                        color = goldPrimary,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Black,
                         letterSpacing = 1.5.sp
@@ -83,7 +88,7 @@ fun WinProbabilityGauge(
                     Row(
                         modifier = Modifier
                             .clip(RoundedCornerShape(6.dp))
-                            .background(if (isPositive) SuccessGreen.copy(alpha = 0.1f) else WicketRed.copy(alpha = 0.1f))
+                            .background(if (isPositive) statusSuccess.copy(alpha = 0.1f) else statusLive.copy(alpha = 0.1f))
                             .padding(horizontal = 8.dp, vertical = 4.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(4.dp)
@@ -91,12 +96,12 @@ fun WinProbabilityGauge(
                         Icon(
                             if (isPositive) Icons.AutoMirrored.Filled.TrendingUp else Icons.AutoMirrored.Filled.TrendingDown,
                             null,
-                            tint = if (isPositive) SuccessGreen else WicketRed,
+                            tint = if (isPositive) statusSuccess else statusLive,
                             modifier = Modifier.size(12.dp)
                         )
                         Text(
                             it,
-                            color = if (isPositive) SuccessGreen else WicketRed,
+                            color = if (isPositive) statusSuccess else statusLive,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Black
                         )
@@ -118,7 +123,7 @@ fun WinProbabilityGauge(
                     
                     // Background track
                     drawArc(
-                        color = Color.White.copy(alpha = 0.05f),
+                        color = glassBorder,
                         startAngle = 180f,
                         sweepAngle = 180f,
                         useCenter = false,
@@ -165,7 +170,7 @@ fun WinProbabilityGauge(
                 ) {
                     Text(
                         text = "${(animatedProbability * 100).toInt()}%",
-                        color = TextPrimary,
+                        color = colors.textPrimary,
                         fontSize = 32.sp,
                         fontWeight = FontWeight.Black
                     )
@@ -193,15 +198,30 @@ fun WinProbabilityGauge(
                     modifier = Modifier
                         .weight(1f)
                         .padding(horizontal = 16.dp)
-                        .height(2.dp)
-                        .background(Color.White.copy(alpha = 0.05f))
+                        .height(6.dp)
+                        .clip(RoundedCornerShape(3.dp))
+                        .background(GlassDark)
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxHeight()
-                            .fillMaxWidth(animatedProbability)
-                            .background(team1Color)
-                    )
+                    Row(modifier = Modifier.fillMaxSize()) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxHeight()
+                                .weight(animatedProbability.coerceAtLeast(0.01f))
+                                .background(team1Color)
+                        )
+                        Box(
+                            modifier = Modifier
+                                .fillMaxHeight()
+                                .width(2.dp)
+                                .background(goldPrimary)
+                        )
+                        Box(
+                            modifier = Modifier
+                                .fillMaxHeight()
+                                .weight((1f - animatedProbability).coerceAtLeast(0.01f))
+                                .background(team2Color)
+                        )
+                    }
                 }
                 
                 ProbabilityInfo(name = team2Name, prob = 1 - team1Probability, color = team2Color, isRightAligned = true)
@@ -212,17 +232,18 @@ fun WinProbabilityGauge(
 
 @Composable
 private fun ProbabilityInfo(name: String, prob: Float, color: Color, isRightAligned: Boolean = false) {
+    val colors = BouncerDesignSystem.colors
     Column(horizontalAlignment = if (isRightAligned) Alignment.End else Alignment.Start) {
         Text(
             text = name.uppercase(),
-            color = if (prob >= 0.5f) color else TextTertiary,
+            color = if (prob >= 0.5f) color else colors.textTertiary,
             fontSize = 10.sp,
             fontWeight = FontWeight.Black,
             letterSpacing = 0.5.sp
         )
         Text(
             text = "${(prob * 100).toInt()}%",
-            color = TextPrimary,
+            color = colors.textPrimary,
             fontSize = 18.sp,
             fontWeight = FontWeight.Black
         )
@@ -236,8 +257,8 @@ private fun ProbabilityInfo(name: String, prob: Float, color: Color, isRightAlig
 fun MiniProbabilityBadge(
     team1Name: String,
     team1Probability: Float,
-    team1Color: Color = ShinyGoldDeep,
-    team2Color: Color = ChartBlue,
+    team1Color: Color = BouncerDesignSystem.colors.goldPrimary,
+    team2Color: Color = BouncerDesignSystem.colors.statusInfo,
     modifier: Modifier = Modifier
 ) {
     val isTeam1Leading = team1Probability >= 0.5f

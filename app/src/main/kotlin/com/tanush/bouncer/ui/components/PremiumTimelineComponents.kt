@@ -64,6 +64,7 @@ fun PremiumMatchTimeline(
 @Composable
 private fun PremiumTimelineEventItem(event: PremiumTimelineEvent) {
     val infiniteTransition = rememberInfiniteTransition(label = "timeline")
+    val colors = BouncerDesignSystem.colors
     
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -88,11 +89,11 @@ private fun PremiumTimelineEventItem(event: PremiumTimelineEvent) {
                         .shadow(
                             elevation = 8.dp,
                             shape = CircleShape,
-                            spotColor = if (event.runs == 6) BoundarySix.copy(alpha = glowAlpha)
-                            else BoundaryFour.copy(alpha = glowAlpha)
+                            spotColor = if (event.runs == 6) colors.goldPrimary.copy(alpha = glowAlpha)
+                            else colors.statusInfo.copy(alpha = glowAlpha)
                         )
                         .background(
-                            if (event.runs == 6) BoundarySix else BoundaryFour,
+                            if (event.runs == 6) colors.goldPrimary else colors.statusInfo,
                             CircleShape
                         ),
                     contentAlignment = Alignment.Center
@@ -101,7 +102,7 @@ private fun PremiumTimelineEventItem(event: PremiumTimelineEvent) {
                         text = event.runs.toString(),
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Black,
-                        color = BlackBackground
+                        color = colors.backgroundBase
                     )
                 }
             }
@@ -110,14 +111,14 @@ private fun PremiumTimelineEventItem(event: PremiumTimelineEvent) {
                 Box(
                     modifier = Modifier
                         .size(40.dp)
-                        .background(WicketRed, CircleShape),
+                        .background(colors.statusLive, CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = "W",
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Black,
-                        color = Color.White
+                        color = colors.textPrimary
                     )
                 }
             }
@@ -126,13 +127,13 @@ private fun PremiumTimelineEventItem(event: PremiumTimelineEvent) {
                 Box(
                     modifier = Modifier
                         .size(40.dp)
-                        .background(ChartPurple, CircleShape),
+                        .background(colors.statusInfo, CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = Icons.Default.Star,
                         contentDescription = null,
-                        tint = Color.White,
+                        tint = colors.textPrimary,
                         modifier = Modifier.size(22.dp)
                     )
                 }
@@ -142,14 +143,14 @@ private fun PremiumTimelineEventItem(event: PremiumTimelineEvent) {
                 Box(
                     modifier = Modifier
                         .size(40.dp)
-                        .background(WicketBlue, CircleShape),
+                        .background(colors.statusInfo, CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = "PP",
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color.White
+                        color = colors.textPrimary
                     )
                 }
             }
@@ -158,14 +159,14 @@ private fun PremiumTimelineEventItem(event: PremiumTimelineEvent) {
                 Box(
                     modifier = Modifier
                         .size(40.dp)
-                        .background(Color.White.copy(alpha = 0.08f), CircleShape)
-                        .border(1.dp, CardBorder, CircleShape),
+                        .background(colors.glassBorderHighlight, CircleShape)
+                        .border(1.dp, colors.glassBorder, CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = Icons.Default.LocalDrink,
                         contentDescription = null,
-                        tint = TextSecondary,
+                        tint = colors.textSecondary,
                         modifier = Modifier.size(20.dp)
                     )
                 }
@@ -177,7 +178,7 @@ private fun PremiumTimelineEventItem(event: PremiumTimelineEvent) {
                         .size(40.dp)
                         .background(
                             Brush.linearGradient(
-                                colors = listOf(ShinyGoldMid, ShinyGoldDeep)
+                                colors = listOf(colors.goldPrimary, colors.goldPrimary)
                             ),
                             CircleShape
                         ),
@@ -186,7 +187,7 @@ private fun PremiumTimelineEventItem(event: PremiumTimelineEvent) {
                     Icon(
                         imageVector = Icons.Default.Flag,
                         contentDescription = null,
-                        tint = BlackBackground,
+                        tint = colors.backgroundBase,
                         modifier = Modifier.size(20.dp)
                     )
                 }
@@ -198,7 +199,7 @@ private fun PremiumTimelineEventItem(event: PremiumTimelineEvent) {
             modifier = Modifier
                 .width(40.dp)
                 .height(2.dp)
-                .background(CardBorder.copy(alpha = 0.3f))
+                .background(colors.glassBorder.copy(alpha = 0.3f))
         )
         
         // Event label
@@ -213,7 +214,7 @@ private fun PremiumTimelineEventItem(event: PremiumTimelineEvent) {
             },
             fontSize = 10.sp,
             fontWeight = FontWeight.Medium,
-            color = TextTertiary
+            color = colors.textTertiary
         )
     }
 }
@@ -228,6 +229,7 @@ fun CelebrationOverlay(
     onComplete: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     var animationProgress by remember { mutableFloatStateOf(0f) }
     
     LaunchedEffect(isActive) {
@@ -287,11 +289,11 @@ fun CelebrationOverlay(
                 }
                 .background(
                     when (type) {
-                        CelebrationType.SIX -> BoundarySix.copy(alpha = 0.3f)
-                        CelebrationType.FOUR -> BoundaryFour.copy(alpha = 0.3f)
-                        CelebrationType.WICKET -> WicketRed.copy(alpha = 0.3f)
-                        CelebrationType.MILESTONE -> ChartPurple.copy(alpha = 0.3f)
-                        CelebrationType.VICTORY -> ShinyGoldDeep.copy(alpha = 0.3f)
+                        CelebrationType.SIX -> colors.goldPrimary.copy(alpha = 0.3f)
+                        CelebrationType.FOUR -> colors.statusInfo.copy(alpha = 0.3f)
+                        CelebrationType.WICKET -> colors.statusLive.copy(alpha = 0.3f)
+                        CelebrationType.MILESTONE -> colors.statusInfo.copy(alpha = 0.3f)
+                        CelebrationType.VICTORY -> colors.goldDark.copy(alpha = 0.3f)
                     },
                     CircleShape
                 ),
@@ -308,11 +310,11 @@ fun CelebrationOverlay(
                 fontSize = 48.sp,
                 fontWeight = FontWeight.Black,
                 color = when (type) {
-                    CelebrationType.SIX -> BoundarySix
-                    CelebrationType.FOUR -> BoundaryFour
-                    CelebrationType.WICKET -> WicketRed
-                    CelebrationType.MILESTONE -> ChartPurple
-                    CelebrationType.VICTORY -> ShinyGoldDeep
+                    CelebrationType.SIX -> colors.goldPrimary
+                    CelebrationType.FOUR -> colors.statusInfo
+                    CelebrationType.WICKET -> colors.statusLive
+                    CelebrationType.MILESTONE -> colors.statusInfo
+                    CelebrationType.VICTORY -> colors.goldDark
                 }
             )
         }
@@ -328,12 +330,12 @@ private data class CelebrationParticle(
     val y: Float = Random.nextFloat() * 0.3f,
     val size: Dp = (4 + Random.nextInt(8)).dp,
     val color: Color = listOf(
-        ShinyGoldDeep,
-        ShinyGoldLight,
-        BoundarySix,
-        BoundaryFour,
-        ChartGreen,
-        WicketBlue
+        GoldDark,
+        GoldLight,
+        GoldPrimary,
+        StatusInfo,
+        StatusSuccess,
+        StatusInfo
     ).random(),
     val angle: Float = Random.nextFloat() * 2f - 1f
 )
@@ -346,11 +348,12 @@ fun WinProbabilityArc(
     team1Name: String,
     team2Name: String,
     team1Probability: Float,
-    team1Color: Color = ChartGreen,
-    team2Color: Color = WicketBlue,
+    team1Color: Color = BouncerDesignSystem.colors.statusSuccess,
+    team2Color: Color = BouncerDesignSystem.colors.statusInfo,
     size: Dp = 160.dp,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val animatedProbability by animateFloatAsState(
         targetValue = team1Probability.coerceIn(0f, 1f),
         animationSpec = tween(1000, easing = FastOutSlowInEasing),
@@ -408,7 +411,7 @@ fun WinProbabilityArc(
                 text = team1Name,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = TextPrimary
+                color = colors.textPrimary
             )
         }
     }
@@ -424,6 +427,7 @@ fun MomentumIndicator(
     team2Name: String,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val animatedMomentum by animateFloatAsState(
         targetValue = momentum.coerceIn(-1f, 1f),
         animationSpec = spring(
@@ -444,7 +448,7 @@ fun MomentumIndicator(
                 text = "MOMENTUM",
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Bold,
-                color = TextSecondary,
+                color = colors.textSecondary,
                 letterSpacing = 1.sp
             )
             
@@ -457,13 +461,13 @@ fun MomentumIndicator(
                     text = team2Name,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = if (animatedMomentum < 0) WicketBlue else TextTertiary
+                    color = if (animatedMomentum < 0) colors.statusInfo else colors.textTertiary
                 )
                 Text(
                     text = team1Name,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = if (animatedMomentum > 0) ChartGreen else TextTertiary
+                    color = if (animatedMomentum > 0) colors.statusSuccess else colors.textTertiary
                 )
             }
             
@@ -476,9 +480,9 @@ fun MomentumIndicator(
                     .background(
                         Brush.horizontalGradient(
                             colors = listOf(
-                                WicketBlue,
-                                Color.White.copy(alpha = 0.08f),
-                                ChartGreen
+                                colors.statusInfo,
+                                colors.glassBackground,
+                                colors.statusSuccess
                             )
                         )
                     )
@@ -488,9 +492,9 @@ fun MomentumIndicator(
                     modifier = Modifier
                         .offset(x = (indicatorPosition * 100).dp - 8.dp)
                         .size(16.dp)
-                        .shadow(8.dp, CircleShape, spotColor = ShinyGoldDeep.copy(alpha = 0.5f))
-                        .background(ShinyGoldDeep, CircleShape)
-                        .border(2.dp, Color.White, CircleShape)
+                        .shadow(8.dp, CircleShape, spotColor = colors.goldDark.copy(alpha = 0.5f))
+                        .background(colors.goldDark, CircleShape)
+                        .border(2.dp, colors.textPrimary, CircleShape)
                 )
             }
         }
@@ -510,6 +514,7 @@ fun MatchPredictionCard(
     prediction: String = "",
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val team2WinChance = 1f - team1WinChance
     
     val animatedTeam1 by animateFloatAsState(
@@ -533,7 +538,7 @@ fun MatchPredictionCard(
                 text = "WIN PREDICTION",
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
-                color = TextSecondary,
+                color = colors.textSecondary,
                 letterSpacing = 1.5.sp
             )
             
@@ -551,13 +556,13 @@ fun MatchPredictionCard(
                         text = "${(animatedTeam1 * 100).toInt()}%",
                         fontSize = 32.sp,
                         fontWeight = FontWeight.Black,
-                        color = if (team1WinChance > 0.5f) ChartGreen else TextPrimary
+                        color = if (team1WinChance > 0.5f) ChartGreen else colors.textPrimary
                     )
                     Text(
                         text = team1Name,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = TextSecondary
+                        color = colors.textSecondary
                     )
                 }
                 
@@ -565,14 +570,14 @@ fun MatchPredictionCard(
                 Box(
                     modifier = Modifier
                         .size(40.dp)
-                        .background(Color.White.copy(alpha = 0.08f), CircleShape),
+                        .background(colors.glassBackground, CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = "VS",
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
-                        color = TextTertiary
+                        color = colors.textTertiary
                     )
                 }
                 
@@ -584,13 +589,13 @@ fun MatchPredictionCard(
                         text = "${(animatedTeam2 * 100).toInt()}%",
                         fontSize = 32.sp,
                         fontWeight = FontWeight.Black,
-                        color = if (team2WinChance > 0.5f) WicketBlue else TextPrimary
+                        color = if (team2WinChance > 0.5f) colors.statusInfo else colors.textPrimary
                     )
                     Text(
                         text = team2Name,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = TextSecondary
+                        color = colors.textSecondary
                     )
                 }
             }
@@ -612,7 +617,7 @@ fun MatchPredictionCard(
                     modifier = Modifier
                         .weight(animatedTeam2.coerceAtLeast(0.01f))
                         .fillMaxHeight()
-                        .background(WicketBlue)
+                        .background(colors.statusInfo)
                 )
             }
             
@@ -622,7 +627,7 @@ fun MatchPredictionCard(
                     modifier = Modifier
                         .fillMaxWidth()
                         .background(
-                            ShinyGoldDeep.copy(alpha = 0.1f),
+                            colors.goldDark.copy(alpha = 0.1f),
                             RoundedCornerShape(12.dp)
                         )
                         .padding(12.dp)
@@ -631,7 +636,7 @@ fun MatchPredictionCard(
                         text = prediction,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Medium,
-                        color = ShinyGoldLight,
+                        color = colors.goldLight,
                         textAlign = TextAlign.Center,
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -654,6 +659,7 @@ fun InningsComparisonCard(
     innings2Label: String = "2nd Innings",
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val maxScore = maxOf(innings1Score, innings2Score).coerceAtLeast(1)
     
     val animatedInnings1 by animateFloatAsState(
@@ -677,7 +683,7 @@ fun InningsComparisonCard(
                 text = "INNINGS COMPARISON",
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Bold,
-                color = TextSecondary,
+                color = colors.textSecondary,
                 letterSpacing = 1.sp
             )
             
@@ -691,7 +697,7 @@ fun InningsComparisonCard(
                         text = innings1Label,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Medium,
-                        color = TextSecondary
+                        color = colors.textSecondary
                     )
                     Text(
                         text = "$innings1Score (${innings1Overs} ov)",
@@ -706,7 +712,7 @@ fun InningsComparisonCard(
                         .fillMaxWidth()
                         .height(6.dp)
                         .clip(RoundedCornerShape(3.dp))
-                        .background(CardBorder.copy(alpha = 0.3f))
+                        .background(colors.glassBorder.copy(alpha = 0.3f))
                 ) {
                     Box(
                         modifier = Modifier
@@ -728,13 +734,13 @@ fun InningsComparisonCard(
                         text = innings2Label,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Medium,
-                        color = TextSecondary
+                        color = colors.textSecondary
                     )
                     Text(
                         text = "$innings2Score (${innings2Overs} ov)",
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,
-                        color = WicketBlue
+                        color = colors.statusInfo
                     )
                 }
                 
@@ -743,14 +749,14 @@ fun InningsComparisonCard(
                         .fillMaxWidth()
                         .height(6.dp)
                         .clip(RoundedCornerShape(3.dp))
-                        .background(CardBorder.copy(alpha = 0.3f))
+                        .background(colors.glassBorder.copy(alpha = 0.3f))
                 ) {
                     Box(
                         modifier = Modifier
                             .fillMaxHeight()
                             .fillMaxWidth(animatedInnings2)
                             .clip(RoundedCornerShape(3.dp))
-                            .background(WicketBlue)
+                            .background(colors.statusInfo)
                     )
                 }
             }
@@ -771,8 +777,8 @@ fun InningsComparisonCard(
                     fontWeight = FontWeight.SemiBold,
                     color = when {
                         difference > 0 -> ChartGreen
-                        difference < 0 -> WicketBlue
-                        else -> ShinyGoldDeep
+                        difference < 0 -> colors.statusInfo
+                        else -> colors.goldDark
                     }
                 )
             }

@@ -379,7 +379,7 @@ private fun SettingsSectionView(section: SettingsSection) {
 
                     if (index < section.items.lastIndex) {
                         HorizontalDivider(
-                            color = Color.White.copy(alpha = 0.06f),
+                            color = colors.glassBorder,
                             thickness = 0.5.dp,
                             modifier = Modifier.padding(horizontal = dimens.xl)
                         )

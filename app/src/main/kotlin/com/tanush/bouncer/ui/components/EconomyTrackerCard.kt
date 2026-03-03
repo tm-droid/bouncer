@@ -52,6 +52,7 @@ fun EconomyTrackerCard(
     economyInfo: EconomyTrackerInfo,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "economy_animation")
     
     val pulseAlpha by infiniteTransition.animateFloat(
@@ -71,16 +72,16 @@ fun EconomyTrackerCard(
     )
     
     val economyColor = when {
-        economyInfo.currentEconomy < 5f -> SuccessGreen
-        economyInfo.currentEconomy < 7f -> WarningYellow
+        economyInfo.currentEconomy < 5f -> colors.statusSuccess
+        economyInfo.currentEconomy < 7f -> colors.statusWarning
         economyInfo.currentEconomy < 9f -> Color(0xFFFF8E3C)
-        else -> WicketRed
+        else -> colors.statusLive
     }
     
     Card(
         modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = Color(0xFF0D1117)
+            containerColor = colors.backgroundBase
         ),
         shape = RoundedCornerShape(20.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
@@ -107,13 +108,13 @@ fun EconomyTrackerCard(
                     Column {
                         Text(
                             text = "Economy Tracker",
-                            color = Color.White,
+                            color = colors.textPrimary,
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold
                         )
                         Text(
                             text = economyInfo.bowlerName,
-                            color = Color.White.copy(alpha = 0.6f),
+                            color = colors.textPrimary.copy(alpha = 0.6f),
                             fontSize = 12.sp
                         )
                     }
@@ -154,7 +155,7 @@ fun EconomyTrackerCard(
                         
                         // Background arc
                         drawArc(
-                            color = Color.White.copy(alpha = 0.1f),
+                            color = colors.textPrimary.copy(alpha = 0.1f),
                             startAngle = 135f,
                             sweepAngle = 270f,
                             useCenter = false,
@@ -170,9 +171,9 @@ fun EconomyTrackerCard(
                         drawArc(
                             brush = Brush.sweepGradient(
                                 colors = listOf(
-                                    SuccessGreen,
-                                    WarningYellow,
-                                    WicketRed
+                                    colors.statusSuccess,
+                                    colors.statusWarning,
+                                    colors.statusLive
                                 ),
                                 center = center
                             ),
@@ -188,7 +189,7 @@ fun EconomyTrackerCard(
                         val benchmarkAngle = (135f + 270f * (economyInfo.benchmarkEconomy / 12f)) * (PI / 180f).toFloat()
                         val markerRadius = radius - 15f
                         drawCircle(
-                            color = Color.White.copy(alpha = 0.5f),
+                            color = colors.textPrimary.copy(alpha = 0.5f),
                             radius = 4f,
                             center = Offset(
                                 center.x + markerRadius * cos(benchmarkAngle),
@@ -206,7 +207,7 @@ fun EconomyTrackerCard(
                         )
                         Text(
                             text = "ECON",
-                            color = Color.White.copy(alpha = 0.5f),
+                            color = colors.textPrimary.copy(alpha = 0.5f),
                             fontSize = 9.sp,
                             letterSpacing = 1.sp
                         )
@@ -224,7 +225,7 @@ fun EconomyTrackerCard(
                     QuickStatRow(
                         label = "Status", 
                         value = if (economyInfo.currentEconomy <= economyInfo.benchmarkEconomy) "✓" else "✗",
-                        valueColor = if (economyInfo.currentEconomy <= economyInfo.benchmarkEconomy) SuccessGreen else WicketRed
+                        valueColor = if (economyInfo.currentEconomy <= economyInfo.benchmarkEconomy) colors.statusSuccess else colors.statusLive
                     )
                 }
             }
@@ -235,7 +236,7 @@ fun EconomyTrackerCard(
             if (economyInfo.economyByOver.isNotEmpty()) {
                 Text(
                     text = "ECONOMY PROGRESSION",
-                    color = Color.White.copy(alpha = 0.5f),
+                    color = colors.textPrimary.copy(alpha = 0.5f),
                     fontSize = 10.sp,
                     letterSpacing = 1.sp
                 )
@@ -260,7 +261,7 @@ fun EconomyTrackerCard(
                                 (graphHeight - 2 * padding) * (economyInfo.benchmarkEconomy / maxEconomy)
                             
                             drawLine(
-                                color = Color.White.copy(alpha = 0.3f),
+                                color = colors.textPrimary.copy(alpha = 0.3f),
                                 start = Offset(padding, benchmarkY),
                                 end = Offset(graphWidth - padding, benchmarkY),
                                 strokeWidth = 1f,
@@ -294,10 +295,10 @@ fun EconomyTrackerCard(
                                 val y = graphHeight - padding - (graphHeight - 2 * padding) * (economy / maxEconomy)
                                 
                                 val pointColor = when {
-                                    economy < 5f -> SuccessGreen
-                                    economy < 7f -> WarningYellow
+                                    economy < 5f -> colors.statusSuccess
+                                    economy < 7f -> colors.statusWarning
                                     economy < 9f -> Color(0xFFFF8E3C)
-                                    else -> WicketRed
+                                    else -> colors.statusLive
                                 }
                                 
                                 drawCircle(
@@ -315,10 +316,10 @@ fun EconomyTrackerCard(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text(text = "1", color = Color.White.copy(alpha = 0.4f), fontSize = 9.sp)
+                    Text(text = "1", color = colors.textTertiary, fontSize = 9.sp)
                     Text(
                         text = "${economyInfo.economyByOver.size}",
-                        color = Color.White.copy(alpha = 0.4f),
+                        color = colors.textTertiary,
                         fontSize = 9.sp
                     )
                 }
@@ -327,12 +328,12 @@ fun EconomyTrackerCard(
             // Phase breakdown
             if (economyInfo.phasesEconomy != null) {
                 Spacer(modifier = Modifier.height(16.dp))
-                HorizontalDivider(color = Color.White.copy(alpha = 0.1f))
+                HorizontalDivider(color = colors.glassBorder)
                 Spacer(modifier = Modifier.height(16.dp))
                 
                 Text(
                     text = "PHASE ECONOMY",
-                    color = Color.White.copy(alpha = 0.5f),
+                    color = colors.textPrimary.copy(alpha = 0.5f),
                     fontSize = 10.sp,
                     letterSpacing = 1.sp
                 )
@@ -367,12 +368,13 @@ fun EconomyTrackerCard(
 private fun QuickStatRow(
     label: String,
     value: String,
-    valueColor: Color = Color.White
+    valueColor: Color = TextPrimary
 ) {
+    val colors = BouncerDesignSystem.colors
     Row(verticalAlignment = Alignment.CenterVertically) {
         Text(
             text = "$label:",
-            color = Color.White.copy(alpha = 0.5f),
+            color = colors.textPrimary.copy(alpha = 0.5f),
             fontSize = 12.sp
         )
         Spacer(modifier = Modifier.width(6.dp))
@@ -391,11 +393,12 @@ private fun PhaseEconomyBox(
     overs: String,
     economy: Float
 ) {
+    val colors = BouncerDesignSystem.colors
     val phaseColor = when {
-        economy < 5f -> SuccessGreen
-        economy < 7f -> WarningYellow
+        economy < 5f -> colors.statusSuccess
+        economy < 7f -> colors.statusWarning
         economy < 9f -> Color(0xFFFF8E3C)
-        else -> WicketRed
+        else -> colors.statusLive
     }
     
     Surface(
@@ -408,13 +411,13 @@ private fun PhaseEconomyBox(
         ) {
             Text(
                 text = phase,
-                color = Color.White,
+                color = colors.textPrimary,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Medium
             )
             Text(
                 text = "($overs)",
-                color = Color.White.copy(alpha = 0.5f),
+                color = colors.textPrimary.copy(alpha = 0.5f),
                 fontSize = 9.sp
             )
             Spacer(modifier = Modifier.height(4.dp))

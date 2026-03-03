@@ -31,6 +31,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -45,6 +46,7 @@ import com.tanush.bouncer.ui.components.glass.*
 import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 import com.tanush.bouncer.ui.theme.staggeredFadeIn
 import com.tanush.bouncer.viewmodels.LiveActivityViewModel
+import com.tanush.bouncer.viewmodels.LoadingState
 import com.tanush.bouncer.managers.TeamLogoManager
 import com.tanush.bouncer.utils.rememberHapticFeedback
 
@@ -85,6 +87,8 @@ fun HomeScreen(
     val currentMatches by viewModel.currentMatches.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val isRefreshing by viewModel.isRefreshing.collectAsState()
+    val loadingState by viewModel.loadingState.collectAsState()
+    val aiCommentary by viewModel.aiCommentary.collectAsState()
 
     val pullRefreshState = rememberPullRefreshState(
         refreshing = isRefreshing,
@@ -120,6 +124,12 @@ fun HomeScreen(
             if (isLoading && currentMatches.isEmpty()) {
                 // ── Skeleton loading state ──
                 MatchListSkeleton(modifier = Modifier.padding(top = dimens.sm))
+            } else if (loadingState is LoadingState.Error && currentMatches.isEmpty()) {
+                // ── Error state (no cached data to show) ──
+                ErrorMatchState(
+                    errorMessage = (loadingState as LoadingState.Error).message,
+                    onRetry = { viewModel.refreshMatches() }
+                )
             } else {
                 Column(modifier = Modifier.fillMaxSize()) {
                     // ── 1. Premium Header (64dp) ──
@@ -172,7 +182,7 @@ fun HomeScreen(
                                 Brush.horizontalGradient(
                                     colors = listOf(
                                         Color.Transparent,
-                                        Color(0xFFD4AF37).copy(alpha = 0.25f),
+                                        colors.goldPrimary.copy(alpha = 0.25f),
                                         Color.Transparent
                                     )
                                 )
@@ -184,7 +194,7 @@ fun HomeScreen(
                         state = listState,
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(bottom = 96.dp),
-                        verticalArrangement = Arrangement.spacedBy(dimens.xs)
+                        verticalArrangement = Arrangement.spacedBy(dimens.sm)
                     ) {
                         // ── Live Matches Carousel ──
                         if (liveMatches.isNotEmpty()) {
@@ -218,6 +228,7 @@ fun HomeScreen(
                                 MatchCard(
                                     match = match,
                                     onClick = { onMatchClick(match) },
+                                    liveAiCommentary = aiCommentary[match.id],
                                     modifier = Modifier
                                         .padding(horizontal = dimens.screenHorizontal)
                                         .staggeredFadeIn(index = index)
@@ -240,6 +251,7 @@ fun HomeScreen(
                                 MatchCard(
                                     match = match,
                                     onClick = { onMatchClick(match) },
+                                    liveAiCommentary = aiCommentary[match.id],
                                     modifier = Modifier
                                         .padding(horizontal = dimens.screenHorizontal)
                                         .staggeredFadeIn(index = index)
@@ -264,6 +276,7 @@ fun HomeScreen(
                                 MatchCard(
                                     match = match,
                                     onClick = { onMatchClick(match) },
+                                    liveAiCommentary = aiCommentary[match.id],
                                     modifier = Modifier
                                         .padding(horizontal = dimens.screenHorizontal)
                                         .staggeredFadeIn(index = index)
@@ -487,14 +500,16 @@ private fun LiveMatchesCarousel(
     LazyRow(
         modifier = modifier,
         contentPadding = PaddingValues(horizontal = dimens.screenHorizontal),
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
+        horizontalArrangement = Arrangement.spacedBy(dimens.sm)
     ) {
-        items(matches, key = { "live_card_${it.id}" }) { match ->
-            LiveMatchCarouselCard(
-                match = match,
-                borderAlpha = borderAlpha,
-                onClick = { onMatchClick(match) }
-            )
+        itemsIndexed(matches, key = { _, it -> "live_card_${it.id}" }) { index, match ->
+            Box(modifier = Modifier.staggeredFadeIn(index = index)) {
+                LiveMatchCarouselCard(
+                    match = match,
+                    borderAlpha = borderAlpha,
+                    onClick = { onMatchClick(match) }
+                )
+            }
         }
     }
 }
@@ -689,9 +704,9 @@ private fun MatchSectionHeader(
                     .height(16.dp)
                     .background(
                         Brush.verticalGradient(
-                            colors = listOf(
-                                Color(0xFFD4AF37),
-                                Color(0xFFB08D26)
+                            listOf(
+                                colors.goldPrimary,
+                                colors.goldDark
                             )
                         ),
                         RoundedCornerShape(2.dp)
@@ -715,10 +730,18 @@ private fun MatchSectionHeader(
 
             Text(
                 text = title.uppercase(),
-                color = Color.White,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.SemiBold,
-                letterSpacing = (-0.3).sp
+                style = TextStyle(
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    letterSpacing = (-0.3).sp,
+                    brush = Brush.linearGradient(
+                        listOf(
+                            Color.White,
+                            colors.goldPrimary,
+                            colors.goldDark
+                        )
+                    )
+                )
             )
 
             if (count > 0) {
@@ -806,5 +829,105 @@ private fun EmptyMatchState(
             onClick = onViewAll,
             text = "View All Matches"
         )
+    }
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// Error State — Network/fetch failure with retry
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+@Composable
+private fun ErrorMatchState(
+    errorMessage: String,
+    onRetry: () -> Unit
+) {
+    val colors = BouncerDesignSystem.colors
+    val dimens = BouncerDesignSystem.dimens
+    val typography = BouncerDesignSystem.typography
+    val infiniteTransition = rememberInfiniteTransition(label = "error_pulse")
+    val iconAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.4f,
+        targetValue = 0.8f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1500),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "errorIconAlpha"
+    )
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = dimens.screenHorizontal)
+            .padding(vertical = dimens.xxxl),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        // Error icon
+        Box(
+            modifier = Modifier
+                .size(80.dp)
+                .background(
+                    Color(0x1AFF4444),
+                    CircleShape
+                )
+                .border(1.dp, Color(0x33FF4444), CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.WifiOff,
+                contentDescription = "Error",
+                tint = Color(0xFFFF6B6B).copy(alpha = iconAlpha),
+                modifier = Modifier.size(40.dp)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(dimens.md))
+
+        Text(
+            text = "Something went wrong",
+            style = typography.headingMedium,
+            color = colors.textSecondary,
+            fontWeight = FontWeight.SemiBold
+        )
+
+        Spacer(modifier = Modifier.height(dimens.sm))
+
+        Text(
+            text = errorMessage,
+            style = typography.bodySmall,
+            color = colors.textMuted,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(horizontal = dimens.md)
+        )
+
+        Spacer(modifier = Modifier.height(dimens.lg))
+
+        // Retry button with gold styling
+        Surface(
+            shape = RoundedCornerShape(50.dp),
+            color = colors.goldPrimary.copy(alpha = 0.14f),
+            border = BorderStroke(1.dp, colors.goldPrimary.copy(alpha = 0.4f)),
+            onClick = onRetry
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Refresh,
+                    contentDescription = null,
+                    tint = colors.goldPrimary,
+                    modifier = Modifier.size(18.dp)
+                )
+                Text(
+                    text = "Try Again",
+                    color = colors.goldPrimary,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+        }
     }
 }

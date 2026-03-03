@@ -30,7 +30,7 @@ fun InsightGridCard(
     subValue: String,
     icon: ImageVector,
     progress: Float? = null,
-    accentColor: Color = ShinyGoldDeep
+    accentColor: Color = GoldPrimary
 ) {
     Box(
         modifier = modifier

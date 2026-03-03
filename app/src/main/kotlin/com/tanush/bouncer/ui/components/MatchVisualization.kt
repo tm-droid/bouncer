@@ -44,11 +44,12 @@ fun WicketFallTimeline(
 ) {
     if (fallOfWickets.isEmpty()) return
     
+    val colors = BouncerDesignSystem.colors
     Card(
         modifier = modifier,
-        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.05f)),
+        colors = CardDefaults.cardColors(containerColor = colors.glassSurface),
         shape = RoundedCornerShape(20.dp),
-        border = BorderStroke(0.5.dp, CardBorder.copy(alpha = 0.3f))
+        border = BorderStroke(0.5.dp, colors.glassBorder.copy(alpha = 0.3f))
     ) {
         Column(
             modifier = Modifier.padding(20.dp)
@@ -61,20 +62,20 @@ fun WicketFallTimeline(
             ) {
                 Text(
                     "FALL OF WICKETS",
-                    color = TextSecondary,
+                    color = colors.textSecondary,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 1.sp
                 )
                 
                 Surface(
-                    color = WicketBlue.copy(alpha = 0.12f),
+                    color = colors.statusInfo.copy(alpha = 0.12f),
                     shape = RoundedCornerShape(6.dp)
                 ) {
                     Text(
                         "${fallOfWickets.size} wickets",
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                        color = WicketBlue,
+                        color = colors.statusInfo,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -108,6 +109,7 @@ private fun WicketTimelineItem(
     wicketNumber: Int,
     isLast: Boolean
 ) {
+    val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "wicketPulse")
     val pulseScale by infiniteTransition.animateFloat(
         initialValue = 1f,
@@ -136,11 +138,11 @@ private fun WicketTimelineItem(
                     }
                     .background(
                         Brush.radialGradient(
-                            colors = listOf(WicketBlue, WicketBlue.copy(alpha = 0.8f))
+                            colors = listOf(colors.statusInfo, colors.statusInfo.copy(alpha = 0.8f))
                         ),
                         CircleShape
                     )
-                    .shadow(6.dp, CircleShape, spotColor = WicketBlue.copy(alpha = 0.4f)),
+                    .shadow(6.dp, CircleShape, spotColor = colors.statusInfo.copy(alpha = 0.4f)),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
@@ -156,7 +158,7 @@ private fun WicketTimelineItem(
             // Score at wicket
             Text(
                 fallOfWicket.score,
-                color = TextPrimary,
+                color = colors.textPrimary,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = (-0.3).sp
@@ -165,7 +167,7 @@ private fun WicketTimelineItem(
             // Overs
             Text(
                 "(${fallOfWicket.overs})",
-                color = TextTertiary,
+                color = colors.textTertiary,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Medium
             )
@@ -175,7 +177,7 @@ private fun WicketTimelineItem(
             // Batsman name
             Text(
                 fallOfWicket.batsman,
-                color = TextSecondary,
+                color = colors.textSecondary,
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Medium,
                 maxLines = 1,
@@ -194,8 +196,8 @@ private fun WicketTimelineItem(
                     .background(
                         Brush.horizontalGradient(
                             colors = listOf(
-                                WicketBlue.copy(alpha = 0.5f),
-                                WicketBlue.copy(alpha = 0.2f)
+                                colors.statusInfo.copy(alpha = 0.5f),
+                                colors.statusInfo.copy(alpha = 0.2f)
                             )
                         ),
                         RoundedCornerShape(50)
@@ -214,6 +216,7 @@ fun RunRateGauge(
     requiredRate: Float,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val density = LocalDensity.current
     val progress = (currentRate / requiredRate).coerceIn(0f, 1.5f)
     
@@ -235,10 +238,10 @@ fun RunRateGauge(
     )
     
     val gaugeColor = when {
-        progress >= 1f -> BoundarySix
-        progress >= 0.8f -> ShinyGoldDeep
-        progress >= 0.6f -> Color(0xFFF59E0B)
-        else -> WicketBlue
+        progress >= 1f -> GoldPrimary
+        progress >= 0.8f -> GoldPrimary
+        progress >= 0.6f -> StatusWarning
+        else -> StatusInfo
     }
 
     Box(
@@ -252,7 +255,7 @@ fun RunRateGauge(
             
             // Background arc
             drawArc(
-                color = CardSurfaceLight,
+                color = Surface2,
                 startAngle = 135f,
                 sweepAngle = 270f,
                 useCenter = false,
@@ -300,7 +303,7 @@ fun RunRateGauge(
             )
             Text(
                 "CRR",
-                color = TextTertiary,
+                color = colors.textTertiary,
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Medium
             )
@@ -340,7 +343,7 @@ fun WagonWheelMini(
             
             // Draw pitch outline
             drawCircle(
-                color = CardSurfaceLight,
+                color = Surface2,
                 radius = maxRadius,
                 center = center,
                 style = Stroke(width = 1f)
@@ -349,7 +352,7 @@ fun WagonWheelMini(
             // Draw concentric circles
             listOf(0.33f, 0.66f).forEach { ratio ->
                 drawCircle(
-                    color = CardBorder.copy(alpha = 0.2f),
+                    color = GlassBorder.copy(alpha = 0.2f),
                     radius = maxRadius * ratio,
                     center = center,
                     style = Stroke(width = 0.5f)
@@ -368,9 +371,9 @@ fun WagonWheelMini(
                 
                 // Line color based on runs
                 val lineColor = when {
-                    runs > 30 -> BoundarySix
-                    runs > 20 -> ShinyGoldDeep
-                    runs > 10 -> ShinyGoldMid
+                    runs > 30 -> GoldPrimary
+                    runs > 20 -> GoldPrimary
+                    runs > 10 -> GoldPrimary
                     else -> TextTertiary
                 }
                 
@@ -410,17 +413,18 @@ fun OverByOverChart(
     overScores: List<Int>,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val maxScore = overScores.maxOrNull() ?: 0
     
     Card(
         modifier = modifier,
-        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.05f)),
+        colors = CardDefaults.cardColors(containerColor = colors.glassSurface),
         shape = RoundedCornerShape(16.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
                 "RUNS PER OVER",
-                color = TextSecondary,
+                color = colors.textSecondary,
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 1.sp
@@ -446,7 +450,7 @@ fun OverByOverChart(
                         if (score > 0) {
                             Text(
                                 "$score",
-                                color = if (score >= 10) BoundarySix else TextSecondary,
+                                color = if (score >= 10) colors.goldPrimary else colors.textSecondary,
                                 fontSize = 8.sp,
                                 fontWeight = FontWeight.Bold
                             )
@@ -459,10 +463,10 @@ fun OverByOverChart(
                                 .height((40 * barHeight + 4).dp)
                                 .background(
                                     when {
-                                        score >= 15 -> Brush.verticalGradient(listOf(BoundarySix, BoundarySix.copy(alpha = 0.6f)))
-                                        score >= 10 -> Brush.verticalGradient(listOf(ShinyGoldDeep, ShinyGoldMid))
-                                        score >= 6 -> Brush.verticalGradient(listOf(ShinyGoldMid, ShinyGoldLight))
-                                        else -> Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.08f), Color.White.copy(alpha = 0.08f)))
+                                        score >= 15 -> Brush.verticalGradient(listOf(colors.goldPrimary, colors.goldPrimary.copy(alpha = 0.6f)))
+                                        score >= 10 -> Brush.verticalGradient(listOf(colors.goldPrimary, colors.goldPrimary))
+                                        score >= 6 -> Brush.verticalGradient(listOf(colors.goldPrimary, colors.goldLight))
+                                        else -> Brush.verticalGradient(listOf(colors.glassBorderHighlight, colors.glassBorderHighlight))
                                     },
                                     RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp)
                                 )
@@ -484,7 +488,7 @@ fun OverByOverChart(
                     Text(
                         "${index + 1}",
                         modifier = Modifier.width(16.dp),
-                        color = TextTertiary,
+                        color = colors.textTertiary,
                         fontSize = 8.sp,
                         fontWeight = FontWeight.Medium,
                         textAlign = TextAlign.Center
@@ -504,6 +508,7 @@ fun MatchPhaseIndicator(
     totalOvers: Int,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val phase = when {
         currentOver <= 6 -> "POWERPLAY"
         currentOver <= 15 -> "MIDDLE OVERS"
@@ -512,17 +517,17 @@ fun MatchPhaseIndicator(
     }
     
     val phaseColor = when (phase) {
-        "POWERPLAY" -> BoundarySix
-        "MIDDLE OVERS" -> ShinyGoldDeep
-        "BUILD UP" -> ShinyGoldMid
-        else -> WicketBlue
+        "POWERPLAY" -> colors.goldPrimary
+        "MIDDLE OVERS" -> colors.goldPrimary
+        "BUILD UP" -> colors.goldPrimary
+        else -> colors.statusInfo
     }
     
     val progress = currentOver.toFloat() / totalOvers
 
     Card(
         modifier = modifier,
-        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.08f)),
+        colors = CardDefaults.cardColors(containerColor = colors.glassBorderHighlight),
         shape = RoundedCornerShape(12.dp)
     ) {
         Column(
@@ -545,7 +550,7 @@ fun MatchPhaseIndicator(
                     .fillMaxWidth()
                     .height(6.dp)
                     .clip(RoundedCornerShape(50))
-                    .background(Color.White.copy(alpha = 0.05f))
+                    .background(colors.glassSurface)
             ) {
                 Box(
                     modifier = Modifier
@@ -566,13 +571,13 @@ fun MatchPhaseIndicator(
             ) {
                 Text(
                     "Over $currentOver",
-                    color = TextSecondary,
+                    color = colors.textSecondary,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Medium
                 )
                 Text(
                     "$totalOvers overs",
-                    color = TextTertiary,
+                    color = colors.textTertiary,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Medium
                 )

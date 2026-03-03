@@ -5,6 +5,7 @@ import android.content.SharedPreferences
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
+import io.sentry.Sentry
 
 class PreferencesManager(context: Context) {
     private val prefs: SharedPreferences = context.getSharedPreferences(
@@ -97,15 +98,25 @@ class PreferencesManager(context: Context) {
         set(value) = prefs.edit().putString(KEY_APP_VERSION, value).apply()
     
     fun clearAll() {
-        prefs.edit().clear().apply()
+        try {
+            prefs.edit().clear().apply()
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     fun clearCache() {
-        // Clear only cache-related preferences
-        prefs.edit()
-            .remove("cached_matches")
-            .remove("cached_timestamp")
-            .apply()
+        try {
+            // Clear only cache-related preferences
+            prefs.edit()
+                .remove("cached_matches")
+                .remove("cached_timestamp")
+                .apply()
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     companion object {
@@ -134,10 +145,15 @@ class PreferencesManager(context: Context) {
         private var instance: PreferencesManager? = null
         
         fun getInstance(context: Context): PreferencesManager {
-            return instance ?: synchronized(this) {
-                instance ?: PreferencesManager(context.applicationContext).also {
-                    instance = it
+            try {
+                return instance ?: synchronized(this) {
+                    instance ?: PreferencesManager(context.applicationContext).also {
+                        instance = it
+                    }
                 }
+            } catch (e: Exception) {
+                Sentry.captureException(e)
+                throw e
             }
         }
     }

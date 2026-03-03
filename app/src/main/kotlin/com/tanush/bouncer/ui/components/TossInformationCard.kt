@@ -53,6 +53,7 @@ fun TossInformationCard(
     tossInfo: TossInfo,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "toss")
     
     // Coin shimmer effect
@@ -94,7 +95,7 @@ fun TossInformationCard(
             .shadow(
                 elevation = 16.dp,
                 shape = RoundedCornerShape(24.dp),
-                spotColor = ShinyGoldDeep.copy(alpha = 0.25f)
+                spotColor = colors.goldPrimary.copy(alpha = 0.25f)
             ),
         shape = RoundedCornerShape(24.dp),
         color = Color.White.copy(alpha = 0.05f)
@@ -105,9 +106,9 @@ fun TossInformationCard(
                 .background(
                     Brush.verticalGradient(
                         colors = listOf(
-                            ShinyGoldDeep.copy(alpha = 0.08f),
+                            colors.goldPrimary.copy(alpha = 0.08f),
                             Color.Transparent,
-                            ShinyGoldDeep.copy(alpha = 0.05f)
+                            colors.goldPrimary.copy(alpha = 0.05f)
                         )
                     )
                 )
@@ -133,7 +134,7 @@ fun TossInformationCard(
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 2.sp,
-                        color = ShinyGoldDeep
+                        color = colors.goldPrimary
                     )
                 }
                 
@@ -142,6 +143,9 @@ fun TossInformationCard(
                     modifier = Modifier.size(80.dp),
                     contentAlignment = Alignment.Center
                 ) {
+                    val goldPrimary = colors.goldPrimary
+                    val goldLight = colors.goldLight
+                    val goldDark = colors.goldDark
                     Canvas(
                         modifier = Modifier.fillMaxSize()
                     ) {
@@ -154,8 +158,8 @@ fun TossInformationCard(
                             drawCircle(
                                 brush = Brush.radialGradient(
                                     colors = listOf(
-                                        ShinyGoldDeep.copy(alpha = 0.4f * glowPulse),
-                                        ShinyGoldDeep.copy(alpha = 0.1f * glowPulse),
+                                        goldPrimary.copy(alpha = 0.4f * glowPulse),
+                                        goldPrimary.copy(alpha = 0.1f * glowPulse),
                                         Color.Transparent
                                     ),
                                     center = Offset(centerX, centerY),
@@ -169,9 +173,9 @@ fun TossInformationCard(
                             drawCircle(
                                 brush = Brush.linearGradient(
                                     colors = listOf(
-                                        ShinyGoldLight,
-                                        ShinyGoldMid,
-                                        ShinyGoldDeep,
+                                        goldLight,
+                                        goldDark,
+                                        goldPrimary,
                                         Color(0xFF8B6914)
                                     ),
                                     start = Offset(centerX - radius, centerY - radius),
@@ -185,8 +189,8 @@ fun TossInformationCard(
                             drawCircle(
                                 brush = Brush.linearGradient(
                                     colors = listOf(
-                                        ShinyGoldLight.copy(alpha = 0.8f),
-                                        ShinyGoldDeep.copy(alpha = 0.5f)
+                                        goldLight.copy(alpha = 0.8f),
+                                        goldPrimary.copy(alpha = 0.5f)
                                     )
                                 ),
                                 radius = radius,
@@ -196,7 +200,7 @@ fun TossInformationCard(
                             
                             // Inner circle
                             drawCircle(
-                                color = ShinyGoldDeep.copy(alpha = 0.3f),
+                                color = goldPrimary.copy(alpha = 0.3f),
                                 radius = radius * 0.7f,
                                 center = Offset(centerX, centerY),
                                 style = Stroke(1.5.dp.toPx())
@@ -237,7 +241,7 @@ fun TossInformationCard(
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Medium,
                         letterSpacing = 1.5.sp,
-                        color = TextSecondary
+                        color = colors.textSecondary
                     )
                     
                     // Winner display
@@ -259,7 +263,7 @@ fun TossInformationCard(
                                     .background(
                                         Brush.radialGradient(
                                             colors = listOf(
-                                                ShinyGoldDeep.copy(alpha = 0.2f),
+                                                colors.goldPrimary.copy(alpha = 0.2f),
                                                 Color.Transparent
                                             )
                                         )
@@ -267,7 +271,7 @@ fun TossInformationCard(
                                     .border(
                                         width = 2.dp,
                                         brush = Brush.linearGradient(
-                                            colors = listOf(ShinyGoldLight, ShinyGoldDeep)
+                                            colors = listOf(colors.goldLight, colors.goldPrimary)
                                         ),
                                         shape = CircleShape
                                     )
@@ -280,7 +284,7 @@ fun TossInformationCard(
                             text = tossInfo.winningTeam,
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
-                            color = TextPrimary
+                            color = colors.textPrimary
                         )
                     }
                 }
@@ -291,7 +295,7 @@ fun TossInformationCard(
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp),
                     shape = RoundedCornerShape(16.dp),
-                    color = ShinyGoldDeep.copy(alpha = 0.1f)
+                    color = colors.goldPrimary.copy(alpha = 0.1f)
                 ) {
                     Box(
                         modifier = Modifier
@@ -300,9 +304,9 @@ fun TossInformationCard(
                                 width = 1.dp,
                                 brush = Brush.linearGradient(
                                     colors = listOf(
-                                        ShinyGoldDeep.copy(alpha = 0.5f),
-                                        ShinyGoldMid.copy(alpha = 0.3f),
-                                        ShinyGoldDeep.copy(alpha = 0.5f)
+                                        colors.goldPrimary.copy(alpha = 0.5f),
+                                        colors.goldDark.copy(alpha = 0.3f),
+                                        colors.goldPrimary.copy(alpha = 0.5f)
                                     )
                                 ),
                                 shape = RoundedCornerShape(16.dp)
@@ -319,13 +323,13 @@ fun TossInformationCard(
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Medium,
                                 letterSpacing = 1.sp,
-                                color = TextSecondary
+                                color = colors.textSecondary
                             )
                             
                             Surface(
                                 shape = RoundedCornerShape(8.dp),
                                 color = if (tossInfo.decision == TossDecision.BAT) 
-                                    SuccessGreen.copy(alpha = 0.15f) 
+                                    colors.statusSuccess.copy(alpha = 0.15f) 
                                 else 
                                     LiveBlue.copy(alpha = 0.15f)
                             ) {
@@ -334,7 +338,7 @@ fun TossInformationCard(
                                     fontSize = 14.sp,
                                     fontWeight = FontWeight.Bold,
                                     letterSpacing = 1.sp,
-                                    color = if (tossInfo.decision == TossDecision.BAT) SuccessGreen else LiveBlue,
+                                    color = if (tossInfo.decision == TossDecision.BAT) colors.statusSuccess else LiveBlue,
                                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                                 )
                             }
@@ -356,7 +360,7 @@ fun TossInformationCard(
                         Text(
                             text = venue,
                             fontSize = 11.sp,
-                            color = TextSecondary,
+                            color = colors.textSecondary,
                             textAlign = TextAlign.Center
                         )
                     }
@@ -374,16 +378,17 @@ fun CompactTossInfo(
     tossInfo: TossInfo,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(12.dp),
-        color = ShinyGoldDeep.copy(alpha = 0.1f)
+        color = colors.goldPrimary.copy(alpha = 0.1f)
     ) {
         Row(
             modifier = Modifier
                 .border(
                     width = 1.dp,
-                    color = ShinyGoldDeep.copy(alpha = 0.3f),
+                    color = colors.goldPrimary.copy(alpha = 0.3f),
                     shape = RoundedCornerShape(12.dp)
                 )
                 .padding(horizontal = 12.dp, vertical = 8.dp),
@@ -399,20 +404,20 @@ fun CompactTossInfo(
                 text = tossInfo.winningTeam,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = TextPrimary
+                color = colors.textPrimary
             )
             
             Text(
                 text = "elected to",
                 fontSize = 11.sp,
-                color = TextSecondary
+                color = colors.textSecondary
             )
             
             Text(
                 text = if (tossInfo.decision == TossDecision.BAT) "bat" else "bowl",
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
-                color = if (tossInfo.decision == TossDecision.BAT) SuccessGreen else LiveBlue
+                color = if (tossInfo.decision == TossDecision.BAT) colors.statusSuccess else LiveBlue
             )
         }
     }

@@ -42,8 +42,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.ui.theme.ChartBlue
-import com.tanush.bouncer.ui.theme.ShinyGoldDeep
-import com.tanush.bouncer.ui.theme.ShinyGoldMid
+import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 
 /**
  * PowerPlay Analysis Card
@@ -79,6 +78,7 @@ fun PowerPlayAnalysisCard(
     phases: List<PowerPlayPhase>,
     modifier: Modifier = Modifier,
 ) {
+    val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "powerplay")
 
     val pulseAlpha by infiniteTransition.animateFloat(
@@ -124,7 +124,7 @@ fun PowerPlayAnalysisCard(
                             .clip(RoundedCornerShape(12.dp))
                             .background(
                                 Brush.linearGradient(
-                                    colors = listOf(ChartBlue, ChartBlue.copy(alpha = 0.6f)),
+                                    colors = listOf(colors.statusInfo, colors.statusInfo.copy(alpha = 0.6f)),
                                 ),
                             ),
                         contentAlignment = Alignment.Center,
@@ -142,7 +142,7 @@ fun PowerPlayAnalysisCard(
                     Column {
                         Text(
                             text = "POWERPLAY ANALYSIS",
-                            color = ShinyGoldMid,
+                            color = colors.goldDark,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.5.sp,
@@ -175,6 +175,11 @@ fun PowerPlayAnalysisCard(
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            // Capture colors for Canvas scope
+            val goldDark = colors.goldDark
+            val goldPrimary = colors.goldPrimary
+            val statusInfoColor = colors.statusInfo
+
             // Run rate comparison graph
             Canvas(
                 modifier = Modifier
@@ -193,7 +198,7 @@ fun PowerPlayAnalysisCard(
                         drawRect(
                             brush = Brush.radialGradient(
                                 colors = listOf(
-                                    ChartBlue.copy(alpha = 0.4f),
+                                    statusInfoColor.copy(alpha = 0.4f),
                                     Color.Transparent,
                                 ),
                                 center = Offset(x + barWidth / 2, size.height - barHeight / 2),
@@ -208,9 +213,9 @@ fun PowerPlayAnalysisCard(
                     drawRoundRect(
                         brush = Brush.verticalGradient(
                             colors = if (phase.isActive) {
-                                listOf(ShinyGoldMid, ShinyGoldDeep)
+                                listOf(goldDark, goldPrimary)
                             } else {
-                                listOf(ChartBlue, ChartBlue.copy(alpha = 0.6f))
+                                listOf(statusInfoColor, statusInfoColor.copy(alpha = 0.6f))
                             },
                         ),
                         topLeft = Offset(x, size.height - barHeight),
@@ -238,7 +243,7 @@ fun PowerPlayAnalysisCard(
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
                             text = phase.name,
-                            color = if (phase.isActive) ShinyGoldMid else Color.White.copy(alpha = 0.7f),
+                            color = if (phase.isActive) colors.goldDark else Color.White.copy(alpha = 0.7f),
                             fontSize = 12.sp,
                             fontWeight = if (phase.isActive) FontWeight.Bold else FontWeight.Medium,
                         )
@@ -261,6 +266,7 @@ private fun PowerPlayPhaseRow(
     maxRuns: Int,
     pulseAlpha: Float,
 ) {
+    val colors = BouncerDesignSystem.colors
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -269,7 +275,7 @@ private fun PowerPlayPhaseRow(
                 if (phase.isActive) {
                     Brush.horizontalGradient(
                         colors = listOf(
-                            ShinyGoldMid.copy(alpha = pulseAlpha * 0.3f),
+                            colors.goldDark.copy(alpha = pulseAlpha * 0.3f),
                             Color.Transparent,
                         ),
                     )
@@ -297,14 +303,14 @@ private fun PowerPlayPhaseRow(
                             modifier = Modifier
                                 .size(8.dp)
                                 .clip(RoundedCornerShape(4.dp))
-                                .background(ShinyGoldMid),
+                                .background(colors.goldDark),
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                     }
 
                     Text(
                         text = phase.name,
-                        color = if (phase.isActive) ShinyGoldMid else Color.White,
+                        color = if (phase.isActive) colors.goldDark else Color.White,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,
                     )
@@ -347,10 +353,11 @@ private fun StatBubble(
     label: String,
     isHighlighted: Boolean,
 ) {
+    val colors = BouncerDesignSystem.colors
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
             text = value,
-            color = if (isHighlighted) ShinyGoldMid else Color.White,
+            color = if (isHighlighted) colors.goldDark else Color.White,
             fontSize = 14.sp,
             fontWeight = FontWeight.Bold,
         )

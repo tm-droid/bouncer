@@ -42,6 +42,7 @@ fun PremiumCollapsingHeader(
     onBackClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val collapsedHeight = 64.dp
     val expandedHeight = 180.dp
     
@@ -67,7 +68,7 @@ fun PremiumCollapsingHeader(
                 Brush.verticalGradient(
                     colors = listOf(
                         Color.White.copy(alpha = 0.05f),
-                        BlackBackground.copy(alpha = 0.9f)
+                        colors.backgroundBase.copy(alpha = 0.9f)
                     )
                 )
             )
@@ -91,7 +92,7 @@ fun PremiumCollapsingHeader(
                         Brush.verticalGradient(
                             colors = listOf(
                                 Color.Transparent,
-                                BlackBackground.copy(alpha = 0.8f)
+                                colors.backgroundBase.copy(alpha = 0.8f)
                             )
                         )
                     )
@@ -99,11 +100,12 @@ fun PremiumCollapsingHeader(
         }
         
         // Premium glow
+        val goldPrimaryColor = colors.goldPrimary
         Canvas(modifier = Modifier.fillMaxSize()) {
             drawCircle(
                 brush = Brush.radialGradient(
                     colors = listOf(
-                        ShinyGoldDeep.copy(alpha = 0.1f * (1f - progress)),
+                        goldPrimaryColor.copy(alpha = 0.1f * (1f - progress)),
                         Color.Transparent
                     ),
                     center = Offset(size.width * 0.3f, size.height * 0.2f),
@@ -145,7 +147,7 @@ fun PremiumCollapsingHeader(
                         text = title,
                         fontSize = androidx.compose.ui.unit.lerp(28.sp, 18.sp, progress),
                         fontWeight = FontWeight.Black,
-                        color = ShinyGoldMid.copy(
+                        color = colors.goldDark.copy(
                             alpha = 0.8f + shimmerOffset * 0.2f
                         ),
                         letterSpacing = if (progress < 0.5f) 2.sp else 1.sp,
@@ -164,7 +166,7 @@ fun PremiumCollapsingHeader(
                                 text = subtitle,
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.Medium,
-                                color = TextSecondary.copy(alpha = 1f - progress),
+                                color = colors.textSecondary.copy(alpha = 1f - progress),
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
@@ -191,7 +193,7 @@ fun PremiumCollapsingHeader(
                     Brush.horizontalGradient(
                         colors = listOf(
                             Color.Transparent,
-                            ShinyGoldDeep.copy(alpha = 0.3f * progress),
+                            colors.goldPrimary.copy(alpha = 0.3f * progress),
                             Color.Transparent
                         )
                     )
@@ -211,6 +213,7 @@ fun GlassHeader(
     showDivider: Boolean = true,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "glassHeader")
     val glowAlpha by infiniteTransition.animateFloat(
         initialValue = 0.2f,
@@ -266,7 +269,7 @@ fun GlassHeader(
                     text = title.uppercase(),
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Black,
-                    color = ShinyGoldDeep.copy(alpha = 0.8f + glowAlpha * 0.5f),
+                    color = colors.goldPrimary.copy(alpha = 0.8f + glowAlpha * 0.5f),
                     letterSpacing = 2.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -293,7 +296,7 @@ fun GlassHeader(
                             Brush.horizontalGradient(
                                 colors = listOf(
                                     Color.Transparent,
-                                    ShinyGoldDeep.copy(alpha = 0.3f),
+                                    colors.goldPrimary.copy(alpha = 0.3f),
                                     Color.Transparent
                                 )
                             )
@@ -317,6 +320,7 @@ fun PremiumIconButton(
     size: Dp = 40.dp,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     var isPressed by remember { mutableStateOf(false) }
     
     val scale by animateFloatAsState(
@@ -340,12 +344,12 @@ fun PremiumIconButton(
                     scaleY = scale
                 }
                 .background(
-                    CardBorder.copy(alpha = 0.15f),
+                    colors.glassBorder.copy(alpha = 0.15f),
                     CircleShape
                 )
                 .border(
                     1.dp,
-                    CardBorder.copy(alpha = 0.2f),
+                    colors.glassBorder.copy(alpha = 0.2f),
                     CircleShape
                 )
                 .clickable(
@@ -370,7 +374,7 @@ fun PremiumIconButton(
                     .align(Alignment.TopEnd)
                     .offset(x = 4.dp, y = (-4).dp)
                     .size(18.dp)
-                    .background(BoundarySix, CircleShape)
+                    .background(colors.statusWarning, CircleShape)
                     .border(1.5.dp, Color.White.copy(alpha = 0.05f), CircleShape),
                 contentAlignment = Alignment.Center
             ) {
@@ -396,6 +400,7 @@ fun PremiumSectionHeader(
     action: @Composable (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -414,7 +419,7 @@ fun PremiumSectionHeader(
                     modifier = Modifier
                         .size(32.dp)
                         .background(
-                            ShinyGoldDeep.copy(alpha = 0.15f),
+                            colors.goldPrimary.copy(alpha = 0.15f),
                             RoundedCornerShape(8.dp)
                         ),
                     contentAlignment = Alignment.Center
@@ -422,7 +427,7 @@ fun PremiumSectionHeader(
                     Icon(
                         imageVector = icon,
                         contentDescription = null,
-                        tint = ShinyGoldDeep,
+                        tint = colors.goldPrimary,
                         modifier = Modifier.size(18.dp)
                     )
                 }
@@ -433,7 +438,7 @@ fun PremiumSectionHeader(
                     text = title.uppercase(),
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
-                    color = TextSecondary,
+                    color = colors.textSecondary,
                     letterSpacing = 1.5.sp
                 )
                 
@@ -442,7 +447,7 @@ fun PremiumSectionHeader(
                         text = subtitle,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Medium,
-                        color = TextTertiary
+                        color = colors.textTertiary
                     )
                 }
             }
@@ -457,7 +462,7 @@ fun PremiumSectionHeader(
                 .background(
                     Brush.horizontalGradient(
                         colors = listOf(
-                            CardBorder.copy(alpha = 0.3f),
+                            colors.glassBorder.copy(alpha = 0.3f),
                             Color.Transparent
                         )
                     )
@@ -481,6 +486,7 @@ fun PremiumTabRow(
     onTabSelected: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "tabRow")
     val shimmerOffset by infiniteTransition.animateFloat(
         initialValue = -1f,
@@ -507,13 +513,13 @@ fun PremiumTabRow(
                 val isSelected = index == selectedIndex
                 
                 val backgroundColor by animateColorAsState(
-                    targetValue = if (isSelected) ShinyGoldDeep.copy(alpha = 0.2f) else Color.Transparent,
+                    targetValue = if (isSelected) colors.goldPrimary.copy(alpha = 0.2f) else Color.Transparent,
                     animationSpec = tween(200),
                     label = "tabBg"
                 )
                 
                 val textColor by animateColorAsState(
-                    targetValue = if (isSelected) ShinyGoldLight else TextSecondary,
+                    targetValue = if (isSelected) colors.goldLight else colors.textSecondary,
                     animationSpec = tween(200),
                     label = "tabText"
                 )
@@ -525,7 +531,7 @@ fun PremiumTabRow(
                         .background(backgroundColor)
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
-                            indication = ripple(color = ShinyGoldDeep.copy(alpha = 0.1f)),
+                            indication = ripple(color = colors.goldPrimary.copy(alpha = 0.1f)),
                             onClick = { onTabSelected(index) }
                         )
                         .padding(vertical = 12.dp),
@@ -554,13 +560,14 @@ fun NavigationSegmentedControl(
     onSegmentSelected: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(12.dp),
         color = Color.White.copy(alpha = 0.05f),
         border = androidx.compose.foundation.BorderStroke(
             1.dp,
-            CardBorder.copy(alpha = 0.3f)
+            colors.glassBorder.copy(alpha = 0.3f)
         )
     ) {
         Row(
@@ -589,8 +596,8 @@ fun NavigationSegmentedControl(
                             if (isSelected) {
                                 Brush.linearGradient(
                                     colors = listOf(
-                                        ShinyGoldMid,
-                                        ShinyGoldDeep
+                                        colors.goldDark,
+                                        colors.goldPrimary
                                     )
                                 )
                             } else {
@@ -614,7 +621,7 @@ fun NavigationSegmentedControl(
                         text = segment,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = if (isSelected) BlackBackground else TextSecondary
+                        color = if (isSelected) colors.backgroundBase else colors.textSecondary
                     )
                 }
             }
@@ -633,6 +640,7 @@ fun PremiumDropdown(
     onOptionSelected: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     var expanded by remember { mutableStateOf(false) }
     
     val rotation by animateFloatAsState(
@@ -649,7 +657,7 @@ fun PremiumDropdown(
             color = Color.White.copy(alpha = 0.05f),
             border = androidx.compose.foundation.BorderStroke(
                 1.dp,
-                if (expanded) ShinyGoldDeep.copy(alpha = 0.5f) else CardBorder.copy(alpha = 0.3f)
+                if (expanded) colors.goldPrimary.copy(alpha = 0.5f) else colors.glassBorder.copy(alpha = 0.3f)
             ),
             modifier = Modifier.clickable { expanded = !expanded }
         ) {
@@ -663,21 +671,21 @@ fun PremiumDropdown(
                         text = label.uppercase(),
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
-                        color = TextTertiary,
+                        color = colors.textTertiary,
                         letterSpacing = 0.5.sp
                     )
                     Text(
                         text = selectedOption,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = TextPrimary
+                        color = colors.textPrimary
                     )
                 }
                 
                 Icon(
                     imageVector = Icons.Default.KeyboardArrowDown,
                     contentDescription = "Expand",
-                    tint = ShinyGoldDeep,
+                    tint = colors.goldPrimary,
                     modifier = Modifier
                         .size(20.dp)
                         .graphicsLayer { rotationZ = rotation }
@@ -696,7 +704,7 @@ fun PremiumDropdown(
                     text = {
                         Text(
                             text = option,
-                            color = if (option == selectedOption) ShinyGoldDeep else TextPrimary,
+                            color = if (option == selectedOption) colors.goldPrimary else colors.textPrimary,
                             fontWeight = if (option == selectedOption) FontWeight.Bold else FontWeight.Medium
                         )
                     },
@@ -709,7 +717,7 @@ fun PremiumDropdown(
                             Icon(
                                 imageVector = Icons.Default.Check,
                                 contentDescription = null,
-                                tint = ShinyGoldDeep,
+                                tint = colors.goldPrimary,
                                 modifier = Modifier.size(18.dp)
                             )
                         }

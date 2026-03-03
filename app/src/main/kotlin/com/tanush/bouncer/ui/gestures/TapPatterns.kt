@@ -36,6 +36,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.roundToInt
+import io.sentry.Sentry
 
 /**
  * Multi-touch state for complex gestures
@@ -377,17 +378,22 @@ fun Modifier.directionalTap(
 ): Modifier = this.pointerInput(Unit) {
     detectTapGestures(
         onTap = { position ->
-            val centerX = size.width / 2f
-            val centerY = size.height / 2f
+            try {
+                val centerX = size.width / 2f
+                val centerY = size.height / 2f
             
-            val quadrant = when {
-                position.x < centerX && position.y < centerY -> TapQuadrant.TopLeft
-                position.x >= centerX && position.y < centerY -> TapQuadrant.TopRight
-                position.x < centerX && position.y >= centerY -> TapQuadrant.BottomLeft
-                else -> TapQuadrant.BottomRight
+                val quadrant = when {
+                    position.x < centerX && position.y < centerY -> TapQuadrant.TopLeft
+                    position.x >= centerX && position.y < centerY -> TapQuadrant.TopRight
+                    position.x < centerX && position.y >= centerY -> TapQuadrant.BottomLeft
+                    else -> TapQuadrant.BottomRight
+                }
+            
+                onTapWithDirection(position, quadrant)
+            } catch (e: Exception) {
+                Sentry.captureException(e)
+                throw e
             }
-            
-            onTapWithDirection(position, quadrant)
         }
     )
 }
@@ -446,30 +452,35 @@ fun Modifier.swipeFromTap(
     swipeThreshold: Float = 50f
 ): Modifier = this.pointerInput(Unit) {
     awaitEachGesture {
-        val down = awaitFirstDown(requireUnconsumed = false)
-        val startPosition = down.position
+        try {
+            val down = awaitFirstDown(requireUnconsumed = false)
+            val startPosition = down.position
         
-        do {
-            val event = awaitPointerEvent()
-            val current = event.changes.firstOrNull() ?: continue
+            do {
+                val event = awaitPointerEvent()
+                val current = event.changes.firstOrNull() ?: continue
             
-            if (current.changedToUp()) {
-                val endPosition = current.position
-                val delta = endPosition - startPosition
+                if (current.changedToUp()) {
+                    val endPosition = current.position
+                    val delta = endPosition - startPosition
                 
-                if (delta.getDistance() > swipeThreshold) {
-                    val direction = when {
-                        abs(delta.x) > abs(delta.y) -> {
-                            if (delta.x > 0) SwipeFromTapDirection.Right else SwipeFromTapDirection.Left
+                    if (delta.getDistance() > swipeThreshold) {
+                        val direction = when {
+                            abs(delta.x) > abs(delta.y) -> {
+                                if (delta.x > 0) SwipeFromTapDirection.Right else SwipeFromTapDirection.Left
+                            }
+                            else -> {
+                                if (delta.y > 0) SwipeFromTapDirection.Down else SwipeFromTapDirection.Up
+                            }
                         }
-                        else -> {
-                            if (delta.y > 0) SwipeFromTapDirection.Down else SwipeFromTapDirection.Up
-                        }
+                        onSwipe(direction)
                     }
-                    onSwipe(direction)
                 }
-            }
-        } while (event.changes.any { it.pressed })
+            } while (event.changes.any { it.pressed })
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
 }
 
@@ -528,17 +539,22 @@ fun Modifier.pressureDetector(
     onPressureChange: (Float) -> Unit
 ): Modifier = this.pointerInput(Unit) {
     awaitEachGesture {
-        val down = awaitFirstDown(requireUnconsumed = false)
-        onPressureChange(down.pressure)
+        try {
+            val down = awaitFirstDown(requireUnconsumed = false)
+            onPressureChange(down.pressure)
         
-        do {
-            val event = awaitPointerEvent()
-            event.changes.firstOrNull()?.let { change ->
-                onPressureChange(change.pressure)
-            }
-        } while (event.changes.any { it.pressed })
+            do {
+                val event = awaitPointerEvent()
+                event.changes.firstOrNull()?.let { change ->
+                    onPressureChange(change.pressure)
+                }
+            } while (event.changes.any { it.pressed })
         
-        onPressureChange(0f)
+            onPressureChange(0f)
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
 }
 

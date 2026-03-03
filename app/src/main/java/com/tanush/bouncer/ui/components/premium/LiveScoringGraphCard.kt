@@ -33,6 +33,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.ui.theme.*
+import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 
 /**
  * Live scoring graph card
@@ -72,6 +73,11 @@ fun LiveScoringGraphCard(
         )
     }
 
+    val colors = BouncerDesignSystem.colors
+    val statusInfoC = colors.statusInfo
+    val goldDarkC = colors.goldDark
+    val statusSuccessC = colors.statusSuccess
+
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
@@ -96,7 +102,7 @@ fun LiveScoringGraphCard(
                             .clip(CircleShape)
                             .background(
                                 Brush.linearGradient(
-                                    colors = listOf(ChartBlue, Color(0xFF2196F3)),
+                                    colors = listOf(colors.statusInfo, Color(0xFF2196F3)),
                                 ),
                             ),
                         contentAlignment = Alignment.Center,
@@ -114,7 +120,7 @@ fun LiveScoringGraphCard(
                     Column {
                         Text(
                             text = "LIVE SCORING GRAPH",
-                            color = ShinyGoldLight,
+                            color = colors.goldLight,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.5.sp,
@@ -136,11 +142,11 @@ fun LiveScoringGraphCard(
                         modifier = Modifier
                             .size(8.dp * livePulse)
                             .clip(CircleShape)
-                            .background(LiveBlue),
+                            .background(colors.statusInfo),
                     )
                     Text(
                         text = "LIVE",
-                        color = LiveBlue,
+                        color = colors.statusInfo,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
                     )
@@ -155,12 +161,12 @@ fun LiveScoringGraphCard(
                 horizontalArrangement = Arrangement.spacedBy(20.dp),
             ) {
                 LegendItem(
-                    color = ChartBlue,
+                    color = colors.statusInfo,
                     label = scoringData.team1Name,
                     score = scoringData.team1Scores.lastOrNull() ?: 0,
                 )
                 LegendItem(
-                    color = ShinyGoldMid,
+                    color = colors.goldDark,
                     label = scoringData.team2Name,
                     score = if (scoringData.team2Scores.isNotEmpty()) scoringData.team2Scores.last() else null,
                 )
@@ -243,15 +249,15 @@ fun LiveScoringGraphCard(
                             path = fill2,
                             brush = Brush.verticalGradient(
                                 colors = listOf(
-                                    ShinyGoldMid.copy(alpha = 0.3f),
-                                    ShinyGoldMid.copy(alpha = 0f),
+                                    goldDarkC.copy(alpha = 0.3f),
+                                    goldDarkC.copy(alpha = 0f),
                                 ),
                             ),
                         )
 
                         drawPath(
                             path = path2,
-                            color = ShinyGoldMid,
+                            color = goldDarkC,
                             style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round),
                         )
                     }
@@ -286,15 +292,15 @@ fun LiveScoringGraphCard(
                             path = fill1,
                             brush = Brush.verticalGradient(
                                 colors = listOf(
-                                    ChartBlue.copy(alpha = 0.4f),
-                                    ChartBlue.copy(alpha = 0f),
+                                    statusInfoC.copy(alpha = 0.4f),
+                                    statusInfoC.copy(alpha = 0f),
                                 ),
                             ),
                         )
 
                         drawPath(
                             path = path1,
-                            color = ChartBlue,
+                            color = statusInfoC,
                             style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round),
                         )
 
@@ -308,8 +314,8 @@ fun LiveScoringGraphCard(
                             drawCircle(
                                 brush = Brush.radialGradient(
                                     colors = listOf(
-                                        ChartBlue.copy(alpha = 0.5f * livePulse),
-                                        ChartBlue.copy(alpha = 0f),
+                                        statusInfoC.copy(alpha = 0.5f * livePulse),
+                                        statusInfoC.copy(alpha = 0f),
                                     ),
                                     center = Offset(lastX, lastY),
                                     radius = 20.dp.toPx() * livePulse,
@@ -319,7 +325,7 @@ fun LiveScoringGraphCard(
                             )
 
                             drawCircle(
-                                color = ChartBlue,
+                                color = statusInfoC,
                                 radius = 6.dp.toPx(),
                                 center = Offset(lastX, lastY),
                             )
@@ -336,7 +342,7 @@ fun LiveScoringGraphCard(
                         val projectedY = height - (height * scoringData.projectedScore / maxScore)
 
                         drawLine(
-                            color = SuccessGreen.copy(alpha = 0.5f),
+                            color = statusSuccessC.copy(alpha = 0.5f),
                             start = Offset(0f, projectedY),
                             end = Offset(width, projectedY),
                             strokeWidth = 1.dp.toPx(),
@@ -351,12 +357,12 @@ fun LiveScoringGraphCard(
                         modifier = Modifier
                             .align(Alignment.TopEnd)
                             .clip(RoundedCornerShape(6.dp))
-                            .background(SuccessGreen.copy(alpha = 0.2f))
+                            .background(colors.statusSuccess.copy(alpha = 0.2f))
                             .padding(horizontal = 8.dp, vertical = 4.dp),
                     ) {
                         Text(
                             text = "Projected: ${scoringData.projectedScore}",
-                            color = SuccessGreen,
+                            color = colors.statusSuccess,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
                         )
@@ -423,6 +429,7 @@ private fun LegendItem(
     label: String,
     score: Int?,
 ) {
+    val colors = BouncerDesignSystem.colors
     Row(verticalAlignment = Alignment.CenterVertically) {
         Box(
             modifier = Modifier
@@ -457,6 +464,7 @@ private fun ScoringStatItem(
     value: String,
     subtext: String,
 ) {
+    val colors = BouncerDesignSystem.colors
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
             text = label,

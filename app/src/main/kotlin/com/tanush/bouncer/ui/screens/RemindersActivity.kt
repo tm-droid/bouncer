@@ -12,20 +12,27 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.tanush.bouncer.ui.theme.BlackBackground
+import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 import com.tanush.bouncer.utils.RemindersManager
 import com.tanush.bouncer.utils.Reminder
 import com.tanush.bouncer.utils.ReminderScheduler
 import java.text.SimpleDateFormat
 import java.util.*
+import io.sentry.Sentry
 
 class RemindersActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        setContent {
-            Surface(modifier = Modifier.fillMaxSize(), color = BlackBackground) {
-                RemindersScreen()
+        try {
+            super.onCreate(savedInstanceState)
+            setContent {
+                val colors = BouncerDesignSystem.colors
+                Surface(modifier = Modifier.fillMaxSize(), color = colors.backgroundBase) {
+                    RemindersScreen()
+                }
             }
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
         }
     }
 }

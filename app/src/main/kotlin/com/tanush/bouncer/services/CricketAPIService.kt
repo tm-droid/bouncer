@@ -1,9 +1,11 @@
 package com.tanush.bouncer.services
 
+import android.util.Log
 import com.tanush.bouncer.managers.TeamLogoManager
 import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.network.RetrofitClient
 import com.tanush.bouncer.network.models.SanwebMatchSummary
+import io.sentry.Sentry
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -15,6 +17,9 @@ import java.util.Date
  * Mirrors the iOS CricketAPIService implementation
  */
 class CricketAPIService(private val apiKey: String = "") {
+    companion object {
+        private const val TAG = "CricketAPIService"
+    }
     private val baseURL = "https://api-iota-jade.vercel.app/"
     private var lastRequestTime: Date? = null
     private val minimumRequestIntervalMs = 1000L // 1 second
@@ -61,7 +66,7 @@ class CricketAPIService(private val apiKey: String = "") {
                 }
             }
         } catch (e: Exception) {
-            e.printStackTrace()
+            Sentry.captureException(e)
             emptyList()
         }
     }
@@ -205,7 +210,7 @@ class CricketAPIService(private val apiKey: String = "") {
             val timeSinceLastRequest = Date().time - lastTime.time
             if (timeSinceLastRequest < minimumRequestIntervalMs) {
                 val sleepTime = minimumRequestIntervalMs - timeSinceLastRequest
-                println("Rate limit: Sleeping for $sleepTime ms")
+                Log.d(TAG, "Rate limit: Sleeping for $sleepTime ms")
                 delay(sleepTime)
             }
         }

@@ -87,8 +87,8 @@ fun CricketRefreshIndicator(
             drawCircle(
                 brush = Brush.radialGradient(
                     colors = listOf(
-                        ShinyGoldDeep.copy(alpha = 0.4f),
-                        ShinyGoldDeep.copy(alpha = 0.1f),
+                        GoldDark.copy(alpha = 0.4f),
+                        GoldDark.copy(alpha = 0.1f),
                         Color.Transparent
                     )
                 ),
@@ -334,7 +334,7 @@ fun CricketLoadingSpinner(
                 val dotAlpha = (1f - (i * 0.15f)).coerceIn(0.3f, 1f)
                 
                 drawCircle(
-                    color = ShinyGoldDeep.copy(alpha = dotAlpha),
+                    color = GoldDark.copy(alpha = dotAlpha),
                     radius = 4f,
                     center = Offset(dotX, dotY)
                 )
@@ -352,7 +352,7 @@ fun CricketLoadingSpinner(
             
             drawCircle(
                 brush = Brush.radialGradient(
-                    colors = listOf(ShinyGoldMid, ShinyGoldDeep)
+                    colors = listOf(GoldPrimary, GoldDark)
                 ),
                 radius = ballRadius,
                 center = center
@@ -370,6 +370,7 @@ fun BouncingBallLoader(
     ballCount: Int = 3
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "bouncingBalls")
+    val colors = BouncerDesignSystem.colors
     
     Row(
         modifier = modifier,
@@ -400,11 +401,11 @@ fun BouncingBallLoader(
                     .graphicsLayer { translationY = bounceOffset }
                     .background(
                         Brush.radialGradient(
-                            colors = listOf(ShinyGoldMid, ShinyGoldDeep)
+                            colors = listOf(colors.goldPrimary, colors.goldDark)
                         ),
                         CircleShape
                     )
-                    .shadow(4.dp, CircleShape, spotColor = ShinyGoldDeep.copy(alpha = 0.5f))
+                    .shadow(4.dp, CircleShape, spotColor = colors.goldDark.copy(alpha = 0.5f))
             )
         }
     }
@@ -441,6 +442,7 @@ fun ScoreUpdateIndicator(
     )
 
     if (isUpdating) {
+        val colors = BouncerDesignSystem.colors
         Surface(
             modifier = modifier
                 .graphicsLayer { 
@@ -448,13 +450,13 @@ fun ScoreUpdateIndicator(
                     scaleY = pulseScale
                 },
             shape = CircleShape,
-            color = ShinyGoldDeep.copy(alpha = glowAlpha),
+            color = colors.goldDark.copy(alpha = glowAlpha),
             shadowElevation = 8.dp
         ) {
             Text(
                 text = "LIVE",
                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                color = BlackBackground,
+                color = colors.backgroundBase,
                 fontSize = 10.sp,
                 fontWeight = FontWeight.ExtraBold,
                 letterSpacing = 1.sp

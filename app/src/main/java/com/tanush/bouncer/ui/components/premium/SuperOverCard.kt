@@ -39,7 +39,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.ui.theme.BoundaryFour
-import com.tanush.bouncer.ui.theme.BoundarySix
 import com.tanush.bouncer.ui.theme.ChartBlue
 import com.tanush.bouncer.ui.theme.LiveBlue
 import com.tanush.bouncer.ui.theme.GoldDark
@@ -48,6 +47,7 @@ import com.tanush.bouncer.ui.theme.GoldPrimary
 import com.tanush.bouncer.ui.theme.WarningYellow
 import com.tanush.bouncer.ui.theme.WicketRed
 import kotlin.math.*
+import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 
 /**
  * Super over card for tied matches
@@ -93,6 +93,7 @@ fun SuperOverCard(
     superOverData: SuperOverData,
     modifier: Modifier = Modifier,
 ) {
+    val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "superover")
 
     val flashPulse by infiniteTransition.animateFloat(
@@ -139,7 +140,7 @@ fun SuperOverCard(
                             .background(
                                 Brush.linearGradient(
                                     colors = listOf(
-                                        WicketRed.copy(alpha = flashPulse),
+                                        colors.statusLive.copy(alpha = flashPulse),
                                         Color(0xFFFF5722).copy(alpha = flashPulse),
                                     ),
                                 ),
@@ -159,7 +160,7 @@ fun SuperOverCard(
                     Column {
                         Text(
                             text = "SUPER OVER",
-                            color = WicketRed,
+                            color = colors.statusLive,
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Black,
                             letterSpacing = 2.sp,
@@ -176,12 +177,12 @@ fun SuperOverCard(
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(8.dp))
-                            .background(LiveBlue.copy(alpha = flashPulse * 0.3f))
+                            .background(colors.statusInfo.copy(alpha = flashPulse * 0.3f))
                             .padding(horizontal = 10.dp, vertical = 4.dp),
                     ) {
                         Text(
                             text = "● LIVE",
-                            color = LiveBlue,
+                            color = colors.statusInfo,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
                         )
@@ -313,13 +314,13 @@ fun SuperOverCard(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(10.dp))
-                        .background(ChartBlue.copy(alpha = 0.15f))
+                        .background(colors.statusInfo.copy(alpha = 0.15f))
                         .padding(12.dp),
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(
                         text = "${superOverData.team2Name} need $required from $ballsRemaining balls",
-                        color = ChartBlue,
+                        color = colors.statusInfo,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Bold,
                     )
@@ -338,6 +339,7 @@ private fun SuperOverTeamScore(
     isWinner: Boolean,
     flashPulse: Float,
 ) {
+    val colors = BouncerDesignSystem.colors
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
@@ -345,7 +347,7 @@ private fun SuperOverTeamScore(
             .background(
                 when {
                     isWinner -> GoldDark.copy(alpha = 0.2f)
-                    isBatting -> LiveBlue.copy(alpha = 0.1f * flashPulse)
+                    isBatting -> colors.statusInfo.copy(alpha = 0.1f * flashPulse)
                     else -> Color.Transparent
                 },
             )
@@ -379,7 +381,7 @@ private fun SuperOverTeamScore(
             Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = "BATTING",
-                color = LiveBlue,
+                color = colors.statusInfo,
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Bold,
             )
@@ -402,6 +404,7 @@ private fun SuperOverDeliveryRow(
     isCurrentlyBatting: Boolean,
     progress: Float,
 ) {
+    val colors = BouncerDesignSystem.colors
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -426,7 +429,7 @@ private fun SuperOverDeliveryRow(
                     modifier = Modifier
                         .size(8.dp)
                         .clip(CircleShape)
-                        .background(LiveBlue),
+                        .background(colors.statusInfo),
                 )
             }
         }
@@ -448,12 +451,12 @@ private fun SuperOverDeliveryRow(
                         .background(
                             when {
                                 delivery == null -> Color(0xFF3D3D55)
-                                delivery.isWicket -> WicketRed
-                                delivery.isSix -> BoundarySix
-                                delivery.isFour -> BoundaryFour
-                                delivery.isExtra -> WarningYellow
+                                delivery.isWicket -> colors.statusLive
+                                delivery.isSix -> BouncerDesignSystem.colors.statusWarning
+                                delivery.isFour -> colors.statusWarning
+                                delivery.isExtra -> colors.statusWarning
                                 delivery.runs == 0 -> Color(0xFF4D4D65)
-                                else -> ChartBlue
+                                else -> BouncerDesignSystem.colors.statusInfo
                             },
                         ),
                     contentAlignment = Alignment.Center,
@@ -480,6 +483,7 @@ private fun SuperOverDeliveryRow(
 
 @Composable
 fun SuperOverCardPreview() {
+    val colors = BouncerDesignSystem.colors
     SuperOverCard(
         superOverData = SuperOverData(
             team1Name = "India",

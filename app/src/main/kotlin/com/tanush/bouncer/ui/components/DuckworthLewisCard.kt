@@ -51,6 +51,7 @@ fun DuckworthLewisCard(
     dlsInfo: DLSInfo,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "dls_animation")
     
     val pulseAlpha by infiniteTransition.animateFloat(
@@ -74,7 +75,7 @@ fun DuckworthLewisCard(
     Card(
         modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = Color(0xFF0D1117)
+            containerColor = colors.backgroundBase
         ),
         shape = RoundedCornerShape(20.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
@@ -94,13 +95,13 @@ fun DuckworthLewisCard(
                     Icon(
                         imageVector = Icons.Filled.Calculate,
                         contentDescription = null,
-                        tint = ShinyGoldMid,
+                        tint = colors.goldPrimary,
                         modifier = Modifier.size(24.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = "DLS Method",
-                        color = Color.White,
+                        color = colors.textPrimary,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -108,7 +109,7 @@ fun DuckworthLewisCard(
                 
                 if (dlsInfo.isRainAffected) {
                     Surface(
-                        color = WarningYellow.copy(alpha = 0.2f),
+                        color = colors.statusWarning.copy(alpha = 0.2f),
                         shape = RoundedCornerShape(12.dp)
                     ) {
                         Row(
@@ -122,7 +123,7 @@ fun DuckworthLewisCard(
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
                                 text = "RAIN AFFECTED",
-                                color = WarningYellow,
+                                color = colors.statusWarning,
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold
                             )
@@ -151,7 +152,7 @@ fun DuckworthLewisCard(
                         
                         // Background arc
                         drawArc(
-                            color = Color.White.copy(alpha = 0.1f),
+                            color = colors.glassSurface,
                             startAngle = 135f,
                             sweepAngle = 270f,
                             useCenter = false,
@@ -163,9 +164,9 @@ fun DuckworthLewisCard(
                         // Resource progress arc
                         val resourceAngle = 270f * resourceProgress
                         val resourceColor = when {
-                            resourceProgress > 0.7f -> SuccessGreen
-                            resourceProgress > 0.4f -> WarningYellow
-                            else -> WicketRed
+                            resourceProgress > 0.7f -> StatusSuccess
+                            resourceProgress > 0.4f -> StatusWarning
+                            else -> StatusLive
                         }
                         
                         drawArc(
@@ -187,13 +188,13 @@ fun DuckworthLewisCard(
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
                             text = "${dlsInfo.resourcesRemaining.toInt()}%",
-                            color = Color.White,
+                            color = colors.textPrimary,
                             fontSize = 24.sp,
                             fontWeight = FontWeight.Bold
                         )
                         Text(
                             text = "Resources",
-                            color = Color.White.copy(alpha = 0.7f),
+                            color = colors.textSecondary,
                             fontSize = 10.sp
                         )
                     }
@@ -203,20 +204,20 @@ fun DuckworthLewisCard(
                 Column(horizontalAlignment = Alignment.End) {
                     Text(
                         text = "TARGET",
-                        color = Color.White.copy(alpha = 0.6f),
+                        color = colors.textSecondary,
                         fontSize = 11.sp,
                         letterSpacing = 1.sp
                     )
                     Text(
                         text = "${dlsInfo.revisedTarget ?: dlsInfo.targetScore}",
-                        color = ShinyGoldMid,
+                        color = colors.goldPrimary,
                         fontSize = 36.sp,
                         fontWeight = FontWeight.Bold
                     )
                     if (dlsInfo.revisedTarget != null && dlsInfo.revisedTarget != dlsInfo.targetScore) {
                         Text(
                             text = "Original: ${dlsInfo.targetScore}",
-                            color = Color.White.copy(alpha = 0.4f),
+                            color = colors.textTertiary,
                             fontSize = 11.sp,
                             style = LocalTextStyle.current.copy(
                                 textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough
@@ -226,7 +227,7 @@ fun DuckworthLewisCard(
                     if (dlsInfo.revisedOvers != null) {
                         Text(
                             text = "in ${dlsInfo.revisedOvers} overs",
-                            color = Color.White.copy(alpha = 0.7f),
+                            color = colors.textSecondary,
                             fontSize = 12.sp
                         )
                     }
@@ -237,7 +238,7 @@ fun DuckworthLewisCard(
             
             // Par score comparison
             Surface(
-                color = if (isAheadOfPar) SuccessGreen.copy(alpha = 0.15f) else WicketRed.copy(alpha = 0.15f),
+                color = if (isAheadOfPar) colors.statusSuccess.copy(alpha = 0.15f) else colors.statusLive.copy(alpha = 0.15f),
                 shape = RoundedCornerShape(16.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -251,13 +252,13 @@ fun DuckworthLewisCard(
                     Column {
                         Text(
                             text = "PAR SCORE",
-                            color = Color.White.copy(alpha = 0.6f),
+                            color = colors.textSecondary,
                             fontSize = 10.sp,
                             letterSpacing = 1.sp
                         )
                         Text(
                             text = "${dlsInfo.parScore}",
-                            color = Color.White,
+                            color = colors.textPrimary,
                             fontSize = 28.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -266,19 +267,19 @@ fun DuckworthLewisCard(
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
                             text = "CURRENT",
-                            color = Color.White.copy(alpha = 0.6f),
+                            color = colors.textSecondary,
                             fontSize = 10.sp,
                             letterSpacing = 1.sp
                         )
                         Text(
                             text = "${dlsInfo.currentScore}/${dlsInfo.wicketsLost}",
-                            color = Color.White,
+                            color = colors.textPrimary,
                             fontSize = 24.sp,
                             fontWeight = FontWeight.Bold
                         )
                         Text(
                             text = "${dlsInfo.currentOvers} overs",
-                            color = Color.White.copy(alpha = 0.7f),
+                            color = colors.textSecondary,
                             fontSize = 12.sp
                         )
                     }
@@ -287,14 +288,14 @@ fun DuckworthLewisCard(
                         val diff = dlsInfo.currentScore - dlsInfo.parScore
                         Text(
                             text = if (isAheadOfPar) "AHEAD" else "BEHIND",
-                            color = if (isAheadOfPar) SuccessGreen else WicketRed,
+                            color = if (isAheadOfPar) colors.statusSuccess else colors.statusLive,
                             fontSize = 10.sp,
                             letterSpacing = 1.sp,
                             fontWeight = FontWeight.Bold
                         )
                         Text(
                             text = "${if (diff >= 0) "+" else ""}$diff",
-                            color = if (isAheadOfPar) SuccessGreen else WicketRed,
+                            color = if (isAheadOfPar) colors.statusSuccess else colors.statusLive,
                             fontSize = 28.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -308,7 +309,7 @@ fun DuckworthLewisCard(
             Column {
                 Text(
                     text = "RESOURCE COMPARISON",
-                    color = Color.White.copy(alpha = 0.6f),
+                    color = colors.textSecondary,
                     fontSize = 10.sp,
                     letterSpacing = 1.sp
                 )
@@ -325,12 +326,12 @@ fun DuckworthLewisCard(
                     ) {
                         Text(
                             text = "Team 1",
-                            color = Color.White.copy(alpha = 0.7f),
+                            color = colors.textSecondary,
                             fontSize = 11.sp
                         )
                         Text(
                             text = "${dlsInfo.team1Resources.toInt()}%",
-                            color = ChartBlue,
+                            color = colors.statusInfo,
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -342,20 +343,20 @@ fun DuckworthLewisCard(
                             .weight(2f)
                             .height(24.dp)
                             .clip(RoundedCornerShape(12.dp))
-                            .background(Color.White.copy(alpha = 0.1f))
+                            .background(colors.glassSurface)
                     ) {
                         Row(modifier = Modifier.fillMaxSize()) {
                             Box(
                                 modifier = Modifier
                                     .fillMaxHeight()
                                     .weight(dlsInfo.team1Resources / 200f)
-                                    .background(ChartBlue.copy(alpha = 0.7f))
+                                    .background(colors.statusInfo.copy(alpha = 0.7f))
                             )
                             Box(
                                 modifier = Modifier
                                     .fillMaxHeight()
                                     .weight(dlsInfo.team2Resources / 200f)
-                                    .background(ShinyGoldMid.copy(alpha = 0.7f))
+                                    .background(colors.goldPrimary.copy(alpha = 0.7f))
                             )
                         }
                     }
@@ -367,12 +368,12 @@ fun DuckworthLewisCard(
                     ) {
                         Text(
                             text = "Team 2",
-                            color = Color.White.copy(alpha = 0.7f),
+                            color = colors.textSecondary,
                             fontSize = 11.sp
                         )
                         Text(
                             text = "${dlsInfo.team2Resources.toInt()}%",
-                            color = ShinyGoldMid,
+                            color = colors.goldPrimary,
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -385,7 +386,7 @@ fun DuckworthLewisCard(
                 Spacer(modifier = Modifier.height(16.dp))
                 
                 Surface(
-                    color = ShinyGoldDeep.copy(alpha = 0.15f),
+                    color = colors.goldPrimary.copy(alpha = 0.15f),
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
@@ -399,18 +400,18 @@ fun DuckworthLewisCard(
                         Icon(
                             imageVector = Icons.Filled.Speed,
                             contentDescription = null,
-                            tint = ShinyGoldMid.copy(alpha = pulseAlpha),
+                            tint = colors.goldPrimary.copy(alpha = pulseAlpha),
                             modifier = Modifier.size(20.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = "Projected Score: ",
-                            color = Color.White.copy(alpha = 0.7f),
+                            color = colors.textSecondary,
                             fontSize = 14.sp
                         )
                         Text(
                             text = "${dlsInfo.projectedScore}",
-                            color = ShinyGoldMid,
+                            color = colors.goldPrimary,
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -451,23 +452,24 @@ private fun StatBox(
     value: String,
     icon: androidx.compose.ui.graphics.vector.ImageVector
 ) {
+    val colors = BouncerDesignSystem.colors
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Icon(
             imageVector = icon,
             contentDescription = null,
-            tint = Color.White.copy(alpha = 0.5f),
+            tint = colors.textTertiary,
             modifier = Modifier.size(16.dp)
         )
         Spacer(modifier = Modifier.height(4.dp))
         Text(
             text = value,
-            color = Color.White,
+            color = colors.textPrimary,
             fontSize = 16.sp,
             fontWeight = FontWeight.Bold
         )
         Text(
             text = label,
-            color = Color.White.copy(alpha = 0.5f),
+            color = colors.textTertiary,
             fontSize = 9.sp,
             textAlign = TextAlign.Center
         )

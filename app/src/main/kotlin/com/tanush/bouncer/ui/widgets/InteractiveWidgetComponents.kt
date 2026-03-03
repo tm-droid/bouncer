@@ -38,6 +38,7 @@ import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 import com.tanush.bouncer.MainActivity
 import com.tanush.bouncer.R
+import io.sentry.Sentry
 
 /**
  * InteractiveWidgetComponents - Tappable and Interactive Widget Elements
@@ -76,7 +77,12 @@ class RefreshWidgetCallback : ActionCallback {
     ) {
         // Trigger widget refresh by sending broadcast
         val intent = Intent(context, LiveMatchWidgetProvider::class.java).apply {
-            action = LiveMatchWidgetProvider.ACTION_REFRESH
+            try {
+                action = LiveMatchWidgetProvider.ACTION_REFRESH
+            } catch (e: Exception) {
+                Sentry.captureException(e)
+                throw e
+            }
         }
         context.sendBroadcast(intent)
     }
@@ -142,7 +148,12 @@ class NextMatchCallback : ActionCallback {
         parameters: ActionParameters
     ) {
         val intent = Intent(context, LiveMatchWidgetProvider::class.java).apply {
-            action = LiveMatchWidgetProvider.ACTION_NEXT_MATCH
+            try {
+                action = LiveMatchWidgetProvider.ACTION_NEXT_MATCH
+            } catch (e: Exception) {
+                Sentry.captureException(e)
+                throw e
+            }
         }
         context.sendBroadcast(intent)
     }
@@ -802,13 +813,18 @@ private fun EmptyBallSlot(
  * Get colors for ball type
  */
 private fun getBallColors(ball: String): Pair<ColorProvider, ColorProvider> {
-    return when (ball.uppercase().trim()) {
-        "W" -> WidgetColorScheme.wicket to ColorProvider(Color.White)
-        "6" -> WidgetColorScheme.six to ColorProvider(Color.White)
-        "4" -> WidgetColorScheme.four to ColorProvider(Color.White)
-        "0", "•" -> WidgetColorScheme.dotBall to WidgetColorScheme.textTertiary
-        "NB", "WD", "LB", "B" -> WidgetColorScheme.warning to ColorProvider(Color.Black)
-        else -> WidgetColorScheme.surfaceHighest to WidgetColorScheme.textPrimary
+    try {
+        return when (ball.uppercase().trim()) {
+            "W" -> WidgetColorScheme.wicket to ColorProvider(Color.White)
+            "6" -> WidgetColorScheme.six to ColorProvider(Color.White)
+            "4" -> WidgetColorScheme.four to ColorProvider(Color.White)
+            "0", "•" -> WidgetColorScheme.dotBall to WidgetColorScheme.textTertiary
+            "NB", "WD", "LB", "B" -> WidgetColorScheme.warning to ColorProvider(Color.Black)
+            else -> WidgetColorScheme.surfaceHighest to WidgetColorScheme.textPrimary
+        }
+    } catch (e: Exception) {
+        Sentry.captureException(e)
+        throw e
     }
 }
 
@@ -816,12 +832,17 @@ private fun getBallColors(ball: String): Pair<ColorProvider, ColorProvider> {
  * Format ball text for display
  */
 private fun formatBallText(ball: String): String {
-    return when (ball.uppercase().trim()) {
-        "0" -> "•"
-        "NB" -> "nb"
-        "WD" -> "wd"
-        "LB" -> "lb"
-        else -> ball
+    try {
+        return when (ball.uppercase().trim()) {
+            "0" -> "•"
+            "NB" -> "nb"
+            "WD" -> "wd"
+            "LB" -> "lb"
+            else -> ball
+        }
+    } catch (e: Exception) {
+        Sentry.captureException(e)
+        throw e
     }
 }
 

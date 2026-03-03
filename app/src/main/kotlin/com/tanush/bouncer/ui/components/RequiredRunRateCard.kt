@@ -54,6 +54,7 @@ fun RequiredRunRateCard(
     data: ChaseData,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "rrr")
     
     // Pulse for urgency
@@ -78,10 +79,10 @@ fun RequiredRunRateCard(
     )
     
     val rrrColor = when {
-        data.requiredRunRate <= data.currentRunRate + 1 -> SuccessGreen
-        data.requiredRunRate <= data.currentRunRate + 3 -> ShinyGoldDeep
-        data.requiredRunRate <= data.currentRunRate + 5 -> WarningYellow
-        else -> WicketRed
+        data.requiredRunRate <= data.currentRunRate + 1 -> colors.statusSuccess
+        data.requiredRunRate <= data.currentRunRate + 3 -> colors.goldPrimary
+        data.requiredRunRate <= data.currentRunRate + 5 -> colors.statusWarning
+        else -> colors.statusLive
     }
     
     val chaseStatus = when {
@@ -103,7 +104,7 @@ fun RequiredRunRateCard(
                 spotColor = rrrColor.copy(alpha = 0.25f)
             ),
         shape = RoundedCornerShape(24.dp),
-        color = Color.White.copy(alpha = 0.05f)
+        color = colors.glassSurface
     ) {
         Column(
             modifier = Modifier
@@ -131,7 +132,7 @@ fun RequiredRunRateCard(
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 1.5.sp,
-                        color = ShinyGoldDeep
+                        color = colors.goldPrimary
                     )
                     Text(
                         text = chaseStatus,
@@ -144,7 +145,7 @@ fun RequiredRunRateCard(
                 // Target display
                 Surface(
                     shape = RoundedCornerShape(12.dp),
-                    color = ShinyGoldDeep.copy(alpha = 0.15f)
+                    color = colors.goldPrimary.copy(alpha = 0.15f)
                 ) {
                     Column(
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
@@ -154,13 +155,13 @@ fun RequiredRunRateCard(
                             text = "TARGET",
                             fontSize = 8.sp,
                             letterSpacing = 1.sp,
-                            color = TextSecondary
+                            color = colors.textSecondary
                         )
                         Text(
                             text = "${data.target}",
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
-                            color = ShinyGoldDeep
+                            color = colors.goldPrimary
                         )
                     }
                 }
@@ -181,7 +182,7 @@ fun RequiredRunRateCard(
                     
                     // Background track
                     drawArc(
-                        color = CardBorder.copy(alpha = 0.2f),
+                        color = GlassBorder.copy(alpha = 0.2f),
                         startAngle = 135f,
                         sweepAngle = 270f,
                         useCenter = false,
@@ -195,8 +196,8 @@ fun RequiredRunRateCard(
                     drawArc(
                         brush = Brush.sweepGradient(
                             colorStops = arrayOf(
-                                0f to SuccessGreen.copy(alpha = 0.7f),
-                                0.5f to ShinyGoldDeep,
+                                0f to colors.statusSuccess.copy(alpha = 0.7f),
+                                0.5f to colors.goldPrimary,
                                 1f to rrrColor
                             ),
                             center = Offset(centerX, centerY)
@@ -242,7 +243,7 @@ fun RequiredRunRateCard(
                     
                     // Inner decorative ring
                     drawCircle(
-                        color = CardBorder.copy(alpha = 0.15f),
+                        color = GlassBorder.copy(alpha = 0.15f),
                         radius = radius * 0.6f,
                         center = Offset(centerX, centerY),
                         style = Stroke(1.dp.toPx())
@@ -258,12 +259,12 @@ fun RequiredRunRateCard(
                         text = "${data.currentScore}/${data.wicketsLost}",
                         fontSize = 24.sp,
                         fontWeight = FontWeight.Bold,
-                        color = TextPrimary
+                        color = colors.textPrimary
                     )
                     Text(
                         text = "(${data.currentOver})",
                         fontSize = 12.sp,
-                        color = TextSecondary
+                        color = colors.textSecondary
                     )
                 }
             }
@@ -288,21 +289,21 @@ fun RequiredRunRateCard(
                     modifier = Modifier
                         .width(1.dp)
                         .height(40.dp)
-                        .background(CardBorder.copy(alpha = 0.3f))
+                        .background(colors.glassBorder.copy(alpha = 0.3f))
                 )
                 
                 ChaseStatItem(
                     label = "FROM",
                     value = "$ballsRemaining",
                     subValue = "balls",
-                    color = TextPrimary
+                    color = colors.textPrimary
                 )
                 
                 Box(
                     modifier = Modifier
                         .width(1.dp)
                         .height(40.dp)
-                        .background(CardBorder.copy(alpha = 0.3f))
+                        .background(colors.glassBorder.copy(alpha = 0.3f))
                 )
                 
                 ChaseStatItem(
@@ -342,14 +343,14 @@ fun RequiredRunRateCard(
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
-                    color = (if (willWin) SuccessGreen else WicketRed).copy(alpha = 0.1f)
+                    color = (if (willWin) colors.statusSuccess else colors.statusLive).copy(alpha = 0.1f)
                 ) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .border(
                                 width = 1.dp,
-                                color = (if (willWin) SuccessGreen else WicketRed).copy(alpha = 0.3f),
+                                color = (if (willWin) colors.statusSuccess else colors.statusLive).copy(alpha = 0.3f),
                                 shape = RoundedCornerShape(12.dp)
                             )
                             .padding(12.dp),
@@ -361,7 +362,7 @@ fun RequiredRunRateCard(
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 0.5.sp,
-                            color = TextSecondary
+                            color = colors.textSecondary
                         )
                         
                         Row(
@@ -372,12 +373,12 @@ fun RequiredRunRateCard(
                                 text = "$projected",
                                 fontSize = 18.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = if (willWin) SuccessGreen else WicketRed
+                                color = if (willWin) colors.statusSuccess else colors.statusLive
                             )
                             Text(
                                 text = if (willWin) "✓" else "✗",
                                 fontSize = 16.sp,
-                                color = if (willWin) SuccessGreen else WicketRed
+                                color = if (willWin) colors.statusSuccess else colors.statusLive
                             )
                         }
                     }
@@ -431,9 +432,9 @@ private fun RunRateCompareItem(
     modifier: Modifier = Modifier
 ) {
     val color = when {
-        isRequired -> WicketRed.copy(alpha = 0.8f)
-        isGood -> SuccessGreen
-        else -> WarningYellow
+        isRequired -> StatusLive.copy(alpha = 0.8f)
+        isGood -> StatusSuccess
+        else -> StatusWarning
     }
     
     Surface(
@@ -492,9 +493,9 @@ fun CompactRRRDisplay(
     modifier: Modifier = Modifier
 ) {
     val color = when {
-        requiredRunRate <= currentRunRate -> SuccessGreen
-        requiredRunRate <= currentRunRate + 2 -> WarningYellow
-        else -> WicketRed
+        requiredRunRate <= currentRunRate -> StatusSuccess
+        requiredRunRate <= currentRunRate + 2 -> StatusWarning
+        else -> StatusLive
     }
     
     Row(

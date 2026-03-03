@@ -28,6 +28,7 @@ import com.tanush.bouncer.models.Innings
 import com.tanush.bouncer.models.BatsmanStats
 import com.tanush.bouncer.models.BowlerStats
 import com.tanush.bouncer.ui.theme.*
+import io.sentry.Sentry
 
 @Composable
 fun PremiumScorecardTab(
@@ -36,7 +37,7 @@ fun PremiumScorecardTab(
 ) {
     if (scorecard == null) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator(color = ShinyGoldDeep)
+            CircularProgressIndicator(color = GoldPrimary)
         }
         return
     }
@@ -66,7 +67,7 @@ fun PremiumScorecardTab(
                 } else {
                     "CRR: $currentRunRate"
                 },
-                color = ShinyGoldDeep,
+                color = GoldPrimary,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Medium,
                 letterSpacing = 1.sp
@@ -90,7 +91,7 @@ fun PremiumScorecardTab(
                     onClick = { selectedInningsIndex = index },
                     modifier = Modifier.weight(1f),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = if (isSelected) ShinyGoldDeep else Color.Transparent,
+                        containerColor = if (isSelected) GoldPrimary else Color.Transparent,
                         contentColor = if (isSelected) Color.Black else Color.White.copy(alpha = 0.5f)
                     ),
                     shape = RoundedCornerShape(8.dp),
@@ -115,7 +116,7 @@ fun PremiumScorecardTab(
             item { 
                 Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(modifier = Modifier.width(2.dp).height(16.dp).background(ShinyGoldDeep))
+                        Box(modifier = Modifier.width(2.dp).height(16.dp).background(GoldPrimary))
                         Spacer(modifier = Modifier.width(8.dp))
                         Text("Batting", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
                     }
@@ -162,7 +163,7 @@ private fun SectionHeader(title: String) {
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(modifier = Modifier.width(2.dp).height(16.dp).background(ShinyGoldDeep))
+        Box(modifier = Modifier.width(2.dp).height(16.dp).background(GoldPrimary))
         Spacer(modifier = Modifier.width(8.dp))
         Text(title, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
     }
@@ -184,7 +185,7 @@ private fun BattingTableHeader() {
         Text("B", modifier = Modifier.weight(1f), textAlign = TextAlign.Center, color = Color.White.copy(alpha = 0.4f), fontSize = 10.sp, fontWeight = FontWeight.Bold)
         Text("4s", modifier = Modifier.weight(1f), textAlign = TextAlign.Center, color = Color.White.copy(alpha = 0.4f), fontSize = 10.sp, fontWeight = FontWeight.Bold)
         Text("6s", modifier = Modifier.weight(1f), textAlign = TextAlign.Center, color = Color.White.copy(alpha = 0.4f), fontSize = 10.sp, fontWeight = FontWeight.Bold)
-        Text("SR", modifier = Modifier.weight(1.2f), textAlign = TextAlign.End, color = ShinyGoldDeep, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+        Text("SR", modifier = Modifier.weight(1.2f), textAlign = TextAlign.End, color = GoldPrimary, fontSize = 10.sp, fontWeight = FontWeight.Bold)
     }
 }
 
@@ -196,13 +197,13 @@ private fun BattingRow(batsman: BatsmanStats) {
         modifier = Modifier
             .padding(horizontal = 16.dp)
             .fillMaxWidth()
-            .background(if (isNotOut) Color.White.copy(alpha = 0.05f) else Color(0xFF121212))
+            .background(if (isNotOut) GlassSurface else Color(0xFF121212))
             .border(0.5.dp, Color.White.copy(alpha = 0.05f))
             .padding(horizontal = 12.dp, vertical = 12.dp)
     ) {
         if (isNotOut) {
             Box(modifier = Modifier.matchParentSize().drawBehind {
-                drawRect(ShinyGoldDeep, size = Size(2.dp.toPx(), size.height))
+                drawRect(GoldPrimary, size = Size(2.dp.toPx(), size.height))
             })
         }
         
@@ -227,7 +228,7 @@ private fun BattingRow(batsman: BatsmanStats) {
             Text(batsman.balls, modifier = Modifier.weight(1f), textAlign = TextAlign.Center, color = Color.White.copy(alpha = 0.4f), fontSize = 12.sp)
             Text(batsman.fours, modifier = Modifier.weight(1f), textAlign = TextAlign.Center, color = Color.White.copy(alpha = 0.4f), fontSize = 12.sp)
             Text(batsman.sixes, modifier = Modifier.weight(1f), textAlign = TextAlign.Center, color = Color.White.copy(alpha = 0.4f), fontSize = 12.sp)
-            Text(batsman.strikeRate, modifier = Modifier.weight(1.2f), textAlign = TextAlign.End, color = ShinyGoldDeep, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+            Text(batsman.strikeRate, modifier = Modifier.weight(1.2f), textAlign = TextAlign.End, color = GoldPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
         }
     }
 }
@@ -245,7 +246,7 @@ private fun ExtrasRow(extras: String, innings: Innings?) {
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Text("Extras: $extras", color = Color.White.copy(alpha = 0.4f), fontSize = 12.sp)
-        Text("CRR $crr", color = ShinyGoldDeep, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+        Text("CRR $crr", color = GoldPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
     }
 }
 
@@ -253,61 +254,71 @@ private fun ExtrasRow(extras: String, innings: Innings?) {
  * Calculate current run rate from innings data
  */
 private fun calculateCurrentRunRate(innings: Innings?): String {
-    if (innings == null) return "-"
+    try {
+        if (innings == null) return "-"
     
-    // Parse score (e.g., "245/7" -> 245)
-    val runs = innings.score.split("/").firstOrNull()?.toIntOrNull() ?: 0
+        // Parse score (e.g., "245/7" -> 245)
+        val runs = innings.score.split("/").firstOrNull()?.toIntOrNull() ?: 0
     
-    // Parse overs (e.g., "35.4" -> 35.67 overs)
-    val oversStr = innings.overs.replace("Ov", "").trim()
-    val oversParts = oversStr.split(".")
-    val completedOvers = oversParts.getOrNull(0)?.toDoubleOrNull() ?: 0.0
-    val balls = oversParts.getOrNull(1)?.toIntOrNull() ?: 0
-    val totalOvers = completedOvers + (balls / 6.0)
+        // Parse overs (e.g., "35.4" -> 35.67 overs)
+        val oversStr = innings.overs.replace("Ov", "").trim()
+        val oversParts = oversStr.split(".")
+        val completedOvers = oversParts.getOrNull(0)?.toDoubleOrNull() ?: 0.0
+        val balls = oversParts.getOrNull(1)?.toIntOrNull() ?: 0
+        val totalOvers = completedOvers + (balls / 6.0)
     
-    if (totalOvers <= 0) return "-"
+        if (totalOvers <= 0) return "-"
     
-    val crr = runs / totalOvers
-    return String.format("%.2f", crr)
+        val crr = runs / totalOvers
+        return String.format("%.2f", crr)
+    } catch (e: Exception) {
+        Sentry.captureException(e)
+        throw e
+    }
 }
 
 /**
  * Calculate required run rate for second innings
  */
 private fun calculateRequiredRunRate(scorecard: Scorecard, currentInningsIndex: Int): String? {
-    // RRR only applies to second innings (chasing)
-    if (currentInningsIndex != 1 || scorecard.innings.size < 2) return null
+    try {
+        // RRR only applies to second innings (chasing)
+        if (currentInningsIndex != 1 || scorecard.innings.size < 2) return null
     
-    val firstInnings = scorecard.innings.getOrNull(0) ?: return null
-    val secondInnings = scorecard.innings.getOrNull(1) ?: return null
+        val firstInnings = scorecard.innings.getOrNull(0) ?: return null
+        val secondInnings = scorecard.innings.getOrNull(1) ?: return null
     
-    // Get target (first innings score + 1)
-    val targetRuns = (firstInnings.score.split("/").firstOrNull()?.toIntOrNull() ?: 0) + 1
+        // Get target (first innings score + 1)
+        val targetRuns = (firstInnings.score.split("/").firstOrNull()?.toIntOrNull() ?: 0) + 1
     
-    // Get current score
-    val currentRuns = secondInnings.score.split("/").firstOrNull()?.toIntOrNull() ?: 0
-    val runsNeeded = targetRuns - currentRuns
+        // Get current score
+        val currentRuns = secondInnings.score.split("/").firstOrNull()?.toIntOrNull() ?: 0
+        val runsNeeded = targetRuns - currentRuns
     
-    if (runsNeeded <= 0) return null
+        if (runsNeeded <= 0) return null
     
-    // Calculate remaining overs (assuming 50 or 20 over match)
-    val oversStr = secondInnings.overs.replace("Ov", "").trim()
-    val oversParts = oversStr.split(".")
-    val completedOvers = oversParts.getOrNull(0)?.toDoubleOrNull() ?: 0.0
-    val balls = oversParts.getOrNull(1)?.toIntOrNull() ?: 0
-    val bowledOvers = completedOvers + (balls / 6.0)
+        // Calculate remaining overs (assuming 50 or 20 over match)
+        val oversStr = secondInnings.overs.replace("Ov", "").trim()
+        val oversParts = oversStr.split(".")
+        val completedOvers = oversParts.getOrNull(0)?.toDoubleOrNull() ?: 0.0
+        val balls = oversParts.getOrNull(1)?.toIntOrNull() ?: 0
+        val bowledOvers = completedOvers + (balls / 6.0)
     
-    // Estimate total overs from first innings
-    val firstOversStr = firstInnings.overs.replace("Ov", "").trim()
-    val firstOversParts = firstOversStr.split(".")
-    val firstCompletedOvers = firstOversParts.getOrNull(0)?.toDoubleOrNull() ?: 50.0
+        // Estimate total overs from first innings
+        val firstOversStr = firstInnings.overs.replace("Ov", "").trim()
+        val firstOversParts = firstOversStr.split(".")
+        val firstCompletedOvers = firstOversParts.getOrNull(0)?.toDoubleOrNull() ?: 50.0
     
-    val remainingOvers = firstCompletedOvers - bowledOvers
+        val remainingOvers = firstCompletedOvers - bowledOvers
     
-    if (remainingOvers <= 0) return null
+        if (remainingOvers <= 0) return null
     
-    val rrr = runsNeeded / remainingOvers
-    return String.format("%.2f", rrr)
+        val rrr = runsNeeded / remainingOvers
+        return String.format("%.2f", rrr)
+    } catch (e: Exception) {
+        Sentry.captureException(e)
+        throw e
+    }
 }
 
 @Composable
@@ -331,7 +342,7 @@ private fun FallOfWicketsCarousel(fow: List<String>) {
             ) {
                 Column {
                     Text("Wicket", color = Color.White.copy(alpha = 0.4f), fontSize = 10.sp)
-                    Text(score, color = ShinyGoldDeep, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                    Text(score, color = GoldPrimary, fontSize = 18.sp, fontWeight = FontWeight.Bold)
                     Text(detail, color = Color.White.copy(alpha = 0.6f), fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
@@ -388,13 +399,13 @@ private fun BowlingRow(bowler: BowlerStats) {
                     lineTo(size.width * 0.9f, size.height * 0.8f)
                     lineTo(size.width, size.height * 0.5f)
                 }
-                drawPath(path, ShinyGoldDeep, style = Stroke(width = 1.5.dp.toPx()))
+                drawPath(path, GoldPrimary, style = Stroke(width = 1.5.dp.toPx()))
             }
         }
         Text(bowler.overs, modifier = Modifier.weight(1f), textAlign = TextAlign.Center, color = Color.White, fontSize = 13.sp)
         Text(bowler.maidens, modifier = Modifier.weight(1f), textAlign = TextAlign.Center, color = Color.White.copy(alpha = 0.4f), fontSize = 12.sp)
         Text(bowler.runs, modifier = Modifier.weight(1f), textAlign = TextAlign.Center, color = Color.White.copy(alpha = 0.4f), fontSize = 12.sp)
         Text(bowler.wickets, modifier = Modifier.weight(1f), textAlign = TextAlign.Center, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-        Text(bowler.economy, modifier = Modifier.weight(1.2f), textAlign = TextAlign.End, color = ShinyGoldDeep, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+        Text(bowler.economy, modifier = Modifier.weight(1.2f), textAlign = TextAlign.End, color = GoldPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
     }
 }

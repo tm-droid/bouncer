@@ -40,6 +40,7 @@ import com.tanush.bouncer.ui.theme.ShinyGoldDeep
 import com.tanush.bouncer.ui.theme.ShinyGoldMid
 import com.tanush.bouncer.ui.theme.SuccessGreen
 import com.tanush.bouncer.ui.theme.WarningYellow
+import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 
 /**
  * Match Summary Card
@@ -74,6 +75,7 @@ data class TopPerformer(
 )
 
 @Composable
+
 fun MatchSummaryCard(
     matchTitle: String,
     matchResult: String,
@@ -86,6 +88,7 @@ fun MatchSummaryCard(
     matchDate: String,
     modifier: Modifier = Modifier,
 ) {
+    val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "summary")
 
     val trophyRotation by infiniteTransition.animateFloat(
@@ -123,13 +126,17 @@ fun MatchSummaryCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 16.dp),
     ) {
         Box {
+            // Capture colors for Canvas scopes
+            val goldPrimaryColor = colors.goldPrimary
+            val goldDarkColor = colors.goldDark
+
             // Victory gradient background
             if (winningTeam != null) {
                 Canvas(modifier = Modifier.fillMaxWidth().height(400.dp)) {
                     drawRect(
                         brush = Brush.verticalGradient(
                             colors = listOf(
-                                ShinyGoldDeep.copy(alpha = 0.15f * animatedProgress.value),
+                                goldPrimaryColor.copy(alpha = 0.15f * animatedProgress.value),
                                 Color.Transparent,
                             ),
                         ),
@@ -141,7 +148,7 @@ fun MatchSummaryCard(
                         brush = Brush.linearGradient(
                             colors = listOf(
                                 Color.Transparent,
-                                ShinyGoldMid.copy(alpha = 0.1f),
+                                goldDarkColor.copy(alpha = 0.1f),
                                 Color.Transparent,
                             ),
                             start = Offset(shimmerOffset, 0f),
@@ -165,7 +172,7 @@ fun MatchSummaryCard(
                     Column {
                         Text(
                             text = "MATCH COMPLETED",
-                            color = SuccessGreen,
+                            color = colors.statusSuccess,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.5.sp,
@@ -196,7 +203,7 @@ fun MatchSummaryCard(
                             Icon(
                                 imageVector = Icons.Default.EmojiEvents,
                                 contentDescription = null,
-                                tint = ShinyGoldMid,
+                                tint = colors.goldDark,
                                 modifier = Modifier.size(40.dp),
                             )
                         }
@@ -224,7 +231,7 @@ fun MatchSummaryCard(
                     ) {
                         Text(
                             text = "VS",
-                            color = ShinyGoldMid,
+                            color = colors.goldDark,
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Bold,
                         )
@@ -248,9 +255,9 @@ fun MatchSummaryCard(
                         .background(
                             Brush.horizontalGradient(
                                 colors = listOf(
-                                    ShinyGoldDeep.copy(alpha = 0.3f),
-                                    ShinyGoldMid.copy(alpha = 0.2f),
-                                    ShinyGoldDeep.copy(alpha = 0.3f),
+                                    colors.goldPrimary.copy(alpha = 0.3f),
+                                    colors.goldDark.copy(alpha = 0.2f),
+                                    colors.goldPrimary.copy(alpha = 0.3f),
                                 ),
                             ),
                         )
@@ -260,7 +267,7 @@ fun MatchSummaryCard(
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
                             text = matchResult,
-                            color = ShinyGoldMid,
+                            color = colors.goldDark,
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
                             textAlign = TextAlign.Center,
@@ -281,7 +288,7 @@ fun MatchSummaryCard(
                 if (topPerformers.isNotEmpty()) {
                     Text(
                         text = "TOP PERFORMERS",
-                        color = ShinyGoldMid,
+                        color = colors.goldDark,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 1.5.sp,
@@ -322,6 +329,9 @@ private fun TeamSummaryColumn(
     isWinner: Boolean,
     progress: Float,
 ) {
+    val colors = BouncerDesignSystem.colors
+    val goldDark = colors.goldDark
+    val goldPrimary = colors.goldPrimary
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier.graphicsLayer {
@@ -340,7 +350,7 @@ private fun TeamSummaryColumn(
                     drawCircle(
                         brush = Brush.radialGradient(
                             colors = listOf(
-                                ShinyGoldMid.copy(alpha = 0.5f),
+                                goldDark.copy(alpha = 0.5f),
                                 Color.Transparent,
                             ),
                         ),
@@ -356,7 +366,7 @@ private fun TeamSummaryColumn(
                     .background(
                         if (isWinner) {
                             Brush.linearGradient(
-                                colors = listOf(ShinyGoldDeep, ShinyGoldMid),
+                                colors = listOf(goldPrimary, goldDark),
                             )
                         } else {
                             Brush.linearGradient(
@@ -390,7 +400,7 @@ private fun TeamSummaryColumn(
 
         Text(
             text = team.shortName,
-            color = if (isWinner) ShinyGoldMid else Color.White,
+            color = if (isWinner) colors.goldDark else Color.White,
             fontSize = 14.sp,
             fontWeight = FontWeight.Bold,
         )
@@ -413,12 +423,12 @@ private fun TeamSummaryColumn(
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(8.dp))
-                    .background(SuccessGreen.copy(alpha = 0.2f))
+                    .background(colors.statusSuccess.copy(alpha = 0.2f))
                     .padding(horizontal = 8.dp, vertical = 2.dp),
             ) {
                 Text(
                     text = "WINNER",
-                    color = SuccessGreen,
+                    color = colors.statusSuccess,
                     fontSize = 9.sp,
                     fontWeight = FontWeight.Bold,
                 )
@@ -432,6 +442,7 @@ private fun TopPerformerCard(
     performer: TopPerformer,
     modifier: Modifier = Modifier,
 ) {
+    val colors = BouncerDesignSystem.colors
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(12.dp))
@@ -450,9 +461,9 @@ private fun TopPerformerCard(
                         .background(
                             Brush.linearGradient(
                                 colors = if (performer.category == "Batting") {
-                                    listOf(BoundaryFour, WarningYellow)
+                                    listOf(colors.statusInfo, colors.statusWarning)
                                 } else {
-                                    listOf(ChartBlue, SuccessGreen)
+                                    listOf(colors.statusInfo, colors.statusSuccess)
                                 },
                             ),
                         ),
@@ -495,7 +506,7 @@ private fun TopPerformerCard(
 
             Text(
                 text = performer.stat,
-                color = ShinyGoldMid,
+                color = colors.goldDark,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
             )

@@ -43,7 +43,7 @@ fun PressureIndexHeatmapCard(modifier: Modifier = Modifier) {
             .fillMaxWidth()
             .height(240.dp)
             .clip(RoundedCornerShape(28.dp))
-            .background(Color.White.copy(alpha = 0.05f))
+            .background(GlassSurface)
             .border(0.5.dp, GoldHairline.copy(alpha = 0.2f), RoundedCornerShape(28.dp))
     ) {
         // Background: Abstract Stadium Texture
@@ -67,7 +67,7 @@ fun PressureIndexHeatmapCard(modifier: Modifier = Modifier) {
             
             drawCircle(
                 brush = Brush.radialGradient(
-                    colors = listOf(ShinyGoldDeep.copy(alpha = 0.3f * pulseAlpha), Color.Transparent)
+                    colors = listOf(GoldPrimary.copy(alpha = 0.3f * pulseAlpha), Color.Transparent)
                 ),
                 radius = 160.dp.toPx(),
                 center = Offset(size.width * 0.7f, size.height * 0.3f)
@@ -89,7 +89,7 @@ fun PressureIndexHeatmapCard(modifier: Modifier = Modifier) {
             verticalArrangement = Arrangement.Bottom
         ) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Box(modifier = Modifier.size(8.dp).background(ShinyGoldDeep, RoundedCornerShape(2.dp)))
+                Box(modifier = Modifier.size(8.dp).background(GoldPrimary, RoundedCornerShape(2.dp)))
                 Text(
                     "PRESSURE INDICES",
                     color = Color.White,
@@ -100,7 +100,7 @@ fun PressureIndexHeatmapCard(modifier: Modifier = Modifier) {
             }
             Text(
                 "AI-POWERED LENGTH ANALYSIS",
-                color = ShinyGoldDeep.copy(alpha = 0.8f),
+                color = GoldPrimary.copy(alpha = 0.8f),
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 2.sp
@@ -113,7 +113,7 @@ fun PressureIndexHeatmapCard(modifier: Modifier = Modifier) {
                 .align(Alignment.TopEnd)
                 .padding(16.dp)
                 .clip(RoundedCornerShape(8.dp))
-                .background(Color.White.copy(alpha = 0.05f))
+                .background(GlassSurface)
                 .border(0.5.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(8.dp))
                 .padding(horizontal = 10.dp, vertical = 4.dp)
         ) {

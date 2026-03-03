@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.ui.theme.*
 import kotlin.math.*
+import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 
 /**
  * Required rate tracker card
@@ -57,6 +58,7 @@ fun RequiredRateCard(
     modifier: Modifier = Modifier,
 ) {
     val animatedProgress = remember { Animatable(0f) }
+    val colors = BouncerDesignSystem.colors
 
     val infiniteTransition = rememberInfiniteTransition(label = "rate")
     val urgencyPulse by infiniteTransition.animateFloat(
@@ -80,19 +82,19 @@ fun RequiredRateCard(
     }
 
     val rateColor = when {
-        rateData.requiredRate > 15f -> WicketRed
+        rateData.requiredRate > 15f -> colors.statusLive
         rateData.requiredRate > 12f -> Color(0xFFFF5722)
-        rateData.requiredRate > 10f -> WarningYellow
-        rateData.requiredRate > 8f -> ChartBlue
-        else -> SuccessGreen
+        rateData.requiredRate > 10f -> colors.statusWarning
+        rateData.requiredRate > 8f -> colors.statusInfo
+        else -> colors.statusSuccess
     }
 
     val diffRate = rateData.requiredRate - rateData.currentRate
     val diffColor = when {
-        diffRate > 4f -> WicketRed
-        diffRate > 2f -> WarningYellow
-        diffRate > 0f -> ChartBlue
-        else -> SuccessGreen
+        diffRate > 4f -> colors.statusLive
+        diffRate > 2f -> colors.statusWarning
+        diffRate > 0f -> colors.statusInfo
+        else -> colors.statusSuccess
     }
 
     Card(
@@ -137,7 +139,7 @@ fun RequiredRateCard(
                     Column {
                         Text(
                             text = "REQUIRED RATE",
-                            color = ShinyGoldLight,
+                            color = colors.goldLight,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.5.sp,
@@ -155,16 +157,16 @@ fun RequiredRateCard(
                         .clip(RoundedCornerShape(8.dp))
                         .background(
                             if (rateData.isAchievable) {
-                                SuccessGreen.copy(alpha = 0.2f)
+                                colors.statusSuccess.copy(alpha = 0.2f)
                             } else {
-                                WicketRed.copy(alpha = 0.2f)
+                                colors.statusLive.copy(alpha = 0.2f)
                             },
                         )
                         .padding(horizontal = 10.dp, vertical = 4.dp),
                 ) {
                     Text(
                         text = if (rateData.isAchievable) "ACHIEVABLE" else "DIFFICULT",
-                        color = if (rateData.isAchievable) SuccessGreen else WicketRed,
+                        color = if (rateData.isAchievable) colors.statusSuccess else colors.statusLive,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
                     )
@@ -184,6 +186,10 @@ fun RequiredRateCard(
                     modifier = Modifier.size(120.dp),
                     contentAlignment = Alignment.Center,
                 ) {
+                    val statusSuccessC = colors.statusSuccess
+                    val statusInfoC = colors.statusInfo
+                    val statusWarningC = colors.statusWarning
+                    val statusLiveC = colors.statusLive
                     Canvas(modifier = Modifier.fillMaxSize()) {
                         val strokeWidth = 12.dp.toPx()
                         val radius = (size.minDimension - strokeWidth) / 2
@@ -207,10 +213,10 @@ fun RequiredRateCard(
                         drawArc(
                             brush = Brush.sweepGradient(
                                 colors = listOf(
-                                    SuccessGreen,
-                                    ChartBlue,
-                                    WarningYellow,
-                                    WicketRed,
+                                    statusSuccessC,
+                                    statusInfoC,
+                                    statusWarningC,
+                                    statusLiveC,
                                 ),
                             ),
                             startAngle = 135f,
@@ -263,7 +269,7 @@ fun RequiredRateCard(
                     RateStatItem(
                         label = "Current Rate",
                         value = String.format("%.2f", rateData.currentRate),
-                        color = if (rateData.currentRate >= rateData.requiredRate) SuccessGreen else Color.White,
+                        color = if (rateData.currentRate >= rateData.requiredRate) colors.statusSuccess else Color.White,
                     )
 
                     RateStatItem(
@@ -393,9 +399,9 @@ fun RequiredRateCard(
                     .clip(RoundedCornerShape(10.dp))
                     .background(
                         if (rateData.projectedScore >= rateData.target) {
-                            SuccessGreen.copy(alpha = 0.15f)
+                            colors.statusSuccess.copy(alpha = 0.15f)
                         } else {
-                            WicketRed.copy(alpha = 0.15f)
+                            colors.statusLive.copy(alpha = 0.15f)
                         },
                     )
                     .padding(12.dp),
@@ -438,6 +444,7 @@ private fun RateStatItem(
     value: String,
     color: Color,
 ) {
+    val colors = BouncerDesignSystem.colors
     Row(
         modifier = Modifier.width(120.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -458,6 +465,7 @@ private fun RateStatItem(
 
 @Composable
 fun RequiredRateCardPreview() {
+    val colors = BouncerDesignSystem.colors
     RequiredRateCard(
         rateData = RequiredRateData(
             target = 186,

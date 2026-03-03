@@ -9,14 +9,18 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
 import androidx.compose.ui.draw.*
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
@@ -26,6 +30,86 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.ui.theme.*
 import kotlinx.coroutines.delay
+import kotlin.random.Random
+import io.sentry.Sentry
+
+// ==========================================
+// PREMIUM GLASSMORPHISM MODIFIERS
+// Noise texture, gold glow, and ambient bloom
+// ==========================================
+
+/**
+ * Modifier extension that draws a subtle noise pattern over content,
+ * simulating the SVG fractalNoise overlay from the mockup design system.
+ * Uses deterministic pseudo-random dots at ~4% opacity for tactile richness.
+ */
+fun Modifier.noiseOverlay(
+    opacity: Float = 0.04f,
+    density: Float = 0.12f,
+    seed: Int = 42
+): Modifier = drawWithContent {
+    drawContent()
+    val stepX = (size.width * density / 10f).coerceAtLeast(3f)
+    val stepY = (size.height * density / 10f).coerceAtLeast(3f)
+    val rng = Random(seed)
+    var y = 0f
+    while (y < size.height) {
+        var x = 0f
+        while (x < size.width) {
+            if (rng.nextFloat() < 0.45f) {
+                val dotAlpha = opacity * (0.3f + rng.nextFloat() * 0.7f)
+                drawCircle(
+                    color = Color.White.copy(alpha = dotAlpha),
+                    radius = 0.5f + rng.nextFloat() * 0.8f,
+                    center = Offset(x + rng.nextFloat() * stepX, y + rng.nextFloat() * stepY)
+                )
+            }
+            x += stepX
+        }
+        y += stepY
+    }
+}
+
+/**
+ * Modifier extension that draws a subtle radial gold gradient behind content,
+ * matching the `bg-bloom` ambient glow effect from the mockup design system.
+ *
+ * @param glowColor Base gold color for the bloom (if null, uses BouncerDesignSystem.colors.goldDark)
+ * @param alpha Intensity of the glow (0–1)
+ * @param radiusFraction Radius of bloom relative to container diagonal
+ * @param centerX Horizontal center (0–1)
+ * @param centerY Vertical center (0–1)
+ */
+fun Modifier.goldGlow(
+    glowColor: Color? = null,
+    alpha: Float = 0.10f,
+    radiusFraction: Float = 0.85f,
+    centerX: Float = 0.5f,
+    centerY: Float = 0.4f
+): Modifier = composed {
+    val effectiveColor = glowColor ?: BouncerDesignSystem.colors.goldDark
+    this.drawBehind {
+        try {
+            val center = Offset(size.width * centerX, size.height * centerY)
+            val radius = size.maxDimension * radiusFraction
+            drawCircle(
+                brush = Brush.radialGradient(
+                    colors = listOf(
+                        effectiveColor.copy(alpha = alpha),
+                        effectiveColor.copy(alpha = alpha * 0.45f),
+                        effectiveColor.copy(alpha = alpha * 0.12f),
+                        Color.Transparent
+                    ),
+                    center = center,
+                    radius = radius
+                )
+            )
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
+    }
+}
 
 /**
  * Visual Importance for UI Components
@@ -45,18 +129,18 @@ fun GlassCard(
     modifier: Modifier = Modifier,
     cornerRadius: Dp = 14.dp,
     importance: BouncerImportance = BouncerImportance.STANDARD,
-    glowColor: Color = ShinyGoldDeep,
+    glowColor: Color = BouncerDesignSystem.colors.goldPrimary,
     content: @Composable ColumnScope.() -> Unit
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "glassCard")
     
-    // Subtle shimmer for CRITICAL cards only
+    // Subtle shimmer for CRITICAL cards — slower & lower opacity for premium feel
     val shimmerAlpha by if (importance == BouncerImportance.CRITICAL) {
         infiniteTransition.animateFloat(
-            initialValue = 0.05f,
-            targetValue = 0.15f,
+            initialValue = 0.02f,
+            targetValue = 0.08f,
             animationSpec = infiniteRepeatable(
-                animation = tween(3000, easing = LinearEasing),
+                animation = tween(5000, easing = FastOutSlowInEasing),
                 repeatMode = RepeatMode.Reverse
             ),
             label = "shimmer"
@@ -68,9 +152,9 @@ fun GlassCard(
     val borderBrush = when (importance) {
         BouncerImportance.CRITICAL -> Brush.linearGradient(
             colors = listOf(
-                GoldHairline,
+                BouncerDesignSystem.colors.glassBorder,
                 Color.White.copy(alpha = 0.2f),
-                GoldHairline.copy(alpha = 0.3f)
+                BouncerDesignSystem.colors.glassBorder.copy(alpha = 0.3f)
             )
         )
         BouncerImportance.STANDARD -> Brush.linearGradient(
@@ -120,6 +204,7 @@ fun GlassCard(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .noiseOverlay() // Tactile noise texture from mockup design system
                 .drawWithContent {
                     drawContent()
                     if (importance == BouncerImportance.CRITICAL) {
@@ -151,7 +236,7 @@ fun GlassCard(
 fun GlassSurface(
     modifier: Modifier = Modifier,
     importance: BouncerImportance = BouncerImportance.STANDARD,
-    glowColor: Color = ShinyGoldDeep,
+    glowColor: Color = BouncerDesignSystem.colors.goldPrimary,
     glowIntensity: Float = 0.1f,
     cornerRadius: Dp = 10.dp,
     content: @Composable BoxScope.() -> Unit
@@ -188,7 +273,7 @@ fun GlassSurface(
 fun AnimatedScoreDisplay(
     score: String,
     modifier: Modifier = Modifier,
-    color: Color = ShinyGoldDeep,
+    color: Color = BouncerDesignSystem.colors.goldPrimary,
     fontSize: Int = 28
 ) {
     AnimatedContent(
@@ -232,10 +317,11 @@ fun StatCard(
     title: String,
     value: String,
     modifier: Modifier = Modifier,
-    color: Color = ShinyGoldDeep,
+    color: Color = BouncerDesignSystem.colors.goldPrimary,
     importance: BouncerImportance = BouncerImportance.STANDARD,
     icon: @Composable (() -> Unit)? = null
 ) {
+    val colors = BouncerDesignSystem.colors
     GlassSurface(
         modifier = modifier,
         cornerRadius = 8.dp,
@@ -254,7 +340,7 @@ fun StatCard(
                 text = value,
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Black,
-                color = if (importance == BouncerImportance.CRITICAL) color else TextPrimary,
+                color = if (importance == BouncerImportance.CRITICAL) color else colors.textPrimary,
                 letterSpacing = (-0.5).sp
             )
             
@@ -262,7 +348,7 @@ fun StatCard(
                 text = title.uppercase(),
                 fontSize = 9.sp,
                 fontWeight = FontWeight.Bold,
-                color = TextTertiary,
+                color = colors.textTertiary,
                 letterSpacing = 1.2.sp
             )
         }
@@ -275,7 +361,7 @@ fun StatCard(
 @Composable
 fun PulsingGlowCircle(
     modifier: Modifier = Modifier,
-    color: Color = ShinyGoldDeep,
+    color: Color = BouncerDesignSystem.colors.goldPrimary,
     content: @Composable BoxScope.() -> Unit
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "pulseGlow")
@@ -311,8 +397,9 @@ fun RunRateIndicator(
     requiredRunRate: Float?,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val isPositive = requiredRunRate == null || currentRunRate >= requiredRunRate
-    val color = if (isPositive) SuccessGreen else ErrorRed
+    val color = if (isPositive) colors.statusSuccess else colors.statusLive
     
     GlassSurface(
         modifier = modifier.height(56.dp),
@@ -330,14 +417,14 @@ fun RunRateIndicator(
                     text = "RUN RATE",
                     fontSize = 9.sp,
                     fontWeight = FontWeight.Bold,
-                    color = TextTertiary,
+                    color = colors.textTertiary,
                     letterSpacing = 1.sp
                 )
                 Text(
                     text = String.format("%.2f", currentRunRate),
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Black,
-                    color = TextPrimary
+                    color = colors.textPrimary
                 )
             }
             
@@ -347,7 +434,7 @@ fun RunRateIndicator(
                         text = "REQUIRED",
                         fontSize = 9.sp,
                         fontWeight = FontWeight.Bold,
-                        color = TextTertiary,
+                        color = colors.textTertiary,
                         letterSpacing = 1.sp
                     )
                     Text(
@@ -412,6 +499,7 @@ fun GradientShimmerText(
     fontSize: Int = 20,
     fontWeight: FontWeight = FontWeight.Bold
 ) {
+    val colors = BouncerDesignSystem.colors
     Text(
         text = text,
         fontSize = fontSize.sp,
@@ -419,14 +507,183 @@ fun GradientShimmerText(
         style = LocalTextStyle.current.copy(
             brush = Brush.linearGradient(
                 colors = listOf(
-                    ShinyGoldLight,
-                    ShinyGoldDeep,
-                    ShinyGoldLight
+                    colors.goldLight,
+                    colors.goldPrimary,
+                    colors.goldLight
                 )
             )
         ),
         modifier = modifier
     )
+}
+
+// ==========================================
+// HERO & LARGE CONTAINER GLASS VARIANTS
+// Premium composables matching mockup tokens
+// ==========================================
+
+/**
+ * GlassHero — Premium hero-tier glass card with heavier blur simulation,
+ * inset gold shadow, and 20dp corner radius. Matches "glass-hero" token:
+ * 40px blur + inset gold shadow + gold gradient border at 0.25 alpha.
+ */
+@Composable
+fun GlassHero(
+    modifier: Modifier = Modifier,
+    glowColor: Color = BouncerDesignSystem.colors.goldPrimary,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    val cornerRadius = 20.dp
+    val shape = RoundedCornerShape(cornerRadius)
+
+    val infiniteTransition = rememberInfiniteTransition(label = "glassHero")
+    val insetAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.12f,
+        targetValue = 0.22f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(4000, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "heroInset"
+    )
+
+    Card(
+        modifier = modifier
+            .shadow(
+                elevation = 20.dp,
+                shape = shape,
+                spotColor = glowColor.copy(alpha = 0.35f),
+                ambientColor = Color.Black.copy(alpha = 0.4f)
+            ),
+        colors = CardDefaults.cardColors(
+            containerColor = Color.White.copy(alpha = 0.07f)
+        ),
+        shape = shape,
+        border = BorderStroke(
+            width = 1.dp,
+            brush = Brush.linearGradient(
+                colors = listOf(
+                    glowColor.copy(alpha = 0.25f),
+                    Color.White.copy(alpha = 0.12f),
+                    glowColor.copy(alpha = 0.18f)
+                )
+            )
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                // Inset gold shadow — radial gradient drawn behind content
+                .drawBehind {
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                glowColor.copy(alpha = insetAlpha),
+                                glowColor.copy(alpha = insetAlpha * 0.4f),
+                                Color.Transparent
+                            ),
+                            center = Offset(size.width * 0.5f, size.height * 0.3f),
+                            radius = size.maxDimension * 0.7f
+                        )
+                    )
+                }
+                // Darker tinted glass background simulating heavier blur
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            Color.White.copy(alpha = 0.06f),
+                            Color(0xFF0D0D0D).copy(alpha = 0.15f),
+                            Color.White.copy(alpha = 0.03f)
+                        )
+                    )
+                )
+                .noiseOverlay(opacity = 0.05f),
+            content = content
+        )
+    }
+}
+
+/**
+ * GlassContainerLarge — Glass container for scorecard tables with darker bg,
+ * 16dp corners, scrollable content, and a gold gradient top border.
+ * Matches "glass-container-large" token: heavier blur, table-ready.
+ */
+@Composable
+fun GlassContainerLarge(
+    modifier: Modifier = Modifier,
+    scrollable: Boolean = true,
+    glowColor: Color = BouncerDesignSystem.colors.goldPrimary,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    val cornerRadius = 16.dp
+    val shape = RoundedCornerShape(cornerRadius)
+    val scrollState = rememberScrollState()
+
+    Card(
+        modifier = modifier
+            .shadow(
+                elevation = 10.dp,
+                shape = shape,
+                spotColor = Color.Black.copy(alpha = 0.3f),
+                ambientColor = Color.Black.copy(alpha = 0.3f)
+            ),
+        colors = CardDefaults.cardColors(
+            containerColor = Color.White.copy(alpha = 0.04f) // Slightly darker glass
+        ),
+        shape = shape,
+        border = BorderStroke(
+            width = 0.5.dp,
+            brush = Brush.linearGradient(
+                colors = listOf(
+                    Color.White.copy(alpha = 0.08f),
+                    Color.White.copy(alpha = 0.03f)
+                )
+            )
+        )
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            // Gold gradient top border accent
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(1.5.dp)
+                    .background(
+                        Brush.horizontalGradient(
+                            colors = listOf(
+                                Color.Transparent,
+                                glowColor.copy(alpha = 0.35f),
+                                glowColor.copy(alpha = 0.50f),
+                                glowColor.copy(alpha = 0.35f),
+                                Color.Transparent
+                            )
+                        )
+                    )
+            )
+
+            // Scrollable content area
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .then(
+                        if (scrollable) Modifier.verticalScroll(scrollState)
+                        else Modifier
+                    )
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                Color.White.copy(alpha = 0.03f),
+                                Color.Transparent,
+                                Color.White.copy(alpha = 0.01f)
+                            )
+                        )
+                    )
+                    .noiseOverlay(opacity = 0.03f),
+                content = content
+            )
+        }
+    }
 }
 
 // ==========================================
@@ -443,11 +700,16 @@ fun Modifier.glassBlur(
     fallbackAlpha: Float = 0.85f
 ): Modifier = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
     graphicsLayer {
-        renderEffect = RenderEffect.createBlurEffect(
-            blurRadius.toPx(),
-            blurRadius.toPx(),
-            Shader.TileMode.CLAMP
-        ).asComposeRenderEffect()
+        try {
+            renderEffect = RenderEffect.createBlurEffect(
+                blurRadius.toPx(),
+                blurRadius.toPx(),
+                Shader.TileMode.CLAMP
+            ).asComposeRenderEffect()
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
 } else {
     background(Color.White.copy(alpha = 0.05f))
@@ -462,7 +724,7 @@ fun FrostedGlassCard(
     modifier: Modifier = Modifier,
     cornerRadius: Dp = 20.dp,
     blurRadius: Dp = 16.dp,
-    borderGlow: Color = ShinyGoldDeep,
+    borderGlow: Color = BouncerDesignSystem.colors.goldPrimary,
     importance: BouncerImportance = BouncerImportance.STANDARD,
     content: @Composable ColumnScope.() -> Unit
 ) {
@@ -618,7 +880,7 @@ fun TeamGlassCard(
 @Composable
 fun NeonGlowBox(
     modifier: Modifier = Modifier,
-    glowColor: Color = ShinyGoldDeep,
+    glowColor: Color = BouncerDesignSystem.colors.goldPrimary,
     cornerRadius: Dp = 12.dp,
     pulseEnabled: Boolean = true,
     content: @Composable BoxScope.() -> Unit
@@ -687,12 +949,13 @@ fun EventHighlightBar(
     eventType: EventHighlightType = EventHighlightType.NEUTRAL,
     animated: Boolean = true
 ) {
+    val colors = BouncerDesignSystem.colors
     val color = when (eventType) {
-        EventHighlightType.WICKET -> ErrorRed
-        EventHighlightType.SIX -> SixerPurple
-        EventHighlightType.FOUR -> BoundaryFour
-        EventHighlightType.MILESTONE -> ShinyGoldDeep
-        EventHighlightType.NEUTRAL -> TextTertiary
+        EventHighlightType.WICKET -> colors.statusLive
+        EventHighlightType.SIX -> colors.statusWarning
+        EventHighlightType.FOUR -> colors.statusSuccess
+        EventHighlightType.MILESTONE -> colors.goldPrimary
+        EventHighlightType.NEUTRAL -> colors.textTertiary
     }
     
     val infiniteTransition = rememberInfiniteTransition(label = "eventHighlight")
@@ -745,11 +1008,12 @@ fun PhaseIndicator(
     modifier: Modifier = Modifier,
     showLabel: Boolean = true
 ) {
+    val colors = BouncerDesignSystem.colors
     val color = when (phase) {
-        InningsPhaseType.POWERPLAY -> SuccessGreen
-        InningsPhaseType.MIDDLE_OVERS -> ShinyGoldDeep
-        InningsPhaseType.DEATH_OVERS -> ErrorRed
-        InningsPhaseType.SUPER_OVER -> SixerPurple
+        InningsPhaseType.POWERPLAY -> colors.statusSuccess
+        InningsPhaseType.MIDDLE_OVERS -> colors.goldPrimary
+        InningsPhaseType.DEATH_OVERS -> colors.statusLive
+        InningsPhaseType.SUPER_OVER -> colors.statusWarning
     }
     
     val label = when (phase) {

@@ -12,6 +12,8 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.TrendingDown
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -42,6 +44,7 @@ fun AnimatedRecentBallsRow(
     modifier: Modifier = Modifier,
     showTitle: Boolean = true
 ) {
+    val colors = BouncerDesignSystem.colors
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
     
@@ -72,7 +75,7 @@ fun AnimatedRecentBallsRow(
             ) {
                 Text(
                     "Recent Balls",
-                    color = TextSecondary,
+                    color = colors.textSecondary,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.SemiBold,
                     letterSpacing = 0.5.sp
@@ -85,13 +88,13 @@ fun AnimatedRecentBallsRow(
                     exit = fadeOut(tween(300)) + scaleOut(tween(200))
                 ) {
                     Surface(
-                        color = ShinyGoldDeep.copy(alpha = 0.15f),
+                        color = colors.goldDark.copy(alpha = 0.15f),
                         shape = RoundedCornerShape(6.dp)
                     ) {
                         Text(
                             "NEW",
                             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                            color = ShinyGoldDeep,
+                            color = colors.goldDark,
                             fontSize = 8.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.sp
@@ -152,11 +155,11 @@ private fun AnimatedBallCircle(
     val isSpecialBall = ball in listOf("W", "4", "6", "WD", "NB")
     
     val (bgColor, textColor, glowColor) = when (ball) {
-        "W" -> Triple(WicketBlue, Color.White, WicketBlue)
-        "4" -> Triple(BoundarySix, BlackBackground, BoundarySix)
-        "6" -> Triple(BoundarySix, BlackBackground, BoundarySix)
-        "WD" -> Triple(Color(0xFFF59E0B), BlackBackground, Color(0xFFF59E0B))
-        "NB" -> Triple(Color(0xFFF59E0B), BlackBackground, Color(0xFFF59E0B))
+        "W" -> Triple(StatusInfo, Color.White, StatusInfo)
+        "4" -> Triple(GoldPrimary, BackgroundBase, GoldPrimary)
+        "6" -> Triple(GoldPrimary, BackgroundBase, GoldPrimary)
+        "WD" -> Triple(Color(0xFFF59E0B), BackgroundBase, Color(0xFFF59E0B))
+        "NB" -> Triple(Color(0xFFF59E0B), BackgroundBase, Color(0xFFF59E0B))
         else -> Triple(Color.White.copy(alpha = 0.08f), TextSecondary, Color.Transparent)
     }
 
@@ -201,11 +204,11 @@ private fun AnimatedBallCircle(
                 .then(
                     if (isNewest) Modifier.border(
                         2.dp,
-                        ShinyGoldDeep,
+                        GoldDark,
                         CircleShape
                     ) else if (!isSpecialBall) Modifier.border(
                         0.5.dp,
-                        CardBorder.copy(alpha = 0.3f),
+                        GlassBorder.copy(alpha = 0.3f),
                         CircleShape
                     ) else Modifier
                 ),
@@ -231,6 +234,7 @@ fun AnimatedRunRate(
     requiredRunRate: Float?,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "runRate")
     
     val trendArrowOffset by infiniteTransition.animateFloat(
@@ -270,7 +274,7 @@ fun AnimatedRunRate(
     }
     
     val isOnTrack = requiredRunRate == null || currentRunRate >= requiredRunRate
-    val trendColor = if (isOnTrack) BoundarySix else WicketBlue
+    val trendColor = if (isOnTrack) GoldPrimary else StatusInfo
 
     Row(
         modifier = modifier
@@ -286,14 +290,14 @@ fun AnimatedRunRate(
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
                 "CRR",
-                color = TextTertiary,
+                color = colors.textTertiary,
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Medium,
                 letterSpacing = 1.sp
             )
             Text(
                 String.format("%.2f", displayedCRR),
-                color = ShinyGoldDeep,
+                color = colors.goldDark,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = (-0.5).sp
@@ -309,7 +313,7 @@ fun AnimatedRunRate(
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    if (isOnTrack) Icons.Default.TrendingUp else Icons.Default.TrendingDown,
+                    if (isOnTrack) Icons.AutoMirrored.Filled.TrendingUp else Icons.AutoMirrored.Filled.TrendingDown,
                     contentDescription = null,
                     tint = trendColor,
                     modifier = Modifier
@@ -322,14 +326,14 @@ fun AnimatedRunRate(
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
                     "RRR",
-                    color = TextTertiary,
+                    color = colors.textTertiary,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Medium,
                     letterSpacing = 1.sp
                 )
                 Text(
                     String.format("%.2f", displayedRRR),
-                    color = if (isOnTrack) TextPrimary else WicketBlue,
+                    color = if (isOnTrack) colors.textPrimary else StatusInfo,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = (-0.5).sp
@@ -417,6 +421,7 @@ fun PartnershipDisplay(
     batsman2: String,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     var displayedRuns by remember { mutableStateOf(0) }
     
     LaunchedEffect(runs) {
@@ -442,7 +447,7 @@ fun PartnershipDisplay(
         ) {
             Text(
                 "PARTNERSHIP",
-                color = TextTertiary,
+                color = colors.textTertiary,
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 1.5.sp
@@ -456,14 +461,14 @@ fun PartnershipDisplay(
             ) {
                 Text(
                     "$displayedRuns",
-                    color = ShinyGoldDeep,
+                    color = colors.goldDark,
                     fontSize = 28.sp,
                     fontWeight = FontWeight.Black,
                     letterSpacing = (-1).sp
                 )
                 Text(
                     "($balls)",
-                    color = TextSecondary,
+                    color = colors.textSecondary,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Medium
                 )
@@ -477,7 +482,7 @@ fun PartnershipDisplay(
             ) {
                 Text(
                     batsman1,
-                    color = TextSecondary,
+                    color = colors.textSecondary,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Medium,
                     modifier = Modifier.weight(1f),
@@ -489,14 +494,14 @@ fun PartnershipDisplay(
                         .height(2.dp)
                         .background(
                             Brush.horizontalGradient(
-                                colors = listOf(Color.Transparent, ShinyGoldDeep.copy(alpha = 0.4f), Color.Transparent)
+                                colors = listOf(Color.Transparent, colors.goldDark.copy(alpha = 0.4f), Color.Transparent)
                             ),
                             RoundedCornerShape(50)
                         )
                 )
                 Text(
                     batsman2,
-                    color = TextSecondary,
+                    color = colors.textSecondary,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Medium,
                     modifier = Modifier.weight(1f),
@@ -520,6 +525,7 @@ fun BowlingFiguresDisplay(
     economy: Float,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "bowling")
     
     val wicketGlow by infiniteTransition.animateFloat(
@@ -545,7 +551,7 @@ fun BowlingFiguresDisplay(
             ) {
                 Text(
                     bowlerName,
-                    color = TextPrimary,
+                    color = colors.textPrimary,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.SemiBold
                 )
@@ -554,14 +560,14 @@ fun BowlingFiguresDisplay(
                 Box(
                     modifier = Modifier
                         .background(
-                            WicketBlue.copy(alpha = wicketGlow),
+                            colors.statusInfo.copy(alpha = wicketGlow),
                             RoundedCornerShape(8.dp)
                         )
                         .padding(horizontal = 10.dp, vertical = 4.dp)
                 ) {
                     Text(
                         "$wickets-$runs",
-                        color = Color.White,
+                        color = colors.textPrimary,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -584,16 +590,17 @@ fun BowlingFiguresDisplay(
 
 @Composable
 private fun StatItem(label: String, value: String) {
+    val colors = BouncerDesignSystem.colors
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
             value,
-            color = TextPrimary,
+            color = colors.textPrimary,
             fontSize = 14.sp,
             fontWeight = FontWeight.Bold
         )
         Text(
             label,
-            color = TextTertiary,
+            color = colors.textTertiary,
             fontSize = 10.sp,
             fontWeight = FontWeight.Medium
         )

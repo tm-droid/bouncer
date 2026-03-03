@@ -24,6 +24,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.ui.theme.*
+import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 
 /**
  * Leaderboard Card
@@ -46,6 +47,7 @@ fun LeaderboardCard(
     entries: List<LeaderboardEntry>,
     modifier: Modifier = Modifier,
 ) {
+    val colors = BouncerDesignSystem.colors
     val animatedProgress = remember { Animatable(0f) }
 
     LaunchedEffect(entries) {
@@ -97,7 +99,7 @@ fun LeaderboardCard(
                     Column {
                         Text(
                             text = title.uppercase(),
-                            color = ShinyGoldMid,
+                            color = colors.goldDark,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.5.sp,
@@ -136,11 +138,12 @@ private fun LeaderboardEntryRow(
     progress: Float,
     index: Int,
 ) {
+    val colors = BouncerDesignSystem.colors
     val delayedProgress = ((progress - index * 0.08f) / 0.92f).coerceIn(0f, 1f)
 
     val isTopThree = entry.rank <= 3
     val rankColor = when (entry.rank) {
-        1 -> ShinyGoldMid
+        1 -> colors.goldDark
         2 -> Color(0xFFC0C0C0) // Silver
         3 -> Color(0xFFCD7F32) // Bronze
         else -> Color.White.copy(alpha = 0.5f)
@@ -233,7 +236,7 @@ private fun LeaderboardEntryRow(
         Column(horizontalAlignment = Alignment.End) {
             Text(
                 text = entry.value,
-                color = if (isTopThree) rankColor else ShinyGoldMid,
+                color = if (isTopThree) rankColor else colors.goldDark,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
             )
@@ -251,9 +254,10 @@ private fun LeaderboardEntryRow(
 
 @Composable
 private fun MovementIndicator(change: Int) {
+    val colors = BouncerDesignSystem.colors
     val (color, arrow) = when {
-        change > 0 -> Pair(SuccessGreen, "▲")
-        change < 0 -> Pair(WicketRed, "▼")
+        change > 0 -> Pair(colors.statusSuccess, "▲")
+        change < 0 -> Pair(colors.statusLive, "▼")
         else -> Pair(Color.Gray, "−")
     }
 

@@ -30,6 +30,7 @@ import kotlinx.coroutines.delay
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.random.Random
+import io.sentry.Sentry
 
 /**
  * Event types for celebrations
@@ -69,8 +70,8 @@ enum class ParticleShape {
 @Composable
 fun CelebrationOverlay(
     eventType: CelebrationEventType,
-    team1Color: Color = ShinyGoldDeep,
-    team2Color: Color = LiveBlue,
+    team1Color: Color = BouncerDesignSystem.colors.goldDark,
+    team2Color: Color = StatusInfo,
     description: String? = null,
     onDismiss: () -> Unit
 ) {
@@ -228,6 +229,7 @@ private fun EventCard(
     eventType: CelebrationEventType,
     description: String?
 ) {
+    val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "cardPulse")
     val pulseScale by infiniteTransition.animateFloat(
         initialValue = 0.98f,
@@ -342,7 +344,7 @@ private fun EventCard(
                     text = it,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Medium,
-                    color = TextSecondary,
+                    color = colors.textSecondary,
                     textAlign = TextAlign.Center,
                     lineHeight = 22.sp
                 )
@@ -358,42 +360,47 @@ private data class EventInfo(
 )
 
 private fun getEventInfo(eventType: CelebrationEventType): EventInfo {
-    return when (eventType) {
-        CelebrationEventType.BOUNDARY_FOUR -> EventInfo(
-            title = "FOUR!",
-            icon = Icons.Default.Looks4,
-            color = BoundaryFour
-        )
-        CelebrationEventType.BOUNDARY_SIX -> EventInfo(
-            title = "SIX!",
-            icon = Icons.Default.Looks6,
-            color = BoundarySix
-        )
-        CelebrationEventType.WICKET -> EventInfo(
-            title = "WICKET!",
-            icon = Icons.Default.SportsCricket,
-            color = ErrorRed
-        )
-        CelebrationEventType.FIFTY -> EventInfo(
-            title = "FIFTY!",
-            icon = Icons.Default.Star,
-            color = ShinyGoldDeep
-        )
-        CelebrationEventType.CENTURY -> EventInfo(
-            title = "CENTURY!",
-            icon = Icons.Default.EmojiEvents,
-            color = ShinyGoldDeep
-        )
-        CelebrationEventType.HAT_TRICK -> EventInfo(
-            title = "HAT-TRICK!",
-            icon = Icons.Default.Whatshot,
-            color = ChartPurple
-        )
-        CelebrationEventType.MATCH_WIN -> EventInfo(
-            title = "VICTORY!",
-            icon = Icons.Default.EmojiEvents,
-            color = SuccessGreen
-        )
+    try {
+        return when (eventType) {
+            CelebrationEventType.BOUNDARY_FOUR -> EventInfo(
+                title = "FOUR!",
+                icon = Icons.Default.Looks4,
+                color = StatusBoundary
+            )
+            CelebrationEventType.BOUNDARY_SIX -> EventInfo(
+                title = "SIX!",
+                icon = Icons.Default.Looks6,
+                color = GoldPrimary
+            )
+            CelebrationEventType.WICKET -> EventInfo(
+                title = "WICKET!",
+                icon = Icons.Default.SportsCricket,
+                color = StatusLive
+            )
+            CelebrationEventType.FIFTY -> EventInfo(
+                title = "FIFTY!",
+                icon = Icons.Default.Star,
+                color = GoldDark
+            )
+            CelebrationEventType.CENTURY -> EventInfo(
+                title = "CENTURY!",
+                icon = Icons.Default.EmojiEvents,
+                color = GoldDark
+            )
+            CelebrationEventType.HAT_TRICK -> EventInfo(
+                title = "HAT-TRICK!",
+                icon = Icons.Default.Whatshot,
+                color = StatusInfo
+            )
+            CelebrationEventType.MATCH_WIN -> EventInfo(
+                title = "VICTORY!",
+                icon = Icons.Default.EmojiEvents,
+                color = StatusSuccess
+            )
+        }
+    } catch (e: Exception) {
+        Sentry.captureException(e)
+        throw e
     }
 }
 
@@ -486,7 +493,7 @@ fun AnimatedBallResult(
                 text = ballInfo.display,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Black,
-                color = if (ballInfo.isHighlight) BlackBackground else TextPrimary,
+                color = if (ballInfo.isHighlight) BackgroundBase else TextPrimary,
                 letterSpacing = (-0.5).sp
             )
         }
@@ -500,19 +507,24 @@ private data class BallInfo(
 )
 
 private fun getBallInfo(result: String): BallInfo {
-    return when (result.uppercase().trim()) {
-        "6" -> BallInfo("6", BoundarySix, true)
-        "4" -> BallInfo("4", BoundaryFour, true)
-        "W" -> BallInfo("W", ErrorRed, true)
-        "0", "." -> BallInfo("0", TextMuted.copy(alpha = 0.5f), false)
-        "1" -> BallInfo("1", Color.White.copy(alpha = 0.08f), false)
-        "2" -> BallInfo("2", Color.White.copy(alpha = 0.08f), false)
-        "3" -> BallInfo("3", Color.White.copy(alpha = 0.08f), false)
-        "NB" -> BallInfo("NB", WarningOrange, false)
-        "WD" -> BallInfo("WD", WarningOrange, false)
-        "LB" -> BallInfo("LB", LiveBlue.copy(alpha = 0.6f), false)
-        "B" -> BallInfo("B", LiveBlue.copy(alpha = 0.6f), false)
-        else -> BallInfo(result.take(2), Color.White.copy(alpha = 0.05f), false)
+    try {
+        return when (result.uppercase().trim()) {
+            "6" -> BallInfo("6", GoldPrimary, true)
+            "4" -> BallInfo("4", StatusBoundary, true)
+            "W" -> BallInfo("W", StatusLive, true)
+            "0", "." -> BallInfo("0", TextMuted.copy(alpha = 0.5f), false)
+            "1" -> BallInfo("1", Color.White.copy(alpha = 0.08f), false)
+            "2" -> BallInfo("2", Color.White.copy(alpha = 0.08f), false)
+            "3" -> BallInfo("3", Color.White.copy(alpha = 0.08f), false)
+            "NB" -> BallInfo("NB", StatusWarning, false)
+            "WD" -> BallInfo("WD", StatusWarning, false)
+            "LB" -> BallInfo("LB", StatusInfo.copy(alpha = 0.6f), false)
+            "B" -> BallInfo("B", StatusInfo.copy(alpha = 0.6f), false)
+            else -> BallInfo(result.take(2), Color.White.copy(alpha = 0.05f), false)
+        }
+    } catch (e: Exception) {
+        Sentry.captureException(e)
+        throw e
     }
 }
 
@@ -558,6 +570,7 @@ fun AchievementToast(
     visible: Boolean,
     onDismiss: () -> Unit
 ) {
+    val colors = BouncerDesignSystem.colors
     LaunchedEffect(visible) {
         if (visible) {
             delay(3000)
@@ -587,11 +600,11 @@ fun AchievementToast(
                     .shadow(
                         elevation = 16.dp,
                         shape = RoundedCornerShape(18.dp),
-                        spotColor = SuccessGreen.copy(alpha = 0.4f)
+                        spotColor = StatusSuccess.copy(alpha = 0.4f)
                     ),
                 colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.05f)),
                 shape = RoundedCornerShape(18.dp),
-                border = BorderStroke(1.dp, SuccessGreen.copy(alpha = 0.4f))
+                border = BorderStroke(1.dp, StatusSuccess.copy(alpha = 0.4f))
             ) {
                 Row(
                     modifier = Modifier
@@ -604,14 +617,14 @@ fun AchievementToast(
                         modifier = Modifier
                             .size(44.dp)
                             .background(
-                                SuccessGreen.copy(alpha = 0.15f),
+                                StatusSuccess.copy(alpha = 0.15f),
                                 CircleShape
                             )
                     ) {
                         Icon(
                             imageVector = Icons.Default.EmojiEvents,
                             contentDescription = null,
-                            tint = SuccessGreen,
+                            tint = StatusSuccess,
                             modifier = Modifier.size(24.dp)
                         )
                     }
@@ -623,20 +636,20 @@ fun AchievementToast(
                             text = "Achievement Unlocked!",
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
-                            color = SuccessGreen,
+                            color = StatusSuccess,
                             letterSpacing = 0.5.sp
                         )
                         Text(
                             text = title,
                             fontSize = 15.sp,
                             fontWeight = FontWeight.Bold,
-                            color = TextPrimary
+                            color = colors.textPrimary
                         )
                         Text(
                             text = description,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Medium,
-                            color = TextSecondary
+                            color = colors.textSecondary
                         )
                     }
                 }

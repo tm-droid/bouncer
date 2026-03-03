@@ -2,6 +2,7 @@ package com.tanush.bouncer.data
 
 import com.tanush.bouncer.BuildConfig
 import com.tanush.bouncer.network.RetrofitClient
+import io.sentry.Sentry
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -24,7 +25,7 @@ object TeamDirectory {
             }
             _teams.value = newTeams
         } catch (e: Exception) {
-            e.printStackTrace()
+            Sentry.captureException(e)
         }
     }
 }

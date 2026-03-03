@@ -25,7 +25,14 @@ import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.ui.components.BouncerImportance
 import com.tanush.bouncer.ui.components.GlassCard
 import com.tanush.bouncer.ui.components.GlassSurface
-import com.tanush.bouncer.ui.theme.*
+import com.tanush.bouncer.ui.theme.ChartBlue
+import com.tanush.bouncer.ui.theme.SuccessGreen
+import com.tanush.bouncer.ui.theme.TextPrimary
+import com.tanush.bouncer.ui.theme.TextSecondary
+import com.tanush.bouncer.ui.theme.TextTertiary
+import com.tanush.bouncer.ui.theme.WarningOrange
+import com.tanush.bouncer.ui.theme.WicketRed
+import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 
 /**
  * Player Form Card - Technical Performance Analytics.
@@ -56,6 +63,7 @@ fun PlayerFormCard(
     bowlers: List<BowlerForm>,
     modifier: Modifier = Modifier,
 ) {
+    val colors = BouncerDesignSystem.colors
     val animatedProgress = remember { Animatable(0f) }
 
     LaunchedEffect(batters, bowlers) {
@@ -105,14 +113,14 @@ fun PlayerFormCard(
                     Column {
                         Text(
                             text = "PERFORMANCE FORM",
-                            color = TextTertiary,
+                            color = colors.textTertiary,
                             fontSize = 9.sp,
                             fontWeight = FontWeight.Black,
                             letterSpacing = 1.2.sp,
                         )
                         Text(
                             text = "RECENT ANALYTICS",
-                            color = TextPrimary,
+                            color = colors.textPrimary,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
                         )
@@ -179,6 +187,7 @@ private fun FormTabButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val colors = BouncerDesignSystem.colors
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(6.dp))
@@ -189,7 +198,7 @@ private fun FormTabButton(
     ) {
         Text(
             text = label,
-            color = if (isSelected) TextPrimary else TextTertiary,
+            color = if (isSelected) colors.textPrimary else colors.textTertiary,
             fontSize = 11.sp,
             fontWeight = FontWeight.Black,
             letterSpacing = 0.5.sp
@@ -203,6 +212,7 @@ private fun BatterFormRow(
     progress: Float,
     index: Int,
 ) {
+    val colors = BouncerDesignSystem.colors
     val delayedProgress = ((progress - index * 0.1f) / 0.9f).coerceIn(0f, 1f)
 
     GlassSurface(
@@ -229,7 +239,7 @@ private fun BatterFormRow(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = batter.name.uppercase(),
-                        color = TextPrimary,
+                        color = colors.textPrimary,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Black,
                         maxLines = 1,
@@ -252,16 +262,16 @@ private fun BatterFormRow(
                                 .clip(RoundedCornerShape(4.dp))
                                 .background(
                                     when {
-                                        score >= 50 -> SuccessGreen.copy(alpha = 0.15f)
-                                        score >= 30 -> ShinyGoldDeep.copy(alpha = 0.15f)
+                                        score >= 50 -> colors.statusSuccess.copy(alpha = 0.15f)
+                                        score >= 30 -> colors.goldPrimary.copy(alpha = 0.15f)
                                         else -> Color.White.copy(alpha = 0.03f)
                                     },
                                 )
                                 .border(
                                     0.5.dp,
                                     when {
-                                        score >= 50 -> SuccessGreen.copy(alpha = 0.3f)
-                                        score >= 30 -> ShinyGoldDeep.copy(alpha = 0.3f)
+                                        score >= 50 -> colors.statusSuccess.copy(alpha = 0.3f)
+                                        score >= 30 -> colors.goldPrimary.copy(alpha = 0.3f)
                                         else -> Color.White.copy(alpha = 0.05f)
                                     },
                                     RoundedCornerShape(4.dp)
@@ -270,7 +280,7 @@ private fun BatterFormRow(
                         ) {
                             Text(
                                 text = score.toString(),
-                                color = if (score >= 30) TextPrimary else TextSecondary,
+                                color = if (score >= 30) colors.textPrimary else colors.textSecondary,
                                 fontSize = 9.sp,
                                 fontWeight = FontWeight.Bold,
                             )
@@ -283,13 +293,13 @@ private fun BatterFormRow(
             Column(horizontalAlignment = Alignment.End) {
                 Text(
                     text = "AVG ${String.format("%.1f", batter.average)}",
-                    color = TextPrimary,
+                    color = colors.textPrimary,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Black,
                 )
                 Text(
                     text = "SR ${String.format("%.1f", batter.strikeRate)}",
-                    color = TextTertiary,
+                    color = colors.textTertiary,
                     fontSize = 9.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -304,6 +314,7 @@ private fun BowlerFormRow(
     progress: Float,
     index: Int,
 ) {
+    val colors = BouncerDesignSystem.colors
     val delayedProgress = ((progress - index * 0.1f) / 0.9f).coerceIn(0f, 1f)
 
     GlassSurface(
@@ -330,7 +341,7 @@ private fun BowlerFormRow(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = bowler.name.uppercase(),
-                        color = TextPrimary,
+                        color = colors.textPrimary,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Black,
                         maxLines = 1,
@@ -354,16 +365,16 @@ private fun BowlerFormRow(
                                 .clip(RoundedCornerShape(4.dp))
                                 .background(
                                     when {
-                                        wickets >= 3 -> SuccessGreen.copy(alpha = 0.15f)
-                                        wickets >= 2 -> ChartBlue.copy(alpha = 0.15f)
+                                        wickets >= 3 -> colors.statusSuccess.copy(alpha = 0.15f)
+                                        wickets >= 2 -> colors.statusInfo.copy(alpha = 0.15f)
                                         else -> Color.White.copy(alpha = 0.03f)
                                     },
                                 )
                                 .border(
                                     0.5.dp,
                                     when {
-                                        wickets >= 3 -> SuccessGreen.copy(alpha = 0.3f)
-                                        wickets >= 2 -> ChartBlue.copy(alpha = 0.3f)
+                                        wickets >= 3 -> colors.statusSuccess.copy(alpha = 0.3f)
+                                        wickets >= 2 -> colors.statusInfo.copy(alpha = 0.3f)
                                         else -> Color.White.copy(alpha = 0.05f)
                                     },
                                     RoundedCornerShape(4.dp)
@@ -372,7 +383,7 @@ private fun BowlerFormRow(
                         ) {
                             Text(
                                 text = figure,
-                                color = if (wickets >= 2) TextPrimary else TextSecondary,
+                                color = if (wickets >= 2) colors.textPrimary else colors.textSecondary,
                                 fontSize = 9.sp,
                                 fontWeight = FontWeight.Bold,
                             )
@@ -385,13 +396,13 @@ private fun BowlerFormRow(
             Column(horizontalAlignment = Alignment.End) {
                 Text(
                     text = "ECON ${String.format("%.1f", bowler.economy)}",
-                    color = ChartBlue,
+                    color = colors.statusInfo,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Black,
                 )
                 Text(
                     text = "AVG ${String.format("%.1f", bowler.average)}",
-                    color = TextTertiary,
+                    color = colors.textTertiary,
                     fontSize = 9.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -405,6 +416,10 @@ private fun FormRatingRing(
     rating: Float,
     progress: Float,
 ) {
+    val colors = BouncerDesignSystem.colors
+    // Capture color for Canvas scope
+    val goldPrimary = colors.goldPrimary
+    
     Box(
         modifier = Modifier.size(36.dp),
         contentAlignment = Alignment.Center,
@@ -422,9 +437,9 @@ private fun FormRatingRing(
 
             // Progress
             val color = when {
-                rating > 0.7f -> SuccessGreen
-                rating > 0.4f -> ShinyGoldDeep
-                else -> WicketRed
+                rating > 0.7f -> colors.statusSuccess
+                rating > 0.4f -> goldPrimary
+                else -> colors.statusLive
             }
 
             drawArc(
@@ -438,7 +453,7 @@ private fun FormRatingRing(
 
         Text(
             text = "${(rating * 10).toInt()}",
-            color = TextPrimary,
+            color = colors.textPrimary,
             fontSize = 12.sp,
             fontWeight = FontWeight.Black,
         )
@@ -447,10 +462,11 @@ private fun FormRatingRing(
 
 @Composable
 private fun TrendBadge(trend: String) {
+    val colors = BouncerDesignSystem.colors
     val (color, arrow) = when (trend) {
-        "Rising" -> Pair(SuccessGreen, "↑")
-        "Declining" -> Pair(WicketRed, "↓")
-        else -> Pair(TextTertiary, "→")
+        "Rising" -> Pair(colors.statusSuccess, "↑")
+        "Declining" -> Pair(colors.statusLive, "↓")
+        else -> Pair(colors.textTertiary, "→")
     }
 
     Row(

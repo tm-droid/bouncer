@@ -59,6 +59,7 @@ import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.hypot
 import kotlin.math.sin
+import io.sentry.Sentry
 
 // ==========================================
 // BOUNCER - Theme Customization System (v1.0)
@@ -169,22 +170,37 @@ data class AppPreferences(
      * Get scaled font size based on preferences
      */
     fun scaleFontSize(baseSize: TextUnit): TextUnit {
-        return (baseSize.value * fontSize.scale).sp
+        try {
+            return (baseSize.value * fontSize.scale).sp
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     /**
      * Get animation duration based on preferences
      */
     fun getAnimationDuration(baseDuration: Int): Int {
-        if (reducedMotion) return 0
-        return (baseDuration * animationIntensity.durationMultiplier).toInt()
+        try {
+            if (reducedMotion) return 0
+            return (baseDuration * animationIntensity.durationMultiplier).toInt()
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     /**
      * Check if animations should be shown
      */
     fun shouldAnimate(): Boolean {
-        return !reducedMotion && animationIntensity != AnimationIntensity.None
+        try {
+            return !reducedMotion && animationIntensity != AnimationIntensity.None
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
 }
 
@@ -199,7 +215,12 @@ object FontScalingUtils {
      * Apply font scaling to a text unit
      */
     fun TextUnit.scaled(scaling: FontScaling): TextUnit {
-        return (this.value * scaling.scale).sp
+        try {
+            return (this.value * scaling.scale).sp
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     /**

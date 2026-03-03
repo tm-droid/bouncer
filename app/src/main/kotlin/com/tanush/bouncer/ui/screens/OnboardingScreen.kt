@@ -22,7 +22,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.tanush.bouncer.ui.components.glass.GlassBloomBackground
 import com.tanush.bouncer.ui.theme.*
+import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 import kotlinx.coroutines.launch
 
 // ==========================================
@@ -39,7 +41,7 @@ private data class OnboardingPage(
     val headline: String,
     val body: String,
     val icon: ImageVector,
-    val iconTint: Color
+    val useGoldTint: Boolean = true // true = gold, false = blue
 )
 
 private val pages = listOf(
@@ -47,19 +49,19 @@ private val pages = listOf(
         headline = "Live Cricket Intelligence",
         body = "Real-time scores, AI-powered insights, and ball-by-ball analysis from Cricbuzz and ESPNCricinfo.",
         icon = Icons.Default.SportsCricket,
-        iconTint = Gold400
+        useGoldTint = true
     ),
     OnboardingPage(
         headline = "Follow Your Teams",
         body = "Set up your favourite teams and never miss a match. Get personalized notifications for boundaries, wickets, and milestones.",
         icon = Icons.Default.Groups,
-        iconTint = Blue400
+        useGoldTint = false
     ),
     OnboardingPage(
         headline = "Stay Informed",
         body = "Enable notifications for live updates, win probability shifts, and AI-generated insights.",
         icon = Icons.Default.Notifications,
-        iconTint = Gold400
+        useGoldTint = true
     )
 )
 
@@ -68,29 +70,15 @@ private val pages = listOf(
 fun OnboardingScreen(
     onComplete: () -> Unit
 ) {
+    val colors = BouncerDesignSystem.colors
     val scope = rememberCoroutineScope()
     val pagerState = rememberPagerState(pageCount = { pages.size })
     val isLastPage = pagerState.currentPage == pages.lastIndex
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(BgBase)
+    GlassBloomBackground(
+        modifier = Modifier.fillMaxSize(),
+        bloomOpacity = 0.03f
     ) {
-        // Subtle radial gold glow from center (spec: gold at 3%)
-        Canvas(modifier = Modifier.fillMaxSize()) {
-            drawCircle(
-                brush = Brush.radialGradient(
-                    colors = listOf(
-                        Gold400.copy(alpha = 0.03f),
-                        Color.Transparent
-                    ),
-                    center = center,
-                    radius = size.minDimension * 0.8f
-                )
-            )
-        }
-
         Column(
             modifier = Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally
@@ -107,7 +95,7 @@ fun OnboardingScreen(
                     Text(
                         text = "Skip",
                         style = MaterialTheme.typography.bodySmall,
-                        color = TextTertiary
+                        color = colors.textTertiary
                     )
                 }
             }
@@ -137,7 +125,7 @@ fun OnboardingScreen(
                 repeat(pages.size) { index ->
                     val isActive = pagerState.currentPage == index
                     val dotColor by animateColorAsState(
-                        targetValue = if (isActive) Gold400 else Surface3,
+                        targetValue = if (isActive) colors.goldPrimary else colors.surface3,
                         animationSpec = tween(AnimationDuration.fast),
                         label = "dot_$index"
                     )
@@ -163,8 +151,8 @@ fun OnboardingScreen(
                     .height(56.dp),
                 shape = RoundedCornerShape(CornerRadius.md),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Gold400,
-                    contentColor = TextInverse
+                    containerColor = colors.goldPrimary,
+                    contentColor = colors.backgroundBase
                 ),
                 elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
             ) {
@@ -186,6 +174,9 @@ private fun OnboardingPageContent(
     page: OnboardingPage,
     parallaxFraction: Float
 ) {
+    val colors = BouncerDesignSystem.colors
+    val iconTint = if (page.useGoldTint) colors.goldPrimary else colors.statusInfo
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -201,7 +192,7 @@ private fun OnboardingPageContent(
                 .drawBehind {
                     rotate(45f) {
                         drawRoundRect(
-                            color = Surface1,
+                            color = colors.surface1,
                             size = size * 0.7f,
                             topLeft = androidx.compose.ui.geometry.Offset(
                                 size.width * 0.15f, size.height * 0.15f
@@ -209,7 +200,7 @@ private fun OnboardingPageContent(
                             cornerRadius = androidx.compose.ui.geometry.CornerRadius(20.dp.toPx())
                         )
                         drawRoundRect(
-                            color = Gold400.copy(alpha = 0.12f),
+                            color = colors.goldPrimary.copy(alpha = 0.12f),
                             size = size * 0.7f,
                             topLeft = androidx.compose.ui.geometry.Offset(
                                 size.width * 0.15f, size.height * 0.15f
@@ -225,7 +216,7 @@ private fun OnboardingPageContent(
                 imageVector = page.icon,
                 contentDescription = null,
                 modifier = Modifier.size(64.dp),
-                tint = page.iconTint
+                tint = iconTint
             )
         }
 
@@ -236,7 +227,7 @@ private fun OnboardingPageContent(
             text = page.headline,
             style = MaterialTheme.typography.headlineLarge,
             fontWeight = FontWeight.Bold,
-            color = TextPrimary,
+            color = colors.textPrimary,
             textAlign = TextAlign.Center,
             letterSpacing = (-0.01).sp
         )
@@ -247,7 +238,7 @@ private fun OnboardingPageContent(
         Text(
             text = page.body,
             style = MaterialTheme.typography.bodyLarge,
-            color = TextSecondary,
+            color = colors.textSecondary,
             textAlign = TextAlign.Center,
             lineHeight = 24.sp,
             modifier = Modifier.widthIn(max = 280.dp)

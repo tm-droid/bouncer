@@ -80,10 +80,11 @@ fun AchievementToast(
     )
     
     // Colors based on type
+    val colors = BouncerDesignSystem.colors
     val (accentColor, bgGradient) = when (type) {
-        ToastType.ACHIEVEMENT -> ShinyGoldDeep to listOf(ShinyGoldDeep.copy(alpha = 0.15f), ShinyGoldMid.copy(alpha = 0.08f))
-        ToastType.MILESTONE -> BoundarySix to listOf(BoundarySix.copy(alpha = 0.15f), BoundarySix.copy(alpha = 0.08f))
-        ToastType.INFO -> LiveBlue to listOf(LiveBlue.copy(alpha = 0.15f), LiveBlue.copy(alpha = 0.08f))
+        ToastType.ACHIEVEMENT -> colors.goldPrimary to listOf(colors.goldPrimary.copy(alpha = 0.15f), colors.goldPrimary.copy(alpha = 0.08f))
+        ToastType.MILESTONE -> colors.statusWarning to listOf(colors.statusWarning.copy(alpha = 0.15f), colors.statusWarning.copy(alpha = 0.08f))
+        ToastType.INFO -> colors.statusInfo to listOf(colors.statusInfo.copy(alpha = 0.15f), colors.statusInfo.copy(alpha = 0.08f))
         ToastType.SUCCESS -> Color(0xFF10B981) to listOf(Color(0xFF10B981).copy(alpha = 0.15f), Color(0xFF10B981).copy(alpha = 0.08f))
         ToastType.WARNING -> Color(0xFFF59E0B) to listOf(Color(0xFFF59E0B).copy(alpha = 0.15f), Color(0xFFF59E0B).copy(alpha = 0.08f))
     }
@@ -117,7 +118,7 @@ fun AchievementToast(
             
             Surface(
                 shape = RoundedCornerShape(24.dp),
-                color = Color.White.copy(alpha = 0.05f).copy(alpha = 0.98f),
+                color = GlassSurface.copy(alpha = 0.98f),
                 shadowElevation = 20.dp,
                 border = BorderStroke(
                     1.dp,
@@ -189,7 +190,7 @@ fun AchievementToast(
                             Icon(
                                 icon,
                                 contentDescription = null,
-                                tint = BlackBackground,
+                                tint = BackgroundBase,
                                 modifier = Modifier.size(22.dp)
                             )
                         }
@@ -226,7 +227,7 @@ fun AchievementToast(
 @Composable
 fun ToastConfetti(
     isActive: Boolean,
-    color: Color = ShinyGoldDeep,
+    color: Color = GoldPrimary,
     particleCount: Int = 20
 ) {
     if (!isActive) return
@@ -304,11 +305,12 @@ fun ScoreChangeNotification(
     isVisible: Boolean,
     onDismiss: () -> Unit
 ) {
+    val colors = BouncerDesignSystem.colors
     val isBoundary = runs in listOf(4, 6)
     val color = when (runs) {
-        6 -> BoundarySix
-        4 -> BoundarySix
-        else -> ShinyGoldDeep
+        6 -> colors.statusWarning
+        4 -> colors.statusWarning
+        else -> colors.goldPrimary
     }
     
     val infiniteTransition = rememberInfiniteTransition(label = "scorePulse")
@@ -346,7 +348,7 @@ fun ScoreChangeNotification(
         ) {
             Text(
                 text = "+$runs",
-                color = if (isBoundary) BlackBackground else Color.White,
+                color = if (isBoundary) BackgroundBase else Color.White,
                 fontSize = 22.sp,
                 fontWeight = FontWeight.Black
             )
@@ -389,11 +391,11 @@ fun WicketNotification(
         Column(
             modifier = Modifier
                 .padding(32.dp)
-                .shadow(24.dp, RoundedCornerShape(28.dp), spotColor = WicketBlue.copy(alpha = 0.4f))
-                .background(Color.White.copy(alpha = 0.05f), RoundedCornerShape(28.dp))
+                .shadow(24.dp, RoundedCornerShape(28.dp), spotColor = StatusInfo.copy(alpha = 0.4f))
+                .background(GlassSurface, RoundedCornerShape(28.dp))
                 .border(
                     3.dp,
-                    WicketBlue.copy(alpha = borderPulse),
+                    StatusInfo.copy(alpha = borderPulse),
                     RoundedCornerShape(28.dp)
                 )
                 .padding(28.dp),
@@ -405,7 +407,7 @@ fun WicketNotification(
                     .size(72.dp)
                     .background(
                         Brush.radialGradient(
-                            colors = listOf(WicketBlue, WicketBlue.copy(alpha = 0.8f))
+                            colors = listOf(StatusInfo, StatusInfo.copy(alpha = 0.8f))
                         ),
                         CircleShape
                     )
@@ -424,7 +426,7 @@ fun WicketNotification(
             
             Text(
                 "WICKET!",
-                color = WicketBlue,
+                color = StatusInfo,
                 fontSize = 28.sp,
                 fontWeight = FontWeight.Black,
                 letterSpacing = 2.sp
@@ -461,14 +463,14 @@ fun WicketNotification(
                 )
                 Text(
                     bowlerName,
-                    color = ShinyGoldDeep,
+                    color = GoldPrimary,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.SemiBold
                 )
             }
         }
         
-        ToastConfetti(isActive = true, color = WicketBlue, particleCount = 30)
+        ToastConfetti(isActive = true, color = StatusInfo, particleCount = 30)
     }
 }
 
@@ -479,7 +481,7 @@ fun WicketNotification(
 fun InfoBar(
     message: String,
     icon: ImageVector = Icons.Default.Info,
-    color: Color = ShinyGoldDeep,
+    color: Color = GoldPrimary,
     modifier: Modifier = Modifier
 ) {
     Surface(

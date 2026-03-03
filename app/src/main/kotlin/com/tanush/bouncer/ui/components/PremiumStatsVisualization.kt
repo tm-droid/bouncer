@@ -43,6 +43,7 @@ fun HeadToHeadComparison(
     statLabel: String,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val total = team1Value + team2Value
     val team1Ratio = if (total > 0) team1Value.toFloat() / total else 0.5f
     
@@ -58,10 +59,10 @@ fun HeadToHeadComparison(
             .shadow(
                 elevation = 8.dp,
                 shape = RoundedCornerShape(16.dp),
-                spotColor = ShinyGoldDeep.copy(alpha = 0.1f)
+                spotColor = colors.goldDark.copy(alpha = 0.1f)
             ),
         shape = RoundedCornerShape(16.dp),
-        color = Color.White.copy(alpha = 0.05f)
+        color = colors.glassBackground
     ) {
         Column(
             modifier = Modifier
@@ -75,7 +76,7 @@ fun HeadToHeadComparison(
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 1.2.sp,
-                color = TextMuted,
+                color = colors.textMuted,
                 modifier = Modifier.align(Alignment.CenterHorizontally)
             )
             
@@ -89,13 +90,13 @@ fun HeadToHeadComparison(
                         text = "$team1Value",
                         fontSize = 24.sp,
                         fontWeight = FontWeight.Black,
-                        color = ShinyGoldDeep
+                        color = colors.goldDark
                     )
                     Text(
                         text = team1Name,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Medium,
-                        color = TextSecondary
+                        color = colors.textSecondary
                     )
                 }
                 
@@ -104,13 +105,13 @@ fun HeadToHeadComparison(
                         text = "$team2Value",
                         fontSize = 24.sp,
                         fontWeight = FontWeight.Black,
-                        color = TextSecondary
+                        color = colors.textSecondary
                     )
                     Text(
                         text = team2Name,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Medium,
-                        color = TextSecondary
+                        color = colors.textSecondary
                     )
                 }
             }
@@ -121,7 +122,7 @@ fun HeadToHeadComparison(
                     .fillMaxWidth()
                     .height(8.dp)
                     .clip(RoundedCornerShape(4.dp))
-                    .background(CardBorder)
+                    .background(colors.glassBorder)
             ) {
                 Row(modifier = Modifier.fillMaxSize()) {
                     // Team 1 portion
@@ -131,7 +132,7 @@ fun HeadToHeadComparison(
                             .fillMaxWidth(animatedRatio)
                             .background(
                                 Brush.horizontalGradient(
-                                    colors = listOf(ShinyGoldDeep, ShinyGoldMid)
+                                    colors = listOf(colors.goldDark, colors.goldPrimary)
                                 )
                             )
                     )
@@ -149,6 +150,7 @@ fun ScoringZonesChart(
     zones: List<ScoringZone>,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "zones")
     val rotation by infiniteTransition.animateFloat(
         initialValue = 0f,
@@ -165,10 +167,10 @@ fun ScoringZonesChart(
             .shadow(
                 elevation = 12.dp,
                 shape = RoundedCornerShape(20.dp),
-                spotColor = ShinyGoldDeep.copy(alpha = 0.15f)
+                spotColor = colors.goldDark.copy(alpha = 0.15f)
             ),
         shape = RoundedCornerShape(20.dp),
-        color = Color.White.copy(alpha = 0.05f)
+        color = colors.glassBackground
     ) {
         Column(
             modifier = Modifier.padding(20.dp),
@@ -180,7 +182,7 @@ fun ScoringZonesChart(
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 1.5.sp,
-                color = ShinyGoldDeep
+                color = colors.goldDark
             )
             
             Box(
@@ -194,20 +196,20 @@ fun ScoringZonesChart(
                     
                     // Background circle with subtle grid
                     drawCircle(
-                        color = CardBorder.copy(alpha = 0.3f),
+                        color = GlassBorder.copy(alpha = 0.3f),
                         radius = radius,
                         style = Stroke(1.dp.toPx())
                     )
                     
                     // Inner circles
                     drawCircle(
-                        color = CardBorder.copy(alpha = 0.2f),
+                        color = GlassBorder.copy(alpha = 0.2f),
                         radius = radius * 0.66f,
                         style = Stroke(0.5.dp.toPx())
                     )
                     
                     drawCircle(
-                        color = CardBorder.copy(alpha = 0.15f),
+                        color = GlassBorder.copy(alpha = 0.15f),
                         radius = radius * 0.33f,
                         style = Stroke(0.5.dp.toPx())
                     )
@@ -252,14 +254,14 @@ fun ScoringZonesChart(
                     // Center circle
                     drawCircle(
                         brush = Brush.radialGradient(
-                            colors = listOf(CardSurfaceLight, CardSurface)
+                            colors = listOf(Surface2, Surface1)
                         ),
                         radius = 24.dp.toPx(),
                         center = Offset(centerX, centerY)
                     )
                     
                     drawCircle(
-                        color = ShinyGoldDeep.copy(alpha = 0.5f),
+                        color = GoldDark.copy(alpha = 0.5f),
                         radius = 24.dp.toPx(),
                         center = Offset(centerX, centerY),
                         style = Stroke(2.dp.toPx())
@@ -288,6 +290,7 @@ data class ScoringZone(
 
 @Composable
 private fun ZoneLegendItem(zone: ScoringZone) {
+    val colors = BouncerDesignSystem.colors
     Row(
         horizontalArrangement = Arrangement.spacedBy(4.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -301,7 +304,7 @@ private fun ZoneLegendItem(zone: ScoringZone) {
             Text(
                 text = zone.name,
                 fontSize = 9.sp,
-                color = TextMuted
+                color = colors.textMuted
             )
             Text(
                 text = "${zone.runs} runs",
@@ -321,6 +324,7 @@ fun RunFlowChart(
     overs: List<OverRuns>,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val maxRuns = overs.maxOfOrNull { it.runs } ?: 10
     
     Surface(
@@ -329,10 +333,10 @@ fun RunFlowChart(
             .shadow(
                 elevation = 12.dp,
                 shape = RoundedCornerShape(20.dp),
-                spotColor = ShinyGoldDeep.copy(alpha = 0.15f)
+                spotColor = colors.goldDark.copy(alpha = 0.15f)
             ),
         shape = RoundedCornerShape(20.dp),
-        color = Color.White.copy(alpha = 0.05f)
+        color = colors.glassBackground
     ) {
         Column(
             modifier = Modifier
@@ -350,13 +354,13 @@ fun RunFlowChart(
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 1.5.sp,
-                    color = ShinyGoldDeep
+                    color = colors.goldDark
                 )
                 
                 Text(
                     text = "${overs.size} overs",
                     fontSize = 11.sp,
-                    color = TextMuted
+                    color = colors.textMuted
                 )
             }
             
@@ -376,10 +380,10 @@ fun RunFlowChart(
                         val y = size.height - barHeight
                         
                         val barColor = when {
-                            over.wicket -> WicketRed
-                            over.runs >= 15 -> BoundarySix
-                            over.runs >= 10 -> BoundaryFour
-                            over.runs >= 6 -> ShinyGoldDeep
+                            over.wicket -> StatusLive
+                            over.runs >= 15 -> StatusSix
+                            over.runs >= 10 -> StatusInfo
+                            over.runs >= 6 -> GoldDark
                             else -> TextSecondary
                         }
                         
@@ -401,7 +405,7 @@ fun RunFlowChart(
                         // Wicket indicator
                         if (over.wicket) {
                             drawCircle(
-                                color = WicketRed,
+                                color = StatusLive,
                                 radius = 4.dp.toPx(),
                                 center = Offset(x + barWidth / 2, y - 8.dp.toPx())
                             )
@@ -415,9 +419,9 @@ fun RunFlowChart(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                LegendItem(color = BoundarySix, text = "15+ runs")
-                LegendItem(color = BoundaryFour, text = "10-14 runs")
-                LegendItem(color = WicketRed, text = "Wicket")
+                LegendItem(color = StatusSix, text = "15+ runs")
+                LegendItem(color = StatusInfo, text = "10-14 runs")
+                LegendItem(color = StatusLive, text = "Wicket")
             }
         }
     }
@@ -431,6 +435,7 @@ data class OverRuns(
 
 @Composable
 private fun LegendItem(color: Color, text: String) {
+    val dsColors = BouncerDesignSystem.colors
     Row(
         horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -443,7 +448,7 @@ private fun LegendItem(color: Color, text: String) {
         Text(
             text = text,
             fontSize = 10.sp,
-            color = TextMuted
+            color = dsColors.textMuted
         )
     }
 }
@@ -458,6 +463,7 @@ fun MatchComparisonRadar(
     stats: List<RadarComparisonStat>,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "radar")
     val glowPulse by infiniteTransition.animateFloat(
         initialValue = 0.3f,
@@ -474,10 +480,10 @@ fun MatchComparisonRadar(
             .shadow(
                 elevation = 12.dp,
                 shape = RoundedCornerShape(20.dp),
-                spotColor = ShinyGoldDeep.copy(alpha = 0.15f)
+                spotColor = colors.goldDark.copy(alpha = 0.15f)
             ),
         shape = RoundedCornerShape(20.dp),
-        color = Color.White.copy(alpha = 0.05f)
+        color = colors.glassBackground
     ) {
         Column(
             modifier = Modifier.padding(20.dp),
@@ -489,7 +495,7 @@ fun MatchComparisonRadar(
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 1.5.sp,
-                color = ShinyGoldDeep
+                color = colors.goldDark
             )
             
             Box(
@@ -520,7 +526,7 @@ fun MatchComparisonRadar(
                         
                         drawPath(
                             path = path,
-                            color = CardBorder.copy(alpha = 0.3f),
+                            color = GlassBorder.copy(alpha = 0.3f),
                             style = Stroke(1.dp.toPx())
                         )
                     }
@@ -532,11 +538,10 @@ fun MatchComparisonRadar(
                         val y = centerY + (sin(angle) * radius).toFloat()
                         
                         drawLine(
-                            color = CardBorder.copy(alpha = 0.2f),
+                            color = GlassBorder.copy(alpha = 0.2f),
                             start = Offset(centerX, centerY),
                             end = Offset(x, y),
-                            strokeWidth = 1.dp.toPx()
-                        )
+                            strokeWidth = 1.dp.toPx())
                     }
                     
                     // Team 1 polygon
@@ -557,8 +562,8 @@ fun MatchComparisonRadar(
                         path = team1Path,
                         brush = Brush.radialGradient(
                             colors = listOf(
-                                ShinyGoldDeep.copy(alpha = 0.3f * glowPulse),
-                                ShinyGoldDeep.copy(alpha = 0.1f)
+                                GoldDark.copy(alpha = 0.3f * glowPulse),
+                                GoldDark.copy(alpha = 0.1f)
                             ),
                             center = Offset(centerX, centerY),
                             radius = radius
@@ -568,7 +573,7 @@ fun MatchComparisonRadar(
                     // Team 1 stroke
                     drawPath(
                         path = team1Path,
-                        color = ShinyGoldDeep,
+                        color = GoldDark,
                         style = Stroke(2.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
                     )
                     
@@ -588,13 +593,13 @@ fun MatchComparisonRadar(
                     // Team 2 fill
                     drawPath(
                         path = team2Path,
-                        color = LiveBlue.copy(alpha = 0.15f)
+                        color = StatusInfo.copy(alpha = 0.15f)
                     )
                     
                     // Team 2 stroke
                     drawPath(
                         path = team2Path,
-                        color = LiveBlue.copy(alpha = 0.7f),
+                        color = StatusInfo.copy(alpha = 0.7f),
                         style = Stroke(2.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
                     )
                     
@@ -611,7 +616,7 @@ fun MatchComparisonRadar(
                         val point1Y = centerY + (sin(angle) * point1Radius).toFloat()
                         
                         drawCircle(
-                            color = ShinyGoldDeep,
+                            color = GoldDark,
                             radius = 5.dp.toPx(),
                             center = Offset(point1X, point1Y)
                         )
@@ -622,7 +627,7 @@ fun MatchComparisonRadar(
                         val point2Y = centerY + (sin(angle) * point2Radius).toFloat()
                         
                         drawCircle(
-                            color = LiveBlue,
+                            color = StatusInfo,
                             radius = 5.dp.toPx(),
                             center = Offset(point2X, point2Y)
                         )
@@ -635,8 +640,8 @@ fun MatchComparisonRadar(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                TeamLegend(name = team1Name, color = ShinyGoldDeep)
-                TeamLegend(name = team2Name, color = LiveBlue)
+                TeamLegend(name = team1Name, color = colors.goldDark)
+                TeamLegend(name = team2Name, color = colors.statusInfo)
             }
         }
     }
@@ -677,6 +682,7 @@ fun EconomyMeter(
     economy: Float,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val animatedEconomy by animateFloatAsState(
         targetValue = economy.coerceIn(0f, 15f),
         animationSpec = tween(1000, easing = FastOutSlowInEasing),
@@ -684,11 +690,11 @@ fun EconomyMeter(
     )
     
     val economyColor = when {
-        economy <= 4.5f -> SuccessGreen
-        economy <= 6.0f -> ShinyGoldDeep
-        economy <= 8.0f -> WarningYellow
-        economy <= 10.0f -> WicketRed.copy(alpha = 0.8f)
-        else -> WicketRed
+        economy <= 4.5f -> colors.statusSuccess
+        economy <= 6.0f -> colors.goldDark
+        economy <= 8.0f -> colors.statusWarning
+        economy <= 10.0f -> colors.statusLive.copy(alpha = 0.8f)
+        else -> colors.statusLive
     }
 
     Surface(
@@ -699,7 +705,7 @@ fun EconomyMeter(
                 spotColor = economyColor.copy(alpha = 0.2f)
             ),
         shape = RoundedCornerShape(16.dp),
-        color = Color.White.copy(alpha = 0.05f)
+        color = colors.glassBackground
     ) {
         Column(
             modifier = Modifier
@@ -713,7 +719,7 @@ fun EconomyMeter(
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 1.2.sp,
-                color = TextMuted
+                color = colors.textMuted
             )
             
             Box(
@@ -726,7 +732,7 @@ fun EconomyMeter(
                     
                     // Background arc (semi-circle)
                     drawArc(
-                        color = CardBorder,
+                        color = GlassBorder,
                         startAngle = 180f,
                         sweepAngle = 180f,
                         useCenter = false,
@@ -740,10 +746,10 @@ fun EconomyMeter(
                     drawArc(
                         brush = Brush.sweepGradient(
                             colors = listOf(
-                                SuccessGreen,
-                                ShinyGoldDeep,
-                                WarningYellow,
-                                WicketRed
+                                StatusSuccess,
+                                GoldDark,
+                                StatusWarning,
+                                StatusLive
                             ),
                             center = Offset(size.width / 2, size.height / 2)
                         ),

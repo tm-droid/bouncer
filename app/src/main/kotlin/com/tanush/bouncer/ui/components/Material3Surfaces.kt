@@ -48,6 +48,7 @@ fun Material3Card(
     contentDescription: String? = null,
     content: @Composable ColumnScope.() -> Unit
 ) {
+    val colors = BouncerDesignSystem.colors
     val haptic = rememberHapticFeedback()
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
@@ -92,7 +93,7 @@ fun Material3Card(
         shape = RoundedCornerShape(cornerRadius),
         colors = CardDefaults.cardColors(
             containerColor = containerColor,
-            contentColor = TextPrimary
+            contentColor = colors.textPrimary
         ),
         elevation = CardDefaults.cardElevation(
             defaultElevation = cardElevation.dp,
@@ -270,8 +271,8 @@ fun GradientCard(
     onClick: (() -> Unit)? = null,
     gradientColors: List<Color> = listOf(
         Color.White.copy(alpha = 0.08f),
-        CardDarkBlue.copy(alpha = 0.5f),
-        CardAlmostBlack
+        Surface1.copy(alpha = 0.5f),
+        BackgroundBase
     ),
     cornerRadius: Dp = 28.dp,
     elevation: Dp = 8.dp,
@@ -378,4 +379,28 @@ fun ShimmerPlaceholder(
                 )
             )
     )
+}
+
+// ── Previews ────────────────────────────────────────────────────────────────
+
+@androidx.compose.ui.tooling.preview.Preview(showBackground = true, backgroundColor = 0xFF121212)
+@Composable
+private fun Material3CardPreview() {
+    com.tanush.bouncer.ui.theme.BouncerPreviewTheme {
+        androidx.compose.foundation.layout.Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(12.dp)
+        ) {
+            Material3Card(
+                onClick = {},
+                elevation = Elevation.medium
+            ) {
+                androidx.compose.material3.Text(
+                    text = "Material 3 Card Preview",
+                    modifier = Modifier.padding(16.dp),
+                    color = Color.White
+                )
+            }
+        }
+    }
 }

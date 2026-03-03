@@ -1,11 +1,11 @@
 import java.util.Properties
 
 plugins {
-    id("com.android.application")
-    id("org.jetbrains.kotlin.android")
-    id("org.jetbrains.kotlin.plugin.compose")
+    alias(libs.plugins.android.application)
+    alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.kotlin.compose)
 
-    id("io.sentry.android.gradle") version "6.1.0"
+    id("io.sentry.android.gradle") version libs.versions.sentry.gradle.get()
 }
 
 val localProperties = Properties()
@@ -30,6 +30,14 @@ android {
 
         buildConfigField("String", "OPENROUTER_API_KEY", "\"${localProperties.getProperty("OPENROUTER_API_KEY", "")}\"")
         buildConfigField("String", "RAPIDAPI_KEY", "\"${localProperties.getProperty("RAPIDAPI_KEY", "")}\"")
+        manifestPlaceholders["sentryDsn"] = localProperties.getProperty("SENTRY_DSN", "https://da18196cef92219d21454c5b3a63d05a@o4510958403518464.ingest.us.sentry.io/4510958405287936")
+        // Default environment; overridden per build type below
+        manifestPlaceholders["sentryEnvironment"] = "production"
+
+        // Only include 64-bit ABIs — androidx.graphics.path native lib doesn't ship armeabi-v7a
+        ndk {
+            abiFilters += listOf("arm64-v8a", "x86_64")
+        }
     }
 
     buildTypes {
@@ -37,9 +45,11 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            manifestPlaceholders["sentryEnvironment"] = "production"
         }
         debug {
             isCrunchPngs = false
+            manifestPlaceholders["sentryEnvironment"] = "debug"
         }
     }
 
@@ -57,15 +67,42 @@ android {
         buildConfig = true
     }
 
+    lint {
+        // Surface all warnings as errors in CI; locally they remain warnings.
+        abortOnError = false
+        checkReleaseBuilds = true
+        // Write machine-readable report alongside the default HTML one.
+        xmlReport = true
+        htmlReport = true
+        // Ignore auto-generated code (R.*, databinding, etc.)
+        ignoreTestSources = true
+        // Baseline captures pre-existing issues so new code is held to a higher bar.
+        // baseline = file("lint-baseline.xml")
+    }
+
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
+        }
+        jniLibs {
+            useLegacyPackaging = false
         }
     }
 }
 
 composeCompiler {
+    // Strong skipping avoids recomposing composables whose parameters haven't changed,
+    // even when those parameters are unstable types (e.g. data classes without @Stable).
     enableStrongSkippingMode = true
+
+    // Write Compose compiler metrics to build/compose_metrics/ on every debug build.
+    // Inspect them with the Compose Compiler Metrics Viewer to spot unstable/restartable
+    // functions and reduce unnecessary recomposition.
+    if (project.findProperty("enableComposeCompilerReports") == "true") {
+        val dir = layout.buildDirectory.dir("compose_metrics")
+        metricsDestination = dir
+        reportsDestination = dir
+    }
 }
 
 dependencies {
@@ -76,64 +113,68 @@ dependencies {
         }
     }
 
-    // THE CRASH FIX: Stable Aligned Core/Activity/Lifecycle
-    // Prevents NoClassDefFoundError: Landroidx/core/viewtree/R$id
-    implementation("androidx.core:core-ktx:1.13.1")
-    implementation("androidx.activity:activity-compose:1.9.3")
-    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")
-    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
-    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.7")
-    implementation("androidx.savedstate:savedstate-ktx:1.2.1")
-    
-    // Compose BOM - 2024.10.01 (Aligned with Activity 1.9.3)
-    implementation(platform("androidx.compose:compose-bom:2024.10.01"))
-    implementation("androidx.compose.ui:ui")
-    implementation("androidx.compose.ui:ui-graphics")
-    implementation("androidx.compose.ui:ui-tooling-preview")
-    implementation("androidx.compose.ui:ui-text-google-fonts:1.7.0")
-    implementation("androidx.compose.material3:material3")
-    implementation("androidx.compose.material:material")
-    
-    // RESTORED: Required by Bouncer Premium Components
-    implementation("androidx.compose.material:material-icons-extended")
+    // AndroidX Core — Stable aligned versions prevent runtime crashes
+    implementation(libs.core.ktx)
+    implementation(libs.activity.compose)
+    implementation(libs.lifecycle.runtime.ktx)
+    implementation(libs.lifecycle.viewmodel.compose)
+    implementation(libs.lifecycle.runtime.compose)
+    implementation(libs.savedstate.ktx)
 
-    implementation("androidx.navigation:navigation-compose:2.8.3")
-    implementation("com.squareup.retrofit2:retrofit:2.11.0")
-    implementation("com.squareup.retrofit2:converter-gson:2.11.0")
-    implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
-    implementation("io.coil-kt:coil-compose:2.7.0")
-    implementation("androidx.palette:palette:1.0.0")
-    implementation("org.jsoup:jsoup:1.18.3")
-    
-    // Adaptive Layout & Foldable Support
-    implementation("androidx.window:window:1.2.0")
-    implementation("androidx.compose.material3:material3-window-size-class:1.2.1")
-    
-    // Glance Widget Support
-    implementation("androidx.glance:glance:1.1.1")
-    implementation("androidx.glance:glance-appwidget:1.1.1")
-    implementation("androidx.glance:glance-material3:1.1.1")
-    
+    // Compose BOM
+    implementation(platform(libs.compose.bom))
+    implementation(libs.compose.ui)
+    implementation(libs.compose.ui.graphics)
+    implementation(libs.compose.ui.tooling.preview)
+    implementation(libs.compose.ui.text.google.fonts)
+    implementation(libs.compose.material3)
+    implementation(libs.compose.material)
+    implementation(libs.compose.material.icons.extended)
+
+    // Navigation
+    implementation(libs.navigation.compose)
+
+    // Networking
+    implementation(libs.retrofit)
+    implementation(libs.retrofit.converter.gson)
+    implementation(libs.okhttp.logging)
+    implementation(libs.coil.compose)
+    implementation(libs.jsoup)
+
+    // UI & Layout
+    implementation(libs.palette)
+    implementation(libs.window)
+    implementation(libs.material3.windowsizeclass)
+
+    // Glance Widgets
+    implementation(libs.glance)
+    implementation(libs.glance.appwidget)
+    implementation(libs.glance.material3)
+
     // Core Engine
-    implementation("io.ktor:ktor-client-cio:3.0.0")
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.9.0")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
-    implementation("io.github.oshai:kotlin-logging-android:7.0.13")
+    implementation(libs.ktor.client.cio)
+    implementation(libs.kotlinx.serialization.json)
+    implementation(libs.kotlinx.coroutines.core)
+    implementation(libs.kotlinx.coroutines.android)
+    implementation(libs.kotlin.logging.android)
 
-    testImplementation("junit:junit:4.13.2")
-    androidTestImplementation("androidx.test.ext:junit:1.2.1")
-    androidTestImplementation("androidx.test.espresso:espresso-core:3.6.1")
-    debugImplementation("androidx.compose.ui:ui-tooling")
-    debugImplementation("androidx.compose.ui:ui-test-manifest")
+    // Testing
+    testImplementation(libs.junit)
+    androidTestImplementation(libs.androidx.test.ext.junit)
+    androidTestImplementation(libs.espresso.core)
+    debugImplementation(libs.compose.ui.tooling)
+    debugImplementation(libs.compose.ui.test.manifest)
 }
-
 
 sentry {
     org.set("tanush-4w")
     projectName.set("android")
-
-    // this will upload your source code to Sentry to show it as part of the stack traces
-    // disable if you don't want to expose your sources
+    // Auth token from local.properties (never commit this file). Falls back to SENTRY_AUTH_TOKEN
+    // env var so CI builds work without local.properties.
+    authToken.set(
+        localProperties.getProperty("SENTRY_USER_AUTH_TOKEN")
+            ?: System.getenv("SENTRY_AUTH_TOKEN")
+            ?: ""
+    )
     includeSourceContext.set(true)
 }

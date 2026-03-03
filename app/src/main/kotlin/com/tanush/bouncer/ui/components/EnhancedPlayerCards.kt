@@ -13,6 +13,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.material3.ripple
@@ -131,6 +132,7 @@ private fun FlipCardFront(
     isCaptain: Boolean,
     isKeeper: Boolean
 ) {
+    val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "frontCard")
     val shimmer by infiniteTransition.animateFloat(
         initialValue = 0f,
@@ -145,7 +147,7 @@ private fun FlipCardFront(
     Surface(
         modifier = Modifier.fillMaxSize(),
         shape = RoundedCornerShape(24.dp),
-        color = Color.White.copy(alpha = 0.05f)
+        color = colors.glassSurface
     ) {
         Box {
             // Background gradient
@@ -155,8 +157,8 @@ private fun FlipCardFront(
                     .background(
                         Brush.verticalGradient(
                             colors = listOf(
-                                CardDarkBlue.copy(alpha = 0.8f),
-                                Color.White.copy(alpha = 0.05f)
+                                colors.surface1.copy(alpha = 0.8f),
+                                colors.glassSurface
                             )
                         )
                     )
@@ -171,7 +173,7 @@ private fun FlipCardFront(
                         Brush.linearGradient(
                             colors = listOf(
                                 Color.Transparent,
-                                ShinyGoldDeep.copy(alpha = 0.1f),
+                                colors.goldPrimary.copy(alpha = 0.1f),
                                 Color.Transparent
                             ),
                             start = Offset(shimmer * 500f - 150f, 0f),
@@ -194,17 +196,17 @@ private fun FlipCardFront(
                         .shadow(
                             elevation = 12.dp,
                             shape = CircleShape,
-                            spotColor = ShinyGoldDeep.copy(alpha = 0.4f)
+                            spotColor = colors.goldPrimary.copy(alpha = 0.4f)
                         )
                         .border(
                             3.dp,
                             Brush.linearGradient(
-                                colors = listOf(ShinyGoldDeep, ShinyGoldMid)
+                                colors = listOf(colors.goldPrimary, colors.goldPrimary)
                             ),
                             CircleShape
                         )
                         .clip(CircleShape)
-                        .background(Color.White.copy(alpha = 0.08f)),
+                        .background(colors.glassBorderHighlight),
                     contentAlignment = Alignment.Center
                 ) {
                     if (imageUrl != null) {
@@ -217,7 +219,7 @@ private fun FlipCardFront(
                     } else {
                         Text(
                             text = playerName.split(" ").mapNotNull { it.firstOrNull()?.uppercase() }.take(2).joinToString(""),
-                            color = ShinyGoldDeep,
+                            color = colors.goldPrimary,
                             fontSize = 32.sp,
                             fontWeight = FontWeight.Black
                         )
@@ -233,7 +235,7 @@ private fun FlipCardFront(
                 ) {
                     Text(
                         text = playerName,
-                        color = TextPrimary,
+                        color = colors.textPrimary,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
                         textAlign = TextAlign.Center
@@ -242,12 +244,12 @@ private fun FlipCardFront(
                     if (isCaptain) {
                         Box(
                             modifier = Modifier
-                                .background(ShinyGoldDeep, CircleShape)
+                                .background(colors.goldPrimary, CircleShape)
                                 .padding(horizontal = 6.dp, vertical = 2.dp)
                         ) {
                             Text(
                                 text = "C",
-                                color = BlackBackground,
+                                color = colors.backgroundBase,
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Black
                             )
@@ -257,12 +259,12 @@ private fun FlipCardFront(
                     if (isKeeper) {
                         Box(
                             modifier = Modifier
-                                .background(WicketBlue, CircleShape)
+                                .background(colors.statusInfo, CircleShape)
                                 .padding(horizontal = 6.dp, vertical = 2.dp)
                         ) {
                             Text(
                                 text = "WK",
-                                color = Color.White,
+                                color = colors.textPrimary,
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Black
                             )
@@ -272,7 +274,7 @@ private fun FlipCardFront(
                 
                 Text(
                     text = playerRole,
-                    color = TextSecondary,
+                    color = colors.textSecondary,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Medium
                 )
@@ -281,7 +283,7 @@ private fun FlipCardFront(
                 
                 Text(
                     text = "$matches MATCHES",
-                    color = TextMuted,
+                    color = colors.textMuted,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 1.sp
@@ -291,7 +293,7 @@ private fun FlipCardFront(
                 
                 Text(
                     text = "TAP TO VIEW STATS",
-                    color = ShinyGoldDeep.copy(alpha = 0.7f),
+                    color = colors.goldPrimary.copy(alpha = 0.7f),
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 1.sp
@@ -312,10 +314,11 @@ private fun FlipCardBack(
     economy: Float,
     onPlayerClick: (() -> Unit)?
 ) {
+    val colors = BouncerDesignSystem.colors
     Surface(
         modifier = Modifier.fillMaxSize(),
         shape = RoundedCornerShape(24.dp),
-        color = Color.White.copy(alpha = 0.05f)
+        color = colors.glassSurface
     ) {
         Column(
             modifier = Modifier
@@ -325,7 +328,7 @@ private fun FlipCardBack(
             // Header
             Text(
                 text = playerName.uppercase(),
-                color = ShinyGoldDeep,
+                color = colors.goldPrimary,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Black,
                 letterSpacing = 1.sp
@@ -337,7 +340,7 @@ private fun FlipCardBack(
             if (runs > 0 || average > 0) {
                 Text(
                     text = "BATTING",
-                    color = TextMuted,
+                    color = colors.textMuted,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 1.sp
@@ -348,9 +351,9 @@ private fun FlipCardBack(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
-                    StatColumn(value = runs.toString(), label = "RUNS", color = ShinyGoldDeep)
+                    StatColumn(value = runs.toString(), label = "RUNS", color = colors.goldPrimary)
                     StatColumn(value = String.format("%.1f", average), label = "AVG", color = ChartGreen)
-                    StatColumn(value = String.format("%.1f", strikeRate), label = "SR", color = ChartBlue)
+                    StatColumn(value = String.format("%.1f", strikeRate), label = "SR", color = colors.statusInfo)
                 }
                 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -360,7 +363,7 @@ private fun FlipCardBack(
             if (wickets > 0 || economy > 0) {
                 Text(
                     text = "BOWLING",
-                    color = TextMuted,
+                    color = colors.textMuted,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 1.sp
@@ -371,7 +374,7 @@ private fun FlipCardBack(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
-                    StatColumn(value = wickets.toString(), label = "WKTS", color = ChartPurple)
+                    StatColumn(value = wickets.toString(), label = "WKTS", color = colors.statusInfo)
                     StatColumn(value = String.format("%.1f", bowlingAverage), label = "AVG", color = ChartCyan)
                     StatColumn(value = String.format("%.2f", economy), label = "ECON", color = ChartOrange)
                 }
@@ -387,13 +390,13 @@ private fun FlipCardBack(
                 ) {
                     Text(
                         text = "View Full Profile",
-                        color = ShinyGoldDeep,
+                        color = colors.goldPrimary,
                         fontWeight = FontWeight.Bold
                     )
                     Icon(
-                        imageVector = Icons.Default.ArrowForward,
+                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                         contentDescription = null,
-                        tint = ShinyGoldDeep,
+                        tint = colors.goldPrimary,
                         modifier = Modifier.size(16.dp)
                     )
                 }
@@ -401,7 +404,7 @@ private fun FlipCardBack(
             
             Text(
                 text = "TAP TO FLIP BACK",
-                color = TextMuted,
+                color = colors.textMuted,
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 1.sp,
@@ -417,6 +420,7 @@ private fun StatColumn(
     label: String,
     color: Color
 ) {
+    val colors = BouncerDesignSystem.colors
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
             text = value,
@@ -426,7 +430,7 @@ private fun StatColumn(
         )
         Text(
             text = label,
-            color = TextMuted,
+            color = colors.textMuted,
             fontSize = 9.sp,
             fontWeight = FontWeight.Bold,
             letterSpacing = 0.5.sp
@@ -448,8 +452,9 @@ fun PerformanceRadarChart(
     playerName: String = "",
     modifier: Modifier = Modifier,
     chartSize: Dp = 200.dp,
-    primaryColor: Color = ShinyGoldDeep
+    primaryColor: Color = GoldPrimary
 ) {
+    val colors = BouncerDesignSystem.colors
     val skills = listOf(
         "Batting" to battingSkill,
         "Bowling" to bowlingSkill,
@@ -484,7 +489,7 @@ fun PerformanceRadarChart(
             for (i in 1..5) {
                 val gridRadius = radius * i / 5
                 drawCircle(
-                    color = CardBorder.copy(alpha = 0.3f),
+                    color = GlassBorder.copy(alpha = 0.3f),
                     radius = gridRadius,
                     center = center,
                     style = Stroke(width = 1.dp.toPx())
@@ -498,7 +503,7 @@ fun PerformanceRadarChart(
                 val endY = center.y + radius * sin(angle).toFloat()
                 
                 drawLine(
-                    color = CardBorder.copy(alpha = 0.5f),
+                    color = GlassBorder.copy(alpha = 0.5f),
                     start = center,
                     end = Offset(endX, endY),
                     strokeWidth = 1.dp.toPx()
@@ -553,7 +558,7 @@ fun PerformanceRadarChart(
                     center = Offset(x, y)
                 )
                 drawCircle(
-                    color = CardSurface,
+                    color = Surface1,
                     radius = 3.dp.toPx(),
                     center = Offset(x, y)
                 )
@@ -577,7 +582,7 @@ fun PerformanceRadarChart(
             ) {
                 Text(
                     text = "${label.take(3).uppercase()}",
-                    color = TextSecondary,
+                    color = colors.textSecondary,
                     fontSize = 9.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -600,10 +605,11 @@ fun HeadToHeadComparison(
     player2ImageUrl: String? = null,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(24.dp),
-        color = Color.White.copy(alpha = 0.05f)
+        color = colors.glassSurface
     ) {
         Column(
             modifier = Modifier.padding(20.dp)
@@ -625,12 +631,12 @@ fun HeadToHeadComparison(
                 Box(
                     modifier = Modifier
                         .size(40.dp)
-                        .background(Color.White.copy(alpha = 0.08f), CircleShape),
+                        .background(colors.glassBorderHighlight, CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = "VS",
-                        color = ShinyGoldDeep,
+                        color = colors.goldPrimary,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Black
                     )
@@ -640,7 +646,7 @@ fun HeadToHeadComparison(
                 PlayerComparisonHeader(
                     name = player2Name,
                     imageUrl = player2ImageUrl,
-                    color = ChartBlue
+                    color = colors.statusInfo
                 )
             }
             
@@ -713,6 +719,7 @@ private fun PlayerComparisonHeader(
     imageUrl: String?,
     color: Color
 ) {
+    val colors = BouncerDesignSystem.colors
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier.width(80.dp)
@@ -722,7 +729,7 @@ private fun PlayerComparisonHeader(
                 .size(50.dp)
                 .border(2.dp, color, CircleShape)
                 .clip(CircleShape)
-                .background(Color.White.copy(alpha = 0.08f)),
+                .background(colors.glassBorderHighlight),
             contentAlignment = Alignment.Center
         ) {
             if (imageUrl != null) {
@@ -746,7 +753,7 @@ private fun PlayerComparisonHeader(
         
         Text(
             text = name.split(" ").lastOrNull() ?: name,
-            color = TextPrimary,
+            color = colors.textPrimary,
             fontSize = 12.sp,
             fontWeight = FontWeight.Bold,
             maxLines = 1,
@@ -764,6 +771,7 @@ private fun ComparisonBar(
     displayValue2: String,
     lowerIsBetter: Boolean = false
 ) {
+    val colors = BouncerDesignSystem.colors
     val maxValue = maxOf(value1, value2).coerceAtLeast(1f)
     
     val animatedValue1 by animateFloatAsState(
@@ -783,9 +791,7 @@ private fun ComparisonBar(
     Column {
         Text(
             text = label,
-            color = TextMuted,
-            fontSize = 10.sp,
-            fontWeight = FontWeight.Bold,
+                color = colors.textMuted,
             letterSpacing = 0.5.sp,
             modifier = Modifier.align(Alignment.CenterHorizontally)
         )
@@ -799,7 +805,7 @@ private fun ComparisonBar(
             // Player 1 value
             Text(
                 text = displayValue1,
-                color = if (isPlayer1Better || value1 == value2) ChartGreen else TextSecondary,
+                color = if (isPlayer1Better || value1 == value2) ChartGreen else colors.textSecondary,
                 fontSize = 14.sp,
                 fontWeight = if (isPlayer1Better) FontWeight.Bold else FontWeight.Normal,
                 modifier = Modifier.width(50.dp)
@@ -830,7 +836,7 @@ private fun ComparisonBar(
                 modifier = Modifier
                     .width(8.dp)
                     .height(12.dp)
-                    .background(CardBorder, RoundedCornerShape(2.dp))
+                    .background(colors.glassBorder, RoundedCornerShape(2.dp))
             )
             
             // Player 2 bar (left to right)
@@ -847,7 +853,7 @@ private fun ComparisonBar(
                         .fillMaxWidth(animatedValue2)
                         .align(Alignment.CenterStart)
                         .background(
-                            if (!isPlayer1Better && value1 != value2) ChartBlue else ChartBlue.copy(alpha = 0.5f),
+                            if (!isPlayer1Better && value1 != value2) colors.statusInfo else colors.statusInfo.copy(alpha = 0.5f),
                             RoundedCornerShape(4.dp)
                         )
                 )
@@ -856,7 +862,7 @@ private fun ComparisonBar(
             // Player 2 value
             Text(
                 text = displayValue2,
-                color = if (!isPlayer1Better && value1 != value2) ChartBlue else TextSecondary,
+                color = if (!isPlayer1Better && value1 != value2) colors.statusInfo else colors.textSecondary,
                 fontSize = 14.sp,
                 fontWeight = if (!isPlayer1Better && value1 != value2) FontWeight.Bold else FontWeight.Normal,
                 textAlign = TextAlign.End,
@@ -875,17 +881,18 @@ fun AchievementBadges(
     achievements: List<PlayerAchievement>,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val scrollState = rememberScrollState()
     
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        color = Color.White.copy(alpha = 0.05f)
+        color = colors.glassSurface
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
                 text = "ACHIEVEMENTS",
-                color = TextMuted,
+                color = colors.textMuted,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Black,
                 letterSpacing = 1.sp
@@ -923,6 +930,7 @@ enum class AchievementTier {
 private fun AchievementBadge(
     achievement: PlayerAchievement
 ) {
+    val colors = BouncerDesignSystem.colors
     var showAnimation by remember { mutableStateOf(false) }
     
     LaunchedEffect(achievement.isUnlocked) {
@@ -947,9 +955,9 @@ private fun AchievementBadge(
     )
     
     val tierColor = when (achievement.tier) {
-        AchievementTier.BRONZE -> ShinyGoldBronze
+        AchievementTier.BRONZE -> colors.goldDark
         AchievementTier.SILVER -> Color(0xFFC0C0C0)
-        AchievementTier.GOLD -> ShinyGoldDeep
+        AchievementTier.GOLD -> colors.goldPrimary
         AchievementTier.PLATINUM -> Color(0xFFE5E4E2)
     }
     
@@ -990,13 +998,13 @@ private fun AchievementBadge(
                                 colors = listOf(tierColor, tierColor.copy(alpha = 0.7f))
                             )
                         else Brush.linearGradient(
-                            colors = listOf(Color.White.copy(alpha = 0.08f), Color.White.copy(alpha = 0.08f))
+                            colors = listOf(colors.glassBorderHighlight, colors.glassBorderHighlight)
                         ),
                         shape = CircleShape
                     )
                     .border(
                         2.dp,
-                        if (achievement.isUnlocked) Color.White.copy(alpha = 0.3f) else CardBorder,
+                        if (achievement.isUnlocked) Color.White.copy(alpha = 0.3f) else colors.glassBorder,
                         CircleShape
                     ),
                 contentAlignment = Alignment.Center
@@ -1004,7 +1012,7 @@ private fun AchievementBadge(
                 Icon(
                     imageVector = achievement.icon,
                     contentDescription = achievement.title,
-                    tint = if (achievement.isUnlocked) BlackBackground else TextMuted,
+                    tint = if (achievement.isUnlocked) colors.backgroundBase else colors.textMuted,
                     modifier = Modifier.size(24.dp)
                 )
             }
@@ -1014,7 +1022,7 @@ private fun AchievementBadge(
         
         Text(
             text = achievement.title,
-            color = if (achievement.isUnlocked) TextPrimary else TextMuted,
+            color = if (achievement.isUnlocked) colors.textPrimary else colors.textMuted,
             fontSize = 10.sp,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center,
@@ -1034,12 +1042,13 @@ fun FormIndicator(
     modifier: Modifier = Modifier,
     showLabels: Boolean = true
 ) {
+    val colors = BouncerDesignSystem.colors
     val maxScore = recentScores.maxOrNull()?.coerceAtLeast(50) ?: 50
     
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(12.dp),
-        color = Color.White.copy(alpha = 0.05f)
+        color = colors.glassSurface
     ) {
         Column(
             modifier = Modifier.padding(12.dp)
@@ -1052,7 +1061,7 @@ fun FormIndicator(
                 ) {
                     Text(
                         text = "RECENT FORM",
-                        color = TextMuted,
+                        color = colors.textMuted,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Black,
                         letterSpacing = 0.5.sp
@@ -1067,10 +1076,10 @@ fun FormIndicator(
                         else -> "POOR"
                     }
                     val formColor = when {
-                        avgScore >= 50 -> SuccessGreen
-                        avgScore >= 30 -> ChartBlue
-                        avgScore >= 15 -> WarningYellow
-                        else -> ErrorRed
+                        avgScore >= 50 -> StatusSuccess
+                        avgScore >= 30 -> colors.statusInfo
+                        avgScore >= 15 -> StatusWarning
+                        else -> StatusLive
                     }
                     
                     Text(
@@ -1093,11 +1102,11 @@ fun FormIndicator(
                     val heightFraction = (score.toFloat() / maxScore).coerceIn(0.1f, 1f)
                     
                     val barColor = when {
-                        score >= 100 -> ShinyGoldDeep
-                        score >= 50 -> SuccessGreen
-                        score >= 30 -> ChartBlue
-                        score > 0 -> TextSecondary
-                        else -> ErrorRed
+                        score >= 100 -> colors.goldPrimary
+                        score >= 50 -> StatusSuccess
+                        score >= 30 -> colors.statusInfo
+                        score > 0 -> colors.textSecondary
+                        else -> StatusLive
                     }
                     
                     val animatedHeight by animateFloatAsState(
@@ -1142,12 +1151,13 @@ fun PlayerCompactCard(
     primaryStat: String,
     primaryStatLabel: String,
     imageUrl: String? = null,
-    teamColor: Color = ShinyGoldDeep,
+    teamColor: Color = GoldPrimary,
     onClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val haptic = rememberHapticFeedback()
-    
+    val dsColors = BouncerDesignSystem.colors
+
     Surface(
         modifier = modifier
             .fillMaxWidth()
@@ -1163,8 +1173,8 @@ fun PlayerCompactCard(
                 } else Modifier
             ),
         shape = RoundedCornerShape(14.dp),
-        color = Color.White.copy(alpha = 0.08f),
-        border = androidx.compose.foundation.BorderStroke(0.5.dp, CardBorder.copy(alpha = 0.3f))
+        color = dsColors.glassBorderHighlight,
+        border = androidx.compose.foundation.BorderStroke(0.5.dp, dsColors.glassBorder.copy(alpha = 0.3f))
     ) {
         Row(
             modifier = Modifier
@@ -1179,7 +1189,7 @@ fun PlayerCompactCard(
                     .size(44.dp)
                     .border(1.5.dp, teamColor.copy(alpha = 0.5f), CircleShape)
                     .clip(CircleShape)
-                    .background(Color.White.copy(alpha = 0.05f)),
+                    .background(dsColors.glassSurface),
                 contentAlignment = Alignment.Center
             ) {
                 if (imageUrl != null) {
@@ -1203,7 +1213,7 @@ fun PlayerCompactCard(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = name,
-                    color = TextPrimary,
+                    color = dsColors.textPrimary,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
@@ -1211,7 +1221,7 @@ fun PlayerCompactCard(
                 )
                 Text(
                     text = role,
-                    color = TextSecondary,
+                    color = dsColors.textSecondary,
                     fontSize = 11.sp
                 )
             }
@@ -1226,7 +1236,7 @@ fun PlayerCompactCard(
                 )
                 Text(
                     text = primaryStatLabel,
-                    color = TextMuted,
+                    color = dsColors.textMuted,
                     fontSize = 9.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -1237,7 +1247,7 @@ fun PlayerCompactCard(
                 Icon(
                     imageVector = Icons.Default.ChevronRight,
                     contentDescription = "View details",
-                    tint = TextMuted,
+                    tint = dsColors.textMuted,
                     modifier = Modifier.size(20.dp)
                 )
             }
@@ -1256,6 +1266,7 @@ fun PlayerMilestoneCard(
     imageUrl: String? = null,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "milestone")
     
     val shimmer by infiniteTransition.animateFloat(
@@ -1286,14 +1297,14 @@ fun PlayerMilestoneCard(
                 scaleY = pulse
             },
         shape = RoundedCornerShape(20.dp),
-        color = Color.White.copy(alpha = 0.05f),
+        color = colors.glassSurface,
         border = androidx.compose.foundation.BorderStroke(
             2.dp,
             Brush.linearGradient(
                 colors = listOf(
-                    ShinyGoldDeep,
-                    ShinyGoldMid,
-                    ShinyGoldDeep
+                    colors.goldPrimary,
+                    colors.goldPrimary,
+                    colors.goldPrimary
                 )
             )
         )
@@ -1308,7 +1319,7 @@ fun PlayerMilestoneCard(
                         Brush.linearGradient(
                             colors = listOf(
                                 Color.Transparent,
-                                ShinyGoldDeep.copy(alpha = 0.15f),
+                                colors.goldPrimary.copy(alpha = 0.15f),
                                 Color.Transparent
                             ),
                             start = Offset(shimmer * 500f - 100f, 0f),
@@ -1328,10 +1339,10 @@ fun PlayerMilestoneCard(
                 Box(
                     modifier = Modifier
                         .size(60.dp)
-                        .shadow(12.dp, CircleShape, spotColor = ShinyGoldDeep.copy(alpha = 0.5f))
-                        .border(3.dp, ShinyGoldDeep, CircleShape)
+                        .shadow(12.dp, CircleShape, spotColor = colors.goldPrimary.copy(alpha = 0.5f))
+                        .border(3.dp, colors.goldPrimary, CircleShape)
                         .clip(CircleShape)
-                        .background(Color.White.copy(alpha = 0.08f)),
+                        .background(colors.glassBorderHighlight),
                     contentAlignment = Alignment.Center
                 ) {
                     if (imageUrl != null) {
@@ -1344,7 +1355,7 @@ fun PlayerMilestoneCard(
                     } else {
                         Text(
                             text = playerName.split(" ").mapNotNull { it.firstOrNull()?.uppercase() }.take(2).joinToString(""),
-                            color = ShinyGoldDeep,
+                            color = colors.goldPrimary,
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Black
                         )
@@ -1354,7 +1365,7 @@ fun PlayerMilestoneCard(
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = playerName,
-                        color = TextPrimary,
+                        color = colors.textPrimary,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -1362,7 +1373,7 @@ fun PlayerMilestoneCard(
                     if (matchesStat.isNotEmpty()) {
                         Text(
                             text = matchesStat,
-                            color = TextSecondary,
+                            color = colors.textSecondary,
                             fontSize = 12.sp
                         )
                     }
@@ -1373,7 +1384,7 @@ fun PlayerMilestoneCard(
                     modifier = Modifier
                         .background(
                             Brush.linearGradient(
-                                colors = listOf(ShinyGoldDeep, ShinyGoldMid)
+                                colors = listOf(colors.goldPrimary, colors.goldPrimary)
                             ),
                             RoundedCornerShape(12.dp)
                         )
@@ -1381,7 +1392,7 @@ fun PlayerMilestoneCard(
                 ) {
                     Text(
                         text = milestone,
-                        color = BlackBackground,
+                        color = colors.backgroundBase,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Black
                     )

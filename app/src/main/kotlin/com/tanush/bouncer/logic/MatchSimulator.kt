@@ -2,6 +2,7 @@ package com.tanush.bouncer.logic
 
 import kotlin.math.max
 import kotlin.math.min
+import io.sentry.Sentry
 
 /**
  * MatchSimulator - The "Magic" Engine (v1.0).

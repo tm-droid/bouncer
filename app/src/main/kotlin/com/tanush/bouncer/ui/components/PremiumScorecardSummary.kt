@@ -43,11 +43,11 @@ fun PremiumScorecardSummary(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(20.dp))
-            .background(Color.White.copy(alpha = 0.08f).copy(alpha = 0.4f))
+            .background(GlassSurface)
             .border(
                 0.5.dp,
                 Brush.linearGradient(
-                    colors = listOf(Color.White.copy(alpha = 0.05f), Color.Transparent)
+                    colors = listOf(GlassBorderHighlight, Color.Transparent)
                 ),
                 RoundedCornerShape(20.dp)
             )
@@ -62,7 +62,7 @@ fun PremiumScorecardSummary(
             Column {
                 Text(
                     text = innings.teamName.uppercase(),
-                    color = ShinyGoldDeep,
+                    color = GoldPrimary,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Black,
                     letterSpacing = 2.sp
@@ -103,8 +103,8 @@ fun PremiumScorecardSummary(
                 modifier = Modifier
                     .size(56.dp)
                     .clip(CircleShape)
-                    .background(Color.White.copy(alpha = 0.05f))
-                    .border(0.5.dp, Color.White.copy(alpha = 0.1f), CircleShape),
+                    .background(GlassSurface)
+                    .border(0.5.dp, GlassBorderHighlight, CircleShape),
                 contentAlignment = Alignment.Center
             ) {
                 val logoUrl = TeamLogoManager.getBestLogoUrl(innings.teamName, null, 128, 128)

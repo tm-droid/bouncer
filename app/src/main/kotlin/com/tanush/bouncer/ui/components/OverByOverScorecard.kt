@@ -18,11 +18,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.*
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.*
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.ui.theme.*
+import io.sentry.Sentry
 
 /**
  * A single ball's result in an over
@@ -57,13 +59,18 @@ data class OverSummary(
  * Get the color for a ball result
  */
 private fun getBallColor(ball: BallResult): Color {
-    return when {
-        ball.isWicket -> WicketRed
-        ball.runs == 6 -> BoundarySix
-        ball.runs == 4 -> BoundaryFour
-        ball.isWide || ball.isNoBall -> ErrorRed.copy(alpha = 0.7f)
-        ball.runs == 0 -> TextTertiary.copy(alpha = 0.5f)
-        else -> TextSecondary
+    try {
+        return when {
+            ball.isWicket -> GoldPrimary
+            ball.runs == 6 -> GoldPrimary
+            ball.runs == 4 -> StatusInfo
+            ball.isWide || ball.isNoBall -> WarningOrange
+            ball.runs == 0 -> TextMuted
+            else -> TextPrimary
+        }
+    } catch (e: Exception) {
+        Sentry.captureException(e)
+        throw e
     }
 }
 
@@ -71,13 +78,18 @@ private fun getBallColor(ball: BallResult): Color {
  * Get the display text for a ball result
  */
 private fun getBallText(ball: BallResult): String {
-    return when {
-        ball.isWicket -> "W"
-        ball.isWide -> "WD"
-        ball.isNoBall -> "NB"
-        ball.isLegBye -> "LB"
-        ball.isBye -> "B"
-        else -> ball.runs.toString()
+    try {
+        return when {
+            ball.isWicket -> "W"
+            ball.isWide -> "WD"
+            ball.isNoBall -> "NB"
+            ball.isLegBye -> "LB"
+            ball.isBye -> "B"
+            else -> ball.runs.toString()
+        }
+    } catch (e: Exception) {
+        Sentry.captureException(e)
+        throw e
     }
 }
 
@@ -89,10 +101,11 @@ private fun getBallText(ball: BallResult): String {
 fun OverByOverScorecard(
     overs: List<OverSummary>,
     teamName: String,
-    teamColor: Color = ShinyGoldDeep,
+    teamColor: Color = BouncerDesignSystem.colors.goldPrimary,
     modifier: Modifier = Modifier,
     onOverClick: ((OverSummary) -> Unit)? = null
 ) {
+    val colors = BouncerDesignSystem.colors
     val listState = rememberLazyListState()
     
     val infiniteTransition = rememberInfiniteTransition(label = "scorecardShimmer")
@@ -112,17 +125,17 @@ fun OverByOverScorecard(
             .shadow(
                 elevation = 20.dp,
                 shape = RoundedCornerShape(28.dp),
-                spotColor = ShinyGoldDeep.copy(alpha = 0.15f)
+                spotColor = colors.goldPrimary.copy(alpha = 0.15f)
             ),
-        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.05f)),
+        colors = CardDefaults.cardColors(containerColor = GlassSurface),
         shape = RoundedCornerShape(28.dp),
         border = BorderStroke(
             0.5.dp,
             Brush.linearGradient(
                 colors = listOf(
-                    ShinyGoldLight.copy(alpha = 0.2f * shimmerOffset),
-                    CardBorder.copy(alpha = 0.3f),
-                    ShinyGoldLight.copy(alpha = 0.2f * (1 - shimmerOffset))
+                    colors.goldLight.copy(alpha = 0.2f * shimmerOffset),
+                    colors.goldPrimary.copy(alpha = 0.15f),
+                    colors.goldLight.copy(alpha = 0.2f * (1 - shimmerOffset))
                 ),
                 start = Offset(shimmerOffset * 400, 0f),
                 end = Offset(shimmerOffset * 400 + 200, 100f)
@@ -143,15 +156,19 @@ fun OverByOverScorecard(
                     Icon(
                         Icons.Default.Timeline,
                         contentDescription = null,
-                        tint = ShinyGoldDeep,
+                        tint = colors.goldPrimary,
                         modifier = Modifier.size(20.dp)
                     )
                     Text(
                         "OVER-BY-OVER",
-                        color = TextPrimary,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.sp
+                        style = TextStyle(
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.sp,
+                            brush = Brush.verticalGradient(
+                                colors = listOf(Color.White, colors.goldPrimary, colors.goldDark)
+                            )
+                        )
                     )
                 }
                 
@@ -203,22 +220,23 @@ private fun OverCard(
     teamColor: Color,
     onClick: (() -> Unit)?
 ) {
+    val colors = BouncerDesignSystem.colors
     val hasWicket = over.wickets > 0
     val hasBoundary = over.balls.any { it.runs >= 4 }
     
     val cardColor = when {
-        hasWicket -> WicketRed.copy(alpha = 0.1f)
-        over.runs >= 12 -> BoundarySix.copy(alpha = 0.1f)
-        over.runs >= 8 -> BoundaryFour.copy(alpha = 0.1f)
+        hasWicket -> colors.goldPrimary.copy(alpha = 0.1f)
+        over.runs >= 12 -> colors.goldPrimary.copy(alpha = 0.1f)
+        over.runs >= 8 -> StatusInfo.copy(alpha = 0.1f)
         over.runs == 0 -> SuccessGreen.copy(alpha = 0.08f) // Maiden
-        else -> Color.White.copy(alpha = 0.08f)
+        else -> GlassSurface
     }
     
     val borderColor = when {
-        hasWicket -> WicketRed.copy(alpha = 0.3f)
-        over.runs >= 12 -> BoundarySix.copy(alpha = 0.3f)
+        hasWicket -> colors.goldPrimary.copy(alpha = 0.3f)
+        over.runs >= 12 -> colors.goldPrimary.copy(alpha = 0.3f)
         over.runs == 0 -> SuccessGreen.copy(alpha = 0.3f)
-        else -> CardBorder.copy(alpha = 0.2f)
+        else -> colors.goldPrimary.copy(alpha = 0.15f)
     }
     
     Surface(
@@ -241,7 +259,7 @@ private fun OverCard(
             ) {
                 Text(
                     text = "Over ${over.overNumber}",
-                    color = TextPrimary,
+                    color = colors.textPrimary,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -250,8 +268,8 @@ private fun OverCard(
                 Surface(
                     shape = CircleShape,
                     color = when {
-                        over.runs >= 12 -> BoundarySix.copy(alpha = 0.2f)
-                        over.runs >= 8 -> BoundaryFour.copy(alpha = 0.2f)
+                        over.runs >= 12 -> colors.goldPrimary.copy(alpha = 0.2f)
+                        over.runs >= 8 -> StatusInfo.copy(alpha = 0.2f)
                         over.runs == 0 -> SuccessGreen.copy(alpha = 0.2f)
                         else -> teamColor.copy(alpha = 0.15f)
                     }
@@ -259,8 +277,8 @@ private fun OverCard(
                     Text(
                         text = over.runs.toString(),
                         color = when {
-                            over.runs >= 12 -> BoundarySix
-                            over.runs >= 8 -> BoundaryFour
+                            over.runs >= 12 -> colors.goldPrimary
+                            over.runs >= 8 -> StatusInfo
                             over.runs == 0 -> SuccessGreen
                             else -> teamColor
                         },
@@ -271,17 +289,17 @@ private fun OverCard(
                 }
             }
             
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(8.dp))
             
             // Ball-by-ball visualization
             BallRow(balls = over.balls)
             
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(8.dp))
             
             // Bowler name
             Text(
                 text = over.bowlerName,
-                color = TextTertiary,
+                color = colors.textTertiary,
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Medium,
                 maxLines = 1
@@ -290,7 +308,7 @@ private fun OverCard(
             // Cumulative score
             Text(
                 text = over.cumulativeScore,
-                color = TextSecondary,
+                color = colors.textSecondary,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.SemiBold
             )
@@ -315,14 +333,14 @@ private fun BallRow(balls: List<BallResult>) {
         if (balls.size > 6) {
             Surface(
                 shape = CircleShape,
-                color = ErrorRed.copy(alpha = 0.15f),
-                modifier = Modifier.size(18.dp)
+                color = WarningOrange.copy(alpha = 0.15f),
+                modifier = Modifier.size(32.dp)
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Text(
                         text = "+${balls.size - 6}",
-                        color = ErrorRed,
-                        fontSize = 8.sp,
+                        color = WarningOrange,
+                        fontSize = 10.sp,
                         fontWeight = FontWeight.Bold
                     )
                 }
@@ -336,20 +354,44 @@ private fun BallRow(balls: List<BallResult>) {
  */
 @Composable
 private fun BallChip(ball: BallResult) {
+    val colors = BouncerDesignSystem.colors
     val color = getBallColor(ball)
     val text = getBallText(ball)
+    val isWicket = ball.isWicket
+    
+    // Subtle pulse animation for wicket balls
+    val wicketPulseAlpha = if (isWicket) {
+        val infiniteTransition = rememberInfiniteTransition(label = "wicketPulse")
+        infiniteTransition.animateFloat(
+            initialValue = 0.5f,
+            targetValue = 1f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(1500, easing = FastOutSlowInEasing),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "wicketPulseAlpha"
+        ).value
+    } else 1f
     
     Surface(
         shape = CircleShape,
-        color = color.copy(alpha = 0.2f),
-        border = BorderStroke(0.5.dp, color.copy(alpha = 0.4f)),
-        modifier = Modifier.size(18.dp)
+        color = color.copy(alpha = if (isWicket) 0.25f * wicketPulseAlpha else 0.2f),
+        border = BorderStroke(
+            if (isWicket) 1.5.dp else 0.5.dp,
+            color.copy(alpha = if (isWicket) 0.8f * wicketPulseAlpha else 0.4f)
+        ),
+        modifier = Modifier
+            .size(32.dp)
+            .then(
+                if (isWicket) Modifier.shadow(4.dp, CircleShape, spotColor = colors.goldPrimary.copy(alpha = 0.3f * wicketPulseAlpha))
+                else Modifier
+            )
     ) {
         Box(contentAlignment = Alignment.Center) {
             Text(
                 text = text,
-                color = color,
-                fontSize = if (text.length > 1) 6.sp else 9.sp,
+                color = color.copy(alpha = wicketPulseAlpha),
+                fontSize = if (text.length > 1) 9.sp else 12.sp,
                 fontWeight = FontWeight.Bold
             )
         }
@@ -364,6 +406,7 @@ private fun OversSummaryStats(
     overs: List<OverSummary>,
     teamColor: Color
 ) {
+    val colors = BouncerDesignSystem.colors
     val totalRuns = overs.sumOf { it.runs }
     val totalWickets = overs.sumOf { it.wickets }
     val maidenOvers = overs.count { it.runs == 0 }
@@ -383,7 +426,7 @@ private fun OversSummaryStats(
         SummaryStatItem(
             label = "Overs",
             value = "${overs.size}",
-            color = TextSecondary
+            color = colors.textSecondary
         )
         
         SummaryStatItem(
@@ -396,7 +439,7 @@ private fun OversSummaryStats(
             SummaryStatItem(
                 label = "Best Over",
                 value = "${bestOver.runs} (${bestOver.overNumber})",
-                color = BoundarySix
+                color = colors.statusWarning
             )
         }
     }
@@ -411,12 +454,13 @@ private fun SummaryStatItem(
     value: String,
     color: Color
 ) {
+    val colors = BouncerDesignSystem.colors
     Column(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
             text = label,
-            color = TextTertiary,
+            color = colors.textTertiary,
             fontSize = 10.sp,
             fontWeight = FontWeight.Medium
         )
@@ -437,13 +481,14 @@ fun CompactBallIndicator(
     result: String,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val color = when {
-        result == "W" -> WicketRed
-        result == "6" -> BoundarySix
-        result == "4" -> BoundaryFour
-        result == "WD" || result == "NB" -> ErrorRed.copy(alpha = 0.7f)
-        result == "0" || result == "." -> TextTertiary.copy(alpha = 0.5f)
-        else -> TextSecondary
+        result == "W" -> colors.goldPrimary
+        result == "6" -> colors.goldPrimary
+        result == "4" -> StatusInfo
+        result == "WD" || result == "NB" -> WarningOrange
+        result == "0" || result == "." -> colors.textMuted
+        else -> colors.textPrimary
     }
     
     Surface(
@@ -472,13 +517,14 @@ fun RecentOversStrip(
     count: Int = 5,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val recentOvers = overs.takeLast(count)
     
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
-        color = Color.White.copy(alpha = 0.05f),
-        border = BorderStroke(0.5.dp, CardBorder.copy(alpha = 0.2f))
+        color = GlassSurface,
+        border = BorderStroke(0.5.dp, colors.goldPrimary.copy(alpha = 0.12f))
     ) {
         Row(
             modifier = Modifier
@@ -489,7 +535,7 @@ fun RecentOversStrip(
         ) {
             Text(
                 text = "Last ${recentOvers.size} overs:",
-                color = TextTertiary,
+                color = colors.textTertiary,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Medium
             )
@@ -500,11 +546,11 @@ fun RecentOversStrip(
                 recentOvers.forEach { over ->
                     val hasWicket = over.wickets > 0
                     val color = when {
-                        hasWicket -> WicketRed
-                        over.runs >= 10 -> BoundarySix
-                        over.runs >= 6 -> BoundaryFour
+                        hasWicket -> colors.goldPrimary
+                        over.runs >= 10 -> colors.goldPrimary
+                        over.runs >= 6 -> StatusInfo
                         over.runs == 0 -> SuccessGreen
-                        else -> TextSecondary
+                        else -> colors.textSecondary
                     }
                     
                     Surface(

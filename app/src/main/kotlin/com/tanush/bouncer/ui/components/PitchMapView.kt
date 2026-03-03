@@ -30,6 +30,7 @@ import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.sqrt
+import io.sentry.Sentry
 
 /**
  * Data class representing a ball delivery on the pitch
@@ -70,6 +71,7 @@ fun PitchMapView(
     showLegend: Boolean = true,
     title: String = "Pitch Map"
 ) {
+    val colors = BouncerDesignSystem.colors
     var selectedDelivery by remember { mutableStateOf<PitchDelivery?>(null) }
     
     val infiniteTransition = rememberInfiniteTransition(label = "pitchAnim")
@@ -99,7 +101,7 @@ fun PitchMapView(
             .shadow(
                 elevation = 16.dp,
                 shape = RoundedCornerShape(24.dp),
-                spotColor = ShinyGoldDeep.copy(alpha = 0.12f),
+                spotColor = colors.goldPrimary.copy(alpha = 0.12f),
                 ambientColor = Color.Black.copy(alpha = 0.25f)
             ),
         shape = RoundedCornerShape(24.dp),
@@ -120,7 +122,7 @@ fun PitchMapView(
                     text = title,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
-                    color = TextPrimary,
+                    color = colors.textPrimary,
                     letterSpacing = (-0.3).sp
                 )
                 
@@ -128,11 +130,20 @@ fun PitchMapView(
                     text = "${deliveries.size} balls",
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Medium,
-                    color = ShinyGoldDeep
+                    color = colors.goldPrimary
                 )
             }
             
             Spacer(modifier = Modifier.height(16.dp))
+            
+            // Capture colors for Canvas scope
+            val dotBallColor = colors.textMuted
+            val chartBlueColor = colors.statusInfo
+            val boundaryFourColor = colors.statusInfo
+            val boundarySixColor = colors.statusWarning
+            val wicketRedColor = colors.statusLive
+            val chartPurpleColor = colors.statusInfo
+            val selectionColor = colors.goldPrimary
             
             // Pitch Canvas
             Box(
@@ -144,9 +155,9 @@ fun PitchMapView(
                         1.dp,
                         Brush.linearGradient(
                             colors = listOf(
-                                ShinyGoldDeep.copy(alpha = 0.3f + shimmerOffset * 0.2f),
-                                CardBorder,
-                                ShinyGoldDeep.copy(alpha = 0.2f)
+                                colors.goldPrimary.copy(alpha = 0.3f + shimmerOffset * 0.2f),
+                                colors.glassBorder,
+                                colors.goldPrimary.copy(alpha = 0.2f)
                             )
                         ),
                         RoundedCornerShape(16.dp)
@@ -308,13 +319,13 @@ fun PitchMapView(
                         val radius = if (isSelected) baseRadius * pulseScale else baseRadius
                         
                         val color = when (delivery.result) {
-                            DeliveryResult.DOT -> DotBall
-                            DeliveryResult.SINGLE, DeliveryResult.TWO, DeliveryResult.THREE -> ChartBlue
-                            DeliveryResult.FOUR -> BoundaryFour
-                            DeliveryResult.SIX -> BoundarySix
-                            DeliveryResult.WICKET -> WicketRed
+                            DeliveryResult.DOT -> dotBallColor
+                            DeliveryResult.SINGLE, DeliveryResult.TWO, DeliveryResult.THREE -> chartBlueColor
+                            DeliveryResult.FOUR -> boundaryFourColor
+                            DeliveryResult.SIX -> boundarySixColor
+                            DeliveryResult.WICKET -> wicketRedColor
                             DeliveryResult.WIDE, DeliveryResult.NO_BALL -> WarningOrange
-                            DeliveryResult.LEG_BYE, DeliveryResult.BYE -> ChartPurple
+                            DeliveryResult.LEG_BYE, DeliveryResult.BYE -> chartPurpleColor
                         }
                         
                         // Glow effect
@@ -355,7 +366,7 @@ fun PitchMapView(
                         // Selection ring
                         if (isSelected) {
                             drawCircle(
-                                color = ShinyGoldDeep,
+                                color = selectionColor,
                                 radius = radius + 4.dp.toPx(),
                                 center = Offset(x, y),
                                 style = Stroke(width = 2.dp.toPx())
@@ -385,13 +396,13 @@ fun PitchMapView(
                             text = delivery.bowlerName ?: "Unknown Bowler",
                             fontSize = 14.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = TextPrimary
+                            color = colors.textPrimary
                         )
                         if (delivery.over != null && delivery.ball != null) {
                             Text(
                                 text = "Over ${delivery.over}.${delivery.ball}",
                                 fontSize = 12.sp,
-                                color = TextSecondary
+                                color = colors.textSecondary
                             )
                         }
                     }
@@ -405,14 +416,14 @@ fun PitchMapView(
                                 text = "${speed.toInt()} km/h",
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.Medium,
-                                color = ShinyGoldDeep
+                                color = colors.goldPrimary
                             )
                         }
                         
                         Box(
                             modifier = Modifier
                                 .background(
-                                    getResultColor(delivery.result).copy(alpha = 0.2f),
+                                    getResultColor(delivery.result, colors).copy(alpha = 0.2f),
                                     RoundedCornerShape(6.dp)
                                 )
                                 .padding(horizontal = 10.dp, vertical = 4.dp)
@@ -421,7 +432,7 @@ fun PitchMapView(
                                 text = getResultText(delivery.result),
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = getResultColor(delivery.result)
+                                color = getResultColor(delivery.result, colors)
                             )
                         }
                     }
@@ -436,11 +447,11 @@ fun PitchMapView(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
-                    LegendItem(color = DotBall, label = "Dot")
-                    LegendItem(color = ChartBlue, label = "Runs")
-                    LegendItem(color = BoundaryFour, label = "4s")
-                    LegendItem(color = BoundarySix, label = "6s")
-                    LegendItem(color = WicketRed, label = "W")
+                    LegendItem(color = colors.textMuted, label = "Dot")
+                    LegendItem(color = colors.statusInfo, label = "Runs")
+                    LegendItem(color = colors.statusInfo, label = "4s")
+                    LegendItem(color = colors.statusWarning, label = "6s")
+                    LegendItem(color = colors.statusLive, label = "W")
                 }
             }
         }
@@ -452,6 +463,7 @@ private fun LegendItem(
     color: Color,
     label: String
 ) {
+    val colors = BouncerDesignSystem.colors
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp)
@@ -464,19 +476,19 @@ private fun LegendItem(
         Text(
             text = label,
             fontSize = 11.sp,
-            color = TextSecondary
+            color = colors.textSecondary
         )
     }
 }
 
-private fun getResultColor(result: DeliveryResult): Color = when (result) {
-    DeliveryResult.DOT -> DotBall
-    DeliveryResult.SINGLE, DeliveryResult.TWO, DeliveryResult.THREE -> ChartBlue
-    DeliveryResult.FOUR -> BoundaryFour
-    DeliveryResult.SIX -> BoundarySix
-    DeliveryResult.WICKET -> WicketRed
+private fun getResultColor(result: DeliveryResult, colors: BouncerColors): Color = when (result) {
+    DeliveryResult.DOT -> colors.textMuted
+    DeliveryResult.SINGLE, DeliveryResult.TWO, DeliveryResult.THREE -> colors.statusInfo
+    DeliveryResult.FOUR -> colors.statusInfo
+    DeliveryResult.SIX -> colors.statusWarning
+    DeliveryResult.WICKET -> colors.statusLive
     DeliveryResult.WIDE, DeliveryResult.NO_BALL -> WarningOrange
-    DeliveryResult.LEG_BYE, DeliveryResult.BYE -> ChartPurple
+    DeliveryResult.LEG_BYE, DeliveryResult.BYE -> colors.statusInfo
 }
 
 private fun getResultText(result: DeliveryResult): String = when (result) {

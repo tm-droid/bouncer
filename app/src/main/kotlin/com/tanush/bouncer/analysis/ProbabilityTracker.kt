@@ -6,6 +6,7 @@ import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.tanush.bouncer.models.ProbabilityEvent
 import java.util.Date
+import io.sentry.Sentry
 
 data class TrackerMatchSituation(
     val requiredRunRate: Double,
@@ -92,103 +93,133 @@ class ProbabilityTracker(
     fun getProbabilityGraph(): List<ProbabilityEvent> = events
     
     fun getKeyMoments(): List<ProbabilityEvent> {
-        // Return events that had significant impact on the probability
-        return events.filter { kotlin.math.abs(it.impact) > 5.0 }
-            .sortedByDescending { kotlin.math.abs(it.impact) }
+        try {
+            // Return events that had significant impact on the probability
+            return events.filter { kotlin.math.abs(it.impact) > 5.0 }
+                .sortedByDescending { kotlin.math.abs(it.impact) }
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     fun getPhaseAnalysis(): String {
-        var analysis = ""
+        try {
+            var analysis = ""
         
-        // Power Play Analysis
-        val powerPlayEvents = events.filter { it.ball <= 36 }
-        val powerPlayImpact = powerPlayEvents.sumOf { it.impact }
-        analysis += "Power Play Impact: ${"%.1f".format(powerPlayImpact)}%\n"
+            // Power Play Analysis
+            val powerPlayEvents = events.filter { it.ball <= 36 }
+            val powerPlayImpact = powerPlayEvents.sumOf { it.impact }
+            analysis += "Power Play Impact: ${"%.1f".format(powerPlayImpact)}%\n"
         
-        // Middle Overs Analysis
-        val middleOversEvents = events.filter { it.ball > 36 && it.ball < 240 }
-        val middleOversImpact = middleOversEvents.sumOf { it.impact }
-        analysis += "Middle Overs Impact: ${"%.1f".format(middleOversImpact)}%\n"
+            // Middle Overs Analysis
+            val middleOversEvents = events.filter { it.ball > 36 && it.ball < 240 }
+            val middleOversImpact = middleOversEvents.sumOf { it.impact }
+            analysis += "Middle Overs Impact: ${"%.1f".format(middleOversImpact)}%\n"
         
-        // Death Overs Analysis
-        val deathOversEvents = events.filter { it.ball >= 240 }
-        val deathOversImpact = deathOversEvents.sumOf { it.impact }
-        analysis += "Death Overs Impact: ${"%.1f".format(deathOversImpact)}%\n"
+            // Death Overs Analysis
+            val deathOversEvents = events.filter { it.ball >= 240 }
+            val deathOversImpact = deathOversEvents.sumOf { it.impact }
+            analysis += "Death Overs Impact: ${"%.1f".format(deathOversImpact)}%\n"
         
-        return analysis
+            return analysis
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     fun getEventAnalysis(): String {
-        var analysis = ""
+        try {
+            var analysis = ""
         
-        // Boundary Analysis
-        val boundaryEvents = events.filter { it.eventType == ProbabilityEvent.EventType.BOUNDARY }
-        val boundaryImpact = boundaryEvents.sumOf { it.impact }
-        analysis += "Boundaries Impact: ${"%.1f".format(boundaryImpact)}%\n"
+            // Boundary Analysis
+            val boundaryEvents = events.filter { it.eventType == ProbabilityEvent.EventType.BOUNDARY }
+            val boundaryImpact = boundaryEvents.sumOf { it.impact }
+            analysis += "Boundaries Impact: ${"%.1f".format(boundaryImpact)}%\n"
         
-        // Wicket Analysis
-        val wicketEvents = events.filter { it.eventType == ProbabilityEvent.EventType.WICKET }
-        val wicketImpact = wicketEvents.sumOf { it.impact }
-        analysis += "Wickets Impact: ${"%.1f".format(wicketImpact)}%\n"
+            // Wicket Analysis
+            val wicketEvents = events.filter { it.eventType == ProbabilityEvent.EventType.WICKET }
+            val wicketImpact = wicketEvents.sumOf { it.impact }
+            analysis += "Wickets Impact: ${"%.1f".format(wicketImpact)}%\n"
         
-        // Dot Ball Analysis
-        val dotBallEvents = events.filter { it.eventType == ProbabilityEvent.EventType.DOT_BALL }
-        val dotBallImpact = dotBallEvents.sumOf { it.impact }
-        analysis += "Dot Balls Impact: ${"%.1f".format(dotBallImpact)}%\n"
+            // Dot Ball Analysis
+            val dotBallEvents = events.filter { it.eventType == ProbabilityEvent.EventType.DOT_BALL }
+            val dotBallImpact = dotBallEvents.sumOf { it.impact }
+            analysis += "Dot Balls Impact: ${"%.1f".format(dotBallImpact)}%\n"
         
-        return analysis
+            return analysis
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     fun getMatchSummary(): String {
-        var summary = "Match Probability Analysis\n\n"
+        try {
+            var summary = "Match Probability Analysis\n\n"
         
-        // Overall probability change
-        if (events.isNotEmpty()) {
-            val totalChange = events.last().probability - events.first().probability
-            summary += "Overall Probability Change: ${"%.1f".format(totalChange)}%\n\n"
+            // Overall probability change
+            if (events.isNotEmpty()) {
+                val totalChange = events.last().probability - events.first().probability
+                summary += "Overall Probability Change: ${"%.1f".format(totalChange)}%\n\n"
+            }
+        
+            // Add phase analysis
+            summary += "Phase Analysis:\n"
+            summary += getPhaseAnalysis()
+            summary += "\n"
+        
+            // Add event analysis
+            summary += "Event Analysis:\n"
+            summary += getEventAnalysis()
+            summary += "\n"
+        
+            // Add key moments
+            summary += "Key Moments:\n"
+            val keyMoments = getKeyMoments().take(5)
+            for (event in keyMoments) {
+                summary += "• ${event.description} (Impact: ${"%.1f".format(event.impact)}%)\n"
+            }
+        
+            return summary
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
         }
-        
-        // Add phase analysis
-        summary += "Phase Analysis:\n"
-        summary += getPhaseAnalysis()
-        summary += "\n"
-        
-        // Add event analysis
-        summary += "Event Analysis:\n"
-        summary += getEventAnalysis()
-        summary += "\n"
-        
-        // Add key moments
-        summary += "Key Moments:\n"
-        val keyMoments = getKeyMoments().take(5)
-        for (event in keyMoments) {
-            summary += "• ${event.description} (Impact: ${"%.1f".format(event.impact)}%)\n"
-        }
-        
-        return summary
     }
     
     // MARK: - Data Caching
     
     fun saveToCache() {
-        val cache = ProbabilityCache(
-            events = events,
-            timestamp = Date(),
-            currentProbability = currentProbability
-        )
+        try {
+            val cache = ProbabilityCache(
+                events = events,
+                timestamp = Date(),
+                currentProbability = currentProbability
+            )
         
-        val json = Gson().toJson(cache)
-        prefs.edit().putString("probability_cache_$matchId", json).apply()
+            val json = Gson().toJson(cache)
+            prefs.edit().putString("probability_cache_$matchId", json).apply()
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     fun loadFromCache() {
-        val json = prefs.getString("probability_cache_$matchId", null)
-        if (json != null) {
-            val type = object : TypeToken<ProbabilityCache>() {}.type
-            val cache = Gson().fromJson<ProbabilityCache>(json, type)
-            events.clear()
-            events.addAll(cache.events)
-            currentProbability = cache.currentProbability
+        try {
+            val json = prefs.getString("probability_cache_$matchId", null)
+            if (json != null) {
+                val type = object : TypeToken<ProbabilityCache>() {}.type
+                val cache = Gson().fromJson<ProbabilityCache>(json, type)
+                events.clear()
+                events.addAll(cache.events)
+                currentProbability = cache.currentProbability
+            }
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
         }
     }
 }

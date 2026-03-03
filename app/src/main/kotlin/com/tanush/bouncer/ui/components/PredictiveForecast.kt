@@ -40,6 +40,7 @@ fun PredictiveForecastSection(
     overNumber: Int,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     Column(modifier = modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier
@@ -57,7 +58,7 @@ fun PredictiveForecastSection(
             )
             Text(
                 text = "View History",
-                color = ShinyGoldDeep,
+                color = colors.goldPrimary,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Medium
             )
@@ -78,6 +79,8 @@ fun PredictiveForecastSection(
 
 @Composable
 fun PredictiveBallCard(prediction: BallPrediction) {
+    val colors = BouncerDesignSystem.colors
+    val goldPrimary = colors.goldPrimary
     val infiniteTransition = rememberInfiniteTransition(label = "pulse")
     val pulseAlpha by infiniteTransition.animateFloat(
         initialValue = 0.3f,
@@ -98,7 +101,7 @@ fun PredictiveBallCard(prediction: BallPrediction) {
     }
 
     val borderColor = if (prediction.isCritical) {
-        ShinyGoldDeep.copy(alpha = 0.4f)
+        goldPrimary.copy(alpha = 0.4f)
     } else {
         Color.White.copy(alpha = 0.1f)
     }
@@ -119,7 +122,7 @@ fun PredictiveBallCard(prediction: BallPrediction) {
         ) {
             Text(
                 text = prediction.ballNumber,
-                color = if (prediction.isCritical) ShinyGoldDeep else Color.White.copy(alpha = 0.4f),
+                color = if (prediction.isCritical) goldPrimary else Color.White.copy(alpha = 0.4f),
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.align(Alignment.TopStart)
@@ -130,11 +133,11 @@ fun PredictiveBallCard(prediction: BallPrediction) {
                     modifier = Modifier
                         .size(8.dp)
                         .clip(CircleShape)
-                        .background(ShinyGoldDeep)
+                        .background(goldPrimary)
                         .align(Alignment.TopEnd)
                         .drawBehind {
                             drawCircle(
-                                color = ShinyGoldDeep.copy(alpha = pulseAlpha),
+                                color = goldPrimary.copy(alpha = pulseAlpha),
                                 radius = size.minDimension * 2f
                             )
                         }
@@ -156,7 +159,7 @@ fun PredictiveBallCard(prediction: BallPrediction) {
                 
                 Surface(
                     shape = RoundedCornerShape(4.dp),
-                    color = if (prediction.isCritical) ShinyGoldDeep else Color.White.copy(alpha = 0.05f),
+                    color = if (prediction.isCritical) goldPrimary else Color.White.copy(alpha = 0.05f),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
@@ -173,7 +176,7 @@ fun PredictiveBallCard(prediction: BallPrediction) {
                 
                 Text(
                     text = if (prediction.isCritical) "CRITICAL ALERT" else "STRONG SIGNAL",
-                    color = if (prediction.isCritical) ShinyGoldDeep else Color.White.copy(alpha = 0.4f),
+                    color = if (prediction.isCritical) goldPrimary else Color.White.copy(alpha = 0.4f),
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Medium
                 )
@@ -188,6 +191,7 @@ private fun PredictionProgressRing(
     isCritical: Boolean,
     pulseAlpha: Float
 ) {
+    val goldPrimary = BouncerDesignSystem.colors.goldPrimary
     val animatedProgress by animateFloatAsState(
         targetValue = probability / 100f,
         animationSpec = tween(1500, easing = FastOutSlowInEasing),
@@ -206,7 +210,7 @@ private fun PredictionProgressRing(
             
             // Progress arc
             drawArc(
-                color = ShinyGoldDeep,
+                color = goldPrimary,
                 startAngle = -90f,
                 sweepAngle = 360f * animatedProgress,
                 useCenter = false,
@@ -215,7 +219,7 @@ private fun PredictionProgressRing(
             
             if (isCritical) {
                 drawCircle(
-                    color = ShinyGoldDeep.copy(alpha = pulseAlpha * 0.2f),
+                    color = goldPrimary.copy(alpha = pulseAlpha * 0.2f),
                     radius = (size.minDimension / 2) + 8.dp.toPx(),
                     style = Stroke(width = 2.dp.toPx())
                 )
@@ -225,7 +229,7 @@ private fun PredictionProgressRing(
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
                 text = "$probability%",
-                color = if (isCritical) ShinyGoldDeep else Color.White,
+                color = if (isCritical) goldPrimary else Color.White,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Black
             )

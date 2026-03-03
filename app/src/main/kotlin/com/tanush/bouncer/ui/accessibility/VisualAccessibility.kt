@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlin.math.pow
 import kotlin.math.roundToInt
+import io.sentry.Sentry
 
 /**
  * Visual Accessibility Utilities for Bouncer Cricket App
@@ -232,13 +233,18 @@ fun Modifier.highContrastBorder(
     isDashed: Boolean = false
 ): Modifier = if (isDashed) {
     drawBehind {
-        val strokeWidth = width.toPx()
-        val dashPath = PathEffect.dashPathEffect(floatArrayOf(10f, 10f), 0f)
-        drawRoundRect(
-            color = color,
-            cornerRadius = CornerRadius(cornerRadius.toPx()),
-            style = Stroke(width = strokeWidth, pathEffect = dashPath)
-        )
+        try {
+            val strokeWidth = width.toPx()
+            val dashPath = PathEffect.dashPathEffect(floatArrayOf(10f, 10f), 0f)
+            drawRoundRect(
+                color = color,
+                cornerRadius = CornerRadius(cornerRadius.toPx()),
+                style = Stroke(width = strokeWidth, pathEffect = dashPath)
+            )
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
 } else {
     border(
@@ -288,7 +294,12 @@ object LargeTextMode {
      * Calculate scaled text size
      */
     fun scaledSize(baseSizeSp: Int, scale: Scale): Int {
-        return (baseSizeSp * scale.factor).roundToInt()
+        try {
+            return (baseSizeSp * scale.factor).roundToInt()
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     /**
@@ -432,52 +443,72 @@ object ContrastChecker {
      * Calculate relative luminance of a color
      */
     fun relativeLuminance(color: Color): Float {
-        fun adjust(component: Float): Float {
-            return if (component <= 0.03928f) {
-                component / 12.92f
-            } else {
-                ((component + 0.055f) / 1.055f).toDouble().pow(2.4).toFloat()
+        try {
+            fun adjust(component: Float): Float {
+                return if (component <= 0.03928f) {
+                    component / 12.92f
+                } else {
+                    ((component + 0.055f) / 1.055f).toDouble().pow(2.4).toFloat()
+                }
             }
+        
+            val r = adjust(color.red)
+            val g = adjust(color.green)
+            val b = adjust(color.blue)
+        
+            return 0.2126f * r + 0.7152f * g + 0.0722f * b
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
         }
-        
-        val r = adjust(color.red)
-        val g = adjust(color.green)
-        val b = adjust(color.blue)
-        
-        return 0.2126f * r + 0.7152f * g + 0.0722f * b
     }
     
     /**
      * Calculate contrast ratio between two colors
      */
     fun contrastRatio(foreground: Color, background: Color): Float {
-        val lumFg = relativeLuminance(foreground)
-        val lumBg = relativeLuminance(background)
+        try {
+            val lumFg = relativeLuminance(foreground)
+            val lumBg = relativeLuminance(background)
         
-        val lighter = maxOf(lumFg, lumBg)
-        val darker = minOf(lumFg, lumBg)
+            val lighter = maxOf(lumFg, lumBg)
+            val darker = minOf(lumFg, lumBg)
         
-        return (lighter + 0.05f) / (darker + 0.05f)
+            return (lighter + 0.05f) / (darker + 0.05f)
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     /**
      * Check if color combination meets a specific WCAG level
      */
     fun meetsLevel(foreground: Color, background: Color, level: Level): Boolean {
-        return contrastRatio(foreground, background) >= level.minRatio
+        try {
+            return contrastRatio(foreground, background) >= level.minRatio
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     /**
      * Get the highest WCAG level met by a color combination
      */
     fun getHighestLevel(foreground: Color, background: Color): Level? {
-        val ratio = contrastRatio(foreground, background)
-        return when {
-            ratio >= Level.AAA_NORMAL_TEXT.minRatio -> Level.AAA_NORMAL_TEXT
-            ratio >= Level.AA_NORMAL_TEXT.minRatio -> Level.AA_NORMAL_TEXT
-            ratio >= Level.AA_LARGE_TEXT.minRatio -> Level.AA_LARGE_TEXT
-            ratio >= Level.AA_UI_COMPONENTS.minRatio -> Level.AA_UI_COMPONENTS
-            else -> null
+        try {
+            val ratio = contrastRatio(foreground, background)
+            return when {
+                ratio >= Level.AAA_NORMAL_TEXT.minRatio -> Level.AAA_NORMAL_TEXT
+                ratio >= Level.AA_NORMAL_TEXT.minRatio -> Level.AA_NORMAL_TEXT
+                ratio >= Level.AA_LARGE_TEXT.minRatio -> Level.AA_LARGE_TEXT
+                ratio >= Level.AA_UI_COMPONENTS.minRatio -> Level.AA_UI_COMPONENTS
+                else -> null
+            }
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
         }
     }
     
@@ -490,7 +521,12 @@ object ContrastChecker {
         targetLevel: Level = Level.AA_NORMAL_TEXT
     ): Color {
         if (meetsLevel(foreground, background, targetLevel)) {
-            return foreground
+            try {
+                return foreground
+            } catch (e: Exception) {
+                Sentry.captureException(e)
+                throw e
+            }
         }
         
         val bgLuminance = relativeLuminance(background)

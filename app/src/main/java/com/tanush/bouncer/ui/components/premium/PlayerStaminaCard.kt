@@ -33,6 +33,7 @@ import com.tanush.bouncer.ui.components.CoilImage
 import com.tanush.bouncer.ui.theme.SuccessGreen
 import com.tanush.bouncer.ui.theme.WarningYellow
 import com.tanush.bouncer.ui.theme.WicketRed
+import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 
 /**
  * Player Stamina Card
@@ -65,6 +66,7 @@ fun PlayerStaminaCard(
     players: List<PlayerStaminaData>,
     modifier: Modifier = Modifier,
 ) {
+    val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "stamina")
 
     val staminaPulse by infiniteTransition.animateFloat(
@@ -98,7 +100,7 @@ fun PlayerStaminaCard(
                 val shimmerBrush = Brush.linearGradient(
                     colors = listOf(
                         Color.Transparent,
-                        SuccessGreen.copy(alpha = 0.08f),
+                        colors.statusSuccess.copy(alpha = 0.08f),
                         Color.Transparent,
                     ),
                     start = Offset(size.width * shimmerOffset, 0f),
@@ -121,7 +123,7 @@ fun PlayerStaminaCard(
                     Icon(
                         imageVector = Icons.Default.FitnessCenter,
                         contentDescription = null,
-                        tint = SuccessGreen,
+                        tint = colors.statusSuccess,
                         modifier = Modifier.size(24.dp),
                     )
 
@@ -129,7 +131,7 @@ fun PlayerStaminaCard(
 
                     Text(
                         text = "PLAYER STAMINA",
-                        color = SuccessGreen,
+                        color = colors.statusSuccess,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 2.sp,
@@ -156,11 +158,12 @@ private fun PlayerStaminaRow(
     staminaPulse: Float,
     modifier: Modifier = Modifier,
 ) {
+    val colors = BouncerDesignSystem.colors
     val staminaColor = when {
-        player.currentStamina >= 0.7f -> SuccessGreen
-        player.currentStamina >= 0.4f -> WarningYellow
-        player.currentStamina >= 0.2f -> WarningYellow.copy(red = 1f)
-        else -> WicketRed
+        player.currentStamina >= 0.7f -> colors.statusSuccess
+        player.currentStamina >= 0.4f -> colors.statusWarning
+        player.currentStamina >= 0.2f -> colors.statusWarning.copy(red = 1f)
+        else -> colors.statusLive
     }
 
     val animatedProgress = remember { Animatable(0f) }
@@ -279,7 +282,7 @@ private fun PlayerStaminaRow(
                 player.restTimeSinceLastSpell?.let { restTime ->
                     Text(
                         text = "Rest: $restTime",
-                        color = SuccessGreen.copy(alpha = 0.7f),
+                        color = colors.statusSuccess.copy(alpha = 0.7f),
                         fontSize = 10.sp,
                     )
                 }

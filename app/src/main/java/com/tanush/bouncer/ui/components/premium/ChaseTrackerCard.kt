@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.ui.theme.*
 import kotlin.math.cos
 import kotlin.math.sin
+import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 
 /**
  * Chase Tracker Card
@@ -81,6 +82,10 @@ fun ChaseTrackerCard(
     val runsNeeded = targetRuns - currentRuns
     val isOnTrack = currentRate >= requiredRate
 
+    val colors = BouncerDesignSystem.colors
+    val statusSuccessC = colors.statusSuccess
+    val statusLiveC = colors.statusLive
+
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
@@ -97,9 +102,9 @@ fun ChaseTrackerCard(
                     brush = Brush.radialGradient(
                         colors = listOf(
                             if (isOnTrack) {
-                                SuccessGreen.copy(alpha = 0.2f * targetGlow)
+                                statusSuccessC.copy(alpha = 0.2f * targetGlow)
                             } else {
-                                WicketRed.copy(alpha = 0.2f * targetGlow)
+                                statusLiveC.copy(alpha = 0.2f * targetGlow)
                             },
                             Color.Transparent,
                         ),
@@ -130,8 +135,8 @@ fun ChaseTrackerCard(
                                 .background(
                                     Brush.linearGradient(
                                         colors = listOf(
-                                            if (isOnTrack) SuccessGreen else WicketRed,
-                                            if (isOnTrack) SuccessGreen.copy(alpha = 0.6f) else WicketRed.copy(alpha = 0.6f),
+                                            if (isOnTrack) colors.statusSuccess else colors.statusLive,
+                                            if (isOnTrack) colors.statusSuccess.copy(alpha = 0.6f) else colors.statusLive.copy(alpha = 0.6f),
                                         ),
                                     ),
                                 ),
@@ -150,7 +155,7 @@ fun ChaseTrackerCard(
                         Column {
                             Text(
                                 text = "CHASE TRACKER",
-                                color = ShinyGoldMid,
+                                color = colors.goldDark,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
                                 letterSpacing = 1.5.sp,
@@ -170,16 +175,16 @@ fun ChaseTrackerCard(
                             .clip(RoundedCornerShape(8.dp))
                             .background(
                                 if (isOnTrack) {
-                                    SuccessGreen.copy(alpha = 0.2f)
+                                    colors.statusSuccess.copy(alpha = 0.2f)
                                 } else {
-                                    WicketRed.copy(alpha = 0.2f)
+                                    colors.statusLive.copy(alpha = 0.2f)
                                 },
                             )
                             .padding(horizontal = 10.dp, vertical = 6.dp),
                     ) {
                         Text(
                             text = if (isOnTrack) "ON TRACK" else "BEHIND",
-                            color = if (isOnTrack) SuccessGreen else WicketRed,
+                            color = if (isOnTrack) colors.statusSuccess else colors.statusLive,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
                         )
@@ -231,25 +236,25 @@ fun ChaseTrackerCard(
                     ChaseStatItem(
                         label = "Required RR",
                         value = String.format("%.2f", requiredRate),
-                        color = if (requiredRate > 12) WicketRed else if (requiredRate > 8) WarningYellow else SuccessGreen,
+                        color = if (requiredRate > 12) colors.statusLive else if (requiredRate > 8) colors.statusWarning else colors.statusSuccess,
                     )
 
                     ChaseStatItem(
                         label = "Current RR",
                         value = String.format("%.2f", currentRate),
-                        color = if (currentRate >= requiredRate) SuccessGreen else WicketRed,
+                        color = if (currentRate >= requiredRate) colors.statusSuccess else colors.statusLive,
                     )
 
                     ChaseStatItem(
                         label = "Overs Left",
                         value = String.format("%.1f", oversRemaining),
-                        color = ChartBlue,
+                        color = colors.statusInfo,
                     )
 
                     ChaseStatItem(
                         label = "Wickets",
                         value = "${10 - wicketsLost}",
-                        color = ShinyGoldMid,
+                        color = colors.goldDark,
                     )
                 }
 
@@ -288,6 +293,11 @@ private fun ChaseProgressRing(
     isOnTrack: Boolean,
     modifier: Modifier = Modifier,
 ) {
+    val colors = BouncerDesignSystem.colors
+    val statusSuccessC2 = colors.statusSuccess
+    val statusLiveC2 = colors.statusLive
+    val statusWarningC2 = colors.statusWarning
+    val goldDarkC2 = colors.goldDark
     Canvas(modifier = modifier) {
         val strokeWidth = 12.dp.toPx()
         val radius = (size.minDimension - strokeWidth) / 2
@@ -304,9 +314,9 @@ private fun ChaseProgressRing(
         drawArc(
             brush = Brush.sweepGradient(
                 colors = if (isOnTrack) {
-                    listOf(SuccessGreen, ShinyGoldMid, SuccessGreen)
+                    listOf(statusSuccessC2, colors.goldDark, statusSuccessC2)
                 } else {
-                    listOf(WicketRed, WarningYellow, WicketRed)
+                    listOf(statusLiveC2, statusWarningC2, statusLiveC2)
                 },
             ),
             startAngle = -90f,
@@ -321,7 +331,7 @@ private fun ChaseProgressRing(
         val targetY = center.y + radius * sin(targetAngle).toFloat()
 
         drawCircle(
-            color = ShinyGoldMid,
+            color = goldDarkC2,
             radius = 8.dp.toPx(),
             center = Offset(targetX, targetY),
         )
@@ -334,6 +344,7 @@ private fun ChaseStatItem(
     value: String,
     color: Color,
 ) {
+    val colors = BouncerDesignSystem.colors
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
             text = value,
@@ -354,6 +365,7 @@ private fun MilestoneChip(
     milestone: TargetMilestone,
     modifier: Modifier = Modifier,
 ) {
+    val colors = BouncerDesignSystem.colors
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(8.dp))
@@ -361,8 +373,8 @@ private fun MilestoneChip(
                 if (milestone.isAchieved) {
                     Brush.verticalGradient(
                         colors = listOf(
-                            SuccessGreen.copy(alpha = 0.2f),
-                            SuccessGreen.copy(alpha = 0.1f),
+                            colors.statusSuccess.copy(alpha = 0.2f),
+                            colors.statusSuccess.copy(alpha = 0.1f),
                         ),
                     )
                 } else {
@@ -380,7 +392,7 @@ private fun MilestoneChip(
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
                 text = if (milestone.isAchieved) "✓" else "${milestone.runs}",
-                color = if (milestone.isAchieved) SuccessGreen else Color.White,
+                color = if (milestone.isAchieved) colors.statusSuccess else Color.White,
                 fontSize = if (milestone.isAchieved) 14.sp else 12.sp,
                 fontWeight = FontWeight.Bold,
             )

@@ -58,6 +58,7 @@ fun LiveMatchDashboard(
     target: Int?,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "dashboard")
     
     val livePulse by infiniteTransition.animateFloat(
@@ -77,7 +78,7 @@ fun LiveMatchDashboard(
             .background(Color.White.copy(alpha = 0.07f))
             .border(
                 0.5.dp,
-                Brush.linearGradient(colors = listOf(GoldHairline, Color.White.copy(alpha = 0.05f))),
+                Brush.linearGradient(colors = listOf(colors.goldPrimary.copy(alpha = 0.3f), colors.glassSurface)),
                 RoundedCornerShape(32.dp)
             )
     ) {
@@ -87,7 +88,7 @@ fun LiveMatchDashboard(
                 .matchParentSize()
                 .background(
                     Brush.radialGradient(
-                        colors = listOf(ShinyGoldDeep.copy(alpha = 0.04f), Color.Transparent),
+                        colors = listOf(colors.goldDark.copy(alpha = 0.04f), Color.Transparent),
                         center = Offset(0f, 0f)
                     )
                 )
@@ -106,14 +107,14 @@ fun LiveMatchDashboard(
                 Column {
                     Text(
                         text = "LIVE TELEMETRY STREAM",
-                        color = ShinyGoldDeep,
+                        color = colors.goldDark,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Black,
                         letterSpacing = 2.sp
                     )
                     Text(
                         text = matchStatus.uppercase(),
-                        color = TextSecondary,
+                        color = colors.textSecondary,
                         fontSize = 9.sp,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
@@ -151,7 +152,7 @@ fun LiveMatchDashboard(
                     } else {
                         Text(
                             text = "VS",
-                            color = TextMuted,
+                            color = colors.textMuted,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Black
                         )
@@ -175,7 +176,7 @@ fun LiveMatchDashboard(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(1.dp)
-                        .background(Color.White.copy(alpha = 0.05f))
+                        .background(colors.glassSurface)
                 )
                 
                 Row(
@@ -183,7 +184,7 @@ fun LiveMatchDashboard(
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
                     currentRunRate?.let { TechStatMini(label = "CRR", value = it) }
-                    requiredRunRate?.let { TechStatMini(label = "RRR", value = it, color = if ((it.toDoubleOrNull() ?: 0.0) > 12.0) ErrorRed else SuccessGreen) }
+                    requiredRunRate?.let { TechStatMini(label = "RRR", value = it, color = if ((it.toDoubleOrNull() ?: 0.0) > 12.0) colors.statusLive else colors.statusSuccess) }
                     target?.let { TechStatMini(label = "TARGET", value = it.toString()) }
                 }
             }
@@ -229,6 +230,7 @@ private fun TeamTechnicalBlock(
     modifier: Modifier = Modifier,
     isRightAligned: Boolean = false
 ) {
+    val colors = BouncerDesignSystem.colors
     Column(
         modifier = modifier,
         horizontalAlignment = if (isRightAligned) Alignment.End else Alignment.Start,
@@ -238,10 +240,10 @@ private fun TeamTechnicalBlock(
             modifier = Modifier
                 .size(56.dp)
                 .clip(CircleShape)
-                .background(Color.White.copy(alpha = 0.05f))
+                .background(colors.glassSurface)
                 .border(
                     width = 1.dp,
-                    brush = if (isBatting) Brush.verticalGradient(listOf(ShinyGoldDeep, Color.Transparent)) else Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.1f), Color.Transparent)),
+                    brush = if (isBatting) Brush.verticalGradient(listOf(colors.goldDark, Color.Transparent)) else Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.1f), Color.Transparent)),
                     shape = CircleShape
                 ),
             contentAlignment = Alignment.Center
@@ -258,7 +260,7 @@ private fun TeamTechnicalBlock(
         Column(horizontalAlignment = if (isRightAligned) Alignment.End else Alignment.Start) {
             Text(
                 text = name.uppercase(),
-                color = Color.White,
+                color = colors.textPrimary,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Black,
                 letterSpacing = (-0.5).sp,
@@ -267,7 +269,7 @@ private fun TeamTechnicalBlock(
             )
             Text(
                 text = score,
-                color = if (isBatting) ShinyGoldDeep else TextSecondary,
+                color = if (isBatting) colors.goldDark else colors.textSecondary,
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Black,
                 letterSpacing = (-0.5).sp
@@ -275,7 +277,7 @@ private fun TeamTechnicalBlock(
             overs?.let {
                 Text(
                     text = "($it)",
-                    color = TextMuted,
+                    color = colors.textMuted,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -286,15 +288,16 @@ private fun TeamTechnicalBlock(
 
 @Composable
 private fun PrecisionProbabilityGauge(prob: Float) {
+    val colors = BouncerDesignSystem.colors
     val animatedProb by animateFloatAsState(targetValue = prob, animationSpec = tween(1500), label = "prob")
     
     Box(contentAlignment = Alignment.Center) {
         Canvas(modifier = Modifier.size(64.dp)) {
             val strokeWidth = 4.dp.toPx()
-            drawCircle(color = Color.White.copy(alpha = 0.05f), style = Stroke(width = strokeWidth))
+            drawCircle(color = colors.glassSurface, style = Stroke(width = strokeWidth))
             
             drawArc(
-                brush = Brush.sweepGradient(listOf(ShinyGoldDeep, ShinyGoldLight, ShinyGoldDeep)),
+                brush = Brush.sweepGradient(listOf(colors.goldDark, colors.goldLight, colors.goldDark)),
                 startAngle = -90f,
                 sweepAngle = animatedProb * 360f,
                 useCenter = false,
@@ -303,7 +306,7 @@ private fun PrecisionProbabilityGauge(prob: Float) {
         }
         Text(
             text = "${(animatedProb * 100).toInt()}%",
-            color = Color.White,
+            color = colors.textPrimary,
             fontSize = 12.sp,
             fontWeight = FontWeight.Black
         )
@@ -311,9 +314,10 @@ private fun PrecisionProbabilityGauge(prob: Float) {
 }
 
 @Composable
-private fun TechStatMini(label: String, value: String, color: Color = ShinyGoldDeep) {
+private fun TechStatMini(label: String, value: String, color: Color = GoldDark) {
+    val colors = BouncerDesignSystem.colors
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(label, color = TextMuted, fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
+        Text(label, color = colors.textMuted, fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
         Text(value, color = color, fontSize = 16.sp, fontWeight = FontWeight.Black)
     }
 }
@@ -332,14 +336,15 @@ fun InningsSummaryCard(
     fallOfWickets: List<String>?,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     Box(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(24.dp))
-            .background(Color.White.copy(alpha = 0.05f))
+            .background(colors.glassSurface)
             .border(
                 0.5.dp,
-                Brush.linearGradient(colors = listOf(Color.White.copy(alpha = 0.08f), Color.Transparent)),
+                Brush.linearGradient(colors = listOf(colors.glassBorderHighlight, Color.Transparent)),
                 RoundedCornerShape(24.dp)
             )
             .padding(24.dp)
@@ -354,14 +359,14 @@ fun InningsSummaryCard(
                 Column {
                     Text(
                         text = "INNINGS 0$inningsNumber",
-                        color = ShinyGoldDeep,
+                        color = colors.goldDark,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Black,
                         letterSpacing = 2.sp
                     )
                     Text(
                         text = teamName.uppercase(),
-                        color = Color.White,
+                        color = colors.textPrimary,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Black,
                         letterSpacing = (-0.5).sp
@@ -371,14 +376,14 @@ fun InningsSummaryCard(
                 Column(horizontalAlignment = Alignment.End) {
                     Text(
                         text = score,
-                        color = Color.White,
+                        color = colors.textPrimary,
                         fontSize = 28.sp,
                         fontWeight = FontWeight.Black,
                         letterSpacing = (-0.5).sp
                     )
                     Text(
                         text = "$overs OVERS",
-                        color = TextMuted,
+                        color = colors.textMuted,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -391,7 +396,7 @@ fun InningsSummaryCard(
                 horizontalArrangement = Arrangement.spacedBy(32.dp)
             ) {
                 extras?.let { TechSummaryItem(label = "EXTRAS", value = it) }
-                runRate?.let { TechSummaryItem(label = "RUN RATE", value = it, color = ShinyGoldMid) }
+                runRate?.let { TechSummaryItem(label = "RUN RATE", value = it, color = colors.goldPrimary) }
             }
             
             // Fall of Wickets: Dynamic Rail
@@ -399,7 +404,7 @@ fun InningsSummaryCard(
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text(
                         text = "FALL OF WICKETS",
-                        color = TextMuted,
+                        color = colors.textMuted,
                         fontSize = 9.sp,
                         fontWeight = FontWeight.Black,
                         letterSpacing = 1.5.sp
@@ -409,13 +414,13 @@ fun InningsSummaryCard(
                             Box(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(8.dp))
-                                    .background(ErrorRed.copy(alpha = 0.1f))
-                                    .border(0.5.dp, ErrorRed.copy(alpha = 0.2f), RoundedCornerShape(8.dp))
+                                    .background(colors.statusLive.copy(alpha = 0.1f))
+                                    .border(0.5.dp, colors.statusLive.copy(alpha = 0.2f), RoundedCornerShape(8.dp))
                                     .padding(horizontal = 10.dp, vertical = 6.dp)
                             ) {
                                 Text(
                                     text = wicket,
-                                    color = ErrorRed,
+                                    color = colors.statusLive,
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.Black
                                 )
@@ -429,9 +434,10 @@ fun InningsSummaryCard(
 }
 
 @Composable
-private fun TechSummaryItem(label: String, value: String, color: Color = Color.White) {
+private fun TechSummaryItem(label: String, value: String, color: Color = TextPrimary) {
+    val colors = BouncerDesignSystem.colors
     Column {
-        Text(label, color = TextMuted, fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
+        Text(label, color = colors.textMuted, fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
         Text(value, color = color, fontSize = 15.sp, fontWeight = FontWeight.Bold)
     }
 }
@@ -449,16 +455,17 @@ fun LiveMatchMiniWidget(
     isLive: Boolean,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val team1Color: Color = remember(team1Name) { getTeamColor(team1Name) }
     
     Box(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(Color.White.copy(alpha = 0.05f))
+            .background(colors.glassSurface)
             .border(
                 0.5.dp,
-                if (isLive) team1Color.copy(alpha = 0.3f) else Color.White.copy(alpha = 0.05f),
+                if (isLive) team1Color.copy(alpha = 0.3f) else colors.glassSurface,
                 RoundedCornerShape(16.dp)
             )
             .padding(16.dp)
@@ -485,7 +492,7 @@ fun LiveMatchMiniWidget(
             } else {
                 Text(
                     text = statusText.uppercase(),
-                    color = TextMuted,
+                    color = colors.textMuted,
                     fontSize = 9.sp,
                     fontWeight = FontWeight.Black,
                     letterSpacing = 1.sp,
@@ -499,6 +506,7 @@ fun LiveMatchMiniWidget(
 
 @Composable
 private fun MiniTeamRow(name: String, score: String, isLive: Boolean) {
+    val colors = BouncerDesignSystem.colors
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -506,7 +514,7 @@ private fun MiniTeamRow(name: String, score: String, isLive: Boolean) {
     ) {
         Text(
             text = name.take(18),
-            color = Color.White,
+            color = colors.textPrimary,
             fontSize = 13.sp,
             fontWeight = FontWeight.Bold,
             maxLines = 1,
@@ -514,7 +522,7 @@ private fun MiniTeamRow(name: String, score: String, isLive: Boolean) {
         )
         Text(
             text = score,
-            color = if (isLive) ShinyGoldDeep else TextSecondary,
+            color = if (isLive) colors.goldDark else colors.textSecondary,
             fontSize = 13.sp,
             fontWeight = FontWeight.Black
         )

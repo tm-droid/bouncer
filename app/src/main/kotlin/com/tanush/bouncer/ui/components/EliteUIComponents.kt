@@ -62,6 +62,7 @@ fun EliteFloatingNavBar(
     onNavigate: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val haptic = rememberHapticFeedback()
     
     Box(
@@ -128,17 +129,17 @@ fun EliteFloatingNavBar(
                         .shadow(
                             elevation = 16.dp,
                             shape = CircleShape,
-                            spotColor = ShinyGoldDeep.copy(alpha = 0.5f)
+                            spotColor = colors.goldPrimary.copy(alpha = 0.5f)
                         )
                         .background(
                             brush = Brush.linearGradient(
-                                colors = listOf(ShinyGoldDeep, ShinyGoldMid)
+                                colors = listOf(colors.goldPrimary, colors.goldPrimary)
                             ),
                             shape = CircleShape
                         )
                         .border(
                             3.dp,
-                            BlackBackground,
+                            colors.backgroundBase,
                             CircleShape
                         )
                         .clickable(
@@ -190,6 +191,7 @@ private fun EliteNavItem(
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
+    val colors = BouncerDesignSystem.colors
     val animatedAlpha by animateFloatAsState(
         targetValue = if (isSelected) 1f else 0.5f,
         animationSpec = tween(200),
@@ -214,14 +216,14 @@ private fun EliteNavItem(
                     modifier = Modifier
                         .size(32.dp)
                         .blur(12.dp)
-                        .background(ShinyGoldDeep.copy(alpha = 0.3f), CircleShape)
+                        .background(colors.goldPrimary.copy(alpha = 0.3f), CircleShape)
                 )
             }
             
             Icon(
                 imageVector = icon,
                 contentDescription = label,
-                tint = if (isSelected) ShinyGoldDeep else Color.White,
+                tint = if (isSelected) colors.goldPrimary else colors.textPrimary,
                 modifier = Modifier
                     .size(if (isSelected) 24.dp else 22.dp)
                     .graphicsLayer { alpha = animatedAlpha }
@@ -238,7 +240,7 @@ private fun EliteNavItem(
                 Box(
                     modifier = Modifier
                         .size(4.dp)
-                        .background(ShinyGoldDeep, CircleShape)
+                        .background(colors.goldPrimary, CircleShape)
                 )
             }
         }
@@ -256,6 +258,7 @@ fun HeroLiveMatchCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val haptic = rememberHapticFeedback()
     val context = LocalContext.current
     val team1 = match.teams.firstOrNull()
@@ -313,7 +316,7 @@ fun HeroLiveMatchCard(
             .shadow(
                 elevation = if (isLive) 28.dp else 16.dp,
                 shape = RoundedCornerShape(28.dp),
-                spotColor = if (isLive) ShinyGoldDeep.copy(alpha = 0.4f) else Color.Black.copy(alpha = 0.5f)
+                spotColor = if (isLive) GoldPrimary.copy(alpha = 0.4f) else Color.Black.copy(alpha = 0.5f)
             )
             .clip(RoundedCornerShape(28.dp))
             .background(
@@ -321,7 +324,7 @@ fun HeroLiveMatchCard(
                     colors = listOf(
                         Color(0xFF161616),
                         Color(0xFF0D0D0D),
-                        BlackBackground
+                        BackgroundBase
                     )
                 )
             )
@@ -332,9 +335,9 @@ fun HeroLiveMatchCard(
                         brush = Brush.linearGradient(
                             colors = listOf(
                                 Color.Transparent,
-                                ShinyGoldDeep.copy(alpha = 0.03f),
+                                GoldPrimary.copy(alpha = 0.03f),
                                 Color.White.copy(alpha = 0.04f),
-                                ShinyGoldDeep.copy(alpha = 0.03f),
+                                GoldPrimary.copy(alpha = 0.03f),
                                 Color.Transparent
                             ),
                             start = Offset(shimmerOffset, 0f),
@@ -347,9 +350,9 @@ fun HeroLiveMatchCard(
                 1.dp,
                 Brush.linearGradient(
                     colors = if (isLive) listOf(
-                        ShinyGoldDeep.copy(alpha = borderGlow),
+                        GoldPrimary.copy(alpha = borderGlow),
                         Color.White.copy(alpha = 0.08f),
-                        ShinyGoldDeep.copy(alpha = borderGlow * 0.6f)
+                        GoldPrimary.copy(alpha = borderGlow * 0.6f)
                     ) else listOf(
                         Color.White.copy(alpha = 0.1f),
                         Color.White.copy(alpha = 0.04f)
@@ -371,7 +374,7 @@ fun HeroLiveMatchCard(
                         drawCircle(
                             brush = Brush.radialGradient(
                                 colors = listOf(
-                                    ShinyGoldDeep.copy(alpha = 0.1f),
+                                    GoldPrimary.copy(alpha = 0.1f),
                                     Color.Transparent
                                 )
                             ),
@@ -419,13 +422,13 @@ fun HeroLiveMatchCard(
                 // Live Badge - Pill style with glow
                 if (isLive) {
                     Surface(
-                        color = LiveRedPulse.copy(alpha = 0.15f),
+                        color = StatusLive.copy(alpha = 0.15f),
                         shape = RoundedCornerShape(16.dp),
-                        border = BorderStroke(1.dp, LiveRedPulse.copy(alpha = 0.5f)),
+                        border = BorderStroke(1.dp, StatusLive.copy(alpha = 0.5f)),
                         modifier = Modifier.shadow(
                             elevation = 8.dp,
                             shape = RoundedCornerShape(16.dp),
-                            spotColor = LiveRedPulse.copy(alpha = 0.3f)
+                            spotColor = StatusLive.copy(alpha = 0.3f)
                         )
                     ) {
                         Row(
@@ -437,12 +440,12 @@ fun HeroLiveMatchCard(
                                 modifier = Modifier
                                     .size(8.dp)
                                     .graphicsLayer { alpha = livePulse }
-                                    .shadow(6.dp, CircleShape, spotColor = LiveRedPulse)
-                                    .background(LiveRedPulse, CircleShape)
+                                    .shadow(6.dp, CircleShape, spotColor = StatusLive)
+                                    .background(StatusLive, CircleShape)
                             )
                             Text(
                                 text = "LIVE",
-                                color = LiveRedPulse,
+                                color = StatusLive,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Black,
                                 letterSpacing = 1.2.sp
@@ -546,7 +549,7 @@ fun HeroLiveMatchCard(
                         )
                         Text(
                             text = "${team1?.acronym?.takeIf { it.isNotEmpty() } ?: team1?.name?.take(3)?.uppercase() ?: "T1"} 52%",
-                            color = ShinyGoldDeep,
+                            color = GoldPrimary,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -567,7 +570,7 @@ fun HeroLiveMatchCard(
                                 .fillMaxHeight()
                                 .background(
                                     Brush.horizontalGradient(
-                                        colors = listOf(ShinyGoldDeep, ShinyGoldMid)
+                                        colors = listOf(GoldPrimary, GoldPrimary)
                                     ),
                                     RoundedCornerShape(3.dp)
                                 )
@@ -619,8 +622,8 @@ fun HeroLiveMatchCard(
                 
                 val statusText = match.currentStatus.takeIf { it.isNotEmpty() } ?: match.status
                 val statusColor = when {
-                    statusText.lowercase().contains("won") -> SuccessGreen
-                    statusText.lowercase().contains("need") -> ShinyGoldDeep
+                    statusText.lowercase().contains("won") -> StatusSuccess
+                    statusText.lowercase().contains("need") -> GoldPrimary
                     else -> TextSecondary
                 }
                 
@@ -664,7 +667,7 @@ private fun HeroTeamSection(
                     if (isBatting) Modifier.shadow(
                         elevation = 12.dp,
                         shape = CircleShape,
-                        spotColor = ShinyGoldDeep.copy(alpha = 0.4f)
+                        spotColor = GoldPrimary.copy(alpha = 0.4f)
                     ) else Modifier
                 )
                 .background(
@@ -673,7 +676,7 @@ private fun HeroTeamSection(
                 )
                 .border(
                     if (isBatting) 2.dp else 1.dp,
-                    if (isBatting) ShinyGoldDeep.copy(alpha = 0.6f) else Color.White.copy(alpha = 0.1f),
+                    if (isBatting) GoldPrimary.copy(alpha = 0.6f) else Color.White.copy(alpha = 0.1f),
                     CircleShape
                 )
                 .padding(10.dp)
@@ -703,7 +706,7 @@ private fun HeroTeamSection(
         // Score - Prominent display
         Text(
             text = score,
-            color = if (isBatting) ShinyGoldDeep else TextPrimary,
+            color = if (isBatting) GoldPrimary else TextPrimary,
             fontSize = 26.sp,
             fontWeight = FontWeight.Black,
             letterSpacing = (-0.5).sp
@@ -826,13 +829,13 @@ fun PremiumMatchListCard(
             .shadow(
                 elevation = if (isLive) 16.dp else 6.dp,
                 shape = RoundedCornerShape(20.dp),
-                spotColor = if (isLive) ShinyGoldDeep.copy(alpha = 0.25f) else Color.Black.copy(alpha = 0.3f)
+                spotColor = if (isLive) GoldPrimary.copy(alpha = 0.25f) else Color.Black.copy(alpha = 0.3f)
             ),
         shape = RoundedCornerShape(20.dp),
         color = Color.White.copy(alpha = 0.05f),
         border = BorderStroke(
             0.5.dp,
-            if (isLive) ShinyGoldDeep.copy(alpha = 0.3f) else Color.White.copy(alpha = 0.06f)
+            if (isLive) GoldPrimary.copy(alpha = 0.3f) else Color.White.copy(alpha = 0.06f)
         ),
         onClick = { 
             haptic.click()
@@ -861,9 +864,9 @@ fun PremiumMatchListCard(
                             .clip(RoundedCornerShape(2.dp))
                             .background(
                                 when {
-                                    isLive -> LiveRedPulse
-                                    isCompleted -> SuccessGreen
-                                    else -> ShinyGoldDeep
+                                    isLive -> StatusLive
+                                    isCompleted -> StatusSuccess
+                                    else -> GoldPrimary
                                 }
                             )
                     )
@@ -882,9 +885,9 @@ fun PremiumMatchListCard(
                 
                 // Status Badge
                 val (statusText, statusColor) = when {
-                    isLive -> "LIVE" to LiveRedPulse
-                    isCompleted -> "RESULT" to SuccessGreen
-                    else -> "UPCOMING" to ShinyGoldDim
+                    isLive -> "LIVE" to StatusLive
+                    isCompleted -> "RESULT" to StatusSuccess
+                    else -> "UPCOMING" to GoldSubtle
                 }
                 
                 Surface(
@@ -936,7 +939,7 @@ fun PremiumMatchListCard(
                             .background(Color.White.copy(alpha = 0.08f), CircleShape)
                             .border(
                                 if (team1?.isBatting == true) 1.5.dp else 0.5.dp,
-                                if (team1?.isBatting == true) ShinyGoldDeep.copy(alpha = 0.6f) else Color.White.copy(alpha = 0.08f),
+                                if (team1?.isBatting == true) GoldPrimary.copy(alpha = 0.6f) else Color.White.copy(alpha = 0.08f),
                                 CircleShape
                             )
                             .padding(8.dp)
@@ -963,7 +966,7 @@ fun PremiumMatchListCard(
                         if (score1Display != "-") {
                             Text(
                                 text = score1Full,
-                                color = if (team1?.isBatting == true) ShinyGoldDeep else TextPrimary,
+                                color = if (team1?.isBatting == true) GoldPrimary else TextPrimary,
                                 fontSize = 15.sp,
                                 fontWeight = FontWeight.Black
                             )
@@ -1006,7 +1009,7 @@ fun PremiumMatchListCard(
                         if (score2Display != "-") {
                             Text(
                                 text = score2Full,
-                                color = if (team2?.isBatting == true) ShinyGoldDeep else TextPrimary,
+                                color = if (team2?.isBatting == true) GoldPrimary else TextPrimary,
                                 fontSize = 15.sp,
                                 fontWeight = FontWeight.Black
                             )
@@ -1022,7 +1025,7 @@ fun PremiumMatchListCard(
                             .background(Color.White.copy(alpha = 0.08f), CircleShape)
                             .border(
                                 if (team2?.isBatting == true) 1.5.dp else 0.5.dp,
-                                if (team2?.isBatting == true) ShinyGoldDeep.copy(alpha = 0.6f) else Color.White.copy(alpha = 0.08f),
+                                if (team2?.isBatting == true) GoldPrimary.copy(alpha = 0.6f) else Color.White.copy(alpha = 0.08f),
                                 CircleShape
                             )
                             .padding(8.dp)
@@ -1057,8 +1060,8 @@ fun PremiumMatchListCard(
                     Text(
                         text = displayStatus,
                         color = when {
-                            displayStatus.lowercase().contains("won") -> SuccessGreen
-                            displayStatus.lowercase().contains("need") -> ShinyGoldDeep
+                            displayStatus.lowercase().contains("won") -> StatusSuccess
+                            displayStatus.lowercase().contains("need") -> GoldPrimary
                             else -> TextSecondary
                         },
                         fontSize = 12.sp,
@@ -1120,7 +1123,7 @@ fun VIPCarouselCard(
             .shadow(
                 elevation = 12.dp,
                 shape = RoundedCornerShape(22.dp),
-                spotColor = if (isLive) ShinyGoldDeep.copy(alpha = 0.3f) else Color.Black.copy(alpha = 0.4f)
+                spotColor = if (isLive) GoldPrimary.copy(alpha = 0.3f) else Color.Black.copy(alpha = 0.4f)
             ),
         shape = RoundedCornerShape(22.dp),
         color = Color.Transparent,
@@ -1155,9 +1158,9 @@ fun VIPCarouselCard(
                         1.dp,
                         Brush.linearGradient(
                             colors = if (isLive) listOf(
-                                ShinyGoldDeep.copy(alpha = borderGlow),
+                                GoldPrimary.copy(alpha = borderGlow),
                                 Color.White.copy(alpha = 0.08f),
-                                ShinyGoldDeep.copy(alpha = borderGlow * 0.5f)
+                                GoldPrimary.copy(alpha = borderGlow * 0.5f)
                             ) else listOf(
                                 Color.White.copy(alpha = 0.12f),
                                 Color.White.copy(alpha = 0.04f)
@@ -1182,7 +1185,7 @@ fun VIPCarouselCard(
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = match.matchType.uppercase().take(12),
-                            color = if (isLive) LiveRedPulse else ShinyGoldDeep,
+                            color = if (isLive) StatusLive else GoldPrimary,
                             fontSize = 9.sp,
                             fontWeight = FontWeight.Black,
                             letterSpacing = 1.5.sp
@@ -1201,8 +1204,8 @@ fun VIPCarouselCard(
                         Box(
                             modifier = Modifier
                                 .size(8.dp)
-                                .shadow(4.dp, CircleShape, spotColor = LiveRedPulse)
-                                .background(LiveRedPulse, CircleShape)
+                                .shadow(4.dp, CircleShape, spotColor = StatusLive)
+                                .background(StatusLive, CircleShape)
                         )
                     }
                 }
@@ -1244,7 +1247,7 @@ fun VIPCarouselCard(
                             if (score1Display != "-") {
                                 Text(
                                     text = score1Display,
-                                    color = ShinyGoldMid,
+                                    color = GoldPrimary,
                                     fontSize = 13.sp,
                                     fontWeight = FontWeight.Black
                                 )
@@ -1277,7 +1280,7 @@ fun VIPCarouselCard(
                             if (score2Display != "-") {
                                 Text(
                                     text = score2Display,
-                                    color = ShinyGoldMid,
+                                    color = GoldPrimary,
                                     fontSize = 13.sp,
                                     fontWeight = FontWeight.Black
                                 )
@@ -1311,8 +1314,8 @@ fun VIPCarouselCard(
                         else -> "Tap for details"
                     },
                     color = when {
-                        match.status.lowercase().contains("won") -> SuccessGreen.copy(alpha = 0.9f)
-                        match.currentStatus.lowercase().contains("need") -> ShinyGoldDeep.copy(alpha = 0.9f)
+                        match.status.lowercase().contains("won") -> StatusSuccess.copy(alpha = 0.9f)
+                        match.currentStatus.lowercase().contains("need") -> GoldPrimary.copy(alpha = 0.9f)
                         else -> TextTertiary
                     },
                     fontSize = 11.sp,
@@ -1337,7 +1340,7 @@ fun MarketInsightCard(
     icon: ImageVector,
     modifier: Modifier = Modifier,
     badgeText: String? = null,
-    badgeColor: Color = ShinyGoldDeep,
+    badgeColor: Color = GoldPrimary,
     onClick: () -> Unit = {}
 ) {
     val haptic = rememberHapticFeedback()
@@ -1447,7 +1450,7 @@ fun EliteSectionHeader(
             Box(
                 modifier = Modifier
                     .size(3.dp, 16.dp)
-                    .background(ShinyGoldDeep, RoundedCornerShape(2.dp))
+                    .background(GoldPrimary, RoundedCornerShape(2.dp))
             )
             Text(
                 text = title.uppercase(),
@@ -1461,7 +1464,7 @@ fun EliteSectionHeader(
         if (actionText != null) {
             Text(
                 text = actionText,
-                color = ShinyGoldDeep,
+                color = GoldPrimary,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.clickable { onActionClick() }
@@ -1488,10 +1491,10 @@ fun EliteStatusChip(
             .shadow(
                 elevation = if (isSelected) 8.dp else 2.dp,
                 shape = RoundedCornerShape(12.dp),
-                spotColor = if (isSelected) ShinyGoldDeep.copy(alpha = 0.3f) else Color.Transparent
+                spotColor = if (isSelected) GoldPrimary.copy(alpha = 0.3f) else Color.Transparent
             ),
         shape = RoundedCornerShape(12.dp),
-        color = if (isSelected) ShinyGoldDeep else Color.White.copy(alpha = 0.05f),
+        color = if (isSelected) GoldPrimary else Color.White.copy(alpha = 0.05f),
         border = BorderStroke(
             if (isSelected) 0.dp else 0.5.dp,
             Color.White.copy(alpha = 0.1f)
@@ -1557,7 +1560,7 @@ fun EliteMatchCardSkeleton(
                 Brush.verticalGradient(
                     colors = listOf(
                         Color.White.copy(alpha = 0.05f),
-                        BlackBackground.copy(alpha = 0.8f)
+                        BackgroundBase.copy(alpha = 0.8f)
                     )
                 )
             )
@@ -1565,9 +1568,9 @@ fun EliteMatchCardSkeleton(
                 0.5.dp,
                 Brush.linearGradient(
                     colors = listOf(
-                        ShinyGoldDeep.copy(alpha = 0.1f),
+                        GoldPrimary.copy(alpha = 0.1f),
                         Color.White.copy(alpha = 0.03f),
-                        ShinyGoldDeep.copy(alpha = 0.1f)
+                        GoldPrimary.copy(alpha = 0.1f)
                     )
                 ),
                 RoundedCornerShape(24.dp)
@@ -1584,9 +1587,9 @@ fun EliteMatchCardSkeleton(
                         brush = Brush.linearGradient(
                             colors = listOf(
                                 Color.Transparent,
-                                ShinyGoldDeep.copy(alpha = 0.04f),
+                                GoldPrimary.copy(alpha = 0.04f),
                                 Color.White.copy(alpha = 0.06f),
-                                ShinyGoldDeep.copy(alpha = 0.04f),
+                                GoldPrimary.copy(alpha = 0.04f),
                                 Color.Transparent
                             ),
                             start = Offset(shimmerTranslate, 0f),
@@ -1741,7 +1744,7 @@ fun EliteHeroMatchSkeleton(
                 Brush.verticalGradient(
                     colors = listOf(
                         Color.White.copy(alpha = 0.05f),
-                        BlackBackground
+                        BackgroundBase
                     )
                 )
             )
@@ -1750,7 +1753,7 @@ fun EliteHeroMatchSkeleton(
                 drawCircle(
                     brush = Brush.radialGradient(
                         colors = listOf(
-                            ShinyGoldDeep.copy(alpha = glowPulse),
+                            GoldPrimary.copy(alpha = glowPulse),
                             Color.Transparent
                         )
                     ),
@@ -1762,9 +1765,9 @@ fun EliteHeroMatchSkeleton(
                 0.5.dp,
                 Brush.linearGradient(
                     colors = listOf(
-                        ShinyGoldDeep.copy(alpha = 0.15f),
+                        GoldPrimary.copy(alpha = 0.15f),
                         Color.White.copy(alpha = 0.05f),
-                        ShinyGoldDeep.copy(alpha = 0.15f)
+                        GoldPrimary.copy(alpha = 0.15f)
                     )
                 ),
                 RoundedCornerShape(28.dp)
@@ -1780,9 +1783,9 @@ fun EliteHeroMatchSkeleton(
                         brush = Brush.linearGradient(
                             colors = listOf(
                                 Color.Transparent,
-                                ShinyGoldDeep.copy(alpha = 0.05f),
+                                GoldPrimary.copy(alpha = 0.05f),
                                 Color.White.copy(alpha = 0.08f),
-                                ShinyGoldDeep.copy(alpha = 0.05f),
+                                GoldPrimary.copy(alpha = 0.05f),
                                 Color.Transparent
                             ),
                             start = Offset(shimmerTranslate, 0f),

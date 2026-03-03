@@ -72,9 +72,9 @@ fun PremiumSnackbar(
 
     val accentColor = when (type) {
         SnackbarType.SUCCESS -> ChartGreen
-        SnackbarType.ERROR -> ErrorRed
-        SnackbarType.WARNING -> ShinyGoldDeep
-        SnackbarType.INFO -> WicketBlue
+        SnackbarType.ERROR -> StatusLive
+        SnackbarType.WARNING -> GoldPrimary
+        SnackbarType.INFO -> StatusInfo
         SnackbarType.LIVE -> BoundarySix
     }
     
@@ -103,7 +103,7 @@ fun PremiumSnackbar(
     ) {
         Surface(
             shape = RoundedCornerShape(20.dp),
-            color = Color.White.copy(alpha = 0.05f),
+            color = GlassSurface,
             border = BorderStroke(
                 width = 1.dp,
                 brush = Brush.linearGradient(
@@ -195,7 +195,7 @@ fun PremiumSnackbar(
                 Box(
                     modifier = Modifier
                         .size(28.dp)
-                        .background(CardBorder.copy(alpha = 0.2f), CircleShape)
+                        .background(GlassBorder.copy(alpha = 0.2f), CircleShape)
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null,
@@ -307,7 +307,7 @@ fun PremiumFAB(
                 .graphicsLayer { alpha = glowAlpha }
                 .blur(16.dp)
                 .background(
-                    ShinyGoldDeep.copy(alpha = 0.5f),
+                    GoldPrimary.copy(alpha = 0.5f),
                     if (extended) RoundedCornerShape(28.dp) else CircleShape
                 )
         )
@@ -327,9 +327,9 @@ fun PremiumFAB(
                     .background(
                         Brush.linearGradient(
                             colors = listOf(
-                                ShinyGoldMid,
-                                ShinyGoldDeep,
-                                ShinyGoldDark
+                                GoldPrimary,
+                                GoldPrimary,
+                                GoldDark
                             )
                         ),
                         if (extended) RoundedCornerShape(28.dp) else CircleShape
@@ -344,7 +344,7 @@ fun PremiumFAB(
                     Icon(
                         imageVector = icon,
                         contentDescription = contentDescription,
-                        tint = BlackBackground,
+                        tint = BackgroundBase,
                         modifier = Modifier.size(24.dp)
                     )
                     
@@ -353,7 +353,7 @@ fun PremiumFAB(
                             text = text.uppercase(),
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold,
-                            color = BlackBackground,
+                            color = BackgroundBase,
                             letterSpacing = 1.sp
                         )
                     }
@@ -417,7 +417,7 @@ fun AnimatedScoreCounter(
                     text = animatedScore.toString(),
                     fontSize = textSize.sp,
                     fontWeight = FontWeight.Black,
-                    color = ShinyGoldDeep.copy(alpha = glowAlpha),
+                    color = GoldPrimary.copy(alpha = glowAlpha),
                     modifier = Modifier
                         .blur(8.dp)
                         .graphicsLayer { alpha = glowAlpha }
@@ -515,9 +515,9 @@ fun ShimmerLoadingEffect(
                     .background(
                         Brush.linearGradient(
                             colors = listOf(
-                                Color.White.copy(alpha = 0.05f),
-                                Color.White.copy(alpha = 0.08f),
-                                Color.White.copy(alpha = 0.05f)
+                                GlassSurface,
+                                GlassBorderHighlight,
+                                GlassSurface
                             ),
                             start = Offset(shimmerOffset * 300, 0f),
                             end = Offset((shimmerOffset + 1) * 300, 0f)
@@ -617,10 +617,10 @@ private data class SimpleConfettiParticle(
     val y: Float = (0..100).random() / 100f,
     val size: Dp = ((4..12).random()).dp,
     val color: Color = listOf(
-        ShinyGoldDeep,
-        ShinyGoldLight,
+        GoldPrimary,
+        GoldLight,
         ChartGreen,
-        WicketBlue,
+        StatusInfo,
         BoundarySix
     ).random()
 )

@@ -1,5 +1,6 @@
 package com.tanush.bouncer.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -7,15 +8,19 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.HelpCenter
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.tanush.bouncer.ui.theme.*
+import androidx.compose.ui.unit.sp
+import com.tanush.bouncer.ui.components.glass.GlassBloomBackground
+import com.tanush.bouncer.ui.components.glass.GlassCard
+import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 
 // ==========================================
 // BOUNCER – More Hub Screen
@@ -23,7 +28,13 @@ import com.tanush.bouncer.ui.theme.*
 // Activity Feed, AR Tracking, About, Dev Tools.
 // ==========================================
 
-@OptIn(ExperimentalMaterial3Api::class)
+private data class MoreItemData(
+    val icon: ImageVector,
+    val title: String,
+    val subtitle: String,
+    val onClick: () -> Unit
+)
+
 @Composable
 fun MoreScreen(
     onSettingsClick: () -> Unit,
@@ -33,90 +44,105 @@ fun MoreScreen(
     onAboutClick: () -> Unit,
     onDevToolsClick: () -> Unit
 ) {
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = "More",
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.SemiBold,
-                        color = TextPrimary
-                    )
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = BgBase
+    val colors = BouncerDesignSystem.colors
+    val typography = BouncerDesignSystem.typography
+    val dimens = BouncerDesignSystem.dimens
+
+    val exploreItems = listOf(
+        MoreItemData(Icons.Default.Settings, "Settings", "Preferences, notifications, data", onSettingsClick),
+        MoreItemData(Icons.Default.EmojiEvents, "Achievements", "Trophy room & milestones", onAchievementsClick),
+        MoreItemData(Icons.Default.Insights, "Activity Feed", "Intelligence & AI insights", onActivityClick),
+        MoreItemData(Icons.Default.ViewInAr, "AR Ball Tracking", "Augmented reality experience", onArTrackingClick)
+    )
+
+    val supportItems = listOf(
+        MoreItemData(Icons.AutoMirrored.Filled.HelpCenter, "About Bouncer", "Version, licenses, credits", onAboutClick),
+        MoreItemData(Icons.Default.Code, "Developer Tools", "API diagnostics & debug", onDevToolsClick)
+    )
+
+    GlassBloomBackground(modifier = Modifier.fillMaxSize()) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            // Gold gradient header
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .statusBarsPadding()
+                    .padding(horizontal = dimens.screenHorizontal, vertical = dimens.sm),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "MORE",
+                    style = typography.headingMedium,
+                    color = colors.goldPrimary,
+                    letterSpacing = 2.sp,
+                    fontWeight = FontWeight.Black
                 )
-            )
-        },
-        containerColor = BgBase
-    ) { padding ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .padding(horizontal = Spacing.screenHorizontal),
-            verticalArrangement = Arrangement.spacedBy(Spacing.space1)
+            }
+
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(
+                    top = dimens.lg,
+                    start = dimens.xl,
+                    end = dimens.xl,
+                    bottom = 140.dp
+                ),
+                verticalArrangement = Arrangement.spacedBy(dimens.xxl)
+            ) {
+                item {
+                    MoreSectionGroup(title = "EXPLORE", items = exploreItems)
+                }
+                item {
+                    MoreSectionGroup(title = "SUPPORT", items = supportItems)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MoreSectionGroup(
+    title: String,
+    items: List<MoreItemData>
+) {
+    val colors = BouncerDesignSystem.colors
+    val typography = BouncerDesignSystem.typography
+    val dimens = BouncerDesignSystem.dimens
+
+    Column(
+        verticalArrangement = Arrangement.spacedBy(dimens.cardSpacing)
+    ) {
+        // Section header with gold text
+        Text(
+            text = title,
+            style = typography.labelLarge,
+            color = colors.goldPrimary,
+            letterSpacing = 1.5.sp,
+            modifier = Modifier.padding(start = dimens.xs, bottom = dimens.xs)
+        )
+
+        // Glass card container
+        GlassCard(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(20.dp),
+            contentPadding = PaddingValues(0.dp)
         ) {
-            item {
-                Spacer(modifier = Modifier.height(Spacing.space2))
-            }
-            item {
-                MoreMenuItem(
-                    icon = Icons.Default.Settings,
-                    title = "Settings",
-                    subtitle = "Preferences, notifications, data",
-                    onClick = onSettingsClick
-                )
-            }
-            item {
-                MoreMenuItem(
-                    icon = Icons.Default.EmojiEvents,
-                    title = "Achievements",
-                    subtitle = "Trophy room & milestones",
-                    onClick = onAchievementsClick
-                )
-            }
-            item {
-                MoreMenuItem(
-                    icon = Icons.Default.Insights,
-                    title = "Activity Feed",
-                    subtitle = "Intelligence & AI insights",
-                    onClick = onActivityClick
-                )
-            }
-            item {
-                MoreMenuItem(
-                    icon = Icons.Default.ViewInAr,
-                    title = "AR Ball Tracking",
-                    subtitle = "Augmented reality experience",
-                    onClick = onArTrackingClick
-                )
-            }
-            item {
-                HorizontalDivider(
-                    modifier = Modifier.padding(vertical = Spacing.space3),
-                    color = Surface3
-                )
-            }
-            item {
-                MoreMenuItem(
-                    icon = Icons.AutoMirrored.Filled.HelpCenter,
-                    title = "About Bouncer",
-                    subtitle = "Version, licenses, credits",
-                    onClick = onAboutClick
-                )
-            }
-            item {
-                MoreMenuItem(
-                    icon = Icons.Default.Code,
-                    title = "Developer Tools",
-                    subtitle = "API diagnostics & debug",
-                    onClick = onDevToolsClick
-                )
-            }
-            item {
-                Spacer(modifier = Modifier.height(Spacing.space6))
+            Column {
+                items.forEachIndexed { index, item ->
+                    MoreMenuItem(
+                        icon = item.icon,
+                        title = item.title,
+                        subtitle = item.subtitle,
+                        onClick = item.onClick
+                    )
+                    if (index < items.lastIndex) {
+                        HorizontalDivider(
+                            color = colors.glassBorder,
+                            thickness = 0.5.dp,
+                            modifier = Modifier.padding(horizontal = dimens.xl)
+                        )
+                    }
+                }
             }
         }
     }
@@ -129,46 +155,55 @@ private fun MoreMenuItem(
     subtitle: String,
     onClick: () -> Unit
 ) {
-    Surface(
+    val colors = BouncerDesignSystem.colors
+    val typography = BouncerDesignSystem.typography
+    val dimens = BouncerDesignSystem.dimens
+
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
-        color = Color.White.copy(alpha = 0.05f),
-        shape = RoundedCornerShape(CornerRadius.md),
-        tonalElevation = 0.dp
+            .clickable(onClick = onClick)
+            .padding(horizontal = dimens.xl, vertical = dimens.lg),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(dimens.lg)
     ) {
-        Row(
+        Box(
+            contentAlignment = Alignment.Center,
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(Spacing.cardPadding),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(Spacing.space4)
+                .size(40.dp)
+                .background(
+                    colors.goldPrimary.copy(alpha = 0.12f),
+                    RoundedCornerShape(12.dp)
+                )
         ) {
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                tint = Gold400,
-                modifier = Modifier.size(IconSize.md)
-            )
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Medium,
-                    color = TextPrimary
-                )
-                Text(
-                    text = subtitle,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = TextSecondary
-                )
-            }
-            Icon(
-                imageVector = Icons.Default.ChevronRight,
-                contentDescription = null,
-                tint = TextMuted,
-                modifier = Modifier.size(IconSize.sm)
+                tint = colors.goldPrimary.copy(alpha = 0.6f),
+                modifier = Modifier.size(20.dp)
             )
         }
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(dimens.xxs)
+        ) {
+            Text(
+                text = title,
+                style = typography.headingSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = colors.textPrimary
+            )
+            Text(
+                text = subtitle,
+                style = typography.bodySmall,
+                color = colors.textMuted
+            )
+        }
+        Icon(
+            imageVector = Icons.Default.ChevronRight,
+            contentDescription = null,
+            tint = colors.textMuted,
+            modifier = Modifier.size(20.dp)
+        )
     }
 }

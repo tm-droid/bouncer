@@ -98,16 +98,17 @@ private fun TimelineItem(
     isLast: Boolean,
     pulseOffset: Float
 ) {
+    val colors = BouncerDesignSystem.colors
     val eventColor = when (event.type) {
-        TimelineEvent.EventType.WICKET -> WicketRed
-        TimelineEvent.EventType.SIX -> BoundarySix
-        TimelineEvent.EventType.FOUR -> BoundaryFour
-        TimelineEvent.EventType.FIFTY, TimelineEvent.EventType.HUNDRED -> ShinyGoldDeep
-        TimelineEvent.EventType.HAT_TRICK -> ChartPurple
-        TimelineEvent.EventType.INNINGS_START, TimelineEvent.EventType.INNINGS_END -> LiveBlue
-        TimelineEvent.EventType.MATCH_START, TimelineEvent.EventType.MATCH_END -> SuccessGreen
-        TimelineEvent.EventType.MILESTONE -> ShinyGoldMid
-        TimelineEvent.EventType.OTHER -> TextTertiary
+        TimelineEvent.EventType.WICKET -> colors.statusLive
+        TimelineEvent.EventType.SIX -> colors.statusWarning
+        TimelineEvent.EventType.FOUR -> colors.statusInfo
+        TimelineEvent.EventType.FIFTY, TimelineEvent.EventType.HUNDRED -> colors.goldPrimary
+        TimelineEvent.EventType.HAT_TRICK -> colors.statusInfo
+        TimelineEvent.EventType.INNINGS_START, TimelineEvent.EventType.INNINGS_END -> colors.statusInfo
+        TimelineEvent.EventType.MATCH_START, TimelineEvent.EventType.MATCH_END -> colors.statusSuccess
+        TimelineEvent.EventType.MILESTONE -> colors.goldDark
+        TimelineEvent.EventType.OTHER -> colors.textTertiary
     }
     
     val eventIcon = when (event.type) {
@@ -144,7 +145,7 @@ private fun TimelineItem(
                         .background(
                             Brush.verticalGradient(
                                 colors = listOf(
-                                    CardBorder,
+                                    colors.glassBorder,
                                     eventColor.copy(alpha = 0.5f)
                                 )
                             )
@@ -194,7 +195,7 @@ private fun TimelineItem(
                             Brush.verticalGradient(
                                 colors = listOf(
                                     eventColor.copy(alpha = 0.5f),
-                                    CardBorder
+                                    colors.glassBorder
                                 )
                             )
                         )
@@ -237,14 +238,14 @@ private fun TimelineItem(
                         text = event.timestamp,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Medium,
-                        color = TextMuted
+                        color = colors.textMuted
                     )
                     if (event.over != null) {
                         Text(
                             text = "Over ${event.over}",
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Medium,
-                            color = TextTertiary
+                            color = colors.textTertiary
                         )
                     }
                 }
@@ -256,7 +257,7 @@ private fun TimelineItem(
                 text = event.description,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Normal,
-                color = TextSecondary,
+                color = colors.textSecondary,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
@@ -274,7 +275,7 @@ fun PlayerSpotlightCard(
     imageUrl: String?,
     stats: List<TimelinePlayerStat>,
     modifier: Modifier = Modifier,
-    accentColor: Color = ShinyGoldDeep,
+    accentColor: Color = BouncerDesignSystem.colors.goldPrimary,
     onClick: () -> Unit = {}
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "spotlight")
@@ -297,6 +298,8 @@ fun PlayerSpotlightCard(
         ),
         label = "glow"
     )
+    
+    val colors = BouncerDesignSystem.colors
 
     Surface(
         modifier = modifier
@@ -373,7 +376,7 @@ fun PlayerSpotlightCard(
                             CircleShape
                         )
                         .clip(CircleShape)
-                        .background(CardDarkBlue),
+                        .background(colors.surface1),
                     contentAlignment = Alignment.Center
                 ) {
                     if (!imageUrl.isNullOrEmpty()) {
@@ -469,10 +472,11 @@ fun HeadToHeadCard(
     team1Wins: Int,
     team2Wins: Int,
     draws: Int,
-    team1Color: Color = ShinyGoldDeep,
-    team2Color: Color = ChartBlue,
+    team1Color: Color = BouncerDesignSystem.colors.goldPrimary,
+    team2Color: Color = BouncerDesignSystem.colors.statusInfo,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val totalMatches = team1Wins + team2Wins + draws
     val team1Percentage = if (totalMatches > 0) team1Wins.toFloat() / totalMatches else 0f
     val team2Percentage = if (totalMatches > 0) team2Wins.toFloat() / totalMatches else 0f
@@ -492,7 +496,7 @@ fun HeadToHeadCard(
         modifier = modifier.shadow(
             elevation = 12.dp,
             shape = RoundedCornerShape(20.dp),
-            spotColor = ShinyGoldDeep.copy(alpha = 0.15f)
+            spotColor = colors.goldPrimary.copy(alpha = 0.15f)
         ),
         shape = RoundedCornerShape(20.dp),
         color = Color.White.copy(alpha = 0.05f)
@@ -507,7 +511,7 @@ fun HeadToHeadCard(
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 1.5.sp,
-                color = ShinyGoldDeep
+                color = colors.goldPrimary
             )
             
             // Teams comparison
@@ -535,7 +539,7 @@ fun HeadToHeadCard(
                         text = "Wins",
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Medium,
-                        color = TextMuted
+                        color = colors.textMuted
                     )
                 }
                 
@@ -551,7 +555,7 @@ fun HeadToHeadCard(
                         text = "Matches",
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Medium,
-                        color = TextMuted
+                        color = colors.textMuted
                     )
                     if (draws > 0) {
                         Spacer(modifier = Modifier.height(8.dp))
@@ -559,7 +563,7 @@ fun HeadToHeadCard(
                             text = "$draws Draws",
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Medium,
-                            color = TextTertiary
+                            color = colors.textTertiary
                         )
                     }
                 }
@@ -583,7 +587,7 @@ fun HeadToHeadCard(
                         text = "Wins",
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Medium,
-                        color = TextMuted
+                        color = colors.textMuted
                     )
                 }
             }
@@ -594,7 +598,7 @@ fun HeadToHeadCard(
                     .fillMaxWidth()
                     .height(8.dp)
                     .clip(RoundedCornerShape(4.dp))
-                    .background(CardBorder)
+                    .background(colors.glassBorder)
             ) {
                 Row(modifier = Modifier.fillMaxSize()) {
                     // Team 1 portion
@@ -611,7 +615,7 @@ fun HeadToHeadCard(
                             modifier = Modifier
                                 .weight((draws.toFloat() / totalMatches).coerceAtLeast(0.01f))
                                 .fillMaxHeight()
-                                .background(TextMuted)
+                                .background(colors.textMuted)
                         )
                     }
                     
@@ -635,6 +639,8 @@ private fun TeamLogoCircle(
     color: Color,
     size: Dp
 ) {
+    val colors = BouncerDesignSystem.colors
+    
     Box(
         modifier = Modifier
             .size(size)
@@ -651,7 +657,7 @@ private fun TeamLogoCircle(
             }
             .border(1.5.dp, color.copy(alpha = 0.5f), CircleShape)
             .clip(CircleShape)
-            .background(CardDarkBlue),
+            .background(colors.surface1),
         contentAlignment = Alignment.Center
     ) {
         if (!logo.isNullOrEmpty()) {
@@ -682,8 +688,9 @@ fun RunMeter(
     currentRuns: Int,
     targetRuns: Int,
     modifier: Modifier = Modifier,
-    accentColor: Color = ShinyGoldDeep
+    accentColor: Color = BouncerDesignSystem.colors.goldPrimary
 ) {
+    val colors = BouncerDesignSystem.colors
     val progress = (currentRuns.toFloat() / targetRuns).coerceIn(0f, 1f)
     
     val animatedProgress by animateFloatAsState(
@@ -716,6 +723,9 @@ fun RunMeter(
             color = accentColor
         )
         
+        // Capture color before non-composable Canvas scope
+        val glassBorderColor = colors.glassBorder
+        
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -729,7 +739,7 @@ fun RunMeter(
                 
                 // Background arc
                 drawArc(
-                    color = CardBorder,
+                    color = glassBorderColor,
                     startAngle = 180f,
                     sweepAngle = 180f,
                     useCenter = false,
@@ -788,7 +798,7 @@ fun RunMeter(
                     text = "/ $targetRuns",
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Medium,
-                    color = TextMuted
+                    color = colors.textMuted
                 )
             }
         }
@@ -797,7 +807,7 @@ fun RunMeter(
             text = "Need ${targetRuns - currentRuns} more runs to win",
             fontSize = 13.sp,
             fontWeight = FontWeight.Medium,
-            color = TextSecondary
+            color = colors.textSecondary
         )
     }
 }

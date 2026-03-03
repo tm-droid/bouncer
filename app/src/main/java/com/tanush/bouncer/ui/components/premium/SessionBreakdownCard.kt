@@ -34,6 +34,7 @@ import com.tanush.bouncer.ui.theme.LiveBlue
 import com.tanush.bouncer.ui.theme.ShinyGoldMid
 import com.tanush.bouncer.ui.theme.SuccessGreen
 import com.tanush.bouncer.ui.theme.WicketRed
+import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 
 /**
  * Session Breakdown Card (Test Matches)
@@ -69,6 +70,7 @@ fun SessionBreakdownCard(
     matchFormat: String, // "Test", "ODI", "T20"
     modifier: Modifier = Modifier,
 ) {
+    val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "session")
 
     val currentSessionGlow by infiniteTransition.animateFloat(
@@ -135,7 +137,7 @@ fun SessionBreakdownCard(
                     Column {
                         Text(
                             text = "SESSION BREAKDOWN",
-                            color = ShinyGoldMid,
+                            color = colors.goldDark,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.5.sp,
@@ -152,7 +154,7 @@ fun SessionBreakdownCard(
                 Column(horizontalAlignment = Alignment.End) {
                     Text(
                         text = "$totalRuns/$totalWickets",
-                        color = ShinyGoldMid,
+                        color = colors.goldDark,
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
                     )
@@ -200,6 +202,7 @@ private fun SessionBarsVisualization(
     progress: Float,
     modifier: Modifier = Modifier,
 ) {
+    val colors = BouncerDesignSystem.colors
     val maxRuns = sessions.maxOfOrNull { it.runs } ?: 1
 
     Canvas(modifier = modifier) {
@@ -215,7 +218,7 @@ private fun SessionBarsVisualization(
                 drawRoundRect(
                     brush = Brush.verticalGradient(
                         colors = listOf(
-                            ShinyGoldMid.copy(alpha = 0.3f),
+                            colors.goldDark.copy(alpha = 0.3f),
                             Color.Transparent,
                         ),
                     ),
@@ -227,10 +230,10 @@ private fun SessionBarsVisualization(
 
             // Session bar
             val barColor = when {
-                session.isCurrentSession -> ShinyGoldMid
-                session.runRate > 5.0 -> SuccessGreen
-                session.runRate < 3.0 -> WicketRed
-                else -> ChartBlue
+                session.isCurrentSession -> colors.goldDark
+                session.runRate > 5.0 -> colors.statusSuccess
+                session.runRate < 3.0 -> colors.statusLive
+                else -> colors.statusInfo
             }
 
             drawRoundRect(
@@ -247,7 +250,7 @@ private fun SessionBarsVisualization(
                 repeat(session.wickets.coerceAtMost(5)) { i ->
                     val wicketY = size.height - barHeight + (barHeight / 5 * (i + 0.5f))
                     drawCircle(
-                        color = WicketRed,
+                        color = colors.statusLive,
                         radius = 4f,
                         center = Offset(x + barWidth / 2, wicketY),
                     )
@@ -264,6 +267,7 @@ private fun SessionRow(
     currentGlow: Float,
     index: Int,
 ) {
+    val colors = BouncerDesignSystem.colors
     val delayedProgress = ((progress - index * 0.1f) / 0.9f).coerceIn(0f, 1f)
 
     Row(
@@ -278,7 +282,7 @@ private fun SessionRow(
                 if (session.isCurrentSession) {
                     Brush.horizontalGradient(
                         colors = listOf(
-                            ShinyGoldMid.copy(alpha = 0.15f * currentGlow),
+                            colors.goldDark.copy(alpha = 0.15f * currentGlow),
                             Color.Transparent,
                         ),
                     )
@@ -300,7 +304,7 @@ private fun SessionRow(
                 .size(36.dp)
                 .clip(CircleShape)
                 .background(
-                    if (session.isCurrentSession) ShinyGoldMid else Color.White.copy(alpha = 0.1f),
+                    if (session.isCurrentSession) colors.goldDark else Color.White.copy(alpha = 0.1f),
                 ),
             contentAlignment = Alignment.Center,
         ) {
@@ -319,7 +323,7 @@ private fun SessionRow(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = session.sessionName,
-                    color = if (session.isCurrentSession) ShinyGoldMid else Color.White,
+                    color = if (session.isCurrentSession) colors.goldDark else Color.White,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
                 )
@@ -330,7 +334,7 @@ private fun SessionRow(
                         modifier = Modifier
                             .size(6.dp)
                             .clip(CircleShape)
-                            .background(LiveBlue),
+                            .background(colors.statusInfo),
                     )
                 }
             }
@@ -346,7 +350,7 @@ private fun SessionRow(
         Column(horizontalAlignment = Alignment.End) {
             Text(
                 text = "${session.runs}/${session.wickets}",
-                color = if (session.isCurrentSession) ShinyGoldMid else Color.White,
+                color = if (session.isCurrentSession) colors.goldDark else Color.White,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
             )
@@ -361,9 +365,9 @@ private fun SessionRow(
                 Text(
                     text = "RR: ${String.format("%.2f", session.runRate)}",
                     color = when {
-                        session.runRate > 5.0 -> SuccessGreen
-                        session.runRate < 3.0 -> WicketRed
-                        else -> ChartBlue
+                        session.runRate > 5.0 -> colors.statusSuccess
+                        session.runRate < 3.0 -> colors.statusLive
+                        else -> colors.statusInfo
                     },
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Medium,

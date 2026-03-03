@@ -14,38 +14,65 @@ import com.tanush.bouncer.models.BowlerStats
 import com.tanush.bouncer.models.FallOfWicket
 import com.tanush.bouncer.models.PartnershipStats
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import org.jsoup.Jsoup
 import com.tanush.bouncer.managers.TeamLogoManager
 import com.tanush.bouncer.managers.TeamAcronymManager
+import java.net.SocketTimeoutException
+import java.net.UnknownHostException
 
 class CricBuzzScraper {
 
     companion object {
         private const val TAG = "CricBuzzScraper"
         private const val USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        private const val MAX_RETRIES = 3
+        private const val INITIAL_BACKOFF_MS = 1000L
     }
 
     /**
      * Fetches live matches using Next.js data stream parsing.
+     * Includes retry with exponential backoff for transient failures.
      */
     suspend fun fetchLiveMatches(url: String, matchState: String): List<CricketMatch> = withContext(Dispatchers.IO) {
-        try {
-            val doc = Jsoup.connect(url)
-                .userAgent(USER_AGENT)
-                .timeout(10000)
-                .get()
-            
-            val html = doc.html()
-            val matches = parseNextJsData(html)
-            
-            val filteredMatches = filterMatches(matches, matchState)
-            Log.d(TAG, "Found ${matches.size} total matches, filtered down to ${filteredMatches.size} for state: $matchState")
-            filteredMatches
-        } catch (e: Exception) {
-            Log.e(TAG, "Error fetching matches from $url", e)
-            emptyList()
+        var lastException: Exception? = null
+        var backoff = INITIAL_BACKOFF_MS
+
+        for (attempt in 1..MAX_RETRIES) {
+            try {
+                val doc = Jsoup.connect(url)
+                    .userAgent(USER_AGENT)
+                    .timeout(10000)
+                    .get()
+
+                val html = doc.html()
+                val matches = parseNextJsData(html)
+
+                val filteredMatches = filterMatches(matches, matchState)
+                Log.d(TAG, "Found ${matches.size} total matches, filtered down to ${filteredMatches.size} for state: $matchState")
+                return@withContext filteredMatches
+            } catch (e: SocketTimeoutException) {
+                lastException = e
+                Log.w(TAG, "Timeout fetching $url (attempt $attempt/$MAX_RETRIES)", e)
+            } catch (e: UnknownHostException) {
+                // No internet — retry won't help, fail fast
+                Log.e(TAG, "No internet connection fetching $url", e)
+                return@withContext emptyList()
+            } catch (e: Exception) {
+                lastException = e
+                Log.e(TAG, "Error fetching matches from $url (attempt $attempt/$MAX_RETRIES)", e)
+            }
+
+            if (attempt < MAX_RETRIES) {
+                Log.d(TAG, "Retrying in ${backoff}ms...")
+                delay(backoff)
+                backoff *= 2 // exponential backoff
+            }
         }
+
+        Log.e(TAG, "All $MAX_RETRIES attempts failed for $url", lastException)
+        emptyList()
     }
 
     private fun filterMatches(matches: List<CricketMatch>, state: String): List<CricketMatch> {
@@ -164,14 +191,30 @@ class CricBuzzScraper {
             if (obj.has("matchScore")) {
                 val scoreObj = obj.getAsJsonObject("matchScore")
                 if (scoreObj.has("team1Score")) {
-                    val s1 = scoreObj.getAsJsonObject("team1Score").getAsJsonObject("inngs1")
-                    team1Score = "${s1.get("runs")?.asString ?: ""}/${s1.get("wickets")?.asString ?: "0"}"
-                    team1Overs = s1.get("overs")?.asString ?: ""
+                    val t1Score = scoreObj.getAsJsonObject("team1Score")
+                    // Prefer latest innings (inngs2 if it exists, otherwise inngs1)
+                    val s1 = when {
+                        t1Score.has("inngs2") -> t1Score.getAsJsonObject("inngs2")
+                        t1Score.has("inngs1") -> t1Score.getAsJsonObject("inngs1")
+                        else -> null
+                    }
+                    if (s1 != null) {
+                        team1Score = "${s1.get("runs")?.asString ?: ""}/${s1.get("wickets")?.asString ?: "0"}"
+                        team1Overs = s1.get("overs")?.asString ?: ""
+                    }
                 }
                 if (scoreObj.has("team2Score")) {
-                    val s2 = scoreObj.getAsJsonObject("team2Score").getAsJsonObject("inngs1")
-                    team2Score = "${s2.get("runs")?.asString ?: ""}/${s2.get("wickets")?.asString ?: "0"}"
-                    team2Overs = s2.get("overs")?.asString ?: ""
+                    val t2Score = scoreObj.getAsJsonObject("team2Score")
+                    // Prefer latest innings (inngs2 if it exists, otherwise inngs1)
+                    val s2 = when {
+                        t2Score.has("inngs2") -> t2Score.getAsJsonObject("inngs2")
+                        t2Score.has("inngs1") -> t2Score.getAsJsonObject("inngs1")
+                        else -> null
+                    }
+                    if (s2 != null) {
+                        team2Score = "${s2.get("runs")?.asString ?: ""}/${s2.get("wickets")?.asString ?: "0"}"
+                        team2Overs = s2.get("overs")?.asString ?: ""
+                    }
                 }
                 // Determine batting team
                 val battingId = scoreObj.get("battingTeamId")?.asString
@@ -237,14 +280,25 @@ class CricBuzzScraper {
         val batsmen: List<ScrapedBatsman>,
         val bowler: ScrapedBowler?,
         val recentBallsSummary: String?,
-        val score: String? = null
+        val score: String? = null,
+        val team1Score: String? = null,
+        val team2Score: String? = null,
+        val team1Overs: String? = null,
+        val team2Overs: String? = null,
+        val currentRunRate: String? = null,
+        val requiredRunRate: String? = null
     )
 
     /**
      * Accuracy-focused fetch for Live Scorecard details.
+     * Includes retry with exponential backoff for transient failures.
      */
     suspend fun fetchBallByBallAndBatsmen(matchId: String): MatchDetails = withContext(Dispatchers.IO) {
-        val url = "https://www.cricbuzz.com/live-cricket-scores/$matchId"
+        val url = CricBuzzUrls.liveScoresUrl(matchId)
+        var lastException: Exception? = null
+        var backoff = INITIAL_BACKOFF_MS
+
+        for (attempt in 1..MAX_RETRIES) {
         try {
             val doc = Jsoup.connect(url).userAgent(USER_AGENT).timeout(10000).get()
             
@@ -257,15 +311,19 @@ class CricBuzzScraper {
                     val stats = row.select("div.cb-col-10, div.cb-col-14")
                     if (stats.size >= 4) {
                         val isStriker = nameLink.parent()?.text()?.contains("*") == true || row.text().contains("*")
-                        batsmen.add(ScrapedBatsman(
-                            name = name.replace("*", "").trim(),
-                            runs = stats[0].text(),
-                            balls = stats[1].text(),
-                            fours = stats[2].text(),
-                            sixes = stats[3].text(),
-                            strikeRate = stats.lastOrNull()?.text() ?: "-",
-                            isStriker = isStriker
-                        ))
+                        try {
+                            batsmen.add(ScrapedBatsman(
+                                name = name.replace("*", "").trim(),
+                                runs = stats.getOrNull(0)?.text() ?: "0",
+                                balls = stats.getOrNull(1)?.text() ?: "0",
+                                fours = stats.getOrNull(2)?.text() ?: "0",
+                                sixes = stats.getOrNull(3)?.text() ?: "0",
+                                strikeRate = stats.getOrNull(stats.size - 1)?.text() ?: "-",
+                                isStriker = isStriker
+                            ))
+                        } catch (e: Exception) {
+                            Log.w(TAG, "Error parsing batsman stats for $name: ${e.message}")
+                        }
                     }
                 }
             }
@@ -278,7 +336,18 @@ class CricBuzzScraper {
                     val name = current.select("div.cb-col-50 a").text()
                     val stats = current.select("div.cb-col-10")
                     if (stats.size >= 4) {
-                        bowler = ScrapedBowler(name, stats[0].text(), stats[1].text(), stats[2].text(), stats[3].text(), stats.lastOrNull()?.text() ?: "-")
+                        try {
+                            bowler = ScrapedBowler(
+                                name,
+                                stats.getOrNull(0)?.text() ?: "0",
+                                stats.getOrNull(1)?.text() ?: "0",
+                                stats.getOrNull(2)?.text() ?: "0",
+                                stats.getOrNull(3)?.text() ?: "0",
+                                stats.getOrNull(stats.size - 1)?.text() ?: "-"
+                            )
+                        } catch (e: Exception) {
+                            Log.w(TAG, "Error parsing bowler stats for $name: ${e.message}")
+                        }
                         break
                     }
                     current = current.nextElementSibling()
@@ -295,11 +364,52 @@ class CricBuzzScraper {
             val score = doc.select("span.cb-font-20.text-bold").first()?.text() ?: 
                         doc.select("div.cb-min-bat-rw span").first()?.text()
 
-            MatchDetails(recentBalls, overNumbers, batsmen, bowler, null, score)
+            // Extract both teams' scores from the mini-scorecard
+            val miniScoreRows = doc.select("div.cb-min-bat-rw")
+            var team1Score: String? = null
+            var team2Score: String? = null
+            var team1Overs: String? = null
+            var team2Overs: String? = null
+            miniScoreRows.forEachIndexed { index, row ->
+                val scoreText = row.select("span.cb-font-20").text().trim()
+                val oversText = row.select("span.cb-text-gray, span.cb-font-12").text()
+                    .replace("(", "").replace(")", "").replace("Ov", "").trim()
+                when (index) {
+                    0 -> { team1Score = scoreText.ifBlank { null }; team1Overs = oversText.ifBlank { null } }
+                    1 -> { team2Score = scoreText.ifBlank { null }; team2Overs = oversText.ifBlank { null } }
+                }
+            }
+
+            // Extract run rates from the status/info text
+            val statusText = doc.select("div.cb-text-complete, div.cb-text-live, div.cb-text-inprogress, div.cb-min-inf").text()
+            val crrMatch = Regex("CRR\\s*:?\\s*([\\d.]+)").find(statusText)
+            val rrrMatch = Regex("RRR\\s*:?\\s*([\\d.]+)").find(statusText)
+            val currentRunRate = crrMatch?.groupValues?.get(1)
+            val requiredRunRate = rrrMatch?.groupValues?.get(1)
+
+            return@withContext MatchDetails(recentBalls, overNumbers, batsmen, bowler, null, score,
+                team1Score = team1Score, team2Score = team2Score,
+                team1Overs = team1Overs, team2Overs = team2Overs,
+                currentRunRate = currentRunRate, requiredRunRate = requiredRunRate)
+        } catch (e: SocketTimeoutException) {
+            lastException = e
+            Log.w(TAG, "Timeout fetching match details for $matchId (attempt $attempt/$MAX_RETRIES)")
+        } catch (e: UnknownHostException) {
+            Log.e(TAG, "No internet fetching match details for $matchId", e)
+            return@withContext MatchDetails(emptyList(), emptyList(), emptyList(), null, null, null)
         } catch (e: Exception) {
-            Log.e(TAG, "Error fetching match details for $matchId", e)
-            MatchDetails(emptyList(), emptyList(), emptyList(), null, null, null)
+            lastException = e
+            Log.e(TAG, "Error fetching match details for $matchId (attempt $attempt/$MAX_RETRIES)", e)
         }
+
+            if (attempt < MAX_RETRIES) {
+                delay(backoff)
+                backoff *= 2
+            }
+        } // end retry loop
+
+        Log.e(TAG, "All $MAX_RETRIES attempts failed for match details $matchId", lastException)
+        MatchDetails(emptyList(), emptyList(), emptyList(), null, null, null)
     }
 
     /**
@@ -333,7 +443,7 @@ class CricBuzzScraper {
     }
 
     suspend fun fetchScorecard(matchId: String): Scorecard = withContext(Dispatchers.IO) {
-        val url = "https://www.cricbuzz.com/live-cricket-scorecard/$matchId"
+        val url = CricBuzzUrls.scorecardUrl(matchId)
         try {
             val doc = Jsoup.connect(url).userAgent(USER_AGENT).timeout(15000).get()
             val inningsList = mutableListOf<Innings>()
@@ -353,7 +463,19 @@ class CricBuzzScraper {
                     if (name.isNotEmpty() && !name.contains("Batter")) {
                         val stats = row.children()
                         if (stats.size >= 6) {
-                            batsmen.add(BatsmanStats(name, row.select("div.text-cbTxtSec").text(), stats[1].text(), stats[2].text(), stats[3].text(), stats[4].text(), stats[5].text()))
+                            try {
+                                batsmen.add(BatsmanStats(
+                                    name,
+                                    row.select("div.text-cbTxtSec").text(),
+                                    stats.getOrNull(1)?.text() ?: "0",
+                                    stats.getOrNull(2)?.text() ?: "0",
+                                    stats.getOrNull(3)?.text() ?: "0",
+                                    stats.getOrNull(4)?.text() ?: "0",
+                                    stats.getOrNull(5)?.text() ?: "0"
+                                ))
+                            } catch (e: Exception) {
+                                Log.w(TAG, "Error parsing scorecard batsman: $name", e)
+                            }
                         }
                     }
                 }
@@ -364,7 +486,20 @@ class CricBuzzScraper {
                     if (name.isNotEmpty() && !name.contains("Bowler")) {
                         val stats = row.children()
                         if (stats.size >= 5) {
-                            bowlers.add(BowlerStats(name, stats[1].text(), stats[2].text(), stats[3].text(), stats[4].text(), "0", "0", stats.last()?.text() ?: ""))
+                            try {
+                                bowlers.add(BowlerStats(
+                                    name,
+                                    stats.getOrNull(1)?.text() ?: "0",
+                                    stats.getOrNull(2)?.text() ?: "0",
+                                    stats.getOrNull(3)?.text() ?: "0",
+                                    stats.getOrNull(4)?.text() ?: "0",
+                                    "0",
+                                    "0",
+                                    stats.lastOrNull()?.text() ?: ""
+                                ))
+                            } catch (e: Exception) {
+                                Log.w(TAG, "Error parsing scorecard bowler: $name", e)
+                            }
                         }
                     }
                 }

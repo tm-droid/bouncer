@@ -20,8 +20,8 @@ import kotlin.random.Random
 fun FloatingParticleSystem(
     modifier: Modifier = Modifier,
     particleCount: Int = 25,
-    baseColor: Color = ShinyGoldDeep,
-    secondaryColor: Color = ChartPurple,
+    baseColor: Color = BouncerDesignSystem.colors.goldPrimary,
+    secondaryColor: Color = BouncerDesignSystem.colors.statusInfo,
     speed: Float = 1f
 ) {
     val particles = remember {
@@ -99,7 +99,7 @@ private data class FloatingParticle(
 fun ShootingStarsEffect(
     modifier: Modifier = Modifier,
     starCount: Int = 3,
-    color: Color = ShinyGoldLight
+    color: Color = BouncerDesignSystem.colors.goldLight
 ) {
     val stars = remember {
         List(starCount) {
@@ -207,7 +207,7 @@ private fun AnimatedShootingStar(
 @Composable
 fun AmbientWaveBackground(
     modifier: Modifier = Modifier,
-    waveColor: Color = ShinyGoldDeep,
+    waveColor: Color = BouncerDesignSystem.colors.goldPrimary,
     waveCount: Int = 3,
     intensity: Float = 0.08f
 ) {
@@ -266,9 +266,9 @@ fun AmbientWaveBackground(
 fun AmbientOrbsBackground(
     modifier: Modifier = Modifier,
     orbCount: Int = 4,
-    primaryColor: Color = ShinyGoldDeep,
-    secondaryColor: Color = ChartPurple,
-    tertiaryColor: Color = LiveBlue
+    primaryColor: Color = BouncerDesignSystem.colors.goldPrimary,
+    secondaryColor: Color = BouncerDesignSystem.colors.statusInfo,
+    tertiaryColor: Color = BouncerDesignSystem.colors.statusInfo
 ) {
     val orbs = remember {
         List(orbCount) {
@@ -341,7 +341,7 @@ private data class AmbientOrb(
 @Composable
 fun CricketSeamPattern(
     modifier: Modifier = Modifier,
-    color: Color = ShinyGoldDeep.copy(alpha = 0.05f),
+    color: Color = BouncerDesignSystem.colors.goldPrimary.copy(alpha = 0.05f),
     seamCount: Int = 8
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "seam")
@@ -399,13 +399,14 @@ fun PremiumAnimatedBackground(
     showParticles: Boolean = true,
     showOrbs: Boolean = true,
     showSeam: Boolean = false,
-    particleColor: Color = ShinyGoldDeep,
+    particleColor: Color = BouncerDesignSystem.colors.goldPrimary,
     orbIntensity: Float = 0.5f
 ) {
+    val colors = BouncerDesignSystem.colors
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(BlackBackground)
+            .background(colors.backgroundBase)
     ) {
         // Base gradient
         Box(
@@ -414,9 +415,9 @@ fun PremiumAnimatedBackground(
                 .background(
                     Brush.verticalGradient(
                         colors = listOf(
-                            BlackBackground,
-                            CardDarkBlue.copy(alpha = 0.3f),
-                            BlackBackground
+                            colors.backgroundBase,
+                            colors.surface1.copy(alpha = 0.3f),
+                            colors.backgroundBase
                         )
                     )
                 )
@@ -426,8 +427,8 @@ fun PremiumAnimatedBackground(
         if (showOrbs) {
             AmbientOrbsBackground(
                 primaryColor = particleColor.copy(alpha = 0.08f * orbIntensity),
-                secondaryColor = ChartPurple.copy(alpha = 0.05f * orbIntensity),
-                tertiaryColor = LiveBlue.copy(alpha = 0.04f * orbIntensity)
+                secondaryColor = colors.statusInfo.copy(alpha = 0.05f * orbIntensity),
+                tertiaryColor = colors.statusInfo.copy(alpha = 0.04f * orbIntensity)
             )
         }
         
@@ -436,7 +437,7 @@ fun PremiumAnimatedBackground(
             FloatingParticleSystem(
                 particleCount = 15,
                 baseColor = particleColor.copy(alpha = 0.4f),
-                secondaryColor = ChartPurple.copy(alpha = 0.3f)
+                secondaryColor = colors.statusInfo.copy(alpha = 0.3f)
             )
         }
         

@@ -43,6 +43,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.ui.theme.*
 import kotlin.math.*
+import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 
 /**
  * Scoring zones visualization - shows where batsman is scoring runs
@@ -76,6 +77,7 @@ fun ScoringZonesCard(
     totalRuns: Int,
     modifier: Modifier = Modifier,
 ) {
+    val colors = BouncerDesignSystem.colors
     val animatedProgress = remember { Animatable(0f) }
 
     LaunchedEffect(zones) {
@@ -123,7 +125,7 @@ fun ScoringZonesCard(
                             .clip(CircleShape)
                             .background(
                                 Brush.linearGradient(
-                                    colors = listOf(ShinyGoldMid, ShinyGoldDeep),
+                                    colors = listOf(colors.goldDark, colors.goldPrimary),
                                 ),
                             ),
                         contentAlignment = Alignment.Center,
@@ -141,7 +143,7 @@ fun ScoringZonesCard(
                     Column {
                         Text(
                             text = "SCORING ZONES",
-                            color = ShinyGoldLight,
+                            color = colors.goldLight,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.5.sp,
@@ -159,7 +161,7 @@ fun ScoringZonesCard(
                 Column(horizontalAlignment = Alignment.End) {
                     Text(
                         text = "$totalRuns",
-                        color = ShinyGoldMid,
+                        color = colors.goldDark,
                         fontSize = 28.sp,
                         fontWeight = FontWeight.Bold,
                     )
@@ -332,7 +334,7 @@ fun ScoringZonesCard(
                         .background(
                             Brush.horizontalGradient(
                                 colors = listOf(
-                                    ShinyGoldDeep.copy(alpha = 0.3f),
+                                    colors.goldPrimary.copy(alpha = 0.3f),
                                     Color.Transparent,
                                 ),
                             ),
@@ -344,7 +346,7 @@ fun ScoringZonesCard(
                     Column {
                         Text(
                             text = "STRONGEST ZONE",
-                            color = ShinyGoldLight,
+                            color = colors.goldLight,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.sp,
@@ -361,7 +363,7 @@ fun ScoringZonesCard(
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
                                 text = "${zone.runs}",
-                                color = ShinyGoldMid,
+                                color = colors.goldDark,
                                 fontSize = 18.sp,
                                 fontWeight = FontWeight.Bold,
                             )
@@ -374,7 +376,7 @@ fun ScoringZonesCard(
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
                                 text = "${strikeRate.toInt()}",
-                                color = SuccessGreen,
+                                color = colors.statusSuccess,
                                 fontSize = 18.sp,
                                 fontWeight = FontWeight.Bold,
                             )
@@ -393,6 +395,7 @@ fun ScoringZonesCard(
 
 @Composable
 fun ScoringZonesCardPreview() {
+    val colors = BouncerDesignSystem.colors
     val zones = listOf(
         ScoringZone("Third Man", 28, 12, 4, 0f, 45f),
         ScoringZone("Point", 35, 18, 5, 45f, 45f),

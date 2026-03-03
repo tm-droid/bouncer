@@ -28,6 +28,7 @@ import com.tanush.bouncer.models.BallPrediction
  */
 @Composable
 fun PredictiveBallCard(prediction: BallPrediction) {
+    val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "pulse")
     val pulseScale by infiniteTransition.animateFloat(
         initialValue = 1f,
@@ -37,6 +38,10 @@ fun PredictiveBallCard(prediction: BallPrediction) {
     )
 
     val isCritical = prediction.probability > 0.8f
+    
+    // Capture colors for Canvas scope
+    val goldPrimaryColor = colors.goldPrimary
+    val goldDarkColor = colors.goldDark
 
     Box(
         modifier = Modifier
@@ -44,14 +49,14 @@ fun PredictiveBallCard(prediction: BallPrediction) {
             .clip(RoundedCornerShape(20.dp))
             .background(
                 if (isCritical) {
-                    Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.05f), ShinyGoldDeep.copy(alpha = 0.15f)))
+                    Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.05f), colors.goldPrimary.copy(alpha = 0.15f)))
                 } else {
                     Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.05f), Color.Transparent))
                 }
             )
             .border(
                 1.dp, 
-                if (isCritical) ShinyGoldDeep.copy(alpha = 0.4f) else GlassBorderLight, 
+                if (isCritical) colors.goldPrimary.copy(alpha = 0.4f) else GlassBorderLight, 
                 RoundedCornerShape(20.dp)
             )
             .padding(16.dp)
@@ -63,12 +68,12 @@ fun PredictiveBallCard(prediction: BallPrediction) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text(
                     "BALL ${prediction.ballIndex}", 
-                    color = if (isCritical) ShinyGoldDeep else TextSecondary, 
+                    color = if (isCritical) colors.goldPrimary else colors.textSecondary, 
                     fontSize = 10.sp, 
                     fontWeight = FontWeight.Bold
                 )
                 if (isCritical) {
-                    Box(modifier = Modifier.size(6.dp).background(ShinyGoldDeep, CircleShape))
+                    Box(modifier = Modifier.size(6.dp).background(colors.goldPrimary, CircleShape))
                 }
             }
 
@@ -79,7 +84,7 @@ fun PredictiveBallCard(prediction: BallPrediction) {
                         modifier = Modifier
                             .size(80.dp)
                             .graphicsLayer { scaleX = pulseScale; scaleY = pulseScale }
-                            .border(1.dp, ShinyGoldDeep.copy(alpha = 0.2f), CircleShape)
+                            .border(1.dp, colors.goldPrimary.copy(alpha = 0.2f), CircleShape)
                     )
                 }
 
@@ -89,7 +94,7 @@ fun PredictiveBallCard(prediction: BallPrediction) {
                         style = Stroke(width = 6.dp.toPx())
                     )
                     drawArc(
-                        brush = Brush.sweepGradient(listOf(ShinyGoldDeep, ShinyGoldMid, ShinyGoldDeep)),
+                        brush = Brush.sweepGradient(listOf(goldPrimaryColor, goldDarkColor, goldPrimaryColor)),
                         startAngle = -90f,
                         sweepAngle = prediction.probability * 360f,
                         useCenter = false,
@@ -100,7 +105,7 @@ fun PredictiveBallCard(prediction: BallPrediction) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
                         "${(prediction.probability * 100).toInt()}%", 
-                        color = if (isCritical) ShinyGoldDeep else Color.White, 
+                        color = if (isCritical) colors.goldPrimary else Color.White, 
                         fontSize = 18.sp, 
                         fontWeight = FontWeight.Black
                     )
@@ -109,7 +114,7 @@ fun PredictiveBallCard(prediction: BallPrediction) {
 
             Surface(
                 modifier = Modifier.fillMaxWidth(),
-                color = if (isCritical) ShinyGoldDeep else Color.White.copy(alpha = 0.05f),
+                color = if (isCritical) colors.goldPrimary else Color.White.copy(alpha = 0.05f),
                 shape = RoundedCornerShape(8.dp)
             ) {
                 Text(

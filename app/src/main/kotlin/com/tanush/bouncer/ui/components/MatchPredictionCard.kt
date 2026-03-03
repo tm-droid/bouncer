@@ -60,6 +60,7 @@ fun MatchPredictionCard(
     predictionInfo: MatchPredictionInfo,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "prediction_animation")
     
     val pulseScale by infiniteTransition.animateFloat(
@@ -111,7 +112,7 @@ fun MatchPredictionCard(
     Card(
         modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = Color(0xFF0D1117)
+            containerColor = colors.backgroundBase
         ),
         shape = RoundedCornerShape(24.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 12.dp)
@@ -125,9 +126,9 @@ fun MatchPredictionCard(
                     brush = Brush.horizontalGradient(
                         colors = listOf(
                             Color.Transparent,
-                            ChartBlue.copy(alpha = 0.3f),
-                            ChartBlue.copy(alpha = 0.5f),
-                            ChartBlue.copy(alpha = 0.3f),
+                            colors.statusInfo.copy(alpha = 0.3f),
+                            colors.statusInfo.copy(alpha = 0.5f),
+                            colors.statusInfo.copy(alpha = 0.3f),
                             Color.Transparent
                         )
                     ),
@@ -152,21 +153,21 @@ fun MatchPredictionCard(
                         Icon(
                             imageVector = Icons.Filled.Psychology,
                             contentDescription = null,
-                            tint = ChartBlue.copy(alpha = glowAlpha),
+                            tint = colors.statusInfo.copy(alpha = glowAlpha),
                             modifier = Modifier.size(28.dp)
                         )
                         Spacer(modifier = Modifier.width(10.dp))
                         Column {
                             Text(
                                 text = "AI PREDICTION",
-                                color = ChartBlue,
+                                color = colors.statusInfo,
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Bold,
                                 letterSpacing = 2.sp
                             )
                             Text(
                                 text = "Updated: ${predictionInfo.lastUpdated}",
-                                color = Color.White.copy(alpha = 0.5f),
+                                color = colors.textTertiary,
                                 fontSize = 10.sp
                             )
                         }
@@ -174,7 +175,7 @@ fun MatchPredictionCard(
                     
                     // Confidence badge
                     Surface(
-                        color = ChartBlue.copy(alpha = 0.2f),
+                        color = colors.statusInfo.copy(alpha = 0.2f),
                         shape = RoundedCornerShape(12.dp)
                     ) {
                         Row(
@@ -184,13 +185,13 @@ fun MatchPredictionCard(
                             Icon(
                                 imageVector = Icons.Filled.Analytics,
                                 contentDescription = null,
-                                tint = ChartBlue,
+                                tint = colors.statusInfo,
                                 modifier = Modifier.size(14.dp)
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
                                 text = "${(predictionInfo.confidenceLevel * 100).toInt()}%",
-                                color = ChartBlue,
+                                color = colors.statusInfo,
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold
                             )
@@ -202,7 +203,7 @@ fun MatchPredictionCard(
                 
                 // Predicted winner highlight
                 Surface(
-                    color = ShinyGoldMid.copy(alpha = 0.1f),
+                    color = colors.goldPrimary.copy(alpha = 0.1f),
                     shape = RoundedCornerShape(16.dp),
                     modifier = Modifier
                         .fillMaxWidth()
@@ -214,20 +215,20 @@ fun MatchPredictionCard(
                     ) {
                         Text(
                             text = "PREDICTED WINNER",
-                            color = Color.White.copy(alpha = 0.6f),
+                            color = colors.textSecondary,
                             fontSize = 10.sp,
                             letterSpacing = 2.sp
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
                             text = winningTeam,
-                            color = ShinyGoldMid,
+                            color = colors.goldPrimary,
                             fontSize = 24.sp,
                             fontWeight = FontWeight.Bold
                         )
                         Text(
                             text = "${winningProb.toInt()}% probability",
-                            color = ShinyGoldMid.copy(alpha = 0.7f),
+                            color = colors.goldPrimary.copy(alpha = 0.7f),
                             fontSize = 14.sp
                         )
                     }
@@ -259,7 +260,7 @@ fun MatchPredictionCard(
                         val team1Sweep = 180f * team1Progress
                         drawArc(
                             brush = Brush.sweepGradient(
-                                colors = listOf(ChartBlue.copy(alpha = 0.5f), ChartBlue),
+                                colors = listOf(colors.statusInfo.copy(alpha = 0.5f), colors.statusInfo),
                                 center = center
                             ),
                             startAngle = 180f,
@@ -274,7 +275,7 @@ fun MatchPredictionCard(
                         val team2Sweep = 180f * team2Progress
                         drawArc(
                             brush = Brush.sweepGradient(
-                                colors = listOf(ShinyGoldMid.copy(alpha = 0.5f), ShinyGoldMid),
+                                colors = listOf(colors.goldPrimary.copy(alpha = 0.5f), colors.goldPrimary),
                                 center = center
                             ),
                             startAngle = 0f,
@@ -290,7 +291,7 @@ fun MatchPredictionCard(
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
                             text = "VS",
-                            color = Color.White.copy(alpha = 0.5f),
+                            color = colors.textTertiary,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -311,13 +312,13 @@ fun MatchPredictionCard(
                     ) {
                         Text(
                             text = predictionInfo.team1Name,
-                            color = Color.White,
+                            color = colors.textPrimary,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Medium
                         )
                         Text(
                             text = "${predictionInfo.team1WinProbability.toInt()}%",
-                            color = ChartBlue,
+                            color = colors.statusInfo,
                             fontSize = 28.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -330,12 +331,12 @@ fun MatchPredictionCard(
                         ) {
                             Text(
                                 text = "TIE/DRAW",
-                                color = Color.White.copy(alpha = 0.5f),
+                                color = colors.textTertiary,
                                 fontSize = 10.sp
                             )
                             Text(
                                 text = "${predictionInfo.tieDrawProbability.toInt()}%",
-                                color = Color.White.copy(alpha = 0.7f),
+                                color = colors.textSecondary,
                                 fontSize = 18.sp,
                                 fontWeight = FontWeight.Bold
                             )
@@ -349,13 +350,13 @@ fun MatchPredictionCard(
                     ) {
                         Text(
                             text = predictionInfo.team2Name,
-                            color = Color.White,
+                            color = colors.textPrimary,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Medium
                         )
                         Text(
                             text = "${predictionInfo.team2WinProbability.toInt()}%",
-                            color = ShinyGoldMid,
+                            color = colors.goldPrimary,
                             fontSize = 28.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -379,7 +380,7 @@ fun MatchPredictionCard(
                                 .weight(team1Progress)
                                 .background(
                                     Brush.horizontalGradient(
-                                        colors = listOf(ChartBlue.copy(alpha = 0.7f), ChartBlue)
+                                        colors = listOf(colors.statusInfo.copy(alpha = 0.7f), colors.statusInfo)
                                     )
                                 )
                         )
@@ -399,7 +400,7 @@ fun MatchPredictionCard(
                                 .weight(team2Progress)
                                 .background(
                                     Brush.horizontalGradient(
-                                        colors = listOf(ShinyGoldMid, ShinyGoldMid.copy(alpha = 0.7f))
+                                        colors = listOf(colors.goldPrimary, colors.goldPrimary.copy(alpha = 0.7f))
                                     )
                                 )
                         )
@@ -409,12 +410,12 @@ fun MatchPredictionCard(
                 // Prediction factors
                 if (predictionInfo.predictionFactors.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(20.dp))
-                    Divider(color = Color.White.copy(alpha = 0.1f))
+                    HorizontalDivider(color = Color.White.copy(alpha = 0.1f))
                     Spacer(modifier = Modifier.height(16.dp))
                     
                     Text(
                         text = "KEY FACTORS",
-                        color = Color.White.copy(alpha = 0.5f),
+                        color = colors.textTertiary,
                         fontSize = 10.sp,
                         letterSpacing = 1.sp
                     )
@@ -440,9 +441,9 @@ fun MatchPredictionCard(
                         PredictionTrend.STABLE -> ""
                     }
                     val trendColor = when (predictionInfo.predictionTrend) {
-                        PredictionTrend.TEAM1_RISING -> ChartBlue
-                        PredictionTrend.TEAM2_RISING -> ShinyGoldMid
-                        PredictionTrend.STABLE -> Color.White
+                        PredictionTrend.TEAM1_RISING -> colors.statusInfo
+                        PredictionTrend.TEAM2_RISING -> colors.goldPrimary
+                        PredictionTrend.STABLE -> colors.textPrimary
                     }
                     
                     Surface(
@@ -470,8 +471,9 @@ private fun PredictionFactorRow(
     team1Name: String,
     team2Name: String
 ) {
+    val colors = BouncerDesignSystem.colors
     val favoringTeam = if (factor.impact > 0) team1Name else team2Name
-    val impactColor = if (factor.impact > 0) ChartBlue else ShinyGoldMid
+    val impactColor = if (factor.impact > 0) colors.statusInfo else colors.goldPrimary
     val impactStrength = abs(factor.impact)
     
     Row(
@@ -480,7 +482,7 @@ private fun PredictionFactorRow(
     ) {
         Text(
             text = factor.name,
-            color = Color.White,
+            color = colors.textPrimary,
             fontSize = 13.sp,
             modifier = Modifier.weight(1f)
         )
@@ -498,7 +500,7 @@ private fun PredictionFactorRow(
                     modifier = Modifier
                         .fillMaxHeight()
                         .weight(impactStrength)
-                        .background(ShinyGoldMid)
+                        .background(colors.goldPrimary)
                 )
                 Spacer(modifier = Modifier.weight(1f - impactStrength))
             } else {
@@ -507,7 +509,7 @@ private fun PredictionFactorRow(
                     modifier = Modifier
                         .fillMaxHeight()
                         .weight(impactStrength)
-                        .background(ChartBlue)
+                        .background(colors.statusInfo)
                 )
             }
         }
@@ -521,6 +523,32 @@ private fun PredictionFactorRow(
             fontWeight = FontWeight.Bold,
             modifier = Modifier.width(30.dp),
             textAlign = TextAlign.End
+        )
+    }
+}
+
+// ── Previews ────────────────────────────────────────────────────────────────
+
+@androidx.compose.ui.tooling.preview.Preview(showBackground = true, backgroundColor = 0xFF121212)
+@Composable
+private fun MatchPredictionCardPreview() {
+    com.tanush.bouncer.ui.theme.BouncerPreviewTheme {
+        MatchPredictionCard(
+            predictionInfo = MatchPredictionInfo(
+                team1Name = "India",
+                team2Name = "Australia",
+                team1WinProbability = 0.62f,
+                team2WinProbability = 0.33f,
+                tieDrawProbability = 0.05f,
+                confidenceLevel = 0.88f,
+                predictionFactors = listOf(
+                    PredictionFactor("Home Advantage", 0.3f, "India playing at home"),
+                    PredictionFactor("Recent Form", 0.2f, "Won 4 of last 5")
+                ),
+                lastUpdated = "2 min ago",
+                predictedWinner = "India",
+                predictionTrend = PredictionTrend.TEAM1_RISING
+            )
         )
     }
 }

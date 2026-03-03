@@ -24,6 +24,7 @@ import com.tanush.bouncer.ui.components.CoilImage
 import com.tanush.bouncer.ui.components.GlassCard
 import com.tanush.bouncer.ui.components.GlassSurface
 import com.tanush.bouncer.ui.theme.*
+import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 
 /**
  * Premium Sleek Recent Form Card.
@@ -55,6 +56,7 @@ fun RecentFormCard(
     team2Form: RecentFormData,
     modifier: Modifier = Modifier,
 ) {
+    val colors = BouncerDesignSystem.colors
     var selectedTeam by remember { mutableIntStateOf(1) }
 
     GlassCard(
@@ -99,14 +101,14 @@ fun RecentFormCard(
                     form = team1Form,
                     isSelected = selectedTeam == 1,
                     onClick = { selectedTeam = 1 },
-                    teamColor = ChartBlue,
+                    teamColor = colors.statusInfo,
                     modifier = Modifier.weight(1f)
                 )
                 TeamFormTab(
                     form = team2Form,
                     isSelected = selectedTeam == 2,
                     onClick = { selectedTeam = 2 },
-                    teamColor = WicketRed,
+                    teamColor = colors.statusLive,
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -115,7 +117,7 @@ fun RecentFormCard(
 
             // Form Indicators - Sharp Visuals
             val selectedForm = if (selectedTeam == 1) team1Form else team2Form
-            val selectedColor = if (selectedTeam == 1) ChartBlue else WicketRed
+            val selectedColor = if (selectedTeam == 1) colors.statusInfo else colors.statusLive
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -178,6 +180,7 @@ private fun TeamFormTab(
     teamColor: Color,
     modifier: Modifier = Modifier,
 ) {
+    val colors = BouncerDesignSystem.colors
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(8.dp))
@@ -209,10 +212,11 @@ private fun TeamFormTab(
 
 @Composable
 private fun FormResultSquare(result: String) {
+    val colors = BouncerDesignSystem.colors
     val color = when (result) {
-        "W" -> SuccessGreen
+        "W" -> colors.statusSuccess
         "L" -> ErrorRed
-        "T" -> WarningYellow
+        "T" -> colors.statusWarning
         else -> TextTertiary
     }
     Box(
@@ -234,6 +238,7 @@ private fun RecentMatchCard(
     teamColor: Color,
     modifier: Modifier = Modifier,
 ) {
+    val colors = BouncerDesignSystem.colors
     val isWin = match.winner.contains(focusTeam, ignoreCase = true)
     
     GlassSurface(
@@ -245,7 +250,7 @@ private fun RecentMatchCard(
                 Text(text = match.matchType, color = TextTertiary, fontSize = 8.sp, fontWeight = FontWeight.Bold)
                 Text(
                     text = if (isWin) "WIN" else "LOSS",
-                    color = if (isWin) SuccessGreen else ErrorRed,
+                    color = if (isWin) colors.statusSuccess else ErrorRed,
                     fontSize = 8.sp,
                     fontWeight = FontWeight.Black
                 )

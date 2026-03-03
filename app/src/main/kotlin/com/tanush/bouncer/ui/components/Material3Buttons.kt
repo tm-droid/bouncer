@@ -50,6 +50,7 @@ fun PrimaryElevatedButton(
     enabled: Boolean = true,
     loading: Boolean = false
 ) {
+    val colors = BouncerDesignSystem.colors
     val haptic = rememberHapticFeedback()
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
@@ -88,8 +89,8 @@ fun PrimaryElevatedButton(
             .shadow(
                 elevation = elevation.dp,
                 shape = RoundedCornerShape(16.dp),
-                spotColor = ShinyGoldDeep.copy(alpha = 0.4f),
-                ambientColor = ShinyGoldDeep.copy(alpha = 0.15f)
+                spotColor = colors.goldPrimary.copy(alpha = 0.4f),
+                ambientColor = colors.goldPrimary.copy(alpha = 0.15f)
             )
             .semantics {
                 contentDescription = text
@@ -97,10 +98,10 @@ fun PrimaryElevatedButton(
         enabled = enabled && !loading,
         shape = RoundedCornerShape(16.dp),
         colors = ButtonDefaults.buttonColors(
-            containerColor = ShinyGoldDeep,
-            contentColor = BlackBackground,
-            disabledContainerColor = ShinyGoldDim.copy(alpha = 0.5f),
-            disabledContentColor = BlackBackground.copy(alpha = 0.5f)
+            containerColor = colors.goldPrimary,
+            contentColor = colors.backgroundBase,
+            disabledContainerColor = colors.goldDark.copy(alpha = 0.5f),
+            disabledContentColor = colors.backgroundBase.copy(alpha = 0.5f)
         ),
         elevation = ButtonDefaults.buttonElevation(
             defaultElevation = 6.dp,
@@ -113,7 +114,7 @@ fun PrimaryElevatedButton(
         if (loading) {
             CircularProgressIndicator(
                 modifier = Modifier.size(20.dp),
-                color = BlackBackground,
+                color = colors.backgroundBase,
                 strokeWidth = 2.dp
             )
         } else {
@@ -146,6 +147,7 @@ fun OutlinedMaterialButton(
     icon: ImageVector? = null,
     enabled: Boolean = true
 ) {
+    val colors = BouncerDesignSystem.colors
     val haptic = rememberHapticFeedback()
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
@@ -177,20 +179,20 @@ fun OutlinedMaterialButton(
         shape = RoundedCornerShape(16.dp),
         colors = ButtonDefaults.outlinedButtonColors(
             containerColor = Color.Transparent,
-            contentColor = ShinyGoldDeep,
+            contentColor = colors.goldPrimary,
             disabledContainerColor = Color.Transparent,
-            disabledContentColor = TextTertiary
+            disabledContentColor = colors.textTertiary
         ),
-        border = ButtonDefaults.outlinedButtonBorder.copy(
+        border = ButtonDefaults.outlinedButtonBorder(enabled = enabled).copy(
             width = 1.5.dp,
             brush = Brush.linearGradient(
                 colors = if (enabled) {
                     listOf(
-                        ShinyGoldDeep.copy(alpha = 0.8f),
-                        ShinyGoldMid.copy(alpha = 0.6f)
+                        colors.goldPrimary.copy(alpha = 0.8f),
+                        colors.goldPrimary.copy(alpha = 0.6f)
                     )
                 } else {
-                    listOf(TextTertiary, TextTertiary)
+                    listOf(colors.textTertiary, colors.textTertiary)
                 }
             )
         ),
@@ -223,8 +225,9 @@ fun GlassMorphicButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     icon: ImageVector? = null,
-    tint: Color = ShinyGoldDeep
+    tint: Color = GoldPrimary
 ) {
+    val colors = BouncerDesignSystem.colors
     val haptic = rememberHapticFeedback()
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
@@ -303,7 +306,7 @@ fun GlassMorphicButton(
                 text = text,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = TextPrimary,
+                color = colors.textPrimary,
                 letterSpacing = 0.5.sp
             )
         }
@@ -319,8 +322,8 @@ fun EnhancedFAB(
     icon: ImageVector,
     modifier: Modifier = Modifier,
     contentDescription: String = "",
-    containerColor: Color = ShinyGoldDeep,
-    contentColor: Color = BlackBackground,
+    containerColor: Color = GoldPrimary,
+    contentColor: Color = BackgroundBase,
     elevation: Dp = 12.dp
 ) {
     val haptic = rememberHapticFeedback()
@@ -373,5 +376,31 @@ fun EnhancedFAB(
             contentDescription = contentDescription,
             modifier = Modifier.size(24.dp)
         )
+    }
+}
+
+// ── Previews ────────────────────────────────────────────────────────────────
+
+@androidx.compose.ui.tooling.preview.Preview(showBackground = true, backgroundColor = 0xFF121212)
+@Composable
+private fun PrimaryElevatedButtonPreview() {
+    com.tanush.bouncer.ui.theme.BouncerPreviewTheme {
+        androidx.compose.foundation.layout.Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            PrimaryElevatedButton(
+                text = "Start Match",
+                onClick = {}
+            )
+            OutlinedMaterialButton(
+                text = "View Details",
+                onClick = {}
+            )
+            GlassMorphicButton(
+                text = "Glass Button",
+                onClick = {}
+            )
+        }
     }
 }

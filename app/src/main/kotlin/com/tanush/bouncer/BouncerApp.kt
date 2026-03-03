@@ -4,11 +4,12 @@ import android.app.Application
 import coil.ImageLoader
 import coil.disk.DiskCache
 import coil.memory.MemoryCache
-import coil.util.CoilUtils
-import okhttp3.OkHttpClient
+
 import com.tanush.bouncer.managers.FavouriteTeamsManager
 import com.tanush.bouncer.managers.TeamLogoManager
 import com.tanush.bouncer.managers.TeamAcronymManager
+import com.tanush.bouncer.services.MatchCacheService
+import io.sentry.Sentry
 import java.io.File
 
 class BouncerApp : Application() {
@@ -19,11 +20,13 @@ class BouncerApp : Application() {
         TeamLogoManager.initialize(this)
         TeamAcronymManager.initialize(this)
         FavouriteTeamsManager.initialize(this)
+        
+        // Initialize disk cache for offline support
+        MatchCacheService.initDiskCache(this)
 
         // Configure Coil ImageLoader with sensible memory/disk caches and OkHttp integration
         try {
-            val okHttpClient = OkHttpClient.Builder()
-                .build()
+            val okHttpClient = com.tanush.bouncer.network.HttpClientProvider.sharedClient
 
             val imageLoader = ImageLoader.Builder(this)
                 .okHttpClient(okHttpClient)
@@ -44,8 +47,8 @@ class BouncerApp : Application() {
             // Set as default for Coil's image loader
             coil.Coil.setImageLoader(imageLoader)
         } catch (e: Exception) {
-            // If Coil initialization fails, swallow but keep app functional
-            e.printStackTrace()
+            // If Coil initialization fails, report to Sentry but keep app functional
+            Sentry.captureException(e)
         }
     }
 }

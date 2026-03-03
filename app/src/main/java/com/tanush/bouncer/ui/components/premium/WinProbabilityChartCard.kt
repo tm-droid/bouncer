@@ -10,7 +10,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.TrendingUp
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -29,7 +29,13 @@ import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.ui.components.BouncerImportance
 import com.tanush.bouncer.ui.components.GlassCard
 import com.tanush.bouncer.ui.components.GlassSurface
-import com.tanush.bouncer.ui.theme.*
+import com.tanush.bouncer.ui.theme.BlackSurface
+import com.tanush.bouncer.ui.theme.ChartBlue
+import com.tanush.bouncer.ui.theme.GoldHairline
+import com.tanush.bouncer.ui.theme.TextPrimary
+import com.tanush.bouncer.ui.theme.TextTertiary
+import com.tanush.bouncer.ui.theme.WicketRed
+import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 
 /**
  * Premium Sleek Win Probability Chart.
@@ -48,12 +54,13 @@ data class WinProbabilityPoint(
 fun WinProbabilityChartCard(
     team1Name: String,
     team2Name: String,
-    team1Color: Color = ChartBlue,
-    team2Color: Color = WicketRed,
+    team1Color: Color = BouncerDesignSystem.colors.statusInfo,
+    team2Color: Color = BouncerDesignSystem.colors.statusLive,
     probabilityHistory: List<WinProbabilityPoint>,
     currentTeam1Probability: Float,
     modifier: Modifier = Modifier,
 ) {
+    val colors = BouncerDesignSystem.colors
     val animatedProgress = remember { Animatable(0f) }
 
     LaunchedEffect(probabilityHistory) {
@@ -83,14 +90,14 @@ fun WinProbabilityChartCard(
                     Box(
                         modifier = Modifier
                             .size(32.dp)
-                            .background(ShinyGoldDeep.copy(alpha = 0.1f), CircleShape)
+                            .background(colors.goldPrimary.copy(alpha = 0.1f), CircleShape)
                             .border(0.5.dp, GoldHairline.copy(alpha = 0.3f), CircleShape),
                         contentAlignment = Alignment.Center,
                     ) {
                         Icon(
-                            Icons.Filled.TrendingUp,
+                            Icons.AutoMirrored.Filled.TrendingUp,
                             contentDescription = null,
-                            tint = ShinyGoldDeep,
+                            tint = colors.goldPrimary,
                             modifier = Modifier.size(16.dp),
                         )
                     }
@@ -100,7 +107,7 @@ fun WinProbabilityChartCard(
                     Column {
                         Text(
                             text = "WIN PROBABILITY".uppercase(),
-                            color = ShinyGoldDeep,
+                            color = colors.goldPrimary,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Black,
                             letterSpacing = 1.5.sp,
@@ -153,6 +160,9 @@ fun WinProbabilityChartCard(
             }
 
             Spacer(modifier = Modifier.height(24.dp))
+
+            // Capture color for Canvas scope
+            val goldPrimary = colors.goldPrimary
 
             // Probability chart - Technical Grid
             Box(
@@ -217,7 +227,7 @@ fun WinProbabilityChartCard(
                             val x = (point.over / maxOver) * width * animatedProgress.value
                             val y = height - (point.team1Probability / 100f) * height
                             
-                            drawCircle(color = ShinyGoldDeep, radius = 4.dp.toPx(), center = Offset(x, y))
+                            drawCircle(color = goldPrimary, radius = 4.dp.toPx(), center = Offset(x, y))
                             drawCircle(color = BlackSurface, radius = 2.dp.toPx(), center = Offset(x, y))
                         }
                     }
@@ -242,7 +252,7 @@ fun WinProbabilityChartCard(
                             modifier = Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Box(modifier = Modifier.size(4.dp).clip(CircleShape).background(ShinyGoldDeep))
+                            Box(modifier = Modifier.size(4.dp).clip(CircleShape).background(goldPrimary))
                             Spacer(modifier = Modifier.width(10.dp))
                             Text(
                                 text = "OV ${event.over}", 
@@ -270,6 +280,7 @@ fun WinProbabilityChartCard(
 
 @Composable
 private fun ProbabilityScore(name: String, percent: Float, color: Color, progress: Float, isRightAligned: Boolean = false) {
+    val colors = BouncerDesignSystem.colors
     Column(horizontalAlignment = if (isRightAligned) Alignment.End else Alignment.Start) {
         Text(text = name, color = color.copy(alpha = 0.9f), fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 0.5.sp)
         Text(

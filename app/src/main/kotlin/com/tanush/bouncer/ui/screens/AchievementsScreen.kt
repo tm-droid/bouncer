@@ -8,50 +8,62 @@ import androidx.compose.foundation.lazy.grid.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowBackIos
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.*
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.models.Achievement
 import com.tanush.bouncer.models.AchievementKind
+import com.tanush.bouncer.ui.components.BouncerImportance
+import com.tanush.bouncer.ui.components.GlassCard
+import com.tanush.bouncer.ui.components.RadarChart
+import com.tanush.bouncer.ui.components.SparkleOverlay
+import com.tanush.bouncer.ui.components.StaggeredFadeIn
+import com.tanush.bouncer.ui.components.celebrations.ConfettiBurst
+import com.tanush.bouncer.ui.components.glass.GlassBloomBackground
 import com.tanush.bouncer.ui.theme.*
+import com.tanush.bouncer.ui.theme.BouncerDesignSystem
+import kotlinx.coroutines.delay
+import io.sentry.Sentry
 
 // Achievement category for grouping
 enum class AchievementCategory(val title: String, val color: @Composable () -> Color) {
     BATTING("BATTING", { Color(0xFF4FC3F7) }),
     BOWLING("BOWLING", { Color(0xFF81C784) }),
     TEAM("TEAM", { Color(0xFFFFB74D) }),
-    SPECIAL("SPECIAL", { GoldDark })
+    SPECIAL("SPECIAL", { BouncerDesignSystem.colors.goldPrimary })
 }
 
 private fun Achievement.category(): AchievementCategory {
-    return when (id) {
-        AchievementKind.RUNS_30, AchievementKind.RUNS_50, AchievementKind.RUNS_75,
-        AchievementKind.RUNS_100, AchievementKind.RUNS_150, AchievementKind.RUNS_200,
-        AchievementKind.RUNS_250, AchievementKind.RUNS_300, AchievementKind.FASTEST_FIFTY,
-        AchievementKind.FASTEST_HUNDRED, AchievementKind.MOST_SIXES -> AchievementCategory.BATTING
+    try {
+        return when (id) {
+            AchievementKind.RUNS_30, AchievementKind.RUNS_50, AchievementKind.RUNS_75,
+            AchievementKind.RUNS_100, AchievementKind.RUNS_150, AchievementKind.RUNS_200,
+            AchievementKind.RUNS_250, AchievementKind.RUNS_300, AchievementKind.FASTEST_FIFTY,
+            AchievementKind.FASTEST_HUNDRED, AchievementKind.MOST_SIXES -> AchievementCategory.BATTING
         
-        AchievementKind.WICKETS_3, AchievementKind.WICKETS_4, AchievementKind.WICKETS_5,
-        AchievementKind.WICKETS_10, AchievementKind.MAIDEN_OVER, AchievementKind.HAT_TRICK,
-        AchievementKind.BEST_ECONOMY -> AchievementCategory.BOWLING
+            AchievementKind.WICKETS_3, AchievementKind.WICKETS_4, AchievementKind.WICKETS_5,
+            AchievementKind.WICKETS_10, AchievementKind.MAIDEN_OVER, AchievementKind.HAT_TRICK,
+            AchievementKind.BEST_ECONOMY -> AchievementCategory.BOWLING
         
-        AchievementKind.TEAM_200, AchievementKind.TEAM_10_WKT_WIN,
-        AchievementKind.SUCCESSFUL_CHASE -> AchievementCategory.TEAM
+            AchievementKind.TEAM_200, AchievementKind.TEAM_10_WKT_WIN,
+            AchievementKind.SUCCESSFUL_CHASE -> AchievementCategory.TEAM
         
-        else -> AchievementCategory.SPECIAL
+            else -> AchievementCategory.SPECIAL
+        }
+    } catch (e: Exception) {
+        Sentry.captureException(e)
+        throw e
     }
 }
 
@@ -61,6 +73,7 @@ fun AchievementsScreen(
     unlockedAchievements: Set<AchievementKind>,
     onBackClick: () -> Unit
 ) {
+    val colors = BouncerDesignSystem.colors
     val achievements = remember { 
         Achievement.all.map { it.copy(unlocked = unlockedAchievements.contains(it.id)) }
     }
@@ -79,7 +92,7 @@ fun AchievementsScreen(
     }
 
     Scaffold(
-        containerColor = BlackBackground,
+        containerColor = colors.backgroundBase,
         topBar = {
             TopAppBar(
                 title = {
@@ -88,24 +101,24 @@ fun AchievementsScreen(
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Black,
                         letterSpacing = 2.sp,
-                        color = Color.White
+                        color = colors.textPrimary
                     )
                 },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBackIos, "Back", tint = Color.White, modifier = Modifier.size(20.dp))
+                        Icon(Icons.AutoMirrored.Filled.ArrowBackIos, "Back", tint = colors.textPrimary, modifier = Modifier.size(20.dp))
                     }
                 },
                 actions = {
                     IconButton(onClick = {}) {
-                        Icon(Icons.Default.IosShare, "Share", tint = GoldDark)
+                        Icon(Icons.Default.IosShare, "Share", tint = colors.goldPrimary)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
             )
         }
     ) { paddingValues ->
-        Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
+        GlassBloomBackground(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
             LazyVerticalGrid(
                 columns = GridCells.Fixed(2),
                 contentPadding = PaddingValues(bottom = 100.dp, start = 16.dp, end = 16.dp),
@@ -114,44 +127,61 @@ fun AchievementsScreen(
             ) {
                 // Hero Stats with enhanced progress
                 item(span = { GridItemSpan(2) }) {
-                    EliteTrophyProgressCard(achievements.count { it.unlocked }, achievements.size)
+                    StaggeredFadeIn(index = 0) {
+                        EliteTrophyProgressCard(achievements.count { it.unlocked }, achievements.size)
+                    }
                 }
                 
                 // Category Progress Summary (iOS Parity)
                 item(span = { GridItemSpan(2) }) {
-                    CategoryProgressSummary(categoryStats)
+                    StaggeredFadeIn(index = 1) {
+                        CategoryProgressSummary(categoryStats)
+                    }
                 }
 
                 // Category sections with achievements
+                var gridIndex = 2
                 AchievementCategory.entries.forEach { category ->
                     val categoryAchievements = groupedAchievements[category] ?: emptyList()
                     if (categoryAchievements.isNotEmpty()) {
+                        val headerIdx = gridIndex++
                         item(span = { GridItemSpan(2) }) {
-                            CategoryHeader(
-                                category = category,
-                                unlockedCount = categoryAchievements.count { it.unlocked },
-                                totalCount = categoryAchievements.size
-                            )
+                            StaggeredFadeIn(index = headerIdx) {
+                                CategoryHeader(
+                                    category = category,
+                                    unlockedCount = categoryAchievements.count { it.unlocked },
+                                    totalCount = categoryAchievements.size
+                                )
+                            }
                         }
                         
-                        items(categoryAchievements) { achievement ->
-                            EliteMedalCard(achievement, category.color())
+                        categoryAchievements.forEachIndexed { i, achievement ->
+                            val achieveIdx = gridIndex + i
+                            item {
+                                StaggeredFadeIn(index = achieveIdx) {
+                                    EliteMedalCard(achievement, category.color())
+                                }
+                            }
                         }
+                        gridIndex += categoryAchievements.size
                     }
                 }
                 
                 // Career Radar Section
+                val radarIdx = gridIndex
                 item(span = { GridItemSpan(2) }) {
-                    Column(modifier = Modifier.padding(vertical = 24.dp)) {
-                        Text(
-                            "CAREER RADAR", 
-                            color = TextSecondary, 
-                            fontSize = 11.sp, 
-                            fontWeight = FontWeight.Bold, 
-                            letterSpacing = 1.5.sp
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        CareerRadarChartCard()
+                    StaggeredFadeIn(index = radarIdx) {
+                        Column(modifier = Modifier.padding(vertical = 24.dp)) {
+                            Text(
+                                "CAREER RADAR", 
+                                color = colors.textSecondary, 
+                                fontSize = 11.sp, 
+                                fontWeight = FontWeight.Bold, 
+                                letterSpacing = 1.5.sp
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            CareerRadarChartCard()
+                        }
                     }
                 }
             }
@@ -160,7 +190,7 @@ fun AchievementsScreen(
             FloatingActionButton(
                 onClick = {},
                 modifier = Modifier.align(Alignment.BottomEnd).padding(24.dp),
-                containerColor = GoldDark,
+                containerColor = colors.goldPrimary,
                 contentColor = Color.Black,
                 shape = CircleShape
             ) {
@@ -172,20 +202,20 @@ fun AchievementsScreen(
 
 @Composable
 private fun EliteTrophyProgressCard(unlocked: Int, total: Int) {
-    Card(
+    val colors = BouncerDesignSystem.colors
+    GlassCard(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.05f)),
-        border = BorderStroke(1.dp, GoldHairline)
+        cornerRadius = 20.dp,
+        importance = BouncerImportance.CRITICAL
     ) {
         Column(
             modifier = Modifier.padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text("TOTAL PROGRESS", color = GoldDark, fontSize = 10.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp)
+            Text("TOTAL PROGRESS", color = colors.goldPrimary, fontSize = 10.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp)
             Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(unlocked.toString(), color = Color.White, fontSize = 42.sp, fontWeight = FontWeight.Black)
-                Text("/ $total", color = TextTertiary, fontSize = 20.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(bottom = 8.dp))
+                Text(unlocked.toString(), color = colors.textPrimary, fontSize = 42.sp, fontWeight = FontWeight.Black)
+                Text("/ $total", color = colors.textTertiary, fontSize = 20.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(bottom = 8.dp))
             }
             
             // Elite Status based on progress
@@ -196,11 +226,11 @@ private fun EliteTrophyProgressCard(unlocked: Int, total: Int) {
                 unlocked >= total * 0.25 -> "💪 Contender"
                 else -> "🌱 Rookie"
             }
-            Text("Elite Status: $eliteStatus", color = TextSecondary, fontSize = 13.sp)
+            Text("Elite Status: $eliteStatus", color = colors.textSecondary, fontSize = 13.sp)
             
             Spacer(modifier = Modifier.height(16.dp))
-            Box(modifier = Modifier.fillMaxWidth().height(4.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.1f))) {
-                Box(modifier = Modifier.fillMaxWidth(unlocked.toFloat() / total).fillMaxHeight().background(GoldDark).shadow(8.dp, spotColor = GoldDark))
+            Box(modifier = Modifier.fillMaxWidth().height(4.dp).clip(CircleShape).background(colors.glassSurface)) {
+                Box(modifier = Modifier.fillMaxWidth(unlocked.toFloat() / total).fillMaxHeight().background(colors.goldPrimary).shadow(8.dp, spotColor = colors.goldPrimary))
             }
         }
     }
@@ -208,11 +238,9 @@ private fun EliteTrophyProgressCard(unlocked: Int, total: Int) {
 
 @Composable
 private fun CategoryProgressSummary(categoryStats: List<Triple<AchievementCategory, Int, Int>>) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.05f)),
-        border = BorderStroke(0.5.dp, Color.White.copy(alpha = 0.05f))
+    val colors = BouncerDesignSystem.colors
+    GlassCard(
+        modifier = Modifier.fillMaxWidth()
     ) {
         Row(
             modifier = Modifier
@@ -254,14 +282,14 @@ private fun CategoryProgressSummary(categoryStats: List<Triple<AchievementCatego
                     
                     Text(
                         text = "$unlocked/$total",
-                        color = Color.White,
+                        color = colors.textPrimary,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold
                     )
                     
                     Text(
                         text = category.title,
-                        color = TextMuted,
+                        color = colors.textMuted,
                         fontSize = 9.sp,
                         fontWeight = FontWeight.Medium,
                         letterSpacing = 0.5.sp
@@ -319,95 +347,122 @@ private fun CategoryHeader(
 }
 
 @Composable
-private fun EliteMedalCard(achievement: Achievement, accentColor: Color = GoldDark) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        color = Color.White.copy(alpha = 0.05f),
-        border = BorderStroke(1.dp, if (achievement.unlocked) accentColor.copy(alpha = 0.3f) else Color.White.copy(alpha = 0.05f))
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(1f)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(Color.Black.copy(alpha = 0.4f))
-                    .then(if (!achievement.unlocked) Modifier.border(1.dp, Color.White.copy(alpha = 0.05f), RoundedCornerShape(12.dp)) else Modifier),
-                contentAlignment = Alignment.Center
-            ) {
-                if (achievement.unlocked) {
-                    Box(
-                        modifier = Modifier.size(80.dp).background(
-                            Brush.linearGradient(
-                                listOf(
-                                    accentColor,
-                                    accentColor.copy(alpha = 0.8f),
-                                    accentColor.copy(alpha = 0.6f)
-                                )
-                            ),
-                            CircleShape
-                        ).shadow(20.dp, CircleShape, spotColor = accentColor.copy(alpha = 0.3f)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(achievement.icon, fontSize = 32.sp)
-                    }
-                } else {
-                    Box(contentAlignment = Alignment.Center) {
-                        Box(modifier = Modifier.size(80.dp).border(1.dp, Color.White.copy(alpha = 0.1f), CircleShape))
-                        Icon(Icons.Default.Lock, null, tint = TextMuted, modifier = Modifier.size(24.dp).background(Color.Black.copy(alpha = 0.5f), CircleShape).padding(4.dp))
+private fun EliteMedalCard(achievement: Achievement, accentColor: Color) {
+    val colors = BouncerDesignSystem.colors
+    var showConfetti by remember { mutableStateOf(false) }
+    var cardCenter by remember { mutableStateOf(Offset.Zero) }
+
+    LaunchedEffect(Unit) {
+        if (achievement.unlocked) {
+            showConfetti = true
+            delay(2500L)
+            showConfetti = false
+        }
+    }
+
+    Box {
+        GlassCard(
+            modifier = Modifier
+                .fillMaxWidth()
+                .onGloballyPositioned { coords ->
+                    cardCenter = Offset(coords.size.width / 2f, coords.size.height / 2f)
+                },
+            importance = if (achievement.unlocked) BouncerImportance.STANDARD else BouncerImportance.MINIMAL
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(1f)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Color.Black.copy(alpha = 0.4f))
+                        .then(if (!achievement.unlocked) Modifier.border(1.dp, colors.glassSurface, RoundedCornerShape(12.dp)) else Modifier),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (achievement.unlocked) {
+                        Box(
+                            modifier = Modifier.size(80.dp).background(
+                                Brush.linearGradient(
+                                    listOf(
+                                        accentColor,
+                                        accentColor.copy(alpha = 0.8f),
+                                        accentColor.copy(alpha = 0.6f)
+                                    )
+                                ),
+                                CircleShape
+                            ).shadow(20.dp, CircleShape, spotColor = accentColor.copy(alpha = 0.3f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(achievement.icon, fontSize = 32.sp)
+                        }
+                        // Sparkle overlay on unlocked medal icon area
+                        SparkleOverlay(modifier = Modifier.matchParentSize())
+                    } else {
+                        Box(contentAlignment = Alignment.Center) {
+                            Box(modifier = Modifier.size(80.dp).border(1.dp, colors.glassSurface, CircleShape))
+                            Icon(Icons.Default.Lock, null, tint = colors.textMuted, modifier = Modifier.size(24.dp).background(Color.Black.copy(alpha = 0.5f), CircleShape).padding(4.dp))
+                        }
                     }
                 }
-            }
-            
-            Spacer(modifier = Modifier.height(12.dp))
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text(achievement.title, color = if (achievement.unlocked) Color.White else TextTertiary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                if (achievement.unlocked) {
-                    Surface(color = accentColor, shape = RoundedCornerShape(4.dp)) {
-                        Text("UNLOCKED", color = Color.Black, fontSize = 7.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp))
+
+                Spacer(modifier = Modifier.height(12.dp))
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Text(achievement.title, color = if (achievement.unlocked) colors.textPrimary else colors.textTertiary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                    if (achievement.unlocked) {
+                        Surface(color = accentColor, shape = RoundedCornerShape(4.dp)) {
+                            Text("UNLOCKED", color = Color.Black, fontSize = 7.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp))
+                        }
                     }
                 }
+                Text(achievement.description, color = colors.textTertiary, fontSize = 11.sp, lineHeight = 14.sp, modifier = Modifier.padding(top = 4.dp))
             }
-            Text(achievement.description, color = TextTertiary, fontSize = 11.sp, lineHeight = 14.sp, modifier = Modifier.padding(top = 4.dp))
+        }
+
+        // Confetti burst overlay for unlocked achievements
+        if (showConfetti && cardCenter != Offset.Zero) {
+            ConfettiBurst(
+                modifier = Modifier.matchParentSize(),
+                burstPoint = cardCenter,
+                isActive = true,
+                particleCount = 30
+            )
         }
     }
 }
 
 @Composable
 private fun CareerRadarChartCard() {
-    Card(
+    val colors = BouncerDesignSystem.colors
+    GlassCard(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.05f)),
-        border = BorderStroke(1.dp, GoldHairline)
+        cornerRadius = 20.dp,
+        importance = BouncerImportance.STANDARD
     ) {
         Column(modifier = Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Box(contentAlignment = Alignment.Center, modifier = Modifier.size(220.dp)) {
-                CareerRadarChart(
-                    metrics = listOf(
-                        "BATTING" to 0.90f,
-                        "BOWLING" to 0.70f,
-                        "FIELDING" to 0.85f,
-                        "STRATEGY" to 0.60f,
-                        "AGGR." to 0.80f,
-                        "CONSISTENCY" to 0.95f
-                    )
-                )
-            }
-            
+            RadarChart(
+                data = mapOf(
+                    "BATTING" to 90f,
+                    "BOWLING" to 70f,
+                    "FIELDING" to 85f,
+                    "STRATEGY" to 60f,
+                    "AGGR." to 80f,
+                    "CONSISTENCY" to 95f
+                ),
+                modifier = Modifier.size(220.dp)
+            )
+
             Spacer(modifier = Modifier.height(24.dp))
-            HorizontalDivider(color = Color.White.copy(alpha = 0.05f))
+            HorizontalDivider(color = colors.glassSurface)
             Spacer(modifier = Modifier.height(16.dp))
-            
+
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Column {
-                    Text("TOP SKILL", color = TextTertiary, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                    Text("Batting Power", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                    Text("TOP SKILL", color = colors.textTertiary, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                    Text("Batting Power", color = colors.textPrimary, fontSize = 14.sp, fontWeight = FontWeight.Medium)
                 }
                 Column(horizontalAlignment = Alignment.End) {
-                    Text("POTENTIAL", color = TextTertiary, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                    Text("+15% Growth", color = ShinyGoldDeep, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                    Text("POTENTIAL", color = colors.textTertiary, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                    Text("+15% Growth", color = colors.goldPrimary, fontSize = 14.sp, fontWeight = FontWeight.Medium)
                 }
             }
         }

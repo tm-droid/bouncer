@@ -48,6 +48,7 @@ import com.tanush.bouncer.utils.toDisplayString
 import com.tanush.bouncer.utils.rememberHapticFeedback
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import io.sentry.Sentry
 
 @Composable
 fun EnhancedMatchCard(
@@ -133,6 +134,7 @@ fun EnhancedMatchCard(
     }
     
     val matchDescription = "Match: ${team1?.name ?: "Team 1"} $score1 versus ${team2?.name ?: "Team 2"} $score2. Status: ${statusInfo.text}"
+    val colors = BouncerDesignSystem.colors
     
     Box(
         modifier = modifier
@@ -144,16 +146,16 @@ fun EnhancedMatchCard(
             .shadow(
                 elevation = elevation.dp,
                 shape = RoundedCornerShape(32.dp),
-                spotColor = if (isLive) LiveBlue.copy(alpha = 0.5f) else Color.Black.copy(alpha = 0.4f),
-                ambientColor = if (isLive) LiveBlue.copy(alpha = 0.25f) else Color.Black.copy(alpha = 0.15f)
+                spotColor = if (isLive) colors.statusInfo.copy(alpha = 0.5f) else Color.Black.copy(alpha = 0.4f),
+                ambientColor = if (isLive) colors.statusInfo.copy(alpha = 0.25f) else Color.Black.copy(alpha = 0.15f)
             )
             .clip(RoundedCornerShape(32.dp))
             .background(
                 Brush.linearGradient(
                     colors = listOf(
-                        Color.White.copy(alpha = 0.05f),
-                        CardDarkBlue.copy(alpha = 0.3f),
-                        CardAlmostBlack
+                        colors.glassSurface,
+                        colors.surface1.copy(alpha = 0.3f),
+                        colors.backgroundBase
                     )
                 )
             )
@@ -161,7 +163,7 @@ fun EnhancedMatchCard(
                 interactionSource = interactionSource,
                 indication = ripple(
                     bounded = true,
-                    color = if (isLive) LiveBlue.copy(alpha = 0.2f) else ShinyGoldDeep.copy(alpha = 0.2f)
+                    color = if (isLive) colors.statusInfo.copy(alpha = 0.2f) else colors.goldPrimary.copy(alpha = 0.2f)
                 )
             ) {
                 haptic.click()
@@ -190,7 +192,7 @@ fun EnhancedMatchCard(
                             brush = Brush.verticalGradient(
                                 colors = listOf(
                                     Color.Transparent,
-                                    ShinyGoldDeep.copy(alpha = 0.08f),
+                                    colors.goldPrimary.copy(alpha = 0.08f),
                                     Color.Transparent
                                 )
                             )
@@ -209,9 +211,9 @@ fun EnhancedMatchCard(
                         Brush.sweepGradient(
                             colors = listOf(
                                 Color.Transparent,
-                                LiveBlue.copy(alpha = 0.4f),
-                                LiveBlue,
-                                LiveBlue.copy(alpha = 0.4f),
+                                colors.statusInfo.copy(alpha = 0.4f),
+                                colors.statusInfo,
+                                colors.statusInfo.copy(alpha = 0.4f),
                                 Color.Transparent
                             )
                         ),
@@ -262,7 +264,7 @@ fun EnhancedMatchCard(
                             Brush.horizontalGradient(
                                 colors = listOf(
                                     Color.Transparent,
-                                    ShinyGoldDeep.copy(alpha = 0.2f),
+                                    colors.goldPrimary.copy(alpha = 0.2f),
                                     Color.Transparent
                                 )
                             )
@@ -278,13 +280,13 @@ fun EnhancedMatchCard(
             } else if (!isLive && (match.currentStatus.isNotEmpty() || match.status.isNotEmpty())) {
                 Spacer(modifier = Modifier.height(20.dp))
                 Surface(
-                    color = Color.White.copy(alpha = 0.05f),
+                    color = colors.glassSurface,
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
                         text = match.currentStatus.takeIf { it.isNotEmpty() } ?: match.status,
-                        color = TextSecondary,
+                        color = colors.textSecondary,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.SemiBold,
                         textAlign = androidx.compose.ui.text.style.TextAlign.Center,
@@ -306,6 +308,7 @@ private fun MatchCardHeader(
     winProb: Float
 ) {
     val haptic = rememberHapticFeedback()
+    val colors = BouncerDesignSystem.colors
     
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -315,7 +318,7 @@ private fun MatchCardHeader(
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = match.matchTitle.substringBefore(",").trim().uppercase(),
-                color = ShinyGoldLight.copy(alpha = 0.8f),
+                color = colors.goldLight.copy(alpha = 0.8f),
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Black,
                 letterSpacing = 1.2.sp,
@@ -324,7 +327,7 @@ private fun MatchCardHeader(
             )
             Text(
                 text = match.venue.takeIf { it.isNotEmpty() } ?: "Tournament Match",
-                color = TextTertiary,
+                color = colors.textTertiary,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Medium
             )
@@ -346,7 +349,7 @@ private fun MatchCardHeader(
                     modifier = Modifier
                         .size(36.dp)
                         .clip(CircleShape)
-                        .background(Color.White.copy(alpha = 0.08f))
+                        .background(colors.glassSurface)
                         .clickable {
                             haptic.click()
                             onFavorite(!isFavorite)
@@ -356,7 +359,7 @@ private fun MatchCardHeader(
                     Icon(
                         imageVector = if (isFavorite) Icons.Default.Star else Icons.Default.StarBorder,
                         contentDescription = null,
-                        tint = if (isFavorite) ShinyGoldDeep else TextMuted,
+                        tint = if (isFavorite) colors.goldPrimary else colors.textMuted,
                         modifier = Modifier.size(20.dp)
                     )
                 }
@@ -364,9 +367,9 @@ private fun MatchCardHeader(
             
             // Live Badge
             Surface(
-                color = if (isLive) LiveBlue.copy(alpha = 0.15f) else Color.White.copy(alpha = 0.06f),
+                color = if (isLive) colors.statusInfo.copy(alpha = 0.15f) else colors.glassSurface,
                 shape = RoundedCornerShape(10.dp),
-                border = if (isLive) androidx.compose.foundation.BorderStroke(1.dp, LiveBlue.copy(alpha = 0.4f)) else null
+                border = if (isLive) androidx.compose.foundation.BorderStroke(1.dp, colors.statusInfo.copy(alpha = 0.4f)) else null
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -378,12 +381,12 @@ private fun MatchCardHeader(
                             modifier = Modifier
                                 .size(6.dp)
                                 .clip(CircleShape)
-                                .background(LiveRedPulse.copy(alpha = livePulse))
+                                .background(colors.statusLive.copy(alpha = livePulse))
                         )
                     }
                     Text(
                         text = if (isLive) "LIVE" else "MATCH",
-                        color = if (isLive) Color.White else TextSecondary,
+                        color = if (isLive) colors.textPrimary else colors.textSecondary,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Black,
                         letterSpacing = 1.sp
@@ -406,6 +409,7 @@ private fun MatchCardTeams(
     isLive: Boolean,
     livePulse: Float
 ) {
+    val colors = BouncerDesignSystem.colors
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
@@ -427,13 +431,13 @@ private fun MatchCardTeams(
             Box(
                 modifier = Modifier
                     .size(36.dp)
-                    .background(Color.White.copy(alpha = 0.08f), CircleShape)
-                    .border(0.5.dp, CardBorder.copy(alpha = 0.3f), CircleShape),
+                    .background(colors.glassSurface, CircleShape)
+                    .border(0.5.dp, colors.glassBorder.copy(alpha = 0.3f), CircleShape),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = "VS",
-                    color = TextTertiary,
+                    color = colors.textTertiary,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Black
                 )
@@ -460,6 +464,7 @@ private fun EnhancedTeamSection(
 ) {
     val context = LocalContext.current
     val logoUrl = TeamLogoManager.getBestLogoUrl(team?.name, team?.logoUrl, 256, 256)
+    val colors = BouncerDesignSystem.colors
     
     Column(
         modifier = modifier,
@@ -471,10 +476,10 @@ private fun EnhancedTeamSection(
                 .shadow(
                     elevation = 12.dp,
                     shape = CircleShape,
-                    spotColor = ShinyGoldDeep.copy(alpha = 0.3f)
+                    spotColor = colors.goldPrimary.copy(alpha = 0.3f)
                 )
-                .background(Color.White.copy(alpha = 0.08f), CircleShape)
-                .border(1.dp, ShinyGoldDeep.copy(alpha = 0.2f), CircleShape)
+                .background(colors.glassSurface, CircleShape)
+                .border(1.dp, colors.goldPrimary.copy(alpha = 0.2f), CircleShape)
                 .padding(12.dp)
         ) {
             CoilImage(
@@ -492,7 +497,7 @@ private fun EnhancedTeamSection(
         
         Text(
             text = team?.acronym ?: team?.name?.take(3)?.uppercase() ?: "TBD",
-            color = TextSecondary,
+            color = colors.textSecondary,
             fontSize = 14.sp,
             fontWeight = FontWeight.Black,
             letterSpacing = 1.sp
@@ -501,13 +506,13 @@ private fun EnhancedTeamSection(
         AnimatedScore(
             score = score,
             fontSize = 24f,
-            textColor = TextPrimary
+            textColor = colors.textPrimary
         )
         
         if (overs.isNotEmpty()) {
             Text(
                 text = overs,
-                color = TextTertiary,
+                color = colors.textTertiary,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold
             )
@@ -520,6 +525,7 @@ private fun MatchCardLiveDetails(
     match: CricketMatch,
     isLive: Boolean
 ) {
+    val colors = BouncerDesignSystem.colors
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -535,7 +541,7 @@ private fun MatchCardLiveDetails(
                     ) {
                         Text(
                             text = batsman.name,
-                            color = TextPrimary.copy(alpha = 0.9f),
+                            color = colors.textPrimary.copy(alpha = 0.9f),
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
                             maxLines = 1,
@@ -544,7 +550,7 @@ private fun MatchCardLiveDetails(
                         )
                         Text(
                             text = "${batsman.runs}(${batsman.balls})",
-                            color = ShinyGoldMid,
+                            color = colors.goldPrimary,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Black
                         )
@@ -560,7 +566,7 @@ private fun MatchCardLiveDetails(
                 match.currentBowler?.let { bowler ->
                     Text(
                         text = bowler.name,
-                        color = TextPrimary.copy(alpha = 0.9f),
+                        color = colors.textPrimary.copy(alpha = 0.9f),
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
@@ -568,7 +574,7 @@ private fun MatchCardLiveDetails(
                     )
                     Text(
                         text = "${bowler.overs}-${bowler.runs}-${bowler.wickets}",
-                        color = ShinyGoldMid,
+                        color = colors.goldPrimary,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Black
                     )
@@ -585,13 +591,14 @@ private fun MatchCardLiveDetails(
 
 @Composable
 private fun EnhancedBallsSequence(balls: List<String>) {
+    val colors = BouncerDesignSystem.colors
     Row(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
             text = "RECENT",
-            color = TextMuted,
+            color = colors.textMuted,
             fontSize = 9.sp,
             fontWeight = FontWeight.Black,
             letterSpacing = 1.sp,
@@ -606,7 +613,7 @@ private fun EnhancedBallsSequence(balls: List<String>) {
                     .size(26.dp)
                     .shadow(4.dp, CircleShape, spotColor = bgColor.copy(alpha = 0.4f))
                     .background(bgColor, CircleShape)
-                    .border(0.5.dp, Color.White.copy(alpha = 0.1f), CircleShape),
+                    .border(0.5.dp, colors.glassBorderHighlight, CircleShape),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
@@ -621,11 +628,16 @@ private fun EnhancedBallsSequence(balls: List<String>) {
 }
 
 private fun getEnhancedBallColors(ball: String): Pair<Color, Color> {
-    return when {
-        ball.contains("W") -> Pair(ErrorRed, Color.White)
-        ball.contains("6") -> Pair(ShinyGoldDeep, BlackBackground)
-        ball.contains("4") -> Pair(ShinyGoldMid, BlackBackground)
-        ball == "0" || ball == "." -> Pair(Color.White.copy(alpha = 0.08f), TextMuted)
-        else -> Pair(Color.White.copy(alpha = 0.08f), TextPrimary)
+    try {
+        return when {
+            ball.contains("W") -> Pair(StatusLive, TextPrimary)
+            ball.contains("6") -> Pair(GoldPrimary, BackgroundBase)
+            ball.contains("4") -> Pair(GoldPrimary, BackgroundBase)
+            ball == "0" || ball == "." -> Pair(GlassSurface, TextMuted)
+            else -> Pair(GlassSurface, TextPrimary)
+        }
+    } catch (e: Exception) {
+        Sentry.captureException(e)
+        throw e
     }
 }

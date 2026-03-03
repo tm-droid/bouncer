@@ -41,8 +41,8 @@ fun PremiumWinProbabilityRing(
     team1Name: String,
     team2Name: String,
     team1Probability: Float,
-    team1Color: Color = ShinyGoldDeep,
-    team2Color: Color = ChartBlue,
+    team1Color: Color = GoldDark,
+    team2Color: Color = StatusInfo,
     size: Dp = 200.dp,
     strokeWidth: Dp = 12.dp,
     modifier: Modifier = Modifier
@@ -55,6 +55,7 @@ fun PremiumWinProbabilityRing(
         ),
         label = "probability"
     )
+    val colors = BouncerDesignSystem.colors
     
     val infiniteTransition = rememberInfiniteTransition(label = "ringGlow")
     val glowAlpha by infiniteTransition.animateFloat(
@@ -102,7 +103,7 @@ fun PremiumWinProbabilityRing(
             
             // Background arc
             drawArc(
-                color = CardSurfaceLight,
+                color = Surface2,
                 startAngle = -90f,
                 sweepAngle = 360f,
                 useCenter = false,
@@ -152,7 +153,7 @@ fun PremiumWinProbabilityRing(
                     brush = Brush.sweepGradient(
                         colors = listOf(
                             Color.Transparent,
-                            Color.White.copy(alpha = 0.3f),
+                            TextPrimary.copy(alpha = 0.3f),
                             Color.Transparent,
                             Color.Transparent
                         ),
@@ -184,7 +185,7 @@ fun PremiumWinProbabilityRing(
                 text = team1Name,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Medium,
-                color = TextSecondary,
+                color = colors.textSecondary,
                 letterSpacing = 0.5.sp
             )
         }
@@ -202,6 +203,7 @@ fun RunRateSpeedometer(
     size: Dp = 160.dp,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val animatedCRR by animateFloatAsState(
         targetValue = currentRunRate.coerceIn(0f, maxRunRate),
         animationSpec = spring(
@@ -221,9 +223,9 @@ fun RunRateSpeedometer(
     )
     
     val crrColor = when {
-        requiredRunRate > 0 && currentRunRate >= requiredRunRate -> SuccessGreen
-        requiredRunRate > 0 && currentRunRate < requiredRunRate -> ErrorRed
-        else -> ShinyGoldDeep
+        requiredRunRate > 0 && currentRunRate >= requiredRunRate -> StatusSuccess
+        requiredRunRate > 0 && currentRunRate < requiredRunRate -> StatusLive
+        else -> GoldDark
     }
 
     Box(
@@ -254,7 +256,7 @@ fun RunRateSpeedometer(
                 val segmentColor = if (i <= (animatedCRR / maxRunRate * segments)) {
                     crrColor
                 } else {
-                    CardSurfaceLight
+                    Surface2
                 }
                 
                 drawLine(
@@ -275,7 +277,7 @@ fun RunRateSpeedometer(
                 val indicatorY = center.y + (indicatorRadius * sin(radians)).toFloat()
                 
                 drawCircle(
-                    color = WarningOrange,
+                    color = StatusWarning,
                     radius = 6.dp.toPx(),
                     center = Offset(indicatorX, indicatorY)
                 )
@@ -323,7 +325,7 @@ fun RunRateSpeedometer(
                 text = "RUN RATE",
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Bold,
-                color = TextTertiary,
+                color = colors.textTertiary,
                 letterSpacing = 1.sp
             )
         }
@@ -338,10 +340,11 @@ fun MomentumIndicator(
     momentum: Float, // -1 to 1, negative = team2, positive = team1
     team1Name: String,
     team2Name: String,
-    team1Color: Color = ShinyGoldDeep,
-    team2Color: Color = ChartBlue,
+    team1Color: Color = GoldDark,
+    team2Color: Color = StatusInfo,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val animatedMomentum by animateFloatAsState(
         targetValue = momentum.coerceIn(-1f, 1f),
         animationSpec = spring(
@@ -366,9 +369,9 @@ fun MomentumIndicator(
         modifier = modifier
             .fillMaxWidth()
             .shadow(12.dp, RoundedCornerShape(20.dp), spotColor = team1Color.copy(alpha = 0.2f)),
-        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.05f)),
+        colors = CardDefaults.cardColors(containerColor = colors.glassSurface),
         shape = RoundedCornerShape(20.dp),
-        border = BorderStroke(0.5.dp, CardBorder.copy(alpha = 0.3f))
+        border = BorderStroke(0.5.dp, GlassBorder.copy(alpha = 0.3f))
     ) {
         Column(
             modifier = Modifier.padding(20.dp)
@@ -385,7 +388,7 @@ fun MomentumIndicator(
                 )
                 Text(
                     "MOMENTUM",
-                    color = TextTertiary,
+                    color = colors.textTertiary,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 1.sp
@@ -406,7 +409,7 @@ fun MomentumIndicator(
                     .fillMaxWidth()
                     .height(8.dp)
                     .clip(RoundedCornerShape(4.dp))
-                    .background(Color.White.copy(alpha = 0.08f))
+                    .background(colors.glassBorderHighlight)
             ) {
                 // Center indicator
                 val indicatorPosition = (animatedMomentum + 1f) / 2f
@@ -453,7 +456,7 @@ fun MomentumIndicator(
             
             Text(
                 description,
-                color = TextSecondary,
+                color = colors.textSecondary,
                 fontSize = 12.sp,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth()
@@ -471,8 +474,8 @@ fun PremiumOverComparisonChart(
     team2Runs: List<Int>,
     team1Name: String,
     team2Name: String,
-    team1Color: Color = ShinyGoldDeep,
-    team2Color: Color = ChartBlue,
+    team1Color: Color = GoldDark,
+    team2Color: Color = StatusInfo,
     modifier: Modifier = Modifier
 ) {
     val maxRuns = maxOf(
@@ -480,14 +483,15 @@ fun PremiumOverComparisonChart(
         team2Runs.maxOrNull() ?: 0,
         10
     )
+    val colors = BouncerDesignSystem.colors
 
     Card(
         modifier = modifier
             .fillMaxWidth()
             .shadow(12.dp, RoundedCornerShape(24.dp)),
-        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.05f)),
+        colors = CardDefaults.cardColors(containerColor = colors.glassSurface),
         shape = RoundedCornerShape(24.dp),
-        border = BorderStroke(0.5.dp, CardBorder.copy(alpha = 0.3f))
+        border = BorderStroke(0.5.dp, colors.glassBorder.copy(alpha = 0.3f))
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
             // Header
@@ -498,7 +502,7 @@ fun PremiumOverComparisonChart(
             ) {
                 Text(
                     "Over Comparison",
-                    color = TextPrimary,
+                    color = colors.textPrimary,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -549,6 +553,7 @@ fun PremiumOverComparisonChart(
 
 @Composable
 private fun LegendItem(name: String, color: Color) {
+    val colors = BouncerDesignSystem.colors
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -560,7 +565,7 @@ private fun LegendItem(name: String, color: Color) {
         )
         Text(
             name,
-            color = TextSecondary,
+            color = colors.textSecondary,
             fontSize = 11.sp,
             fontWeight = FontWeight.Medium
         )
@@ -575,7 +580,7 @@ fun PlayerImpactRating(
     playerName: String,
     impactScore: Float, // 0 to 10
     stats: String,
-    avatarColor: Color = ShinyGoldDeep,
+    avatarColor: Color = GoldDark,
     modifier: Modifier = Modifier
 ) {
     val animatedScore by animateFloatAsState(
@@ -583,19 +588,20 @@ fun PlayerImpactRating(
         animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
         label = "impact"
     )
+    val colors = BouncerDesignSystem.colors
     
     val ratingColor = when {
-        impactScore >= 8f -> SuccessGreen
-        impactScore >= 6f -> ShinyGoldDeep
-        impactScore >= 4f -> WarningOrange
-        else -> ErrorRed
+        impactScore >= 8f -> colors.statusSuccess
+        impactScore >= 6f -> colors.goldDark
+        impactScore >= 4f -> colors.statusWarning
+        else -> colors.statusLive
     }
 
     Card(
         modifier = modifier
             .fillMaxWidth()
             .shadow(8.dp, RoundedCornerShape(18.dp)),
-        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.05f)),
+        colors = CardDefaults.cardColors(containerColor = colors.glassSurface),
         shape = RoundedCornerShape(18.dp)
     ) {
         Row(
@@ -623,13 +629,13 @@ fun PlayerImpactRating(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     playerName,
-                    color = TextPrimary,
+                    color = colors.textPrimary,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
                     stats,
-                    color = TextTertiary,
+                    color = colors.textTertiary,
                     fontSize = 12.sp
                 )
             }
@@ -644,7 +650,7 @@ fun PlayerImpactRating(
                 )
                 Text(
                     "IMPACT",
-                    color = TextTertiary,
+                    color = colors.textTertiary,
                     fontSize = 8.sp,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 1.sp

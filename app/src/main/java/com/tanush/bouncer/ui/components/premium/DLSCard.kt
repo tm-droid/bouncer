@@ -44,7 +44,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.tanush.bouncer.ui.theme.*
+import com.tanush.bouncer.ui.theme.ChartBlue
+import com.tanush.bouncer.ui.theme.SuccessGreen
+import com.tanush.bouncer.ui.theme.WicketRed
+import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 
 /**
  * DLS (Duckworth-Lewis-Stern) Card
@@ -82,6 +85,7 @@ fun DLSCard(
     chaseTeam: String,
     modifier: Modifier = Modifier,
 ) {
+    val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "dls")
 
     val resourcePulse by infiniteTransition.animateFloat(
@@ -113,6 +117,9 @@ fun DLSCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 12.dp),
     ) {
         Box {
+            // Capture color for Canvas scope
+            val statusInfoColor = colors.statusInfo
+            
             // Rain effect background
             Canvas(modifier = Modifier.fillMaxWidth().height(200.dp)) {
                 val centerX = size.width / 2
@@ -123,7 +130,7 @@ fun DLSCard(
                     val y = (i * 20f + resourcePulse * 100) % size.height
 
                     drawCircle(
-                        color = ChartBlue.copy(alpha = 0.1f),
+                        color = statusInfoColor.copy(alpha = 0.1f),
                         radius = 3f,
                         center = Offset(x, y),
                     )
@@ -148,7 +155,7 @@ fun DLSCard(
                                 .clip(RoundedCornerShape(12.dp))
                                 .background(
                                     Brush.linearGradient(
-                                        colors = listOf(ChartBlue, Color(0xFF26C6DA)),
+                                        colors = listOf(colors.statusInfo, Color(0xFF26C6DA)),
                                     ),
                                 ),
                             contentAlignment = Alignment.Center,
@@ -166,7 +173,7 @@ fun DLSCard(
                         Column {
                             Text(
                                 text = "DLS METHOD",
-                                color = ChartBlue,
+                                color = colors.statusInfo,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
                                 letterSpacing = 1.5.sp,
@@ -184,7 +191,7 @@ fun DLSCard(
                     Column(horizontalAlignment = Alignment.End) {
                         Text(
                             text = "${dlsInfo.targetRevised}",
-                            color = ShinyGoldMid,
+                            color = colors.goldDark,
                             fontSize = 28.sp,
                             fontWeight = FontWeight.Bold,
                         )
@@ -207,15 +214,15 @@ fun DLSCard(
                             if (isAbovePar) {
                                 Brush.horizontalGradient(
                                     colors = listOf(
-                                        SuccessGreen.copy(alpha = 0.2f),
-                                        SuccessGreen.copy(alpha = 0.1f),
+                                        colors.statusSuccess.copy(alpha = 0.2f),
+                                        colors.statusSuccess.copy(alpha = 0.1f),
                                     ),
                                 )
                             } else {
                                 Brush.horizontalGradient(
                                     colors = listOf(
-                                        WicketRed.copy(alpha = 0.2f),
-                                        WicketRed.copy(alpha = 0.1f),
+                                        colors.statusLive.copy(alpha = 0.2f),
+                                        colors.statusLive.copy(alpha = 0.1f),
                                     ),
                                 )
                             },
@@ -227,7 +234,7 @@ fun DLSCard(
                     Column {
                         Text(
                             text = "PAR SCORE NOW",
-                            color = if (isAbovePar) SuccessGreen else WicketRed,
+                            color = if (isAbovePar) colors.statusSuccess else colors.statusLive,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.sp,
@@ -251,7 +258,7 @@ fun DLSCard(
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
                             text = if (isAbovePar) "AHEAD" else "BEHIND",
-                            color = if (isAbovePar) SuccessGreen else WicketRed,
+                            color = if (isAbovePar) colors.statusSuccess else colors.statusLive,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
                         )
@@ -266,7 +273,7 @@ fun DLSCard(
                     Column(horizontalAlignment = Alignment.End) {
                         Text(
                             text = "$currentScore/$currentWickets",
-                            color = if (isAbovePar) SuccessGreen else WicketRed,
+                            color = if (isAbovePar) colors.statusSuccess else colors.statusLive,
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Bold,
                         )
@@ -305,7 +312,7 @@ fun DLSCard(
                             .clip(RoundedCornerShape(10.dp))
                             .background(
                                 Brush.horizontalGradient(
-                                    colors = listOf(ChartBlue, ShinyGoldMid),
+                                    colors = listOf(colors.statusInfo, colors.goldDark),
                                 ),
                             ),
                     )
@@ -347,19 +354,19 @@ fun DLSCard(
                     DLSStatItem(
                         label = "Overs Now",
                         value = "${dlsInfo.originalOvers - dlsInfo.oversReduced}",
-                        color = ChartBlue,
+                        color = colors.statusInfo,
                     )
 
                     DLSStatItem(
                         label = "Reduced",
                         value = "${dlsInfo.oversReduced}",
-                        color = WicketRed,
+                        color = colors.statusLive,
                     )
 
                     DLSStatItem(
                         label = "Need",
                         value = "$runsNeeded",
-                        color = ShinyGoldMid,
+                        color = colors.goldDark,
                     )
                 }
 
@@ -370,7 +377,7 @@ fun DLSCard(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(8.dp))
-                        .background(ChartBlue.copy(alpha = 0.1f))
+                        .background(colors.statusInfo.copy(alpha = 0.1f))
                         .padding(10.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Center,
@@ -397,6 +404,7 @@ private fun DLSStatItem(
     value: String,
     color: Color,
 ) {
+    val colors = BouncerDesignSystem.colors
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
             text = value,

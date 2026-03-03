@@ -49,11 +49,11 @@ import com.tanush.bouncer.ui.components.glass.GlassCardHero
 import com.tanush.bouncer.ui.components.glass.LiveIndicator
 import com.tanush.bouncer.ui.components.glass.TeamFlagBackground
 import com.tanush.bouncer.ui.components.glass.TeamLogoCircle
-import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 import com.tanush.bouncer.ui.theme.BouncerDimens
 import com.tanush.bouncer.ui.theme.BouncerTheme
 import com.tanush.bouncer.ui.theme.TeamPrimaryColors
 import com.tanush.bouncer.ui.theme.etchedText
+import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 
 /**
  * Hero Scorecard Card — the primary visual element at the top of the match detail screen.
@@ -312,6 +312,7 @@ private fun HeroBottomSection(match: CricketMatch) {
 
 @Composable
 private fun Modifier.animatedGlow(): Modifier {
+    val colors = BouncerDesignSystem.colors
     val transition = rememberInfiniteTransition(label = "heroGlow")
     val glowAlpha by transition.animateFloat(
         initialValue = 0.0f,
@@ -343,6 +344,7 @@ private fun Modifier.animatedGlow(): Modifier {
 @Preview(showBackground = true, widthDp = 400)
 @Composable
 private fun HeroScorecardCardLivePreview() {
+    val colors = BouncerDesignSystem.colors
     BouncerTheme(darkTheme = true, dynamicColor = false) {
         HeroScorecardCard(
             match = CricketMatch(
@@ -388,6 +390,7 @@ private fun HeroScorecardCardLivePreview() {
 @Preview(showBackground = true, widthDp = 400)
 @Composable
 private fun HeroScorecardCardCompletedPreview() {
+    val colors = BouncerDesignSystem.colors
     BouncerTheme(darkTheme = false, dynamicColor = false) {
         HeroScorecardCard(
             match = CricketMatch(

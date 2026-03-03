@@ -33,7 +33,9 @@ import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.ui.components.BallPrediction
 import com.tanush.bouncer.ui.components.PredictiveBallCard
+import com.tanush.bouncer.ui.components.glass.GlassBloomBackground
 import com.tanush.bouncer.ui.theme.*
+import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 
 /**
  * MCP Predictive Forecast Screen - Elite "Masterpiece" Implementation.
@@ -46,6 +48,7 @@ fun McpPredictiveForecastScreen(
     match: CricketMatch,
     onBackClick: () -> Unit
 ) {
+    val colors = BouncerDesignSystem.colors
     val scrollState = rememberScrollState()
     
     // Derived from mockup data
@@ -65,7 +68,7 @@ fun McpPredictiveForecastScreen(
     }
 
     Scaffold(
-        containerColor = BlackBackground,
+        containerColor = Color.Transparent,
         topBar = {
             TopAppBar(
                 title = {
@@ -85,12 +88,12 @@ fun McpPredictiveForecastScreen(
                                 animationSpec = infiniteRepeatable(tween(1000), RepeatMode.Reverse),
                                 label = "alpha"
                             )
-                            Box(modifier = Modifier.size(6.dp).alpha(alpha).background(ShinyGoldDeep, CircleShape).shadow(4.dp, spotColor = ShinyGoldDeep))
+                            Box(modifier = Modifier.size(6.dp).alpha(alpha).background(colors.goldPrimary, CircleShape).shadow(4.dp, spotColor = colors.goldPrimary))
                             Text(
                                 "LIVE CONNECTION",
                                 fontSize = 9.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = ShinyGoldDeep
+                                color = colors.goldPrimary
                             )
                         }
                     }
@@ -109,6 +112,7 @@ fun McpPredictiveForecastScreen(
             )
         }
     ) { padding ->
+        GlassBloomBackground(modifier = Modifier.fillMaxSize()) {
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             // Depth Gradient
             Box(
@@ -116,7 +120,7 @@ fun McpPredictiveForecastScreen(
                     .fillMaxSize()
                     .background(
                         Brush.verticalGradient(
-                            listOf(CardDarkBlue.copy(alpha = 0.2f), BlackBackground)
+                            listOf(colors.surface1.copy(alpha = 0.2f), colors.backgroundBase)
                         )
                     )
             )
@@ -145,8 +149,8 @@ fun McpPredictiveForecastScreen(
                             fontWeight = FontWeight.Black
                         )
                         TextButton(onClick = {}) {
-                            Text("View History", color = ShinyGoldDeep, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                            Icon(Icons.Default.ChevronRight, null, tint = ShinyGoldDeep, modifier = Modifier.size(16.dp))
+                            Text("View History", color = colors.goldPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            Icon(Icons.Default.ChevronRight, null, tint = colors.goldPrimary, modifier = Modifier.size(16.dp))
                         }
                     }
                     
@@ -193,7 +197,7 @@ fun McpPredictiveForecastScreen(
                     .fillMaxWidth()
                     .background(
                         Brush.verticalGradient(
-                            listOf(Color.Transparent, BlackBackground.copy(alpha = 0.9f), BlackBackground)
+                            listOf(Color.Transparent, colors.backgroundBase.copy(alpha = 0.9f), colors.backgroundBase)
                         )
                     )
                     .padding(24.dp)
@@ -203,8 +207,8 @@ fun McpPredictiveForecastScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(56.dp)
-                        .shadow(20.dp, spotColor = ShinyGoldDeep.copy(alpha = 0.3f)),
-                    colors = ButtonDefaults.buttonColors(containerColor = ShinyGoldDeep),
+                        .shadow(20.dp, spotColor = colors.goldPrimary.copy(alpha = 0.3f)),
+                    colors = ButtonDefaults.buttonColors(containerColor = colors.goldPrimary),
                     shape = RoundedCornerShape(12.dp)
                 ) {
                     Icon(Icons.Default.Analytics, null, tint = Color.Black)
@@ -213,11 +217,13 @@ fun McpPredictiveForecastScreen(
                 }
             }
         }
+        }
     }
 }
 
 @Composable
 private fun EliteForecastHero(match: CricketMatch) {
+    val colors = BouncerDesignSystem.colors
     val battingTeam = match.teams.firstOrNull { it.isBatting } ?: match.teams.firstOrNull()
     val striker = match.scrapedBatsmen?.find { it.isStriker } ?: match.scrapedBatsmen?.firstOrNull()
     val bowler = match.currentBowler
@@ -231,7 +237,7 @@ private fun EliteForecastHero(match: CricketMatch) {
         Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Column {
-                    Text("LIVE ${match.matchType.uppercase()} MATCH", color = TextTertiary, fontSize = 10.sp, fontWeight = FontWeight.Black, letterSpacing = 1.5.sp)
+                    Text("LIVE ${match.matchType.uppercase()} MATCH", color = colors.textTertiary, fontSize = 10.sp, fontWeight = FontWeight.Black, letterSpacing = 1.5.sp)
                     Text(
                         text = "${match.teams.getOrNull(0)?.acronym ?: "IND"} vs ${match.teams.getOrNull(1)?.acronym ?: "AUS"}",
                         color = Color.White,
@@ -240,32 +246,32 @@ private fun EliteForecastHero(match: CricketMatch) {
                     )
                 }
                 Column(horizontalAlignment = Alignment.End) {
-                    Text(battingTeam?.score ?: "145/3", color = ShinyGoldDeep, fontSize = 24.sp, fontWeight = FontWeight.Black)
-                    Text("${battingTeam?.overs ?: "14.0"} OVERS", color = TextSecondary, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    Text(battingTeam?.score ?: "145/3", color = colors.goldPrimary, fontSize = 24.sp, fontWeight = FontWeight.Black)
+                    Text("${battingTeam?.overs ?: "14.0"} OVERS", color = colors.textSecondary, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                 }
             }
 
             Box(modifier = Modifier.fillMaxWidth().height(2.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.05f))) {
-                Box(modifier = Modifier.fillMaxWidth(0.52f).fillMaxHeight().background(ShinyGoldDeep))
+                Box(modifier = Modifier.fillMaxWidth(0.52f).fillMaxHeight().background(colors.goldPrimary))
             }
 
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text("ON STRIKE", color = TextTertiary, fontSize = 9.sp, fontWeight = FontWeight.Black)
+                    Text("ON STRIKE", color = colors.textTertiary, fontSize = 9.sp, fontWeight = FontWeight.Black)
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                         Text(striker?.name ?: "V. Kohli", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                        Text("${striker?.runs ?: "56"}*", color = ShinyGoldDeep, fontSize = 14.sp, fontWeight = FontWeight.Black)
+                        Text("${striker?.runs ?: "56"}*", color = colors.goldPrimary, fontSize = 14.sp, fontWeight = FontWeight.Black)
                     }
-                    Text("SR: ${striker?.strikeRate ?: "142.5"}", color = TextSecondary, fontSize = 10.sp)
+                    Text("SR: ${striker?.strikeRate ?: "142.5"}", color = colors.textSecondary, fontSize = 10.sp)
                 }
                 Box(modifier = Modifier.width(1.dp).height(32.dp).background(Color.White.copy(alpha = 0.05f)).align(Alignment.CenterVertically))
                 Column(modifier = Modifier.weight(1f)) {
-                    Text("BOWLER", color = TextTertiary, fontSize = 9.sp, fontWeight = FontWeight.Black)
+                    Text("BOWLER", color = colors.textTertiary, fontSize = 9.sp, fontWeight = FontWeight.Black)
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                         Text(bowler?.name ?: "M. Starc", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                        Text("${bowler?.wickets ?: "1"}/${bowler?.runs ?: "24"}", color = ShinyGoldDeep, fontSize = 14.sp, fontWeight = FontWeight.Black)
+                        Text("${bowler?.wickets ?: "1"}/${bowler?.runs ?: "24"}", color = colors.goldPrimary, fontSize = 14.sp, fontWeight = FontWeight.Black)
                     }
-                    Text("ECON: ${bowler?.economy ?: "6.8"}", color = TextSecondary, fontSize = 10.sp)
+                    Text("ECON: ${bowler?.economy ?: "6.8"}", color = colors.textSecondary, fontSize = 10.sp)
                 }
             }
         }
@@ -274,6 +280,7 @@ private fun EliteForecastHero(match: CricketMatch) {
 
 @Composable
 private fun EliteEngineConfidenceCard(modifier: Modifier, confidence: Float, trend: String) {
+    val colors = BouncerDesignSystem.colors
     Surface(
         modifier = modifier.height(130.dp),
         shape = RoundedCornerShape(16.dp),
@@ -282,17 +289,17 @@ private fun EliteEngineConfidenceCard(modifier: Modifier, confidence: Float, tre
     ) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.SpaceBetween) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("ENGINE\nCONFIDENCE", color = TextSecondary, fontSize = 10.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
-                Icon(Icons.Default.Psychology, null, tint = ShinyGoldDeep, modifier = Modifier.size(20.dp))
+                Text("ENGINE\nCONFIDENCE", color = colors.textSecondary, fontSize = 10.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
+                Icon(Icons.Default.Psychology, null, tint = colors.goldPrimary, modifier = Modifier.size(20.dp))
             }
             Column {
                 Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text("${(confidence * 100).toInt()}%", color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Black)
-                    Text(trend, color = SuccessGreen, fontSize = 10.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(bottom = 4.dp))
+                    Text(trend, color = colors.statusSuccess, fontSize = 10.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(bottom = 4.dp))
                 }
                 Spacer(modifier = Modifier.height(8.dp))
                 Box(modifier = Modifier.fillMaxWidth().height(2.dp).background(Color.White.copy(alpha = 0.05f))) {
-                    Box(modifier = Modifier.fillMaxWidth(confidence).fillMaxHeight().background(ShinyGoldDeep))
+                    Box(modifier = Modifier.fillMaxWidth(confidence).fillMaxHeight().background(colors.goldPrimary))
                 }
             }
         }
@@ -301,6 +308,7 @@ private fun EliteEngineConfidenceCard(modifier: Modifier, confidence: Float, tre
 
 @Composable
 private fun ElitePitchAnalysisCard(modifier: Modifier) {
+    val colors = BouncerDesignSystem.colors
     Surface(
         modifier = modifier.height(130.dp),
         shape = RoundedCornerShape(16.dp),
@@ -309,13 +317,13 @@ private fun ElitePitchAnalysisCard(modifier: Modifier) {
     ) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.SpaceBetween) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("PITCH\nANALYSIS", color = TextSecondary, fontSize = 10.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
-                Icon(Icons.Default.Landscape, null, tint = TextTertiary, modifier = Modifier.size(20.dp))
+                Text("PITCH\nANALYSIS", color = colors.textSecondary, fontSize = 10.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
+                Icon(Icons.Default.Landscape, null, tint = colors.textTertiary, modifier = Modifier.size(20.dp))
             }
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 PitchTelemetryItem("Humidity", "65%", Color.White)
-                PitchTelemetryItem("Fatigue", "Low", SuccessGreen)
-                PitchTelemetryItem("Dew", "High", ErrorRed)
+                PitchTelemetryItem("Fatigue", "Low", colors.statusSuccess)
+                PitchTelemetryItem("Dew", "High", colors.statusLive)
             }
         }
     }
@@ -323,14 +331,16 @@ private fun ElitePitchAnalysisCard(modifier: Modifier) {
 
 @Composable
 private fun PitchTelemetryItem(label: String, value: String, color: Color) {
+    val colors = BouncerDesignSystem.colors
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-        Text(label, color = TextTertiary, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+        Text(label, color = colors.textTertiary, fontSize = 10.sp, fontWeight = FontWeight.Bold)
         Text(value, color = color, fontSize = 10.sp, fontWeight = FontWeight.Black)
     }
 }
 
 @Composable
 private fun EliteActiveFieldMap() {
+    val colors = BouncerDesignSystem.colors
     Surface(
         modifier = Modifier.fillMaxWidth().height(140.dp),
         shape = RoundedCornerShape(16.dp),
@@ -339,7 +349,7 @@ private fun EliteActiveFieldMap() {
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             Canvas(modifier = Modifier.fillMaxSize()) {
-                drawCircle(color = ShinyGoldDeep.copy(alpha = 0.03f), radius = size.maxDimension / 2, center = Offset(size.width, size.height / 2))
+                drawCircle(color = colors.goldPrimary.copy(alpha = 0.03f), radius = size.maxDimension / 2, center = Offset(size.width, size.height / 2))
             }
             Row(
                 modifier = Modifier.fillMaxSize().padding(24.dp),
@@ -348,7 +358,7 @@ private fun EliteActiveFieldMap() {
             ) {
                 Column {
                     Text("ACTIVE FIELD SETUP", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Black)
-                    Text("Powerplay Off side focused", color = TextSecondary, fontSize = 12.sp)
+                    Text("Powerplay Off side focused", color = colors.textSecondary, fontSize = 12.sp)
                 }
                 Surface(
                     color = Color.White.copy(alpha = 0.05f),

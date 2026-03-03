@@ -82,10 +82,14 @@ fun PremiumSplashScreen(
         label = "slideUp"
     )
 
+    val colors = BouncerDesignSystem.colors
+    val goldPrimary = colors.goldPrimary
+    val goldLight = colors.goldLight
+
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(BlackBackground),
+            .background(colors.backgroundBase),
         contentAlignment = Alignment.Center
     ) {
         // Background effects
@@ -96,9 +100,9 @@ fun PremiumSplashScreen(
                     drawCircle(
                         brush = Brush.sweepGradient(
                             colors = listOf(
-                                ShinyGoldDeep.copy(alpha = 0.1f - i * 0.03f),
+                                goldPrimary.copy(alpha = 0.1f - i * 0.03f),
                                 Color.Transparent,
-                                ShinyGoldLight.copy(alpha = 0.15f - i * 0.03f),
+                                goldLight.copy(alpha = 0.15f - i * 0.03f),
                                 Color.Transparent
                             )
                         ),
@@ -113,7 +117,7 @@ fun PremiumSplashScreen(
             drawCircle(
                 brush = Brush.radialGradient(
                     colors = listOf(
-                        ShinyGoldDeep.copy(alpha = 0.08f * pulse),
+                        goldPrimary.copy(alpha = 0.08f * pulse),
                         Color.Transparent
                     ),
                     center = center,
@@ -142,8 +146,8 @@ fun PremiumSplashScreen(
                         drawCircle(
                             brush = Brush.radialGradient(
                                 colors = listOf(
-                                    ShinyGoldDeep.copy(alpha = 0.4f),
-                                    ShinyGoldDeep.copy(alpha = 0.1f),
+                                    goldPrimary.copy(alpha = 0.4f),
+                                    goldPrimary.copy(alpha = 0.1f),
                                     Color.Transparent
                                 )
                             ),
@@ -155,7 +159,7 @@ fun PremiumSplashScreen(
                             colors = listOf(
                                 Color.White.copy(alpha = 0.08f),
                                 Color.White.copy(alpha = 0.05f),
-                                CardDarkBlue
+                                colors.surface1
                             )
                         ),
                         CircleShape
@@ -164,9 +168,9 @@ fun PremiumSplashScreen(
                         2.dp,
                         Brush.linearGradient(
                             colors = listOf(
-                                ShinyGoldLight,
-                                ShinyGoldDeep,
-                                ShinyGoldDark
+                                colors.goldLight,
+                                colors.goldPrimary,
+                                colors.goldDark
                             )
                         ),
                         CircleShape
@@ -175,7 +179,7 @@ fun PremiumSplashScreen(
             ) {
                 // Cricket ball seam lines
                 Canvas(modifier = Modifier.fillMaxSize()) {
-                    val seamColor = ShinyGoldDeep
+                    val seamColor = goldPrimary
                     
                     // Main vertical seam
                     drawArc(
@@ -203,7 +207,7 @@ fun PremiumSplashScreen(
                     text = "B",
                     fontSize = 48.sp,
                     fontWeight = FontWeight.Black,
-                    color = ShinyGoldDeep
+                    color = colors.goldPrimary
                 )
             }
             
@@ -225,7 +229,7 @@ fun PremiumSplashScreen(
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Medium,
                 letterSpacing = 2.sp,
-                color = ShinyGoldDeep
+                color = colors.goldPrimary
             )
             
             Spacer(modifier = Modifier.height(48.dp))
@@ -238,6 +242,7 @@ fun PremiumSplashScreen(
 
 @Composable
 private fun PremiumLoadingDots() {
+    val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "dots")
     
     Row(
@@ -270,7 +275,7 @@ private fun PremiumLoadingDots() {
                     .size(8.dp)
                     .graphicsLayer { scaleX = scale; scaleY = scale }
                     .background(
-                        ShinyGoldDeep.copy(alpha = alpha),
+                        colors.goldPrimary.copy(alpha = alpha),
                         CircleShape
                     )
             )
@@ -329,6 +334,7 @@ private fun QuickFilterChip(
     shimmerOffset: Float,
     onClick: () -> Unit
 ) {
+    val colors = BouncerDesignSystem.colors
     val scale by animateFloatAsState(
         targetValue = if (isSelected) 1f else 0.95f,
         animationSpec = spring(
@@ -339,19 +345,19 @@ private fun QuickFilterChip(
     )
     
     val backgroundColor by animateColorAsState(
-        targetValue = if (isSelected) ShinyGoldDeep.copy(alpha = 0.15f) else Color.White.copy(alpha = 0.05f),
+        targetValue = if (isSelected) colors.goldPrimary.copy(alpha = 0.15f) else Color.White.copy(alpha = 0.05f),
         animationSpec = tween(200),
         label = "chipBg"
     )
     
     val borderColor by animateColorAsState(
-        targetValue = if (isSelected) ShinyGoldDeep.copy(alpha = 0.6f) else CardBorder.copy(alpha = 0.3f),
+        targetValue = if (isSelected) colors.goldPrimary.copy(alpha = 0.6f) else colors.glassBorder.copy(alpha = 0.3f),
         animationSpec = tween(200),
         label = "chipBorder"
     )
     
     val textColor by animateColorAsState(
-        targetValue = if (isSelected) ShinyGoldDeep else TextSecondary,
+        targetValue = if (isSelected) colors.goldPrimary else colors.textSecondary,
         animationSpec = tween(200),
         label = "chipText"
     )
@@ -398,7 +404,7 @@ private fun QuickFilterChip(
             if (filter.count > 0) {
                 Surface(
                     shape = CircleShape,
-                    color = if (isSelected) ShinyGoldDeep.copy(alpha = 0.2f) else CardBorder.copy(alpha = 0.3f)
+                    color = if (isSelected) colors.goldPrimary.copy(alpha = 0.2f) else colors.glassBorder.copy(alpha = 0.3f)
                 ) {
                     Text(
                         text = filter.count.toString(),
@@ -423,6 +429,8 @@ fun PremiumEmptyState(
     modifier: Modifier = Modifier,
     action: (@Composable () -> Unit)? = null
 ) {
+    val colors = BouncerDesignSystem.colors
+    val goldPrimary = colors.goldPrimary
     val infiniteTransition = rememberInfiniteTransition(label = "empty")
     val float by infiniteTransition.animateFloat(
         initialValue = 0f,
@@ -460,7 +468,7 @@ fun PremiumEmptyState(
                     drawCircle(
                         brush = Brush.radialGradient(
                             colors = listOf(
-                                ShinyGoldDeep.copy(alpha = glowPulse),
+                                goldPrimary.copy(alpha = glowPulse),
                                 Color.Transparent
                             )
                         ),
@@ -473,7 +481,7 @@ fun PremiumEmptyState(
                 )
                 .border(
                     1.dp,
-                    ShinyGoldDeep.copy(alpha = 0.3f),
+                    colors.goldPrimary.copy(alpha = 0.3f),
                     CircleShape
                 ),
             contentAlignment = Alignment.Center
@@ -481,7 +489,7 @@ fun PremiumEmptyState(
             Icon(
                 imageVector = Icons.Default.SportsBaseball,
                 contentDescription = null,
-                tint = ShinyGoldDeep,
+                tint = colors.goldPrimary,
                 modifier = Modifier.size(48.dp)
             )
         }
@@ -502,7 +510,7 @@ fun PremiumEmptyState(
                 text = description,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Normal,
-                color = TextSecondary,
+                color = colors.textSecondary,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.padding(horizontal = 24.dp)
             )
@@ -522,6 +530,8 @@ fun PremiumQuickActionsMenu(
     actions: List<OnboardingQuickAction>,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
+    val goldPrimary = colors.goldPrimary
     val rotation by animateFloatAsState(
         targetValue = if (isExpanded) 45f else 0f,
         animationSpec = spring(
@@ -575,7 +585,7 @@ fun PremiumQuickActionsMenu(
                         drawCircle(
                             brush = Brush.radialGradient(
                                 colors = listOf(
-                                    ShinyGoldDeep.copy(alpha = glowAlpha),
+                                    goldPrimary.copy(alpha = glowAlpha),
                                     Color.Transparent
                                 )
                             ),
@@ -586,15 +596,15 @@ fun PremiumQuickActionsMenu(
             
             FloatingActionButton(
                 onClick = onToggle,
-                containerColor = ShinyGoldDeep,
-                contentColor = BlackBackground,
+                containerColor = colors.goldPrimary,
+                contentColor = colors.backgroundBase,
                 shape = CircleShape,
                 modifier = Modifier
                     .size(56.dp)
                     .shadow(
                         elevation = 16.dp,
                         shape = CircleShape,
-                        spotColor = ShinyGoldDeep.copy(alpha = 0.5f)
+                        spotColor = colors.goldPrimary.copy(alpha = 0.5f)
                     )
             ) {
                 Icon(
@@ -613,7 +623,7 @@ data class OnboardingQuickAction(
     val id: String,
     val label: String,
     val icon: androidx.compose.ui.graphics.vector.ImageVector,
-    val color: Color = ShinyGoldDeep,
+    val color: Color = GoldPrimary,
     val onClick: () -> Unit
 )
 
@@ -622,6 +632,7 @@ private fun OnboardingQuickActionItem(
     action: OnboardingQuickAction,
     onToggle: () -> Unit
 ) {
+    val colors = BouncerDesignSystem.colors
     Row(
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -637,7 +648,7 @@ private fun OnboardingQuickActionItem(
                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Medium,
-                color = TextPrimary
+                color = colors.textPrimary
             )
         }
         
@@ -648,7 +659,7 @@ private fun OnboardingQuickActionItem(
                 action.onClick()
             },
             containerColor = action.color,
-            contentColor = BlackBackground,
+            contentColor = colors.backgroundBase,
             shape = CircleShape,
             modifier = Modifier.size(44.dp)
         ) {

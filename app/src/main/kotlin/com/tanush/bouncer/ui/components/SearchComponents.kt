@@ -49,7 +49,7 @@ fun SearchBar(
     var isFocused by remember { mutableStateOf(false) }
     
     val borderColor by animateColorAsState(
-        targetValue = if (isFocused) ShinyGoldDeep else Color.Gray.copy(alpha = 0.3f),
+        targetValue = if (isFocused) GoldPrimary else Color.Gray.copy(alpha = 0.3f),
         animationSpec = tween(300),
         label = "searchBorder"
     )
@@ -71,15 +71,15 @@ fun SearchBar(
             .shadow(
                 elevation = if (isFocused) 8.dp else 2.dp,
                 shape = RoundedCornerShape(16.dp),
-                spotColor = if (isFocused) ShinyGoldDeep.copy(alpha = 0.3f) else Color.Black.copy(
+                spotColor = if (isFocused) GoldPrimary.copy(alpha = 0.3f) else Color.Black.copy(
                     alpha = 0.1f
                 )
             )
             .background(
                 Brush.horizontalGradient(
                     colors = listOf(
-                        Color.White.copy(alpha = 0.05f),
-                        CardDarkBlue
+                        GlassSurface,
+                        Surface1
                     )
                 ),
                 RoundedCornerShape(16.dp)
@@ -90,7 +90,7 @@ fun SearchBar(
         Icon(
             imageVector = Icons.Default.Search,
             contentDescription = "Search",
-            tint = if (isFocused) ShinyGoldDeep.copy(alpha = shimmer) else Color.Gray,
+            tint = if (isFocused) GoldPrimary.copy(alpha = shimmer) else Color.Gray,
             modifier = Modifier.size(22.dp)
         )
         
@@ -119,7 +119,7 @@ fun SearchBar(
                 ),
                 singleLine = true,
                 enabled = enabled,
-                cursorBrush = SolidColor(ShinyGoldDeep),
+                cursorBrush = SolidColor(GoldPrimary),
                 keyboardOptions = KeyboardOptions(
                     imeAction = ImeAction.Search
                 ),
@@ -207,14 +207,14 @@ private fun FilterChip(
             .shadow(
                 elevation = if (isSelected) 6.dp else 0.dp,
                 shape = RoundedCornerShape(20.dp),
-                spotColor = if (isSelected) ShinyGoldDeep.copy(alpha = 0.4f) else Color.Transparent
+                spotColor = if (isSelected) GoldPrimary.copy(alpha = 0.4f) else Color.Transparent
             )
             .background(
                 brush = if (isSelected) {
                     Brush.linearGradient(
                         colors = listOf(
-                            ShinyGoldMid,
-                            ShinyGoldDeep
+                            GoldPrimary,
+                            GoldPrimary
                         )
                     )
                 } else {
@@ -259,8 +259,8 @@ fun SortButton(
                 .background(
                     Brush.horizontalGradient(
                         colors = listOf(
-                            ShinyGoldDeep.copy(alpha = 0.2f),
-                            ShinyGoldMid.copy(alpha = 0.15f)
+                            GoldPrimary.copy(alpha = 0.2f),
+                            GoldPrimary.copy(alpha = 0.15f)
                         )
                     ),
                     RoundedCornerShape(12.dp)
@@ -276,12 +276,12 @@ fun SortButton(
             Icon(
                 imageVector = Icons.Default.Search,
                 contentDescription = "Sort",
-                tint = ShinyGoldDeep,
+                tint = GoldPrimary,
                 modifier = Modifier.size(18.dp)
             )
             Text(
                 text = currentSort,
-                color = ShinyGoldDeep,
+                color = GoldPrimary,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 0.3.sp
@@ -293,7 +293,7 @@ fun SortButton(
             onDismissRequest = { expanded = false },
             modifier = Modifier
                 .background(
-                    Color.White.copy(alpha = 0.05f),
+                    GlassSurface,
                     RoundedCornerShape(12.dp)
                 )
         ) {
@@ -302,7 +302,7 @@ fun SortButton(
                     text = {
                         Text(
                             text = option,
-                            color = if (option == currentSort) ShinyGoldDeep else MaterialTheme.colorScheme.onSurface,
+                            color = if (option == currentSort) GoldPrimary else MaterialTheme.colorScheme.onSurface,
                             fontWeight = if (option == currentSort) FontWeight.Bold else FontWeight.Normal
                         )
                     },
@@ -313,7 +313,7 @@ fun SortButton(
                     },
                     modifier = Modifier.background(
                         if (option == currentSort)
-                            ShinyGoldDeep.copy(alpha = 0.1f)
+                            GoldPrimary.copy(alpha = 0.1f)
                         else
                             Color.Transparent
                     )

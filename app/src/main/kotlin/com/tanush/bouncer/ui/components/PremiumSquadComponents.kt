@@ -50,7 +50,7 @@ fun PremiumPlayerCard(
     playerName: String,
     playerRole: PlayerRole,
     playerImage: String?,
-    teamColor: Color = ShinyGoldDeep,
+    teamColor: Color = GoldPrimary,
     isCaptain: Boolean = false,
     isWicketkeeper: Boolean = false,
     isPlaying: Boolean = true,
@@ -58,6 +58,7 @@ fun PremiumPlayerCard(
     modifier: Modifier = Modifier
 ) {
     var isHovered by remember { mutableStateOf(false) }
+    val colors = BouncerDesignSystem.colors
     
     val infiniteTransition = rememberInfiniteTransition(label = "playerCard")
     val borderGlow by infiniteTransition.animateFloat(
@@ -88,14 +89,14 @@ fun PremiumPlayerCard(
                 spotColor = teamColor.copy(alpha = 0.2f)
             ),
         shape = RoundedCornerShape(20.dp),
-        color = Color.White.copy(alpha = 0.05f),
+        color = colors.glassSurface,
         border = if (isCaptain) BorderStroke(
             2.dp, 
             Brush.linearGradient(
                 colors = listOf(
-                    ShinyGoldDeep.copy(alpha = borderGlow),
-                    ShinyGoldBronze,
-                    ShinyGoldDeep.copy(alpha = borderGlow)
+                    colors.goldPrimary.copy(alpha = borderGlow),
+                    colors.goldDark,
+                    colors.goldPrimary.copy(alpha = borderGlow)
                 )
             )
         ) else null
@@ -141,7 +142,7 @@ fun PremiumPlayerCard(
                         .background(
                             Brush.linearGradient(
                                 colors = listOf(
-                                    CardDarkBlue,
+                                    colors.surface1,
                                     teamColor.copy(alpha = 0.1f)
                                 )
                             )
@@ -173,7 +174,7 @@ fun PremiumPlayerCard(
                             .align(Alignment.TopEnd)
                             .background(
                                 Brush.linearGradient(
-                                    colors = listOf(ShinyGoldDeep, ShinyGoldBronze)
+                                    colors = listOf(colors.goldPrimary, colors.goldDark)
                                 ),
                                 CircleShape
                             )
@@ -184,7 +185,7 @@ fun PremiumPlayerCard(
                             text = "C",
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Black,
-                            color = Color.White
+                            color = colors.textPrimary
                         )
                     }
                 }
@@ -195,7 +196,7 @@ fun PremiumPlayerCard(
                         modifier = Modifier
                             .size(24.dp)
                             .align(Alignment.BottomEnd)
-                            .background(CardDarkBlue, CircleShape)
+                            .background(colors.surface1, CircleShape)
                             .border(1.dp, teamColor.copy(alpha = 0.5f), CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
@@ -220,7 +221,7 @@ fun PremiumPlayerCard(
                         Icon(
                             imageVector = Icons.Default.Close,
                             contentDescription = "Not Playing",
-                            tint = WicketRed.copy(alpha = 0.8f),
+                            tint = colors.statusLive.copy(alpha = 0.8f),
                             modifier = Modifier.size(24.dp)
                         )
                     }
@@ -232,7 +233,7 @@ fun PremiumPlayerCard(
                 text = playerName,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = Color.White,
+                color = colors.textPrimary,
                 textAlign = TextAlign.Center,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
@@ -286,7 +287,7 @@ private fun RoleBadge(role: PlayerRole, color: Color) {
 @Composable
 fun PremiumSquadGrid(
     players: List<SquadPlayer>,
-    teamColor: Color = ShinyGoldDeep,
+    teamColor: Color = GoldPrimary,
     onPlayerClick: (SquadPlayer) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
@@ -356,6 +357,7 @@ private fun RoleSectionHeader(
     count: Int,
     color: Color
 ) {
+    val colors = BouncerDesignSystem.colors
     val roleLabel = when (role) {
         PlayerRole.BATSMAN -> "Batsmen"
         PlayerRole.BOWLER -> "Bowlers"
@@ -383,14 +385,14 @@ private fun RoleSectionHeader(
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 1.2.sp,
-                color = Color.White
+                color = colors.textPrimary
             )
         }
         
         Text(
             text = "$count players",
             fontSize = 11.sp,
-            color = TextMuted
+            color = colors.textMuted
         )
     }
 }
@@ -421,6 +423,7 @@ fun BatsmanPerformanceCard(
         ),
         label = "strikePulse"
     )
+    val colors = BouncerDesignSystem.colors
 
     Surface(
         modifier = modifier
@@ -430,7 +433,7 @@ fun BatsmanPerformanceCard(
                         drawRect(
                             brush = Brush.horizontalGradient(
                                 colors = listOf(
-                                    LiveGreen.copy(alpha = strikePulse * 0.15f),
+                                    StatusSuccess.copy(alpha = strikePulse * 0.15f),
                                     Color.Transparent
                                 )
                             )
@@ -441,13 +444,13 @@ fun BatsmanPerformanceCard(
             .shadow(
                 elevation = 8.dp,
                 shape = RoundedCornerShape(16.dp),
-                spotColor = if (isOnStrike) LiveGreen.copy(alpha = 0.2f) else Color.Transparent
+                spotColor = if (isOnStrike) colors.statusSuccess.copy(alpha = 0.2f) else Color.Transparent
             ),
         shape = RoundedCornerShape(16.dp),
-        color = Color.White.copy(alpha = 0.05f),
+        color = colors.glassSurface,
         border = if (isOnStrike) BorderStroke(
             1.dp,
-            LiveGreen.copy(alpha = strikePulse * 0.6f)
+            colors.statusSuccess.copy(alpha = strikePulse * 0.6f)
         ) else null
     ) {
         Column(
@@ -468,7 +471,7 @@ fun BatsmanPerformanceCard(
                         text = name,
                         fontSize = 15.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color.White
+                        color = colors.textPrimary
                     )
                     
                     if (isOnStrike) {
@@ -479,9 +482,9 @@ fun BatsmanPerformanceCard(
                 // Status badges
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     if (runs >= 100) {
-                        MilestoneBadge("100", ShinyGoldDeep)
+                        MilestoneBadge("100", colors.goldPrimary)
                     } else if (runs >= 50) {
-                        MilestoneBadge("50", ShinyGoldMid)
+                        MilestoneBadge("50", colors.goldPrimary)
                     }
                     
                     if (isRetired) {
@@ -489,9 +492,9 @@ fun BatsmanPerformanceCard(
                             text = "RETIRED",
                             fontSize = 9.sp,
                             fontWeight = FontWeight.Bold,
-                            color = TextMuted,
+                            color = colors.textMuted,
                             modifier = Modifier
-                                .background(CardBorder, RoundedCornerShape(4.dp))
+                                .background(colors.glassBorder, RoundedCornerShape(4.dp))
                                 .padding(horizontal = 6.dp, vertical = 2.dp)
                         )
                     }
@@ -511,12 +514,12 @@ fun BatsmanPerformanceCard(
                         text = "$runs",
                         fontSize = 28.sp,
                         fontWeight = FontWeight.Black,
-                        color = ShinyGoldDeep
+                        color = colors.goldPrimary
                     )
                     Text(
                         text = "($balls)",
                         fontSize = 12.sp,
-                        color = TextMuted
+                        color = colors.textMuted
                     )
                 }
                 
@@ -529,16 +532,16 @@ fun BatsmanPerformanceCard(
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
                         color = when {
-                            strikeRate >= 150 -> BoundarySix
-                            strikeRate >= 100 -> BoundaryFour
-                            strikeRate >= 80 -> TextSecondary
-                            else -> DotBall
+                            strikeRate >= 150 -> colors.goldPrimary
+                            strikeRate >= 100 -> colors.statusInfo
+                            strikeRate >= 80 -> colors.textSecondary
+                            else -> colors.ballDot
                         }
                     )
                     Text(
                         text = "SR",
                         fontSize = 10.sp,
-                        color = TextMuted
+                        color = colors.textMuted
                     )
                 }
                 
@@ -546,8 +549,8 @@ fun BatsmanPerformanceCard(
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    BoundaryCounter(count = fours, label = "4s", color = BoundaryFour)
-                    BoundaryCounter(count = sixes, label = "6s", color = BoundarySix)
+                    BoundaryCounter(count = fours, label = "4s", color = colors.statusInfo)
+                    BoundaryCounter(count = sixes, label = "6s", color = colors.goldPrimary)
                 }
             }
             
@@ -556,7 +559,7 @@ fun BatsmanPerformanceCard(
                 Text(
                     text = it,
                     fontSize = 11.sp,
-                    color = WicketRed.copy(alpha = 0.9f),
+                    color = colors.statusLive.copy(alpha = 0.9f),
                     fontWeight = FontWeight.Medium
                 )
             }
@@ -571,16 +574,17 @@ private fun OnStrikeIndicator(pulseAlpha: Float) {
             .size(8.dp)
             .drawBehind {
                 drawCircle(
-                    color = LiveGreen.copy(alpha = pulseAlpha * 0.3f),
+                    color = StatusSuccess.copy(alpha = pulseAlpha * 0.3f),
                     radius = size.maxDimension * 1.5f
                 )
             }
-            .background(LiveGreen, CircleShape)
+            .background(StatusSuccess, CircleShape)
     )
 }
 
 @Composable
 private fun MilestoneBadge(text: String, color: Color) {
+    val dsColors = BouncerDesignSystem.colors
     Box(
         modifier = Modifier
             .background(
@@ -595,13 +599,14 @@ private fun MilestoneBadge(text: String, color: Color) {
             text = text,
             fontSize = 9.sp,
             fontWeight = FontWeight.Black,
-            color = Color.White
+            color = dsColors.textPrimary
         )
     }
 }
 
 @Composable
 private fun BoundaryCounter(count: Int, label: String, color: Color) {
+    val colors = BouncerDesignSystem.colors
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Box(
             modifier = Modifier
@@ -620,7 +625,7 @@ private fun BoundaryCounter(count: Int, label: String, color: Color) {
         Text(
             text = label,
             fontSize = 9.sp,
-            color = TextMuted
+            color = colors.textMuted
         )
     }
 }
@@ -649,6 +654,7 @@ fun BowlerPerformanceCard(
         ),
         label = "bowlingPulse"
     )
+    val colors = BouncerDesignSystem.colors
 
     Surface(
         modifier = modifier
@@ -658,7 +664,7 @@ fun BowlerPerformanceCard(
                         drawRect(
                             brush = Brush.horizontalGradient(
                                 colors = listOf(
-                                    LiveBlue.copy(alpha = bowlingPulse * 0.15f),
+                                    StatusInfo.copy(alpha = bowlingPulse * 0.15f),
                                     Color.Transparent
                                 )
                             )
@@ -669,13 +675,13 @@ fun BowlerPerformanceCard(
             .shadow(
                 elevation = 8.dp,
                 shape = RoundedCornerShape(16.dp),
-                spotColor = if (isBowling) LiveBlue.copy(alpha = 0.2f) else Color.Transparent
+                spotColor = if (isBowling) colors.statusInfo.copy(alpha = 0.2f) else Color.Transparent
             ),
         shape = RoundedCornerShape(16.dp),
-        color = Color.White.copy(alpha = 0.05f),
+        color = colors.glassSurface,
         border = if (isBowling) BorderStroke(
             1.dp,
-            LiveBlue.copy(alpha = bowlingPulse * 0.6f)
+            colors.statusInfo.copy(alpha = bowlingPulse * 0.6f)
         ) else null
     ) {
         Column(
@@ -696,14 +702,14 @@ fun BowlerPerformanceCard(
                         text = name,
                         fontSize = 15.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color.White
+                        color = colors.textPrimary
                     )
                     
                     if (isBowling) {
                         Box(
                             modifier = Modifier
                                 .background(
-                                    LiveBlue.copy(alpha = 0.15f),
+                                    colors.statusInfo.copy(alpha = 0.15f),
                                     RoundedCornerShape(4.dp)
                                 )
                                 .padding(horizontal = 6.dp, vertical = 2.dp)
@@ -712,7 +718,7 @@ fun BowlerPerformanceCard(
                                 text = "BOWLING",
                                 fontSize = 8.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = LiveBlue,
+                                color = colors.statusInfo,
                                 letterSpacing = 0.5.sp
                             )
                         }
@@ -721,9 +727,9 @@ fun BowlerPerformanceCard(
                 
                 // Wickets badges
                 if (wickets >= 5) {
-                    MilestoneBadge("5W", BoundarySix)
+                    MilestoneBadge("5W", colors.goldPrimary)
                 } else if (wickets >= 3) {
-                    MilestoneBadge("${wickets}W", BoundaryFour)
+                    MilestoneBadge("${wickets}W", colors.statusInfo)
                 }
             }
             
@@ -738,12 +744,12 @@ fun BowlerPerformanceCard(
                         text = "$wickets/$runs",
                         fontSize = 24.sp,
                         fontWeight = FontWeight.Black,
-                        color = if (wickets >= 3) BoundarySix else ShinyGoldDeep
+                        color = colors.goldPrimary
                     )
                     Text(
                         text = "($overs ov)",
                         fontSize = 11.sp,
-                        color = TextMuted
+                        color = colors.textMuted
                     )
                 }
                 
@@ -754,16 +760,16 @@ fun BowlerPerformanceCard(
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
                         color = when {
-                            economy <= 4.0 -> SuccessGreen
-                            economy <= 6.0 -> TextSecondary
-                            economy <= 8.0 -> WarningYellow
-                            else -> WicketRed
+                            economy <= 4.0 -> colors.statusSuccess
+                            economy <= 6.0 -> colors.textSecondary
+                            economy <= 8.0 -> colors.statusWarning
+                            else -> colors.statusLive
                         }
                     )
                     Text(
                         text = "ECON",
                         fontSize = 9.sp,
-                        color = TextMuted,
+                        color = colors.textMuted,
                         letterSpacing = 0.5.sp
                     )
                 }
@@ -774,12 +780,12 @@ fun BowlerPerformanceCard(
                         text = "$maidens",
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
-                        color = TextSecondary
+                        color = colors.textSecondary
                     )
                     Text(
                         text = "MAIDENS",
                         fontSize = 9.sp,
-                        color = TextMuted,
+                        color = colors.textMuted,
                         letterSpacing = 0.5.sp
                     )
                 }
@@ -812,15 +818,16 @@ fun PartnershipCard(
         animationSpec = tween(1000, easing = FastOutSlowInEasing),
         label = "partnershipPercentage"
     )
+    val colors = BouncerDesignSystem.colors
 
     Surface(
         modifier = modifier.shadow(
             elevation = 12.dp,
             shape = RoundedCornerShape(20.dp),
-            spotColor = ShinyGoldDeep.copy(alpha = 0.15f)
+            spotColor = colors.goldPrimary.copy(alpha = 0.15f)
         ),
         shape = RoundedCornerShape(20.dp),
-        color = Color.White.copy(alpha = 0.05f)
+        color = colors.glassSurface
     ) {
         Column(
             modifier = Modifier.padding(20.dp),
@@ -837,7 +844,7 @@ fun PartnershipCard(
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 1.2.sp,
-                    color = TextMuted
+                    color = colors.textMuted
                 )
                 
                 Column(horizontalAlignment = Alignment.End) {
@@ -845,12 +852,12 @@ fun PartnershipCard(
                         text = "$partnershipRuns runs",
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Black,
-                        color = ShinyGoldDeep
+                        color = colors.goldPrimary
                     )
                     Text(
                         text = partnershipOvers ?: "$partnershipBalls balls",
                         fontSize = 11.sp,
-                        color = TextMuted
+                        color = colors.textMuted
                     )
                 }
             }
@@ -861,7 +868,7 @@ fun PartnershipCard(
                     .fillMaxWidth()
                     .height(8.dp)
                     .clip(RoundedCornerShape(4.dp))
-                    .background(CardBorder)
+                    .background(colors.glassBorder)
             ) {
                 Row(modifier = Modifier.fillMaxSize()) {
                     Box(
@@ -870,7 +877,7 @@ fun PartnershipCard(
                             .fillMaxWidth(animatedPercentage)
                             .background(
                                 Brush.horizontalGradient(
-                                    colors = listOf(ShinyGoldDeep, ShinyGoldMid)
+                                    colors = listOf(colors.goldPrimary, colors.goldPrimary)
                                 )
                             )
                     )
@@ -888,7 +895,7 @@ fun PartnershipCard(
                         text = batsman1Name,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = Color.White
+                        color = colors.textPrimary
                     )
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -898,12 +905,12 @@ fun PartnershipCard(
                             text = "$batsman1Runs",
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Black,
-                            color = ShinyGoldDeep
+                            color = colors.goldPrimary
                         )
                         Text(
                             text = "($batsman1Balls)",
                             fontSize = 11.sp,
-                            color = TextMuted
+                            color = colors.textMuted
                         )
                     }
                 }
@@ -914,7 +921,7 @@ fun PartnershipCard(
                         text = batsman2Name,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = Color.White
+                        color = colors.textPrimary
                     )
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -924,12 +931,12 @@ fun PartnershipCard(
                             text = "$batsman2Runs",
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Black,
-                            color = ShinyGoldMid
+                            color = colors.goldPrimary
                         )
                         Text(
                             text = "($batsman2Balls)",
                             fontSize = 11.sp,
-                            color = TextMuted
+                            color = colors.textMuted
                         )
                     }
                 }

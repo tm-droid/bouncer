@@ -76,17 +76,19 @@ fun DeathOversCard(
         label = "progress_animation"
     )
     
+    val colors = BouncerDesignSystem.colors
+    
     val rrColor = when {
-        deathInfo.runRate >= 12f -> SuccessGreen
-        deathInfo.runRate >= 9f -> WarningYellow
+        deathInfo.runRate >= 12f -> colors.statusSuccess
+        deathInfo.runRate >= 9f -> colors.statusWarning
         deathInfo.runRate >= 7f -> Color(0xFFFF8E3C)
-        else -> WicketRed
+        else -> colors.statusLive
     }
     
     Card(
         modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = Color(0xFF0D1117)
+            containerColor = colors.backgroundBase
         ),
         shape = RoundedCornerShape(20.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
@@ -124,7 +126,7 @@ fun DeathOversCard(
                         brush = Brush.verticalGradient(
                             colors = listOf(
                                 Color.Transparent,
-                                WicketRed.copy(alpha = 0.05f * pulseAlpha),
+                                colors.statusLive.copy(alpha = 0.05f * pulseAlpha),
                                 Color(0xFFFF8E3C).copy(alpha = 0.1f * pulseAlpha)
                             ),
                             startY = bottom - flameHeight,
@@ -163,7 +165,7 @@ fun DeathOversCard(
                             )
                             Text(
                                 text = deathInfo.teamName,
-                                color = Color.White.copy(alpha = 0.6f),
+                                color = colors.textTertiary,
                                 fontSize = 12.sp
                             )
                         }
@@ -206,13 +208,13 @@ fun DeathOversCard(
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
                             text = "${deathInfo.runs}/${deathInfo.wickets}",
-                            color = Color.White,
+                            color = colors.textPrimary,
                             fontSize = 42.sp,
                             fontWeight = FontWeight.Black
                         )
                         Text(
                             text = "${String.format("%.1f", deathInfo.balls / 6f)} overs",
-                            color = Color.White.copy(alpha = 0.6f),
+                            color = colors.textTertiary,
                             fontSize = 14.sp
                         )
                     }
@@ -231,7 +233,7 @@ fun DeathOversCard(
                             
                             // Background
                             drawArc(
-                                color = Color.White.copy(alpha = 0.1f),
+                                color = colors.glassBorder,
                                 startAngle = 135f,
                                 sweepAngle = 270f,
                                 useCenter = false,
@@ -245,9 +247,9 @@ fun DeathOversCard(
                             drawArc(
                                 brush = Brush.sweepGradient(
                                     colors = listOf(
-                                        WicketRed,
-                                        WarningYellow,
-                                        SuccessGreen
+                                        colors.statusLive,
+                                        colors.statusWarning,
+                                        colors.statusSuccess
                                     ),
                                     center = center
                                 ),
@@ -269,7 +271,7 @@ fun DeathOversCard(
                             )
                             Text(
                                 text = "RR",
-                                color = Color.White.copy(alpha = 0.5f),
+                                color = colors.textMuted,
                                 fontSize = 9.sp
                             )
                         }
@@ -282,7 +284,7 @@ fun DeathOversCard(
                 if (deathInfo.runsByOver.isNotEmpty()) {
                     Text(
                         text = "RUNS PER OVER",
-                        color = Color.White.copy(alpha = 0.5f),
+                        color = colors.textMuted,
                         fontSize = 10.sp,
                         letterSpacing = 1.sp
                     )
@@ -306,10 +308,10 @@ fun DeathOversCard(
                             )
                             
                             val barColor = when {
-                                runs >= 15 -> SuccessGreen
-                                runs >= 10 -> WarningYellow
+                                runs >= 15 -> colors.statusSuccess
+                                runs >= 10 -> colors.statusWarning
                                 runs >= 6 -> Color(0xFFFF8E3C)
-                                else -> WicketRed
+                                else -> colors.statusLive
                             }
                             
                             Column(
@@ -342,7 +344,7 @@ fun DeathOversCard(
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text(
                                     text = "${16 + index}",
-                                    color = Color.White.copy(alpha = 0.5f),
+                                    color = colors.textMuted,
                                     fontSize = 10.sp
                                 )
                             }
@@ -360,12 +362,12 @@ fun DeathOversCard(
                     DeathStatBox(
                         label = "BOUNDARIES",
                         value = "${deathInfo.boundaries}",
-                        color = BoundaryFour
+                        color = colors.statusInfo
                     )
                     DeathStatBox(
                         label = "SIXES",
                         value = "${deathInfo.sixes}",
-                        color = BoundarySix
+                        color = colors.goldPrimary
                     )
                     DeathStatBox(
                         label = "DOTS",
@@ -392,7 +394,7 @@ fun DeathOversCard(
                         ) {
                             Text(
                                 text = "Projected Total: ",
-                                color = Color.White.copy(alpha = 0.7f),
+                                color = colors.textSecondary,
                                 fontSize = 14.sp
                             )
                             Text(
@@ -415,6 +417,7 @@ private fun DeathStatBox(
     value: String,
     color: Color
 ) {
+    val colors = BouncerDesignSystem.colors
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
             text = value,
@@ -424,7 +427,7 @@ private fun DeathStatBox(
         )
         Text(
             text = label,
-            color = Color.White.copy(alpha = 0.5f),
+            color = colors.textMuted,
             fontSize = 9.sp,
             letterSpacing = 0.5.sp
         )

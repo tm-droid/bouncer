@@ -19,6 +19,7 @@ import androidx.core.app.NotificationManagerCompat
 import com.tanush.bouncer.MainActivity
 import com.tanush.bouncer.R
 import com.tanush.bouncer.models.CricketMatch
+import io.sentry.Sentry
 
 /**
  * LiveNotificationManager - Provides iOS-like Live Activity experience on Android
@@ -58,34 +59,39 @@ class LiveNotificationManager(private val context: Context) {
      * Creates notification channels for different types of alerts
      */
     private fun createNotificationChannels() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val systemManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val systemManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             
-            // Live Match Channel (Ongoing, Low priority for persistent display)
-            val liveChannel = NotificationChannel(
-                CHANNEL_ID_LIVE,
-                "Live Match Updates",
-                NotificationManager.IMPORTANCE_LOW
-            ).apply {
-                description = "Ongoing live match score updates"
-                setShowBadge(false)
-                lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+                // Live Match Channel (Ongoing, Low priority for persistent display)
+                val liveChannel = NotificationChannel(
+                    CHANNEL_ID_LIVE,
+                    "Live Match Updates",
+                    NotificationManager.IMPORTANCE_LOW
+                ).apply {
+                    description = "Ongoing live match score updates"
+                    setShowBadge(false)
+                    lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+                }
+            
+                // Alerts Channel (High priority for wickets, boundaries, milestones)
+                val alertsChannel = NotificationChannel(
+                    CHANNEL_ID_ALERTS,
+                    "Match Alerts",
+                    NotificationManager.IMPORTANCE_HIGH
+                ).apply {
+                    description = "Wickets, boundaries, and milestone alerts"
+                    enableVibration(true)
+                    vibrationPattern = longArrayOf(0, 200, 100, 200)
+                    lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+                }
+            
+                systemManager.createNotificationChannel(liveChannel)
+                systemManager.createNotificationChannel(alertsChannel)
             }
-            
-            // Alerts Channel (High priority for wickets, boundaries, milestones)
-            val alertsChannel = NotificationChannel(
-                CHANNEL_ID_ALERTS,
-                "Match Alerts",
-                NotificationManager.IMPORTANCE_HIGH
-            ).apply {
-                description = "Wickets, boundaries, and milestone alerts"
-                enableVibration(true)
-                vibrationPattern = longArrayOf(0, 200, 100, 200)
-                lockscreenVisibility = Notification.VISIBILITY_PUBLIC
-            }
-            
-            systemManager.createNotificationChannel(liveChannel)
-            systemManager.createNotificationChannel(alertsChannel)
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
         }
     }
     
@@ -102,8 +108,13 @@ class LiveNotificationManager(private val context: Context) {
         recentBalls: List<String>? = null
     ) {
         val intent = Intent(context, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-            putExtra("match_id", match.id)
+            try {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                putExtra("match_id", match.id)
+            } catch (e: Exception) {
+                Sentry.captureException(e)
+                throw e
+            }
         }
         
         val pendingIntent = PendingIntent.getActivity(
@@ -148,21 +159,26 @@ class LiveNotificationManager(private val context: Context) {
      * Creates compact notification view (collapsed state)
      */
     private fun createCompactView(match: CricketMatch, winProbability: Float?): RemoteViews {
-        val team1 = match.teams.getOrNull(0)
-        val team2 = match.teams.getOrNull(1)
+        try {
+            val team1 = match.teams.getOrNull(0)
+            val team2 = match.teams.getOrNull(1)
         
-        return RemoteViews(context.packageName, R.layout.notification_live_compact).apply {
-            setTextViewText(R.id.team1_name, team1?.acronym?.ifEmpty { team1.name.take(3) } ?: "T1")
-            setTextViewText(R.id.team2_name, team2?.acronym?.ifEmpty { team2.name.take(3) } ?: "T2")
-            setTextViewText(R.id.score_text, buildScoreText(match))
-            setTextViewText(R.id.status_text, match.status)
+            return RemoteViews(context.packageName, R.layout.notification_live_compact).apply {
+                setTextViewText(R.id.team1_name, team1?.acronym?.ifEmpty { team1.name.take(3) } ?: "T1")
+                setTextViewText(R.id.team2_name, team2?.acronym?.ifEmpty { team2.name.take(3) } ?: "T2")
+                setTextViewText(R.id.score_text, buildScoreText(match))
+                setTextViewText(R.id.status_text, match.status)
             
-            // Win probability indicator
-            winProbability?.let { prob ->
-                setTextViewText(R.id.win_prob_text, "${(prob * 100).toInt()}%")
-                val color = if (prob > 0.5f) COLOR_WIN_PROB_HIGH else COLOR_WIN_PROB_LOW
-                setTextColor(R.id.win_prob_text, color)
+                // Win probability indicator
+                winProbability?.let { prob ->
+                    setTextViewText(R.id.win_prob_text, "${(prob * 100).toInt()}%")
+                    val color = if (prob > 0.5f) COLOR_WIN_PROB_HIGH else COLOR_WIN_PROB_LOW
+                    setTextColor(R.id.win_prob_text, color)
+                }
             }
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
         }
     }
     
@@ -356,8 +372,13 @@ class LiveNotificationManager(private val context: Context) {
         match: CricketMatch
     ) {
         val intent = Intent(context, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-            putExtra("match_id", match.id)
+            try {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                putExtra("match_id", match.id)
+            } catch (e: Exception) {
+                Sentry.captureException(e)
+                throw e
+            }
         }
         
         val pendingIntent = PendingIntent.getActivity(
@@ -388,29 +409,44 @@ class LiveNotificationManager(private val context: Context) {
      * Dismisses the live match notification
      */
     fun dismissLiveNotification() {
-        notificationManager.cancel(NOTIFICATION_ID_LIVE)
+        try {
+            notificationManager.cancel(NOTIFICATION_ID_LIVE)
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     /**
      * Dismisses all notifications
      */
     fun dismissAllNotifications() {
-        notificationManager.cancelAll()
+        try {
+            notificationManager.cancelAll()
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     /**
      * Builds score text from match data
      */
     private fun buildScoreText(match: CricketMatch): String {
-        val team1 = match.teams.getOrNull(0)
-        val team2 = match.teams.getOrNull(1)
-        val team1Score = team1?.score ?: "-"
-        val team2Score = team2?.score
+        try {
+            val team1 = match.teams.getOrNull(0)
+            val team2 = match.teams.getOrNull(1)
+            val team1Score = team1?.score ?: "-"
+            val team2Score = team2?.score
         
-        return if (team2Score != null && team2Score != "-" && team2Score.isNotEmpty()) {
-            "$team1Score • $team2Score"
-        } else {
-            team1Score
+            return if (team2Score != null && team2Score != "-" && team2Score.isNotEmpty()) {
+                "$team1Score • $team2Score"
+            } else {
+                team1Score
+            }
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
         }
     }
     
@@ -418,25 +454,30 @@ class LiveNotificationManager(private val context: Context) {
      * Creates a win probability progress bitmap for notification
      */
     fun createWinProbabilityBitmap(probability: Float, width: Int, height: Int): Bitmap {
-        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-        val canvas = Canvas(bitmap)
-        val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+        try {
+            val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+            val canvas = Canvas(bitmap)
+            val paint = Paint(Paint.ANTI_ALIAS_FLAG)
         
-        // Background
-        paint.color = 0xFF1A1A1A.toInt()
-        canvas.drawRoundRect(RectF(0f, 0f, width.toFloat(), height.toFloat()), 8f, 8f, paint)
+            // Background
+            paint.color = 0xFF1A1A1A.toInt()
+            canvas.drawRoundRect(RectF(0f, 0f, width.toFloat(), height.toFloat()), 8f, 8f, paint)
         
-        // Team 1 progress (Gold gradient)
-        val team1Width = width * probability
-        paint.shader = LinearGradient(
-            0f, 0f, team1Width, 0f,
-            intArrayOf(0xFFB39800.toInt(), 0xFFFFD700.toInt(), 0xFFFFF4C4.toInt()),
-            null,
-            Shader.TileMode.CLAMP
-        )
-        canvas.drawRoundRect(RectF(0f, 0f, team1Width, height.toFloat()), 8f, 8f, paint)
+            // Team 1 progress (Gold gradient)
+            val team1Width = width * probability
+            paint.shader = LinearGradient(
+                0f, 0f, team1Width, 0f,
+                intArrayOf(0xFFB39800.toInt(), 0xFFFFD700.toInt(), 0xFFFFF4C4.toInt()),
+                null,
+                Shader.TileMode.CLAMP
+            )
+            canvas.drawRoundRect(RectF(0f, 0f, team1Width, height.toFloat()), 8f, 8f, paint)
         
-        return bitmap
+            return bitmap
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     /**

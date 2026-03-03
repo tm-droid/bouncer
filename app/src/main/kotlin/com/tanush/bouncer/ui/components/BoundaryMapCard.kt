@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.ui.theme.*
 import kotlin.math.*
+import io.sentry.Sentry
 
 /**
  * Boundary data
@@ -85,16 +86,18 @@ fun BoundaryMapCard(
 
     val textMeasurer = rememberTextMeasurer()
 
+    val colors = BouncerDesignSystem.colors
+
     Surface(
         modifier = modifier
             .fillMaxWidth()
             .shadow(
                 elevation = 12.dp,
                 shape = RoundedCornerShape(20.dp),
-                spotColor = BoundarySix.copy(alpha = 0.2f)
+                spotColor = colors.goldPrimary.copy(alpha = 0.2f)
             ),
         shape = RoundedCornerShape(20.dp),
-        color = Color.White.copy(alpha = 0.05f)
+        color = colors.glassSurface
     ) {
         Column(
             modifier = Modifier.padding(20.dp),
@@ -112,21 +115,21 @@ fun BoundaryMapCard(
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 1.5.sp,
-                        color = ShinyGoldDeep
+                        color = colors.goldPrimary
                     )
                     data.playerName?.let {
                         Text(
                             text = it,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = TextPrimary
+                            color = colors.textPrimary
                         )
                     } ?: data.teamName?.let {
                         Text(
                             text = it,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = TextPrimary
+                            color = colors.textPrimary
                         )
                     }
                 }
@@ -178,7 +181,7 @@ fun BoundaryMapCard(
                         
                         // Rope
                         drawCircle(
-                            color = Color.White.copy(alpha = 0.5f),
+                            color = colors.textPrimary.copy(alpha = 0.5f),
                             radius = outerRadius,
                             center = Offset(centerX, centerY),
                             style = Stroke(3.dp.toPx())
@@ -186,7 +189,7 @@ fun BoundaryMapCard(
                         
                         // 30-yard circle
                         drawCircle(
-                            color = Color.White.copy(alpha = 0.25f),
+                            color = colors.textPrimary.copy(alpha = 0.25f),
                             radius = innerRadius,
                             center = Offset(centerX, centerY),
                             style = Stroke(
@@ -217,19 +220,19 @@ fun BoundaryMapCard(
                         
                         drawPath(
                             path = pitchPath,
-                            color = Color.White.copy(alpha = 0.5f),
+                            color = colors.textPrimary.copy(alpha = 0.5f),
                             style = Stroke(1.dp.toPx())
                         )
                         
                         // Crease lines
                         drawLine(
-                            color = Color.White.copy(alpha = 0.6f),
+                            color = colors.textPrimary.copy(alpha = 0.6f),
                             start = Offset(centerX - 20.dp.toPx(), centerY - pitchHeight * 0.35f),
                             end = Offset(centerX + 20.dp.toPx(), centerY - pitchHeight * 0.35f),
                             strokeWidth = 1.dp.toPx()
                         )
                         drawLine(
-                            color = Color.White.copy(alpha = 0.6f),
+                            color = colors.textPrimary.copy(alpha = 0.6f),
                             start = Offset(centerX - 20.dp.toPx(), centerY + pitchHeight * 0.35f),
                             end = Offset(centerX + 20.dp.toPx(), centerY + pitchHeight * 0.35f),
                             strokeWidth = 1.dp.toPx()
@@ -250,7 +253,7 @@ fun BoundaryMapCard(
                             val labelY = centerY + (sin(labelAngle) * labelRadius).toFloat()
                             
                             drawCircle(
-                                color = Color.White.copy(alpha = 0.3f),
+                                color = colors.textPrimary.copy(alpha = 0.3f),
                                 radius = 3.dp.toPx(),
                                 center = Offset(labelX, labelY)
                             )
@@ -265,7 +268,7 @@ fun BoundaryMapCard(
                         val x = centerX + (cos(radianAngle) * distance).toFloat()
                         val y = centerY + (sin(radianAngle) * distance).toFloat()
                         
-                        val boundaryColor = if (boundary.isSix) BoundarySix else BoundaryFour
+                        val boundaryColor = if (boundary.isSix) colors.goldPrimary else colors.statusInfo
                         val glowIntensity = if (boundary.isSix) sixGlow else 0.7f
                         
                         // Glow effect
@@ -292,7 +295,7 @@ fun BoundaryMapCard(
                         
                         // Inner highlight
                         drawCircle(
-                            color = Color.White.copy(alpha = 0.6f),
+                            color = colors.textPrimary.copy(alpha = 0.6f),
                             radius = if (boundary.isSix) 4.dp.toPx() else 3.dp.toPx(),
                             center = Offset(x, y)
                         )
@@ -306,8 +309,8 @@ fun BoundaryMapCard(
                             drawLine(
                                 brush = Brush.linearGradient(
                                     colors = listOf(
-                                        BoundarySix.copy(alpha = 0.1f),
-                                        BoundarySix.copy(alpha = 0.5f)
+                                        colors.goldPrimary.copy(alpha = 0.1f),
+                                        colors.goldPrimary.copy(alpha = 0.5f)
                                     ),
                                     start = Offset(x, y),
                                     end = Offset(lineEndX, lineEndY)
@@ -327,9 +330,9 @@ fun BoundaryMapCard(
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                BoundaryLegend(color = BoundaryFour, label = "Fours")
+                BoundaryLegend(color = colors.statusInfo, label = "Fours")
                 Spacer(modifier = Modifier.width(24.dp))
-                BoundaryLegend(color = BoundarySix, label = "Sixes")
+                BoundaryLegend(color = colors.goldPrimary, label = "Sixes")
             }
             
             // Zone distribution
@@ -347,7 +350,7 @@ private fun BoundaryCountBadge(
     isSix: Boolean,
     modifier: Modifier = Modifier
 ) {
-    val color = if (isSix) BoundarySix else BoundaryFour
+    val color = if (isSix) GoldPrimary else StatusInfo
     
     Surface(
         modifier = modifier,
@@ -385,6 +388,7 @@ private fun BoundaryLegend(
     label: String,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     Row(
         modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -396,36 +400,41 @@ private fun BoundaryLegend(
                 .background(color, CircleShape)
                 .border(
                     width = 2.dp,
-                    color = Color.White.copy(alpha = 0.5f),
+                    color = colors.textPrimary.copy(alpha = 0.5f),
                     shape = CircleShape
                 )
         )
         Text(
             text = label,
             fontSize = 12.sp,
-            color = TextSecondary
+            color = colors.textSecondary
         )
     }
 }
 
 private fun calculateZoneCounts(boundaries: List<BoundaryHit>): Map<String, Int> {
-    val zones = mutableMapOf<String, Int>()
+    try {
+        val zones = mutableMapOf<String, Int>()
     
-    boundaries.forEach { boundary ->
-        val zone = when {
-            boundary.angle in 315f..360f || boundary.angle in 0f..45f -> "Straight"
-            boundary.angle in 45f..90f -> "Cover"
-            boundary.angle in 90f..135f -> "Point"
-            boundary.angle in 135f..180f -> "Third Man"
-            boundary.angle in 180f..225f -> "Fine Leg"
-            boundary.angle in 225f..270f -> "Square Leg"
-            boundary.angle in 270f..315f -> "Midwicket"
-            else -> "Other"
+        boundaries.forEach { boundary ->
+            val zone = when {
+                boundary.angle in 315f..360f || boundary.angle in 0f..45f -> "Straight"
+                boundary.angle in 45f..90f -> "Cover"
+                boundary.angle in 90f..135f -> "Point"
+                boundary.angle in 135f..180f -> "Third Man"
+                boundary.angle in 180f..225f -> "Fine Leg"
+                boundary.angle in 225f..270f -> "Square Leg"
+                boundary.angle in 270f..315f -> "Midwicket"
+                else -> "Other"
+            }
+            zones[zone] = (zones[zone] ?: 0) + 1
         }
-        zones[zone] = (zones[zone] ?: 0) + 1
-    }
     
-    return zones
+        return zones
+    } catch (e: Exception) {
+        Sentry.captureException(e)
+        throw e
+    }
 }
 
 @Composable
@@ -433,6 +442,7 @@ private fun ZoneDistribution(
     zoneCounts: Map<String, Int>,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val total = zoneCounts.values.sum().toFloat()
     val sortedZones = zoneCounts.entries.sortedByDescending { it.value }
 
@@ -445,7 +455,7 @@ private fun ZoneDistribution(
             fontSize = 10.sp,
             fontWeight = FontWeight.Bold,
             letterSpacing = 1.sp,
-            color = TextSecondary
+            color = colors.textSecondary
         )
         
         Row(
@@ -473,10 +483,11 @@ private fun ZoneItem(
     percentage: Int,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(10.dp),
-        color = CardBorder.copy(alpha = 0.1f)
+        color = colors.glassBorder.copy(alpha = 0.1f)
     ) {
         Column(
             modifier = Modifier
@@ -489,19 +500,19 @@ private fun ZoneItem(
                 text = "$percentage%",
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
-                color = ShinyGoldDeep
+                color = colors.goldPrimary
             )
             Text(
                 text = zoneName,
                 fontSize = 9.sp,
-                color = TextSecondary,
+                color = colors.textSecondary,
                 textAlign = TextAlign.Center,
                 maxLines = 1
             )
             Text(
                 text = "($count)",
                 fontSize = 8.sp,
-                color = TextSecondary.copy(alpha = 0.7f)
+                color = colors.textSecondary.copy(alpha = 0.7f)
             )
         }
     }

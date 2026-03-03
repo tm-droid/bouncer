@@ -28,6 +28,7 @@ import com.tanush.bouncer.ui.components.CoilImage
 import coil.request.ImageRequest
 import com.tanush.bouncer.managers.TeamLogoManager
 import com.tanush.bouncer.ui.theme.*
+import io.sentry.Sentry
 
 /**
  * Result of a recent match (for form tracking)
@@ -56,19 +57,29 @@ data class RecentMatchEntry(
 )
 
 private fun getFormColor(result: FormResult): Color {
-    return when (result) {
-        FormResult.WIN -> SuccessGreen
-        FormResult.LOSS -> ErrorRed
-        else -> TextMuted
+    try {
+        return when (result) {
+            FormResult.WIN -> StatusSuccess
+            FormResult.LOSS -> StatusLive
+            else -> TextMuted
+        }
+    } catch (e: Exception) {
+        Sentry.captureException(e)
+        throw e
     }
 }
 
 private fun getFormText(result: FormResult): String {
-    return when (result) {
-        FormResult.WIN -> "W"
-        FormResult.LOSS -> "L"
-        FormResult.DRAW -> "D"
-        FormResult.NO_RESULT -> "NR"
+    try {
+        return when (result) {
+            FormResult.WIN -> "W"
+            FormResult.LOSS -> "L"
+            FormResult.DRAW -> "D"
+            FormResult.NO_RESULT -> "NR"
+        }
+    } catch (e: Exception) {
+        Sentry.captureException(e)
+        throw e
     }
 }
 
@@ -81,7 +92,7 @@ fun TeamFormCard(
     teamName: String,
     teamLogo: String?,
     recentMatches: List<RecentMatchEntry>,
-    teamColor: Color = ShinyGoldDeep,
+    teamColor: Color = GoldDark,
     modifier: Modifier = Modifier,
     onMatchClick: ((RecentMatchEntry) -> Unit)? = null
 ) {
@@ -89,6 +100,7 @@ fun TeamFormCard(
         (recentMatches.count { it.result == FormResult.WIN }.toFloat() / recentMatches.size * 100).toInt()
     } else 0
     
+    val colors = BouncerDesignSystem.colors
     Box(
         modifier = modifier
             .fillMaxWidth()
@@ -96,7 +108,7 @@ fun TeamFormCard(
             .background(Color.White.copy(alpha = 0.08f).copy(alpha = 0.8f))
             .border(
                 0.5.dp,
-                Brush.linearGradient(listOf(GoldHairline, Color.White.copy(alpha = 0.05f))),
+                Brush.linearGradient(listOf(colors.goldPrimary.copy(alpha = 0.3f), colors.glassSurface)),
                 RoundedCornerShape(28.dp)
             )
             .padding(24.dp)
@@ -128,14 +140,14 @@ fun TeamFormCard(
                     Column {
                         Text(
                             text = teamName.uppercase(),
-                            color = Color.White,
+                            color = colors.textPrimary,
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Black,
                             letterSpacing = (-0.5).sp
                         )
                         Text(
                             text = "HISTORICAL FORM ANALYSIS",
-                            color = ShinyGoldDeep,
+                            color = colors.goldDark,
                             fontSize = 9.sp,
                             fontWeight = FontWeight.Black,
                             letterSpacing = 1.5.sp
@@ -160,7 +172,7 @@ fun TeamFormCard(
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("RECENT:", color = TextMuted, fontSize = 10.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
+                Text("RECENT:", color = colors.textMuted, fontSize = 10.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
                 recentMatches.take(8).forEach { match ->
                     TechnicalFormDot(match.result)
                 }
@@ -168,7 +180,7 @@ fun TeamFormCard(
             
             // Historical Feed
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                Text("RECENT ENGAGEMENTS", color = TextMuted, fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 1.5.sp)
+                Text("RECENT ENGAGEMENTS", color = colors.textMuted, fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 1.5.sp)
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                     items(recentMatches) { match ->
                         TechnicalRecentMatchItem(match, onMatchClick)
@@ -188,11 +200,11 @@ fun TeamFormCard(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
-                    FormStatMini("WON", recentMatches.count { it.result == FormResult.WIN }.toString(), SuccessGreen)
+                    FormStatMini("WON", recentMatches.count { it.result == FormResult.WIN }.toString(), colors.statusSuccess)
                     VerticalDivider(modifier = Modifier.height(24.dp).alpha(0.1f), color = Color.White)
-                    FormStatMini("LOST", recentMatches.count { it.result == FormResult.LOSS }.toString(), ErrorRed)
+                    FormStatMini("LOST", recentMatches.count { it.result == FormResult.LOSS }.toString(), colors.statusLive)
                     VerticalDivider(modifier = Modifier.height(24.dp).alpha(0.1f), color = Color.White)
-                    FormStatMini("N/R", recentMatches.count { it.result == FormResult.NO_RESULT }.toString(), TextMuted)
+                    FormStatMini("N/R", recentMatches.count { it.result == FormResult.NO_RESULT }.toString(), colors.textMuted)
                 }
             }
         }
@@ -216,19 +228,20 @@ private fun TechnicalFormDot(result: FormResult) {
 
 @Composable
 private fun TechnicalRecentMatchItem(match: RecentMatchEntry, onClick: ((RecentMatchEntry) -> Unit)?) {
+    val colors = BouncerDesignSystem.colors
     val color = getFormColor(match.result)
     Box(
         modifier = Modifier
             .width(180.dp)
             .clip(RoundedCornerShape(16.dp))
-            .background(Color.White.copy(alpha = 0.05f))
-            .border(0.5.dp, Color.White.copy(alpha = 0.05f), RoundedCornerShape(16.dp))
+            .background(colors.glassSurface)
+            .border(0.5.dp, colors.glassSurface, RoundedCornerShape(16.dp))
             .clickable { onClick?.invoke(match) }
             .padding(16.dp)
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(match.format.uppercase(), color = TextMuted, fontSize = 9.sp, fontWeight = FontWeight.Black)
+                Text(match.format.uppercase(), color = colors.textMuted, fontSize = 9.sp, fontWeight = FontWeight.Black)
                 Text(
                     text = if (match.result == FormResult.WIN) "WIN" else "LOSS",
                     color = color,
@@ -239,7 +252,7 @@ private fun TechnicalRecentMatchItem(match: RecentMatchEntry, onClick: ((RecentM
             
             Text(
                 text = "vs ${match.opponent.uppercase()}",
-                color = Color.White,
+                color = colors.textPrimary,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Black,
                 maxLines = 1,
@@ -247,8 +260,8 @@ private fun TechnicalRecentMatchItem(match: RecentMatchEntry, onClick: ((RecentM
             )
             
             Column {
-                Text("${match.teamScore} - ${match.opponentScore}", color = TextSecondary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                Text(match.margin, color = TextMuted, fontSize = 9.sp, fontWeight = FontWeight.Medium, maxLines = 1)
+                Text("${match.teamScore} - ${match.opponentScore}", color = colors.textSecondary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                Text(match.margin, color = colors.textMuted, fontSize = 9.sp, fontWeight = FontWeight.Medium, maxLines = 1)
             }
         }
     }
@@ -256,8 +269,9 @@ private fun TechnicalRecentMatchItem(match: RecentMatchEntry, onClick: ((RecentM
 
 @Composable
 private fun FormStatMini(label: String, value: String, color: Color) {
+    val colors = BouncerDesignSystem.colors
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(label, color = TextMuted, fontSize = 8.sp, fontWeight = FontWeight.Black, letterSpacing = 1.5.sp)
+        Text(label, color = colors.textMuted, fontSize = 8.sp, fontWeight = FontWeight.Black, letterSpacing = 1.5.sp)
         Text(value, color = color, fontSize = 16.sp, fontWeight = FontWeight.Black)
     }
 }

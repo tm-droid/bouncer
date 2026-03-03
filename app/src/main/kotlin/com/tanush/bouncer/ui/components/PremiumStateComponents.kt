@@ -48,6 +48,7 @@ fun PremiumEmptyState(
     onAction: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "empty")
     
     val iconFloat by infiniteTransition.animateFloat(
@@ -90,7 +91,7 @@ fun PremiumEmptyState(
                     .size(100.dp)
                     .blur(24.dp)
                     .alpha(glowAlpha)
-                    .background(ShinyGoldMid, CircleShape)
+                    .background(colors.goldDark, CircleShape)
             )
             
             // Icon container
@@ -101,7 +102,7 @@ fun PremiumEmptyState(
                     .background(
                         brush = Brush.radialGradient(
                             colors = listOf(
-                                ShinyGoldMid.copy(alpha = 0.2f),
+                                colors.goldDark.copy(alpha = 0.2f),
                                 Color.White.copy(alpha = 0.05f)
                             )
                         )
@@ -109,7 +110,7 @@ fun PremiumEmptyState(
                     .border(
                         width = 2.dp,
                         brush = Brush.linearGradient(
-                            colors = listOf(ShinyGoldMid, ShinyGoldLight.copy(alpha = 0.5f))
+                            colors = listOf(colors.goldDark, colors.goldLight.copy(alpha = 0.5f))
                         ),
                         shape = CircleShape
                     ),
@@ -118,7 +119,7 @@ fun PremiumEmptyState(
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
-                    tint = ShinyGoldMid,
+                    tint = colors.goldDark,
                     modifier = Modifier.size(40.dp)
                 )
             }
@@ -151,14 +152,14 @@ fun PremiumEmptyState(
             Button(
                 onClick = onAction,
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = ShinyGoldMid.copy(alpha = 0.2f),
-                    contentColor = ShinyGoldMid
+                    containerColor = colors.goldDark.copy(alpha = 0.2f),
+                    contentColor = colors.goldDark
                 ),
                 shape = RoundedCornerShape(12.dp),
                 modifier = Modifier
                     .border(
                         width = 1.dp,
-                        color = ShinyGoldMid,
+                        color = colors.goldDark,
                         shape = RoundedCornerShape(12.dp)
                     )
             ) {
@@ -319,6 +320,7 @@ fun NoInternetState(
     onRetry: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "noInternet")
     
     val waveOffset by infiniteTransition.animateFloat(
@@ -408,8 +410,8 @@ fun NoInternetState(
         Button(
             onClick = onRetry,
             colors = ButtonDefaults.buttonColors(
-                containerColor = ShinyGoldMid,
-                contentColor = BlackBackground
+                containerColor = colors.goldDark,
+                contentColor = colors.backgroundBase
             ),
             shape = RoundedCornerShape(12.dp)
         ) {
@@ -437,6 +439,7 @@ fun NoMatchesState(
     message: String = "No matches scheduled",
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "noMatches")
     
     val ballRotation by infiniteTransition.animateFloat(
@@ -479,7 +482,7 @@ fun NoMatchesState(
                     .size(80.dp)
                     .blur(20.dp)
                     .alpha(0.3f)
-                    .background(ShinyGoldMid, CircleShape)
+                    .background(colors.goldDark, CircleShape)
             )
             
             // Ball
@@ -547,6 +550,7 @@ fun NoSearchResultsState(
     onClearSearch: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -561,7 +565,7 @@ fun NoSearchResultsState(
                 .background(Color.White.copy(alpha = 0.05f))
                 .border(
                     width = 1.dp,
-                    color = ShinyGoldMid.copy(alpha = 0.3f),
+                    color = colors.goldDark.copy(alpha = 0.3f),
                     shape = CircleShape
                 ),
             contentAlignment = Alignment.Center
@@ -569,7 +573,7 @@ fun NoSearchResultsState(
             Icon(
                 imageVector = Icons.Default.SearchOff,
                 contentDescription = null,
-                tint = ShinyGoldMid.copy(alpha = 0.6f),
+                tint = colors.goldDark.copy(alpha = 0.6f),
                 modifier = Modifier.size(40.dp)
             )
         }
@@ -597,13 +601,13 @@ fun NoSearchResultsState(
         Button(
             onClick = onClearSearch,
             colors = ButtonDefaults.buttonColors(
-                containerColor = ShinyGoldMid.copy(alpha = 0.2f),
-                contentColor = ShinyGoldMid
+                containerColor = colors.goldDark.copy(alpha = 0.2f),
+                contentColor = colors.goldDark
             ),
             shape = RoundedCornerShape(12.dp),
             modifier = Modifier.border(
                 width = 1.dp,
-                color = ShinyGoldMid,
+                color = colors.goldDark,
                 shape = RoundedCornerShape(12.dp)
             )
         ) {
@@ -621,6 +625,7 @@ fun ComingSoonState(
     feature: String,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "comingSoon")
     
     val sparkle by infiniteTransition.animateFloat(
@@ -645,6 +650,7 @@ fun ComingSoonState(
             contentAlignment = Alignment.Center
         ) {
             // Sparkle effects
+            val goldLight = colors.goldLight
             Canvas(modifier = Modifier.size(100.dp)) {
                 val points = listOf(
                     Offset(size.width * 0.2f, size.height * 0.3f),
@@ -675,7 +681,7 @@ fun ComingSoonState(
                     
                     drawPath(
                         path = starPath,
-                        color = ShinyGoldLight.copy(alpha = alpha)
+                        color = goldLight.copy(alpha = alpha)
                     )
                 }
             }
@@ -687,7 +693,7 @@ fun ComingSoonState(
                     .background(
                         brush = Brush.radialGradient(
                             colors = listOf(
-                                ShinyGoldMid.copy(alpha = 0.2f),
+                                colors.goldDark.copy(alpha = 0.2f),
                                 Color.White.copy(alpha = 0.05f)
                             )
                         )
@@ -695,7 +701,7 @@ fun ComingSoonState(
                     .border(
                         width = 2.dp,
                         brush = Brush.linearGradient(
-                            colors = listOf(ShinyGoldMid, ShinyGoldLight)
+                            colors = listOf(colors.goldDark, colors.goldLight)
                         ),
                         shape = CircleShape
                     ),
@@ -704,7 +710,7 @@ fun ComingSoonState(
                 Icon(
                     imageVector = Icons.Default.AutoAwesome,
                     contentDescription = null,
-                    tint = ShinyGoldMid,
+                    tint = colors.goldDark,
                     modifier = Modifier.size(36.dp)
                 )
             }
@@ -716,7 +722,7 @@ fun ComingSoonState(
         ) {
             Text(
                 text = "Coming Soon",
-                color = ShinyGoldMid,
+                color = colors.goldDark,
                 fontSize = 22.sp,
                 fontWeight = FontWeight.Bold
             )

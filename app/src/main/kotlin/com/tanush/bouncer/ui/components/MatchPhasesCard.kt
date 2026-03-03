@@ -54,21 +54,22 @@ fun MatchPhasesCard(
     phases: List<MatchPhase>,
     team1Name: String,
     team2Name: String,
-    team1Color: Color = ShinyGoldDeep,
-    team2Color: Color = ChartBlue,
+    team1Color: Color = BouncerDesignSystem.colors.goldPrimary,
+    team2Color: Color = BouncerDesignSystem.colors.statusInfo,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     Card(
         modifier = modifier
             .fillMaxWidth()
             .shadow(
                 elevation = 24.dp,
                 shape = RoundedCornerShape(28.dp),
-                spotColor = ShinyGoldDeep.copy(alpha = 0.15f)
+                spotColor = colors.goldPrimary.copy(alpha = 0.15f)
             ),
         colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.05f)),
         shape = RoundedCornerShape(28.dp),
-        border = BorderStroke(0.5.dp, CardBorder.copy(alpha = 0.3f))
+        border = BorderStroke(0.5.dp, colors.glassBorder.copy(alpha = 0.3f))
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
             // Header
@@ -84,12 +85,12 @@ fun MatchPhasesCard(
                     Icon(
                         Icons.Default.Timeline,
                         contentDescription = null,
-                        tint = ShinyGoldDeep,
+                        tint = colors.goldPrimary,
                         modifier = Modifier.size(20.dp)
                     )
                     Text(
                         "MATCH PHASES",
-                        color = TextPrimary,
+                        color = colors.textPrimary,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 1.sp
@@ -137,6 +138,7 @@ fun MatchPhasesCard(
  */
 @Composable
 private fun TeamIndicator(name: String, color: Color) {
+    val colors = BouncerDesignSystem.colors
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp)
@@ -148,7 +150,7 @@ private fun TeamIndicator(name: String, color: Color) {
         )
         Text(
             text = name.take(6),
-            color = TextSecondary,
+            color = colors.textSecondary,
             fontSize = 10.sp
         )
     }
@@ -167,6 +169,7 @@ private fun PhaseRow(
     team2Color: Color,
     isLast: Boolean
 ) {
+    val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "phase")
     
     val activeGlow by infiniteTransition.animateFloat(
@@ -182,7 +185,7 @@ private fun PhaseRow(
     val phaseColor = when (phase.momentumShift) {
         MomentumShift.TEAM1_STRONG -> team1Color
         MomentumShift.TEAM2_STRONG -> team2Color
-        else -> TextTertiary
+        else -> colors.textTertiary
     }
     
     Row(
@@ -251,7 +254,7 @@ private fun PhaseRow(
             color = if (phase.isActive) phaseColor.copy(alpha = 0.1f) else Color.White.copy(alpha = 0.08f),
             border = BorderStroke(
                 0.5.dp,
-                if (phase.isActive) phaseColor.copy(alpha = 0.5f) else CardBorder.copy(alpha = 0.2f)
+                if (phase.isActive) phaseColor.copy(alpha = 0.5f) else colors.glassBorder.copy(alpha = 0.2f)
             ),
             modifier = Modifier
                 .weight(1f)
@@ -271,18 +274,18 @@ private fun PhaseRow(
                         ) {
                             Text(
                                 text = phase.phaseName,
-                                color = TextPrimary,
+                                color = colors.textPrimary,
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.Bold
                             )
                             if (phase.isActive) {
                                 Surface(
                                     shape = RoundedCornerShape(4.dp),
-                                    color = SuccessGreen.copy(alpha = 0.2f)
+                                    color = colors.statusSuccess.copy(alpha = 0.2f)
                                 ) {
                                     Text(
                                         text = "LIVE",
-                                        color = SuccessGreen,
+                                        color = colors.statusSuccess,
                                         fontSize = 8.sp,
                                         fontWeight = FontWeight.Bold,
                                         modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
@@ -292,7 +295,7 @@ private fun PhaseRow(
                         }
                         Text(
                             text = "Overs ${phase.overs}",
-                            color = TextTertiary,
+                            color = colors.textTertiary,
                             fontSize = 10.sp
                         )
                     }
@@ -321,7 +324,7 @@ private fun PhaseRow(
                     // VS
                     Text(
                         text = "vs",
-                        color = TextTertiary,
+                        color = colors.textTertiary,
                         fontSize = 10.sp
                     )
                     
@@ -336,7 +339,7 @@ private fun PhaseRow(
                     } else {
                         Text(
                             text = "Yet to bat",
-                            color = TextTertiary,
+                            color = colors.textTertiary,
                             fontSize = 11.sp
                         )
                     }
@@ -352,12 +355,12 @@ private fun PhaseRow(
                         Icon(
                             Icons.Default.Star,
                             contentDescription = null,
-                            tint = ShinyGoldDeep,
+                            tint = colors.goldPrimary,
                             modifier = Modifier.size(12.dp)
                         )
                         Text(
                             text = event,
-                            color = ShinyGoldDeep,
+                            color = colors.goldPrimary,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Medium
                         )
@@ -373,6 +376,7 @@ private fun PhaseRow(
  */
 @Composable
 private fun ScoreBox(teamName: String, runs: Int, wickets: Int, color: Color) {
+    val colors = BouncerDesignSystem.colors
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
             text = teamName.take(6),
@@ -382,7 +386,7 @@ private fun ScoreBox(teamName: String, runs: Int, wickets: Int, color: Color) {
         )
         Text(
             text = "$runs/$wickets",
-            color = TextPrimary,
+            color = colors.textPrimary,
             fontSize = 14.sp,
             fontWeight = FontWeight.Bold
         )
@@ -398,10 +402,11 @@ private fun MomentumIndicator(
     team1Color: Color,
     team2Color: Color
 ) {
+    val colors = BouncerDesignSystem.colors
     val (icon, color) = when (shift) {
         MomentumShift.TEAM1_STRONG -> Icons.AutoMirrored.Filled.TrendingUp to team1Color
         MomentumShift.TEAM2_STRONG -> Icons.AutoMirrored.Filled.TrendingUp to team2Color
-        MomentumShift.BALANCED -> Icons.Default.Balance to TextTertiary
+        MomentumShift.BALANCED -> Icons.Default.Balance to colors.textTertiary
     }
     
     Surface(
@@ -430,6 +435,7 @@ private fun MomentumSummary(
     team1Color: Color,
     team2Color: Color
 ) {
+    val colors = BouncerDesignSystem.colors
     val team1Phases = phases.count { it.momentumShift == MomentumShift.TEAM1_STRONG }
     val team2Phases = phases.count { it.momentumShift == MomentumShift.TEAM2_STRONG }
     val balancedPhases = phases.count { it.momentumShift == MomentumShift.BALANCED }
@@ -437,19 +443,19 @@ private fun MomentumSummary(
     val leader = when {
         team1Phases > team2Phases -> team1Name to team1Color
         team2Phases > team1Phases -> team2Name to team2Color
-        else -> "Balanced" to TextTertiary
+        else -> "Balanced" to colors.textTertiary
     }
     
     Surface(
         shape = RoundedCornerShape(12.dp),
         color = Color.White.copy(alpha = 0.08f),
-        border = BorderStroke(0.5.dp, CardBorder.copy(alpha = 0.2f)),
+        border = BorderStroke(0.5.dp, colors.glassBorder.copy(alpha = 0.2f)),
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
             Text(
                 text = "MOMENTUM SUMMARY",
-                color = TextTertiary,
+                color = colors.textTertiary,
                 fontSize = 10.sp,
                 letterSpacing = 0.5.sp,
                 modifier = Modifier.padding(bottom = 10.dp)
@@ -475,7 +481,7 @@ private fun MomentumSummary(
                         modifier = Modifier
                             .fillMaxHeight()
                             .weight(balancedPhases.toFloat())
-                            .background(TextTertiary)
+                            .background(colors.textTertiary)
                     )
                 }
                 if (team2Phases > 0) {
@@ -503,7 +509,7 @@ private fun MomentumSummary(
                     )
                     Text(
                         text = team1Name,
-                        color = TextTertiary,
+                        color = colors.textTertiary,
                         fontSize = 10.sp
                     )
                 }
@@ -511,13 +517,13 @@ private fun MomentumSummary(
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
                         text = "$balancedPhases",
-                        color = TextTertiary,
+                        color = colors.textTertiary,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
                         text = "Balanced",
-                        color = TextTertiary,
+                        color = colors.textTertiary,
                         fontSize = 10.sp
                     )
                 }
@@ -531,7 +537,7 @@ private fun MomentumSummary(
                     )
                     Text(
                         text = team2Name,
-                        color = TextTertiary,
+                        color = colors.textTertiary,
                         fontSize = 10.sp
                     )
                 }
@@ -539,7 +545,7 @@ private fun MomentumSummary(
             
             if (leader.first != "Balanced") {
                 Spacer(modifier = Modifier.height(10.dp))
-                HorizontalDivider(color = CardBorder.copy(alpha = 0.2f))
+                HorizontalDivider(color = colors.glassBorder.copy(alpha = 0.2f))
                 Spacer(modifier = Modifier.height(8.dp))
                 
                 Row(

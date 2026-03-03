@@ -67,7 +67,7 @@ fun ErrorState(
                 .background(
                     Brush.radialGradient(
                         colors = listOf(
-                            ErrorRed.copy(alpha = 0.2f * pulse),
+                            StatusLive.copy(alpha = 0.2f * pulse),
                             Color.Transparent
                         )
                     ),
@@ -78,7 +78,7 @@ fun ErrorState(
             Icon(
                 imageVector = Icons.Default.Warning,
                 contentDescription = "Error",
-                tint = ErrorRed,
+                tint = StatusLive,
                 modifier = Modifier.size(48.dp)
             )
         }
@@ -113,7 +113,7 @@ fun ErrorState(
                 onRetry()
             },
             colors = ButtonDefaults.buttonColors(
-                containerColor = ShinyGoldDeep
+                containerColor = GoldPrimary
             ),
             shape = RoundedCornerShape(12.dp),
             modifier = Modifier.shadow(8.dp, RoundedCornerShape(12.dp))
@@ -186,8 +186,8 @@ fun RetryingOverlay(
                     .background(
                         Brush.linearGradient(
                             colors = listOf(
-                                CardDarkBlue,
-                                Color.White.copy(alpha = 0.05f)
+                                Surface1,
+                                GlassSurface
                             )
                         ),
                         RoundedCornerShape(20.dp)
@@ -210,7 +210,7 @@ fun RetryingOverlay(
                 
                 Text(
                     text = "Attempt $attemptNumber of $maxAttempts",
-                    color = ShinyGoldDeep,
+                    color = GoldPrimary,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Medium
                 )
@@ -264,8 +264,8 @@ fun NetworkStatusBanner(
                 .background(
                     Brush.horizontalGradient(
                         colors = listOf(
-                            WarningOrange.copy(alpha = 0.9f * pulse),
-                            WarningOrange.copy(alpha = 0.95f * pulse)
+                            StatusWarning.copy(alpha = 0.9f * pulse),
+                            StatusWarning.copy(alpha = 0.95f * pulse)
                         )
                     )
                 )
@@ -350,8 +350,8 @@ fun SuccessSnackbar(
                     .background(
                         Brush.horizontalGradient(
                             colors = listOf(
-                                SuccessGreen.copy(alpha = 0.95f),
-                                SuccessGreen.copy(alpha = 0.85f)
+                                StatusSuccess.copy(alpha = 0.95f),
+                                StatusSuccess.copy(alpha = 0.85f)
                             )
                         ),
                         RoundedCornerShape(12.dp)

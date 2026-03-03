@@ -20,6 +20,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.tanush.bouncer.ui.components.glass.GlassBloomBackground
+import com.tanush.bouncer.ui.components.glass.GlassCard
 import com.tanush.bouncer.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -48,6 +50,8 @@ fun AboutScreen(
         label = "pulseScale"
     )
 
+    val colors = BouncerDesignSystem.colors
+
     Scaffold(
         containerColor = Color.Transparent,
         topBar = {
@@ -58,12 +62,12 @@ fun AboutScreen(
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Black,
                         letterSpacing = 2.sp,
-                        color = GoldDark
+                        color = colors.goldDark
                     )
                 },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = Color.White)
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = colors.textPrimary)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -72,42 +76,9 @@ fun AboutScreen(
             )
         }
     ) { paddingValues ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(BlackBackground)
+        GlassBloomBackground(
+            modifier = Modifier.fillMaxSize()
         ) {
-            // Premium Background
-            Canvas(modifier = Modifier.fillMaxSize()) {
-                // Top gold glow
-                drawCircle(
-                    brush = Brush.radialGradient(
-                        colors = listOf(
-                            GoldDark.copy(alpha = 0.12f),
-                            GoldDark.copy(alpha = 0.03f),
-                            Color.Transparent
-                        ),
-                        center = Offset(size.width * 0.5f, 0f),
-                        radius = size.width * 0.8f
-                    ),
-                    radius = size.width * 0.8f,
-                    center = Offset(size.width * 0.5f, 0f)
-                )
-                // Bottom blue accent
-                drawCircle(
-                    brush = Brush.radialGradient(
-                        colors = listOf(
-                            WicketBlue.copy(alpha = 0.06f),
-                            Color.Transparent
-                        ),
-                        center = Offset(size.width * 0.2f, size.height),
-                        radius = size.width * 0.6f
-                    ),
-                    radius = size.width * 0.6f,
-                    center = Offset(size.width * 0.2f, size.height)
-                )
-            }
-
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -128,8 +99,8 @@ fun AboutScreen(
                         .background(
                             Brush.radialGradient(
                                 colors = listOf(
-                                    ShinyGoldDeep.copy(alpha = 0.3f),
-                                    ShinyGoldDeep.copy(alpha = 0.1f),
+                                    colors.goldPrimary.copy(alpha = 0.3f),
+                                    colors.goldPrimary.copy(alpha = 0.1f),
                                     Color.Transparent
                                 )
                             ),
@@ -143,7 +114,7 @@ fun AboutScreen(
                             .shadow(
                                 elevation = 24.dp,
                                 shape = CircleShape,
-                                spotColor = ShinyGoldDeep.copy(alpha = 0.5f)
+                                spotColor = colors.goldPrimary.copy(alpha = 0.5f)
                             )
                             .background(
                                 Brush.linearGradient(
@@ -158,9 +129,9 @@ fun AboutScreen(
                                 2.dp,
                                 Brush.linearGradient(
                                     colors = listOf(
-                                        ShinyGoldLight.copy(alpha = 0.6f + shimmerOffset * 0.4f),
-                                        ShinyGoldDeep.copy(alpha = 0.4f),
-                                        ShinyGoldMid.copy(alpha = 0.6f)
+                                        colors.goldLight.copy(alpha = 0.6f + shimmerOffset * 0.4f),
+                                        colors.goldPrimary.copy(alpha = 0.4f),
+                                        colors.goldDark.copy(alpha = 0.6f)
                                     )
                                 ),
                                 CircleShape
@@ -169,7 +140,7 @@ fun AboutScreen(
                         Icon(
                             imageVector = Icons.Default.SportsCricket,
                             contentDescription = null,
-                            tint = ShinyGoldDeep,
+                            tint = colors.goldPrimary,
                             modifier = Modifier.size(48.dp)
                         )
                     }
@@ -184,9 +155,9 @@ fun AboutScreen(
                     style = LocalTextStyle.current.copy(
                         brush = Brush.linearGradient(
                             colors = listOf(
-                                ShinyGoldLight,
-                                ShinyGoldMid,
-                                ShinyGoldDeep
+                                colors.goldLight,
+                                colors.goldDark,
+                                colors.goldPrimary
                             )
                         )
                     )
@@ -196,21 +167,21 @@ fun AboutScreen(
                     text = "Live Cricket Scores",
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Medium,
-                    color = TextSecondary,
+                    color = colors.textSecondary,
                     letterSpacing = 2.sp
                 )
 
                 // Version Badge
                 Surface(
-                    color = ShinyGoldDeep.copy(alpha = 0.1f),
+                    color = colors.goldPrimary.copy(alpha = 0.1f),
                     shape = RoundedCornerShape(50),
-                    border = BorderStroke(1.dp, ShinyGoldDeep.copy(alpha = 0.3f))
+                    border = BorderStroke(1.dp, colors.goldPrimary.copy(alpha = 0.3f))
                 ) {
                     Text(
                         text = "Version 1.0.0",
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
-                        color = ShinyGoldDeep,
+                        color = colors.goldPrimary,
                         modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
                     )
                 }
@@ -218,11 +189,9 @@ fun AboutScreen(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 // Features Section
-                Card(
+                GlassCard(
                     modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.05f)),
-                    shape = RoundedCornerShape(24.dp),
-                    border = BorderStroke(0.5.dp, CardBorder.copy(alpha = 0.3f))
+                    contentPadding = PaddingValues(0.dp)
                 ) {
                     Column(
                         modifier = Modifier.padding(24.dp),
@@ -232,7 +201,7 @@ fun AboutScreen(
                             text = "FEATURES",
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
-                            color = ShinyGoldDeep,
+                            color = colors.goldPrimary,
                             letterSpacing = 2.sp
                         )
 
@@ -263,11 +232,10 @@ fun AboutScreen(
                 }
 
                 // Credits Section
-                Card(
+                GlassCard(
                     modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = CardDarkBlue.copy(alpha = 0.5f)),
-                    shape = RoundedCornerShape(20.dp),
-                    border = BorderStroke(0.5.dp, CardBorder.copy(alpha = 0.2f))
+                    useGoldBorder = true,
+                    contentPadding = PaddingValues(0.dp)
                 ) {
                     Column(
                         modifier = Modifier.padding(24.dp),
@@ -278,7 +246,7 @@ fun AboutScreen(
                             text = "CREATED BY",
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
-                            color = TextTertiary,
+                            color = colors.textTertiary,
                             letterSpacing = 2.sp
                         )
                         
@@ -286,14 +254,14 @@ fun AboutScreen(
                             text = "A Cricket Enthusiast",
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
-                            color = TextPrimary
+                            color = colors.textPrimary
                         )
                         
                         Text(
                             text = "Built with passion for the game",
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Medium,
-                            color = TextSecondary,
+                            color = colors.textSecondary,
                             textAlign = TextAlign.Center
                         )
                     }
@@ -310,7 +278,7 @@ fun AboutScreen(
                             Brush.horizontalGradient(
                                 colors = listOf(
                                     Color.Transparent,
-                                    ShinyGoldDeep.copy(alpha = 0.4f),
+                                    colors.goldPrimary.copy(alpha = 0.4f),
                                     Color.Transparent
                                 )
                             ),
@@ -322,14 +290,14 @@ fun AboutScreen(
                     text = "Made with passion for cricket",
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Medium,
-                    color = TextTertiary
+                    color = colors.textTertiary
                 )
 
                 Text(
                     text = "2024",
                     fontSize = 11.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = ShinyGoldDeep.copy(alpha = 0.5f),
+                    color = colors.goldPrimary.copy(alpha = 0.5f),
                     letterSpacing = 2.sp
                 )
 
@@ -345,6 +313,7 @@ private fun FeatureItem(
     title: String,
     description: String
 ) {
+    val colors = BouncerDesignSystem.colors
     Row(
         horizontalArrangement = Arrangement.spacedBy(16.dp),
         verticalAlignment = Alignment.Top
@@ -354,19 +323,19 @@ private fun FeatureItem(
             modifier = Modifier
                 .size(44.dp)
                 .background(
-                    ShinyGoldDeep.copy(alpha = 0.12f),
+                    colors.goldPrimary.copy(alpha = 0.12f),
                     RoundedCornerShape(14.dp)
                 )
                 .border(
                     0.5.dp,
-                    ShinyGoldDeep.copy(alpha = 0.2f),
+                    colors.goldPrimary.copy(alpha = 0.2f),
                     RoundedCornerShape(14.dp)
                 )
         ) {
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                tint = ShinyGoldDeep,
+                tint = colors.goldPrimary,
                 modifier = Modifier.size(22.dp)
             )
         }
@@ -378,13 +347,13 @@ private fun FeatureItem(
                 text = title,
                 fontSize = 15.sp,
                 fontWeight = FontWeight.Bold,
-                color = TextPrimary
+                color = colors.textPrimary
             )
             Text(
                 text = description,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Medium,
-                color = TextTertiary,
+                color = colors.textTertiary,
                 lineHeight = 18.sp
             )
         }

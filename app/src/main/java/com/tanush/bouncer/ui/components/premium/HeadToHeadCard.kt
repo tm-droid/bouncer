@@ -23,6 +23,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.ui.theme.*
+import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 
 /**
  * Head to head history card showing team vs team stats
@@ -70,10 +71,11 @@ data class VenueRecord(
 @Composable
 fun HeadToHeadCard(
     stats: HeadToHeadStats,
-    team1Color: Color = ChartBlue,
-    team2Color: Color = WicketRed,
+    team1Color: Color = BouncerDesignSystem.colors.statusInfo,
+    team2Color: Color = BouncerDesignSystem.colors.statusLive,
     modifier: Modifier = Modifier,
 ) {
+    val colors = BouncerDesignSystem.colors
     val animatedProgress = remember { Animatable(0f) }
 
     LaunchedEffect(stats) {
@@ -129,7 +131,7 @@ fun HeadToHeadCard(
                     Column {
                         Text(
                             text = "HEAD TO HEAD",
-                            color = ShinyGoldLight,
+                            color = colors.goldLight,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.5.sp,
@@ -189,7 +191,7 @@ fun HeadToHeadCard(
                 ) {
                     Text(
                         text = "VS",
-                        color = ShinyGoldMid,
+                        color = colors.goldDark,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
                     )
@@ -351,7 +353,7 @@ fun HeadToHeadCard(
                                     )
                                     Text(
                                         text = match.format,
-                                        color = ShinyGoldMid,
+                                        color = colors.goldDark,
                                         fontSize = 10.sp,
                                     )
                                 }
@@ -403,7 +405,7 @@ fun HeadToHeadCard(
                         .background(
                             Brush.horizontalGradient(
                                 colors = listOf(
-                                    ShinyGoldDeep.copy(alpha = 0.2f),
+                                    colors.goldPrimary.copy(alpha = 0.2f),
                                     Color.Transparent,
                                 ),
                             ),
@@ -415,7 +417,7 @@ fun HeadToHeadCard(
                     Column {
                         Text(
                             text = "AT THIS VENUE",
-                            color = ShinyGoldLight,
+                            color = colors.goldLight,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.sp,
@@ -464,6 +466,7 @@ fun HeadToHeadCard(
 
 @Composable
 fun HeadToHeadCardPreview() {
+    val colors = BouncerDesignSystem.colors
     val stats = HeadToHeadStats(
         team1Name = "India",
         team2Name = "Australia",

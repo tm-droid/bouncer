@@ -19,6 +19,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.ui.theme.*
+import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 
 /**
  * Catch/Dropped Catch Card
@@ -54,6 +55,7 @@ fun CatchDroppedCard(
     teamName: String,
     modifier: Modifier = Modifier,
 ) {
+    val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "catch")
 
     val glowAlpha by infiniteTransition.animateFloat(
@@ -103,7 +105,7 @@ fun CatchDroppedCard(
                             .clip(RoundedCornerShape(12.dp))
                             .background(
                                 Brush.linearGradient(
-                                    colors = listOf(SuccessGreen, SuccessGreen.copy(alpha = 0.6f)),
+                                    colors = listOf(colors.statusSuccess, colors.statusSuccess.copy(alpha = 0.6f)),
                                 ),
                             ),
                         contentAlignment = Alignment.Center,
@@ -121,7 +123,7 @@ fun CatchDroppedCard(
                     Column {
                         Text(
                             text = "FIELDING REVIEW",
-                            color = ShinyGoldMid,
+                            color = colors.goldDark,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.5.sp,
@@ -156,7 +158,7 @@ fun CatchDroppedCard(
                 CatchStatColumn(
                     value = caughtCount.toString(),
                     label = "Catches Taken",
-                    color = SuccessGreen,
+                    color = colors.statusSuccess,
                 )
 
                 Box(
@@ -169,7 +171,7 @@ fun CatchDroppedCard(
                 CatchStatColumn(
                     value = droppedCount.toString(),
                     label = "Dropped",
-                    color = WicketRed,
+                    color = colors.statusLive,
                 )
 
                 Box(
@@ -182,7 +184,7 @@ fun CatchDroppedCard(
                 CatchStatColumn(
                     value = "${catchSuccess.toInt()}%",
                     label = "Success Rate",
-                    color = ShinyGoldMid,
+                    color = colors.goldDark,
                 )
             }
 
@@ -209,10 +211,13 @@ private fun CatchSuccessRing(
     progress: Float,
     glowAlpha: Float,
 ) {
+    val colors = BouncerDesignSystem.colors
     Box(
         modifier = Modifier.size(60.dp),
         contentAlignment = Alignment.Center,
     ) {
+        val statusSuccessC = colors.statusSuccess
+        val goldDarkC = colors.goldDark
         Canvas(modifier = Modifier.fillMaxSize()) {
             val strokeWidth = 6.dp.toPx()
             val radius = (size.minDimension - strokeWidth) / 2
@@ -227,7 +232,7 @@ private fun CatchSuccessRing(
             // Progress ring
             drawArc(
                 brush = Brush.sweepGradient(
-                    colors = listOf(SuccessGreen, ShinyGoldMid, SuccessGreen),
+                    colors = listOf(statusSuccessC, goldDarkC, statusSuccessC),
                 ),
                 startAngle = -90f,
                 sweepAngle = 360f * progress,
@@ -238,7 +243,7 @@ private fun CatchSuccessRing(
             // Glow effect
             if (progress > 0.7f) {
                 drawCircle(
-                    color = SuccessGreen.copy(alpha = glowAlpha * 0.3f),
+                    color = statusSuccessC.copy(alpha = glowAlpha * 0.3f),
                     radius = radius + 8.dp.toPx(),
                 )
             }
@@ -259,6 +264,7 @@ private fun CatchStatColumn(
     label: String,
     color: Color,
 ) {
+    val colors = BouncerDesignSystem.colors
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
             text = value,
@@ -280,6 +286,7 @@ private fun CatchEventRow(
     progress: Float,
     index: Int,
 ) {
+    val colors = BouncerDesignSystem.colors
     val delayedProgress = ((progress - index * 0.1f) / 0.9f).coerceIn(0f, 1f)
 
     Row(
@@ -294,14 +301,14 @@ private fun CatchEventRow(
                 if (catchEvent.isCaught) {
                     Brush.horizontalGradient(
                         colors = listOf(
-                            SuccessGreen.copy(alpha = 0.15f),
+                            colors.statusSuccess.copy(alpha = 0.15f),
                             Color.Transparent,
                         ),
                     )
                 } else {
                     Brush.horizontalGradient(
                         colors = listOf(
-                            WicketRed.copy(alpha = 0.15f),
+                            colors.statusLive.copy(alpha = 0.15f),
                             Color.Transparent,
                         ),
                     )
@@ -316,7 +323,7 @@ private fun CatchEventRow(
                 .size(36.dp)
                 .clip(CircleShape)
                 .background(
-                    if (catchEvent.isCaught) SuccessGreen else WicketRed,
+                    if (catchEvent.isCaught) colors.statusSuccess else colors.statusLive,
                 ),
             contentAlignment = Alignment.Center,
         ) {
@@ -342,7 +349,7 @@ private fun CatchEventRow(
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = catchEvent.catchType,
-                    color = ShinyGoldMid,
+                    color = colors.goldDark,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Medium,
                 )
@@ -386,6 +393,7 @@ private fun CatchEventRow(
 
 @Composable
 private fun DifficultyBar(difficulty: Float) {
+    val colors = BouncerDesignSystem.colors
     Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
         repeat(5) { index ->
             val isFilled = (index + 1) <= (difficulty * 5).toInt()
@@ -396,9 +404,9 @@ private fun DifficultyBar(difficulty: Float) {
                     .background(
                         when {
                             !isFilled -> Color.White.copy(alpha = 0.1f)
-                            difficulty > 0.8f -> WicketRed
-                            difficulty > 0.5f -> WarningYellow
-                            else -> SuccessGreen
+                            difficulty > 0.8f -> colors.statusLive
+                            difficulty > 0.5f -> colors.statusWarning
+                            else -> colors.statusSuccess
                         },
                     ),
             )

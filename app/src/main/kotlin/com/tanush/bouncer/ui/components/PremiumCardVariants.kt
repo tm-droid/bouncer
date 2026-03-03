@@ -12,6 +12,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.TrendingDown
+import androidx.compose.material.icons.automirrored.filled.TrendingFlat
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.material3.ripple
@@ -40,7 +43,7 @@ import com.tanush.bouncer.ui.theme.*
 fun PremiumGlassCard(
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
-    accentColor: Color = ShinyGoldDeep,
+    accentColor: Color = GoldPrimary,
     content: @Composable () -> Unit
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "glassCard")
@@ -71,13 +74,13 @@ fun PremiumGlassCard(
                 } else Modifier
             ),
         shape = RoundedCornerShape(CornerRadius.md),
-        color = Color.White.copy(alpha = 0.05f).copy(alpha = 0.85f),
+        color = GlassSurface.copy(alpha = 0.85f),
         border = BorderStroke(
             BorderWidth.hairline,
             Brush.linearGradient(
                 colors = listOf(
                     accentColor.copy(alpha = 0.4f + shimmerOffset * 0.2f),
-                    CardBorder.copy(alpha = 0.2f),
+                    GlassBorder.copy(alpha = 0.2f),
                     accentColor.copy(alpha = 0.3f)
                 )
             )
@@ -112,7 +115,7 @@ fun PremiumFeatureCard(
     title: String,
     description: String,
     icon: ImageVector,
-    accentColor: Color = ShinyGoldDeep,
+    accentColor: Color = GoldPrimary,
     onClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
@@ -203,7 +206,7 @@ fun PremiumStatCard(
     icon: ImageVector? = null,
     trend: TrendDirection? = null,
     trendValue: String = "",
-    accentColor: Color = ShinyGoldDeep,
+    accentColor: Color = GoldPrimary,
     modifier: Modifier = Modifier
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "statCard")
@@ -278,14 +281,14 @@ fun PremiumStatCard(
                 ) {
                     Icon(
                         imageVector = when (trend) {
-                            TrendDirection.UP -> Icons.Default.TrendingUp
-                            TrendDirection.DOWN -> Icons.Default.TrendingDown
-                            TrendDirection.NEUTRAL -> Icons.Default.TrendingFlat
+                            TrendDirection.UP -> Icons.AutoMirrored.Filled.TrendingUp
+                            TrendDirection.DOWN -> Icons.AutoMirrored.Filled.TrendingDown
+                            TrendDirection.NEUTRAL -> Icons.AutoMirrored.Filled.TrendingFlat
                         },
                         contentDescription = null,
                         tint = when (trend) {
                             TrendDirection.UP -> ChartGreen
-                            TrendDirection.DOWN -> ErrorRed
+                            TrendDirection.DOWN -> StatusLive
                             TrendDirection.NEUTRAL -> TextTertiary
                         },
                         modifier = Modifier.size(16.dp)
@@ -297,7 +300,7 @@ fun PremiumStatCard(
                         fontWeight = FontWeight.SemiBold,
                         color = when (trend) {
                             TrendDirection.UP -> ChartGreen
-                            TrendDirection.DOWN -> ErrorRed
+                            TrendDirection.DOWN -> StatusLive
                             TrendDirection.NEUTRAL -> TextTertiary
                         }
                     )
@@ -335,7 +338,7 @@ fun PremiumInfoCard(
                     Icon(
                         imageVector = icon,
                         contentDescription = null,
-                        tint = ShinyGoldDeep,
+                        tint = GoldPrimary,
                         modifier = Modifier.size(20.dp)
                     )
                 }
@@ -357,7 +360,7 @@ fun PremiumInfoCard(
                     .background(
                         Brush.horizontalGradient(
                             colors = listOf(
-                                ShinyGoldDeep.copy(alpha = 0.3f),
+                                GoldPrimary.copy(alpha = 0.3f),
                                 Color.Transparent
                             )
                         )
@@ -430,15 +433,15 @@ fun PremiumProfileCard(
                         2.dp,
                         Brush.linearGradient(
                             colors = listOf(
-                                ShinyGoldLight.copy(alpha = borderAlpha),
-                                ShinyGoldDeep.copy(alpha = borderAlpha * 0.5f)
+                                GoldLight.copy(alpha = borderAlpha),
+                                GoldPrimary.copy(alpha = borderAlpha * 0.5f)
                             )
                         ),
                         CircleShape
                     )
                     .padding(3.dp)
                     .clip(CircleShape)
-                    .background(Color.White.copy(alpha = 0.08f))
+                    .background(GlassBorderHighlight)
             ) {
                 if (imageUrl != null) {
                     CoilImage(
@@ -456,7 +459,7 @@ fun PremiumProfileCard(
                             text = name.take(2).uppercase(),
                             fontSize = 24.sp,
                             fontWeight = FontWeight.Bold,
-                            color = ShinyGoldDeep
+                            color = GoldPrimary
                         )
                     }
                 }
@@ -499,7 +502,7 @@ fun PremiumProfileCard(
                                 text = value,
                                 fontSize = 20.sp,
                                 fontWeight = FontWeight.Black,
-                                color = ShinyGoldDeep
+                                color = GoldPrimary
                             )
                             Text(
                                 text = label,
@@ -524,7 +527,7 @@ fun PremiumStatBar(
     maxValue: Float = 100f,
     label: String = "",
     valueText: String = "",
-    color: Color = ShinyGoldDeep,
+    color: Color = GoldPrimary,
     height: Dp = 8.dp,
     modifier: Modifier = Modifier
 ) {
@@ -566,7 +569,7 @@ fun PremiumStatBar(
                 .fillMaxWidth()
                 .height(height)
                 .clip(RoundedCornerShape(height / 2))
-                .background(CardBorder.copy(alpha = 0.3f))
+                .background(GlassBorder.copy(alpha = 0.3f))
         ) {
             Box(
                 modifier = Modifier
@@ -597,7 +600,7 @@ fun PremiumComparisonCard(
     leftValue: Int,
     rightValue: Int,
     leftColor: Color = ChartGreen,
-    rightColor: Color = WicketBlue,
+    rightColor: Color = StatusInfo,
     modifier: Modifier = Modifier
 ) {
     val total = leftValue + rightValue
@@ -725,7 +728,7 @@ fun PremiumCountdownCard(
                     text = ":",
                     fontSize = 24.sp,
                     fontWeight = FontWeight.Bold,
-                    color = ShinyGoldDeep.copy(alpha = 0.5f),
+                    color = GoldPrimary.copy(alpha = 0.5f),
                     modifier = Modifier.graphicsLayer { scaleX = pulseScale; scaleY = pulseScale }
                 )
                 
@@ -735,7 +738,7 @@ fun PremiumCountdownCard(
                     text = ":",
                     fontSize = 24.sp,
                     fontWeight = FontWeight.Bold,
-                    color = ShinyGoldDeep.copy(alpha = 0.5f),
+                    color = GoldPrimary.copy(alpha = 0.5f),
                     modifier = Modifier.graphicsLayer { scaleX = pulseScale; scaleY = pulseScale }
                 )
                 
@@ -745,7 +748,7 @@ fun PremiumCountdownCard(
                     text = ":",
                     fontSize = 24.sp,
                     fontWeight = FontWeight.Bold,
-                    color = ShinyGoldDeep.copy(alpha = 0.5f),
+                    color = GoldPrimary.copy(alpha = 0.5f),
                     modifier = Modifier.graphicsLayer { scaleX = pulseScale; scaleY = pulseScale }
                 )
                 
@@ -781,7 +784,7 @@ private fun TimeUnit(
             modifier = Modifier
                 .graphicsLayer { scaleX = scale; scaleY = scale }
                 .background(
-                    ShinyGoldDeep.copy(alpha = 0.15f),
+                    GoldPrimary.copy(alpha = 0.15f),
                     RoundedCornerShape(12.dp)
                 )
                 .padding(horizontal = 12.dp, vertical = 8.dp)
@@ -790,7 +793,7 @@ private fun TimeUnit(
                 text = displayValue,
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Black,
-                color = ShinyGoldLight
+                color = GoldLight
             )
         }
         

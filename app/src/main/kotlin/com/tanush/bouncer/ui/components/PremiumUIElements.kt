@@ -92,6 +92,8 @@ private fun PremiumTab(
     glowPulse: Float,
     onClick: () -> Unit
 ) {
+    val colors = BouncerDesignSystem.colors
+    val goldPrimaryColor = colors.goldPrimary
     val scale by animateFloatAsState(
         targetValue = if (isSelected) 1f else 0.95f,
         animationSpec = spring(
@@ -102,13 +104,13 @@ private fun PremiumTab(
     )
     
     val backgroundColor by animateColorAsState(
-        targetValue = if (isSelected) ShinyGoldDeep.copy(alpha = 0.15f) else Color.Transparent,
+        targetValue = if (isSelected) colors.goldPrimary.copy(alpha = 0.15f) else Color.Transparent,
         animationSpec = tween(200),
         label = "tabBg"
     )
     
     val textColor by animateColorAsState(
-        targetValue = if (isSelected) ShinyGoldDeep else TextSecondary,
+        targetValue = if (isSelected) colors.goldPrimary else colors.textSecondary,
         animationSpec = tween(200),
         label = "tabText"
     )
@@ -124,7 +126,7 @@ private fun PremiumTab(
                         drawCircle(
                             brush = Brush.radialGradient(
                                 colors = listOf(
-                                    ShinyGoldDeep.copy(alpha = glowPulse * 0.3f),
+                                    goldPrimaryColor.copy(alpha = glowPulse * 0.3f),
                                     Color.Transparent
                                 )
                             ),
@@ -163,13 +165,13 @@ private fun PremiumTab(
             tab.badge?.let { badge ->
                 Surface(
                     shape = CircleShape,
-                    color = if (isSelected) ShinyGoldDeep else CardBorder
+                    color = if (isSelected) colors.goldPrimary else colors.glassBorder
                 ) {
                     Text(
                         text = badge,
                         fontSize = 9.sp,
                         fontWeight = FontWeight.Bold,
-                        color = if (isSelected) BlackBackground else TextTertiary,
+                        color = if (isSelected) colors.backgroundBase else colors.textTertiary,
                         modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                     )
                 }
@@ -216,6 +218,7 @@ private fun SelectableChip(
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
+    val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "chip_${chip.id}")
     val shimmerOffset by infiniteTransition.animateFloat(
         initialValue = 0f,
@@ -234,7 +237,7 @@ private fun SelectableChip(
     )
     
     val backgroundColor by animateColorAsState(
-        targetValue = if (isSelected) ShinyGoldDeep.copy(alpha = 0.15f) else Color.White.copy(alpha = 0.05f),
+        targetValue = if (isSelected) colors.goldPrimary.copy(alpha = 0.15f) else Color.White.copy(alpha = 0.05f),
         animationSpec = tween(200),
         label = "chipBg"
     )
@@ -265,9 +268,9 @@ private fun SelectableChip(
         shape = RoundedCornerShape(14.dp),
         color = backgroundColor,
         border = if (isSelected) {
-            BorderStroke(1.dp, ShinyGoldDeep.copy(alpha = 0.5f))
+            BorderStroke(1.dp, colors.goldPrimary.copy(alpha = 0.5f))
         } else {
-            BorderStroke(1.dp, CardBorder.copy(alpha = 0.3f))
+            BorderStroke(1.dp, colors.glassBorder.copy(alpha = 0.3f))
         }
     ) {
         Row(
@@ -279,7 +282,7 @@ private fun SelectableChip(
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
-                    tint = if (isSelected) ShinyGoldDeep else TextSecondary,
+                    tint = if (isSelected) colors.goldPrimary else colors.textSecondary,
                     modifier = Modifier.size(16.dp)
                 )
             }
@@ -288,19 +291,19 @@ private fun SelectableChip(
                 text = chip.label,
                 fontSize = 13.sp,
                 fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
-                color = if (isSelected) ShinyGoldDeep else TextSecondary
+                color = if (isSelected) colors.goldPrimary else colors.textSecondary
             )
             
             chip.count?.let { count ->
                 Surface(
                     shape = CircleShape,
-                    color = if (isSelected) ShinyGoldDeep.copy(alpha = 0.2f) else CardBorder.copy(alpha = 0.5f)
+                    color = if (isSelected) colors.goldPrimary.copy(alpha = 0.2f) else colors.glassBorder.copy(alpha = 0.5f)
                 ) {
                     Text(
                         text = count.toString(),
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
-                        color = if (isSelected) ShinyGoldDeep else TextTertiary,
+                        color = if (isSelected) colors.goldPrimary else colors.textTertiary,
                         modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                     )
                 }
@@ -347,14 +350,15 @@ private fun ToggleButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val backgroundColor by animateColorAsState(
-        targetValue = if (isSelected) ShinyGoldDeep else Color.Transparent,
+        targetValue = if (isSelected) colors.goldPrimary else Color.Transparent,
         animationSpec = tween(200),
         label = "toggleBg"
     )
     
     val textColor by animateColorAsState(
-        targetValue = if (isSelected) BlackBackground else TextSecondary,
+        targetValue = if (isSelected) colors.backgroundBase else colors.textSecondary,
         animationSpec = tween(200),
         label = "toggleText"
     )
@@ -387,9 +391,10 @@ fun InfoTooltip(
     title: String,
     message: String,
     icon: ImageVector = Icons.Default.Info,
-    accentColor: Color = ShinyGoldDeep,
+    accentColor: Color = BouncerDesignSystem.colors.goldPrimary,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     Surface(
         modifier = modifier.shadow(
             elevation = 8.dp,
@@ -437,7 +442,7 @@ fun InfoTooltip(
                     text = message,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Normal,
-                    color = TextSecondary,
+                    color = colors.textSecondary,
                     lineHeight = 18.sp
                 )
             }
@@ -456,12 +461,13 @@ fun NotificationBanner(
     onDismiss: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val (backgroundColor, accentColor, icon) = when (type) {
         BannerType.INFO -> Triple(LiveBlue.copy(alpha = 0.12f), LiveBlue, Icons.Default.Info)
-        BannerType.SUCCESS -> Triple(SuccessGreen.copy(alpha = 0.12f), SuccessGreen, Icons.Default.CheckCircle)
+        BannerType.SUCCESS -> Triple(colors.statusSuccess.copy(alpha = 0.12f), colors.statusSuccess, Icons.Default.CheckCircle)
         BannerType.WARNING -> Triple(WarningOrange.copy(alpha = 0.12f), WarningOrange, Icons.Default.Warning)
-        BannerType.ERROR -> Triple(ErrorRed.copy(alpha = 0.12f), ErrorRed, Icons.Default.Error)
-        BannerType.CELEBRATION -> Triple(ShinyGoldDeep.copy(alpha = 0.12f), ShinyGoldDeep, Icons.Default.Celebration)
+        BannerType.ERROR -> Triple(colors.statusLive.copy(alpha = 0.12f), colors.statusLive, Icons.Default.Error)
+        BannerType.CELEBRATION -> Triple(colors.goldPrimary.copy(alpha = 0.12f), colors.goldPrimary, Icons.Default.Celebration)
     }
     
     val infiniteTransition = rememberInfiniteTransition(label = "banner")
@@ -525,7 +531,7 @@ fun NotificationBanner(
                 Text(
                     text = message,
                     fontSize = 12.sp,
-                    color = TextSecondary,
+                    color = colors.textSecondary,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -539,7 +545,7 @@ fun NotificationBanner(
                     Icon(
                         imageVector = Icons.Default.Close,
                         contentDescription = "Dismiss",
-                        tint = TextMuted,
+                        tint = colors.textMuted,
                         modifier = Modifier.size(16.dp)
                     )
                 }
@@ -558,10 +564,11 @@ enum class BannerType {
 @Composable
 fun AnimatedBadge(
     text: String,
-    color: Color = ShinyGoldDeep,
+    color: Color = BouncerDesignSystem.colors.goldPrimary,
     animate: Boolean = true,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "badge")
     val scale by infiniteTransition.animateFloat(
         initialValue = 1f,
@@ -606,7 +613,7 @@ fun AnimatedBadge(
             text = text,
             fontSize = 11.sp,
             fontWeight = FontWeight.Bold,
-            color = BlackBackground,
+            color = colors.backgroundBase,
             letterSpacing = 0.5.sp
         )
     }

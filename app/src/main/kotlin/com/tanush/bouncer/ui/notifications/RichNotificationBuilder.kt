@@ -23,6 +23,7 @@ import androidx.core.app.NotificationManagerCompat
 import com.tanush.bouncer.MainActivity
 import com.tanush.bouncer.R
 import com.tanush.bouncer.models.CricketMatch
+import io.sentry.Sentry
 
 /**
  * RichNotificationBuilder - Enhanced Cricket Notification System
@@ -85,136 +86,141 @@ object RichNotificationBuilder {
          * Call this in Application.onCreate() or MainActivity
          */
         fun createNotificationChannels(context: Context) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
                 
-                // Create channel group
-                val channelGroup = NotificationChannelGroup(
-                    GROUP_CRICKET,
-                    "Cricket Notifications"
-                )
-                notificationManager.createNotificationChannelGroup(channelGroup)
-                
-                // Live Score Channel - Low priority for persistent display
-                val liveScoreChannel = NotificationChannel(
-                    CHANNEL_LIVE_SCORE,
-                    "Live Score Updates",
-                    NotificationManager.IMPORTANCE_LOW
-                ).apply {
-                    description = "Ongoing live match score updates"
-                    group = GROUP_CRICKET
-                    setShowBadge(false)
-                    lockscreenVisibility = Notification.VISIBILITY_PUBLIC
-                    enableVibration(false)
-                    setSound(null, null)
-                }
-                
-                // Wicket Alerts - High priority with vibration
-                val wicketChannel = NotificationChannel(
-                    CHANNEL_WICKETS,
-                    "Wicket Alerts",
-                    NotificationManager.IMPORTANCE_HIGH
-                ).apply {
-                    description = "Alerts when a wicket falls"
-                    group = GROUP_CRICKET
-                    setShowBadge(true)
-                    lockscreenVisibility = Notification.VISIBILITY_PUBLIC
-                    enableVibration(true)
-                    vibrationPattern = longArrayOf(0, 300, 100, 300)
-                    enableLights(true)
-                    lightColor = COLOR_WICKET
-                }
-                
-                // Boundary Alerts - Default priority
-                val boundaryChannel = NotificationChannel(
-                    CHANNEL_BOUNDARIES,
-                    "Boundary Alerts",
-                    NotificationManager.IMPORTANCE_DEFAULT
-                ).apply {
-                    description = "Alerts for fours and sixes"
-                    group = GROUP_CRICKET
-                    setShowBadge(true)
-                    lockscreenVisibility = Notification.VISIBILITY_PUBLIC
-                    enableVibration(true)
-                    vibrationPattern = longArrayOf(0, 200)
-                }
-                
-                // Milestone Alerts - Default priority
-                val milestoneChannel = NotificationChannel(
-                    CHANNEL_MILESTONES,
-                    "Milestone Alerts",
-                    NotificationManager.IMPORTANCE_DEFAULT
-                ).apply {
-                    description = "Player milestones (50s, 100s, 5-wicket hauls)"
-                    group = GROUP_CRICKET
-                    setShowBadge(true)
-                    lockscreenVisibility = Notification.VISIBILITY_PUBLIC
-                    enableLights(true)
-                    lightColor = COLOR_GOLD
-                }
-                
-                // Match Events - Low priority
-                val matchEventsChannel = NotificationChannel(
-                    CHANNEL_MATCH_EVENTS,
-                    "Match Events",
-                    NotificationManager.IMPORTANCE_LOW
-                ).apply {
-                    description = "General match events (innings break, powerplay, etc.)"
-                    group = GROUP_CRICKET
-                    setShowBadge(false)
-                    lockscreenVisibility = Notification.VISIBILITY_PUBLIC
-                }
-                
-                // Match Start - High priority
-                val matchStartChannel = NotificationChannel(
-                    CHANNEL_MATCH_START,
-                    "Match Start Alerts",
-                    NotificationManager.IMPORTANCE_HIGH
-                ).apply {
-                    description = "Notifications when a match is about to start"
-                    group = GROUP_CRICKET
-                    setShowBadge(true)
-                    lockscreenVisibility = Notification.VISIBILITY_PUBLIC
-                    enableVibration(true)
-                }
-                
-                // Match End - Default priority
-                val matchEndChannel = NotificationChannel(
-                    CHANNEL_MATCH_END,
-                    "Match End Alerts",
-                    NotificationManager.IMPORTANCE_DEFAULT
-                ).apply {
-                    description = "Notifications when a match ends"
-                    group = GROUP_CRICKET
-                    setShowBadge(true)
-                    lockscreenVisibility = Notification.VISIBILITY_PUBLIC
-                }
-                
-                // Summary Channel - Low priority
-                val summaryChannel = NotificationChannel(
-                    CHANNEL_SUMMARY,
-                    "Match Summaries",
-                    NotificationManager.IMPORTANCE_LOW
-                ).apply {
-                    description = "Daily and tournament summaries"
-                    group = GROUP_CRICKET
-                    setShowBadge(false)
-                    lockscreenVisibility = Notification.VISIBILITY_PUBLIC
-                }
-                
-                // Create all channels
-                notificationManager.createNotificationChannels(
-                    listOf(
-                        liveScoreChannel,
-                        wicketChannel,
-                        boundaryChannel,
-                        milestoneChannel,
-                        matchEventsChannel,
-                        matchStartChannel,
-                        matchEndChannel,
-                        summaryChannel
+                    // Create channel group
+                    val channelGroup = NotificationChannelGroup(
+                        GROUP_CRICKET,
+                        "Cricket Notifications"
                     )
-                )
+                    notificationManager.createNotificationChannelGroup(channelGroup)
+                
+                    // Live Score Channel - Low priority for persistent display
+                    val liveScoreChannel = NotificationChannel(
+                        CHANNEL_LIVE_SCORE,
+                        "Live Score Updates",
+                        NotificationManager.IMPORTANCE_LOW
+                    ).apply {
+                        description = "Ongoing live match score updates"
+                        group = GROUP_CRICKET
+                        setShowBadge(false)
+                        lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+                        enableVibration(false)
+                        setSound(null, null)
+                    }
+                
+                    // Wicket Alerts - High priority with vibration
+                    val wicketChannel = NotificationChannel(
+                        CHANNEL_WICKETS,
+                        "Wicket Alerts",
+                        NotificationManager.IMPORTANCE_HIGH
+                    ).apply {
+                        description = "Alerts when a wicket falls"
+                        group = GROUP_CRICKET
+                        setShowBadge(true)
+                        lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+                        enableVibration(true)
+                        vibrationPattern = longArrayOf(0, 300, 100, 300)
+                        enableLights(true)
+                        lightColor = COLOR_WICKET
+                    }
+                
+                    // Boundary Alerts - Default priority
+                    val boundaryChannel = NotificationChannel(
+                        CHANNEL_BOUNDARIES,
+                        "Boundary Alerts",
+                        NotificationManager.IMPORTANCE_DEFAULT
+                    ).apply {
+                        description = "Alerts for fours and sixes"
+                        group = GROUP_CRICKET
+                        setShowBadge(true)
+                        lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+                        enableVibration(true)
+                        vibrationPattern = longArrayOf(0, 200)
+                    }
+                
+                    // Milestone Alerts - Default priority
+                    val milestoneChannel = NotificationChannel(
+                        CHANNEL_MILESTONES,
+                        "Milestone Alerts",
+                        NotificationManager.IMPORTANCE_DEFAULT
+                    ).apply {
+                        description = "Player milestones (50s, 100s, 5-wicket hauls)"
+                        group = GROUP_CRICKET
+                        setShowBadge(true)
+                        lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+                        enableLights(true)
+                        lightColor = COLOR_GOLD
+                    }
+                
+                    // Match Events - Low priority
+                    val matchEventsChannel = NotificationChannel(
+                        CHANNEL_MATCH_EVENTS,
+                        "Match Events",
+                        NotificationManager.IMPORTANCE_LOW
+                    ).apply {
+                        description = "General match events (innings break, powerplay, etc.)"
+                        group = GROUP_CRICKET
+                        setShowBadge(false)
+                        lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+                    }
+                
+                    // Match Start - High priority
+                    val matchStartChannel = NotificationChannel(
+                        CHANNEL_MATCH_START,
+                        "Match Start Alerts",
+                        NotificationManager.IMPORTANCE_HIGH
+                    ).apply {
+                        description = "Notifications when a match is about to start"
+                        group = GROUP_CRICKET
+                        setShowBadge(true)
+                        lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+                        enableVibration(true)
+                    }
+                
+                    // Match End - Default priority
+                    val matchEndChannel = NotificationChannel(
+                        CHANNEL_MATCH_END,
+                        "Match End Alerts",
+                        NotificationManager.IMPORTANCE_DEFAULT
+                    ).apply {
+                        description = "Notifications when a match ends"
+                        group = GROUP_CRICKET
+                        setShowBadge(true)
+                        lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+                    }
+                
+                    // Summary Channel - Low priority
+                    val summaryChannel = NotificationChannel(
+                        CHANNEL_SUMMARY,
+                        "Match Summaries",
+                        NotificationManager.IMPORTANCE_LOW
+                    ).apply {
+                        description = "Daily and tournament summaries"
+                        group = GROUP_CRICKET
+                        setShowBadge(false)
+                        lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+                    }
+                
+                    // Create all channels
+                    notificationManager.createNotificationChannels(
+                        listOf(
+                            liveScoreChannel,
+                            wicketChannel,
+                            boundaryChannel,
+                            milestoneChannel,
+                            matchEventsChannel,
+                            matchStartChannel,
+                            matchEndChannel,
+                            summaryChannel
+                        )
+                    )
+                }
+            } catch (e: Exception) {
+                Sentry.captureException(e)
+                throw e
             }
         }
     }
@@ -366,7 +372,7 @@ object RichNotificationBuilder {
     data class NotificationAction(
         val actionId: String,
         val title: String,
-        @DrawableRes val icon: Int = R.drawable.ic_launcher_foreground
+        @param:DrawableRes val icon: Int = R.drawable.ic_launcher_foreground
     )
     
     // ===========================================
@@ -775,26 +781,36 @@ object RichNotificationBuilder {
      * Creates a PendingIntent to open match details
      */
     private fun createMatchPendingIntent(context: Context, matchId: String): PendingIntent {
-        val intent = Intent(context, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-            putExtra("match_id", matchId)
+        try {
+            val intent = Intent(context, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                putExtra("match_id", matchId)
+            }
+            return PendingIntent.getActivity(
+                context,
+                matchId.hashCode(),
+                intent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
         }
-        return PendingIntent.getActivity(
-            context,
-            matchId.hashCode(),
-            intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
     }
     
     /**
      * Builds score text from team scores
      */
     private fun buildScoreText(score1: String, score2: String?): String {
-        return if (score2 != null && score2 != "-" && score2.isNotEmpty()) {
-            "$score1 • $score2"
-        } else {
-            score1
+        try {
+            return if (score2 != null && score2 != "-" && score2.isNotEmpty()) {
+                "$score1 • $score2"
+            } else {
+                score1
+            }
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
         }
     }
     
@@ -931,22 +947,32 @@ object NotificationStyling {
     }
     
     private fun getBallColors(ball: String): Pair<Int, Int> {
-        return when (ball.uppercase().trim()) {
-            "W" -> RichNotificationBuilder.CricketNotificationChannel.COLOR_WICKET to Color.WHITE
-            "6" -> RichNotificationBuilder.CricketNotificationChannel.COLOR_SIX to Color.WHITE
-            "4" -> RichNotificationBuilder.CricketNotificationChannel.COLOR_FOUR to Color.WHITE
-            "0", "•" -> 0xFF454545.toInt() to 0xFF94A3B8.toInt()
-            "NB", "WD", "LB", "B" -> 0xFFFACC15.toInt() to Color.BLACK
-            else -> 0xFF1A1A1A.toInt() to Color.WHITE
+        try {
+            return when (ball.uppercase().trim()) {
+                "W" -> RichNotificationBuilder.CricketNotificationChannel.COLOR_WICKET to Color.WHITE
+                "6" -> RichNotificationBuilder.CricketNotificationChannel.COLOR_SIX to Color.WHITE
+                "4" -> RichNotificationBuilder.CricketNotificationChannel.COLOR_FOUR to Color.WHITE
+                "0", "•" -> 0xFF454545.toInt() to 0xFF94A3B8.toInt()
+                "NB", "WD", "LB", "B" -> 0xFFFACC15.toInt() to Color.BLACK
+                else -> 0xFF1A1A1A.toInt() to Color.WHITE
+            }
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
         }
     }
     
     private fun formatBallText(ball: String): String {
-        return when (ball.uppercase().trim()) {
-            "0" -> "•"
-            "NB" -> "nb"
-            "WD" -> "wd"
-            else -> ball
+        try {
+            return when (ball.uppercase().trim()) {
+                "0" -> "•"
+                "NB" -> "nb"
+                "WD" -> "wd"
+                else -> ball
+            }
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
         }
     }
     
@@ -954,13 +980,18 @@ object NotificationStyling {
      * Gets accent color for event type
      */
     fun getEventColor(eventType: String): Int {
-        return when (eventType.lowercase()) {
-            "wicket", "w" -> RichNotificationBuilder.CricketNotificationChannel.COLOR_WICKET
-            "six", "6" -> RichNotificationBuilder.CricketNotificationChannel.COLOR_SIX
-            "four", "4" -> RichNotificationBuilder.CricketNotificationChannel.COLOR_FOUR
-            "milestone", "50", "100" -> RichNotificationBuilder.CricketNotificationChannel.COLOR_MILESTONE
-            "success", "win" -> RichNotificationBuilder.CricketNotificationChannel.COLOR_SUCCESS
-            else -> RichNotificationBuilder.CricketNotificationChannel.COLOR_GOLD
+        try {
+            return when (eventType.lowercase()) {
+                "wicket", "w" -> RichNotificationBuilder.CricketNotificationChannel.COLOR_WICKET
+                "six", "6" -> RichNotificationBuilder.CricketNotificationChannel.COLOR_SIX
+                "four", "4" -> RichNotificationBuilder.CricketNotificationChannel.COLOR_FOUR
+                "milestone", "50", "100" -> RichNotificationBuilder.CricketNotificationChannel.COLOR_MILESTONE
+                "success", "win" -> RichNotificationBuilder.CricketNotificationChannel.COLOR_SUCCESS
+                else -> RichNotificationBuilder.CricketNotificationChannel.COLOR_GOLD
+            }
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
         }
     }
     
@@ -968,16 +999,26 @@ object NotificationStyling {
      * Formats overs display string
      */
     fun formatOvers(overs: Float): String {
-        val wholeOvers = overs.toInt()
-        val balls = ((overs - wholeOvers) * 10).toInt()
-        return "$wholeOvers.$balls"
+        try {
+            val wholeOvers = overs.toInt()
+            val balls = ((overs - wholeOvers) * 10).toInt()
+            return "$wholeOvers.$balls"
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     /**
      * Calculates required run rate
      */
     fun calculateRequiredRunRate(runsRequired: Int, oversRemaining: Float): Float {
-        return if (oversRemaining > 0) runsRequired / oversRemaining else 0f
+        try {
+            return if (oversRemaining > 0) runsRequired / oversRemaining else 0f
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
 }
 
@@ -1200,23 +1241,33 @@ object NotificationTemplates {
     }
     
     private fun createPendingIntent(context: Context, matchId: String): PendingIntent {
-        val intent = Intent(context, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-            putExtra("match_id", matchId)
+        try {
+            val intent = Intent(context, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                putExtra("match_id", matchId)
+            }
+            return PendingIntent.getActivity(
+                context,
+                matchId.hashCode(),
+                intent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
         }
-        return PendingIntent.getActivity(
-            context,
-            matchId.hashCode(),
-            intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
     }
     
     private fun buildScoreText(score1: String, score2: String?): String {
-        return if (score2 != null && score2 != "-" && score2.isNotEmpty()) {
-            "$score1 • $score2"
-        } else {
-            score1
+        try {
+            return if (score2 != null && score2 != "-" && score2.isNotEmpty()) {
+                "$score1 • $score2"
+            } else {
+                score1
+            }
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
         }
     }
 }
@@ -1240,7 +1291,12 @@ object NotificationManagerExtensions {
     ): Int {
         val id = RichNotificationBuilder.CricketNotificationChannel.getNextNotificationId()
         if (tag != null) {
-            notify(tag, id, notification)
+            try {
+                notify(tag, id, notification)
+            } catch (e: Exception) {
+                Sentry.captureException(e)
+                throw e
+            }
         } else {
             notify(id, notification)
         }
@@ -1251,14 +1307,24 @@ object NotificationManagerExtensions {
      * Cancels all cricket notifications
      */
     fun NotificationManagerCompat.cancelAllCricketNotifications() {
-        cancelAll()
+        try {
+            cancelAll()
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     /**
      * Cancels notifications for a specific match
      */
     fun NotificationManagerCompat.cancelMatchNotifications(matchId: String) {
-        cancel(matchId, matchId.hashCode())
+        try {
+            cancel(matchId, matchId.hashCode())
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
 }
 
@@ -1291,20 +1357,25 @@ object NotificationSounds {
      * Gets the appropriate sound URI based on event type and user preferences
      */
     fun getSoundUri(context: Context, eventType: String): android.net.Uri? {
-        val prefs = context.getSharedPreferences("notification_settings", Context.MODE_PRIVATE)
+        try {
+            val prefs = context.getSharedPreferences("notification_settings", Context.MODE_PRIVATE)
         
-        val soundPreference = when (eventType.lowercase()) {
-            "wicket" -> prefs.getString(PREF_WICKET_SOUND, "default")
-            "boundary", "four", "six" -> prefs.getString(PREF_BOUNDARY_SOUND, "default")
-            "milestone" -> prefs.getString(PREF_MILESTONE_SOUND, "default")
-            "match_start" -> prefs.getString(PREF_MATCH_START_SOUND, "default")
-            else -> "default"
-        }
+            val soundPreference = when (eventType.lowercase()) {
+                "wicket" -> prefs.getString(PREF_WICKET_SOUND, "default")
+                "boundary", "four", "six" -> prefs.getString(PREF_BOUNDARY_SOUND, "default")
+                "milestone" -> prefs.getString(PREF_MILESTONE_SOUND, "default")
+                "match_start" -> prefs.getString(PREF_MATCH_START_SOUND, "default")
+                else -> "default"
+            }
         
-        return when (soundPreference) {
-            "silent" -> null
-            "default" -> android.provider.Settings.System.DEFAULT_NOTIFICATION_URI
-            else -> android.provider.Settings.System.DEFAULT_NOTIFICATION_URI
+            return when (soundPreference) {
+                "silent" -> null
+                "default" -> android.provider.Settings.System.DEFAULT_NOTIFICATION_URI
+                else -> android.provider.Settings.System.DEFAULT_NOTIFICATION_URI
+            }
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
         }
     }
     
@@ -1312,26 +1383,36 @@ object NotificationSounds {
      * Check if notifications are muted for a specific match
      */
     fun isMatchMuted(context: Context, matchId: String): Boolean {
-        val prefs = context.getSharedPreferences("notification_mutes", Context.MODE_PRIVATE)
-        val mutedMatches = prefs.getStringSet("muted_matches", emptySet())
-        return mutedMatches?.contains(matchId) == true
+        try {
+            val prefs = context.getSharedPreferences("notification_mutes", Context.MODE_PRIVATE)
+            val mutedMatches = prefs.getStringSet("muted_matches", emptySet())
+            return mutedMatches?.contains(matchId) == true
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     /**
      * Mute/unmute notifications for a match
      */
     fun setMatchMuted(context: Context, matchId: String, muted: Boolean) {
-        val prefs = context.getSharedPreferences("notification_mutes", Context.MODE_PRIVATE)
-        val mutedMatches = prefs.getStringSet("muted_matches", mutableSetOf())?.toMutableSet()
-            ?: mutableSetOf()
+        try {
+            val prefs = context.getSharedPreferences("notification_mutes", Context.MODE_PRIVATE)
+            val mutedMatches = prefs.getStringSet("muted_matches", mutableSetOf())?.toMutableSet()
+                ?: mutableSetOf()
         
-        if (muted) {
-            mutedMatches.add(matchId)
-        } else {
-            mutedMatches.remove(matchId)
+            if (muted) {
+                mutedMatches.add(matchId)
+            } else {
+                mutedMatches.remove(matchId)
+            }
+        
+            prefs.edit().putStringSet("muted_matches", mutedMatches).apply()
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
         }
-        
-        prefs.edit().putStringSet("muted_matches", mutedMatches).apply()
     }
 }
 
@@ -1362,37 +1443,52 @@ object NotificationPreferences {
      * Check if a specific notification type is enabled
      */
     fun isNotificationEnabled(context: Context, preferenceKey: String): Boolean {
-        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        return prefs.getBoolean(preferenceKey, true)
+        try {
+            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            return prefs.getBoolean(preferenceKey, true)
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     /**
      * Enable/disable a notification type
      */
     fun setNotificationEnabled(context: Context, preferenceKey: String, enabled: Boolean) {
-        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        prefs.edit().putBoolean(preferenceKey, enabled).apply()
+        try {
+            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            prefs.edit().putBoolean(preferenceKey, enabled).apply()
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     /**
      * Check if quiet hours are active
      */
     fun isQuietHoursActive(context: Context): Boolean {
-        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        try {
+            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         
-        if (!prefs.getBoolean(KEY_QUIET_HOURS_ENABLED, false)) {
-            return false
-        }
+            if (!prefs.getBoolean(KEY_QUIET_HOURS_ENABLED, false)) {
+                return false
+            }
         
-        val startHour = prefs.getInt(KEY_QUIET_HOURS_START, 22)
-        val endHour = prefs.getInt(KEY_QUIET_HOURS_END, 7)
+            val startHour = prefs.getInt(KEY_QUIET_HOURS_START, 22)
+            val endHour = prefs.getInt(KEY_QUIET_HOURS_END, 7)
         
-        val currentHour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
+            val currentHour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
         
-        return if (startHour < endHour) {
-            currentHour in startHour until endHour
-        } else {
-            currentHour >= startHour || currentHour < endHour
+            return if (startHour < endHour) {
+                currentHour in startHour until endHour
+            } else {
+                currentHour >= startHour || currentHour < endHour
+            }
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
         }
     }
     
@@ -1400,17 +1496,27 @@ object NotificationPreferences {
      * Check if only favorite matches should trigger notifications
      */
     fun onlyFavorites(context: Context): Boolean {
-        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        return prefs.getBoolean(KEY_ONLY_FAVORITES, false)
+        try {
+            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            return prefs.getBoolean(KEY_ONLY_FAVORITES, false)
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     /**
      * Check if match is a favorite
      */
     fun isMatchFavorite(context: Context, matchId: String): Boolean {
-        val prefs = context.getSharedPreferences("favorites", Context.MODE_PRIVATE)
-        val favorites = prefs.getStringSet("favorite_matches", emptySet())
-        return favorites?.contains(matchId) == true
+        try {
+            val prefs = context.getSharedPreferences("favorites", Context.MODE_PRIVATE)
+            val favorites = prefs.getStringSet("favorite_matches", emptySet())
+            return favorites?.contains(matchId) == true
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     /**
@@ -1550,16 +1656,21 @@ object RichMediaNotifications {
     }
     
     private fun createPendingIntent(context: Context, matchId: String): PendingIntent {
-        val intent = Intent(context, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-            putExtra("match_id", matchId)
+        try {
+            val intent = Intent(context, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                putExtra("match_id", matchId)
+            }
+            return PendingIntent.getActivity(
+                context,
+                matchId.hashCode(),
+                intent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
         }
-        return PendingIntent.getActivity(
-            context,
-            matchId.hashCode(),
-            intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
     }
 }
 
@@ -1615,15 +1726,20 @@ object CommentaryNotifications {
     )
     
     private fun createPendingIntent(context: Context, matchId: String): PendingIntent {
-        val intent = Intent(context, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-            putExtra("match_id", matchId)
+        try {
+            val intent = Intent(context, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                putExtra("match_id", matchId)
+            }
+            return PendingIntent.getActivity(
+                context,
+                matchId.hashCode(),
+                intent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
         }
-        return PendingIntent.getActivity(
-            context,
-            matchId.hashCode(),
-            intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
     }
 }

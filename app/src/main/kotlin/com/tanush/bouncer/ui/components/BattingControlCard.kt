@@ -74,11 +74,13 @@ fun BattingControlCard(
         label = "glowPulse"
     )
     
+    val colors = BouncerDesignSystem.colors
+    
     val controlColor = when {
-        data.controlPercentage >= 80 -> SuccessGreen
-        data.controlPercentage >= 60 -> ShinyGoldDeep
-        data.controlPercentage >= 40 -> WarningYellow
-        else -> WicketRed
+        data.controlPercentage >= 80 -> colors.statusSuccess
+        data.controlPercentage >= 60 -> colors.goldPrimary
+        data.controlPercentage >= 40 -> colors.statusWarning
+        else -> colors.statusLive
     }
 
     Surface(
@@ -90,7 +92,7 @@ fun BattingControlCard(
                 spotColor = controlColor.copy(alpha = 0.2f)
             ),
         shape = RoundedCornerShape(20.dp),
-        color = Color.White.copy(alpha = 0.05f)
+        color = colors.glassSurface
     ) {
         Column(
             modifier = Modifier.padding(20.dp),
@@ -108,13 +110,13 @@ fun BattingControlCard(
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 1.5.sp,
-                        color = ShinyGoldDeep
+                        color = colors.goldPrimary
                     )
                     Text(
                         text = data.playerName,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = TextPrimary
+                        color = colors.textPrimary
                     )
                 }
                 
@@ -154,7 +156,7 @@ fun BattingControlCard(
                     
                     // Background arc (semi-circle)
                     drawArc(
-                        color = CardBorder.copy(alpha = 0.2f),
+                        color = colors.glassBorder.copy(alpha = 0.2f),
                         startAngle = 180f,
                         sweepAngle = 180f,
                         useCenter = false,
@@ -165,10 +167,10 @@ fun BattingControlCard(
                     
                     // Gradient sections (red -> yellow -> green)
                     val sections = listOf(
-                        WicketRed.copy(alpha = 0.3f),
-                        WarningYellow.copy(alpha = 0.3f),
-                        ShinyGoldDeep.copy(alpha = 0.3f),
-                        SuccessGreen.copy(alpha = 0.3f)
+                        colors.statusLive.copy(alpha = 0.3f),
+                        colors.statusWarning.copy(alpha = 0.3f),
+                        colors.goldPrimary.copy(alpha = 0.3f),
+                        colors.statusSuccess.copy(alpha = 0.3f)
                     )
                     
                     sections.forEachIndexed { index, color ->
@@ -189,11 +191,11 @@ fun BattingControlCard(
                     drawArc(
                         brush = Brush.sweepGradient(
                             colorStops = arrayOf(
-                                0f to WicketRed,
-                                0.25f to WarningYellow,
-                                0.5f to ShinyGoldDeep,
-                                0.75f to SuccessGreen,
-                                1f to SuccessGreen
+                                0f to colors.statusLive,
+                                0.25f to colors.statusWarning,
+                                0.5f to colors.goldPrimary,
+                                0.75f to colors.statusSuccess,
+                                1f to colors.statusSuccess
                             ),
                             center = Offset(centerX, centerY)
                         ),
@@ -232,14 +234,14 @@ fun BattingControlCard(
                     )
                     
                     drawCircle(
-                        color = Color.White,
+                        color = colors.textPrimary,
                         radius = 4.dp.toPx(),
                         center = Offset(needleX, needleY)
                     )
                     
                     // Center decorative arc
                     drawArc(
-                        color = CardBorder.copy(alpha = 0.3f),
+                        color = colors.glassBorder.copy(alpha = 0.3f),
                         startAngle = 180f,
                         sweepAngle = 180f,
                         useCenter = false,
@@ -263,7 +265,7 @@ fun BattingControlCard(
                     Text(
                         text = "Control Rate",
                         fontSize = 12.sp,
-                        color = TextSecondary
+                        color = colors.textSecondary
                     )
                 }
             }
@@ -276,28 +278,28 @@ fun BattingControlCard(
                 ControlBreakdownItem(
                     label = "Middled",
                     percentage = data.middlingPercentage,
-                    color = SuccessGreen,
+                    color = colors.statusSuccess,
                     emoji = "🎯",
                     modifier = Modifier.weight(1f)
                 )
                 ControlBreakdownItem(
                     label = "Mistimed",
                     percentage = data.mistimingPercentage,
-                    color = WarningYellow,
+                    color = colors.statusWarning,
                     emoji = "⚡",
                     modifier = Modifier.weight(1f)
                 )
                 ControlBreakdownItem(
                     label = "Edges",
                     percentage = data.edgesPercentage,
-                    color = WicketRed.copy(alpha = 0.8f),
+                    color = colors.statusLive.copy(alpha = 0.8f),
                     emoji = "📐",
                     modifier = Modifier.weight(1f)
                 )
                 ControlBreakdownItem(
                     label = "False",
                     percentage = data.falseShotPercentage,
-                    color = WicketRed,
+                    color = colors.statusLive,
                     emoji = "❌",
                     modifier = Modifier.weight(1f)
                 )
@@ -313,7 +315,7 @@ fun BattingControlCard(
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 1.sp,
-                        color = TextSecondary
+                        color = colors.textSecondary
                     )
                     
                     data.shotTypes.take(5).forEach { shotType ->
@@ -333,6 +335,7 @@ private fun ControlBreakdownItem(
     emoji: String,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(12.dp),
@@ -363,7 +366,7 @@ private fun ControlBreakdownItem(
             Text(
                 text = label,
                 fontSize = 9.sp,
-                color = TextSecondary
+                color = colors.textSecondary
             )
         }
     }
@@ -380,11 +383,13 @@ private fun ShotTypeControlRow(
         label = "shotProgress"
     )
     
+    val colors = BouncerDesignSystem.colors
+    
     val shotColor = when {
-        shotType.controlPercentage >= 80 -> SuccessGreen
-        shotType.controlPercentage >= 60 -> ShinyGoldDeep
-        shotType.controlPercentage >= 40 -> WarningYellow
-        else -> WicketRed
+        shotType.controlPercentage >= 80 -> colors.statusSuccess
+        shotType.controlPercentage >= 60 -> colors.goldPrimary
+        shotType.controlPercentage >= 40 -> colors.statusWarning
+        else -> colors.statusLive
     }
 
     Row(
@@ -397,7 +402,7 @@ private fun ShotTypeControlRow(
             text = shotType.shotType,
             fontSize = 12.sp,
             fontWeight = FontWeight.Medium,
-            color = TextPrimary,
+            color = colors.textPrimary,
             modifier = Modifier.width(80.dp)
         )
         
@@ -407,7 +412,7 @@ private fun ShotTypeControlRow(
                 .weight(1f)
                 .height(8.dp)
                 .background(
-                    color = CardBorder.copy(alpha = 0.2f),
+                    color = colors.glassBorder.copy(alpha = 0.2f),
                     shape = RoundedCornerShape(4.dp)
                 )
         ) {
@@ -441,7 +446,7 @@ private fun ShotTypeControlRow(
         Text(
             text = "(${shotType.attempts})",
             fontSize = 10.sp,
-            color = TextSecondary,
+            color = colors.textSecondary,
             modifier = Modifier.width(30.dp)
         )
     }
@@ -455,11 +460,12 @@ fun CompactControlIndicator(
     controlPercentage: Float,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val color = when {
-        controlPercentage >= 80 -> SuccessGreen
-        controlPercentage >= 60 -> ShinyGoldDeep
-        controlPercentage >= 40 -> WarningYellow
-        else -> WicketRed
+        controlPercentage >= 80 -> colors.statusSuccess
+        controlPercentage >= 60 -> colors.goldPrimary
+        controlPercentage >= 40 -> colors.statusWarning
+        else -> colors.statusLive
     }
     
     Row(

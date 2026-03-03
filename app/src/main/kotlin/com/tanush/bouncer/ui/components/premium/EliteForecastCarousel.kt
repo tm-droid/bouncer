@@ -12,7 +12,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.ui.components.BallPrediction
 import com.tanush.bouncer.ui.components.PredictiveBallCard
-import com.tanush.bouncer.ui.theme.ShinyGoldDeep
+import com.tanush.bouncer.ui.theme.GoldPrimary
 import com.tanush.bouncer.ui.theme.TextMuted
 
 /**
@@ -55,7 +55,7 @@ fun EliteForecastCarousel(
             )
             Text(
                 text = "NEXT OVER",
-                color = ShinyGoldDeep,
+                color = GoldPrimary,
                 fontSize = 9.sp,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 1.sp

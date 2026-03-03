@@ -25,8 +25,8 @@ import kotlin.math.sin
  */
 @Composable
 fun Modifier.premiumShimmer(
-    durationMillis: Int = 2000,
-    color: Color = ShinyGoldDeep,
+    durationMillis: Int = 1500,
+    color: Color = BouncerDesignSystem.colors.goldPrimary,
     enabled: Boolean = true
 ): Modifier {
     if (!enabled) return this
@@ -36,7 +36,7 @@ fun Modifier.premiumShimmer(
         initialValue = -500f,
         targetValue = 1500f,
         animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis, easing = LinearEasing),
+            animation = tween(durationMillis, easing = FastOutSlowInEasing),
             repeatMode = RepeatMode.Restart
         ),
         label = "shimmerTranslate"
@@ -65,7 +65,7 @@ fun Modifier.premiumShimmer(
  */
 @Composable
 fun Modifier.radialPulseGlow(
-    color: Color = ShinyGoldDeep,
+    color: Color = BouncerDesignSystem.colors.goldPrimary,
     baseAlpha: Float = 0.15f,
     pulseAlpha: Float = 0.35f,
     durationMillis: Int = 2000,
@@ -108,11 +108,11 @@ fun Modifier.radialPulseGlow(
 fun Modifier.animatedBorder(
     borderWidth: Dp = 1.dp,
     colors: List<Color> = listOf(
-        ShinyGoldLight.copy(alpha = 0.5f),
-        ShinyGoldDeep.copy(alpha = 0.8f),
-        ShinyGoldDark.copy(alpha = 0.3f),
+        BouncerDesignSystem.colors.goldLight.copy(alpha = 0.5f),
+        BouncerDesignSystem.colors.goldPrimary.copy(alpha = 0.8f),
+        BouncerDesignSystem.colors.goldDark.copy(alpha = 0.3f),
         Color.Transparent,
-        ShinyGoldLight.copy(alpha = 0.5f)
+        BouncerDesignSystem.colors.goldLight.copy(alpha = 0.5f)
     ),
     shape: Shape = RoundedCornerShape(20.dp),
     durationMillis: Int = 3000
@@ -144,7 +144,7 @@ fun Modifier.animatedBorder(
 fun SparkleOverlay(
     modifier: Modifier = Modifier,
     particleCount: Int = 15,
-    color: Color = ShinyGoldLight
+    color: Color = BouncerDesignSystem.colors.goldLight
 ) {
     val particles = remember {
         List(particleCount) {
@@ -241,8 +241,8 @@ private fun AnimatedSparkle(
 fun PremiumSkeleton(
     modifier: Modifier = Modifier,
     shape: Shape = RoundedCornerShape(12.dp),
-    baseColor: Color = Color.White.copy(alpha = 0.05f),
-    shimmerColor: Color = ShinyGoldDeep.copy(alpha = 0.15f)
+    baseColor: Color = Surface1,
+    shimmerColor: Color = BouncerDesignSystem.colors.goldPrimary.copy(alpha = 0.15f)
 ) {
     val transition = rememberInfiniteTransition(label = "skeleton")
     val translateX by transition.animateFloat(
@@ -285,8 +285,8 @@ fun PremiumSkeleton(
 fun PremiumCircularProgress(
     progress: Float,
     modifier: Modifier = Modifier,
-    trackColor: Color = CardBorder,
-    progressColor: Color = ShinyGoldDeep,
+    trackColor: Color = BouncerDesignSystem.colors.glassBorder,
+    progressColor: Color = BouncerDesignSystem.colors.goldPrimary,
     strokeWidth: Dp = 4.dp,
     size: Dp = 48.dp
 ) {
@@ -368,7 +368,7 @@ fun PremiumCircularProgress(
  */
 @Composable
 fun Modifier.breathingGlow(
-    color: Color = ShinyGoldDeep,
+    color: Color = BouncerDesignSystem.colors.goldPrimary,
     minAlpha: Float = 0.05f,
     maxAlpha: Float = 0.2f,
     durationMillis: Int = 3000
@@ -407,6 +407,7 @@ fun Modifier.luxuryShine(
     durationMillis: Int = 4000,
     enabled: Boolean = true
 ): Modifier {
+    val goldPrimary = BouncerDesignSystem.colors.goldPrimary
     if (!enabled) return this
     
     val transition = rememberInfiniteTransition(label = "shine")
@@ -430,9 +431,9 @@ fun Modifier.luxuryShine(
             brush = Brush.horizontalGradient(
                 colors = listOf(
                     Color.Transparent,
-                    Color.White.copy(alpha = 0.08f),
-                    Color.White.copy(alpha = 0.15f),
-                    Color.White.copy(alpha = 0.08f),
+                    goldPrimary.copy(alpha = 0.06f),
+                    goldPrimary.copy(alpha = 0.12f),
+                    goldPrimary.copy(alpha = 0.06f),
                     Color.Transparent
                 ),
                 startX = startX,
@@ -447,7 +448,7 @@ fun Modifier.luxuryShine(
  */
 @Composable
 fun Modifier.edgeGlow(
-    color: Color = ShinyGoldDeep,
+    color: Color = BouncerDesignSystem.colors.goldPrimary,
     intensity: Float = 0.2f,
     spread: Dp = 30.dp
 ): Modifier {

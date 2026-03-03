@@ -1,17 +1,32 @@
 package com.tanush.bouncer.services
 
+import android.content.Context
+import android.util.Log
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 import com.tanush.bouncer.models.CricketMatch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.util.Date
+import io.sentry.Sentry
 
 /**
  * Thread-safe cache service for cricket matches
  * Mirrors the iOS MatchCacheService implementation
+ * 
+ * Provides two layers of caching:
+ * 1. In-memory TTL-based cache for fast access during active sessions
+ * 2. Persistent disk cache for offline support between app launches
  */
 object MatchCacheService {
+    private const val TAG = "MatchCacheService"
+    private const val DISK_PREF_NAME = "match_cache_disk"
+    private const val DISK_CACHE_MAX_AGE_MS = 3_600_000L // 1 hour for offline data
+    
     private val mutex = Mutex()
     private val cache = mutableMapOf<String, CacheEntry>()
+    private val gson = Gson()
+    private var diskPrefs: android.content.SharedPreferences? = null
     
     private data class CacheEntry(
         val matches: List<CricketMatch>,
@@ -19,56 +34,158 @@ object MatchCacheService {
     )
     
     /**
-     * Different cache expiration intervals for different match types
+     * Initialize disk persistence for offline support.
+     * Call this once during Application.onCreate or MainActivity.onCreate.
      */
-    private fun getCacheExpirationInterval(status: String): Long {
-        return when (status) {
-            "Live" -> 6_000L // Live matches cache expires after 6 seconds
-            "Upcoming", "Recent" -> 60_000L // Upcoming and Recent matches cache expires after 60 seconds
-            else -> 30_000L // Default fallback
+    fun initDiskCache(context: Context) {
+        try {
+            diskPrefs = context.getSharedPreferences(DISK_PREF_NAME, Context.MODE_PRIVATE)
+            Log.d(TAG, "Disk cache initialized")
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
         }
     }
     
     /**
-     * Get cached matches for a specific status if cache is still valid
+     * Different cache expiration intervals for different match types
+     */
+    private fun getCacheExpirationInterval(status: String): Long {
+        try {
+            return when (status) {
+                "Live" -> 6_000L // Live matches cache expires after 6 seconds
+                "Upcoming", "Recent" -> 60_000L // Upcoming and Recent matches cache expires after 60 seconds
+                else -> 30_000L // Default fallback
+            }
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
+    }
+    
+    /**
+     * Get cached matches for a specific status if cache is still valid.
+     * Falls back to disk cache if memory cache is expired.
      */
     suspend fun getMatches(status: String): List<CricketMatch>? = mutex.withLock {
-        val cached = cache[status] ?: return@withLock null
-        val now = Date()
-        val ageMs = now.time - cached.timestamp.time
+        try {
+            // Try memory cache first
+            val cached = cache[status]
+            if (cached != null) {
+                val ageMs = Date().time - cached.timestamp.time
+                if (ageMs < getCacheExpirationInterval(status)) {
+                    Log.d(TAG, "Using memory-cached data for $status (age: ${ageMs}ms)")
+                    return@withLock cached.matches
+                }
+            }
         
-        if (ageMs < getCacheExpirationInterval(status)) {
-            println("MatchCacheService: Using cached data for $status (valid for ${getCacheExpirationInterval(status)}ms)")
-            return@withLock cached.matches
+            Log.d(TAG, "Memory cache expired or missing for $status")
+            return@withLock null
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
         }
+    }
+    
+    /**
+     * Get offline cached data when network is unavailable.
+     * Returns stale data from disk if available (up to 1 hour old).
+     */
+    suspend fun getOfflineMatches(status: String): List<CricketMatch>? = mutex.withLock {
+        try {
+            // First try memory cache regardless of TTL
+            val memoryCached = cache[status]
+            if (memoryCached != null) {
+                Log.d(TAG, "Using stale memory cache for offline: $status")
+                return@withLock memoryCached.matches
+            }
         
-        println("MatchCacheService: Cache expired for $status")
-        return@withLock null
+            // Fall back to disk cache
+            return@withLock loadFromDisk(status)
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     /**
      * Update cache with new matches for a specific status
      */
     suspend fun updateCache(matches: List<CricketMatch>, status: String) = mutex.withLock {
-        println("MatchCacheService: Updating cache for $status with ${matches.size} matches (valid for ${getCacheExpirationInterval(status)}ms)")
-        cache[status] = CacheEntry(matches, Date())
+        try {
+            Log.d(TAG, "Updating cache for $status with ${matches.size} matches")
+            cache[status] = CacheEntry(matches, Date())
+        
+            // Persist to disk for offline access (non-blocking)
+            saveToDisk(status, matches)
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     /**
      * Clear all cached data
      */
     suspend fun clearCache() = mutex.withLock {
-        println("MatchCacheService: Clearing all cached data")
-        cache.clear()
+        try {
+            Log.d(TAG, "Clearing all cached data")
+            cache.clear()
+            diskPrefs?.edit()?.clear()?.apply()
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     /**
-     * Check if cache is still valid for a specific status
+     * Check if cache is still valid for a specific status (suspend version)
      */
     suspend fun isCacheValid(status: String): Boolean = mutex.withLock {
-        val cached = cache[status] ?: return@withLock false
-        val now = Date()
-        val ageMs = now.time - cached.timestamp.time
-        return@withLock ageMs < getCacheExpirationInterval(status)
+        try {
+            val cached = cache[status] ?: return@withLock false
+            val ageMs = Date().time - cached.timestamp.time
+            return@withLock ageMs < getCacheExpirationInterval(status)
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
+    }
+    
+    // ── Disk persistence helpers ──
+    
+    private fun saveToDisk(status: String, matches: List<CricketMatch>) {
+        try {
+            val prefs = diskPrefs ?: return
+            val json = gson.toJson(matches)
+            prefs.edit()
+                .putString("matches_$status", json)
+                .putLong("timestamp_$status", Date().time)
+                .apply()
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to persist matches to disk for $status", e)
+        }
+    }
+    
+    private fun loadFromDisk(status: String): List<CricketMatch>? {
+        try {
+            val prefs = diskPrefs ?: return null
+            val timestamp = prefs.getLong("timestamp_$status", 0L)
+            val age = Date().time - timestamp
+            
+            if (age > DISK_CACHE_MAX_AGE_MS) {
+                Log.d(TAG, "Disk cache too old for $status (age: ${age}ms)")
+                return null
+            }
+            
+            val json = prefs.getString("matches_$status", null) ?: return null
+            val type = object : TypeToken<List<CricketMatch>>() {}.type
+            val matches: List<CricketMatch> = gson.fromJson(json, type)
+            Log.d(TAG, "Loaded ${matches.size} matches from disk cache for $status")
+            return matches
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to load disk cache for $status", e)
+            return null
+        }
     }
 }

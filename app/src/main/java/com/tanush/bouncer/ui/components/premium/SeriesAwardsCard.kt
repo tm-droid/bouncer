@@ -47,6 +47,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.ui.components.CoilImage
 import com.tanush.bouncer.ui.theme.*
+import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 
 /**
  * Series Awards Card
@@ -116,6 +117,9 @@ fun SeriesAwardsCard(
     )
 
     var selectedCategory by remember { mutableIntStateOf(0) }
+    val colors = BouncerDesignSystem.colors
+    val goldDark = colors.goldDark
+    val goldPrimary = colors.goldPrimary
 
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -128,7 +132,7 @@ fun SeriesAwardsCard(
                 val shimmerBrush = Brush.linearGradient(
                     colors = listOf(
                         Color.Transparent,
-                        ShinyGoldMid.copy(alpha = 0.1f),
+                        goldDark.copy(alpha = 0.1f),
                         Color.Transparent,
                     ),
                     start = Offset(size.width * shimmerOffset, 0f),
@@ -152,7 +156,7 @@ fun SeriesAwardsCard(
                         Icon(
                             imageVector = Icons.Default.Star,
                             contentDescription = null,
-                            tint = ShinyGoldMid,
+                            tint = goldDark,
                             modifier = Modifier
                                 .size(28.dp)
                                 .graphicsLayer { rotationZ = starRotation },
@@ -163,7 +167,7 @@ fun SeriesAwardsCard(
                         Column {
                             Text(
                                 text = "SERIES AWARDS",
-                                color = ShinyGoldMid,
+                                color = goldDark,
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
                                 letterSpacing = 1.5.sp,
@@ -233,6 +237,7 @@ private fun AwardCard(
     award: SeriesAwardData,
     modifier: Modifier = Modifier,
 ) {
+    val colors = BouncerDesignSystem.colors
     Column(
         modifier = modifier
             .width(140.dp)
@@ -240,8 +245,8 @@ private fun AwardCard(
             .background(
                 Brush.verticalGradient(
                     colors = listOf(
-                        ShinyGoldMid.copy(alpha = 0.2f),
-                        ShinyGoldDeep.copy(alpha = 0.1f),
+                        colors.goldDark.copy(alpha = 0.2f),
+                        colors.goldPrimary.copy(alpha = 0.1f),
                     ),
                 ),
             )
@@ -250,7 +255,7 @@ private fun AwardCard(
     ) {
         Text(
             text = award.title,
-            color = ShinyGoldMid,
+            color = colors.goldDark,
             fontSize = 9.sp,
             fontWeight = FontWeight.Bold,
             letterSpacing = 1.sp,
@@ -262,7 +267,7 @@ private fun AwardCard(
             modifier = Modifier
                 .size(60.dp)
                 .clip(CircleShape)
-                .background(ShinyGoldMid.copy(alpha = 0.2f)),
+                .background(colors.goldDark.copy(alpha = 0.2f)),
             contentAlignment = Alignment.Center,
         ) {
             CoilImage(
@@ -293,7 +298,7 @@ private fun AwardCard(
 
         Text(
             text = award.stats,
-            color = ShinyGoldMid,
+            color = colors.goldDark,
             fontSize = 14.sp,
             fontWeight = FontWeight.Bold,
         )
@@ -313,12 +318,13 @@ private fun CategoryTab(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val colors = BouncerDesignSystem.colors
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(20.dp))
             .background(
                 if (isSelected) {
-                    ShinyGoldMid.copy(alpha = 0.2f)
+                    colors.goldDark.copy(alpha = 0.2f)
                 } else {
                     Color.White.copy(alpha = 0.05f)
                 },
@@ -327,7 +333,7 @@ private fun CategoryTab(
     ) {
         Text(
             text = category,
-            color = if (isSelected) ShinyGoldMid else Color.White.copy(alpha = 0.6f),
+            color = if (isSelected) colors.goldDark else Color.White.copy(alpha = 0.6f),
             fontSize = 11.sp,
             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
         )
@@ -339,8 +345,9 @@ private fun LeaderRow(
     entry: LeaderEntry,
     modifier: Modifier = Modifier,
 ) {
+    val colors = BouncerDesignSystem.colors
     val rankColor = when (entry.rank) {
-        1 -> ShinyGoldMid
+        1 -> colors.goldDark
         2 -> Color(0xFFC0C0C0)
         3 -> Color(0xFFCD7F32)
         else -> Color.White.copy(alpha = 0.6f)
@@ -405,7 +412,7 @@ private fun LeaderRow(
 
         Text(
             text = entry.statValue,
-            color = if (entry.rank == 1) ShinyGoldMid else Color.White,
+            color = if (entry.rank == 1) colors.goldDark else Color.White,
             fontSize = 16.sp,
             fontWeight = FontWeight.Bold,
         )

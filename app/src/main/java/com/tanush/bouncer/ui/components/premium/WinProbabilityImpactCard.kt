@@ -45,6 +45,7 @@ import com.tanush.bouncer.ui.theme.ShinyGoldMid
 import com.tanush.bouncer.ui.theme.SuccessGreen
 import com.tanush.bouncer.ui.theme.WarningYellow
 import com.tanush.bouncer.ui.theme.WicketRed
+import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 
 /**
  * Win Probability Impact Card
@@ -79,6 +80,7 @@ fun WinProbabilityImpactCard(
     currentTeam1WinProb: Float,
     modifier: Modifier = Modifier,
 ) {
+    val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "impact")
 
     val pulseAlpha by infiniteTransition.animateFloat(
@@ -142,7 +144,7 @@ fun WinProbabilityImpactCard(
                     Column {
                         Text(
                             text = "WIN PROBABILITY IMPACT",
-                            color = ShinyGoldMid,
+                            color = colors.goldDark,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.5.sp,
@@ -166,7 +168,7 @@ fun WinProbabilityImpactCard(
             ) {
                 Text(
                     text = team1Name,
-                    color = ChartBlue,
+                    color = colors.statusInfo,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.width(50.dp),
@@ -187,7 +189,7 @@ fun WinProbabilityImpactCard(
                             .clip(RoundedCornerShape(12.dp))
                             .background(
                                 Brush.horizontalGradient(
-                                    colors = listOf(ChartBlue, ChartBlue.copy(alpha = 0.6f)),
+                                    colors = listOf(colors.statusInfo, colors.statusInfo.copy(alpha = 0.6f)),
                                 ),
                             ),
                     )
@@ -226,7 +228,7 @@ fun WinProbabilityImpactCard(
 
                 Text(
                     text = team2Name,
-                    color = WicketRed,
+                    color = colors.statusLive,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.width(50.dp),
@@ -264,6 +266,7 @@ private fun ImpactMomentRow(
     pulseAlpha: Float,
     index: Int,
 ) {
+    val colors = BouncerDesignSystem.colors
     val delayedProgress = ((progress - index * 0.1f) / 0.9f).coerceIn(0f, 1f)
     val impactAbs = kotlin.math.abs(moment.impact)
     val favorsTeam1 = moment.impact > 0
@@ -279,10 +282,10 @@ private fun ImpactMomentRow(
             .background(
                 when {
                     impactAbs > 0.15f && favorsTeam1 -> Brush.horizontalGradient(
-                        colors = listOf(ChartBlue.copy(alpha = 0.15f * pulseAlpha), Color.Transparent),
+                        colors = listOf(colors.statusInfo.copy(alpha = 0.15f * pulseAlpha), Color.Transparent),
                     )
                     impactAbs > 0.15f && !favorsTeam1 -> Brush.horizontalGradient(
-                        colors = listOf(WicketRed.copy(alpha = 0.15f * pulseAlpha), Color.Transparent),
+                        colors = listOf(colors.statusLive.copy(alpha = 0.15f * pulseAlpha), Color.Transparent),
                     )
                     else -> Brush.horizontalGradient(
                         colors = listOf(Color.White.copy(alpha = 0.05f), Color.Transparent),
@@ -298,13 +301,13 @@ private fun ImpactMomentRow(
                 .size(40.dp)
                 .clip(CircleShape)
                 .background(
-                    if (favorsTeam1) ChartBlue.copy(alpha = 0.2f) else WicketRed.copy(alpha = 0.2f),
+                    if (favorsTeam1) colors.statusInfo.copy(alpha = 0.2f) else colors.statusLive.copy(alpha = 0.2f),
                 ),
             contentAlignment = Alignment.Center,
         ) {
             Text(
                 text = if (favorsTeam1) "↑" else "↓",
-                color = if (favorsTeam1) ChartBlue else WicketRed,
+                color = if (favorsTeam1) colors.statusInfo else colors.statusLive,
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
             )
@@ -353,7 +356,7 @@ private fun ImpactMomentRow(
 
                 Text(
                     text = "${(moment.team1WinProbAfter * 100).toInt()}%",
-                    color = if (favorsTeam1) SuccessGreen else WicketRed,
+                    color = if (favorsTeam1) colors.statusSuccess else colors.statusLive,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
                 )
@@ -362,7 +365,7 @@ private fun ImpactMomentRow(
 
                 Text(
                     text = "(${if (favorsTeam1) "+" else ""}${(moment.impact * 100).toInt()}%)",
-                    color = if (favorsTeam1) SuccessGreen else WicketRed,
+                    color = if (favorsTeam1) colors.statusSuccess else colors.statusLive,
                     fontSize = 10.sp,
                 )
             }
@@ -375,13 +378,14 @@ private fun ImpactMomentRow(
 
 @Composable
 private fun EventTypeBadge(eventType: String) {
+    val colors = BouncerDesignSystem.colors
     val (color, icon) = when (eventType) {
-        "Wicket" -> Pair(WicketRed, "W")
-        "Boundary" -> Pair(BoundaryFour, "4")
-        "Six" -> Pair(BoundarySix, "6")
-        "Drop" -> Pair(WarningYellow, "!")
-        "Run Out" -> Pair(WicketRed, "RO")
-        else -> Pair(ShinyGoldMid, "•")
+        "Wicket" -> Pair(colors.statusLive, "W")
+        "Boundary" -> Pair(colors.statusWarning, "4")
+        "Six" -> Pair(colors.statusWarning, "6")
+        "Drop" -> Pair(colors.statusWarning, "!")
+        "Run Out" -> Pair(colors.statusLive, "RO")
+        else -> Pair(colors.goldDark, "•")
     }
 
     Box(
@@ -401,6 +405,7 @@ private fun EventTypeBadge(eventType: String) {
 
 @Composable
 private fun ImpactMagnitudeIndicator(impact: Float) {
+    val colors = BouncerDesignSystem.colors
     Row(
         horizontalArrangement = Arrangement.spacedBy(2.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -416,9 +421,9 @@ private fun ImpactMagnitudeIndicator(impact: Float) {
                     .background(
                         if (isFilled) {
                             when {
-                                impact > 0.2f -> WicketRed
-                                impact > 0.1f -> WarningYellow
-                                else -> SuccessGreen
+                                impact > 0.2f -> colors.statusLive
+                                impact > 0.1f -> colors.statusWarning
+                                else -> colors.statusSuccess
                             }
                         } else {
                             Color.White.copy(alpha = 0.1f)

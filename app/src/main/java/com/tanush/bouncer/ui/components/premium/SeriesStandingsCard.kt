@@ -34,6 +34,7 @@ import com.tanush.bouncer.ui.theme.ShinyGoldMid
 import com.tanush.bouncer.ui.theme.SuccessGreen
 import com.tanush.bouncer.ui.theme.WarningYellow
 import com.tanush.bouncer.ui.theme.WicketRed
+import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 
 /**
  * Series Standings Card
@@ -72,6 +73,7 @@ fun SeriesStandingsCard(
     currentMatchTeams: Pair<String, String>? = null,
     modifier: Modifier = Modifier,
 ) {
+    val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "standings")
 
     val shimmerOffset by infiniteTransition.animateFloat(
@@ -92,11 +94,12 @@ fun SeriesStandingsCard(
     ) {
         Box {
             // Shimmer effect
+            val goldDarkC = colors.goldDark
             Canvas(modifier = Modifier.fillMaxSize()) {
                 val shimmerBrush = Brush.linearGradient(
                     colors = listOf(
                         Color.Transparent,
-                        ShinyGoldMid.copy(alpha = 0.08f),
+                        goldDarkC.copy(alpha = 0.08f),
                         Color.Transparent,
                     ),
                     start = Offset(size.width * shimmerOffset, 0f),
@@ -123,7 +126,7 @@ fun SeriesStandingsCard(
                                 .clip(RoundedCornerShape(12.dp))
                                 .background(
                                     Brush.linearGradient(
-                                        colors = listOf(ShinyGoldDeep, ShinyGoldMid),
+                                        colors = listOf(colors.goldPrimary, colors.goldDark),
                                     ),
                                 ),
                             contentAlignment = Alignment.Center,
@@ -141,7 +144,7 @@ fun SeriesStandingsCard(
                         Column {
                             Text(
                                 text = "STANDINGS",
-                                color = ShinyGoldMid,
+                                color = colors.goldDark,
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold,
                                 letterSpacing = 1.5.sp,
@@ -218,17 +221,17 @@ fun SeriesStandingsCard(
                     horizontalArrangement = Arrangement.Center,
                 ) {
                     LegendItem(
-                        color = SuccessGreen,
+                        color = colors.statusSuccess,
                         label = "Qualified",
                     )
                     Spacer(modifier = Modifier.width(20.dp))
                     LegendItem(
-                        color = WarningYellow,
+                        color = colors.statusWarning,
                         label = "In Contention",
                     )
                     Spacer(modifier = Modifier.width(20.dp))
                     LegendItem(
-                        color = WicketRed,
+                        color = colors.statusLive,
                         label = "Eliminated",
                     )
                 }
@@ -242,6 +245,7 @@ private fun TableHeaderText(
     text: String,
     modifier: Modifier = Modifier,
 ) {
+    val colors = BouncerDesignSystem.colors
     Text(
         text = text,
         color = Color.White.copy(alpha = 0.5f),
@@ -260,10 +264,11 @@ private fun StandingsTeamRow(
     isQualified: Boolean,
     modifier: Modifier = Modifier,
 ) {
+    val colors = BouncerDesignSystem.colors
     val positionColor = when {
-        position <= 2 -> SuccessGreen
-        position <= 4 -> WarningYellow
-        else -> WicketRed.copy(alpha = 0.5f)
+        position <= 2 -> colors.statusSuccess
+        position <= 4 -> colors.statusWarning
+        else -> colors.statusLive.copy(alpha = 0.5f)
     }
 
     Row(
@@ -274,7 +279,7 @@ private fun StandingsTeamRow(
                 if (isCurrentMatchTeam) {
                     Brush.horizontalGradient(
                         colors = listOf(
-                            ShinyGoldMid.copy(alpha = 0.15f),
+                            colors.goldDark.copy(alpha = 0.15f),
                             Color.Transparent,
                         ),
                     )
@@ -326,7 +331,7 @@ private fun StandingsTeamRow(
             Column {
                 Text(
                     text = team.shortName,
-                    color = if (isCurrentMatchTeam) ShinyGoldMid else Color.White,
+                    color = if (isCurrentMatchTeam) colors.goldDark else Color.White,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Bold,
                 )
@@ -336,9 +341,9 @@ private fun StandingsTeamRow(
                     Row {
                         team.recentForm.takeLast(5).forEach { result ->
                             val resultColor = when (result) {
-                                "W" -> SuccessGreen
-                                "L" -> WicketRed
-                                "T" -> WarningYellow
+                                "W" -> colors.statusSuccess
+                                "L" -> colors.statusLive
+                                "T" -> colors.statusWarning
                                 else -> Color.Gray
                             }
                             Text(
@@ -361,12 +366,12 @@ private fun StandingsTeamRow(
         )
         TableDataText(
             text = "${team.won}",
-            color = SuccessGreen,
+            color = colors.statusSuccess,
             modifier = Modifier.width(24.dp),
         )
         TableDataText(
             text = "${team.lost}",
-            color = WicketRed.copy(alpha = 0.7f),
+            color = colors.statusLive.copy(alpha = 0.7f),
             modifier = Modifier.width(24.dp),
         )
         TableDataText(
@@ -375,7 +380,7 @@ private fun StandingsTeamRow(
             } else {
                 String.format("%.2f", team.netRunRate)
             },
-            color = if (team.netRunRate >= 0) SuccessGreen else WicketRed,
+            color = if (team.netRunRate >= 0) colors.statusSuccess else colors.statusLive,
             modifier = Modifier.width(50.dp),
         )
 
@@ -384,13 +389,13 @@ private fun StandingsTeamRow(
             modifier = Modifier
                 .width(30.dp)
                 .clip(RoundedCornerShape(6.dp))
-                .background(ShinyGoldMid.copy(alpha = 0.2f))
+                .background(colors.goldDark.copy(alpha = 0.2f))
                 .padding(vertical = 4.dp),
             contentAlignment = Alignment.Center,
         ) {
             Text(
                 text = "${team.points}",
-                color = ShinyGoldMid,
+                color = colors.goldDark,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
             )
@@ -404,6 +409,7 @@ private fun TableDataText(
     color: Color = Color.White.copy(alpha = 0.8f),
     modifier: Modifier = Modifier,
 ) {
+    val colors = BouncerDesignSystem.colors
     Text(
         text = text,
         color = color,
@@ -419,6 +425,7 @@ private fun LegendItem(
     color: Color,
     label: String,
 ) {
+    val colors = BouncerDesignSystem.colors
     Row(verticalAlignment = Alignment.CenterVertically) {
         Box(
             modifier = Modifier

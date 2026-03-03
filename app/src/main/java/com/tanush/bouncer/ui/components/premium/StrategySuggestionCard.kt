@@ -46,6 +46,7 @@ import com.tanush.bouncer.ui.theme.SuccessGreen
 import com.tanush.bouncer.ui.theme.WarningYellow
 import com.tanush.bouncer.ui.theme.WicketRed
 import kotlin.math.*
+import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 
 /**
  * Strategy suggestion card showing AI-powered recommendations
@@ -92,6 +93,7 @@ fun StrategySuggestionCard(
     suggestions: List<StrategySuggestion>,
     modifier: Modifier = Modifier,
 ) {
+    val colors = BouncerDesignSystem.colors
     val animatedProgress = remember { Animatable(0f) }
 
     val infiniteTransition = rememberInfiniteTransition(label = "ai")
@@ -158,7 +160,7 @@ fun StrategySuggestionCard(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
                                 text = "AI STRATEGY",
-                                color = ShinyGoldLight,
+                                color = colors.goldLight,
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.Bold,
                                 letterSpacing = 1.5.sp,
@@ -269,10 +271,11 @@ private fun SuggestionItem(
     suggestion: StrategySuggestion,
     alpha: Float,
 ) {
+    val colors = BouncerDesignSystem.colors
     val priorityColor = when (suggestion.priority) {
-        StrategyPriority.HIGH -> WicketRed
-        StrategyPriority.MEDIUM -> WarningYellow
-        StrategyPriority.LOW -> SuccessGreen
+        StrategyPriority.HIGH -> colors.statusLive
+        StrategyPriority.MEDIUM -> colors.statusWarning
+        StrategyPriority.LOW -> colors.statusSuccess
     }
 
     val categoryEmoji = when (suggestion.category) {
@@ -375,9 +378,9 @@ private fun SuggestionItem(
                             .clip(RoundedCornerShape(3.dp))
                             .background(
                                 when {
-                                    suggestion.confidence >= 80 -> SuccessGreen
-                                    suggestion.confidence >= 60 -> ChartBlue
-                                    else -> WarningYellow
+                                    suggestion.confidence >= 80 -> colors.statusSuccess
+                                    suggestion.confidence >= 60 -> colors.statusInfo
+                                    else -> colors.statusWarning
                                 },
                             ),
                     )
@@ -394,7 +397,7 @@ private fun SuggestionItem(
 
             Text(
                 text = suggestion.expectedImpact,
-                color = SuccessGreen,
+                color = colors.statusSuccess,
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Medium,
             )
@@ -404,6 +407,7 @@ private fun SuggestionItem(
 
 @Composable
 fun StrategySuggestionCardPreview() {
+    val colors = BouncerDesignSystem.colors
     val suggestions = listOf(
         StrategySuggestion(
             title = "Bring in spinner from pavilion end",

@@ -19,6 +19,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.ui.theme.*
+import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 
 /**
  * Bowling Change Card
@@ -52,6 +53,7 @@ fun BowlingChangeCard(
     currentBowlerStats: String,
     modifier: Modifier = Modifier,
 ) {
+    val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "change")
 
     val arrowPulse by infiniteTransition.animateFloat(
@@ -81,11 +83,12 @@ fun BowlingChangeCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 12.dp),
     ) {
         Box {
+            val statusLiveC = colors.statusLive
             Canvas(modifier = Modifier.fillMaxSize()) {
                 val shimmerBrush = Brush.linearGradient(
                     colors = listOf(
                         Color.Transparent,
-                        WicketRed.copy(alpha = 0.08f),
+                        statusLiveC.copy(alpha = 0.08f),
                         Color.Transparent,
                     ),
                     start = Offset(size.width * shimmerOffset, 0f),
@@ -112,7 +115,7 @@ fun BowlingChangeCard(
                                 .clip(RoundedCornerShape(12.dp))
                                 .background(
                                     Brush.linearGradient(
-                                        colors = listOf(WicketRed, WicketRed.copy(alpha = 0.7f)),
+                                        colors = listOf(colors.statusLive, colors.statusLive.copy(alpha = 0.7f)),
                                     ),
                                 ),
                             contentAlignment = Alignment.Center,
@@ -130,7 +133,7 @@ fun BowlingChangeCard(
                         Column {
                             Text(
                                 text = "BOWLING CHANGE",
-                                color = WicketRed,
+                                color = colors.statusLive,
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold,
                                 letterSpacing = 1.5.sp,
@@ -154,8 +157,8 @@ fun BowlingChangeCard(
                         .background(
                             Brush.horizontalGradient(
                                 colors = listOf(
-                                    SuccessGreen.copy(alpha = 0.2f),
-                                    SuccessGreen.copy(alpha = 0.1f),
+                                    colors.statusSuccess.copy(alpha = 0.2f),
+                                    colors.statusSuccess.copy(alpha = 0.1f),
                                 ),
                             ),
                         )
@@ -169,7 +172,7 @@ fun BowlingChangeCard(
                         Column {
                             Text(
                                 text = "NOW BOWLING",
-                                color = SuccessGreen,
+                                color = colors.statusSuccess,
                                 fontSize = 9.sp,
                                 fontWeight = FontWeight.Bold,
                             )
@@ -183,7 +186,7 @@ fun BowlingChangeCard(
 
                         Text(
                             text = currentBowlerStats,
-                            color = SuccessGreen,
+                            color = colors.statusSuccess,
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
                         )
@@ -222,11 +225,12 @@ private fun BowlingChangeRow(
     arrowOffset: Float,
     modifier: Modifier = Modifier,
 ) {
+    val colors = BouncerDesignSystem.colors
     val reasonColor = when (change.reason) {
-        "Tactical" -> ShinyGoldMid
-        "Injury" -> WicketRed
-        "Ineffective" -> WarningYellow
-        else -> ChartBlue
+        "Tactical" -> colors.goldDark
+        "Injury" -> colors.statusLive
+        "Ineffective" -> colors.statusWarning
+        else -> colors.statusInfo
     }
 
     Row(
@@ -277,7 +281,7 @@ private fun BowlingChangeRow(
 
             Text(
                 text = "→",
-                color = ShinyGoldMid,
+                color = colors.goldDark,
                 fontSize = 18.sp,
                 modifier = Modifier.offset(x = arrowOffset.dp),
             )

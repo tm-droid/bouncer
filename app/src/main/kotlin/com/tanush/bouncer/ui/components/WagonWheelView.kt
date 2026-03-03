@@ -57,6 +57,17 @@ fun WagonWheelView(
     onShotClick: ((WagonWheelShot) -> Unit)? = null,
     showStats: Boolean = true
 ) {
+    val colors = BouncerDesignSystem.colors
+    // Capture colors for Canvas scopes (non-composable)
+    val goldPrimaryColor = colors.goldPrimary
+    val goldDarkColor = colors.goldDark
+    val glassBorderColor = colors.glassBorder
+    val statusWarningColor = colors.statusWarning
+    val statusLiveColor = colors.statusLive
+    val statusSuccessColor = colors.statusSuccess
+    val statusInfoColor = colors.statusInfo
+    val textMutedColor = colors.textMuted
+    
     var selectedShot by remember { mutableStateOf<WagonWheelShot?>(null) }
     
     val infiniteTransition = rememberInfiniteTransition(label = "wagonAnim")
@@ -87,7 +98,7 @@ fun WagonWheelView(
             .shadow(
                 elevation = 16.dp,
                 shape = RoundedCornerShape(24.dp),
-                spotColor = ShinyGoldDeep.copy(alpha = 0.12f),
+                spotColor = colors.goldPrimary.copy(alpha = 0.12f),
                 ambientColor = Color.Black.copy(alpha = 0.25f)
             ),
         shape = RoundedCornerShape(24.dp),
@@ -109,14 +120,14 @@ fun WagonWheelView(
                         text = "Wagon Wheel",
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
-                        color = TextPrimary,
+                        color = colors.textPrimary,
                         letterSpacing = (-0.3).sp
                     )
                     Text(
                         text = batsmanName,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Medium,
-                        color = ShinyGoldDeep
+                        color = colors.goldPrimary
                     )
                 }
                 
@@ -125,12 +136,12 @@ fun WagonWheelView(
                     StatBadge(
                         value = shots.filter { it.runs == 4 }.size.toString(),
                         label = "4s",
-                        color = BoundaryFour
+                        color = colors.statusSuccess
                     )
                     StatBadge(
                         value = shots.filter { it.runs == 6 }.size.toString(),
                         label = "6s",
-                        color = BoundarySix
+                        color = colors.statusWarning
                     )
                 }
             }
@@ -147,11 +158,11 @@ fun WagonWheelView(
                         2.dp,
                         Brush.sweepGradient(
                             colors = listOf(
-                                ShinyGoldDeep.copy(alpha = 0.3f),
-                                CardBorder,
-                                ShinyGoldDeep.copy(alpha = 0.5f),
-                                CardBorder,
-                                ShinyGoldDeep.copy(alpha = 0.3f)
+                                colors.goldPrimary.copy(alpha = 0.3f),
+                                colors.glassBorder,
+                                colors.goldPrimary.copy(alpha = 0.5f),
+                                colors.glassBorder,
+                                colors.goldPrimary.copy(alpha = 0.3f)
                             )
                         ),
                         CircleShape
@@ -217,7 +228,7 @@ fun WagonWheelView(
                         brush = Brush.radialGradient(
                             colors = listOf(
                                 Color.Transparent,
-                                ShinyGoldDeep.copy(alpha = pulseAlpha * 0.3f)
+                                goldPrimaryColor.copy(alpha = pulseAlpha * 0.3f)
                             ),
                             center = Offset(centerX, centerY),
                             radius = maxRadius + 15.dp.toPx()
@@ -227,7 +238,7 @@ fun WagonWheelView(
                     )
                     
                     drawCircle(
-                        color = ShinyGoldDeep.copy(alpha = 0.6f),
+                        color = goldPrimaryColor.copy(alpha = 0.6f),
                         radius = maxRadius,
                         center = Offset(centerX, centerY),
                         style = Stroke(width = 2.dp.toPx())
@@ -294,12 +305,12 @@ fun WagonWheelView(
                         val isSelected = shot == selectedShot
                         
                         val color = when {
-                            shot.isWicket -> WicketRed
-                            shot.runs == 6 -> BoundarySix
-                            shot.runs == 4 -> BoundaryFour
-                            shot.runs >= 2 -> ChartBlue
-                            shot.runs == 1 -> ChartCyan
-                            else -> DotBall
+                            shot.isWicket -> statusLiveColor
+                            shot.runs == 6 -> statusWarningColor
+                            shot.runs == 4 -> statusSuccessColor
+                            shot.runs >= 2 -> statusInfoColor
+                            shot.runs == 1 -> statusInfoColor
+                            else -> textMutedColor
                         }
                         
                         val lineWidth = when {
@@ -382,7 +393,7 @@ fun WagonWheelView(
                         // Selection indicator
                         if (isSelected) {
                             drawCircle(
-                                color = ShinyGoldDeep,
+                                color = goldPrimaryColor,
                                 radius = dotRadius + 5.dp.toPx(),
                                 center = Offset(endX, endY),
                                 style = Stroke(width = 2.dp.toPx())
@@ -394,8 +405,8 @@ fun WagonWheelView(
                     drawCircle(
                         brush = Brush.radialGradient(
                             colors = listOf(
-                                ShinyGoldMid,
-                                ShinyGoldDeep
+                                goldDarkColor,
+                                goldPrimaryColor
                             ),
                             center = Offset(centerX, centerY)
                         ),
@@ -431,13 +442,13 @@ fun WagonWheelView(
                             text = shot.shotType ?: "Shot",
                             fontSize = 14.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = TextPrimary
+                            color = colors.textPrimary
                         )
                         if (shot.over != null && shot.ball != null) {
                             Text(
                                 text = "Over ${shot.over}.${shot.ball}",
                                 fontSize = 12.sp,
-                                color = TextSecondary
+                                color = colors.textSecondary
                             )
                         }
                     }
@@ -446,10 +457,10 @@ fun WagonWheelView(
                         modifier = Modifier
                             .background(
                                 when {
-                                    shot.isWicket -> WicketRed
-                                    shot.runs == 6 -> BoundarySix
-                                    shot.runs == 4 -> BoundaryFour
-                                    else -> ChartBlue
+                                    shot.isWicket -> colors.statusLive
+                                    shot.runs == 6 -> colors.statusWarning
+                                    shot.runs == 4 -> colors.statusSuccess
+                                    else -> colors.statusInfo
                                 }.copy(alpha = 0.2f),
                                 RoundedCornerShape(8.dp)
                             )
@@ -465,10 +476,10 @@ fun WagonWheelView(
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold,
                             color = when {
-                                shot.isWicket -> WicketRed
-                                shot.runs == 6 -> BoundarySix
-                                shot.runs == 4 -> BoundaryFour
-                                else -> ChartBlue
+                                shot.isWicket -> colors.statusLive
+                                shot.runs == 6 -> colors.statusWarning
+                                shot.runs == 4 -> colors.statusSuccess
+                                else -> colors.statusInfo
                             }
                         )
                     }
@@ -492,21 +503,21 @@ fun WagonWheelView(
                         label = "Leg Side",
                         runs = legSideRuns,
                         percentage = if (totalRuns > 0) (legSideRuns * 100) / totalRuns else 0,
-                        color = ChartOrange
+                        color = colors.statusWarning
                     )
                     
                     Box(
                         modifier = Modifier
                             .width(1.dp)
                             .height(40.dp)
-                            .background(CardBorder)
+                            .background(colors.glassBorder)
                     )
                     
                     ZoneStatItem(
                         label = "Off Side",
                         runs = offSideRuns,
                         percentage = if (totalRuns > 0) (offSideRuns * 100) / totalRuns else 0,
-                        color = ChartBlue
+                        color = colors.statusInfo
                     )
                 }
             }
@@ -520,6 +531,7 @@ private fun StatBadge(
     label: String,
     color: Color
 ) {
+    val colors = BouncerDesignSystem.colors
     Column(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -532,7 +544,7 @@ private fun StatBadge(
         Text(
             text = label,
             fontSize = 10.sp,
-            color = TextSecondary
+            color = colors.textSecondary
         )
     }
 }
@@ -544,13 +556,14 @@ private fun ZoneStatItem(
     percentage: Int,
     color: Color
 ) {
+    val colors = BouncerDesignSystem.colors
     Column(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
             text = label,
             fontSize = 12.sp,
-            color = TextSecondary
+            color = colors.textSecondary
         )
         Spacer(modifier = Modifier.height(4.dp))
         Row(
@@ -566,7 +579,7 @@ private fun ZoneStatItem(
             Text(
                 text = "runs",
                 fontSize = 12.sp,
-                color = TextSecondary,
+                color = colors.textSecondary,
                 modifier = Modifier.padding(bottom = 2.dp)
             )
         }
@@ -574,7 +587,7 @@ private fun ZoneStatItem(
             text = "$percentage%",
             fontSize = 11.sp,
             fontWeight = FontWeight.Medium,
-            color = TextMuted
+            color = colors.textMuted
         )
     }
 }

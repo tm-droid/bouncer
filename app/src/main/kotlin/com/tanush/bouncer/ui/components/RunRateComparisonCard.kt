@@ -48,11 +48,12 @@ fun RunRateComparisonCard(
     overData: List<OverRunRate>,
     team1Name: String,
     team2Name: String,
-    team1Color: Color = ShinyGoldDeep,
-    team2Color: Color = ChartBlue,
+    team1Color: Color = GoldPrimary,
+    team2Color: Color = StatusInfo,
     requiredRunRate: Double? = null,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "rrShimmer")
     val shimmerOffset by infiniteTransition.animateFloat(
         initialValue = 0f,
@@ -86,11 +87,11 @@ fun RunRateComparisonCard(
             .shadow(
                 elevation = 16.dp,
                 shape = RoundedCornerShape(24.dp),
-                spotColor = ShinyGoldDeep.copy(alpha = 0.15f)
+                spotColor = colors.goldPrimary.copy(alpha = 0.15f)
             ),
-        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.05f)),
+        colors = CardDefaults.cardColors(containerColor = colors.glassSurface),
         shape = RoundedCornerShape(24.dp),
-        border = BorderStroke(0.5.dp, CardBorder.copy(alpha = 0.3f))
+        border = BorderStroke(0.5.dp, colors.glassBorder.copy(alpha = 0.3f))
     ) {
         Column(
             modifier = Modifier.padding(20.dp)
@@ -108,12 +109,12 @@ fun RunRateComparisonCard(
                     Icon(
                         Icons.AutoMirrored.Filled.ShowChart,
                         contentDescription = null,
-                        tint = ShinyGoldDeep,
+                        tint = colors.goldPrimary,
                         modifier = Modifier.size(20.dp)
                     )
                     Text(
                         "RUN RATE COMPARISON",
-                        color = TextPrimary,
+                        color = colors.textPrimary,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 1.sp
@@ -134,7 +135,7 @@ fun RunRateComparisonCard(
                 LegendDot(color = team2Color, label = team2Name)
                 if (requiredRunRate != null) {
                     Spacer(modifier = Modifier.width(24.dp))
-                    LegendDot(color = ErrorRed, label = "Required (${String.format("%.2f", requiredRunRate)})", dashed = true)
+                    LegendDot(color = colors.statusLive, label = "Required (${String.format("%.2f", requiredRunRate)})", dashed = true)
                 }
             }
             
@@ -163,7 +164,7 @@ fun RunRateComparisonCard(
                     for (i in 0..gridLines) {
                         val y = chartHeight - (chartHeight * i / gridLines)
                         drawLine(
-                            color = CardBorder.copy(alpha = 0.2f),
+                            color = colors.glassBorder.copy(alpha = 0.2f),
                             start = Offset(chartPadding, y),
                             end = Offset(width, y),
                             strokeWidth = 1.dp.toPx()
@@ -182,7 +183,7 @@ fun RunRateComparisonCard(
                         }
                         drawPath(
                             path = dashPath,
-                            color = ErrorRed.copy(alpha = 0.7f),
+                            color = colors.statusLive.copy(alpha = 0.7f),
                             style = Stroke(
                                 width = 2.dp.toPx(),
                                 pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 10f))
@@ -232,7 +233,7 @@ fun RunRateComparisonCard(
                             val x = chartPadding + (index + 1) * xStep
                             val y = chartHeight - (chartHeight * (runRate / maxRunRate))
                             drawCircle(team2Color, 4.dp.toPx(), Offset(x, y))
-                            drawCircle(CardSurface, 2.dp.toPx(), Offset(x, y))
+                            drawCircle(colors.surface1, 2.dp.toPx(), Offset(x, y))
                         }
                     }
                     
@@ -289,7 +290,7 @@ fun RunRateComparisonCard(
                                 radius = 5.dp.toPx(),
                                 center = Offset(x, y)
                             )
-                            drawCircle(CardSurface, 2.5.dp.toPx(), Offset(x, y))
+                            drawCircle(colors.surface1, 2.5.dp.toPx(), Offset(x, y))
                         }
                     }
                     
@@ -307,7 +308,7 @@ fun RunRateComparisonCard(
                         val value = maxRunRate * i / 5
                         Text(
                             String.format("%.1f", value),
-                            color = TextTertiary,
+                            color = colors.textTertiary,
                             fontSize = 9.sp,
                             modifier = Modifier.weight(1f)
                         )
@@ -327,7 +328,7 @@ fun RunRateComparisonCard(
                 (1..overData.size step interval).forEach { over ->
                     Text(
                         "$over",
-                        color = TextTertiary,
+                        color = colors.textTertiary,
                         fontSize = 10.sp,
                         textAlign = TextAlign.Center
                     )
@@ -336,7 +337,7 @@ fun RunRateComparisonCard(
             
             Text(
                 "Overs",
-                color = TextTertiary,
+                color = colors.textTertiary,
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Medium,
                 modifier = Modifier
@@ -373,6 +374,7 @@ private fun LegendDot(
     label: String,
     dashed: Boolean = false
 ) {
+    val colors = BouncerDesignSystem.colors
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -401,7 +403,7 @@ private fun LegendDot(
         }
         Text(
             label,
-            color = TextSecondary,
+            color = colors.textSecondary,
             fontSize = 11.sp,
             fontWeight = FontWeight.Medium
         )
@@ -414,13 +416,14 @@ private fun RunRateIndicator(
     runRate: Float,
     color: Color
 ) {
+    val colors = BouncerDesignSystem.colors
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         Text(
             label,
-            color = TextTertiary,
+            color = colors.textTertiary,
             fontSize = 11.sp,
             fontWeight = FontWeight.Medium
         )
@@ -449,6 +452,7 @@ fun CompactRunRateDisplay(
     requiredRunRate: Float?,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     Row(
         modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -461,13 +465,13 @@ fun CompactRunRateDisplay(
         ) {
             Text(
                 "CRR",
-                color = TextTertiary,
+                color = colors.textTertiary,
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Medium
             )
             Text(
                 String.format("%.2f", currentRunRate),
-                color = TextPrimary,
+                color = colors.textPrimary,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold
             )
@@ -481,13 +485,13 @@ fun CompactRunRateDisplay(
             ) {
                 Text(
                     "RRR",
-                    color = TextTertiary,
+                    color = colors.textTertiary,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Medium
                 )
                 Text(
                     String.format("%.2f", requiredRunRate),
-                    color = if (requiredRunRate > currentRunRate) ErrorRed else SuccessGreen,
+                    color = if (requiredRunRate > currentRunRate) colors.statusLive else colors.statusSuccess,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -505,11 +509,12 @@ fun RunRateTrendIndicator(
     currentRunRate: Float,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val trend = currentRunRate - previousRunRate
     val trendColor = when {
-        trend > 0.5f -> SuccessGreen
-        trend < -0.5f -> ErrorRed
-        else -> TextTertiary
+        trend > 0.5f -> colors.statusSuccess
+        trend < -0.5f -> colors.statusLive
+        else -> colors.textTertiary
     }
     val trendIcon = when {
         trend > 0.5f -> Icons.AutoMirrored.Filled.TrendingUp

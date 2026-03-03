@@ -40,6 +40,7 @@ import com.tanush.bouncer.ui.theme.BouncerTheme
 import com.tanush.bouncer.ui.theme.GlassCardShape
 import com.tanush.bouncer.ui.theme.TeamPrimaryColors
 import com.tanush.bouncer.ui.theme.etchedText
+import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 
 /**
  * Current batsman partnership strip — shows the two batsmen currently
@@ -53,9 +54,9 @@ fun CurrentPlayersCard(
     teamCode: String = "",
     modifier: Modifier = Modifier,
 ) {
+    val colors = BouncerDesignSystem.colors
     if (batsmen.isEmpty()) return
 
-    val colors = BouncerDesign.colors
     val dimens = BouncerDesign.dimens
     val teamColor = TeamPrimaryColors.getTeamColor(teamCode)
 
@@ -107,7 +108,7 @@ private fun PlayerSection(
     teamColor: androidx.compose.ui.graphics.Color,
     modifier: Modifier = Modifier,
 ) {
-    val colors = BouncerDesign.colors
+    val colors = BouncerDesignSystem.colors
     val typography = BouncerDesign.typography
     val dimens = BouncerDesign.dimens
 
@@ -145,6 +146,7 @@ private fun LiveDot(
     animated: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
+    val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "liveDot")
     val alpha by infiniteTransition.animateFloat(
         initialValue = 0.4f,
@@ -170,6 +172,7 @@ private fun LiveDot(
 @Preview(showBackground = true)
 @Composable
 private fun CurrentPlayersCardPreview() {
+    val colors = BouncerDesignSystem.colors
     BouncerTheme(darkTheme = true, dynamicColor = false) {
         CurrentPlayersCard(
             batsmen = listOf(

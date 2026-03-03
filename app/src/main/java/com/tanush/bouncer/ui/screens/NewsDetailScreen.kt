@@ -187,7 +187,7 @@ fun NewsDetailScreen(
                 Spacer(modifier = Modifier.height(dimens.sm))
 
                 // ── Summary ─────────────────────────────────────────
-                if (article.summary.isNotBlank()) {
+                if (article.intro.isNotBlank()) {
                     GlassCard(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -196,7 +196,7 @@ fun NewsDetailScreen(
                         contentPadding = PaddingValues(dimens.md)
                     ) {
                         Text(
-                            text = article.summary,
+                            text = article.intro,
                             style = typography.bodyMedium.copy(
                                 lineHeight = 22.sp,
                                 fontWeight = FontWeight.Medium
@@ -224,7 +224,7 @@ fun NewsDetailScreen(
                             )
                         }
                     }
-                    articleBody != null -> {
+                    else -> {
                         val paragraphs = articleBody ?: emptyList()
                         Column(
                             modifier = Modifier

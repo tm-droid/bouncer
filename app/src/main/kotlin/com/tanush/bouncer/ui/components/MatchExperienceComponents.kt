@@ -50,12 +50,13 @@ fun LiveCommentaryCardEnhanced(
     batsmanName: String?,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val eventColor = when {
-        isWicket -> WicketRed
-        runs == "6" -> BoundarySix
-        runs == "4" -> BoundaryFour
+        isWicket -> colors.statusLive
+        runs == "6" -> colors.goldPrimary
+        runs == "4" -> colors.statusInfo
         runs == "0" || runs == "." -> DotBall
-        else -> TextSecondary
+        else -> colors.textSecondary
     }
     
     val infiniteTransition = rememberInfiniteTransition(label = "commentary")
@@ -87,7 +88,7 @@ fun LiveCommentaryCardEnhanced(
                 } else Modifier
             ),
         shape = RoundedCornerShape(16.dp),
-        color = Color.White.copy(alpha = 0.05f),
+        color = colors.glassSurface,
         border = if (isWicket || isBoundary) {
             BorderStroke(1.dp, eventColor.copy(alpha = 0.4f))
         } else null
@@ -107,13 +108,13 @@ fun LiveCommentaryCardEnhanced(
                     text = overNumber,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
-                    color = ShinyGoldDeep
+                    color = colors.goldDark
                 )
                 Text(
                     text = ".$ballNumber",
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Medium,
-                    color = TextMuted
+                    color = colors.textMuted
                 )
                 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -155,7 +156,7 @@ fun LiveCommentaryCardEnhanced(
                             text = "to $it",
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Medium,
-                            color = TextTertiary
+                            color = colors.textTertiary
                         )
                     }
                     batsmanName?.let {
@@ -163,7 +164,7 @@ fun LiveCommentaryCardEnhanced(
                             text = it,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = TextSecondary
+                            color = colors.textSecondary
                         )
                     }
                 }
@@ -173,17 +174,17 @@ fun LiveCommentaryCardEnhanced(
                     text = commentary,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Normal,
-                    color = Color.White,
+                    color = colors.textPrimary,
                     lineHeight = 18.sp
                 )
                 
                 // Event badge
                 if (isWicket) {
-                    EventBadge(text = "WICKET", color = WicketRed)
+                    EventBadge(text = "WICKET", color = colors.statusLive)
                 } else if (runs == "6") {
-                    EventBadge(text = "SIX", color = BoundarySix)
+                    EventBadge(text = "SIX", color = colors.goldPrimary)
                 } else if (runs == "4") {
-                    EventBadge(text = "FOUR", color = BoundaryFour)
+                    EventBadge(text = "FOUR", color = colors.statusInfo)
                 }
             }
         }
@@ -215,6 +216,7 @@ fun EnhancedRecentBallsStrip(
     balls: List<BallEvent>,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     var selectedBall by remember { mutableStateOf<BallEvent?>(null) }
 
     Column(
@@ -244,7 +246,7 @@ fun EnhancedRecentBallsStrip(
             selectedBall?.let { ball ->
                 Surface(
                     shape = RoundedCornerShape(12.dp),
-                    color = CardDarkBlue
+                    color = colors.surface1
                 ) {
                     Row(
                         modifier = Modifier
@@ -257,13 +259,13 @@ fun EnhancedRecentBallsStrip(
                             Text(
                                 text = "Over ${ball.over}.${ball.ballInOver}",
                                 fontSize = 11.sp,
-                                color = TextMuted
+                                color = colors.textMuted
                             )
                             Text(
                                 text = ball.description,
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.Medium,
-                                color = Color.White
+                                color = colors.textPrimary
                             )
                         }
                         
@@ -272,7 +274,7 @@ fun EnhancedRecentBallsStrip(
                                 text = ball.batsmanName,
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.SemiBold,
-                                color = ShinyGoldDeep
+                                color = colors.goldDark
                             )
                         }
                     }
@@ -299,12 +301,13 @@ private fun AnimatedBallChip(
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
+    val colors = BouncerDesignSystem.colors
     val color = when {
-        ball.isWicket -> WicketRed
-        ball.runs == "6" -> BoundarySix
-        ball.runs == "4" -> BoundaryFour
+        ball.isWicket -> colors.statusLive
+        ball.runs == "6" -> colors.goldPrimary
+        ball.runs == "4" -> colors.statusInfo
         ball.runs == "0" || ball.runs == "." -> DotBall
-        else -> TextSecondary
+        else -> colors.textSecondary
     }
     
     val scale by animateFloatAsState(
@@ -381,14 +384,15 @@ fun KeyMomentsCard(
     moments: List<KeyMoment>,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     Surface(
         modifier = modifier.shadow(
             elevation = 12.dp,
             shape = RoundedCornerShape(20.dp),
-            spotColor = ShinyGoldDeep.copy(alpha = 0.15f)
+            spotColor = colors.goldDark.copy(alpha = 0.15f)
         ),
         shape = RoundedCornerShape(20.dp),
-        color = Color.White.copy(alpha = 0.05f)
+        color = colors.glassSurface
     ) {
         Column(
             modifier = Modifier.padding(20.dp),
@@ -404,14 +408,14 @@ fun KeyMomentsCard(
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 1.5.sp,
-                    color = ShinyGoldDeep
+                    color = colors.goldDark
                 )
                 
                 Text(
                     text = "${moments.size} moments",
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Medium,
-                    color = TextMuted
+                    color = colors.textMuted
                 )
             }
             
@@ -420,7 +424,7 @@ fun KeyMomentsCard(
                 
                 if (index < moments.size - 1 && index < 4) {
                     HorizontalDivider(
-                        color = CardBorder.copy(alpha = 0.3f),
+                        color = colors.glassBorder.copy(alpha = 0.3f),
                         thickness = 0.5.dp
                     )
                 }
@@ -447,15 +451,16 @@ private fun KeyMomentItem(
     moment: KeyMoment,
     index: Int
 ) {
+    val colors = BouncerDesignSystem.colors
     var isExpanded by remember { mutableStateOf(false) }
     
     val momentColor = when (moment.type) {
-        KeyMoment.MomentType.WICKET -> WicketRed
-        KeyMoment.MomentType.BOUNDARY -> BoundarySix
-        KeyMoment.MomentType.MILESTONE -> ShinyGoldDeep
-        KeyMoment.MomentType.PARTNERSHIP -> SuccessGreen
-        KeyMoment.MomentType.REVIEW -> LiveBlue
-        KeyMoment.MomentType.OTHER -> TextSecondary
+        KeyMoment.MomentType.WICKET -> colors.statusLive
+        KeyMoment.MomentType.BOUNDARY -> colors.goldPrimary
+        KeyMoment.MomentType.MILESTONE -> colors.goldDark
+        KeyMoment.MomentType.PARTNERSHIP -> colors.statusSuccess
+        KeyMoment.MomentType.REVIEW -> colors.statusInfo
+        KeyMoment.MomentType.OTHER -> colors.textSecondary
     }
     
     val momentIcon = when (moment.type) {
@@ -505,12 +510,12 @@ private fun KeyMomentItem(
                     text = moment.title,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = Color.White
+                    color = colors.textPrimary
                 )
                 Text(
                     text = "Over ${moment.over}",
                     fontSize = 11.sp,
-                    color = TextMuted
+                    color = colors.textMuted
                 )
             }
             
@@ -527,7 +532,7 @@ private fun KeyMomentItem(
             Text(
                 text = moment.description,
                 fontSize = 12.sp,
-                color = TextSecondary,
+                color = colors.textSecondary,
                 lineHeight = 18.sp,
                 modifier = Modifier.padding(start = 48.dp, top = 8.dp)
             )
@@ -547,7 +552,7 @@ private fun ImpactIndicator(
         Canvas(modifier = Modifier.fillMaxSize()) {
             // Background
             drawArc(
-                color = CardBorder,
+                color = GlassBorder,
                 startAngle = 0f,
                 sweepAngle = 360f,
                 useCenter = false,
@@ -588,6 +593,7 @@ fun ScorecardSummaryCard(
     topBowler: PlayerPerformance?,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "scorecard")
     val shimmerOffset by infiniteTransition.animateFloat(
         initialValue = -1f,
@@ -603,10 +609,10 @@ fun ScorecardSummaryCard(
         modifier = modifier.shadow(
             elevation = 16.dp,
             shape = RoundedCornerShape(24.dp),
-            spotColor = ShinyGoldDeep.copy(alpha = 0.2f)
+            spotColor = colors.goldDark.copy(alpha = 0.2f)
         ),
         shape = RoundedCornerShape(24.dp),
-        color = Color.White.copy(alpha = 0.05f)
+        color = colors.glassSurface
     ) {
         Box {
             // Shimmer effect
@@ -641,9 +647,9 @@ fun ScorecardSummaryCard(
                     Box(
                         modifier = Modifier
                             .size(48.dp)
-                            .border(1.dp, ShinyGoldDeep.copy(alpha = 0.4f), CircleShape)
+                            .border(1.dp, colors.goldDark.copy(alpha = 0.4f), CircleShape)
                             .clip(CircleShape)
-                            .background(CardDarkBlue),
+                            .background(colors.surface1),
                         contentAlignment = Alignment.Center
                     ) {
                         if (!teamLogo.isNullOrEmpty()) {
@@ -660,7 +666,7 @@ fun ScorecardSummaryCard(
                                 text = teamName.take(3).uppercase(),
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Black,
-                                color = ShinyGoldDeep
+                                color = colors.goldDark
                             )
                         }
                     }
@@ -670,7 +676,7 @@ fun ScorecardSummaryCard(
                             text = teamName,
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color.White
+                            color = colors.textPrimary
                         )
                         
                         Row(
@@ -681,14 +687,14 @@ fun ScorecardSummaryCard(
                                 Text(
                                     text = "RR: $it",
                                     fontSize = 11.sp,
-                                    color = TextMuted
+                                    color = colors.textMuted
                                 )
                             }
                             extras?.let {
                                 Text(
                                     text = "Extras: $it",
                                     fontSize = 11.sp,
-                                    color = TextMuted
+                                    color = colors.textMuted
                                 )
                             }
                         }
@@ -700,18 +706,18 @@ fun ScorecardSummaryCard(
                             text = score,
                             fontSize = 28.sp,
                             fontWeight = FontWeight.Black,
-                            color = ShinyGoldDeep
+                            color = colors.goldDark
                         )
                         Text(
                             text = "($overs overs)",
                             fontSize = 11.sp,
-                            color = TextMuted
+                            color = colors.textMuted
                         )
                     }
                 }
                 
                 // Divider
-                HorizontalDivider(color = CardBorder.copy(alpha = 0.3f))
+                HorizontalDivider(color = colors.glassBorder.copy(alpha = 0.3f))
                 
                 // Top performers
                 Row(
@@ -753,19 +759,20 @@ private fun PerformerMini(
     stat: String,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     Column(modifier = modifier) {
         Text(
             text = label,
             fontSize = 10.sp,
             fontWeight = FontWeight.Medium,
-            color = TextMuted,
+            color = colors.textMuted,
             letterSpacing = 0.5.sp
         )
         Text(
             text = name,
             fontSize = 13.sp,
             fontWeight = FontWeight.SemiBold,
-            color = Color.White,
+            color = colors.textPrimary,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
@@ -773,7 +780,7 @@ private fun PerformerMini(
             text = stat,
             fontSize = 12.sp,
             fontWeight = FontWeight.Bold,
-            color = ShinyGoldDeep
+            color = colors.goldDark
         )
     }
 }

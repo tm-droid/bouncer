@@ -16,6 +16,7 @@ import androidx.glance.layout.*
 import androidx.glance.text.FontWeight
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider as GlanceColorProvider
+import io.sentry.Sentry
 
 /**
  * EnhancedWidgetStyles - Premium Widget Styling System
@@ -361,7 +362,12 @@ object WidgetTheme {
  * Extension for applying rounded corners with consistent styling
  */
 fun GlanceModifier.widgetCornerRadius(radius: Dp = WidgetTheme.radiusMedium): GlanceModifier {
-    return this.cornerRadius(radius)
+    try {
+        return this.cornerRadius(radius)
+    } catch (e: Exception) {
+        Sentry.captureException(e)
+        throw e
+    }
 }
 
 /**
@@ -705,28 +711,48 @@ object WidgetDimensions {
      * Get team logo size based on widget size
      */
     fun teamLogoSize(isSmallWidget: Boolean): Dp {
-        return if (isSmallWidget) WidgetTheme.teamLogoSmall else WidgetTheme.teamLogoMedium
+        try {
+            return if (isSmallWidget) WidgetTheme.teamLogoSmall else WidgetTheme.teamLogoMedium
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     /**
      * Get score text style based on widget size
      */
     fun scoreTextStyle(isSmallWidget: Boolean): TextStyle {
-        return if (isSmallWidget) WidgetTypography.scoreSmall else WidgetTypography.scoreMedium
+        try {
+            return if (isSmallWidget) WidgetTypography.scoreSmall else WidgetTypography.scoreMedium
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     /**
      * Get padding based on widget size
      */
     fun contentPadding(isSmallWidget: Boolean): Dp {
-        return if (isSmallWidget) WidgetTheme.paddingSmall else WidgetTheme.paddingMedium
+        try {
+            return if (isSmallWidget) WidgetTheme.paddingSmall else WidgetTheme.paddingMedium
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     /**
      * Get spacing based on widget size
      */
     fun contentSpacing(isSmallWidget: Boolean): Dp {
-        return if (isSmallWidget) WidgetTheme.spacingXSmall else WidgetTheme.spacingSmall
+        try {
+            return if (isSmallWidget) WidgetTheme.spacingXSmall else WidgetTheme.spacingSmall
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
 }
 
@@ -816,7 +842,12 @@ object WidgetAnimationStyles {
      * Get pulse color based on update cycle
      */
     fun getPulseColor(cycleIndex: Int): GlanceColorProvider {
-        return pulseColors[cycleIndex % pulseColors.size]
+        try {
+            return pulseColors[cycleIndex % pulseColors.size]
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     /**
@@ -994,11 +1025,16 @@ object ResponsiveSizing {
      * Get appropriate text style for score based on widget size
      */
     fun getScoreStyle(sizeClass: WidgetSizeClass): TextStyle {
-        return when (sizeClass) {
-            WidgetSizeClass.SMALL -> WidgetTypography.scoreSmall
-            WidgetSizeClass.MEDIUM -> WidgetTypography.scoreMedium
-            WidgetSizeClass.LARGE -> WidgetTypography.scoreLarge
-            WidgetSizeClass.EXTRA_LARGE -> WidgetTypography.displaySmall
+        try {
+            return when (sizeClass) {
+                WidgetSizeClass.SMALL -> WidgetTypography.scoreSmall
+                WidgetSizeClass.MEDIUM -> WidgetTypography.scoreMedium
+                WidgetSizeClass.LARGE -> WidgetTypography.scoreLarge
+                WidgetSizeClass.EXTRA_LARGE -> WidgetTypography.displaySmall
+            }
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
         }
     }
     
@@ -1006,11 +1042,16 @@ object ResponsiveSizing {
      * Get team name style based on widget size
      */
     fun getTeamNameStyle(sizeClass: WidgetSizeClass): TextStyle {
-        return when (sizeClass) {
-            WidgetSizeClass.SMALL -> WidgetTypography.labelMedium
-            WidgetSizeClass.MEDIUM -> WidgetTypography.titleSmall
-            WidgetSizeClass.LARGE -> WidgetTypography.titleMedium
-            WidgetSizeClass.EXTRA_LARGE -> WidgetTypography.titleLarge
+        try {
+            return when (sizeClass) {
+                WidgetSizeClass.SMALL -> WidgetTypography.labelMedium
+                WidgetSizeClass.MEDIUM -> WidgetTypography.titleSmall
+                WidgetSizeClass.LARGE -> WidgetTypography.titleMedium
+                WidgetSizeClass.EXTRA_LARGE -> WidgetTypography.titleLarge
+            }
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
         }
     }
     
@@ -1018,11 +1059,16 @@ object ResponsiveSizing {
      * Get padding based on widget size
      */
     fun getPadding(sizeClass: WidgetSizeClass): Dp {
-        return when (sizeClass) {
-            WidgetSizeClass.SMALL -> WidgetTheme.paddingSmall
-            WidgetSizeClass.MEDIUM -> WidgetTheme.paddingMedium
-            WidgetSizeClass.LARGE -> WidgetTheme.paddingLarge
-            WidgetSizeClass.EXTRA_LARGE -> WidgetTheme.spacingXXLarge
+        try {
+            return when (sizeClass) {
+                WidgetSizeClass.SMALL -> WidgetTheme.paddingSmall
+                WidgetSizeClass.MEDIUM -> WidgetTheme.paddingMedium
+                WidgetSizeClass.LARGE -> WidgetTheme.paddingLarge
+                WidgetSizeClass.EXTRA_LARGE -> WidgetTheme.spacingXXLarge
+            }
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
         }
     }
     
@@ -1030,11 +1076,16 @@ object ResponsiveSizing {
      * Get logo size based on widget size
      */
     fun getLogoSize(sizeClass: WidgetSizeClass): Dp {
-        return when (sizeClass) {
-            WidgetSizeClass.SMALL -> WidgetTheme.teamLogoSmall
-            WidgetSizeClass.MEDIUM -> WidgetTheme.teamLogoMedium
-            WidgetSizeClass.LARGE -> WidgetTheme.teamLogoLarge
-            WidgetSizeClass.EXTRA_LARGE -> WidgetTheme.teamLogoXLarge
+        try {
+            return when (sizeClass) {
+                WidgetSizeClass.SMALL -> WidgetTheme.teamLogoSmall
+                WidgetSizeClass.MEDIUM -> WidgetTheme.teamLogoMedium
+                WidgetSizeClass.LARGE -> WidgetTheme.teamLogoLarge
+                WidgetSizeClass.EXTRA_LARGE -> WidgetTheme.teamLogoXLarge
+            }
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
         }
     }
     
@@ -1042,11 +1093,16 @@ object ResponsiveSizing {
      * Get corner radius based on widget size
      */
     fun getCornerRadius(sizeClass: WidgetSizeClass): Dp {
-        return when (sizeClass) {
-            WidgetSizeClass.SMALL -> WidgetTheme.radiusMedium
-            WidgetSizeClass.MEDIUM -> WidgetTheme.radiusLarge
-            WidgetSizeClass.LARGE -> WidgetTheme.radiusLarge
-            WidgetSizeClass.EXTRA_LARGE -> WidgetTheme.radiusXLarge
+        try {
+            return when (sizeClass) {
+                WidgetSizeClass.SMALL -> WidgetTheme.radiusMedium
+                WidgetSizeClass.MEDIUM -> WidgetTheme.radiusLarge
+                WidgetSizeClass.LARGE -> WidgetTheme.radiusLarge
+                WidgetSizeClass.EXTRA_LARGE -> WidgetTheme.radiusXLarge
+            }
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
         }
     }
     
@@ -1054,11 +1110,16 @@ object ResponsiveSizing {
      * Get max balls to show in recent balls strip
      */
     fun getMaxBalls(sizeClass: WidgetSizeClass): Int {
-        return when (sizeClass) {
-            WidgetSizeClass.SMALL -> 3
-            WidgetSizeClass.MEDIUM -> 6
-            WidgetSizeClass.LARGE -> 6
-            WidgetSizeClass.EXTRA_LARGE -> 12
+        try {
+            return when (sizeClass) {
+                WidgetSizeClass.SMALL -> 3
+                WidgetSizeClass.MEDIUM -> 6
+                WidgetSizeClass.LARGE -> 6
+                WidgetSizeClass.EXTRA_LARGE -> 12
+            }
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
         }
     }
     
@@ -1066,7 +1127,12 @@ object ResponsiveSizing {
      * Whether to show extended info
      */
     fun showExtendedInfo(sizeClass: WidgetSizeClass): Boolean {
-        return sizeClass == WidgetSizeClass.LARGE || sizeClass == WidgetSizeClass.EXTRA_LARGE
+        try {
+            return sizeClass == WidgetSizeClass.LARGE || sizeClass == WidgetSizeClass.EXTRA_LARGE
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
 }
 
@@ -1097,10 +1163,15 @@ object DynamicWidgetTheme {
      * Creates accent-adjusted surface color
      */
     fun accentSurface(accentColor: Color, alpha: Float = 0.1f): GlanceColorProvider {
-        return ColorProvider(
-            day = accentColor.copy(alpha = alpha),
-            night = accentColor.copy(alpha = alpha * 0.5f)
-        )
+        try {
+            return ColorProvider(
+                day = accentColor.copy(alpha = alpha),
+                night = accentColor.copy(alpha = alpha * 0.5f)
+            )
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     /**
@@ -1130,13 +1201,18 @@ object DynamicWidgetTheme {
         val default = WidgetColorScheme.primary
         
         fun getFormatColor(format: String): GlanceColorProvider {
-            return when (format.lowercase()) {
-                "test" -> test
-                "odi" -> odi
-                "t20", "t20i" -> t20
-                "t10" -> t10
-                "100", "hundred", "the hundred" -> theHundred
-                else -> default
+            try {
+                return when (format.lowercase()) {
+                    "test" -> test
+                    "odi" -> odi
+                    "t20", "t20i" -> t20
+                    "t10" -> t10
+                    "100", "hundred", "the hundred" -> theHundred
+                    else -> default
+                }
+            } catch (e: Exception) {
+                Sentry.captureException(e)
+                throw e
             }
         }
     }

@@ -26,6 +26,7 @@ import com.tanush.bouncer.ui.theme.*
 import kotlinx.coroutines.delay
 import kotlin.math.PI
 import kotlin.math.sin
+import io.sentry.Sentry
 
 // ==========================================
 // BOUNCER - Advanced Animated Transitions
@@ -105,7 +106,7 @@ fun SharedElementTransition(
     transitionKey: String,
     modifier: Modifier = Modifier,
     enterDuration: Int = AnimationDuration.normal,
-    exitDuration: Int = AnimationDuration.quick,
+    exitDuration: Int = AnimationDuration.normal,
     content: @Composable () -> Unit
 ) {
     val transition = updateTransition(targetState = isVisible, label = "shared_$transitionKey")
@@ -252,7 +253,7 @@ fun StaggeredListAnimation(
     
     val alpha by animateFloatAsState(
         targetValue = if (isVisible) 1f else 0f,
-        animationSpec = tween(AnimationDuration.quick, easing = M3Easing.StandardDecelerate),
+        animationSpec = tween(AnimationDuration.normal, easing = M3Easing.StandardDecelerate),
         label = "stagger_alpha_$index"
     )
     
@@ -291,7 +292,7 @@ fun StaggeredListAnimation(
 fun WaveAnimation(
     isActive: Boolean,
     waveCount: Int = 5,
-    waveColor: Color = ShinyGoldDeep,
+    waveColor: Color = GoldPrimary,
     modifier: Modifier = Modifier
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "wave_animation")
@@ -422,6 +423,7 @@ fun CounterAnimation(
     prefix: String = "",
     suffix: String = ""
 ) {
+    val colors = BouncerDesignSystem.colors
     var previousValue by remember { mutableIntStateOf(targetValue) }
     var isAnimating by remember { mutableStateOf(false) }
     
@@ -450,8 +452,8 @@ fun CounterAnimation(
     )
     
     val textColorAnimated by animateColorAsState(
-        targetValue = if (isAnimating) ShinyGoldDeep else textColor,
-        animationSpec = tween(AnimationDuration.quick),
+        targetValue = if (isAnimating) colors.goldPrimary else textColor,
+        animationSpec = tween(AnimationDuration.normal),
         label = "counter_color"
     )
     
@@ -476,9 +478,10 @@ fun ScoreCounterAnimation(
     overs: String = "",
     modifier: Modifier = Modifier,
     runsColor: Color = TextPrimary,
-    wicketsColor: Color = WicketRed,
+    wicketsColor: Color = StatusLive,
     fontSize: Float = 36f
 ) {
+    val colors = BouncerDesignSystem.colors
     var previousRuns by remember { mutableIntStateOf(runs) }
     var previousWickets by remember { mutableIntStateOf(wickets) }
     var isRunsAnimating by remember { mutableStateOf(false) }
@@ -531,7 +534,7 @@ fun ScoreCounterAnimation(
         Text(
             text = animatedRuns.toString(),
             modifier = Modifier.scale(runsScale),
-            color = if (isRunsAnimating) ShinyGoldDeep else runsColor,
+            color = if (isRunsAnimating) colors.goldPrimary else runsColor,
             fontSize = fontSize.sp,
             fontWeight = FontWeight.Black,
             letterSpacing = (-1).sp
@@ -539,7 +542,7 @@ fun ScoreCounterAnimation(
         
         Text(
             text = "/",
-            color = TextSecondary,
+            color = colors.textSecondary,
             fontSize = (fontSize * 0.8f).sp,
             fontWeight = FontWeight.Medium
         )
@@ -547,7 +550,7 @@ fun ScoreCounterAnimation(
         Text(
             text = wickets.toString(),
             modifier = Modifier.scale(wicketsScale),
-            color = if (isWicketsAnimating) WicketRed else wicketsColor,
+            color = if (isWicketsAnimating) colors.statusLive else wicketsColor,
             fontSize = (fontSize * 0.85f).sp,
             fontWeight = FontWeight.Bold
         )
@@ -556,7 +559,7 @@ fun ScoreCounterAnimation(
             Spacer(modifier = Modifier.width(8.dp))
             Text(
                 text = "($overs)",
-                color = TextSecondary,
+                color = colors.textSecondary,
                 fontSize = (fontSize * 0.5f).sp,
                 fontWeight = FontWeight.Medium
             )
@@ -618,7 +621,7 @@ fun SlideInAnimation(
     val alpha by animateFloatAsState(
         targetValue = if (isVisible) 1f else 0f,
         animationSpec = tween(
-            durationMillis = AnimationDuration.quick,
+            durationMillis = AnimationDuration.normal,
             easing = M3Easing.StandardDecelerate
         ),
         label = "slide_alpha"
@@ -743,8 +746,8 @@ fun CascadeEntranceAnimation(
 @Composable
 fun PulsatingElement(
     modifier: Modifier = Modifier,
-    minScale: Float = PulseScale.minNormal,
-    maxScale: Float = PulseScale.maxNormal,
+    minScale: Float = PulseScale.min,
+    maxScale: Float = PulseScale.max,
     pulseDuration: Int = AnimationDuration.pulse,
     content: @Composable () -> Unit
 ) {

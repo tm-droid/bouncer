@@ -89,17 +89,17 @@ fun PremiumSearchBar(
             .shadow(
                 elevation = if (isFocused) 16.dp else 8.dp,
                 shape = RoundedCornerShape(20.dp),
-                spotColor = if (isFocused) ShinyGoldDeep.copy(alpha = 0.25f) else Color.Transparent
+                spotColor = if (isFocused) GoldPrimary.copy(alpha = 0.25f) else Color.Transparent
             ),
         shape = RoundedCornerShape(20.dp),
-        color = Color.White.copy(alpha = 0.05f).copy(alpha = 0.9f),
+        color = GlassSurface.copy(alpha = 0.9f),
         border = BorderStroke(
             width = 1.dp,
             brush = Brush.linearGradient(
                 colors = listOf(
-                    ShinyGoldDeep.copy(alpha = borderAlpha),
-                    ShinyGoldMid.copy(alpha = borderAlpha * 0.5f),
-                    ShinyGoldDeep.copy(alpha = borderAlpha * 0.3f)
+                    GoldPrimary.copy(alpha = borderAlpha),
+                    GoldPrimary.copy(alpha = borderAlpha * 0.5f),
+                    GoldPrimary.copy(alpha = borderAlpha * 0.3f)
                 )
             )
         )
@@ -122,7 +122,7 @@ fun PremiumSearchBar(
                 Icon(
                     imageVector = Icons.Default.Search,
                     contentDescription = "Search",
-                    tint = if (isFocused) ShinyGoldDeep else TextSecondary,
+                    tint = if (isFocused) GoldPrimary else TextSecondary,
                     modifier = Modifier.size(24.dp)
                 )
             }
@@ -152,7 +152,7 @@ fun PremiumSearchBar(
                         }
                     ),
                     interactionSource = interactionSource,
-                    cursorBrush = SolidColor(ShinyGoldDeep)
+                    cursorBrush = SolidColor(GoldPrimary)
                 )
                 
                 // Placeholder
@@ -176,7 +176,7 @@ fun PremiumSearchBar(
                     modifier = Modifier
                         .size(32.dp)
                         .background(
-                            CardBorder.copy(alpha = 0.3f),
+                            GlassBorder.copy(alpha = 0.3f),
                             CircleShape
                         )
                         .clickable(
@@ -250,16 +250,16 @@ fun ExpandableSearchBar(
             .shadow(
                 elevation = 12.dp,
                 shape = RoundedCornerShape(cornerRadius),
-                spotColor = ShinyGoldDeep.copy(alpha = 0.2f)
+                spotColor = GoldPrimary.copy(alpha = 0.2f)
             ),
         shape = RoundedCornerShape(cornerRadius),
-        color = Color.White.copy(alpha = 0.05f),
+        color = GlassSurface,
         border = BorderStroke(
             width = 1.dp,
             brush = Brush.linearGradient(
                 colors = listOf(
-                    ShinyGoldDeep.copy(alpha = 0.4f),
-                    CardBorder.copy(alpha = 0.3f)
+                    GoldPrimary.copy(alpha = 0.4f),
+                    GlassBorder.copy(alpha = 0.3f)
                 )
             )
         )
@@ -285,7 +285,7 @@ fun ExpandableSearchBar(
                 Icon(
                     imageVector = if (expanded) Icons.Default.Close else Icons.Default.Search,
                     contentDescription = if (expanded) "Close" else "Search",
-                    tint = ShinyGoldDeep,
+                    tint = GoldPrimary,
                     modifier = Modifier.size(24.dp)
                 )
             }
@@ -304,7 +304,7 @@ fun ExpandableSearchBar(
                         color = TextPrimary
                     ),
                     singleLine = true,
-                    cursorBrush = SolidColor(ShinyGoldDeep),
+                    cursorBrush = SolidColor(GoldPrimary),
                     decorationBox = { innerTextField ->
                         Box {
                             if (query.isEmpty()) {
@@ -344,19 +344,19 @@ fun PremiumFilterChip(
     )
     
     val backgroundColor by animateColorAsState(
-        targetValue = if (selected) ShinyGoldDeep.copy(alpha = 0.15f) else Color.Transparent,
+        targetValue = if (selected) GoldPrimary.copy(alpha = 0.15f) else Color.Transparent,
         animationSpec = tween(200),
         label = "chipBg"
     )
     
     val borderColor by animateColorAsState(
-        targetValue = if (selected) ShinyGoldDeep else CardBorder.copy(alpha = 0.4f),
+        targetValue = if (selected) GoldPrimary else GlassBorder.copy(alpha = 0.4f),
         animationSpec = tween(200),
         label = "chipBorder"
     )
     
     val textColor by animateColorAsState(
-        targetValue = if (selected) ShinyGoldLight else TextSecondary,
+        targetValue = if (selected) GoldLight else TextSecondary,
         animationSpec = tween(200),
         label = "chipText"
     )
@@ -369,7 +369,7 @@ fun PremiumFilterChip(
             }
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
-                indication = ripple(color = ShinyGoldDeep.copy(alpha = 0.1f)),
+                indication = ripple(color = GoldPrimary.copy(alpha = 0.1f)),
                 onClick = onClick
             ),
         shape = RoundedCornerShape(16.dp),
@@ -399,7 +399,7 @@ fun PremiumFilterChip(
                 Icon(
                     imageVector = Icons.Default.Check,
                     contentDescription = null,
-                    tint = ShinyGoldDeep,
+                    tint = GoldPrimary,
                     modifier = Modifier.size(16.dp)
                 )
             }
@@ -440,7 +440,7 @@ fun RecentSearchesSection(
                 text = "Clear All",
                 fontSize = 12.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = ShinyGoldDeep,
+                color = GoldPrimary,
                 modifier = Modifier.clickable(onClick = onClearAll)
             )
         }
@@ -514,11 +514,11 @@ fun SearchSuggestions(
             .shadow(
                 elevation = 16.dp,
                 shape = RoundedCornerShape(16.dp),
-                spotColor = ShinyGoldDeep.copy(alpha = 0.15f)
+                spotColor = GoldPrimary.copy(alpha = 0.15f)
             ),
         shape = RoundedCornerShape(16.dp),
-        color = Color.White.copy(alpha = 0.05f),
-        border = BorderStroke(1.dp, CardBorder.copy(alpha = 0.3f))
+        color = GlassSurface,
+        border = BorderStroke(1.dp, GlassBorder.copy(alpha = 0.3f))
     ) {
         Column(
             modifier = Modifier.padding(vertical = 8.dp)
@@ -532,7 +532,7 @@ fun SearchSuggestions(
                 if (index < suggestions.lastIndex) {
                     HorizontalDivider(
                         modifier = Modifier.padding(horizontal = 16.dp),
-                        color = CardBorder.copy(alpha = 0.2f)
+                        color = GlassBorder.copy(alpha = 0.2f)
                     )
                 }
             }
@@ -569,9 +569,9 @@ private fun SuggestionItem(
                 .size(36.dp)
                 .background(
                     when (suggestion.type) {
-                        SuggestionType.TEAM -> ShinyGoldDeep.copy(alpha = 0.15f)
+                        SuggestionType.TEAM -> GoldPrimary.copy(alpha = 0.15f)
                         SuggestionType.MATCH -> ChartGreen.copy(alpha = 0.15f)
-                        SuggestionType.PLAYER -> WicketBlue.copy(alpha = 0.15f)
+                        SuggestionType.PLAYER -> StatusInfo.copy(alpha = 0.15f)
                         SuggestionType.VENUE -> ChartPurple.copy(alpha = 0.15f)
                     },
                     CircleShape
@@ -587,9 +587,9 @@ private fun SuggestionItem(
                 },
                 contentDescription = null,
                 tint = when (suggestion.type) {
-                    SuggestionType.TEAM -> ShinyGoldDeep
+                    SuggestionType.TEAM -> GoldPrimary
                     SuggestionType.MATCH -> ChartGreen
-                    SuggestionType.PLAYER -> WicketBlue
+                    SuggestionType.PLAYER -> StatusInfo
                     SuggestionType.VENUE -> ChartPurple
                 },
                 modifier = Modifier.size(18.dp)

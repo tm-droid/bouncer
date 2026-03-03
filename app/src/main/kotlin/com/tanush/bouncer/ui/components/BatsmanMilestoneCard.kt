@@ -58,6 +58,7 @@ fun BatsmanMilestoneCard(
     milestoneInfo: BatsmanMilestoneInfo,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "milestone_animation")
     
     // Star sparkle animation
@@ -92,9 +93,9 @@ fun BatsmanMilestoneCard(
     )
     
     val milestoneColor = when (milestoneInfo.milestone) {
-        MilestoneType.FIFTY -> ChartBlue
-        MilestoneType.HUNDRED -> ShinyGoldMid
-        MilestoneType.DOUBLE_HUNDRED -> SuccessGreen
+        MilestoneType.FIFTY -> colors.statusInfo
+        MilestoneType.HUNDRED -> colors.goldPrimary
+        MilestoneType.DOUBLE_HUNDRED -> colors.statusSuccess
         MilestoneType.TRIPLE_HUNDRED -> Color(0xFFFF6B6B)
         MilestoneType.QUADRUPLE_HUNDRED -> Color(0xFFE040FB)
     }
@@ -102,7 +103,7 @@ fun BatsmanMilestoneCard(
     Card(
         modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = Color(0xFF0D1117)
+            containerColor = colors.backgroundBase
         ),
         shape = RoundedCornerShape(24.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 12.dp)
@@ -193,13 +194,13 @@ fun BatsmanMilestoneCard(
                 // Player name
                 Text(
                     text = milestoneInfo.playerName,
-                    color = Color.White,
+                    color = colors.textPrimary,
                     fontSize = 28.sp,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
                     text = milestoneInfo.teamName,
-                    color = Color.White.copy(alpha = 0.6f),
+                    color = colors.textSecondary,
                     fontSize = 14.sp
                 )
                 
@@ -220,7 +221,7 @@ fun BatsmanMilestoneCard(
                         Icon(
                             imageVector = Icons.Filled.Star,
                             contentDescription = null,
-                            tint = ShinyGoldMid.copy(alpha = goldGlow),
+                            tint = colors.goldPrimary.copy(alpha = goldGlow),
                             modifier = Modifier.fillMaxSize()
                         )
                     }
@@ -237,7 +238,7 @@ fun BatsmanMilestoneCard(
                         )
                         Text(
                             text = "${milestoneInfo.balls} balls",
-                            color = Color.White.copy(alpha = 0.7f),
+                            color = colors.textSecondary,
                             fontSize = 16.sp
                         )
                     }
@@ -253,7 +254,7 @@ fun BatsmanMilestoneCard(
                         Icon(
                             imageVector = Icons.Filled.Star,
                             contentDescription = null,
-                            tint = ShinyGoldMid.copy(alpha = goldGlow),
+                            tint = colors.goldPrimary.copy(alpha = goldGlow),
                             modifier = Modifier.fillMaxSize()
                         )
                     }
@@ -270,19 +271,19 @@ fun BatsmanMilestoneCard(
                         label = "FOURS",
                         value = "${milestoneInfo.fours}",
                         icon = "4️⃣",
-                        color = BoundaryFour
+                        color = colors.statusInfo
                     )
                     InningsStatBox(
                         label = "SIXES",
                         value = "${milestoneInfo.sixes}",
                         icon = "6️⃣",
-                        color = BoundarySix
+                        color = colors.goldPrimary
                     )
                     InningsStatBox(
                         label = "S/R",
                         value = String.format("%.1f", milestoneInfo.strikeRate),
                         icon = "⚡",
-                        color = ShinyGoldMid
+                        color = colors.goldPrimary
                     )
                 }
                 
@@ -298,7 +299,7 @@ fun BatsmanMilestoneCard(
                 // Career context
                 if (milestoneInfo.careerHighScore != null || milestoneInfo.matchesWithMilestone > 0) {
                     Spacer(modifier = Modifier.height(16.dp))
-                    Divider(color = Color.White.copy(alpha = 0.1f))
+                    HorizontalDivider(color = Color.White.copy(alpha = 0.1f))
                     Spacer(modifier = Modifier.height(16.dp))
                     
                     Row(
@@ -309,12 +310,12 @@ fun BatsmanMilestoneCard(
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text(
                                     text = "Career High",
-                                    color = Color.White.copy(alpha = 0.5f),
+                                    color = colors.textTertiary,
                                     fontSize = 11.sp
                                 )
                                 Text(
                                     text = "${milestoneInfo.careerHighScore}",
-                                    color = Color.White,
+                                    color = colors.textPrimary,
                                     fontSize = 18.sp,
                                     fontWeight = FontWeight.Bold
                                 )
@@ -323,7 +324,7 @@ fun BatsmanMilestoneCard(
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
                                 text = "${milestoneInfo.milestone.displayName}s in Career",
-                                color = Color.White.copy(alpha = 0.5f),
+                                color = colors.textTertiary,
                                 fontSize = 11.sp
                             )
                             Text(
@@ -361,7 +362,7 @@ private fun InningsStatBox(
         )
         Text(
             text = label,
-            color = Color.White.copy(alpha = 0.5f),
+            color = TextTertiary,
             fontSize = 10.sp,
             letterSpacing = 1.sp
         )
@@ -374,6 +375,7 @@ private fun RunCompositionBar(
     fours: Int,
     sixes: Int
 ) {
+    val colors = BouncerDesignSystem.colors
     val boundaryRuns = (fours * 4) + (sixes * 6)
     val runningRuns = totalRuns - boundaryRuns
     
@@ -384,7 +386,7 @@ private fun RunCompositionBar(
     Column {
         Text(
             text = "RUN COMPOSITION",
-            color = Color.White.copy(alpha = 0.5f),
+            color = colors.textTertiary,
             fontSize = 10.sp,
             letterSpacing = 1.sp
         )
@@ -402,7 +404,7 @@ private fun RunCompositionBar(
                     modifier = Modifier
                         .fillMaxHeight()
                         .weight(runningPercentage)
-                        .background(Color.White.copy(alpha = 0.5f))
+                        .background(colors.textTertiary)
                 )
             }
             if (fourPercentage > 0) {
@@ -410,7 +412,7 @@ private fun RunCompositionBar(
                     modifier = Modifier
                         .fillMaxHeight()
                         .weight(fourPercentage)
-                        .background(BoundaryFour)
+                        .background(colors.statusInfo)
                 )
             }
             if (sixPercentage > 0) {
@@ -418,7 +420,7 @@ private fun RunCompositionBar(
                     modifier = Modifier
                         .fillMaxHeight()
                         .weight(sixPercentage)
-                        .background(BoundarySix)
+                        .background(colors.goldPrimary)
                 )
             }
         }
@@ -429,9 +431,9 @@ private fun RunCompositionBar(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            LegendItem(color = Color.White.copy(alpha = 0.5f), label = "Running (${runningRuns})")
-            LegendItem(color = BoundaryFour, label = "Fours (${fours * 4})")
-            LegendItem(color = BoundarySix, label = "Sixes (${sixes * 6})")
+            LegendItem(color = colors.textTertiary, label = "Running (${runningRuns})")
+            LegendItem(color = colors.statusInfo, label = "Fours (${fours * 4})")
+            LegendItem(color = colors.goldPrimary, label = "Sixes (${sixes * 6})")
         }
     }
 }
@@ -451,7 +453,7 @@ private fun LegendItem(
         Spacer(modifier = Modifier.width(4.dp))
         Text(
             text = label,
-            color = Color.White.copy(alpha = 0.7f),
+            color = TextSecondary,
             fontSize = 10.sp
         )
     }

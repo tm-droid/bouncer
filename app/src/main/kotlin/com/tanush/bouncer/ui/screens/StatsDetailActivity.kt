@@ -8,16 +8,23 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.tanush.bouncer.ui.theme.BlackBackground
+import com.tanush.bouncer.ui.theme.BouncerDesignSystem
+import io.sentry.Sentry
 
 class StatsDetailActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        val title = intent.getStringExtra("title") ?: "Detail"
-        setContent {
-            Surface(modifier = Modifier.fillMaxSize(), color = BlackBackground) {
-                StatsDetailScreen(title = title)
+        try {
+            super.onCreate(savedInstanceState)
+            val title = intent.getStringExtra("title") ?: "Detail"
+            setContent {
+                val colors = BouncerDesignSystem.colors
+                Surface(modifier = Modifier.fillMaxSize(), color = colors.backgroundBase) {
+                    StatsDetailScreen(title = title)
+                }
             }
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
         }
     }
 }

@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.sp
 import coil.request.ImageRequest
 import com.tanush.bouncer.ui.components.CoilImage
 import com.tanush.bouncer.ui.theme.*
+import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 
 /**
  * Batter Detail Card
@@ -60,6 +61,7 @@ fun BatterDetailCard(
     recentBalls: List<String> = emptyList(), // "0", "1", "2", "4", "6", "W", etc.
     modifier: Modifier = Modifier,
 ) {
+    val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "batter")
 
     val strikeGlow by infiniteTransition.animateFloat(
@@ -94,7 +96,7 @@ fun BatterDetailCard(
                     drawCircle(
                         brush = Brush.radialGradient(
                             colors = listOf(
-                                ShinyGoldMid.copy(alpha = 0.2f * strikeGlow),
+                                colors.goldDark.copy(alpha = 0.2f * strikeGlow),
                                 Color.Transparent,
                             ),
                             center = Offset(100f, 100f),
@@ -126,7 +128,7 @@ fun BatterDetailCard(
                                 drawCircle(
                                     brush = Brush.radialGradient(
                                         colors = listOf(
-                                            ShinyGoldMid.copy(alpha = strikeGlow * 0.5f),
+                                            colors.goldDark.copy(alpha = strikeGlow * 0.5f),
                                             Color.Transparent,
                                         ),
                                     ),
@@ -187,7 +189,7 @@ fun BatterDetailCard(
                                     modifier = Modifier
                                         .size(8.dp)
                                         .clip(CircleShape)
-                                        .background(ShinyGoldMid),
+                                        .background(colors.goldDark),
                                 )
                             }
                         }
@@ -204,8 +206,8 @@ fun BatterDetailCard(
                         Text(
                             text = "${stats.runs}",
                             color = when {
-                                stats.runs >= 100 -> ShinyGoldMid
-                                stats.runs >= 50 -> SuccessGreen
+                                stats.runs >= 100 -> colors.goldDark
+                                stats.runs >= 50 -> colors.statusSuccess
                                 else -> Color.White
                             },
                             fontSize = 36.sp,
@@ -254,19 +256,19 @@ fun BatterDetailCard(
                     BatterStatItem(
                         label = "Strike Rate",
                         value = String.format("%.1f", stats.strikeRate),
-                        color = if (stats.strikeRate > 150) SuccessGreen else if (stats.strikeRate < 100) WicketRed else ShinyGoldMid,
+                        color = if (stats.strikeRate > 150) colors.statusSuccess else if (stats.strikeRate < 100) colors.statusLive else colors.goldDark,
                     )
 
                     BatterStatItem(
                         label = "4s",
                         value = "${stats.fours}",
-                        color = BoundaryFour,
+                        color = colors.statusWarning,
                     )
 
                     BatterStatItem(
                         label = "6s",
                         value = "${stats.sixes}",
-                        color = BoundarySix,
+                        color = colors.statusWarning,
                     )
 
                     BatterStatItem(
@@ -305,9 +307,9 @@ fun BatterDetailCard(
                                     .clip(RoundedCornerShape(3.dp))
                                     .background(
                                         when {
-                                            stats.controlPercentage > 0.8f -> SuccessGreen
-                                            stats.controlPercentage > 0.6f -> ShinyGoldMid
-                                            else -> WicketRed
+                                            stats.controlPercentage > 0.8f -> colors.statusSuccess
+                                            stats.controlPercentage > 0.6f -> colors.goldDark
+                                            else -> colors.statusLive
                                         },
                                     ),
                             )
@@ -337,13 +339,14 @@ fun BatterDetailCard(
 
 @Composable
 private fun RecentBallChip(ball: String) {
+    val colors = BouncerDesignSystem.colors
     val (bgColor, textColor) = when (ball) {
-        "6" -> Pair(BoundarySix, Color.White)
-        "4" -> Pair(BoundaryFour, Color.White)
-        "W" -> Pair(WicketRed, Color.White)
+        "6" -> Pair(colors.statusWarning, Color.White)
+        "4" -> Pair(colors.statusWarning, Color.White)
+        "W" -> Pair(colors.statusLive, Color.White)
         "0" -> Pair(Color.Gray.copy(alpha = 0.3f), Color.White.copy(alpha = 0.6f))
-        "Wd", "Nb" -> Pair(WarningYellow.copy(alpha = 0.3f), WarningYellow)
-        else -> Pair(ChartBlue.copy(alpha = 0.3f), ChartBlue)
+        "Wd", "Nb" -> Pair(colors.statusWarning.copy(alpha = 0.3f), colors.statusWarning)
+        else -> Pair(colors.statusInfo.copy(alpha = 0.3f), colors.statusInfo)
     }
 
     Box(
@@ -368,6 +371,7 @@ private fun BatterStatItem(
     value: String,
     color: Color,
 ) {
+    val colors = BouncerDesignSystem.colors
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
             text = value,

@@ -71,6 +71,7 @@ fun UmpireDecisionsCard(
     drsStats: DRSStats,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "drs")
     
     // Radar sweep effect
@@ -101,7 +102,7 @@ fun UmpireDecisionsCard(
             .shadow(
                 elevation = 12.dp,
                 shape = RoundedCornerShape(20.dp),
-                spotColor = LiveBlue.copy(alpha = 0.2f)
+                spotColor = colors.statusInfo.copy(alpha = 0.2f)
             ),
         shape = RoundedCornerShape(20.dp),
         color = Color.White.copy(alpha = 0.05f)
@@ -122,16 +123,17 @@ fun UmpireDecisionsCard(
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 1.5.sp,
-                        color = ShinyGoldDeep
+                        color = colors.goldPrimary
                     )
                     Text(
                         text = "Decision Review System",
                         fontSize = 10.sp,
-                        color = TextSecondary
+                        color = colors.textSecondary
                     )
                 }
                 
                 // Animated DRS radar icon
+                val statusInfoColor = colors.statusInfo
                 Box(
                     modifier = Modifier.size(48.dp),
                     contentAlignment = Alignment.Center
@@ -142,7 +144,7 @@ fun UmpireDecisionsCard(
                         
                         // Outer ring
                         drawCircle(
-                            color = LiveBlue.copy(alpha = 0.3f),
+                            color = statusInfoColor.copy(alpha = 0.3f),
                             radius = radius,
                             center = center,
                             style = Stroke(2.dp.toPx())
@@ -151,7 +153,7 @@ fun UmpireDecisionsCard(
                         // Inner rings
                         for (i in 1..2) {
                             drawCircle(
-                                color = LiveBlue.copy(alpha = 0.15f),
+                                color = statusInfoColor.copy(alpha = 0.15f),
                                 radius = radius * (i / 3f),
                                 center = center,
                                 style = Stroke(1.dp.toPx())
@@ -164,7 +166,7 @@ fun UmpireDecisionsCard(
                         val endY = center.y + (radius * kotlin.math.sin(angle)).toFloat()
                         
                         drawLine(
-                            color = LiveBlue.copy(alpha = pulseAlpha),
+                            color = statusInfoColor.copy(alpha = pulseAlpha),
                             start = center,
                             end = Offset(endX, endY),
                             strokeWidth = 2.dp.toPx()
@@ -187,8 +189,8 @@ fun UmpireDecisionsCard(
                             path = path.asComposePath(),
                             brush = Brush.sweepGradient(
                                 colors = listOf(
-                                    LiveBlue.copy(alpha = 0.3f),
-                                    LiveBlue.copy(alpha = 0f),
+                                    statusInfoColor.copy(alpha = 0.3f),
+                                    statusInfoColor.copy(alpha = 0f),
                                     Color.Transparent,
                                     Color.Transparent
                                 ),
@@ -198,7 +200,7 @@ fun UmpireDecisionsCard(
                         
                         // Center dot
                         drawCircle(
-                            color = LiveBlue,
+                            color = statusInfoColor,
                             radius = 3.dp.toPx(),
                             center = center
                         )
@@ -238,7 +240,7 @@ fun UmpireDecisionsCard(
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 1.sp,
-                        color = TextSecondary
+                        color = colors.textSecondary
                     )
                     
                     drsStats.reviews.take(5).forEach { review ->
@@ -258,6 +260,7 @@ private fun TeamReviewsCard(
     successful: Int,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val successRate = if (reviewsUsed > 0) {
         (successful.toFloat() / reviewsUsed * 100).toInt()
     } else 0
@@ -265,13 +268,13 @@ private fun TeamReviewsCard(
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(16.dp),
-        color = CardBorder.copy(alpha = 0.1f)
+        color = colors.glassBorder.copy(alpha = 0.1f)
     ) {
         Column(
             modifier = Modifier
                 .border(
                     width = 1.dp,
-                    color = CardBorder.copy(alpha = 0.3f),
+                    color = colors.glassBorder.copy(alpha = 0.3f),
                     shape = RoundedCornerShape(16.dp)
                 )
                 .padding(16.dp),
@@ -282,7 +285,7 @@ private fun TeamReviewsCard(
                 text = teamName,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Bold,
-                color = TextPrimary,
+                color = colors.textPrimary,
                 maxLines = 1
             )
             
@@ -297,16 +300,16 @@ private fun TeamReviewsCard(
                             .size(if (isUsed) 12.dp else 14.dp)
                             .background(
                                 color = if (isUsed) 
-                                    WicketRed.copy(alpha = 0.3f) 
+                                    colors.statusLive.copy(alpha = 0.3f) 
                                 else 
-                                    SuccessGreen.copy(alpha = 0.7f),
+                                    colors.statusSuccess.copy(alpha = 0.7f),
                                 shape = CircleShape
                             )
                             .then(
                                 if (!isUsed) {
                                     Modifier.border(
                                         width = 2.dp,
-                                        color = SuccessGreen,
+                                        color = colors.statusSuccess,
                                         shape = CircleShape
                                     )
                                 } else Modifier
@@ -318,7 +321,7 @@ private fun TeamReviewsCard(
             Text(
                 text = "$reviewsRemaining remaining",
                 fontSize = 10.sp,
-                color = if (reviewsRemaining > 0) SuccessGreen else WicketRed
+                color = if (reviewsRemaining > 0) colors.statusSuccess else colors.statusLive
             )
             
             if (reviewsUsed > 0) {
@@ -331,15 +334,15 @@ private fun TeamReviewsCard(
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
                         color = when {
-                            successRate >= 50 -> SuccessGreen
-                            successRate >= 30 -> WarningYellow
-                            else -> WicketRed
+                            successRate >= 50 -> colors.statusSuccess
+                            successRate >= 30 -> colors.statusWarning
+                            else -> colors.statusLive
                         }
                     )
                     Text(
                         text = "success",
                         fontSize = 9.sp,
-                        color = TextSecondary
+                        color = colors.textSecondary
                     )
                 }
             }
@@ -352,10 +355,11 @@ private fun DRSReviewItem(
     review: DRSReview,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val outcomeColor = when (review.outcome) {
-        ReviewOutcome.OVERTURNED -> SuccessGreen
-        ReviewOutcome.UPHELD -> WicketRed
-        ReviewOutcome.UMPIRE_CALL -> WarningYellow
+        ReviewOutcome.OVERTURNED -> colors.statusSuccess
+        ReviewOutcome.UPHELD -> colors.statusLive
+        ReviewOutcome.UMPIRE_CALL -> colors.statusWarning
     }
     
     val outcomeText = when (review.outcome) {
@@ -433,12 +437,12 @@ private fun DRSReviewItem(
                         text = "${review.teamName} - ${review.playerName}",
                         fontSize = 12.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = TextPrimary
+                        color = colors.textPrimary
                     )
                     Text(
                         text = "${review.reviewType.name} • Over ${review.overNumber}",
                         fontSize = 10.sp,
-                        color = TextSecondary
+                        color = colors.textSecondary
                     )
                 }
             }
@@ -456,7 +460,7 @@ private fun DRSReviewItem(
                 Text(
                     text = "Review #${review.reviewNumber}",
                     fontSize = 9.sp,
-                    color = TextSecondary
+                    color = colors.textSecondary
                 )
             }
         }
@@ -474,15 +478,16 @@ fun CompactDRSDisplay(
     team2Reviews: Int,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     Row(
         modifier = modifier
             .background(
-                color = LiveBlue.copy(alpha = 0.1f),
+                color = colors.statusInfo.copy(alpha = 0.1f),
                 shape = RoundedCornerShape(8.dp)
             )
             .border(
                 width = 1.dp,
-                color = LiveBlue.copy(alpha = 0.3f),
+                color = colors.statusInfo.copy(alpha = 0.3f),
                 shape = RoundedCornerShape(8.dp)
             )
             .padding(horizontal = 12.dp, vertical = 6.dp),
@@ -494,7 +499,7 @@ fun CompactDRSDisplay(
             fontSize = 9.sp,
             fontWeight = FontWeight.Bold,
             letterSpacing = 0.5.sp,
-            color = LiveBlue
+            color = colors.statusInfo
         )
         
         Row(
@@ -505,20 +510,20 @@ fun CompactDRSDisplay(
                 text = team1Name.take(3).uppercase(),
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Medium,
-                color = TextSecondary
+                color = colors.textSecondary
             )
             Text(
                 text = "$team1Reviews",
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
-                color = if (team1Reviews > 0) SuccessGreen else WicketRed
+                color = if (team1Reviews > 0) colors.statusSuccess else colors.statusLive
             )
         }
         
         Text(
             text = "|",
             fontSize = 12.sp,
-            color = CardBorder
+            color = colors.glassBorder
         )
         
         Row(
@@ -529,13 +534,13 @@ fun CompactDRSDisplay(
                 text = team2Name.take(3).uppercase(),
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Medium,
-                color = TextSecondary
+                color = colors.textSecondary
             )
             Text(
                 text = "$team2Reviews",
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
-                color = if (team2Reviews > 0) SuccessGreen else WicketRed
+                color = if (team2Reviews > 0) colors.statusSuccess else colors.statusLive
             )
         }
     }

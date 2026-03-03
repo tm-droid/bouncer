@@ -23,10 +23,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.tanush.bouncer.ui.components.glass.GlassCard
-import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 import com.tanush.bouncer.ui.theme.BouncerDimens
 import com.tanush.bouncer.ui.theme.BouncerTheme
 import com.tanush.bouncer.ui.theme.StatusCardShape
+import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 
 /**
  * Compact card showing the current team score summary.
@@ -128,6 +128,7 @@ fun TeamScoreCard(
 @Preview(showBackground = true, widthDp = 200)
 @Composable
 private fun TeamScoreCardPreview() {
+    val colors = BouncerDesignSystem.colors
     BouncerTheme(darkTheme = true, dynamicColor = false) {
         TeamScoreCard(
             teamAcronym = "AUS",

@@ -22,6 +22,7 @@ import androidx.palette.graphics.Palette
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.util.Calendar
+import io.sentry.Sentry
 
 // ==========================================
 // BOUNCER - Dynamic Theming System (v1.0)
@@ -130,13 +131,18 @@ data class TimeBasedTheme(
 ) {
     companion object {
         fun forCurrentTime(): TimeBasedTheme {
-            val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
+            try {
+                val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
             
-            return when (hour) {
-                in 5..8 -> Morning
-                in 9..16 -> Day
-                in 17..20 -> Evening
-                else -> Night
+                return when (hour) {
+                    in 5..8 -> Morning
+                    in 9..16 -> Day
+                    in 17..20 -> Evening
+                    else -> Night
+                }
+            } catch (e: Exception) {
+                Sentry.captureException(e)
+                throw e
             }
         }
         
@@ -175,13 +181,18 @@ data class HighContrastMode(
     val contrastMultiplier: Float = 1.5f
 ) {
     fun adjustColor(color: Color): Color {
-        if (!isEnabled) return color
+        try {
+            if (!isEnabled) return color
         
-        val r = (color.red * contrastMultiplier).coerceIn(0f, 1f)
-        val g = (color.green * contrastMultiplier).coerceIn(0f, 1f)
-        val b = (color.blue * contrastMultiplier).coerceIn(0f, 1f)
+            val r = (color.red * contrastMultiplier).coerceIn(0f, 1f)
+            val g = (color.green * contrastMultiplier).coerceIn(0f, 1f)
+            val b = (color.blue * contrastMultiplier).coerceIn(0f, 1f)
         
-        return Color(r, g, b, color.alpha)
+            return Color(r, g, b, color.alpha)
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     companion object {
@@ -204,40 +215,45 @@ object TeamThemeProvider {
      * Extract dominant colors from a bitmap using Palette
      */
     suspend fun extractColorsFromBitmap(bitmap: Bitmap): TeamColorScheme {
-        return withContext(Dispatchers.Default) {
-            try {
-                val palette = Palette.from(bitmap).generate()
+        try {
+            return withContext(Dispatchers.Default) {
+                try {
+                    val palette = Palette.from(bitmap).generate()
                 
-                val primary = palette.dominantSwatch?.rgb?.let { Color(it) }
-                    ?: palette.vibrantSwatch?.rgb?.let { Color(it) }
-                    ?: TeamColors.Default.primary
+                    val primary = palette.dominantSwatch?.rgb?.let { Color(it) }
+                        ?: palette.vibrantSwatch?.rgb?.let { Color(it) }
+                        ?: TeamColors.Default.primary
                 
-                val secondary = palette.vibrantSwatch?.rgb?.let { Color(it) }
-                    ?: palette.mutedSwatch?.rgb?.let { Color(it) }
-                    ?: TeamColors.Default.secondary
+                    val secondary = palette.vibrantSwatch?.rgb?.let { Color(it) }
+                        ?: palette.mutedSwatch?.rgb?.let { Color(it) }
+                        ?: TeamColors.Default.secondary
                 
-                val tertiary = palette.mutedSwatch?.rgb?.let { Color(it) }
-                    ?: palette.lightMutedSwatch?.rgb?.let { Color(it) }
-                    ?: TeamColors.Default.tertiary
+                    val tertiary = palette.mutedSwatch?.rgb?.let { Color(it) }
+                        ?: palette.lightMutedSwatch?.rgb?.let { Color(it) }
+                        ?: TeamColors.Default.tertiary
                 
-                val surface = palette.darkMutedSwatch?.rgb?.let { Color(it) }
-                    ?: BlackSurface
+                    val surface = palette.darkMutedSwatch?.rgb?.let { Color(it) }
+                        ?: BlackSurface
                 
-                // Calculate appropriate text colors based on luminance
-                val onPrimary = if (calculateLuminance(primary) > 0.5f) Color.Black else Color.White
-                val onSecondary = if (calculateLuminance(secondary) > 0.5f) Color.Black else Color.White
+                    // Calculate appropriate text colors based on luminance
+                    val onPrimary = if (calculateLuminance(primary) > 0.5f) Color.Black else Color.White
+                    val onSecondary = if (calculateLuminance(secondary) > 0.5f) Color.Black else Color.White
                 
-                TeamColorScheme(
-                    primary = primary,
-                    secondary = secondary,
-                    tertiary = tertiary,
-                    surface = surface,
-                    onPrimary = onPrimary,
-                    onSecondary = onSecondary
-                )
-            } catch (e: Exception) {
-                TeamColors.Default
+                    TeamColorScheme(
+                        primary = primary,
+                        secondary = secondary,
+                        tertiary = tertiary,
+                        surface = surface,
+                        onPrimary = onPrimary,
+                        onSecondary = onSecondary
+                    )
+                } catch (e: Exception) {
+                    TeamColors.Default
+                }
             }
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
         }
     }
     
@@ -245,28 +261,38 @@ object TeamThemeProvider {
      * Get predefined colors for a team by name
      */
     fun getTeamColors(teamName: String): TeamColorScheme {
-        val normalizedName = teamName.lowercase().trim()
+        try {
+            val normalizedName = teamName.lowercase().trim()
         
-        return when {
-            normalizedName.contains("india") -> TeamColors.India
-            normalizedName.contains("australia") -> TeamColors.Australia
-            normalizedName.contains("england") -> TeamColors.England
-            normalizedName.contains("pakistan") -> TeamColors.Pakistan
-            normalizedName.contains("south africa") || normalizedName.contains("proteas") -> TeamColors.SouthAfrica
-            normalizedName.contains("new zealand") || normalizedName.contains("black caps") -> TeamColors.NewZealand
-            normalizedName.contains("west indies") || normalizedName.contains("windies") -> TeamColors.WestIndies
-            normalizedName.contains("sri lanka") -> TeamColors.SriLanka
-            normalizedName.contains("bangladesh") -> TeamColors.Bangladesh
-            normalizedName.contains("afghanistan") -> TeamColors.Afghanistan
-            else -> TeamColors.Default
+            return when {
+                normalizedName.contains("india") -> TeamColors.India
+                normalizedName.contains("australia") -> TeamColors.Australia
+                normalizedName.contains("england") -> TeamColors.England
+                normalizedName.contains("pakistan") -> TeamColors.Pakistan
+                normalizedName.contains("south africa") || normalizedName.contains("proteas") -> TeamColors.SouthAfrica
+                normalizedName.contains("new zealand") || normalizedName.contains("black caps") -> TeamColors.NewZealand
+                normalizedName.contains("west indies") || normalizedName.contains("windies") -> TeamColors.WestIndies
+                normalizedName.contains("sri lanka") -> TeamColors.SriLanka
+                normalizedName.contains("bangladesh") -> TeamColors.Bangladesh
+                normalizedName.contains("afghanistan") -> TeamColors.Afghanistan
+                else -> TeamColors.Default
+            }
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
         }
     }
     
     private fun calculateLuminance(color: Color): Float {
-        val r = if (color.red <= 0.03928f) color.red / 12.92f else Math.pow(((color.red + 0.055) / 1.055).toDouble(), 2.4).toFloat()
-        val g = if (color.green <= 0.03928f) color.green / 12.92f else Math.pow(((color.green + 0.055) / 1.055).toDouble(), 2.4).toFloat()
-        val b = if (color.blue <= 0.03928f) color.blue / 12.92f else Math.pow(((color.blue + 0.055) / 1.055).toDouble(), 2.4).toFloat()
-        return 0.2126f * r + 0.7152f * g + 0.0722f * b
+        try {
+            val r = if (color.red <= 0.03928f) color.red / 12.92f else Math.pow(((color.red + 0.055) / 1.055).toDouble(), 2.4).toFloat()
+            val g = if (color.green <= 0.03928f) color.green / 12.92f else Math.pow(((color.green + 0.055) / 1.055).toDouble(), 2.4).toFloat()
+            val b = if (color.blue <= 0.03928f) color.blue / 12.92f else Math.pow(((color.blue + 0.055) / 1.055).toDouble(), 2.4).toFloat()
+            return 0.2126f * r + 0.7152f * g + 0.0722f * b
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
 }
 
@@ -303,55 +329,65 @@ fun rememberTeamColors(teamName: String): TeamColorScheme {
  * Apply time-based adjustments to a color
  */
 fun Color.adjustForTimeOfDay(timeTheme: TimeBasedTheme): Color {
-    if (timeTheme.warmthFactor == 0f && timeTheme.brightnessAdjustment == 0f) return this
+    try {
+        if (timeTheme.warmthFactor == 0f && timeTheme.brightnessAdjustment == 0f) return this
     
-    var r = this.red
-    var g = this.green
-    var b = this.blue
+        var r = this.red
+        var g = this.green
+        var b = this.blue
     
-    // Apply warmth (positive = warmer, negative = cooler)
-    if (timeTheme.warmthFactor > 0) {
-        r = (r + timeTheme.warmthFactor).coerceIn(0f, 1f)
-        b = (b - timeTheme.warmthFactor * 0.5f).coerceIn(0f, 1f)
-    } else {
-        r = (r + timeTheme.warmthFactor * 0.5f).coerceIn(0f, 1f)
-        b = (b - timeTheme.warmthFactor).coerceIn(0f, 1f)
+        // Apply warmth (positive = warmer, negative = cooler)
+        if (timeTheme.warmthFactor > 0) {
+            r = (r + timeTheme.warmthFactor).coerceIn(0f, 1f)
+            b = (b - timeTheme.warmthFactor * 0.5f).coerceIn(0f, 1f)
+        } else {
+            r = (r + timeTheme.warmthFactor * 0.5f).coerceIn(0f, 1f)
+            b = (b - timeTheme.warmthFactor).coerceIn(0f, 1f)
+        }
+    
+        // Apply brightness
+        r = (r + timeTheme.brightnessAdjustment).coerceIn(0f, 1f)
+        g = (g + timeTheme.brightnessAdjustment).coerceIn(0f, 1f)
+        b = (b + timeTheme.brightnessAdjustment).coerceIn(0f, 1f)
+    
+        return Color(r, g, b, this.alpha)
+    } catch (e: Exception) {
+        Sentry.captureException(e)
+        throw e
     }
-    
-    // Apply brightness
-    r = (r + timeTheme.brightnessAdjustment).coerceIn(0f, 1f)
-    g = (g + timeTheme.brightnessAdjustment).coerceIn(0f, 1f)
-    b = (b + timeTheme.brightnessAdjustment).coerceIn(0f, 1f)
-    
-    return Color(r, g, b, this.alpha)
 }
 
 /**
  * Create a Material 3 ColorScheme from TeamColorScheme
  */
 fun TeamColorScheme.toMaterialColorScheme(): ColorScheme {
-    return darkColorScheme(
-        primary = primary,
-        onPrimary = onPrimary,
-        primaryContainer = primary.copy(alpha = 0.3f),
-        onPrimaryContainer = primary,
-        secondary = secondary,
-        onSecondary = onSecondary,
-        secondaryContainer = secondary.copy(alpha = 0.3f),
-        onSecondaryContainer = secondary,
-        tertiary = tertiary,
-        onTertiary = Color.White,
-        tertiaryContainer = tertiary.copy(alpha = 0.3f),
-        onTertiaryContainer = tertiary,
-        background = BlackBackground,
-        onBackground = TextPrimary,
-        surface = surface,
-        onSurface = onSurface,
-        surfaceVariant = BlackElevated,
-        onSurfaceVariant = TextSecondary,
-        outline = GlassBorder,
-        outlineVariant = GlassBorderLight
-    )
+    try {
+        return darkColorScheme(
+            primary = primary,
+            onPrimary = onPrimary,
+            primaryContainer = primary.copy(alpha = 0.3f),
+            onPrimaryContainer = primary,
+            secondary = secondary,
+            onSecondary = onSecondary,
+            secondaryContainer = secondary.copy(alpha = 0.3f),
+            onSecondaryContainer = secondary,
+            tertiary = tertiary,
+            onTertiary = Color.White,
+            tertiaryContainer = tertiary.copy(alpha = 0.3f),
+            onTertiaryContainer = tertiary,
+            background = BlackBackground,
+            onBackground = TextPrimary,
+            surface = surface,
+            onSurface = onSurface,
+            surfaceVariant = BlackElevated,
+            onSurfaceVariant = TextSecondary,
+            outline = GlassBorder,
+            outlineVariant = GlassBorderLight
+        )
+    } catch (e: Exception) {
+        Sentry.captureException(e)
+        throw e
+    }
 }
 
 /**

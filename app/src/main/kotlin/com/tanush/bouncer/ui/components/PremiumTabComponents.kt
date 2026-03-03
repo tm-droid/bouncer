@@ -50,6 +50,7 @@ fun PremiumTabRow(
     onTabSelected: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "tab_shimmer")
     val shimmerOffset by infiniteTransition.animateFloat(
         initialValue = -200f,
@@ -65,7 +66,7 @@ fun PremiumTabRow(
         modifier = modifier
             .fillMaxWidth()
             .height(56.dp)
-            .background(Color.White.copy(alpha = 0.05f))
+            .background(colors.glassSurface)
     ) {
         Row(
             modifier = Modifier.fillMaxSize(),
@@ -98,6 +99,7 @@ private fun PremiumTab(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val animatedAlpha by animateFloatAsState(
         targetValue = if (isSelected) 1f else 0.5f,
         animationSpec = tween(300),
@@ -136,7 +138,7 @@ private fun PremiumTab(
                 Icon(
                     imageVector = tab.icon,
                     contentDescription = null,
-                    tint = if (isSelected) ShinyGoldDeep else TextSecondary,
+                    tint = if (isSelected) colors.goldPrimary else colors.textSecondary,
                     modifier = Modifier.size(18.dp)
                 )
                 Spacer(modifier = Modifier.width(6.dp))
@@ -146,7 +148,7 @@ private fun PremiumTab(
                 text = tab.title,
                 fontSize = 13.sp,
                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                color = if (isSelected) ShinyGoldDeep else TextSecondary,
+                color = if (isSelected) colors.goldPrimary else colors.textSecondary,
                 letterSpacing = if (isSelected) 0.sp else (-0.2).sp
             )
             
@@ -163,7 +165,7 @@ private fun PremiumTab(
                         text = if (tab.badge > 9) "9+" else tab.badge.toString(),
                         fontSize = 9.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color.White
+                        color = colors.textPrimary
                     )
                 }
             }
@@ -201,9 +203,9 @@ private fun AnimatedTabIndicator(
             brush = Brush.horizontalGradient(
                 colors = listOf(
                     Color.Transparent,
-                    ShinyGoldDeep.copy(alpha = 0.3f),
-                    ShinyGoldDeep.copy(alpha = 0.5f),
-                    ShinyGoldDeep.copy(alpha = 0.3f),
+                    GoldPrimary.copy(alpha = 0.3f),
+                    GoldPrimary.copy(alpha = 0.5f),
+                    GoldPrimary.copy(alpha = 0.3f),
                     Color.Transparent
                 ),
                 startX = startX - 20f,
@@ -218,9 +220,9 @@ private fun AnimatedTabIndicator(
         drawRoundRect(
             brush = Brush.horizontalGradient(
                 colors = listOf(
-                    ShinyGoldLight,
-                    ShinyGoldDeep,
-                    ShinyGoldDark
+                    GoldLight,
+                    GoldPrimary,
+                    GoldDark
                 ),
                 startX = startX,
                 endX = startX + indicatorWidth
@@ -263,16 +265,17 @@ fun PremiumSegmentedControl(
     onSegmentSelected: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     Box(
         modifier = modifier
             .height(40.dp)
             .background(
-                Color.White.copy(alpha = 0.08f),
+                colors.glassBorderHighlight,
                 RoundedCornerShape(12.dp)
             )
             .border(
                 0.5.dp,
-                CardBorder.copy(alpha = 0.2f),
+                colors.glassBorder.copy(alpha = 0.2f),
                 RoundedCornerShape(12.dp)
             )
             .padding(3.dp)
@@ -284,13 +287,13 @@ fun PremiumSegmentedControl(
                 val isSelected = index == selectedIndex
                 
                 val backgroundColor by animateColorAsState(
-                    targetValue = if (isSelected) ShinyGoldDeep else Color.Transparent,
+                    targetValue = if (isSelected) GoldPrimary else Color.Transparent,
                     animationSpec = tween(200),
                     label = "segment_bg"
                 )
                 
                 val textColor by animateColorAsState(
-                    targetValue = if (isSelected) PrimaryBackground else TextSecondary,
+                    targetValue = if (isSelected) colors.backgroundBase else colors.textSecondary,
                     animationSpec = tween(200),
                     label = "segment_text"
                 )
@@ -329,6 +332,7 @@ fun PillTabRow(
     onTabSelected: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -357,11 +361,11 @@ fun PillTabRow(
                         indication = null
                     ) { onTabSelected(index) },
                 shape = RoundedCornerShape(20.dp),
-                color = if (isSelected) ShinyGoldDeep else Color.Transparent,
+                color = if (isSelected) GoldPrimary else Color.Transparent,
                 border = if (!isSelected) {
                     androidx.compose.foundation.BorderStroke(
                         1.dp,
-                        CardBorder.copy(alpha = 0.3f)
+                        GlassBorder.copy(alpha = 0.3f)
                     )
                 } else null
             ) {
@@ -373,7 +377,7 @@ fun PillTabRow(
                     ),
                     fontSize = 13.sp,
                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                    color = if (isSelected) PrimaryBackground else TextSecondary
+                    color = if (isSelected) BackgroundBase else colors.textSecondary
                 )
             }
         }
@@ -391,6 +395,7 @@ fun GlowingIconTab(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val glowAlpha by animateFloatAsState(
         targetValue = if (isSelected) 0.3f else 0f,
         animationSpec = tween(300),
@@ -423,7 +428,7 @@ fun GlowingIconTab(
                         drawCircle(
                             brush = Brush.radialGradient(
                                 colors = listOf(
-                                    ShinyGoldDeep.copy(alpha = glowAlpha),
+                                    colors.goldPrimary.copy(alpha = glowAlpha),
                                     Color.Transparent
                                 )
                             ),
@@ -440,7 +445,7 @@ fun GlowingIconTab(
             Icon(
                 imageVector = icon,
                 contentDescription = label,
-                tint = if (isSelected) ShinyGoldDeep else TextTertiary,
+                tint = if (isSelected) colors.goldPrimary else colors.textTertiary,
                 modifier = Modifier.size(24.dp)
             )
         }
@@ -451,7 +456,7 @@ fun GlowingIconTab(
             text = label,
             fontSize = 11.sp,
             fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
-            color = if (isSelected) ShinyGoldDeep else TextTertiary
+            color = if (isSelected) colors.goldPrimary else colors.textTertiary
         )
     }
 }
@@ -482,7 +487,7 @@ fun ScrollingTabIndicator(
             )
             
             val color by animateColorAsState(
-                targetValue = if (isSelected) ShinyGoldDeep else CardBorder,
+                targetValue = if (isSelected) GoldPrimary else GlassBorder,
                 animationSpec = tween(200),
                 label = "dot_color"
             )
@@ -541,9 +546,9 @@ fun AnimatedUnderlineButton(
                 .background(
                     Brush.horizontalGradient(
                         colors = listOf(
-                            ShinyGoldLight,
-                            ShinyGoldDeep,
-                            ShinyGoldDark
+                            GoldLight,
+                            GoldPrimary,
+                            GoldDark
                         )
                     ),
                     RoundedCornerShape(1.dp)

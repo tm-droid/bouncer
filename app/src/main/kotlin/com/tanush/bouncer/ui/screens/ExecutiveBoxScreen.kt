@@ -29,7 +29,9 @@ import com.tanush.bouncer.ui.components.BouncerImportance
 import com.tanush.bouncer.ui.components.GlassCard
 import com.tanush.bouncer.ui.components.GlassSurface
 import com.tanush.bouncer.ui.components.WinProbabilityGauge
+import com.tanush.bouncer.ui.components.glass.GlassBloomBackground
 import com.tanush.bouncer.ui.theme.*
+import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 
 /**
  * Match Analytics Screen
@@ -40,6 +42,7 @@ import com.tanush.bouncer.ui.theme.*
 fun ExecutiveBoxScreen(
     onBackClick: () -> Unit
 ) {
+    val colors = BouncerDesignSystem.colors
     // Simulation States
     var baseProbability by remember { mutableFloatStateOf(0.72f) }
     var simulatedProbability by remember { mutableFloatStateOf(0.72f) }
@@ -53,15 +56,15 @@ fun ExecutiveBoxScreen(
     )
 
     Scaffold(
-        containerColor = BlackBackground,
+        containerColor = Color.Transparent,
         topBar = {
             TopAppBar(
                 title = {
                     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth().padding(end = 48.dp)) {
                         Text("MATCH ANALYTICS", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Box(modifier = Modifier.size(6.dp).background(if (isSimulating) WarningOrange else SuccessGreen, CircleShape).shadow(4.dp, CircleShape, spotColor = if (isSimulating) WarningOrange else SuccessGreen))
-                            Text(if (isSimulating) "Simulation Active" else "Live Data", color = if (isSimulating) WarningOrange else SuccessGreen, fontSize = 10.sp, fontWeight = FontWeight.Medium)
+                            Box(modifier = Modifier.size(6.dp).background(if (isSimulating) WarningOrange else colors.statusSuccess, CircleShape).shadow(4.dp, CircleShape, spotColor = if (isSimulating) WarningOrange else colors.statusSuccess))
+                            Text(if (isSimulating) "Simulation Active" else "Live Data", color = if (isSimulating) WarningOrange else colors.statusSuccess, fontSize = 10.sp, fontWeight = FontWeight.Medium)
                         }
                     }
                 },
@@ -74,6 +77,7 @@ fun ExecutiveBoxScreen(
             )
         }
     ) { padding ->
+        GlassBloomBackground(modifier = Modifier.fillMaxSize()) {
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
@@ -97,7 +101,7 @@ fun ExecutiveBoxScreen(
                             isSimulating = false
                             lastSimResult = null
                         }) {
-                            Text("RESET TO LIVE FEED", color = ShinyGoldDeep, fontSize = 10.sp, fontWeight = FontWeight.Black)
+                            Text("RESET TO LIVE FEED", color = colors.goldPrimary, fontSize = 10.sp, fontWeight = FontWeight.Black)
                         }
                     }
                 }
@@ -136,7 +140,7 @@ fun ExecutiveBoxScreen(
             item {
                 Text(
                     text = "STRATEGIC EVENT LOG",
-                    color = TextTertiary,
+                    color = colors.textTertiary,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Black,
                     letterSpacing = 1.5.sp
@@ -155,24 +159,26 @@ fun ExecutiveBoxScreen(
 
             item { Spacer(modifier = Modifier.height(100.dp)) }
         }
+        }
     }
 }
 
 @Composable
 private fun TacticalSimulationConsole(onSimulate: (MatchSimulator.SimulatedEvent) -> Unit) {
+    val colors = BouncerDesignSystem.colors
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(
             text = "TACTICAL SIMULATION",
-            color = TextTertiary,
+            color = colors.textTertiary,
             fontSize = 10.sp,
             fontWeight = FontWeight.Black,
             letterSpacing = 1.5.sp
         )
         
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            SimButton(Modifier.weight(1f), "WICKET", Icons.Default.Gavel, ErrorRed) { onSimulate(MatchSimulator.SimulatedEvent.WICKET) }
-            SimButton(Modifier.weight(1f), "SIX", Icons.Default.FlashOn, ShinyGoldDeep) { onSimulate(MatchSimulator.SimulatedEvent.SIX) }
-            SimButton(Modifier.weight(1f), "DOT", Icons.Default.Block, TextTertiary) { onSimulate(MatchSimulator.SimulatedEvent.DOT) }
+            SimButton(Modifier.weight(1f), "WICKET", Icons.Default.Gavel, colors.statusLive) { onSimulate(MatchSimulator.SimulatedEvent.WICKET) }
+            SimButton(Modifier.weight(1f), "SIX", Icons.Default.FlashOn, colors.goldPrimary) { onSimulate(MatchSimulator.SimulatedEvent.SIX) }
+            SimButton(Modifier.weight(1f), "DOT", Icons.Default.Block, colors.textTertiary) { onSimulate(MatchSimulator.SimulatedEvent.DOT) }
         }
     }
 }
@@ -198,6 +204,7 @@ private fun SimButton(modifier: Modifier, label: String, icon: ImageVector, colo
 
 @Composable
 private fun SimulationImpactCard(result: MatchSimulator.SimResult) {
+    val colors = BouncerDesignSystem.colors
     GlassCard(
         modifier = Modifier.fillMaxWidth(),
         importance = BouncerImportance.STANDARD,
@@ -205,15 +212,15 @@ private fun SimulationImpactCard(result: MatchSimulator.SimResult) {
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Icon(Icons.Default.QueryStats, null, tint = if (result.impactScore > 0) SuccessGreen else ErrorRed, modifier = Modifier.size(18.dp))
-                Text("IMPACT ANALYSIS", color = TextPrimary, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.2.sp)
+                Icon(Icons.Default.QueryStats, null, tint = if (result.impactScore > 0) colors.statusSuccess else colors.statusLive, modifier = Modifier.size(18.dp))
+                Text("IMPACT ANALYSIS", color = colors.textPrimary, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.2.sp)
             }
             
             Spacer(modifier = Modifier.height(12.dp))
             
             Text(
                 text = result.summary,
-                color = TextPrimary,
+                color = colors.textPrimary,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
                 lineHeight = 20.sp
@@ -223,7 +230,7 @@ private fun SimulationImpactCard(result: MatchSimulator.SimResult) {
             
             Text(
                 text = "Simulation reflects historical data patterns for high-pressure chases.",
-                color = TextTertiary,
+                color = colors.textTertiary,
                 fontSize = 11.sp
             )
         }
@@ -232,6 +239,7 @@ private fun SimulationImpactCard(result: MatchSimulator.SimResult) {
 
 @Composable
 private fun StrategyBriefingCard() {
+    val colors = BouncerDesignSystem.colors
     GlassCard(
         modifier = Modifier.fillMaxWidth(),
         importance = BouncerImportance.CRITICAL,
@@ -240,11 +248,11 @@ private fun StrategyBriefingCard() {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Icon(Icons.Default.AutoAwesome, null, tint = ShinyGoldDeep, modifier = Modifier.size(18.dp))
-                    Text("STRATEGY BRIEFING", color = ShinyGoldDeep, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.2.sp)
+                    Icon(Icons.Default.AutoAwesome, null, tint = colors.goldPrimary, modifier = Modifier.size(18.dp))
+                    Text("STRATEGY BRIEFING", color = colors.goldPrimary, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.2.sp)
                 }
-                Box(modifier = Modifier.clip(RoundedCornerShape(4.dp)).background(SuccessGreen.copy(alpha = 0.15f)).padding(horizontal = 8.dp, vertical = 4.dp)) {
-                    Text("OPTIMIZED", color = SuccessGreen, fontSize = 8.sp, fontWeight = FontWeight.Black)
+                Box(modifier = Modifier.clip(RoundedCornerShape(4.dp)).background(colors.statusSuccess.copy(alpha = 0.15f)).padding(horizontal = 8.dp, vertical = 4.dp)) {
+                    Text("OPTIMIZED", color = colors.statusSuccess, fontSize = 8.sp, fontWeight = FontWeight.Black)
                 }
             }
             
@@ -252,7 +260,7 @@ private fun StrategyBriefingCard() {
             
             Text(
                 text = "India should target the next 2 overs of spin. Australia's field suggested a defensive mindset. High boundary probability square of the wicket.",
-                color = TextPrimary,
+                color = colors.textPrimary,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Medium,
                 lineHeight = 20.sp
@@ -265,6 +273,7 @@ enum class EventType { MOMENTUM, IMPACT }
 
 @Composable
 private fun TelemetryEventItem(time: String, title: String, body: String, type: EventType) {
+    val colors = BouncerDesignSystem.colors
     GlassCard(
         modifier = Modifier.fillMaxWidth(),
         importance = BouncerImportance.MINIMAL,
@@ -281,7 +290,7 @@ private fun TelemetryEventItem(time: String, title: String, body: String, type: 
                 modifier = Modifier.fillMaxHeight(), // FIX OVERLAP: Allow column to span full height
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text(time, color = ShinyGoldDeep, fontSize = 10.sp, fontWeight = FontWeight.Black)
+                Text(time, color = colors.goldPrimary, fontSize = 10.sp, fontWeight = FontWeight.Black)
                 Box(
                     modifier = Modifier
                         .width(1.dp)
@@ -294,7 +303,7 @@ private fun TelemetryEventItem(time: String, title: String, body: String, type: 
             Column(modifier = Modifier.padding(bottom = 4.dp)) {
                 Text(
                     title, 
-                    color = if (type == EventType.MOMENTUM) ChartBlue else SuccessGreen, 
+                    color = if (type == EventType.MOMENTUM) ChartBlue else colors.statusSuccess, 
                     fontSize = 11.sp, 
                     fontWeight = FontWeight.Black, 
                     letterSpacing = 0.5.sp
@@ -302,7 +311,7 @@ private fun TelemetryEventItem(time: String, title: String, body: String, type: 
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     body, 
-                    color = TextSecondary, 
+                    color = colors.textSecondary, 
                     fontSize = 12.sp, 
                     lineHeight = 18.sp
                 )
@@ -313,16 +322,17 @@ private fun TelemetryEventItem(time: String, title: String, body: String, type: 
 
 @Composable
 private fun ResourceCard(modifier: Modifier, label: String, value: String, icon: ImageVector) {
+    val colors = BouncerDesignSystem.colors
     GlassSurface(
         modifier = modifier,
         cornerRadius = 10.dp,
         importance = BouncerImportance.STANDARD
     ) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Icon(icon, null, tint = ShinyGoldDeep.copy(alpha = 0.6f), modifier = Modifier.size(18.dp))
+            Icon(icon, null, tint = colors.goldPrimary.copy(alpha = 0.6f), modifier = Modifier.size(18.dp))
             Column {
-                Text(label, color = TextTertiary, fontSize = 9.sp, fontWeight = FontWeight.Black)
-                Text(value, color = TextPrimary, fontSize = 18.sp, fontWeight = FontWeight.Black)
+                Text(label, color = colors.textTertiary, fontSize = 9.sp, fontWeight = FontWeight.Black)
+                Text(value, color = colors.textPrimary, fontSize = 18.sp, fontWeight = FontWeight.Black)
             }
         }
     }

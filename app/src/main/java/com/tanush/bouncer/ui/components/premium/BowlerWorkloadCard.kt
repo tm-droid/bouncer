@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.ui.theme.*
 import kotlin.math.*
+import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 
 /**
  * Bowler workload card showing overs bowled and fitness
@@ -54,6 +55,7 @@ fun BowlerWorkloadCard(
     format: String = "T20",
     modifier: Modifier = Modifier,
 ) {
+    val colors = BouncerDesignSystem.colors
     val animatedProgress = remember { Animatable(0f) }
 
     LaunchedEffect(bowlers) {
@@ -95,7 +97,7 @@ fun BowlerWorkloadCard(
                             .clip(CircleShape)
                             .background(
                                 Brush.linearGradient(
-                                    colors = listOf(ShinyGoldMid, ShinyGoldDeep),
+                                    colors = listOf(colors.goldDark, colors.goldPrimary),
                                 ),
                             ),
                         contentAlignment = Alignment.Center,
@@ -113,7 +115,7 @@ fun BowlerWorkloadCard(
                     Column {
                         Text(
                             text = "BOWLER WORKLOAD",
-                            color = ShinyGoldLight,
+                            color = colors.goldLight,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.5.sp,
@@ -130,7 +132,7 @@ fun BowlerWorkloadCard(
                 Column(horizontalAlignment = Alignment.End) {
                     Text(
                         text = String.format("%.1f", totalOversBowled),
-                        color = ShinyGoldMid,
+                        color = colors.goldDark,
                         fontSize = 24.sp,
                         fontWeight = FontWeight.Bold,
                     )
@@ -176,7 +178,7 @@ fun BowlerWorkloadCard(
                 WorkloadStatColumn(
                     value = "$totalWickets",
                     label = "Wickets",
-                    color = WicketRed,
+                    color = colors.statusLive,
                 )
 
                 Box(
@@ -190,9 +192,9 @@ fun BowlerWorkloadCard(
                     value = String.format("%.1f", economy),
                     label = "Economy",
                     color = when {
-                        economy <= 6f -> SuccessGreen
-                        economy <= 8f -> WarningYellow
-                        else -> WicketRed
+                        economy <= 6f -> colors.statusSuccess
+                        economy <= 8f -> colors.statusWarning
+                        else -> colors.statusLive
                     },
                 )
 
@@ -206,7 +208,7 @@ fun BowlerWorkloadCard(
                 WorkloadStatColumn(
                     value = "$totalDots",
                     label = "Dot Balls",
-                    color = ChartBlue,
+                    color = colors.statusInfo,
                 )
             }
 
@@ -222,7 +224,7 @@ fun BowlerWorkloadCard(
                         modifier = Modifier
                             .size(10.dp)
                             .clip(RoundedCornerShape(2.dp))
-                            .background(SuccessGreen),
+                            .background(colors.statusSuccess),
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
@@ -237,7 +239,7 @@ fun BowlerWorkloadCard(
                         modifier = Modifier
                             .size(10.dp)
                             .clip(RoundedCornerShape(2.dp))
-                            .background(WarningYellow),
+                            .background(colors.statusWarning),
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
@@ -252,7 +254,7 @@ fun BowlerWorkloadCard(
                         modifier = Modifier
                             .size(10.dp)
                             .clip(RoundedCornerShape(2.dp))
-                            .background(WicketRed),
+                            .background(colors.statusLive),
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
@@ -271,11 +273,12 @@ private fun BowlerWorkloadRow(
     bowler: BowlerWorkloadEntry,
     animatedProgress: Float,
 ) {
+    val colors = BouncerDesignSystem.colors
     val workloadPercentage = bowler.oversBowled / bowler.maxOvers
     val workloadColor = when {
-        workloadPercentage <= 0.5f -> SuccessGreen
-        workloadPercentage <= 0.75f -> WarningYellow
-        else -> WicketRed
+        workloadPercentage <= 0.5f -> colors.statusSuccess
+        workloadPercentage <= 0.75f -> colors.statusWarning
+        else -> colors.statusLive
     }
 
     val economy = if (bowler.oversBowled > 0) bowler.runsConceded / bowler.oversBowled else 0f
@@ -297,7 +300,7 @@ private fun BowlerWorkloadRow(
             .clip(RoundedCornerShape(12.dp))
             .background(
                 if (bowler.isCurrentBowler) {
-                    LiveBlue.copy(alpha = 0.1f * currentGlow)
+                    colors.statusInfo.copy(alpha = 0.1f * currentGlow)
                 } else {
                     Color(0xFF2D2D44)
                 },
@@ -315,7 +318,7 @@ private fun BowlerWorkloadRow(
                         modifier = Modifier
                             .size(8.dp)
                             .clip(CircleShape)
-                            .background(LiveBlue),
+                            .background(colors.statusInfo),
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                 }
@@ -331,7 +334,7 @@ private fun BowlerWorkloadRow(
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = "BOWLING",
-                        color = LiveBlue,
+                        color = colors.statusInfo,
                         fontSize = 9.sp,
                         fontWeight = FontWeight.Bold,
                     )
@@ -391,9 +394,9 @@ private fun BowlerWorkloadRow(
                 Text(
                     text = "Econ: ${String.format("%.1f", economy)}",
                     color = when {
-                        economy <= 6f -> SuccessGreen
-                        economy <= 8f -> WarningYellow
-                        else -> WicketRed
+                        economy <= 6f -> colors.statusSuccess
+                        economy <= 8f -> colors.statusWarning
+                        else -> colors.statusLive
                     },
                     fontSize = 10.sp,
                 )
@@ -407,7 +410,7 @@ private fun BowlerWorkloadRow(
                 if (bowler.maidens > 0) {
                     Text(
                         text = "Maidens: ${bowler.maidens}",
-                        color = SuccessGreen,
+                        color = colors.statusSuccess,
                         fontSize = 10.sp,
                     )
                 }
@@ -429,6 +432,7 @@ private fun WorkloadStatColumn(
     label: String,
     color: Color,
 ) {
+    val colors = BouncerDesignSystem.colors
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
@@ -448,6 +452,7 @@ private fun WorkloadStatColumn(
 
 @Composable
 fun BowlerWorkloadCardPreview() {
+    val colors = BouncerDesignSystem.colors
     val bowlers = listOf(
         BowlerWorkloadEntry("Jasprit Bumrah", 4f, 4f, 24, 2, 12, 0, 8, true),
         BowlerWorkloadEntry("Mohammed Shami", 3f, 4f, 28, 1, 8, 0, 12, false),

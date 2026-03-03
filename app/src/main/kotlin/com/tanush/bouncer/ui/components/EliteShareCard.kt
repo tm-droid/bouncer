@@ -44,6 +44,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
+import io.sentry.Sentry
 
 /**
  * EliteShareCard - Premium Social Media Share Image Generator
@@ -92,6 +93,7 @@ fun EliteShareCardPreview(
     modifier: Modifier = Modifier,
     onShareClick: () -> Unit = {}
 ) {
+    val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "shareCard")
     val shimmerOffset by infiniteTransition.animateFloat(
         initialValue = -500f,
@@ -108,15 +110,15 @@ fun EliteShareCardPreview(
             .shadow(
                 elevation = 16.dp,
                 shape = RoundedCornerShape(20.dp),
-                spotColor = ShinyGoldDeep.copy(alpha = 0.3f)
+                spotColor = colors.goldPrimary.copy(alpha = 0.3f)
             )
             .clip(RoundedCornerShape(20.dp))
             .background(
                 Brush.verticalGradient(
                     colors = listOf(
-                        BlackBackground,
+                        colors.backgroundBase,
                         Color.White.copy(alpha = 0.08f),
-                        BlackBackground
+                        colors.backgroundBase
                     )
                 )
             )
@@ -124,9 +126,9 @@ fun EliteShareCardPreview(
                 width = 1.5.dp,
                 brush = Brush.linearGradient(
                     colors = listOf(
-                        ShinyGoldDeep.copy(alpha = 0.5f),
-                        ShinyGoldDim.copy(alpha = 0.2f),
-                        ShinyGoldDeep.copy(alpha = 0.5f)
+                        colors.goldPrimary.copy(alpha = 0.5f),
+                        colors.goldLight.copy(alpha = 0.2f),
+                        colors.goldPrimary.copy(alpha = 0.5f)
                     )
                 ),
                 shape = RoundedCornerShape(20.dp)
@@ -147,7 +149,7 @@ fun EliteShareCardPreview(
                 if (data.isLive) {
                     Box(
                         modifier = Modifier
-                            .background(ErrorRed, RoundedCornerShape(8.dp))
+                            .background(colors.statusLive, RoundedCornerShape(8.dp))
                             .padding(horizontal = 10.dp, vertical = 4.dp)
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -173,7 +175,7 @@ fun EliteShareCardPreview(
                     text = data.matchType.uppercase(),
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
-                    color = TextTertiary,
+                    color = colors.textTertiary,
                     letterSpacing = 2.sp
                 )
             }
@@ -198,20 +200,20 @@ fun EliteShareCardPreview(
                             .background(
                                 Brush.radialGradient(
                                     colors = listOf(
-                                        ShinyGoldDeep.copy(alpha = 0.3f),
+                                        colors.goldPrimary.copy(alpha = 0.3f),
                                         Color.Transparent
                                     )
                                 ),
                                 CircleShape
                             )
-                            .border(2.dp, ShinyGoldDeep.copy(alpha = 0.5f), CircleShape),
+                            .border(2.dp, colors.goldPrimary.copy(alpha = 0.5f), CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
                             text = data.team1Name.take(3).uppercase(),
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Black,
-                            color = ShinyGoldDeep
+                            color = colors.goldPrimary
                         )
                     }
                     
@@ -221,7 +223,7 @@ fun EliteShareCardPreview(
                         text = data.team1Name.uppercase(),
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,
-                        color = TextPrimary,
+                        color = colors.textPrimary,
                         letterSpacing = 1.sp
                     )
                     
@@ -229,7 +231,7 @@ fun EliteShareCardPreview(
                         text = data.team1Score,
                         fontSize = 28.sp,
                         fontWeight = FontWeight.Black,
-                        color = ShinyGoldDeep
+                        color = colors.goldPrimary
                     )
                 }
                 
@@ -248,7 +250,7 @@ fun EliteShareCardPreview(
                             text = "VS",
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Black,
-                            color = TextTertiary
+                            color = colors.textTertiary
                         )
                     }
                 }
@@ -265,20 +267,20 @@ fun EliteShareCardPreview(
                             .background(
                                 Brush.radialGradient(
                                     colors = listOf(
-                                        TextSecondary.copy(alpha = 0.2f),
+                                        colors.textSecondary.copy(alpha = 0.2f),
                                         Color.Transparent
                                     )
                                 ),
                                 CircleShape
                             )
-                            .border(2.dp, TextSecondary.copy(alpha = 0.3f), CircleShape),
+                            .border(2.dp, colors.textSecondary.copy(alpha = 0.3f), CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
                             text = data.team2Name.take(3).uppercase(),
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Black,
-                            color = TextSecondary
+                            color = colors.textSecondary
                         )
                     }
                     
@@ -288,7 +290,7 @@ fun EliteShareCardPreview(
                         text = data.team2Name.uppercase(),
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,
-                        color = TextPrimary,
+                        color = colors.textPrimary,
                         letterSpacing = 1.sp
                     )
                     
@@ -296,7 +298,7 @@ fun EliteShareCardPreview(
                         text = data.team2Score ?: "-",
                         fontSize = 28.sp,
                         fontWeight = FontWeight.Black,
-                        color = TextSecondary
+                        color = colors.textSecondary
                     )
                 }
             }
@@ -308,7 +310,7 @@ fun EliteShareCardPreview(
                 text = data.matchStatus,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Medium,
-                color = TextSecondary,
+                color = colors.textSecondary,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth()
             )
@@ -332,14 +334,14 @@ fun EliteShareCardPreview(
                         .background(
                             Brush.horizontalGradient(
                                 colors = listOf(
-                                    ShinyGoldDeep.copy(alpha = 0.1f),
-                                    ShinyGoldDeep.copy(alpha = 0.2f),
-                                    ShinyGoldDeep.copy(alpha = 0.1f)
+                                    colors.goldPrimary.copy(alpha = 0.1f),
+                                    colors.goldPrimary.copy(alpha = 0.2f),
+                                    colors.goldPrimary.copy(alpha = 0.1f)
                                 )
                             ),
                             RoundedCornerShape(12.dp)
                         )
-                        .border(1.dp, ShinyGoldDeep.copy(alpha = 0.3f), RoundedCornerShape(12.dp))
+                        .border(1.dp, colors.goldPrimary.copy(alpha = 0.3f), RoundedCornerShape(12.dp))
                         .padding(16.dp)
                 ) {
                     Column(
@@ -350,7 +352,7 @@ fun EliteShareCardPreview(
                             text = "KEY PERFORMER",
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
-                            color = ShinyGoldDim,
+                            color = colors.goldLight,
                             letterSpacing = 1.5.sp
                         )
                         Spacer(modifier = Modifier.height(8.dp))
@@ -358,13 +360,13 @@ fun EliteShareCardPreview(
                             text = player,
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
-                            color = ShinyGoldDeep
+                            color = colors.goldPrimary
                         )
                         data.keyPlayerStat?.let { stat ->
                             Text(
                                 text = stat,
                                 fontSize = 14.sp,
-                                color = TextSecondary
+                                color = colors.textSecondary
                             )
                         }
                     }
@@ -394,7 +396,7 @@ fun EliteShareCardPreview(
                     text = "BOUNCER",
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Black,
-                    color = ShinyGoldDeep,
+                    color = colors.goldPrimary,
                     letterSpacing = 4.sp,
                     modifier = Modifier.padding(horizontal = 16.dp)
                 )
@@ -420,14 +422,14 @@ fun EliteShareCardPreview(
                     .fillMaxWidth()
                     .height(48.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = ShinyGoldDeep
+                    containerColor = colors.goldPrimary
                 ),
                 shape = RoundedCornerShape(12.dp)
             ) {
                 Icon(
                     imageVector = Icons.Default.Share,
                     contentDescription = "Share",
-                    tint = BlackBackground,
+                    tint = colors.backgroundBase,
                     modifier = Modifier.size(20.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
@@ -435,7 +437,7 @@ fun EliteShareCardPreview(
                     text = "SHARE",
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
-                    color = BlackBackground,
+                    color = colors.backgroundBase,
                     letterSpacing = 1.sp
                 )
             }
@@ -449,6 +451,7 @@ private fun WinProbabilityShareBar(
     team1Name: String,
     team2Name: String
 ) {
+    val colors = BouncerDesignSystem.colors
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -458,20 +461,20 @@ private fun WinProbabilityShareBar(
                 text = "${(probability * 100).toInt()}%",
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
-                color = if (probability > 0.5f) SuccessGreen else ShinyGoldDeep
+                color = if (probability > 0.5f) colors.statusSuccess else colors.goldPrimary
             )
             Text(
                 text = "WIN PROBABILITY",
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Bold,
-                color = TextTertiary,
+                color = colors.textTertiary,
                 letterSpacing = 1.sp
             )
             Text(
                 text = "${((1 - probability) * 100).toInt()}%",
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
-                color = if (probability < 0.5f) ErrorRed else TextSecondary
+                color = if (probability < 0.5f) colors.statusLive else colors.textSecondary
             )
         }
         
@@ -492,7 +495,7 @@ private fun WinProbabilityShareBar(
                         .fillMaxHeight()
                         .background(
                             Brush.horizontalGradient(
-                                colors = listOf(ShinyGoldDark, ShinyGoldDeep)
+                                colors = listOf(colors.goldDark, colors.goldPrimary)
                             )
                         )
                 )
@@ -504,7 +507,7 @@ private fun WinProbabilityShareBar(
                         .fillMaxHeight()
                         .background(
                             Brush.horizontalGradient(
-                                colors = listOf(TextSecondary.copy(alpha = 0.5f), TextSecondary)
+                                colors = listOf(colors.textSecondary.copy(alpha = 0.5f), colors.textSecondary)
                             )
                         )
                 )
@@ -520,12 +523,12 @@ private fun WinProbabilityShareBar(
             Text(
                 text = team1Name.take(10),
                 fontSize = 10.sp,
-                color = TextTertiary
+                color = colors.textTertiary
             )
             Text(
                 text = team2Name.take(10),
                 fontSize = 10.sp,
-                color = TextTertiary
+                color = colors.textTertiary
             )
         }
     }
@@ -697,23 +700,28 @@ object ShareCardGenerator {
         fileName: String = "bouncer_match_${System.currentTimeMillis()}.png"
     ): Uri? = withContext(Dispatchers.IO) {
         try {
-            val cacheDir = File(context.cacheDir, "share_images")
-            if (!cacheDir.exists()) {
-                cacheDir.mkdirs()
-            }
+            try {
+                val cacheDir = File(context.cacheDir, "share_images")
+                if (!cacheDir.exists()) {
+                    cacheDir.mkdirs()
+                }
             
-            val file = File(cacheDir, fileName)
-            FileOutputStream(file).use { out ->
-                bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
-            }
+                val file = File(cacheDir, fileName)
+                FileOutputStream(file).use { out ->
+                    bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
+                }
             
-            FileProvider.getUriForFile(
-                context,
-                "${context.packageName}.provider",
-                file
-            )
+                FileProvider.getUriForFile(
+                    context,
+                    "${context.packageName}.provider",
+                    file
+                )
+            } catch (e: Exception) {
+                Sentry.captureException(e)
+                throw e
+            }
         } catch (e: Exception) {
-            e.printStackTrace()
+            Sentry.captureException(e)
             null
         }
     }
@@ -722,14 +730,19 @@ object ShareCardGenerator {
      * Launches share intent with the generated image
      */
     fun shareImage(context: Context, imageUri: Uri, text: String? = null) {
-        val shareIntent = Intent(Intent.ACTION_SEND).apply {
-            type = "image/png"
-            putExtra(Intent.EXTRA_STREAM, imageUri)
-            text?.let { putExtra(Intent.EXTRA_TEXT, it) }
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-        }
+        try {
+            val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                type = "image/png"
+                putExtra(Intent.EXTRA_STREAM, imageUri)
+                text?.let { putExtra(Intent.EXTRA_TEXT, it) }
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
         
-        context.startActivity(Intent.createChooser(shareIntent, "Share Match Update"))
+            context.startActivity(Intent.createChooser(shareIntent, "Share Match Update"))
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
 }
 
@@ -742,6 +755,7 @@ fun ShareCardButton(
     winProbability: Float,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var isGenerating by remember { mutableStateOf(false) }
@@ -774,21 +788,21 @@ fun ShareCardButton(
         },
         modifier = modifier,
         colors = ButtonDefaults.buttonColors(
-            containerColor = ShinyGoldDeep
+            containerColor = colors.goldPrimary
         ),
         enabled = !isGenerating
     ) {
         if (isGenerating) {
             CircularProgressIndicator(
                 modifier = Modifier.size(20.dp),
-                color = BlackBackground,
+                color = colors.backgroundBase,
                 strokeWidth = 2.dp
             )
         } else {
             Icon(
                 imageVector = Icons.Default.Share,
                 contentDescription = "Share",
-                tint = BlackBackground,
+                tint = colors.backgroundBase,
                 modifier = Modifier.size(20.dp)
             )
         }
@@ -797,7 +811,7 @@ fun ShareCardButton(
             text = if (isGenerating) "GENERATING..." else "SHARE",
             fontSize = 12.sp,
             fontWeight = FontWeight.Bold,
-            color = BlackBackground
+            color = colors.backgroundBase
         )
     }
 }

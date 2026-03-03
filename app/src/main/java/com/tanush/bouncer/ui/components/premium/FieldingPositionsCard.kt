@@ -37,6 +37,7 @@ import com.tanush.bouncer.ui.theme.SuccessGreen
 import com.tanush.bouncer.ui.theme.WarningYellow
 import com.tanush.bouncer.ui.theme.WicketRed
 import kotlin.math.*
+import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 
 /**
  * Fielding positions card showing field placements
@@ -77,6 +78,7 @@ fun FieldingPositionsCard(
     fieldingData: FieldingPositionsData,
     modifier: Modifier = Modifier,
 ) {
+    val colors = BouncerDesignSystem.colors
     val animatedProgress = remember { Animatable(0f) }
 
     val infiniteTransition = rememberInfiniteTransition(label = "fielding")
@@ -121,7 +123,7 @@ fun FieldingPositionsCard(
                             .clip(CircleShape)
                             .background(
                                 Brush.linearGradient(
-                                    colors = listOf(SuccessGreen, Color(0xFF4CAF50)),
+                                    colors = listOf(colors.statusSuccess, Color(0xFF4CAF50)),
                                 ),
                             ),
                         contentAlignment = Alignment.Center,
@@ -139,7 +141,7 @@ fun FieldingPositionsCard(
                     Column {
                         Text(
                             text = "FIELDING POSITIONS",
-                            color = ShinyGoldLight,
+                            color = colors.goldLight,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.5.sp,
@@ -155,12 +157,12 @@ fun FieldingPositionsCard(
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(8.dp))
-                        .background(ChartBlue.copy(alpha = 0.2f))
+                        .background(colors.statusInfo.copy(alpha = 0.2f))
                         .padding(horizontal = 10.dp, vertical = 4.dp),
                 ) {
                     Text(
                         text = fieldingData.strategy,
-                        color = ChartBlue,
+                        color = colors.statusInfo,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
                     )
@@ -177,6 +179,10 @@ fun FieldingPositionsCard(
                     .clip(RoundedCornerShape(16.dp)),
                 contentAlignment = Alignment.Center,
             ) {
+                val statusWarningC = colors.statusWarning
+                val statusLiveC = colors.statusLive
+                val statusInfoC = colors.statusInfo
+                val goldDarkC = colors.goldDark
                 Canvas(modifier = Modifier.fillMaxSize()) {
                     val centerX = size.width / 2
                     val centerY = size.height / 2
@@ -249,9 +255,9 @@ fun FieldingPositionsCard(
 
                         // Fielder position indicator
                         val fielderColor = when {
-                            fielder.isSlip -> WarningYellow
-                            fielder.isClose -> WicketRed
-                            fielder.distance < 0.4f -> ChartBlue
+                            fielder.isSlip -> statusWarningC
+                            fielder.isClose -> statusLiveC
+                            fielder.distance < 0.4f -> statusInfoC
                             else -> Color.White
                         }
 
@@ -284,14 +290,14 @@ fun FieldingPositionsCard(
 
                     // Batsman at crease
                     drawCircle(
-                        color = ShinyGoldMid,
+                        color = goldDarkC,
                         radius = 10.dp.toPx() * ballPulse,
                         center = Offset(centerX, centerY + pitchHeight / 2 - 15.dp.toPx()),
                     )
 
                     // Bowler
                     drawCircle(
-                        color = WicketRed,
+                        color = statusLiveC,
                         radius = 8.dp.toPx(),
                         center = Offset(centerX, centerY - pitchHeight / 2 + 15.dp.toPx()),
                     )
@@ -306,9 +312,9 @@ fun FieldingPositionsCard(
                 horizontalArrangement = Arrangement.SpaceEvenly,
             ) {
                 LegendItem(color = Color.White, label = "Boundary")
-                LegendItem(color = ChartBlue, label = "Inner")
-                LegendItem(color = WarningYellow, label = "Slips")
-                LegendItem(color = WicketRed, label = "Close")
+                LegendItem(color = colors.statusInfo, label = "Inner")
+                LegendItem(color = colors.statusWarning, label = "Slips")
+                LegendItem(color = colors.statusLive, label = "Close")
             }
 
             Spacer(modifier = Modifier.height(14.dp))
@@ -370,6 +376,7 @@ private fun LegendItem(
     color: Color,
     label: String,
 ) {
+    val colors = BouncerDesignSystem.colors
     Row(verticalAlignment = Alignment.CenterVertically) {
         Box(
             modifier = Modifier
@@ -388,6 +395,7 @@ private fun LegendItem(
 
 @Composable
 fun FieldingPositionsCardPreview() {
+    val colors = BouncerDesignSystem.colors
     FieldingPositionsCard(
         fieldingData = FieldingPositionsData(
             battingTeam = "India",

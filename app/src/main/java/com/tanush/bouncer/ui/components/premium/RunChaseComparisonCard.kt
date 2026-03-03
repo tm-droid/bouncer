@@ -42,8 +42,12 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.tanush.bouncer.ui.theme.*
+import com.tanush.bouncer.ui.theme.ChartBlue
+import com.tanush.bouncer.ui.theme.SuccessGreen
+import com.tanush.bouncer.ui.theme.WarningYellow
+import com.tanush.bouncer.ui.theme.WicketRed
 import kotlin.math.abs
+import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 
 /**
  * Run chase comparison showing both innings
@@ -82,6 +86,7 @@ fun RunChaseComparisonCard(
     chaseData: ChaseData,
     modifier: Modifier = Modifier,
 ) {
+    val colors = BouncerDesignSystem.colors
     val animatedProgress = remember { Animatable(0f) }
 
     LaunchedEffect(chaseData) {
@@ -120,7 +125,7 @@ fun RunChaseComparisonCard(
                             .clip(CircleShape)
                             .background(
                                 Brush.linearGradient(
-                                    colors = listOf(ShinyGoldMid, ShinyGoldDeep),
+                                    colors = listOf(colors.goldDark, colors.goldPrimary),
                                 ),
                             ),
                         contentAlignment = Alignment.Center,
@@ -138,7 +143,7 @@ fun RunChaseComparisonCard(
                     Column {
                         Text(
                             text = "RUN CHASE",
-                            color = ShinyGoldLight,
+                            color = colors.goldLight,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.5.sp,
@@ -160,7 +165,7 @@ fun RunChaseComparisonCard(
                     )
                     Text(
                         text = "${chaseData.target}",
-                        color = ShinyGoldMid,
+                        color = colors.goldDark,
                         fontSize = 24.sp,
                         fontWeight = FontWeight.Bold,
                     )
@@ -181,7 +186,7 @@ fun RunChaseComparisonCard(
                 ChaseStatColumn(
                     value = "$runsNeeded",
                     label = "Runs Needed",
-                    color = if (runsNeeded > 60) WicketRed else if (runsNeeded > 30) WarningYellow else SuccessGreen,
+                    color = if (runsNeeded > 60) colors.statusLive else if (runsNeeded > 30) colors.statusWarning else colors.statusSuccess,
                 )
 
                 Box(
@@ -208,14 +213,18 @@ fun RunChaseComparisonCard(
                     value = String.format("%.2f", requiredRate),
                     label = "Req. Rate",
                     color = when {
-                        requiredRate > 12 -> WicketRed
-                        requiredRate > 9 -> WarningYellow
-                        else -> SuccessGreen
+                        requiredRate > 12 -> colors.statusLive
+                        requiredRate > 9 -> colors.statusWarning
+                        else -> colors.statusSuccess
                     },
                 )
             }
 
             Spacer(modifier = Modifier.height(20.dp))
+
+            // Capture color for Canvas scope
+            val goldDark = colors.goldDark
+            val statusInfoColor = colors.statusInfo
 
             // Comparison chart
             Box(
@@ -246,7 +255,7 @@ fun RunChaseComparisonCard(
                     // Draw target line
                     val targetY = height * (1 - chaseData.target.toFloat() / maxRuns)
                     drawLine(
-                        color = ShinyGoldMid.copy(alpha = 0.6f),
+                        color = goldDark.copy(alpha = 0.6f),
                         start = Offset(0f, targetY),
                         end = Offset(width, targetY),
                         strokeWidth = 2f,
@@ -278,13 +287,13 @@ fun RunChaseComparisonCard(
                         drawPath(
                             path = fillPath,
                             brush = Brush.verticalGradient(
-                                colors = listOf(ChartBlue.copy(alpha = 0.3f), Color.Transparent),
+                                colors = listOf(statusInfoColor.copy(alpha = 0.3f), Color.Transparent),
                             ),
                         )
 
                         drawPath(
                             path = team1Path,
-                            color = ChartBlue,
+                            color = statusInfoColor,
                             style = Stroke(width = 3f, cap = StrokeCap.Round),
                         )
                     }
@@ -314,13 +323,13 @@ fun RunChaseComparisonCard(
                         drawPath(
                             path = fillPath,
                             brush = Brush.verticalGradient(
-                                colors = listOf(SuccessGreen.copy(alpha = 0.3f), Color.Transparent),
+                                colors = listOf(colors.statusSuccess.copy(alpha = 0.3f), Color.Transparent),
                             ),
                         )
 
                         drawPath(
                             path = team2Path,
-                            color = SuccessGreen,
+                            color = colors.statusSuccess,
                             style = Stroke(width = 3f, cap = StrokeCap.Round),
                         )
 
@@ -329,7 +338,7 @@ fun RunChaseComparisonCard(
                         val lastX = (lastPoint.over / maxOvers) * width * animatedProgress.value
                         val lastY = height * (1 - lastPoint.runs.toFloat() / maxRuns)
                         drawCircle(
-                            color = SuccessGreen,
+                            color = colors.statusSuccess,
                             radius = 8f,
                             center = Offset(lastX, lastY),
                         )
@@ -370,7 +379,7 @@ fun RunChaseComparisonCard(
                         modifier = Modifier
                             .size(12.dp)
                             .clip(CircleShape)
-                            .background(ChartBlue),
+                            .background(colors.statusInfo),
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
@@ -385,7 +394,7 @@ fun RunChaseComparisonCard(
                         modifier = Modifier
                             .size(12.dp)
                             .clip(CircleShape)
-                            .background(SuccessGreen),
+                            .background(colors.statusSuccess),
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
@@ -400,12 +409,12 @@ fun RunChaseComparisonCard(
                         modifier = Modifier
                             .width(20.dp)
                             .height(2.dp)
-                            .background(ShinyGoldMid),
+                            .background(colors.goldDark),
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
                         text = "Target",
-                        color = ShinyGoldMid,
+                        color = colors.goldDark,
                         fontSize = 12.sp,
                     )
                 }
@@ -423,9 +432,9 @@ fun RunChaseComparisonCard(
                     .clip(RoundedCornerShape(10.dp))
                     .background(
                         if (difference >= 0) {
-                            SuccessGreen.copy(alpha = 0.15f)
+                            colors.statusSuccess.copy(alpha = 0.15f)
                         } else {
-                            WicketRed.copy(alpha = 0.15f)
+                            colors.statusLive.copy(alpha = 0.15f)
                         },
                     )
                     .padding(12.dp),
@@ -446,7 +455,7 @@ fun RunChaseComparisonCard(
                     )
                     Text(
                         text = "${abs(difference)} runs",
-                        color = if (difference >= 0) SuccessGreen else WicketRed,
+                        color = if (difference >= 0) colors.statusSuccess else colors.statusLive,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,
                     )
@@ -462,6 +471,7 @@ private fun ChaseStatColumn(
     label: String,
     color: Color,
 ) {
+    val colors = BouncerDesignSystem.colors
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
@@ -481,6 +491,7 @@ private fun ChaseStatColumn(
 
 @Composable
 fun RunChaseComparisonCardPreview() {
+    val colors = BouncerDesignSystem.colors
     val team1Points = listOf(
         InningsChasePoint(0f, 0, 0),
         InningsChasePoint(4f, 38, 1),

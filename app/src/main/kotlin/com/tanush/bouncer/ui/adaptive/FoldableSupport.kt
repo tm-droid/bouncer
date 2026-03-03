@@ -27,6 +27,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.map
 import kotlin.math.roundToInt
+import io.sentry.Sentry
 
 /**
  * Foldable Device Support for Bouncer Cricket App
@@ -88,26 +89,31 @@ data class FoldingFeatureInfo(
     
     /** Get the safe area that avoids the hinge */
     fun getSafeAreas(): Pair<Rect, Rect> {
-        if (!shouldAvoidHinge) {
-            return Pair(Rect.Zero, Rect.Zero)
-        }
+        try {
+            if (!shouldAvoidHinge) {
+                return Pair(Rect.Zero, Rect.Zero)
+            }
         
-        return when (orientation) {
-            FoldOrientation.HORIZONTAL -> {
-                // Split top and bottom
-                Pair(
-                    Rect(0f, 0f, foldBounds.width, foldBounds.top),
-                    Rect(0f, foldBounds.bottom, foldBounds.width, Float.MAX_VALUE)
-                )
+            return when (orientation) {
+                FoldOrientation.HORIZONTAL -> {
+                    // Split top and bottom
+                    Pair(
+                        Rect(0f, 0f, foldBounds.width, foldBounds.top),
+                        Rect(0f, foldBounds.bottom, foldBounds.width, Float.MAX_VALUE)
+                    )
+                }
+                FoldOrientation.VERTICAL -> {
+                    // Split left and right
+                    Pair(
+                        Rect(0f, 0f, foldBounds.left, Float.MAX_VALUE),
+                        Rect(foldBounds.right, 0f, Float.MAX_VALUE, Float.MAX_VALUE)
+                    )
+                }
+                FoldOrientation.NONE -> Pair(Rect.Zero, Rect.Zero)
             }
-            FoldOrientation.VERTICAL -> {
-                // Split left and right
-                Pair(
-                    Rect(0f, 0f, foldBounds.left, Float.MAX_VALUE),
-                    Rect(foldBounds.right, 0f, Float.MAX_VALUE, Float.MAX_VALUE)
-                )
-            }
-            FoldOrientation.NONE -> Pair(Rect.Zero, Rect.Zero)
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
         }
     }
 }
@@ -407,30 +413,50 @@ class DragDropState<T> {
         private set
     
     fun startDrag(item: T, offset: Offset = Offset.Zero) {
-        draggedItem = item
-        dragOffset = offset
-        isDragging = true
+        try {
+            draggedItem = item
+            dragOffset = offset
+            isDragging = true
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     fun updateDrag(offset: Offset, pane: Int? = null) {
-        dragOffset = offset
-        targetPane = pane
+        try {
+            dragOffset = offset
+            targetPane = pane
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     fun endDrag(): Pair<T?, Int?> {
-        val result = Pair(draggedItem, targetPane)
-        isDragging = false
-        draggedItem = null
-        dragOffset = Offset.Zero
-        targetPane = null
-        return result
+        try {
+            val result = Pair(draggedItem, targetPane)
+            isDragging = false
+            draggedItem = null
+            dragOffset = Offset.Zero
+            targetPane = null
+            return result
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     fun cancelDrag() {
-        isDragging = false
-        draggedItem = null
-        dragOffset = Offset.Zero
-        targetPane = null
+        try {
+            isDragging = false
+            draggedItem = null
+            dragOffset = Offset.Zero
+            targetPane = null
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
 }
 
@@ -556,34 +582,54 @@ class TwoPaneNavigationState(
     private val rightBackStack = mutableListOf<String>()
     
     fun navigateLeft(route: String) {
-        if (leftPaneRoute.isNotEmpty()) {
-            leftBackStack.add(leftPaneRoute)
+        try {
+            if (leftPaneRoute.isNotEmpty()) {
+                leftBackStack.add(leftPaneRoute)
+            }
+            leftPaneRoute = route
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
         }
-        leftPaneRoute = route
     }
     
     fun navigateRight(route: String) {
-        if (rightPaneRoute.isNotEmpty()) {
-            rightBackStack.add(rightPaneRoute)
+        try {
+            if (rightPaneRoute.isNotEmpty()) {
+                rightBackStack.add(rightPaneRoute)
+            }
+            rightPaneRoute = route
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
         }
-        rightPaneRoute = route
     }
     
     fun navigateBackLeft(): Boolean {
-        return if (leftBackStack.isNotEmpty()) {
-            leftPaneRoute = leftBackStack.removeAt(leftBackStack.size - 1)
-            true
-        } else {
-            false
+        try {
+            return if (leftBackStack.isNotEmpty()) {
+                leftPaneRoute = leftBackStack.removeAt(leftBackStack.size - 1)
+                true
+            } else {
+                false
+            }
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
         }
     }
     
     fun navigateBackRight(): Boolean {
-        return if (rightBackStack.isNotEmpty()) {
-            rightPaneRoute = rightBackStack.removeAt(rightBackStack.size - 1)
-            true
-        } else {
-            false
+        try {
+            return if (rightBackStack.isNotEmpty()) {
+                rightPaneRoute = rightBackStack.removeAt(rightBackStack.size - 1)
+                true
+            } else {
+                false
+            }
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
         }
     }
     
@@ -705,7 +751,12 @@ fun Modifier.foldAware(
     avoidHinge: Boolean = true
 ): Modifier {
     if (!foldingInfo.shouldAvoidHinge || !avoidHinge) {
-        return this
+        try {
+            return this
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     return when (foldingInfo.orientation) {

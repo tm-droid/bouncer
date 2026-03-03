@@ -18,6 +18,7 @@ import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import io.sentry.Sentry
 
 /**
  * Material 3 Extensions for Native Android Feel
@@ -123,13 +124,18 @@ object ElevationTint {
  * Get elevation tint for surface level
  */
 fun getElevationTint(elevation: Dp): Color {
-    return when {
-        elevation < 1.dp -> ElevationTint.Level0
-        elevation < 3.dp -> ElevationTint.Level1
-        elevation < 6.dp -> ElevationTint.Level2
-        elevation < 8.dp -> ElevationTint.Level3
-        elevation < 12.dp -> ElevationTint.Level4
-        else -> ElevationTint.Level5
+    try {
+        return when {
+            elevation < 1.dp -> ElevationTint.Level0
+            elevation < 3.dp -> ElevationTint.Level1
+            elevation < 6.dp -> ElevationTint.Level2
+            elevation < 8.dp -> ElevationTint.Level3
+            elevation < 12.dp -> ElevationTint.Level4
+            else -> ElevationTint.Level5
+        }
+    } catch (e: Exception) {
+        Sentry.captureException(e)
+        throw e
     }
 }
 

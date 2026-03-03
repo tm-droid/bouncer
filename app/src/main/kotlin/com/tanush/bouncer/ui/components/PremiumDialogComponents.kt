@@ -86,16 +86,16 @@ fun PremiumDialog(
                     .shadow(
                         elevation = 24.dp,
                         shape = RoundedCornerShape(28.dp),
-                        spotColor = ShinyGoldDeep.copy(alpha = 0.3f)
+                        spotColor = GoldPrimary.copy(alpha = 0.3f)
                     ),
                 shape = RoundedCornerShape(28.dp),
-                color = Color.White.copy(alpha = 0.05f),
+                color = GlassSurface,
                 border = BorderStroke(
                     1.dp,
                     Brush.linearGradient(
                         colors = listOf(
-                            ShinyGoldDeep.copy(alpha = 0.5f + shimmerOffset * 0.2f),
-                            CardBorder.copy(alpha = 0.3f)
+                            GoldPrimary.copy(alpha = 0.5f + shimmerOffset * 0.2f),
+                            GlassBorder.copy(alpha = 0.3f)
                         )
                     )
                 )
@@ -110,7 +110,7 @@ fun PremiumDialog(
                             modifier = Modifier
                                 .size(64.dp)
                                 .background(
-                                    ShinyGoldDeep.copy(alpha = 0.15f),
+                                    GoldPrimary.copy(alpha = 0.15f),
                                     CircleShape
                                 ),
                             contentAlignment = Alignment.Center
@@ -118,7 +118,7 @@ fun PremiumDialog(
                             Icon(
                                 imageVector = icon,
                                 contentDescription = null,
-                                tint = ShinyGoldDeep,
+                                tint = GoldPrimary,
                                 modifier = Modifier.size(32.dp)
                             )
                         }
@@ -153,7 +153,7 @@ fun PremiumDialog(
                                 onClick = onDismiss,
                                 modifier = Modifier.weight(1f),
                                 shape = RoundedCornerShape(14.dp),
-                                border = BorderStroke(1.dp, CardBorder.copy(alpha = 0.5f)),
+                                border = BorderStroke(1.dp, GlassBorder.copy(alpha = 0.5f)),
                                 colors = ButtonDefaults.outlinedButtonColors(
                                     contentColor = TextSecondary
                                 )
@@ -173,8 +173,8 @@ fun PremiumDialog(
                                 modifier = Modifier.weight(1f),
                                 shape = RoundedCornerShape(14.dp),
                                 colors = ButtonDefaults.buttonColors(
-                                    containerColor = ShinyGoldDeep,
-                                    contentColor = BlackBackground
+                                    containerColor = GoldPrimary,
+                                    contentColor = BackgroundBase
                                 )
                             ) {
                                 Text(
@@ -216,7 +216,7 @@ fun PremiumFullScreenModal(
     ) {
         Surface(
             modifier = Modifier.fillMaxSize(),
-            color = BlackBackground
+            color = BackgroundBase
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
                 // Header
@@ -299,12 +299,12 @@ fun PremiumBottomSheet(
                         onClick = {} // Consume clicks
                     ),
                 shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
-                color = Color.White.copy(alpha = 0.05f),
+                color = GlassSurface,
                 border = BorderStroke(
                     width = 1.dp,
                     brush = Brush.verticalGradient(
                         colors = listOf(
-                            ShinyGoldDeep.copy(alpha = glowAlpha),
+                            GoldPrimary.copy(alpha = glowAlpha),
                             Color.Transparent
                         )
                     )
@@ -319,7 +319,7 @@ fun PremiumBottomSheet(
                             .width(40.dp)
                             .height(4.dp)
                             .background(
-                                CardBorder.copy(alpha = 0.5f),
+                                GlassBorder.copy(alpha = 0.5f),
                                 RoundedCornerShape(2.dp)
                             )
                             .align(Alignment.CenterHorizontally)
@@ -419,9 +419,9 @@ fun PremiumInputDialog(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(14.dp),
             colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = ShinyGoldDeep,
-                unfocusedBorderColor = CardBorder.copy(alpha = 0.5f),
-                cursorColor = ShinyGoldDeep,
+                focusedBorderColor = GoldPrimary,
+                unfocusedBorderColor = GlassBorder.copy(alpha = 0.5f),
+                cursorColor = GoldPrimary,
                 focusedTextColor = TextPrimary,
                 unfocusedTextColor = TextPrimary
             ),
@@ -455,10 +455,10 @@ fun <T> PremiumSelectionDialog(
                 .shadow(
                     elevation = 24.dp,
                     shape = RoundedCornerShape(28.dp),
-                    spotColor = ShinyGoldDeep.copy(alpha = 0.3f)
+                    spotColor = GoldPrimary.copy(alpha = 0.3f)
                 ),
             shape = RoundedCornerShape(28.dp),
-            color = Color.White.copy(alpha = 0.05f)
+            color = GlassSurface
         ) {
             Column(
                 modifier = Modifier.padding(vertical = 24.dp)
@@ -486,7 +486,7 @@ fun <T> PremiumSelectionDialog(
                                 onDismiss()
                             }
                             .background(
-                                if (isSelected) ShinyGoldDeep.copy(alpha = 0.1f)
+                                if (isSelected) GoldPrimary.copy(alpha = 0.1f)
                                 else Color.Transparent
                             )
                             .padding(horizontal = 24.dp, vertical = 14.dp)
@@ -537,7 +537,7 @@ fun PremiumActionSheet(
                     Icon(
                         imageVector = action.icon,
                         contentDescription = null,
-                        tint = if (action.isDestructive) ErrorRed else TextSecondary,
+                        tint = if (action.isDestructive) StatusLive else TextSecondary,
                         modifier = Modifier.size(24.dp)
                     )
                     
@@ -545,7 +545,7 @@ fun PremiumActionSheet(
                         text = action.title,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Medium,
-                        color = if (action.isDestructive) ErrorRed else TextPrimary
+                        color = if (action.isDestructive) StatusLive else TextPrimary
                     )
                 }
             }
@@ -594,7 +594,7 @@ fun PremiumFeedbackDialog(
                     }
                     .background(
                         if (isSuccess) ChartGreen.copy(alpha = 0.15f)
-                        else ErrorRed.copy(alpha = 0.15f),
+                        else StatusLive.copy(alpha = 0.15f),
                         CircleShape
                     ),
                 contentAlignment = Alignment.Center
@@ -603,7 +603,7 @@ fun PremiumFeedbackDialog(
                     imageVector = if (isSuccess) Icons.Default.CheckCircle
                     else Icons.Default.Error,
                     contentDescription = null,
-                    tint = if (isSuccess) ChartGreen else ErrorRed,
+                    tint = if (isSuccess) ChartGreen else StatusLive,
                     modifier = Modifier.size(48.dp)
                 )
             }
@@ -626,7 +626,7 @@ fun PremiumFeedbackDialog(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(14.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = if (isSuccess) ChartGreen else ErrorRed,
+                    containerColor = if (isSuccess) ChartGreen else StatusLive,
                     contentColor = Color.White
                 )
             ) {
@@ -669,8 +669,8 @@ fun PremiumLoadingDialog(
     ) {
         Surface(
             shape = RoundedCornerShape(24.dp),
-            color = Color.White.copy(alpha = 0.05f),
-            border = BorderStroke(1.dp, CardBorder.copy(alpha = 0.3f))
+            color = GlassSurface,
+            border = BorderStroke(1.dp, GlassBorder.copy(alpha = 0.3f))
         ) {
             Column(
                 modifier = Modifier.padding(32.dp),
@@ -684,7 +684,7 @@ fun PremiumLoadingDialog(
                     contentAlignment = Alignment.Center
                 ) {
                     CircularProgressIndicator(
-                        color = ShinyGoldDeep,
+                        color = GoldPrimary,
                         strokeWidth = 4.dp,
                         modifier = Modifier.size(48.dp)
                     )

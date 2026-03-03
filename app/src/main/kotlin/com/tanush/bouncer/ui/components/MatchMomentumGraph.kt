@@ -65,12 +65,13 @@ fun MatchMomentumGraph(
     team2Data: List<MomentumPoint> = emptyList(),
     team1Name: String = "Team 1",
     team2Name: String = "Team 2",
-    team1Color: Color = ChartBlue,
-    team2Color: Color = ChartOrange,
+    team1Color: Color = BouncerDesignSystem.colors.goldPrimary,
+    team2Color: Color = BouncerDesignSystem.colors.statusInfo,
     modifier: Modifier = Modifier,
     showRequiredRate: Boolean = true,
     title: String = "MATCH MOMENTUM"
 ) {
+    val colors = BouncerDesignSystem.colors
     var selectedPoint by remember { mutableStateOf<Pair<MomentumPoint, Boolean>?>(null) }
     
     val infiniteTransition = rememberInfiniteTransition(label = "momentum")
@@ -90,7 +91,7 @@ fun MatchMomentumGraph(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(28.dp))
-            .background(Color.White.copy(alpha = 0.08f).copy(alpha = 0.8f))
+            .background(GlassBackground)
             .border(
                 0.5.dp,
                 Brush.linearGradient(colors = listOf(GoldHairline, Color.White.copy(alpha = 0.05f))),
@@ -108,7 +109,7 @@ fun MatchMomentumGraph(
                 Column {
                     Text(
                         title,
-                        color = ShinyGoldDeep,
+                        color = colors.goldPrimary,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Black,
                         letterSpacing = 2.sp
@@ -134,7 +135,7 @@ fun MatchMomentumGraph(
                     .fillMaxWidth()
                     .height(220.dp)
                     .clip(RoundedCornerShape(16.dp))
-                    .background(Color.Black.copy(alpha = 0.3f))
+                    .background(GlassDark)
                     .pointerInput(team1Data, team2Data) {
                         detectTapGestures { offset ->
                             val maxOvers = max(team1Data.lastOrNull()?.over ?: 20f, team2Data.lastOrNull()?.over ?: 20f)
@@ -157,7 +158,7 @@ fun MatchMomentumGraph(
                     for (i in 0..5) {
                         val y = graphHeight * (i / 5f)
                         drawLine(
-                            color = Color.White.copy(alpha = 0.03f),
+                            color = GlassBorder,
                             start = Offset(0f, y),
                             end = Offset(graphWidth, y),
                             strokeWidth = 1.dp.toPx()
@@ -198,9 +199,9 @@ fun MatchMomentumGraph(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 MomentumStatMini("AVG RR", String.format("%.2f", if (team1Data.isNotEmpty()) team1Data.map { it.runRate }.average() else 0.0), team1Color)
-                VerticalDivider(modifier = Modifier.height(24.dp), color = Color.White.copy(alpha = 0.1f))
-                MomentumStatMini("MAX RR", String.format("%.2f", team1Data.maxOfOrNull { it.runRate } ?: 0f), ShinyGoldDeep)
-                VerticalDivider(modifier = Modifier.height(24.dp), color = Color.White.copy(alpha = 0.1f))
+                VerticalDivider(modifier = Modifier.height(24.dp), color = GlassBorderHighlight)
+                MomentumStatMini("MAX RR", String.format("%.2f", team1Data.maxOfOrNull { it.runRate } ?: 0f), colors.goldPrimary)
+                VerticalDivider(modifier = Modifier.height(24.dp), color = GlassBorderHighlight)
                 MomentumStatMini("WICKETS", team1Data.lastOrNull()?.wickets.toString(), ErrorRed)
             }
         }

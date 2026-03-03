@@ -14,6 +14,7 @@ import androidx.compose.ui.composed
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import io.sentry.Sentry
 
 /**
  * Interaction Accessibility Utilities for Bouncer Cricket App
@@ -156,21 +157,31 @@ object SwitchControlSupport {
      * Check if switch access is enabled on device
      */
     fun isSwitchAccessEnabled(context: Context): Boolean {
-        val accessibilityManager = context.getSystemService(Context.ACCESSIBILITY_SERVICE) as? AccessibilityManager
-        return accessibilityManager?.isEnabled == true && 
-               accessibilityManager.isTouchExplorationEnabled
+        try {
+            val accessibilityManager = context.getSystemService(Context.ACCESSIBILITY_SERVICE) as? AccessibilityManager
+            return accessibilityManager?.isEnabled == true && 
+                   accessibilityManager.isTouchExplorationEnabled
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     /**
      * Get recommended focus order for switch navigation
      */
     fun getRecommendedFocusOrder(): List<FocusableElement> {
-        return listOf(
-            FocusableElement.NAVIGATION,
-            FocusableElement.PRIMARY_CONTENT,
-            FocusableElement.ACTIONS,
-            FocusableElement.SECONDARY_CONTENT
-        )
+        try {
+            return listOf(
+                FocusableElement.NAVIGATION,
+                FocusableElement.PRIMARY_CONTENT,
+                FocusableElement.ACTIONS,
+                FocusableElement.SECONDARY_CONTENT
+            )
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     /**
@@ -302,8 +313,13 @@ object VoiceCommandActions {
     ): VoiceCommand? {
         val normalized = spokenPhrase.lowercase().trim()
         return commands.find { command ->
-            command.phrases.any { phrase ->
-                normalized.contains(phrase) || phrase.contains(normalized)
+            try {
+                command.phrases.any { phrase ->
+                    normalized.contains(phrase) || phrase.contains(normalized)
+                }
+            } catch (e: Exception) {
+                Sentry.captureException(e)
+                throw e
             }
         }
     }
@@ -360,16 +376,26 @@ sealed class HapticPattern {
         val amplitudes: IntArray
     ) : HapticPattern() {
         override fun equals(other: Any?): Boolean {
-            if (this === other) return true
-            if (javaClass != other?.javaClass) return false
-            other as Custom
-            return timings.contentEquals(other.timings) && amplitudes.contentEquals(other.amplitudes)
+            try {
+                if (this === other) return true
+                if (javaClass != other?.javaClass) return false
+                other as Custom
+                return timings.contentEquals(other.timings) && amplitudes.contentEquals(other.amplitudes)
+            } catch (e: Exception) {
+                Sentry.captureException(e)
+                throw e
+            }
         }
         
         override fun hashCode(): Int {
-            var result = timings.contentHashCode()
-            result = 31 * result + amplitudes.contentHashCode()
-            return result
+            try {
+                var result = timings.contentHashCode()
+                result = 31 * result + amplitudes.contentHashCode()
+                return result
+            } catch (e: Exception) {
+                Sentry.captureException(e)
+                throw e
+            }
         }
     }
 }
@@ -393,66 +419,76 @@ class HapticController(private val context: Context) {
      * Check if haptic feedback is available
      */
     fun isHapticAvailable(): Boolean {
-        return vibrator?.hasVibrator() == true
+        try {
+            return vibrator?.hasVibrator() == true
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     /**
      * Execute a haptic pattern
      */
     fun execute(pattern: HapticPattern) {
-        if (!isHapticAvailable()) return
+        try {
+            if (!isHapticAvailable()) return
         
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val effect = when (pattern) {
-                is HapticPattern.Success -> VibrationEffect.createOneShot(50, VibrationEffect.DEFAULT_AMPLITUDE)
-                is HapticPattern.Error -> VibrationEffect.createWaveform(
-                    longArrayOf(0, 100, 50, 100),
-                    intArrayOf(0, 200, 0, 200),
-                    -1
-                )
-                is HapticPattern.Boundary -> VibrationEffect.createOneShot(30, 150)
-                is HapticPattern.Wicket -> VibrationEffect.createWaveform(
-                    longArrayOf(0, 150, 50, 150, 50, 200),
-                    intArrayOf(0, 255, 0, 255, 0, 255),
-                    -1
-                )
-                is HapticPattern.BoundaryHit -> {
-                    if (pattern.isSix) {
-                        VibrationEffect.createWaveform(
-                            longArrayOf(0, 100, 30, 100, 30, 100),
-                            intArrayOf(0, 200, 0, 220, 0, 255),
-                            -1
-                        )
-                    } else {
-                        VibrationEffect.createWaveform(
-                            longArrayOf(0, 80, 40, 80),
-                            intArrayOf(0, 180, 0, 200),
-                            -1
-                        )
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val effect = when (pattern) {
+                    is HapticPattern.Success -> VibrationEffect.createOneShot(50, VibrationEffect.DEFAULT_AMPLITUDE)
+                    is HapticPattern.Error -> VibrationEffect.createWaveform(
+                        longArrayOf(0, 100, 50, 100),
+                        intArrayOf(0, 200, 0, 200),
+                        -1
+                    )
+                    is HapticPattern.Boundary -> VibrationEffect.createOneShot(30, 150)
+                    is HapticPattern.Wicket -> VibrationEffect.createWaveform(
+                        longArrayOf(0, 150, 50, 150, 50, 200),
+                        intArrayOf(0, 255, 0, 255, 0, 255),
+                        -1
+                    )
+                    is HapticPattern.BoundaryHit -> {
+                        if (pattern.isSix) {
+                            VibrationEffect.createWaveform(
+                                longArrayOf(0, 100, 30, 100, 30, 100),
+                                intArrayOf(0, 200, 0, 220, 0, 255),
+                                -1
+                            )
+                        } else {
+                            VibrationEffect.createWaveform(
+                                longArrayOf(0, 80, 40, 80),
+                                intArrayOf(0, 180, 0, 200),
+                                -1
+                            )
+                        }
                     }
+                    is HapticPattern.LiveTick -> VibrationEffect.createOneShot(10, 100)
+                    is HapticPattern.Selection -> VibrationEffect.createOneShot(20, 120)
+                    is HapticPattern.Custom -> VibrationEffect.createWaveform(
+                        pattern.timings,
+                        pattern.amplitudes,
+                        -1
+                    )
                 }
-                is HapticPattern.LiveTick -> VibrationEffect.createOneShot(10, 100)
-                is HapticPattern.Selection -> VibrationEffect.createOneShot(20, 120)
-                is HapticPattern.Custom -> VibrationEffect.createWaveform(
-                    pattern.timings,
-                    pattern.amplitudes,
-                    -1
-                )
+                vibrator?.vibrate(effect)
+            } else {
+                // Fallback for older devices
+                @Suppress("DEPRECATION")
+                when (pattern) {
+                    is HapticPattern.Success -> vibrator?.vibrate(50)
+                    is HapticPattern.Error -> vibrator?.vibrate(longArrayOf(0, 100, 50, 100), -1)
+                    is HapticPattern.Boundary -> vibrator?.vibrate(30)
+                    is HapticPattern.Wicket -> vibrator?.vibrate(longArrayOf(0, 150, 50, 150, 50, 200), -1)
+                    is HapticPattern.BoundaryHit -> vibrator?.vibrate(longArrayOf(0, 80, 40, 80), -1)
+                    is HapticPattern.LiveTick -> vibrator?.vibrate(10)
+                    is HapticPattern.Selection -> vibrator?.vibrate(20)
+                    is HapticPattern.Custom -> vibrator?.vibrate(pattern.timings, -1)
+                }
             }
-            vibrator?.vibrate(effect)
-        } else {
-            // Fallback for older devices
-            @Suppress("DEPRECATION")
-            when (pattern) {
-                is HapticPattern.Success -> vibrator?.vibrate(50)
-                is HapticPattern.Error -> vibrator?.vibrate(longArrayOf(0, 100, 50, 100), -1)
-                is HapticPattern.Boundary -> vibrator?.vibrate(30)
-                is HapticPattern.Wicket -> vibrator?.vibrate(longArrayOf(0, 150, 50, 150, 50, 200), -1)
-                is HapticPattern.BoundaryHit -> vibrator?.vibrate(longArrayOf(0, 80, 40, 80), -1)
-                is HapticPattern.LiveTick -> vibrator?.vibrate(10)
-                is HapticPattern.Selection -> vibrator?.vibrate(20)
-                is HapticPattern.Custom -> vibrator?.vibrate(pattern.timings, -1)
-            }
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
         }
     }
 }
@@ -545,15 +581,20 @@ object ReducedMotionDetector {
      * Check if user has enabled reduced motion in system settings
      */
     fun isReducedMotionEnabled(context: Context): Boolean {
-        return try {
-            val animatorDurationScale = Settings.Global.getFloat(
-                context.contentResolver,
-                Settings.Global.ANIMATOR_DURATION_SCALE,
-                1.0f
-            )
-            animatorDurationScale == 0f
+        try {
+            return try {
+                val animatorDurationScale = Settings.Global.getFloat(
+                    context.contentResolver,
+                    Settings.Global.ANIMATOR_DURATION_SCALE,
+                    1.0f
+                )
+                animatorDurationScale == 0f
+            } catch (e: Exception) {
+                false
+            }
         } catch (e: Exception) {
-            false
+            Sentry.captureException(e)
+            throw e
         }
     }
     
@@ -561,14 +602,19 @@ object ReducedMotionDetector {
      * Get the animation duration scale from system settings
      */
     fun getAnimationScale(context: Context): Float {
-        return try {
-            Settings.Global.getFloat(
-                context.contentResolver,
-                Settings.Global.ANIMATOR_DURATION_SCALE,
+        try {
+            return try {
+                Settings.Global.getFloat(
+                    context.contentResolver,
+                    Settings.Global.ANIMATOR_DURATION_SCALE,
+                    1.0f
+                )
+            } catch (e: Exception) {
                 1.0f
-            )
+            }
         } catch (e: Exception) {
-            1.0f
+            Sentry.captureException(e)
+            throw e
         }
     }
     
@@ -576,8 +622,13 @@ object ReducedMotionDetector {
      * Calculate adjusted animation duration based on system preferences
      */
     fun adjustedDuration(baseMillis: Long, context: Context): Long {
-        val scale = getAnimationScale(context)
-        return if (scale == 0f) 0L else (baseMillis * scale).toLong()
+        try {
+            val scale = getAnimationScale(context)
+            return if (scale == 0f) 0L else (baseMillis * scale).toLong()
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
 }
 
@@ -631,36 +682,56 @@ class AccessibilityState(
      * Check if TalkBack or other screen reader is active
      */
     fun isScreenReaderActive(): Boolean {
-        val accessibilityManager = context.getSystemService(Context.ACCESSIBILITY_SERVICE) as? AccessibilityManager
-        return accessibilityManager?.isTouchExplorationEnabled == true
+        try {
+            val accessibilityManager = context.getSystemService(Context.ACCESSIBILITY_SERVICE) as? AccessibilityManager
+            return accessibilityManager?.isTouchExplorationEnabled == true
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     /**
      * Check if switch access is enabled
      */
     fun isSwitchAccessEnabled(): Boolean {
-        return SwitchControlSupport.isSwitchAccessEnabled(context)
+        try {
+            return SwitchControlSupport.isSwitchAccessEnabled(context)
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     /**
      * Check if any accessibility service is active
      */
     fun isAnyAccessibilityServiceActive(): Boolean {
-        val accessibilityManager = context.getSystemService(Context.ACCESSIBILITY_SERVICE) as? AccessibilityManager
-        return accessibilityManager?.isEnabled == true
+        try {
+            val accessibilityManager = context.getSystemService(Context.ACCESSIBILITY_SERVICE) as? AccessibilityManager
+            return accessibilityManager?.isEnabled == true
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     /**
      * Get recommended accessibility preferences based on system state
      */
     fun getRecommendedPreferences(): AccessibilityPreferences {
-        return AccessibilityPreferences(
-            largeTouchTargetsEnabled = isScreenReaderActive() || isSwitchAccessEnabled(),
-            screenReaderOptimized = isScreenReaderActive(),
-            reducedMotionEnabled = ReducedMotionDetector.isReducedMotionEnabled(context),
-            animationScale = ReducedMotionDetector.getAnimationScale(context),
-            hapticFeedbackEnabled = !isScreenReaderActive() // Often disabled with screen readers
-        )
+        try {
+            return AccessibilityPreferences(
+                largeTouchTargetsEnabled = isScreenReaderActive() || isSwitchAccessEnabled(),
+                screenReaderOptimized = isScreenReaderActive(),
+                reducedMotionEnabled = ReducedMotionDetector.isReducedMotionEnabled(context),
+                animationScale = ReducedMotionDetector.getAnimationScale(context),
+                hapticFeedbackEnabled = !isScreenReaderActive() // Often disabled with screen readers
+            )
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
 }
 

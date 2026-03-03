@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.ui.components.CoilImage
 import com.tanush.bouncer.ui.theme.*
+import io.sentry.Sentry
 
 /**
  * Match summary data
@@ -98,19 +99,21 @@ fun MatchSummaryCard(
         label = "liveGlow"
     )
     
+    val colors = BouncerDesignSystem.colors
+    
     Card(
         modifier = modifier
             .fillMaxWidth()
             .shadow(
                 elevation = 24.dp,
                 shape = RoundedCornerShape(28.dp),
-                spotColor = if (summary.isLive) SuccessGreen.copy(alpha = 0.2f) else ShinyGoldDeep.copy(alpha = 0.15f)
+                spotColor = if (summary.isLive) colors.statusSuccess.copy(alpha = 0.2f) else colors.goldDark.copy(alpha = 0.15f)
             ),
-        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.05f)),
+        colors = CardDefaults.cardColors(containerColor = colors.glassSurface),
         shape = RoundedCornerShape(28.dp),
         border = BorderStroke(
             0.5.dp,
-            if (summary.isLive) SuccessGreen.copy(alpha = liveGlow) else CardBorder.copy(alpha = 0.3f)
+            if (summary.isLive) colors.statusSuccess.copy(alpha = liveGlow) else colors.glassBorder.copy(alpha = 0.3f)
         )
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
@@ -156,6 +159,7 @@ fun MatchSummaryCard(
  */
 @Composable
 private fun MatchHeader(summary: MatchSummaryData, liveGlow: Float) {
+    val colors = BouncerDesignSystem.colors
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -168,7 +172,7 @@ private fun MatchHeader(summary: MatchSummaryData, liveGlow: Float) {
             ) {
                 Text(
                     text = summary.matchTitle,
-                    color = TextPrimary,
+                    color = colors.textPrimary,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
@@ -178,11 +182,11 @@ private fun MatchHeader(summary: MatchSummaryData, liveGlow: Float) {
                 // Format badge
                 Surface(
                     shape = RoundedCornerShape(4.dp),
-                    color = ChartBlue.copy(alpha = 0.15f)
+                    color = colors.statusInfo.copy(alpha = 0.15f)
                 ) {
                     Text(
                         text = summary.matchFormat,
-                        color = ChartBlue,
+                        color = colors.statusInfo,
                         fontSize = 9.sp,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
@@ -194,7 +198,7 @@ private fun MatchHeader(summary: MatchSummaryData, liveGlow: Float) {
             
             Text(
                 text = summary.venue,
-                color = TextSecondary,
+                color = colors.textSecondary,
                 fontSize = 11.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -202,7 +206,7 @@ private fun MatchHeader(summary: MatchSummaryData, liveGlow: Float) {
             
             Text(
                 text = summary.date,
-                color = TextTertiary,
+                color = colors.textTertiary,
                 fontSize = 10.sp
             )
         }
@@ -211,8 +215,8 @@ private fun MatchHeader(summary: MatchSummaryData, liveGlow: Float) {
         if (summary.isLive) {
             Surface(
                 shape = RoundedCornerShape(8.dp),
-                color = SuccessGreen.copy(alpha = 0.2f),
-                border = BorderStroke(1.dp, SuccessGreen.copy(alpha = liveGlow)),
+                color = colors.statusSuccess.copy(alpha = 0.2f),
+                border = BorderStroke(1.dp, colors.statusSuccess.copy(alpha = liveGlow)),
                 modifier = Modifier.padding(start = 8.dp)
             ) {
                 Row(
@@ -223,11 +227,11 @@ private fun MatchHeader(summary: MatchSummaryData, liveGlow: Float) {
                     Box(
                         modifier = Modifier
                             .size(8.dp)
-                            .background(SuccessGreen, CircleShape)
+                            .background(colors.statusSuccess, CircleShape)
                     )
                     Text(
                         text = "LIVE",
-                        color = SuccessGreen,
+                        color = colors.statusSuccess,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 1.sp
@@ -243,10 +247,11 @@ private fun MatchHeader(summary: MatchSummaryData, liveGlow: Float) {
  */
 @Composable
 private fun ScoresSection(team1: TeamSummary, team2: TeamSummary) {
+    val colors = BouncerDesignSystem.colors
     Surface(
         shape = RoundedCornerShape(16.dp),
-        color = Color.White.copy(alpha = 0.08f).copy(alpha = 0.3f),
-        border = BorderStroke(0.5.dp, CardBorder.copy(alpha = 0.2f)),
+        color = colors.glassSurface,
+        border = BorderStroke(0.5.dp, colors.glassBorder.copy(alpha = 0.2f)),
         modifier = Modifier.fillMaxWidth()
     ) {
         Row(
@@ -265,7 +270,7 @@ private fun ScoresSection(team1: TeamSummary, team2: TeamSummary) {
             ) {
                 Text(
                     text = "VS",
-                    color = TextTertiary,
+                    color = colors.textTertiary,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -282,6 +287,7 @@ private fun ScoresSection(team1: TeamSummary, team2: TeamSummary) {
  */
 @Composable
 private fun TeamScoreColumn(team: TeamSummary, alignment: Alignment.Horizontal) {
+    val colors = BouncerDesignSystem.colors
     Column(
         horizontalAlignment = alignment
     ) {
@@ -298,13 +304,13 @@ private fun TeamScoreColumn(team: TeamSummary, alignment: Alignment.Horizontal) 
             ) {
                 Text(
                     text = team.shortName,
-                    color = TextPrimary,
+                    color = colors.textPrimary,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
                     text = team.name,
-                    color = TextTertiary,
+                    color = colors.textTertiary,
                     fontSize = 10.sp,
                     maxLines = 1
                 )
@@ -320,20 +326,20 @@ private fun TeamScoreColumn(team: TeamSummary, alignment: Alignment.Horizontal) 
         // Score
         Text(
             text = team.score,
-            color = ShinyGoldDeep,
+            color = colors.goldDark,
             fontSize = 22.sp,
             fontWeight = FontWeight.Black
         )
         
         Text(
             text = "(${team.overs} ov)",
-            color = TextSecondary,
+            color = colors.textSecondary,
             fontSize = 11.sp
         )
         
         Text(
             text = "RR: ${String.format("%.2f", team.runRate)}",
-            color = ChartBlue,
+            color = colors.statusInfo,
             fontSize = 10.sp
         )
     }
@@ -344,6 +350,7 @@ private fun TeamScoreColumn(team: TeamSummary, alignment: Alignment.Horizontal) 
  */
 @Composable
 private fun TeamLogo(logoUrl: String?, teamName: String) {
+    val colors = BouncerDesignSystem.colors
     if (logoUrl != null) {
         CoilImage(
             model = logoUrl,
@@ -352,19 +359,19 @@ private fun TeamLogo(logoUrl: String?, teamName: String) {
             modifier = Modifier
                 .size(40.dp)
                 .clip(CircleShape)
-                .border(2.dp, ShinyGoldDeep.copy(alpha = 0.3f), CircleShape)
+                .border(2.dp, colors.goldDark.copy(alpha = 0.3f), CircleShape)
         )
     } else {
         Surface(
             shape = CircleShape,
-            color = ShinyGoldDeep.copy(alpha = 0.15f),
-            border = BorderStroke(1.dp, ShinyGoldDeep.copy(alpha = 0.3f)),
+            color = colors.goldDark.copy(alpha = 0.15f),
+            border = BorderStroke(1.dp, colors.goldDark.copy(alpha = 0.3f)),
             modifier = Modifier.size(40.dp)
         ) {
             Box(contentAlignment = Alignment.Center) {
                 Text(
                     text = teamName.take(2).uppercase(),
-                    color = ShinyGoldDeep,
+                    color = colors.goldDark,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -383,14 +390,15 @@ private fun ResultStatus(
     currentStatus: String?,
     winningTeam: String?
 ) {
+    val colors = BouncerDesignSystem.colors
     Surface(
         shape = RoundedCornerShape(10.dp),
-        color = if (isLive) SuccessGreen.copy(alpha = 0.1f) else ShinyGoldDeep.copy(alpha = 0.1f),
+        color = if (isLive) colors.statusSuccess.copy(alpha = 0.1f) else colors.goldDark.copy(alpha = 0.1f),
         modifier = Modifier.fillMaxWidth()
     ) {
         Text(
             text = if (isLive) currentStatus ?: result else result,
-            color = if (isLive) SuccessGreen else ShinyGoldDeep,
+            color = if (isLive) colors.statusSuccess else colors.goldDark,
             fontSize = 12.sp,
             fontWeight = FontWeight.SemiBold,
             textAlign = TextAlign.Center,
@@ -406,6 +414,7 @@ private fun ResultStatus(
  */
 @Composable
 private fun TopPerformers(team1: TeamSummary, team2: TeamSummary) {
+    val colors = BouncerDesignSystem.colors
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -413,8 +422,8 @@ private fun TopPerformers(team1: TeamSummary, team2: TeamSummary) {
         // Batting
         Surface(
             shape = RoundedCornerShape(12.dp),
-            color = Color.White.copy(alpha = 0.08f).copy(alpha = 0.3f),
-            border = BorderStroke(0.5.dp, CardBorder.copy(alpha = 0.2f)),
+            color = colors.glassSurface,
+            border = BorderStroke(0.5.dp, colors.glassBorder.copy(alpha = 0.2f)),
             modifier = Modifier.weight(1f)
         ) {
             Column(modifier = Modifier.padding(12.dp)) {
@@ -425,12 +434,12 @@ private fun TopPerformers(team1: TeamSummary, team2: TeamSummary) {
                     Icon(
                         Icons.Default.SportsCricket,
                         contentDescription = null,
-                        tint = ShinyGoldDeep,
+                        tint = colors.goldDark,
                         modifier = Modifier.size(14.dp)
                     )
                     Text(
                         text = "TOP BATTERS",
-                        color = TextTertiary,
+                        color = colors.textTertiary,
                         fontSize = 9.sp,
                         letterSpacing = 0.5.sp
                     )
@@ -451,8 +460,8 @@ private fun TopPerformers(team1: TeamSummary, team2: TeamSummary) {
         // Bowling
         Surface(
             shape = RoundedCornerShape(12.dp),
-            color = Color.White.copy(alpha = 0.08f).copy(alpha = 0.3f),
-            border = BorderStroke(0.5.dp, CardBorder.copy(alpha = 0.2f)),
+            color = colors.glassSurface,
+            border = BorderStroke(0.5.dp, colors.glassBorder.copy(alpha = 0.2f)),
             modifier = Modifier.weight(1f)
         ) {
             Column(modifier = Modifier.padding(12.dp)) {
@@ -463,12 +472,12 @@ private fun TopPerformers(team1: TeamSummary, team2: TeamSummary) {
                     Icon(
                         Icons.Default.GpsFixed,
                         contentDescription = null,
-                        tint = ChartBlue,
+                        tint = colors.statusInfo,
                         modifier = Modifier.size(14.dp)
                     )
                     Text(
                         text = "TOP BOWLERS",
-                        color = TextTertiary,
+                        color = colors.textTertiary,
                         fontSize = 9.sp,
                         letterSpacing = 0.5.sp
                     )
@@ -493,6 +502,7 @@ private fun TopPerformers(team1: TeamSummary, team2: TeamSummary) {
  */
 @Composable
 private fun PerformerRow(name: String, stat: String, team: String) {
+    val colors = BouncerDesignSystem.colors
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -503,7 +513,7 @@ private fun PerformerRow(name: String, stat: String, team: String) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = name,
-                color = TextPrimary,
+                color = colors.textPrimary,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Medium,
                 maxLines = 1,
@@ -511,13 +521,13 @@ private fun PerformerRow(name: String, stat: String, team: String) {
             )
             Text(
                 text = team,
-                color = TextTertiary,
+                color = colors.textTertiary,
                 fontSize = 9.sp
             )
         }
         Text(
             text = stat,
-            color = ShinyGoldDeep,
+            color = colors.goldDark,
             fontSize = 11.sp,
             fontWeight = FontWeight.Bold
         )
@@ -529,10 +539,11 @@ private fun PerformerRow(name: String, stat: String, team: String) {
  */
 @Composable
 private fun PlayerOfMatchSection(pom: PlayerOfMatch) {
+    val colors = BouncerDesignSystem.colors
     Surface(
         shape = RoundedCornerShape(12.dp),
-        color = ShinyGoldDeep.copy(alpha = 0.1f),
-        border = BorderStroke(0.5.dp, ShinyGoldDeep.copy(alpha = 0.3f)),
+        color = colors.goldDark.copy(alpha = 0.1f),
+        border = BorderStroke(0.5.dp, colors.goldDark.copy(alpha = 0.3f)),
         modifier = Modifier.fillMaxWidth()
     ) {
         Row(
@@ -543,14 +554,14 @@ private fun PlayerOfMatchSection(pom: PlayerOfMatch) {
             // Medal icon
             Surface(
                 shape = CircleShape,
-                color = ShinyGoldDeep.copy(alpha = 0.2f),
+                color = colors.goldDark.copy(alpha = 0.2f),
                 modifier = Modifier.size(40.dp)
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
                         Icons.Default.EmojiEvents,
                         contentDescription = null,
-                        tint = ShinyGoldDeep,
+                        tint = colors.goldDark,
                         modifier = Modifier.size(20.dp)
                     )
                 }
@@ -559,19 +570,19 @@ private fun PlayerOfMatchSection(pom: PlayerOfMatch) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = "PLAYER OF THE MATCH",
-                    color = ShinyGoldDeep,
+                    color = colors.goldDark,
                     fontSize = 9.sp,
                     letterSpacing = 0.5.sp
                 )
                 Text(
                     text = pom.name,
-                    color = TextPrimary,
+                    color = colors.textPrimary,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
                     text = "${pom.team} • ${pom.performance}",
-                    color = TextSecondary,
+                    color = colors.textSecondary,
                     fontSize = 11.sp
                 )
             }
@@ -584,10 +595,11 @@ private fun PlayerOfMatchSection(pom: PlayerOfMatch) {
  */
 @Composable
 private fun KeyMomentsSection(moments: List<SummaryKeyMoment>) {
+    val colors = BouncerDesignSystem.colors
     Column {
         Text(
             text = "KEY MOMENTS",
-            color = TextTertiary,
+            color = colors.textTertiary,
             fontSize = 10.sp,
             letterSpacing = 0.5.sp,
             modifier = Modifier.padding(bottom = 8.dp)
@@ -614,13 +626,13 @@ private fun KeyMomentsSection(moments: List<SummaryKeyMoment>) {
                     )
                     Text(
                         text = moment.description,
-                        color = TextPrimary,
+                        color = colors.textPrimary,
                         fontSize = 11.sp,
                         modifier = Modifier.weight(1f)
                     )
                     Text(
                         text = "${moment.over} ov",
-                        color = TextTertiary,
+                        color = colors.textTertiary,
                         fontSize = 10.sp
                     )
                 }
@@ -633,13 +645,18 @@ private fun KeyMomentsSection(moments: List<SummaryKeyMoment>) {
  * Get moment color
  */
 private fun getMomentColor(type: SummaryMomentType): Color {
-    return when (type) {
-        SummaryMomentType.WICKET -> ErrorRed
-        SummaryMomentType.MILESTONE -> ShinyGoldDeep
-        SummaryMomentType.POWERPLAY -> ChartBlue
-        SummaryMomentType.BOUNDARY_SPREE -> SuccessGreen
-        SummaryMomentType.COLLAPSE -> WarningYellow
-        SummaryMomentType.RECORD -> BoundarySix
+    try {
+        return when (type) {
+            SummaryMomentType.WICKET -> StatusLive
+            SummaryMomentType.MILESTONE -> GoldDark
+            SummaryMomentType.POWERPLAY -> StatusInfo
+            SummaryMomentType.BOUNDARY_SPREE -> StatusSuccess
+            SummaryMomentType.COLLAPSE -> StatusWarning
+            SummaryMomentType.RECORD -> GoldPrimary
+        }
+    } catch (e: Exception) {
+        Sentry.captureException(e)
+        throw e
     }
 }
 
@@ -647,13 +664,18 @@ private fun getMomentColor(type: SummaryMomentType): Color {
  * Get moment icon
  */
 private fun getMomentIcon(type: SummaryMomentType): androidx.compose.ui.graphics.vector.ImageVector {
-    return when (type) {
-        SummaryMomentType.WICKET -> Icons.Default.RemoveCircle
-        SummaryMomentType.MILESTONE -> Icons.Default.Stars
-        SummaryMomentType.POWERPLAY -> Icons.Default.FlashOn
-        SummaryMomentType.BOUNDARY_SPREE -> Icons.Default.Whatshot
-        SummaryMomentType.COLLAPSE -> Icons.Default.Warning
-        SummaryMomentType.RECORD -> Icons.Default.EmojiEvents
+    try {
+        return when (type) {
+            SummaryMomentType.WICKET -> Icons.Default.RemoveCircle
+            SummaryMomentType.MILESTONE -> Icons.Default.Stars
+            SummaryMomentType.POWERPLAY -> Icons.Default.FlashOn
+            SummaryMomentType.BOUNDARY_SPREE -> Icons.Default.Whatshot
+            SummaryMomentType.COLLAPSE -> Icons.Default.Warning
+            SummaryMomentType.RECORD -> Icons.Default.EmojiEvents
+        }
+    } catch (e: Exception) {
+        Sentry.captureException(e)
+        throw e
     }
 }
 
@@ -670,10 +692,11 @@ fun MiniMatchSummary(
     isLive: Boolean = false,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     Surface(
         shape = RoundedCornerShape(12.dp),
-        color = Color.White.copy(alpha = 0.08f).copy(alpha = 0.3f),
-        border = BorderStroke(0.5.dp, if (isLive) SuccessGreen.copy(alpha = 0.5f) else CardBorder.copy(alpha = 0.2f)),
+        color = colors.glassSurface,
+        border = BorderStroke(0.5.dp, if (isLive) colors.statusSuccess.copy(alpha = 0.5f) else colors.glassBorder.copy(alpha = 0.2f)),
         modifier = modifier
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
@@ -681,21 +704,21 @@ fun MiniMatchSummary(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text(text = team1Name, color = TextPrimary, fontSize = 11.sp, fontWeight = FontWeight.Medium)
-                Text(text = team1Score, color = ShinyGoldDeep, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                Text(text = team1Name, color = colors.textPrimary, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                Text(text = team1Score, color = colors.goldDark, fontSize = 11.sp, fontWeight = FontWeight.Bold)
             }
             Spacer(modifier = Modifier.height(4.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text(text = team2Name, color = TextPrimary, fontSize = 11.sp, fontWeight = FontWeight.Medium)
-                Text(text = team2Score, color = ShinyGoldDeep, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                Text(text = team2Name, color = colors.textPrimary, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                Text(text = team2Score, color = colors.goldDark, fontSize = 11.sp, fontWeight = FontWeight.Bold)
             }
             Spacer(modifier = Modifier.height(6.dp))
             Text(
                 text = result,
-                color = if (isLive) SuccessGreen else TextSecondary,
+                color = if (isLive) colors.statusSuccess else colors.textSecondary,
                 fontSize = 10.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis

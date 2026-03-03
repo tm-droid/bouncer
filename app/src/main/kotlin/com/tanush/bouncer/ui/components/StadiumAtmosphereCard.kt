@@ -89,6 +89,8 @@ fun StadiumAtmosphereCard(
     venueInfo: StadiumVenueInfo,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
+    val goldPrimary = colors.goldPrimary
     val infiniteTransition = rememberInfiniteTransition(label = "stadium")
     
     // Crowd wave effect
@@ -130,7 +132,7 @@ fun StadiumAtmosphereCard(
             .shadow(
                 elevation = 16.dp,
                 shape = RoundedCornerShape(24.dp),
-                spotColor = ShinyGoldDeep.copy(alpha = 0.2f)
+                spotColor = goldPrimary.copy(alpha = 0.2f)
             ),
         shape = RoundedCornerShape(24.dp),
         color = Color.White.copy(alpha = 0.05f)
@@ -263,14 +265,14 @@ fun StadiumAtmosphereCard(
                         Icon(
                             imageVector = Icons.Filled.LocationOn,
                             contentDescription = null,
-                            tint = ShinyGoldDeep,
+                            tint = goldPrimary,
                             modifier = Modifier.size(18.dp)
                         )
                         Text(
                             text = venueInfo.name,
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
-                            color = TextPrimary,
+                            color = colors.textPrimary,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
@@ -279,7 +281,7 @@ fun StadiumAtmosphereCard(
                     Text(
                         text = "${venueInfo.city}, ${venueInfo.country}",
                         fontSize = 13.sp,
-                        color = TextSecondary,
+                        color = colors.textSecondary,
                         modifier = Modifier.padding(start = 26.dp)
                     )
                 }
@@ -326,6 +328,7 @@ private fun WeatherInfoCard(
     weather: StadiumWeatherInfo,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val weatherIcon = when (weather.condition) {
         StadiumWeatherCondition.SUNNY -> "☀️"
         StadiumWeatherCondition.CLOUDY -> "☁️"
@@ -338,13 +341,13 @@ private fun WeatherInfoCard(
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(12.dp),
-        color = CardBorder.copy(alpha = 0.15f)
+        color = colors.glassBorder.copy(alpha = 0.15f)
     ) {
         Row(
             modifier = Modifier
                 .border(
                     width = 1.dp,
-                    color = CardBorder.copy(alpha = 0.3f),
+                    color = colors.glassBorder.copy(alpha = 0.3f),
                     shape = RoundedCornerShape(12.dp)
                 )
                 .padding(12.dp),
@@ -361,12 +364,12 @@ private fun WeatherInfoCard(
                     text = "${weather.temperature}°C",
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
-                    color = TextPrimary
+                    color = colors.textPrimary
                 )
                 Text(
                     text = "💧${weather.humidity}% 💨${weather.windSpeed}km/h",
                     fontSize = 10.sp,
-                    color = TextSecondary
+                    color = colors.textSecondary
                 )
             }
         }
@@ -379,6 +382,9 @@ private fun AttendanceCard(
     attendance: Int?,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
+    val goldPrimary = colors.goldPrimary
+    val goldDark = colors.goldDark
     val fillPercentage = if (capacity != null && attendance != null) {
         (attendance.toFloat() / capacity * 100).toInt()
     } else null
@@ -386,13 +392,13 @@ private fun AttendanceCard(
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(12.dp),
-        color = ShinyGoldDeep.copy(alpha = 0.1f)
+        color = goldPrimary.copy(alpha = 0.1f)
     ) {
         Column(
             modifier = Modifier
                 .border(
                     width = 1.dp,
-                    color = ShinyGoldDeep.copy(alpha = 0.3f),
+                    color = goldPrimary.copy(alpha = 0.3f),
                     shape = RoundedCornerShape(12.dp)
                 )
                 .padding(12.dp),
@@ -410,7 +416,7 @@ private fun AttendanceCard(
                 Text(
                     text = "Attendance",
                     fontSize = 10.sp,
-                    color = TextSecondary
+                    color = colors.textSecondary
                 )
             }
             
@@ -419,7 +425,7 @@ private fun AttendanceCard(
                     text = "${attendance / 1000}K",
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
-                    color = TextPrimary
+                    color = colors.textPrimary
                 )
             }
             
@@ -433,7 +439,7 @@ private fun AttendanceCard(
                             .width(40.dp)
                             .height(4.dp)
                             .background(
-                                color = CardBorder.copy(alpha = 0.3f),
+                                color = colors.glassBorder.copy(alpha = 0.3f),
                                 shape = RoundedCornerShape(2.dp)
                             )
                     ) {
@@ -443,7 +449,7 @@ private fun AttendanceCard(
                                 .fillMaxHeight()
                                 .background(
                                     brush = Brush.horizontalGradient(
-                                        colors = listOf(ShinyGoldDeep, ShinyGoldMid)
+                                        colors = listOf(goldPrimary, goldDark)
                                     ),
                                     shape = RoundedCornerShape(2.dp)
                                 )
@@ -453,7 +459,7 @@ private fun AttendanceCard(
                         text = "$fill%",
                         fontSize = 9.sp,
                         fontWeight = FontWeight.Bold,
-                        color = ShinyGoldDeep
+                        color = goldPrimary
                     )
                 }
             }
@@ -466,13 +472,14 @@ private fun PitchReportCard(
     pitchReport: StadiumPitchReport,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val pitchColor = when (pitchReport.type) {
-        StadiumPitchType.GREEN -> SuccessGreen
-        StadiumPitchType.DRY -> WarningYellow
-        StadiumPitchType.FLAT -> ChartBlue
+        StadiumPitchType.GREEN -> colors.statusSuccess
+        StadiumPitchType.DRY -> colors.statusWarning
+        StadiumPitchType.FLAT -> colors.statusInfo
         StadiumPitchType.DUSTY -> Color(0xFF8B7355)
-        StadiumPitchType.CRACKED -> WicketRed
-        StadiumPitchType.SPORTING -> ShinyGoldDeep
+        StadiumPitchType.CRACKED -> colors.statusLive
+        StadiumPitchType.SPORTING -> colors.goldPrimary
     }
     
     val pitchEmoji = when (pitchReport.type) {
@@ -515,7 +522,7 @@ private fun PitchReportCard(
                         fontSize = 9.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 1.sp,
-                        color = TextSecondary
+                        color = colors.textSecondary
                     )
                     Text(
                         text = pitchReport.type.name.replace("_", " "),
@@ -529,7 +536,7 @@ private fun PitchReportCard(
             Text(
                 text = pitchReport.behaviour,
                 fontSize = 11.sp,
-                color = TextSecondary,
+                color = colors.textSecondary,
                 textAlign = TextAlign.End,
                 modifier = Modifier.widthIn(max = 160.dp)
             )
@@ -542,6 +549,7 @@ private fun VenueStatsSection(
     stats: StadiumVenueStats,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     Column(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -551,7 +559,7 @@ private fun VenueStatsSection(
             fontSize = 10.sp,
             fontWeight = FontWeight.Bold,
             letterSpacing = 1.sp,
-            color = TextSecondary
+            color = colors.textSecondary
         )
         
         Row(
@@ -588,10 +596,11 @@ private fun VenueStatItem(
     value: String,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(8.dp),
-        color = CardBorder.copy(alpha = 0.1f)
+        color = colors.glassBorder.copy(alpha = 0.1f)
     ) {
         Column(
             modifier = Modifier
@@ -604,12 +613,12 @@ private fun VenueStatItem(
                 text = value,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
-                color = ShinyGoldDeep
+                color = colors.goldPrimary
             )
             Text(
                 text = label,
                 fontSize = 8.sp,
-                color = TextSecondary,
+                color = colors.textSecondary,
                 textAlign = TextAlign.Center,
                 maxLines = 1
             )

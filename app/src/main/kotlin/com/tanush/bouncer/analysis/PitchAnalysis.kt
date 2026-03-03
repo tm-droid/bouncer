@@ -3,6 +3,7 @@ package com.tanush.bouncer.analysis
 import com.tanush.bouncer.models.CricsheetMatch
 import com.tanush.bouncer.models.CricsheetInnings
 import com.tanush.bouncer.models.Over
+import io.sentry.Sentry
 
 data class PitchAnalysisResult(
     val condition: String,
@@ -19,53 +20,68 @@ enum class MatchPhase {
 }
 
 fun WinProbabilityCalculator.analyzePitchConditions(match: CricsheetMatch): PitchAnalysisResult {
-    // Calculate run rates for different phases
-    val firstInningsRates = calculatePhaseRunRates(match.innings[0])
-    val secondInningsRates = if (match.innings.size > 1) {
-        calculatePhaseRunRates(match.innings[1])
-    } else {
-        emptyMap()
+    try {
+        // Calculate run rates for different phases
+        val firstInningsRates = calculatePhaseRunRates(match.innings[0])
+        val secondInningsRates = if (match.innings.size > 1) {
+            calculatePhaseRunRates(match.innings[1])
+        } else {
+            emptyMap()
+        }
+    
+        // Analyze pitch behavior
+        val behavior = analyzePitchBehavior(firstInningsRates, secondInningsRates)
+    
+        // Calculate averages
+        val averageScore = match.innings.sumOf { it.total }.toDouble() / match.innings.size
+        val averageRunRate = match.innings.sumOf { it.runRate } / match.innings.size
+        val averageWicketRate = match.innings.sumOf { it.wickets }.toDouble() / (match.innings.size * 20)
+    
+        return PitchAnalysisResult(
+            condition = determinePitchCondition(averageRunRate, averageWicketRate),
+            behavior = behavior,
+            averageScore = averageScore,
+            averageRunRate = averageRunRate,
+            averageWicketRate = averageWicketRate
+        )
+    } catch (e: Exception) {
+        Sentry.captureException(e)
+        throw e
     }
-    
-    // Analyze pitch behavior
-    val behavior = analyzePitchBehavior(firstInningsRates, secondInningsRates)
-    
-    // Calculate averages
-    val averageScore = match.innings.sumOf { it.total }.toDouble() / match.innings.size
-    val averageRunRate = match.innings.sumOf { it.runRate } / match.innings.size
-    val averageWicketRate = match.innings.sumOf { it.wickets }.toDouble() / (match.innings.size * 20)
-    
-    return PitchAnalysisResult(
-        condition = determinePitchCondition(averageRunRate, averageWicketRate),
-        behavior = behavior,
-        averageScore = averageScore,
-        averageRunRate = averageRunRate,
-        averageWicketRate = averageWicketRate
-    )
 }
 
 private fun calculatePhaseRunRates(innings: CricsheetInnings): Map<MatchPhase, Double> {
-    val rates = mutableMapOf<MatchPhase, Double>()
+    try {
+        val rates = mutableMapOf<MatchPhase, Double>()
     
-    // Power Play (first 6 overs)
-    val powerPlayOvers = innings.overs.take(6)
-    rates[MatchPhase.POWER_PLAY] = calculatePhaseRunRate(powerPlayOvers)
+        // Power Play (first 6 overs)
+        val powerPlayOvers = innings.overs.take(6)
+        rates[MatchPhase.POWER_PLAY] = calculatePhaseRunRate(powerPlayOvers)
     
-    // Middle Overs (overs 7-15)
-    val middleOvers = innings.overs.drop(6).take(9)
-    rates[MatchPhase.MIDDLE] = calculatePhaseRunRate(middleOvers)
+        // Middle Overs (overs 7-15)
+        val middleOvers = innings.overs.drop(6).take(9)
+        rates[MatchPhase.MIDDLE] = calculatePhaseRunRate(middleOvers)
     
-    // Death Overs (last 5 overs)
-    val deathOvers = innings.overs.takeLast(5)
-    rates[MatchPhase.DEATH] = calculatePhaseRunRate(deathOvers)
+        // Death Overs (last 5 overs)
+        val deathOvers = innings.overs.takeLast(5)
+        rates[MatchPhase.DEATH] = calculatePhaseRunRate(deathOvers)
     
-    return rates
+        return rates
+    } catch (e: Exception) {
+        Sentry.captureException(e)
+        throw e
+    }
 }
 
 private fun calculatePhaseRunRate(overs: List<Over>): Double {
-    if (overs.isEmpty()) return 0.0
-    val totalRuns = overs.sumOf { it.runs }
-    return totalRuns.toDouble() / overs.size
+    try {
+        if (overs.isEmpty()) return 0.0
+        val totalRuns = overs.sumOf { it.runs }
+        return totalRuns.toDouble() / overs.size
+    } catch (e: Exception) {
+        Sentry.captureException(e)
+        throw e
+    }
 }
 
 private fun analyzePitchBehavior(
@@ -90,11 +106,16 @@ private fun analyzePitchBehavior(
 }
 
 private fun determinePitchCondition(runRate: Double, wicketRate: Double): String {
-    return when {
-        runRate > 8.5 && wicketRate < 0.4 -> "Batting Paradise"
-        runRate > 7.5 && wicketRate < 0.5 -> "Good for Batting"
-        runRate < 6.5 && wicketRate > 0.6 -> "Bowler Friendly"
-        runRate < 7.0 && wicketRate > 0.5 -> "Balanced"
-        else -> "Average"
+    try {
+        return when {
+            runRate > 8.5 && wicketRate < 0.4 -> "Batting Paradise"
+            runRate > 7.5 && wicketRate < 0.5 -> "Good for Batting"
+            runRate < 6.5 && wicketRate > 0.6 -> "Bowler Friendly"
+            runRate < 7.0 && wicketRate > 0.5 -> "Balanced"
+            else -> "Average"
+        }
+    } catch (e: Exception) {
+        Sentry.captureException(e)
+        throw e
     }
 }

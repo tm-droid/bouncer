@@ -39,10 +39,10 @@ import com.tanush.bouncer.models.ScrapedBowler
 import com.tanush.bouncer.ui.components.RecentBallsRow
 import com.tanush.bouncer.ui.components.glass.GlassCard
 import com.tanush.bouncer.ui.theme.BouncerColors
-import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 import com.tanush.bouncer.ui.theme.BouncerDimens
 import com.tanush.bouncer.ui.theme.BouncerTheme
 import com.tanush.bouncer.ui.theme.StatusCardShape
+import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 
 /**
  * Compact card showing the current bowler and their recent deliveries.
@@ -129,6 +129,7 @@ fun CurrentBowlerCard(
 
 @Composable
 private fun BowlerLiveDot(modifier: Modifier = Modifier) {
+    val colors = BouncerDesignSystem.colors
     val transition = rememberInfiniteTransition(label = "bowlerDot")
     val alpha by transition.animateFloat(
         initialValue = 0.4f,
@@ -154,6 +155,7 @@ private fun BowlerLiveDot(modifier: Modifier = Modifier) {
 @Preview(showBackground = true, widthDp = 200)
 @Composable
 private fun CurrentBowlerCardPreview() {
+    val colors = BouncerDesignSystem.colors
     BouncerTheme(darkTheme = true, dynamicColor = false) {
         CurrentBowlerCard(
             teamAcronym = "IND",

@@ -9,6 +9,7 @@ import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONObject
+import io.sentry.Sentry
 
 /**
  * Manager for fetching and caching team data from RapidAPI
@@ -75,20 +76,35 @@ object TeamDirectory {
      * Get team info by team name
      */
     fun getTeamInfo(teamName: String): TeamInfo? {
-        return _teams.value[teamName]
+        try {
+            return _teams.value[teamName]
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     /**
      * Get logo URL for a team name
      */
     fun getLogoUrl(teamName: String): String? {
-        return _teams.value[teamName]?.logoUrl
+        try {
+            return _teams.value[teamName]?.logoUrl
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     /**
      * Get team ID for a team name
      */
     fun getTeamId(teamName: String): String? {
-        return _teams.value[teamName]?.id
+        try {
+            return _teams.value[teamName]?.id
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
 }

@@ -40,11 +40,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.ui.theme.ChartBlue
-import com.tanush.bouncer.ui.theme.ShinyGoldLight
 import com.tanush.bouncer.ui.theme.SuccessGreen
 import com.tanush.bouncer.ui.theme.WarningYellow
 import com.tanush.bouncer.ui.theme.WicketRed
 import kotlin.math.*
+import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 
 /**
  * Umpire decision card showing on-field decisions
@@ -82,6 +82,7 @@ fun UmpireDecisionCard(
     decision: UmpireDecisionData,
     modifier: Modifier = Modifier,
 ) {
+    val colors = BouncerDesignSystem.colors
     val animatedProgress = remember { Animatable(0f) }
 
     val infiniteTransition = rememberInfiniteTransition(label = "umpire")
@@ -116,7 +117,7 @@ fun UmpireDecisionCard(
     }
 
     val isOutDecision = decision.finalDecision.uppercase() == "OUT"
-    val resultColor = if (isOutDecision) WicketRed else SuccessGreen
+    val resultColor = if (isOutDecision) colors.statusLive else colors.statusSuccess
 
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -163,7 +164,7 @@ fun UmpireDecisionCard(
                     Column {
                         Text(
                             text = "UMPIRE DECISION",
-                            color = ShinyGoldLight,
+                            color = colors.goldLight,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.5.sp,
@@ -239,14 +240,14 @@ fun UmpireDecisionCard(
                 DecisionDetailRow(
                     label = "Original Decision",
                     value = decision.originalDecision,
-                    valueColor = if (decision.originalDecision.uppercase() == "OUT") WicketRed else SuccessGreen,
+                    valueColor = if (decision.originalDecision.uppercase() == "OUT") colors.statusLive else colors.statusSuccess,
                 )
 
                 if (decision.isReviewed) {
                     DecisionDetailRow(
                         label = "Review Status",
                         value = "REVIEWED",
-                        valueColor = ChartBlue,
+                        valueColor = colors.statusInfo,
                     )
 
                     decision.reviewOutcome?.let {
@@ -254,9 +255,9 @@ fun UmpireDecisionCard(
                             label = "Review Outcome",
                             value = it,
                             valueColor = when (it.uppercase()) {
-                                "OVERTURNED" -> WarningYellow
-                                "UPHELD" -> SuccessGreen
-                                "UMPIRE'S CALL" -> WarningYellow
+                                "OVERTURNED" -> colors.statusWarning
+                                "UPHELD" -> colors.statusSuccess
+                                "UMPIRE'S CALL" -> colors.statusWarning
                                 else -> Color.White
                             },
                         )
@@ -268,6 +269,9 @@ fun UmpireDecisionCard(
             if (decision.isReviewed) {
                 Spacer(modifier = Modifier.height(14.dp))
 
+                // Capture color for Canvas scope
+                val statusInfoColor = colors.statusInfo
+                
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -295,8 +299,8 @@ fun UmpireDecisionCard(
                         drawRoundRect(
                             brush = Brush.linearGradient(
                                 colors = listOf(
-                                    ChartBlue.copy(alpha = 0.3f),
-                                    ChartBlue.copy(alpha = 0.1f),
+                                    statusInfoColor.copy(alpha = 0.3f),
+                                    statusInfoColor.copy(alpha = 0.1f),
                                 ),
                             ),
                             topLeft = Offset(centerX - tvWidth / 2 + 5.dp.toPx(), centerY - tvHeight / 2 + 5.dp.toPx()),
@@ -307,7 +311,7 @@ fun UmpireDecisionCard(
                         // Scanning lines animation
                         val lineY = (centerY - tvHeight / 4) + (tvHeight / 2 * (animatedProgress.value % 1f))
                         drawLine(
-                            color = ChartBlue.copy(alpha = flashPulse),
+                            color = statusInfoColor.copy(alpha = flashPulse),
                             start = Offset(centerX - tvWidth / 2 + 10.dp.toPx(), lineY),
                             end = Offset(centerX + tvWidth / 2 - 10.dp.toPx(), lineY),
                             strokeWidth = 2.dp.toPx(),
@@ -316,7 +320,7 @@ fun UmpireDecisionCard(
 
                     Text(
                         text = "THIRD UMPIRE",
-                        color = ChartBlue,
+                        color = colors.statusInfo,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 2.sp,
@@ -333,6 +337,7 @@ private fun DecisionDetailRow(
     value: String,
     valueColor: Color = Color.White,
 ) {
+    val colors = BouncerDesignSystem.colors
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -353,6 +358,7 @@ private fun DecisionDetailRow(
 
 @Composable
 fun UmpireDecisionCardPreview() {
+    val colors = BouncerDesignSystem.colors
     UmpireDecisionCard(
         decision = UmpireDecisionData(
             decisionType = DecisionType.LBW,

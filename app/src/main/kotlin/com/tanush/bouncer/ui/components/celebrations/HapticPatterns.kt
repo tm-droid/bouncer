@@ -11,6 +11,7 @@ import androidx.compose.ui.hapticfeedback.HapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
+import io.sentry.Sentry
 
 /**
  * Predefined haptic patterns for cricket events
@@ -171,23 +172,33 @@ data class HapticPattern(
     val amplitudes: IntArray
 ) {
     override fun equals(other: Any?): Boolean {
-        if (this === other) return true
-        if (javaClass != other?.javaClass) return false
+        try {
+            if (this === other) return true
+            if (javaClass != other?.javaClass) return false
         
-        other as HapticPattern
+            other as HapticPattern
         
-        if (name != other.name) return false
-        if (!timings.contentEquals(other.timings)) return false
-        if (!amplitudes.contentEquals(other.amplitudes)) return false
+            if (name != other.name) return false
+            if (!timings.contentEquals(other.timings)) return false
+            if (!amplitudes.contentEquals(other.amplitudes)) return false
         
-        return true
+            return true
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     override fun hashCode(): Int {
-        var result = name.hashCode()
-        result = 31 * result + timings.contentHashCode()
-        result = 31 * result + amplitudes.contentHashCode()
-        return result
+        try {
+            var result = name.hashCode()
+            result = 31 * result + timings.contentHashCode()
+            result = 31 * result + amplitudes.contentHashCode()
+            return result
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
 }
 
@@ -210,17 +221,27 @@ class HapticEffectPlayer(private val context: Context) {
      * Check if haptics are supported on this device
      */
     fun isHapticsSupported(): Boolean {
-        return vibrator?.hasVibrator() == true
+        try {
+            return vibrator?.hasVibrator() == true
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     /**
      * Check if amplitude control is supported
      */
     fun isAmplitudeControlSupported(): Boolean {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            vibrator?.hasAmplitudeControl() == true
-        } else {
-            false
+        try {
+            return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                vibrator?.hasAmplitudeControl() == true
+            } else {
+                false
+            }
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
         }
     }
     
@@ -228,24 +249,29 @@ class HapticEffectPlayer(private val context: Context) {
      * Play a predefined haptic pattern
      */
     fun playPattern(pattern: HapticPattern) {
-        vibrator?.let { vib ->
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                if (vib.hasAmplitudeControl()) {
-                    val effect = VibrationEffect.createWaveform(
-                        pattern.timings,
-                        pattern.amplitudes,
-                        -1 // Don't repeat
-                    )
-                    vib.vibrate(effect)
+        try {
+            vibrator?.let { vib ->
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    if (vib.hasAmplitudeControl()) {
+                        val effect = VibrationEffect.createWaveform(
+                            pattern.timings,
+                            pattern.amplitudes,
+                            -1 // Don't repeat
+                        )
+                        vib.vibrate(effect)
+                    } else {
+                        // Fallback for devices without amplitude control
+                        val effect = VibrationEffect.createWaveform(pattern.timings, -1)
+                        vib.vibrate(effect)
+                    }
                 } else {
-                    // Fallback for devices without amplitude control
-                    val effect = VibrationEffect.createWaveform(pattern.timings, -1)
-                    vib.vibrate(effect)
+                    @Suppress("DEPRECATION")
+                    vib.vibrate(pattern.timings, -1)
                 }
-            } else {
-                @Suppress("DEPRECATION")
-                vib.vibrate(pattern.timings, -1)
             }
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
         }
     }
     
@@ -253,18 +279,23 @@ class HapticEffectPlayer(private val context: Context) {
      * Play a simple one-shot vibration
      */
     fun playOneShot(durationMs: Long, amplitude: Int = 150) {
-        vibrator?.let { vib ->
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                val effect = VibrationEffect.createOneShot(
-                    durationMs,
-                    if (vib.hasAmplitudeControl()) amplitude.coerceIn(1, 255)
-                    else VibrationEffect.DEFAULT_AMPLITUDE
-                )
-                vib.vibrate(effect)
-            } else {
-                @Suppress("DEPRECATION")
-                vib.vibrate(durationMs)
+        try {
+            vibrator?.let { vib ->
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    val effect = VibrationEffect.createOneShot(
+                        durationMs,
+                        if (vib.hasAmplitudeControl()) amplitude.coerceIn(1, 255)
+                        else VibrationEffect.DEFAULT_AMPLITUDE
+                    )
+                    vib.vibrate(effect)
+                } else {
+                    @Suppress("DEPRECATION")
+                    vib.vibrate(durationMs)
+                }
             }
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
         }
     }
     
@@ -272,10 +303,15 @@ class HapticEffectPlayer(private val context: Context) {
      * Play a click haptic (lightweight)
      */
     fun playClick() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            vibrator?.vibrate(VibrationEffect.createPredefined(VibrationEffect.EFFECT_CLICK))
-        } else {
-            playOneShot(10, 80)
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                vibrator?.vibrate(VibrationEffect.createPredefined(VibrationEffect.EFFECT_CLICK))
+            } else {
+                playOneShot(10, 80)
+            }
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
         }
     }
     
@@ -283,10 +319,15 @@ class HapticEffectPlayer(private val context: Context) {
      * Play a heavy click haptic
      */
     fun playHeavyClick() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            vibrator?.vibrate(VibrationEffect.createPredefined(VibrationEffect.EFFECT_HEAVY_CLICK))
-        } else {
-            playOneShot(30, 200)
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                vibrator?.vibrate(VibrationEffect.createPredefined(VibrationEffect.EFFECT_HEAVY_CLICK))
+            } else {
+                playOneShot(30, 200)
+            }
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
         }
     }
     
@@ -294,10 +335,15 @@ class HapticEffectPlayer(private val context: Context) {
      * Play a double click haptic
      */
     fun playDoubleClick() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            vibrator?.vibrate(VibrationEffect.createPredefined(VibrationEffect.EFFECT_DOUBLE_CLICK))
-        } else {
-            playPattern(HapticPattern("doubleClick", longArrayOf(0, 20, 40, 20), intArrayOf(0, 150, 0, 150)))
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                vibrator?.vibrate(VibrationEffect.createPredefined(VibrationEffect.EFFECT_DOUBLE_CLICK))
+            } else {
+                playPattern(HapticPattern("doubleClick", longArrayOf(0, 20, 40, 20), intArrayOf(0, 150, 0, 150)))
+            }
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
         }
     }
     
@@ -305,10 +351,15 @@ class HapticEffectPlayer(private val context: Context) {
      * Play a tick haptic (very light)
      */
     fun playTick() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            vibrator?.vibrate(VibrationEffect.createPredefined(VibrationEffect.EFFECT_TICK))
-        } else {
-            playOneShot(5, 50)
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                vibrator?.vibrate(VibrationEffect.createPredefined(VibrationEffect.EFFECT_TICK))
+            } else {
+                playOneShot(5, 50)
+            }
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
         }
     }
     
@@ -316,7 +367,12 @@ class HapticEffectPlayer(private val context: Context) {
      * Cancel any ongoing vibration
      */
     fun cancel() {
-        vibrator?.cancel()
+        try {
+            vibrator?.cancel()
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     // Convenience methods for cricket-specific haptics
@@ -365,13 +421,18 @@ fun rememberHapticPlayer(): HapticEffectPlayer {
  * Extension function to play haptic feedback based on cricket event
  */
 fun HapticFeedback.performCricketHaptic(eventType: CricketHapticEvent) {
-    when (eventType) {
-        CricketHapticEvent.BOUNDARY_FOUR,
-        CricketHapticEvent.BOUNDARY_SIX,
-        CricketHapticEvent.WICKET -> performHapticFeedback(HapticFeedbackType.LongPress)
-        CricketHapticEvent.MILESTONE,
-        CricketHapticEvent.MATCH_WIN -> performHapticFeedback(HapticFeedbackType.LongPress)
-        else -> performHapticFeedback(HapticFeedbackType.TextHandleMove)
+    try {
+        when (eventType) {
+            CricketHapticEvent.BOUNDARY_FOUR,
+            CricketHapticEvent.BOUNDARY_SIX,
+            CricketHapticEvent.WICKET -> performHapticFeedback(HapticFeedbackType.LongPress)
+            CricketHapticEvent.MILESTONE,
+            CricketHapticEvent.MATCH_WIN -> performHapticFeedback(HapticFeedbackType.LongPress)
+            else -> performHapticFeedback(HapticFeedbackType.TextHandleMove)
+        }
+    } catch (e: Exception) {
+        Sentry.captureException(e)
+        throw e
     }
 }
 
@@ -401,22 +462,27 @@ enum class CricketHapticEvent {
  * Helper to bridge HapticEffectPlayer with CricketHapticEvent
  */
 fun HapticEffectPlayer.play(event: CricketHapticEvent) {
-    when (event) {
-        CricketHapticEvent.TICK -> playTick()
-        CricketHapticEvent.BOUNDARY_FOUR -> playBoundaryFour()
-        CricketHapticEvent.BOUNDARY_SIX -> playBoundarySix()
-        CricketHapticEvent.WICKET -> playWicket()
-        CricketHapticEvent.MILESTONE_APPROACHING -> playMilestoneApproaching()
-        CricketHapticEvent.MILESTONE -> playMilestoneCelebration()
-        CricketHapticEvent.MATCH_WIN -> playMatchWin()
-        CricketHapticEvent.ERROR -> playError()
-        CricketHapticEvent.DOT_BALL -> playDotBall()
-        CricketHapticEvent.HAT_TRICK -> playHatTrick()
-        CricketHapticEvent.FIVE_WICKET_HAUL -> playFiveWicketHaul()
-        CricketHapticEvent.RUN_OUT -> playRunOut()
-        CricketHapticEvent.CATCH_TAKEN -> playCatchTaken()
-        CricketHapticEvent.SCORE_UPDATE -> playScoreUpdate()
-        CricketHapticEvent.MATCH_START -> playMatchStart()
-        CricketHapticEvent.INNINGS_BREAK -> playInningsBreak()
+    try {
+        when (event) {
+            CricketHapticEvent.TICK -> playTick()
+            CricketHapticEvent.BOUNDARY_FOUR -> playBoundaryFour()
+            CricketHapticEvent.BOUNDARY_SIX -> playBoundarySix()
+            CricketHapticEvent.WICKET -> playWicket()
+            CricketHapticEvent.MILESTONE_APPROACHING -> playMilestoneApproaching()
+            CricketHapticEvent.MILESTONE -> playMilestoneCelebration()
+            CricketHapticEvent.MATCH_WIN -> playMatchWin()
+            CricketHapticEvent.ERROR -> playError()
+            CricketHapticEvent.DOT_BALL -> playDotBall()
+            CricketHapticEvent.HAT_TRICK -> playHatTrick()
+            CricketHapticEvent.FIVE_WICKET_HAUL -> playFiveWicketHaul()
+            CricketHapticEvent.RUN_OUT -> playRunOut()
+            CricketHapticEvent.CATCH_TAKEN -> playCatchTaken()
+            CricketHapticEvent.SCORE_UPDATE -> playScoreUpdate()
+            CricketHapticEvent.MATCH_START -> playMatchStart()
+            CricketHapticEvent.INNINGS_BREAK -> playInningsBreak()
+        }
+    } catch (e: Exception) {
+        Sentry.captureException(e)
+        throw e
     }
 }

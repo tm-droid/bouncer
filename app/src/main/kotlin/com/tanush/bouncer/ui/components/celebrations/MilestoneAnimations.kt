@@ -40,6 +40,7 @@ fun CenturyExplosion(
     isVisible: Boolean = true,
     onDismiss: () -> Unit
 ) {
+    val colors = BouncerDesignSystem.colors
     var showContent by remember { mutableStateOf(false) }
     
     LaunchedEffect(isVisible) {
@@ -68,7 +69,7 @@ fun CenturyExplosion(
             
             // Radial glow effect
             RadialGlowEffect(
-                color = ShinyGoldDeep,
+                color = colors.goldPrimary,
                 modifier = Modifier.fillMaxSize()
             )
             
@@ -85,7 +86,7 @@ fun CenturyExplosion(
                     text = playerName.uppercase(),
                     fontSize = 28.sp,
                     fontWeight = FontWeight.Black,
-                    color = Color.White,
+                    color = colors.textPrimary,
                     letterSpacing = 4.sp
                 )
                 
@@ -95,7 +96,7 @@ fun CenturyExplosion(
                         text = "$runs runs off $balls balls",
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Medium,
-                        color = TextSecondary
+                        color = colors.textSecondary
                     )
                 }
                 
@@ -111,6 +112,7 @@ fun CenturyExplosion(
 
 @Composable
 private fun AnimatedCenturyNumber() {
+    val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "century")
     val scale by infiniteTransition.animateFloat(
         initialValue = 0.95f,
@@ -144,7 +146,7 @@ private fun AnimatedCenturyNumber() {
             text = "100",
             fontSize = 120.sp,
             fontWeight = FontWeight.Black,
-            color = ShinyGoldDeep.copy(alpha = glowAlpha * 0.3f),
+            color = colors.goldPrimary.copy(alpha = glowAlpha * 0.3f),
             modifier = Modifier.blur(20.dp)
         )
         
@@ -156,10 +158,10 @@ private fun AnimatedCenturyNumber() {
             style = LocalTextStyle.current.copy(
                 brush = Brush.linearGradient(
                     colors = listOf(
-                        ShinyGoldLight,
-                        ShinyGoldDeep,
-                        ShinyGoldMid,
-                        ShinyGoldDeep
+                        colors.goldLight,
+                        colors.goldPrimary,
+                        colors.goldPrimary,
+                        colors.goldPrimary
                     )
                 )
             )
@@ -169,26 +171,27 @@ private fun AnimatedCenturyNumber() {
 
 @Composable
 private fun StrikeRateBadge(strikeRate: Int) {
+    val colors = BouncerDesignSystem.colors
     Box(
         contentAlignment = Alignment.Center,
         modifier = Modifier
             .background(
                 Brush.horizontalGradient(
                     colors = listOf(
-                        ShinyGoldDeep.copy(alpha = 0.3f),
-                        ShinyGoldMid.copy(alpha = 0.3f)
+                        colors.goldPrimary.copy(alpha = 0.3f),
+                        colors.goldPrimary.copy(alpha = 0.3f)
                     )
                 ),
                 RoundedCornerShape(20.dp)
             )
-            .border(1.dp, ShinyGoldDeep.copy(alpha = 0.5f), RoundedCornerShape(20.dp))
+            .border(1.dp, colors.goldPrimary.copy(alpha = 0.5f), RoundedCornerShape(20.dp))
             .padding(horizontal = 20.dp, vertical = 8.dp)
     ) {
         Text(
             text = "SR: $strikeRate",
             fontSize = 14.sp,
             fontWeight = FontWeight.Bold,
-            color = ShinyGoldDeep
+            color = colors.goldPrimary
         )
     }
 }
@@ -242,6 +245,7 @@ fun FiveWicketHaulCelebration(
     isVisible: Boolean = true,
     onDismiss: () -> Unit
 ) {
+    val colors = BouncerDesignSystem.colors
     var showContent by remember { mutableStateOf(false) }
     
     LaunchedEffect(isVisible) {
@@ -293,7 +297,7 @@ fun FiveWicketHaulCelebration(
                     text = bowlerName.uppercase(),
                     fontSize = 28.sp,
                     fontWeight = FontWeight.Black,
-                    color = Color.White,
+                    color = colors.textPrimary,
                     letterSpacing = 4.sp
                 )
                 
@@ -351,6 +355,7 @@ private fun AnimatedWicketNumber(wickets: Int) {
 
 @Composable
 private fun BowlingFiguresBadge(wickets: Int, runs: Int, overs: String) {
+    val colors = BouncerDesignSystem.colors
     Box(
         contentAlignment = Alignment.Center,
         modifier = Modifier
@@ -370,7 +375,7 @@ private fun BowlingFiguresBadge(wickets: Int, runs: Int, overs: String) {
             text = "$wickets/$runs ($overs)",
             fontSize = 16.sp,
             fontWeight = FontWeight.Bold,
-            color = Color.White
+            color = colors.textPrimary
         )
     }
 }
@@ -382,10 +387,11 @@ private fun BowlingFiguresBadge(wickets: Int, runs: Int, overs: String) {
 fun MatchWinFireworks(
     winningTeam: String,
     marginText: String,
-    teamColor: Color = SuccessGreen,
+    teamColor: Color = StatusSuccess,
     isVisible: Boolean = true,
     onDismiss: () -> Unit
 ) {
+    val colors = BouncerDesignSystem.colors
     var showContent by remember { mutableStateOf(false) }
     
     LaunchedEffect(isVisible) {
@@ -418,7 +424,7 @@ fun MatchWinFireworks(
             // Confetti
             ConfettiRain(
                 particleCount = 100,
-                colors = listOf(teamColor, ShinyGoldDeep, Color.White),
+                colors = listOf(teamColor, colors.goldPrimary, Color.White),
                 duration = 4500L,
                 isActive = showContent
             )
@@ -434,7 +440,7 @@ fun MatchWinFireworks(
                     text = "VICTORY!",
                     fontSize = 48.sp,
                     fontWeight = FontWeight.Black,
-                    color = Color.White,
+                    color = colors.textPrimary,
                     letterSpacing = 6.sp
                 )
                 
@@ -450,7 +456,7 @@ fun MatchWinFireworks(
                     text = marginText,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Medium,
-                    color = TextSecondary
+                    color = colors.textSecondary
                 )
             }
         }
@@ -459,6 +465,7 @@ fun MatchWinFireworks(
 
 @Composable
 private fun AnimatedTrophy(color: Color) {
+    val dsColors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "trophy")
     val bounce by infiniteTransition.animateFloat(
         initialValue = 0f,
@@ -491,7 +498,7 @@ private fun AnimatedTrophy(color: Color) {
                 .background(
                     Brush.radialGradient(
                         colors = listOf(
-                            ShinyGoldDeep.copy(alpha = glow * 0.5f),
+                            dsColors.goldPrimary.copy(alpha = glow * 0.5f),
                             Color.Transparent
                         )
                     ),
@@ -501,7 +508,7 @@ private fun AnimatedTrophy(color: Color) {
             Icon(
                 imageVector = Icons.Default.EmojiEvents,
                 contentDescription = "Trophy",
-                tint = ShinyGoldDeep,
+                tint = dsColors.goldPrimary,
                 modifier = Modifier.size(64.dp)
             )
         }
@@ -519,7 +526,7 @@ private fun FireworksDisplay(
         Color(0xFFFFE66D),
         Color(0xFFFF9FF3),
         Color(0xFF54A0FF),
-        ShinyGoldDeep
+        GoldPrimary
     )
     
     var fireworks by remember { mutableStateOf<List<FireworkState>>(emptyList()) }
@@ -638,6 +645,7 @@ fun RecordBreakerBanner(
 
 @Composable
 private fun RecordBannerCard(recordType: String, description: String) {
+    val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "record")
     val shimmerOffset by infiniteTransition.animateFloat(
         initialValue = -1f,
@@ -655,17 +663,17 @@ private fun RecordBannerCard(recordType: String, description: String) {
             .shadow(
                 elevation = 24.dp,
                 shape = RoundedCornerShape(20.dp),
-                spotColor = ShinyGoldDeep.copy(alpha = 0.5f)
+                spotColor = colors.goldPrimary.copy(alpha = 0.5f)
             ),
-        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.05f)),
+        colors = CardDefaults.cardColors(containerColor = colors.glassSurface),
         shape = RoundedCornerShape(20.dp),
         border = BorderStroke(
             2.dp,
             Brush.linearGradient(
                 colors = listOf(
-                    ShinyGoldDeep.copy(alpha = 0.8f),
-                    ShinyGoldMid.copy(alpha = 0.4f),
-                    ShinyGoldDeep.copy(alpha = 0.8f)
+                    colors.goldPrimary.copy(alpha = 0.8f),
+                    colors.goldPrimary.copy(alpha = 0.4f),
+                    colors.goldPrimary.copy(alpha = 0.8f)
                 ),
                 start = Offset(shimmerOffset * 400, 0f),
                 end = Offset(shimmerOffset * 400 + 400, 0f)
@@ -687,7 +695,7 @@ private fun RecordBannerCard(recordType: String, description: String) {
                     .background(
                         Brush.radialGradient(
                             colors = listOf(
-                                ShinyGoldDeep.copy(alpha = 0.3f),
+                                colors.goldPrimary.copy(alpha = 0.3f),
                                 Color.Transparent
                             )
                         ),
@@ -697,7 +705,7 @@ private fun RecordBannerCard(recordType: String, description: String) {
                 Icon(
                     imageVector = Icons.Default.Star,
                     contentDescription = null,
-                    tint = ShinyGoldDeep,
+                    tint = colors.goldPrimary,
                     modifier = Modifier.size(32.dp)
                 )
             }
@@ -710,7 +718,7 @@ private fun RecordBannerCard(recordType: String, description: String) {
                     text = "RECORD BROKEN!",
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
-                    color = ShinyGoldDeep,
+                    color = colors.goldPrimary,
                     letterSpacing = 1.sp
                 )
                 
@@ -718,14 +726,14 @@ private fun RecordBannerCard(recordType: String, description: String) {
                     text = recordType,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
-                    color = TextPrimary
+                    color = colors.textPrimary
                 )
                 
                 Text(
                     text = description,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Medium,
-                    color = TextSecondary
+                    color = colors.textSecondary
                 )
             }
         }
@@ -740,6 +748,7 @@ fun HatTrickCelebration(
     isVisible: Boolean = true,
     onDismiss: () -> Unit
 ) {
+    val colors = BouncerDesignSystem.colors
     var showContent by remember { mutableStateOf(false) }
     var showBall1 by remember { mutableStateOf(false) }
     var showBall2 by remember { mutableStateOf(false) }
@@ -804,7 +813,7 @@ fun HatTrickCelebration(
                     text = bowlerName.uppercase(),
                     fontSize = 28.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color.White,
+                    color = colors.textPrimary,
                     letterSpacing = 4.sp
                 )
                 
@@ -821,6 +830,7 @@ fun HatTrickCelebration(
 
 @Composable
 private fun AnimatedBallIcon(visible: Boolean, delay: Int) {
+    val colors = BouncerDesignSystem.colors
     AnimatedVisibility(
         visible = visible,
         enter = scaleIn(
@@ -836,7 +846,7 @@ private fun AnimatedBallIcon(visible: Boolean, delay: Int) {
                 .size(64.dp)
                 .background(
                     Brush.radialGradient(
-                        colors = listOf(ErrorRed, ErrorRed.copy(alpha = 0.8f))
+                        colors = listOf(colors.statusLive, colors.statusLive.copy(alpha = 0.8f))
                     ),
                     CircleShape
                 )
@@ -846,7 +856,7 @@ private fun AnimatedBallIcon(visible: Boolean, delay: Int) {
                 text = "W",
                 fontSize = 28.sp,
                 fontWeight = FontWeight.Black,
-                color = Color.White
+                color = colors.textPrimary
             )
         }
     }
@@ -863,11 +873,11 @@ fun MilestoneBadge(
         Icon(
             imageVector = Icons.Default.Star,
             contentDescription = null,
-            tint = ShinyGoldDeep,
+            tint = GoldPrimary,
             modifier = Modifier.size(24.dp)
         )
     },
-    badgeColor: Color = ShinyGoldDeep,
+    badgeColor: Color = GoldPrimary,
     isVisible: Boolean = true,
     onDismiss: () -> Unit = {}
 ) {
@@ -910,6 +920,7 @@ private fun MilestoneBadgeCard(
     icon: @Composable () -> Unit,
     badgeColor: Color
 ) {
+    val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "badge")
     val glowAlpha by infiniteTransition.animateFloat(
         initialValue = 0.3f,
@@ -929,7 +940,7 @@ private fun MilestoneBadgeCard(
                 shape = RoundedCornerShape(24.dp),
                 spotColor = badgeColor.copy(alpha = glowAlpha)
             ),
-        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.05f)),
+        colors = CardDefaults.cardColors(containerColor = colors.glassSurface),
         shape = RoundedCornerShape(24.dp),
         border = BorderStroke(2.dp, badgeColor.copy(alpha = 0.6f))
     ) {
@@ -980,7 +991,7 @@ private fun MilestoneBadgeCard(
                 text = description,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Medium,
-                color = TextSecondary,
+                color = colors.textSecondary,
                 textAlign = TextAlign.Center
             )
         }

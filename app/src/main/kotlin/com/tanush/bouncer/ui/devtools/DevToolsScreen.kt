@@ -12,6 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.*
 import com.tanush.bouncer.mcp.McpViewModel
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -46,7 +47,7 @@ fun DevToolsScreen(
             singleLine = true
         )
         FilledTonalButton(onClick = { busy = true; vm.callEcho(echoInput); busy = false }, modifier = Modifier.fillMaxWidth()) {
-            Icon(Icons.Filled.Send, contentDescription = null)
+            Icon(Icons.AutoMirrored.Filled.Send, contentDescription = null)
             Spacer(modifier = Modifier.width(8.dp))
             Text("Run Echo")
         }

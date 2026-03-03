@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.ui.theme.*
 import kotlin.math.*
+import io.sentry.Sentry
 
 /**
  * Power play phase data
@@ -54,10 +55,11 @@ data class PowerPlayPhase(
 fun PowerPlayStatsCard(
     phases: List<PowerPlayPhase>,
     teamName: String,
-    teamColor: Color = ShinyGoldDeep,
+    teamColor: Color = GoldPrimary,
     matchFormat: String = "T20",
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "powerplay")
     
     // Animated glow for current phase
@@ -79,9 +81,9 @@ fun PowerPlayStatsCard(
                 shape = RoundedCornerShape(28.dp),
                 spotColor = teamColor.copy(alpha = 0.15f)
             ),
-        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.05f)),
+        colors = CardDefaults.cardColors(containerColor = colors.glassSurface),
         shape = RoundedCornerShape(28.dp),
-        border = BorderStroke(0.5.dp, CardBorder.copy(alpha = 0.3f))
+        border = BorderStroke(0.5.dp, colors.glassBorder.copy(alpha = 0.3f))
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
             // Header
@@ -119,14 +121,14 @@ fun PowerPlayStatsCard(
                     Column {
                         Text(
                             "POWER PLAY STATS",
-                            color = TextPrimary,
+                            color = colors.textPrimary,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.sp
                         )
                         Text(
                             text = matchFormat,
-                            color = TextTertiary,
+                            color = colors.textTertiary,
                             fontSize = 10.sp
                         )
                     }
@@ -173,11 +175,16 @@ fun PowerPlayStatsCard(
  * Get colors for different phases
  */
 private fun getPhaseColors(index: Int): Pair<Color, Color> {
-    return when (index) {
-        0 -> ChartBlue to ChartBlue.copy(alpha = 0.1f)
-        1 -> ShinyGoldDeep to ShinyGoldDeep.copy(alpha = 0.1f)
-        2 -> SuccessGreen to SuccessGreen.copy(alpha = 0.1f)
-        else -> TextPrimary to Color.White.copy(alpha = 0.08f)
+    try {
+        return when (index) {
+            0 -> StatusInfo to StatusInfo.copy(alpha = 0.1f)
+            1 -> GoldPrimary to GoldPrimary.copy(alpha = 0.1f)
+            2 -> StatusSuccess to StatusSuccess.copy(alpha = 0.1f)
+            else -> TextPrimary to GlassBorderHighlight
+        }
+    } catch (e: Exception) {
+        Sentry.captureException(e)
+        throw e
     }
 }
 
@@ -190,6 +197,7 @@ private fun PowerPlayPhaseCard(
     teamColor: Color,
     phaseColors: Pair<Color, Color>
 ) {
+    val colors = BouncerDesignSystem.colors
     val (accentColor, backgroundColor) = phaseColors
     
     Surface(
@@ -226,13 +234,13 @@ private fun PowerPlayPhaseCard(
                     Column {
                         Text(
                             text = phase.phaseName,
-                            color = TextPrimary,
+                            color = colors.textPrimary,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold
                         )
                         Text(
                             text = "Overs ${phase.startOver}-${phase.endOver}",
-                            color = TextTertiary,
+                            color = colors.textTertiary,
                             fontSize = 10.sp
                         )
                     }
@@ -251,7 +259,7 @@ private fun PowerPlayPhaseCard(
                     )
                     Text(
                         text = "/${phase.wickets}",
-                        color = TextSecondary,
+                        color = colors.textSecondary,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.padding(bottom = 2.dp)
@@ -269,22 +277,22 @@ private fun PowerPlayPhaseCard(
                 PhaseStatItem(
                     value = String.format("%.2f", phase.runRate),
                     label = "Run Rate",
-                    color = if (phase.runRate >= 8f) SuccessGreen else if (phase.runRate >= 6f) accentColor else TextSecondary
+                    color = if (phase.runRate >= 8f) colors.statusSuccess else if (phase.runRate >= 6f) accentColor else colors.textSecondary
                 )
                 PhaseStatItem(
                     value = "${phase.boundaries}",
                     label = "Fours",
-                    color = BoundaryFour
+                    color = colors.statusInfo
                 )
                 PhaseStatItem(
                     value = "${phase.sixes}",
                     label = "Sixes",
-                    color = BoundarySix
+                    color = colors.goldPrimary
                 )
                 PhaseStatItem(
                     value = "${phase.dots}",
                     label = "Dots",
-                    color = TextTertiary
+                    color = colors.textTertiary
                 )
             }
             
@@ -298,12 +306,12 @@ private fun PowerPlayPhaseCard(
                 ) {
                     Text(
                         text = "Boundary %",
-                        color = TextTertiary,
+                        color = colors.textTertiary,
                         fontSize = 10.sp
                     )
                     Text(
                         text = "${String.format("%.1f", phase.boundaryPercentage)}%",
-                        color = if (phase.boundaryPercentage >= 50f) BoundarySix else accentColor,
+                        color = if (phase.boundaryPercentage >= 50f) colors.goldPrimary else accentColor,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -314,7 +322,7 @@ private fun PowerPlayPhaseCard(
                         .fillMaxWidth()
                         .height(6.dp)
                         .clip(RoundedCornerShape(3.dp))
-                        .background(CardBorder.copy(alpha = 0.2f))
+                        .background(colors.glassBorder.copy(alpha = 0.2f))
                 ) {
                     Box(
                         modifier = Modifier
@@ -322,7 +330,7 @@ private fun PowerPlayPhaseCard(
                             .fillMaxWidth(fraction = (phase.boundaryPercentage / 100f).coerceIn(0f, 1f))
                             .background(
                                 brush = Brush.horizontalGradient(
-                                    colors = listOf(accentColor, BoundarySix)
+                                    colors = listOf(accentColor, colors.goldPrimary)
                                 ),
                                 shape = RoundedCornerShape(3.dp)
                             )
@@ -358,6 +366,7 @@ private fun PhaseStatItem(value: String, label: String, color: Color) {
  */
 @Composable
 private fun PowerPlaySummary(phases: List<PowerPlayPhase>, teamColor: Color) {
+    val colors = BouncerDesignSystem.colors
     val totalRuns = phases.sumOf { it.runs }
     val totalWickets = phases.sumOf { it.wickets }
     val totalBalls = phases.sumOf { it.balls }
@@ -369,14 +378,14 @@ private fun PowerPlaySummary(phases: List<PowerPlayPhase>, teamColor: Color) {
     
     Surface(
         shape = RoundedCornerShape(12.dp),
-        color = Color.White.copy(alpha = 0.08f),
-        border = BorderStroke(0.5.dp, CardBorder.copy(alpha = 0.2f)),
+        color = colors.glassBorderHighlight,
+        border = BorderStroke(0.5.dp, colors.glassBorder.copy(alpha = 0.2f)),
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
             Text(
                 text = "OVERALL SUMMARY",
-                color = TextTertiary,
+                color = colors.textTertiary,
                 fontSize = 10.sp,
                 letterSpacing = 0.5.sp,
                 modifier = Modifier.padding(bottom = 10.dp)
@@ -395,7 +404,7 @@ private fun PowerPlaySummary(phases: List<PowerPlayPhase>, teamColor: Color) {
                     )
                     Text(
                         text = "Total Score",
-                        color = TextTertiary,
+                        color = colors.textTertiary,
                         fontSize = 9.sp
                     )
                 }
@@ -403,13 +412,13 @@ private fun PowerPlaySummary(phases: List<PowerPlayPhase>, teamColor: Color) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
                         text = String.format("%.2f", overallRunRate),
-                        color = ChartBlue,
+                        color = colors.statusInfo,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Black
                     )
                     Text(
                         text = "Run Rate",
-                        color = TextTertiary,
+                        color = colors.textTertiary,
                         fontSize = 9.sp
                     )
                 }
@@ -417,13 +426,13 @@ private fun PowerPlaySummary(phases: List<PowerPlayPhase>, teamColor: Color) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
                         text = "${totalBoundaries + totalSixes}",
-                        color = BoundaryFour,
+                        color = colors.statusInfo,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Black
                     )
                     Text(
                         text = "Boundaries",
-                        color = TextTertiary,
+                        color = colors.textTertiary,
                         fontSize = 9.sp
                     )
                 }
@@ -431,7 +440,7 @@ private fun PowerPlaySummary(phases: List<PowerPlayPhase>, teamColor: Color) {
             
             bestPhase?.let { phase ->
                 Spacer(modifier = Modifier.height(12.dp))
-                HorizontalDivider(color = CardBorder.copy(alpha = 0.2f))
+                HorizontalDivider(color = colors.glassBorder.copy(alpha = 0.2f))
                 Spacer(modifier = Modifier.height(10.dp))
                 
                 Row(
@@ -442,13 +451,13 @@ private fun PowerPlaySummary(phases: List<PowerPlayPhase>, teamColor: Color) {
                     Icon(
                         Icons.AutoMirrored.Filled.TrendingUp,
                         contentDescription = null,
-                        tint = SuccessGreen,
+                        tint = colors.statusSuccess,
                         modifier = Modifier.size(14.dp)
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
                         text = "Best Phase: ${phase.phaseName} (${String.format("%.2f", phase.runRate)} RPO)",
-                        color = SuccessGreen,
+                        color = colors.statusSuccess,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Medium
                     )
@@ -465,7 +474,7 @@ private fun PowerPlaySummary(phases: List<PowerPlayPhase>, teamColor: Color) {
 fun MiniPowerPlayIndicator(
     currentOver: Float,
     powerPlayOvers: List<Pair<Int, Int>>,
-    teamColor: Color = ShinyGoldDeep,
+    teamColor: Color = GoldPrimary,
     modifier: Modifier = Modifier
 ) {
     val isInPowerPlay = powerPlayOvers.any { (start, end) -> 
@@ -524,9 +533,9 @@ fun PhaseComparisonBar(
         phases.forEachIndexed { index, phase ->
             val fraction = phase.runs.toFloat() / totalRuns
             val color = when (index) {
-                0 -> ChartBlue
-                1 -> ShinyGoldDeep
-                2 -> SuccessGreen
+                0 -> StatusInfo
+                1 -> GoldPrimary
+                2 -> StatusSuccess
                 else -> TextTertiary
             }
             Box(

@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.sp
 import coil.request.ImageRequest
 import com.tanush.bouncer.ui.components.CoilImage
 import com.tanush.bouncer.ui.theme.*
+import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 
 /**
  * Bowler Detail Card
@@ -69,6 +70,7 @@ fun BowlerDetailCard(
     isBowling: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
+    val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "bowler")
 
     val bowlingGlow by infiniteTransition.animateFloat(
@@ -103,7 +105,7 @@ fun BowlerDetailCard(
                     drawCircle(
                         brush = Brush.radialGradient(
                             colors = listOf(
-                                ChartBlue.copy(alpha = 0.2f * bowlingGlow),
+                                colors.statusInfo.copy(alpha = 0.2f * bowlingGlow),
                                 Color.Transparent,
                             ),
                             center = Offset(size.width - 100f, 100f),
@@ -135,7 +137,7 @@ fun BowlerDetailCard(
                                 drawCircle(
                                     brush = Brush.radialGradient(
                                         colors = listOf(
-                                            ChartBlue.copy(alpha = bowlingGlow * 0.5f),
+                                            colors.statusInfo.copy(alpha = bowlingGlow * 0.5f),
                                             Color.Transparent,
                                         ),
                                     ),
@@ -195,12 +197,12 @@ fun BowlerDetailCard(
                                 Box(
                                     modifier = Modifier
                                         .clip(RoundedCornerShape(4.dp))
-                                        .background(ChartBlue.copy(alpha = 0.2f))
+                                        .background(colors.statusInfo.copy(alpha = 0.2f))
                                         .padding(horizontal = 6.dp, vertical = 2.dp),
                                 ) {
                                     Text(
                                         text = "BOWLING",
-                                        color = ChartBlue,
+                                        color = colors.statusInfo,
                                         fontSize = 9.sp,
                                         fontWeight = FontWeight.Bold,
                                     )
@@ -220,8 +222,8 @@ fun BowlerDetailCard(
                         Text(
                             text = "${stats.wickets}/${stats.runs}",
                             color = when {
-                                stats.wickets >= 5 -> ShinyGoldMid
-                                stats.wickets >= 3 -> SuccessGreen
+                                stats.wickets >= 5 -> colors.goldDark
+                                stats.wickets >= 3 -> colors.statusSuccess
                                 else -> Color.White
                             },
                             fontSize = 32.sp,
@@ -281,28 +283,28 @@ fun BowlerDetailCard(
                         label = "Economy",
                         value = String.format("%.1f", stats.economy),
                         color = when {
-                            stats.economy < 6.0 -> SuccessGreen
-                            stats.economy > 9.0 -> WicketRed
-                            else -> ShinyGoldMid
+                            stats.economy < 6.0 -> colors.statusSuccess
+                            stats.economy > 9.0 -> colors.statusLive
+                            else -> colors.goldDark
                         },
                     )
 
                     BowlerStatItem(
                         label = "Maidens",
                         value = "${stats.maidens}",
-                        color = SuccessGreen,
+                        color = colors.statusSuccess,
                     )
 
                     BowlerStatItem(
                         label = "Dots%",
                         value = "${(stats.dotBallPercentage * 100).toInt()}%",
-                        color = ChartBlue,
+                        color = colors.statusInfo,
                     )
 
                     BowlerStatItem(
                         label = "Extras",
                         value = "${stats.wides + stats.noBalls}",
-                        color = if (stats.wides + stats.noBalls > 5) WicketRed else Color.Gray,
+                        color = if (stats.wides + stats.noBalls > 5) colors.statusLive else Color.Gray,
                     )
                 }
 
@@ -339,13 +341,14 @@ fun BowlerDetailCard(
 
 @Composable
 private fun BowlerBallChip(ball: String) {
+    val colors = BouncerDesignSystem.colors
     val (bgColor, textColor) = when (ball) {
-        "W" -> Pair(WicketRed, Color.White)
-        "6" -> Pair(BoundarySix, Color.White)
-        "4" -> Pair(BoundaryFour, Color.White)
-        "0" -> Pair(SuccessGreen.copy(alpha = 0.3f), SuccessGreen)
-        "Wd", "Nb" -> Pair(WarningYellow.copy(alpha = 0.3f), WarningYellow)
-        else -> Pair(ChartBlue.copy(alpha = 0.3f), ChartBlue)
+        "W" -> Pair(colors.statusLive, Color.White)
+        "6" -> Pair(colors.statusWarning, Color.White)
+        "4" -> Pair(colors.statusWarning, Color.White)
+        "0" -> Pair(colors.statusSuccess.copy(alpha = 0.3f), colors.statusSuccess)
+        "Wd", "Nb" -> Pair(colors.statusWarning.copy(alpha = 0.3f), colors.statusWarning)
+        else -> Pair(colors.statusInfo.copy(alpha = 0.3f), colors.statusInfo)
     }
 
     Box(
@@ -370,6 +373,7 @@ private fun BowlerStatItem(
     value: String,
     color: Color,
 ) {
+    val colors = BouncerDesignSystem.colors
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
             text = value,
@@ -390,6 +394,7 @@ private fun SpellChip(
     spell: BowlerSpellInfo,
     modifier: Modifier = Modifier,
 ) {
+    val colors = BouncerDesignSystem.colors
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(8.dp))
@@ -397,8 +402,8 @@ private fun SpellChip(
                 if (spell.isCurrentSpell) {
                     Brush.horizontalGradient(
                         colors = listOf(
-                            ChartBlue.copy(alpha = 0.2f),
-                            ChartBlue.copy(alpha = 0.1f),
+                            colors.statusInfo.copy(alpha = 0.2f),
+                            colors.statusInfo.copy(alpha = 0.1f),
                         ),
                     )
                 } else {
@@ -415,7 +420,7 @@ private fun SpellChip(
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
                 text = spell.figures,
-                color = if (spell.isCurrentSpell) ChartBlue else Color.White,
+                color = if (spell.isCurrentSpell) colors.statusInfo else Color.White,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
             )

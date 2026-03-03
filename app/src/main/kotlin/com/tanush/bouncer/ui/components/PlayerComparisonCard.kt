@@ -54,6 +54,7 @@ fun PlayerComparisonCard(
     statCategories: List<String>,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "comparison")
     
     val vsGlow by infiniteTransition.animateFloat(
@@ -72,11 +73,11 @@ fun PlayerComparisonCard(
             .shadow(
                 elevation = 24.dp,
                 shape = RoundedCornerShape(28.dp),
-                spotColor = ShinyGoldDeep.copy(alpha = 0.15f)
+                spotColor = colors.goldPrimary.copy(alpha = 0.15f)
             ),
         colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.05f)),
         shape = RoundedCornerShape(28.dp),
-        border = BorderStroke(0.5.dp, CardBorder.copy(alpha = 0.3f))
+        border = BorderStroke(0.5.dp, colors.glassBorder.copy(alpha = 0.3f))
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
             // Header
@@ -88,13 +89,13 @@ fun PlayerComparisonCard(
                 Icon(
                     Icons.AutoMirrored.Filled.CompareArrows,
                     contentDescription = null,
-                    tint = ShinyGoldDeep,
+                    tint = colors.goldPrimary,
                     modifier = Modifier.size(20.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     "PLAYER COMPARISON",
-                    color = TextPrimary,
+                    color = colors.textPrimary,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 1.sp
@@ -111,7 +112,7 @@ fun PlayerComparisonCard(
                 // Player 1
                 PlayerProfile(
                     player = player1,
-                    color = ShinyGoldDeep,
+                    color = colors.goldPrimary,
                     modifier = Modifier.weight(1f)
                 )
                 
@@ -123,7 +124,7 @@ fun PlayerComparisonCard(
                         .background(
                             brush = Brush.radialGradient(
                                 colors = listOf(
-                                    ShinyGoldDeep.copy(alpha = vsGlow * 0.3f),
+                                    colors.goldPrimary.copy(alpha = vsGlow * 0.3f),
                                     Color.Transparent
                                 )
                             ),
@@ -134,13 +135,13 @@ fun PlayerComparisonCard(
                     Surface(
                         shape = CircleShape,
                         color = Color.White.copy(alpha = 0.08f),
-                        border = BorderStroke(1.dp, ShinyGoldDeep.copy(alpha = vsGlow)),
+                        border = BorderStroke(1.dp, colors.goldPrimary.copy(alpha = vsGlow)),
                         modifier = Modifier.size(36.dp)
                     ) {
                         Box(contentAlignment = Alignment.Center) {
                             Text(
                                 text = "VS",
-                                color = ShinyGoldDeep,
+                                color = colors.goldPrimary,
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Black
                             )
@@ -151,7 +152,7 @@ fun PlayerComparisonCard(
                 // Player 2
                 PlayerProfile(
                     player = player2,
-                    color = ChartBlue,
+                    color = colors.statusInfo,
                     modifier = Modifier.weight(1f),
                     alignEnd = true
                 )
@@ -172,8 +173,8 @@ fun PlayerComparisonCard(
                         player2Value = stat2.value,
                         player2Display = stat2.displayValue,
                         isHigherBetter = stat1.isHigherBetter,
-                        player1Color = ShinyGoldDeep,
-                        player2Color = ChartBlue
+                        player1Color = colors.goldPrimary,
+                        player2Color = colors.statusInfo
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                 }
@@ -197,6 +198,8 @@ private fun PlayerProfile(
     modifier: Modifier = Modifier,
     alignEnd: Boolean = false
 ) {
+    val colors = BouncerDesignSystem.colors
+    
     Column(
         modifier = modifier,
         horizontalAlignment = if (alignEnd) Alignment.End else Alignment.Start
@@ -237,7 +240,7 @@ private fun PlayerProfile(
         
         Text(
             text = player.name,
-            color = TextPrimary,
+            color = colors.textPrimary,
             fontSize = 13.sp,
             fontWeight = FontWeight.Bold,
             textAlign = if (alignEnd) TextAlign.End else TextAlign.Start,
@@ -283,6 +286,7 @@ private fun ComparisonStatRow(
     player1Color: Color,
     player2Color: Color
 ) {
+    val colors = BouncerDesignSystem.colors
     val maxValue = maxOf(player1Value, player2Value).coerceAtLeast(0.01f)
     val player1Ratio = player1Value / maxValue
     val player2Ratio = player2Value / maxValue
@@ -305,14 +309,14 @@ private fun ComparisonStatRow(
     Surface(
         shape = RoundedCornerShape(10.dp),
         color = Color.White.copy(alpha = 0.08f).copy(alpha = 0.3f),
-        border = BorderStroke(0.5.dp, CardBorder.copy(alpha = 0.2f)),
+        border = BorderStroke(0.5.dp, colors.glassBorder.copy(alpha = 0.2f)),
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
             // Stat name
             Text(
                 text = statName,
-                color = TextSecondary,
+                color = colors.textSecondary,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Medium,
                 textAlign = TextAlign.Center,
@@ -329,7 +333,7 @@ private fun ComparisonStatRow(
                 // Player 1 value
                 Text(
                     text = player1Display,
-                    color = if (player1Wins) player1Color else TextSecondary,
+                    color = if (player1Wins) player1Color else colors.textSecondary,
                     fontSize = 14.sp,
                     fontWeight = if (player1Wins) FontWeight.Bold else FontWeight.Normal,
                     modifier = Modifier.width(50.dp)
@@ -357,8 +361,8 @@ private fun ComparisonStatRow(
                                 .background(
                                     brush = Brush.horizontalGradient(
                                         colors = listOf(
-                                            if (player1Wins) player1Color.copy(alpha = 0.3f) else CardBorder.copy(alpha = 0.2f),
-                                            if (player1Wins) player1Color else CardBorder
+                                            if (player1Wins) player1Color.copy(alpha = 0.3f) else colors.glassBorder.copy(alpha = 0.2f),
+                                            if (player1Wins) player1Color else colors.glassBorder
                                         )
                                     )
                                 )
@@ -382,8 +386,8 @@ private fun ComparisonStatRow(
                                 .background(
                                     brush = Brush.horizontalGradient(
                                         colors = listOf(
-                                            if (player2Wins) player2Color else CardBorder,
-                                            if (player2Wins) player2Color.copy(alpha = 0.3f) else CardBorder.copy(alpha = 0.2f)
+                                            if (player2Wins) player2Color else colors.glassBorder,
+                                            if (player2Wins) player2Color.copy(alpha = 0.3f) else colors.glassBorder.copy(alpha = 0.2f)
                                         )
                                     )
                                 )
@@ -394,7 +398,7 @@ private fun ComparisonStatRow(
                 // Player 2 value
                 Text(
                     text = player2Display,
-                    color = if (player2Wins) player2Color else TextSecondary,
+                    color = if (player2Wins) player2Color else colors.textSecondary,
                     fontSize = 14.sp,
                     fontWeight = if (player2Wins) FontWeight.Bold else FontWeight.Normal,
                     textAlign = TextAlign.End,
@@ -414,6 +418,7 @@ private fun ComparisonVerdict(
     player2: ComparisonPlayer,
     stats: List<String>
 ) {
+    val colors = BouncerDesignSystem.colors
     var player1Wins = 0
     var player2Wins = 0
     
@@ -429,9 +434,9 @@ private fun ComparisonVerdict(
     }
     
     val verdict = when {
-        player1Wins > player2Wins -> player1.name to ShinyGoldDeep
-        player2Wins > player1Wins -> player2.name to ChartBlue
-        else -> "Draw" to TextTertiary
+        player1Wins > player2Wins -> player1.name to colors.goldPrimary
+        player2Wins > player1Wins -> player2.name to colors.statusInfo
+        else -> "Draw" to colors.textTertiary
     }
     
     Surface(
@@ -475,8 +480,8 @@ private fun ComparisonVerdict(
 fun MiniComparisonIndicator(
     value1: Float,
     value2: Float,
-    color1: Color = ShinyGoldDeep,
-    color2: Color = ChartBlue,
+    color1: Color = BouncerDesignSystem.colors.goldPrimary,
+    color2: Color = BouncerDesignSystem.colors.statusInfo,
     modifier: Modifier = Modifier.width(60.dp)
 ) {
     val total = (value1 + value2).coerceAtLeast(0.01f)

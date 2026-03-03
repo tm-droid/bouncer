@@ -83,7 +83,7 @@ fun GoldHeader(
                 drawCircle(
                     brush = Brush.radialGradient(
                         colors = listOf(
-                            colors.goldPrimary.copy(alpha = 0.06f * shimmerAlpha),
+                            colors.goldPrimary.copy(alpha = 0.10f * shimmerAlpha),
                             Color.Transparent
                         ),
                         center = Offset(size.width * 0.2f, size.height * 0.5f),
@@ -108,14 +108,14 @@ fun GoldHeader(
                 Text(
                     text = "Bouncer",
                     style = TextStyle(
-                        fontSize = 24.sp,
-                        fontWeight = FontWeight.Bold,
+                        fontSize = 26.sp,
+                        fontWeight = FontWeight.ExtraBold,
                         letterSpacing = (-0.5).sp,
                         brush = Brush.verticalGradient(
-                            colors = listOf(
-                                Color.White,
-                                Color(0xFFD4AF37),
-                                Color(0xFFB08D26)
+                            listOf(
+                                colors.textPrimary,
+                                colors.goldPrimary,
+                                colors.goldDark
                             )
                         )
                     ),

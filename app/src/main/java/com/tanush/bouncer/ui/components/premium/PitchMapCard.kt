@@ -28,7 +28,12 @@ import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.ui.components.BouncerImportance
 import com.tanush.bouncer.ui.components.GlassCard
 import com.tanush.bouncer.ui.components.GlassSurface
-import com.tanush.bouncer.ui.theme.*
+import com.tanush.bouncer.ui.theme.SuccessGreen
+import com.tanush.bouncer.ui.theme.TextPrimary
+import com.tanush.bouncer.ui.theme.TextSecondary
+import com.tanush.bouncer.ui.theme.TextTertiary
+import com.tanush.bouncer.ui.theme.WicketRed
+import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 
 /**
  * Premium Sleek Pitch Map.
@@ -56,6 +61,7 @@ fun PitchMapCard(
     isRightHanded: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
+    val colors = BouncerDesignSystem.colors
     val animatedProgress = remember { Animatable(0f) }
 
     LaunchedEffect(balls) {
@@ -143,6 +149,8 @@ fun PitchMapCard(
             Spacer(modifier = Modifier.height(20.dp))
 
             // Main Visualization Layer
+            // Capture color for Canvas scope
+            val goldPrimary = colors.goldPrimary
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
@@ -200,10 +208,10 @@ fun PitchMapCard(
                             val ballX = ball.x * pitchWidth
                             val ballY = ball.y * (pitchHeight * 0.7f) + (pitchHeight * 0.15f)
                             val ballColor = when (ball.result) {
-                                BallResult.WICKET -> WicketRed
-                                BallResult.FOUR, BallResult.SIX -> ShinyGoldDeep
+                                BallResult.WICKET -> colors.statusLive
+                                BallResult.FOUR, BallResult.SIX -> goldPrimary
                                 BallResult.DOT -> TextTertiary
-                                else -> SuccessGreen
+                                else -> colors.statusSuccess
                             }
 
                             val radius = 3.5.dp.toPx() * animatedProgress.value
@@ -235,7 +243,7 @@ fun PitchMapCard(
                             Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                                 Text(text = "${zoneBalls.size}", color = TextPrimary, fontSize = 16.sp, fontWeight = FontWeight.Black)
                                 if (zoneBalls.any { it.result == BallResult.WICKET }) {
-                                    Text(text = "W", color = WicketRed, fontSize = 10.sp, fontWeight = FontWeight.Black)
+                                    Text(text = "W", color = colors.statusLive, fontSize = 10.sp, fontWeight = FontWeight.Black)
                                 }
                             }
                         }
@@ -252,9 +260,9 @@ fun PitchMapCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 LegendItem(color = TextTertiary, text = "DOT")
-                LegendItem(color = SuccessGreen, text = "RUNS")
-                LegendItem(color = ShinyGoldDeep, text = "BDRY")
-                LegendItem(color = WicketRed, text = "WKT")
+                LegendItem(color = colors.statusSuccess, text = "RUNS")
+                LegendItem(color = colors.goldPrimary, text = "BDRY")
+                LegendItem(color = colors.statusLive, text = "WKT")
             }
         }
     }
@@ -262,6 +270,7 @@ fun PitchMapCard(
 
 @Composable
 private fun LegendItem(color: Color, text: String) {
+    val colors = BouncerDesignSystem.colors
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         Box(modifier = Modifier.size(5.dp).clip(CircleShape).background(color.copy(alpha = 0.9f)))
         Text(text = text, color = TextTertiary, fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 0.5.sp)

@@ -62,8 +62,10 @@ import com.tanush.bouncer.ui.screens.BouncerHomeScreen
 import com.tanush.bouncer.ui.screens.BouncerMatchDetailScreen
 import com.tanush.bouncer.ui.screens.BouncerSettingsScreen
 import com.tanush.bouncer.ui.screens.NewsScreen
+import com.tanush.bouncer.ui.screens.NewsDetailScreen
 import com.tanush.bouncer.ui.theme.BouncerTheme
 import com.tanush.bouncer.viewmodels.LiveActivityViewModel
+import com.tanush.bouncer.viewmodels.NewsViewModel
 import io.sentry.Sentry
 
 /**
@@ -112,6 +114,7 @@ private object Routes {
     const val SETTINGS = "settings"
     const val FAVOURITES = "favourites"
     const val MATCH_DETAIL = "match/{matchId}"
+    const val NEWS_DETAIL = "news_detail"
     const val ABOUT = "about"
 
     fun matchDetail(matchId: String) = "match/$matchId"
@@ -126,6 +129,7 @@ private object Routes {
 fun BouncerAppRoot() {
     val navController = rememberNavController()
     val viewModel: LiveActivityViewModel = viewModel()
+    val newsViewModel: NewsViewModel = viewModel()
 
     // Track current route for bottom nav visibility
     val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -221,8 +225,33 @@ fun BouncerAppRoot() {
                 exitTransition = { fadeOut(animationSpec = tween(300)) }
             ) {
                 NewsScreen(
-                    onBackClick = { navController.popBackStack() }
+                    onBackClick = { navController.popBackStack() },
+                    newsViewModel = newsViewModel,
+                    onArticleClick = { article ->
+                        newsViewModel.selectArticle(article)
+                        navController.navigate(Routes.NEWS_DETAIL)
+                    }
                 )
+            }
+
+            // ── News Detail ──────────────────────────────────────────────
+            composable(
+                route = Routes.NEWS_DETAIL,
+                enterTransition = {
+                    slideInVertically(initialOffsetY = { it }) + fadeIn()
+                },
+                exitTransition = {
+                    slideOutVertically(targetOffsetY = { it }) + fadeOut()
+                }
+            ) {
+                val selectedArticle = newsViewModel.selectedArticle.value
+                if (selectedArticle != null) {
+                    NewsDetailScreen(
+                        article = selectedArticle,
+                        newsViewModel = newsViewModel,
+                        onBackClick = { navController.popBackStack() }
+                    )
+                }
             }
 
             // ── Match Detail ─────────────────────────────────────────────

@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.ui.components.CoilImage
 import com.tanush.bouncer.ui.theme.*
+import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 
 /**
  * Umpire Info Card
@@ -68,6 +69,7 @@ fun UmpireInfoCard(
     decisions: List<UmpireDecision> = emptyList(),
     modifier: Modifier = Modifier,
 ) {
+    val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "umpire")
 
     val shimmerOffset by infiniteTransition.animateFloat(
@@ -91,7 +93,7 @@ fun UmpireInfoCard(
                 val shimmerBrush = Brush.linearGradient(
                     colors = listOf(
                         Color.Transparent,
-                        ShinyGoldMid.copy(alpha = 0.08f),
+                        colors.goldDark.copy(alpha = 0.08f),
                         Color.Transparent,
                     ),
                     start = Offset(size.width * shimmerOffset, 0f),
@@ -114,7 +116,7 @@ fun UmpireInfoCard(
                     Icon(
                         imageVector = Icons.Default.Gavel,
                         contentDescription = null,
-                        tint = ShinyGoldMid,
+                        tint = colors.goldDark,
                         modifier = Modifier.size(24.dp),
                     )
 
@@ -122,7 +124,7 @@ fun UmpireInfoCard(
 
                     Text(
                         text = "MATCH OFFICIALS",
-                        color = ShinyGoldMid,
+                        color = colors.goldDark,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 2.sp,
@@ -172,6 +174,7 @@ private fun UmpireCard(
     umpire: UmpireInfo,
     modifier: Modifier = Modifier,
 ) {
+    val colors = BouncerDesignSystem.colors
     Column(
         modifier = modifier
             .width(120.dp)
@@ -184,7 +187,7 @@ private fun UmpireCard(
             modifier = Modifier
                 .size(60.dp)
                 .clip(CircleShape)
-                .background(ShinyGoldMid.copy(alpha = 0.1f)),
+                .background(colors.goldDark.copy(alpha = 0.1f)),
             contentAlignment = Alignment.Center,
         ) {
             CoilImage(
@@ -208,7 +211,7 @@ private fun UmpireCard(
 
         Text(
             text = umpire.role,
-            color = ShinyGoldMid,
+            color = colors.goldDark,
             fontSize = 10.sp,
         )
 
@@ -233,6 +236,7 @@ private fun DecisionRow(
     decision: UmpireDecision,
     modifier: Modifier = Modifier,
 ) {
+    val colors = BouncerDesignSystem.colors
     val wasOverturned = decision.reviewResult == "Overturned"
 
     Row(
@@ -241,7 +245,7 @@ private fun DecisionRow(
             .clip(RoundedCornerShape(8.dp))
             .background(
                 if (wasOverturned) {
-                    WicketRed.copy(alpha = 0.1f)
+                    colors.statusLive.copy(alpha = 0.1f)
                 } else {
                     Color.White.copy(alpha = 0.03f)
                 },
@@ -287,16 +291,16 @@ private fun DecisionRow(
                     .clip(RoundedCornerShape(4.dp))
                     .background(
                         if (wasOverturned) {
-                            WicketRed.copy(alpha = 0.2f)
+                            colors.statusLive.copy(alpha = 0.2f)
                         } else {
-                            SuccessGreen.copy(alpha = 0.2f)
+                            colors.statusSuccess.copy(alpha = 0.2f)
                         },
                     )
                     .padding(horizontal = 6.dp, vertical = 3.dp),
             ) {
                 Text(
                     text = decision.reviewResult ?: "Reviewed",
-                    color = if (wasOverturned) WicketRed else SuccessGreen,
+                    color = if (wasOverturned) colors.statusLive else colors.statusSuccess,
                     fontSize = 9.sp,
                     fontWeight = FontWeight.Bold,
                 )

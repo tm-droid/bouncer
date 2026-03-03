@@ -61,7 +61,8 @@ fun MatchCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     isFavourite: Boolean = false,
-    isRefreshing: Boolean = false
+    isRefreshing: Boolean = false,
+    liveAiCommentary: String? = null
 ) {
     val colors = BouncerDesignSystem.colors
     val typography = BouncerDesignSystem.typography
@@ -332,7 +333,7 @@ private fun TeamRow(
             )
             if (!hasScore && matchTime.isNotBlank()) {
                 Text(
-                    text = if (teamCode == "AUS") "Australia" else if (teamCode == "ENG") "England" else "",
+                    text = team.name,
                     style = typography.labelSmall,
                     color = colors.textTertiary
                 )
@@ -532,5 +533,58 @@ private fun parseBallString(ball: String): BallEvent {
                 else -> BallEvent.DOT
             }
         }
+    }
+}
+
+// ── Previews ────────────────────────────────────────────────────────────────
+
+@androidx.compose.ui.tooling.preview.Preview(showBackground = true, backgroundColor = 0xFF121212)
+@Composable
+private fun MatchCardLivePreview() {
+    com.tanush.bouncer.ui.theme.BouncerPreviewTheme {
+        val mockMatch = CricketMatch(
+            id = "preview-1",
+            seriesId = "",
+            matchTitle = "India vs Australia",
+            matchType = "T20",
+            status = "Live",
+            teams = listOf(
+                CricketMatch.Team("India", "185/4", "", true, null, "IND", "18.2"),
+                CricketMatch.Team("Australia", "142/6", "", false, null, "AUS", "15.0")
+            ),
+            venue = "MCG, Melbourne",
+            date = "Today",
+            matchTime = "7:30 PM",
+            score = null,
+            currentStatus = "India need 44 runs from 12 balls",
+            info = "Live",
+            winProbability = 65.0
+        )
+        MatchCard(match = mockMatch, onClick = {})
+    }
+}
+
+@androidx.compose.ui.tooling.preview.Preview(showBackground = true, backgroundColor = 0xFF121212)
+@Composable
+private fun MatchCardUpcomingPreview() {
+    com.tanush.bouncer.ui.theme.BouncerPreviewTheme {
+        val mockMatch = CricketMatch(
+            id = "preview-2",
+            seriesId = "",
+            matchTitle = "England vs South Africa",
+            matchType = "ODI",
+            status = "Upcoming",
+            teams = listOf(
+                CricketMatch.Team("England", "", "", false, null, "ENG", ""),
+                CricketMatch.Team("South Africa", "", "", false, null, "SA", "")
+            ),
+            venue = "Lord's, London",
+            date = "Tomorrow",
+            matchTime = "2:30 PM",
+            score = null,
+            currentStatus = "",
+            info = "1st ODI"
+        )
+        MatchCard(match = mockMatch, onClick = {})
     }
 }

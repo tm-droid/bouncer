@@ -73,8 +73,8 @@ fun PremiumTextField(
     val borderColor by animateColorAsState(
         targetValue = when {
             isError -> Color(0xFFEF4444)
-            isFocused -> ShinyGoldMid
-            else -> ShinyGoldMid.copy(alpha = 0.3f)
+            isFocused -> GoldPrimary
+            else -> GoldPrimary.copy(alpha = 0.3f)
         },
         animationSpec = tween(200),
         label = "borderColor"
@@ -109,7 +109,7 @@ fun PremiumTextField(
                         .alpha(glowAlpha)
                         .blur(8.dp)
                         .background(
-                            color = if (isError) Color(0xFFEF4444) else ShinyGoldMid,
+                            color = if (isError) Color(0xFFEF4444) else GoldPrimary,
                             shape = RoundedCornerShape(12.dp)
                         )
                 )
@@ -121,7 +121,7 @@ fun PremiumTextField(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(12.dp))
-                    .background(Color.White.copy(alpha = 0.05f))
+                    .background(GlassSurface)
                     .border(
                         width = 1.dp,
                         color = borderColor,
@@ -134,7 +134,7 @@ fun PremiumTextField(
                     color = if (enabled) Color.White else Color.White.copy(alpha = 0.5f),
                     fontSize = 16.sp
                 ),
-                cursorBrush = SolidColor(ShinyGoldMid),
+                cursorBrush = SolidColor(GoldPrimary),
                 keyboardOptions = keyboardOptions,
                 keyboardActions = keyboardActions,
                 interactionSource = interactionSource,
@@ -148,7 +148,7 @@ fun PremiumTextField(
                             Icon(
                                 imageVector = leadingIcon,
                                 contentDescription = null,
-                                tint = if (isFocused) ShinyGoldMid else Color.White.copy(alpha = 0.5f),
+                                tint = if (isFocused) GoldPrimary else Color.White.copy(alpha = 0.5f),
                                 modifier = Modifier.size(20.dp)
                             )
                         }
@@ -224,8 +224,8 @@ fun PremiumPasswordField(
     val borderColor by animateColorAsState(
         targetValue = when {
             isError -> Color(0xFFEF4444)
-            isFocused -> ShinyGoldMid
-            else -> ShinyGoldMid.copy(alpha = 0.3f)
+            isFocused -> GoldPrimary
+            else -> GoldPrimary.copy(alpha = 0.3f)
         },
         animationSpec = tween(200),
         label = "borderColor"
@@ -250,7 +250,7 @@ fun PremiumPasswordField(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(12.dp))
-                .background(Color.White.copy(alpha = 0.05f))
+                .background(GlassSurface)
                 .border(
                     width = 1.dp,
                     color = borderColor,
@@ -262,7 +262,7 @@ fun PremiumPasswordField(
                 color = Color.White,
                 fontSize = 16.sp
             ),
-            cursorBrush = SolidColor(ShinyGoldMid),
+            cursorBrush = SolidColor(GoldPrimary),
             visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
             interactionSource = interactionSource,
@@ -325,7 +325,7 @@ fun PremiumSwitch(
     )
     
     val trackColor by animateColorAsState(
-        targetValue = if (checked) ShinyGoldMid else Color.White.copy(alpha = 0.3f),
+        targetValue = if (checked) GoldPrimary else Color.White.copy(alpha = 0.3f),
         animationSpec = tween(200),
         label = "track"
     )
@@ -336,7 +336,7 @@ fun PremiumSwitch(
             .height(28.dp)
             .clip(RoundedCornerShape(14.dp))
             .background(
-                if (checked) ShinyGoldMid.copy(alpha = 0.3f) else Color.White.copy(alpha = 0.05f)
+                if (checked) GoldPrimary.copy(alpha = 0.3f) else GlassSurface
             )
             .border(
                 width = 1.dp,
@@ -355,7 +355,7 @@ fun PremiumSwitch(
                 .background(
                     brush = if (checked) {
                         Brush.linearGradient(
-                            colors = listOf(ShinyGoldMid, ShinyGoldLight)
+                            colors = listOf(GoldPrimary, GoldLight)
                         )
                     } else {
                         Brush.linearGradient(
@@ -369,7 +369,7 @@ fun PremiumSwitch(
                 Icon(
                     imageVector = Icons.Default.Check,
                     contentDescription = null,
-                    tint = BlackBackground,
+                    tint = BackgroundBase,
                     modifier = Modifier.size(14.dp)
                 )
             }
@@ -395,7 +395,7 @@ fun PremiumCheckbox(
     )
     
     val borderColor by animateColorAsState(
-        targetValue = if (checked) ShinyGoldMid else Color.White.copy(alpha = 0.4f),
+        targetValue = if (checked) GoldPrimary else Color.White.copy(alpha = 0.4f),
         animationSpec = tween(200),
         label = "border"
     )
@@ -411,7 +411,7 @@ fun PremiumCheckbox(
                 .size(24.dp)
                 .clip(RoundedCornerShape(6.dp))
                 .background(
-                    if (checked) ShinyGoldMid.copy(alpha = 0.2f) else Color.Transparent
+                    if (checked) GoldPrimary.copy(alpha = 0.2f) else Color.Transparent
                 )
                 .border(
                     width = 2.dp,
@@ -423,7 +423,7 @@ fun PremiumCheckbox(
             Icon(
                 imageVector = Icons.Default.Check,
                 contentDescription = null,
-                tint = ShinyGoldMid,
+                tint = GoldPrimary,
                 modifier = Modifier
                     .size(16.dp)
                     .scale(scale)
@@ -458,7 +458,7 @@ fun PremiumRadioButton(
     )
     
     val borderColor by animateColorAsState(
-        targetValue = if (selected) ShinyGoldMid else Color.White.copy(alpha = 0.4f),
+        targetValue = if (selected) GoldPrimary else Color.White.copy(alpha = 0.4f),
         animationSpec = tween(200),
         label = "border"
     )
@@ -487,7 +487,7 @@ fun PremiumRadioButton(
                     .clip(CircleShape)
                     .background(
                         brush = Brush.radialGradient(
-                            colors = listOf(ShinyGoldLight, ShinyGoldMid)
+                            colors = listOf(GoldLight, GoldPrimary)
                         )
                     )
             )
@@ -530,7 +530,7 @@ fun PremiumSlider(
                     .fillMaxWidth()
                     .height(6.dp)
                     .clip(RoundedCornerShape(3.dp))
-                    .background(ShinyGoldMid.copy(alpha = 0.2f))
+                    .background(GoldPrimary.copy(alpha = 0.2f))
             )
             
             // Active track
@@ -541,7 +541,7 @@ fun PremiumSlider(
                     .clip(RoundedCornerShape(3.dp))
                     .background(
                         brush = Brush.horizontalGradient(
-                            colors = listOf(ShinyGoldDeep, ShinyGoldMid)
+                            colors = listOf(GoldPrimary, GoldPrimary)
                         )
                     )
             )
@@ -559,7 +559,7 @@ fun PremiumSlider(
                         .size(32.dp)
                         .blur(8.dp)
                         .alpha(0.5f)
-                        .background(ShinyGoldMid, CircleShape)
+                        .background(GoldPrimary, CircleShape)
                 )
                 
                 // Thumb button
@@ -569,12 +569,12 @@ fun PremiumSlider(
                         .clip(CircleShape)
                         .background(
                             brush = Brush.radialGradient(
-                                colors = listOf(ShinyGoldLight, ShinyGoldMid)
+                                colors = listOf(GoldLight, GoldPrimary)
                             )
                         )
                         .border(
                             width = 2.dp,
-                            color = ShinyGoldDeep,
+                            color = GoldPrimary,
                             shape = CircleShape
                         )
                 )
@@ -632,10 +632,10 @@ fun <T> PremiumDropdown(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(12.dp))
-                    .background(Color.White.copy(alpha = 0.05f))
+                    .background(GlassSurface)
                     .border(
                         width = 1.dp,
-                        color = if (expanded) ShinyGoldMid else ShinyGoldMid.copy(alpha = 0.3f),
+                        color = if (expanded) GoldPrimary else GoldPrimary.copy(alpha = 0.3f),
                         shape = RoundedCornerShape(12.dp)
                     )
                     .clickable(enabled = enabled) { expanded = true }
@@ -652,7 +652,7 @@ fun <T> PremiumDropdown(
                 Icon(
                     imageVector = Icons.Default.ArrowDropDown,
                     contentDescription = null,
-                    tint = ShinyGoldMid,
+                    tint = GoldPrimary,
                     modifier = Modifier.rotate(rotation)
                 )
             }
@@ -661,10 +661,10 @@ fun <T> PremiumDropdown(
                 expanded = expanded,
                 onDismissRequest = { expanded = false },
                 modifier = Modifier
-                    .background(Color.White.copy(alpha = 0.05f))
+                    .background(GlassSurface)
                     .border(
                         width = 1.dp,
-                        color = ShinyGoldMid.copy(alpha = 0.3f),
+                        color = GoldPrimary.copy(alpha = 0.3f),
                         shape = RoundedCornerShape(12.dp)
                     )
             ) {
@@ -673,7 +673,7 @@ fun <T> PremiumDropdown(
                         text = {
                             Text(
                                 text = itemLabel(item),
-                                color = if (item == selectedItem) ShinyGoldMid else Color.White
+                                color = if (item == selectedItem) GoldPrimary else Color.White
                             )
                         },
                         onClick = {
@@ -681,7 +681,7 @@ fun <T> PremiumDropdown(
                             expanded = false
                         },
                         modifier = Modifier.background(
-                            if (item == selectedItem) ShinyGoldMid.copy(alpha = 0.1f) else Color.Transparent
+                            if (item == selectedItem) GoldPrimary.copy(alpha = 0.1f) else Color.Transparent
                         )
                     )
                 }
@@ -700,10 +700,10 @@ fun InputSegmentedControl(
     Row(
         modifier = modifier
             .clip(RoundedCornerShape(12.dp))
-            .background(Color.White.copy(alpha = 0.05f))
+            .background(GlassSurface)
             .border(
                 width = 1.dp,
-                color = ShinyGoldMid.copy(alpha = 0.3f),
+                color = GoldPrimary.copy(alpha = 0.3f),
                 shape = RoundedCornerShape(12.dp)
             )
             .padding(4.dp),
@@ -713,7 +713,7 @@ fun InputSegmentedControl(
             val isSelected = index == selectedIndex
             
             val backgroundColor by animateColorAsState(
-                targetValue = if (isSelected) ShinyGoldMid.copy(alpha = 0.3f) else Color.Transparent,
+                targetValue = if (isSelected) GoldPrimary.copy(alpha = 0.3f) else Color.Transparent,
                 animationSpec = tween(200),
                 label = "bg"
             )
@@ -729,7 +729,7 @@ fun InputSegmentedControl(
             ) {
                 Text(
                     text = option,
-                    color = if (isSelected) ShinyGoldMid else Color.White.copy(alpha = 0.7f),
+                    color = if (isSelected) GoldPrimary else Color.White.copy(alpha = 0.7f),
                     fontSize = 14.sp,
                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
                 )

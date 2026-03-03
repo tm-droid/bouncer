@@ -57,6 +57,7 @@ fun StrikeRotationCard(
     data: StrikeRotationData,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "rotation")
     
     // Rotation animation
@@ -82,10 +83,10 @@ fun StrikeRotationCard(
     )
     
     val rotationColor = when {
-        data.rotationRate >= 70 -> SuccessGreen
-        data.rotationRate >= 50 -> ShinyGoldDeep
-        data.rotationRate >= 30 -> WarningYellow
-        else -> WicketRed
+        data.rotationRate >= 70 -> colors.statusSuccess
+        data.rotationRate >= 50 -> colors.goldPrimary
+        data.rotationRate >= 30 -> colors.statusWarning
+        else -> colors.statusLive
     }
 
     Surface(
@@ -97,7 +98,7 @@ fun StrikeRotationCard(
                 spotColor = rotationColor.copy(alpha = 0.2f)
             ),
         shape = RoundedCornerShape(20.dp),
-        color = Color.White.copy(alpha = 0.05f)
+        color = colors.glassSurface
     ) {
         Column(
             modifier = Modifier.padding(20.dp),
@@ -115,12 +116,12 @@ fun StrikeRotationCard(
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 1.5.sp,
-                        color = ShinyGoldDeep
+                        color = colors.goldPrimary
                     )
                     Text(
                         text = "Partnership Analysis",
                         fontSize = 10.sp,
-                        color = TextSecondary
+                        color = colors.textSecondary
                     )
                 }
                 
@@ -153,7 +154,7 @@ fun StrikeRotationCard(
                     
                     // Track circle
                     drawCircle(
-                        color = CardBorder.copy(alpha = 0.2f),
+                        color = colors.glassBorder.copy(alpha = 0.2f),
                         radius = radius,
                         center = Offset(centerX, centerY),
                         style = Stroke(8.dp.toPx())
@@ -187,8 +188,8 @@ fun StrikeRotationCard(
                         drawCircle(
                             brush = Brush.radialGradient(
                                 colors = listOf(
-                                    ShinyGoldDeep,
-                                    ShinyGoldMid.copy(alpha = 0.5f)
+                                    colors.goldPrimary,
+                                    colors.goldPrimary.copy(alpha = 0.5f)
                                 ),
                                 center = Offset(arrowX, arrowY),
                                 radius = 12.dp.toPx()
@@ -205,7 +206,7 @@ fun StrikeRotationCard(
                             val trailY = centerY + (arrowRadius * sin(trailRadian)).toFloat()
                             
                             drawCircle(
-                                color = ShinyGoldDeep.copy(alpha = 0.3f - (i * 0.08f)),
+                                color = colors.goldPrimary.copy(alpha = 0.3f - (i * 0.08f)),
                                 radius = (8 - i * 2).dp.toPx(),
                                 center = Offset(trailX, trailY)
                             )
@@ -221,8 +222,8 @@ fun StrikeRotationCard(
                     drawCircle(
                         brush = Brush.radialGradient(
                             colors = listOf(
-                                SuccessGreen.copy(alpha = 0.8f),
-                                SuccessGreen.copy(alpha = 0.3f)
+                                colors.statusSuccess.copy(alpha = 0.8f),
+                                colors.statusSuccess.copy(alpha = 0.3f)
                             )
                         ),
                         radius = 16.dp.toPx() * pulseFactor,
@@ -234,7 +235,7 @@ fun StrikeRotationCard(
                     
                     // Non-striker position
                     drawCircle(
-                        color = CardBorder.copy(alpha = 0.5f),
+                        color = colors.glassBorder.copy(alpha = 0.5f),
                         radius = 14.dp.toPx(),
                         center = Offset(
                             centerX + (posRadius * cos(nonStrikerAngle)).toFloat(),
@@ -251,12 +252,12 @@ fun StrikeRotationCard(
                         text = "${data.averageRunsPerOver}",
                         fontSize = 28.sp,
                         fontWeight = FontWeight.Bold,
-                        color = TextPrimary
+                        color = colors.textPrimary
                     )
                     Text(
                         text = "runs/over",
                         fontSize = 10.sp,
-                        color = TextSecondary
+                        color = colors.textSecondary
                     )
                 }
             }
@@ -290,31 +291,31 @@ fun StrikeRotationCard(
                 RunTypeItem(
                     label = "Dots",
                     count = data.dotBalls,
-                    color = WicketRed.copy(alpha = 0.7f),
+                    color = colors.statusLive.copy(alpha = 0.7f),
                     modifier = Modifier.weight(1f)
                 )
                 RunTypeItem(
                     label = "1s",
                     count = data.singles,
-                    color = SuccessGreen,
+                    color = colors.statusSuccess,
                     modifier = Modifier.weight(1f)
                 )
                 RunTypeItem(
                     label = "2s",
                     count = data.twos,
-                    color = ShinyGoldDeep,
+                    color = colors.goldPrimary,
                     modifier = Modifier.weight(1f)
                 )
                 RunTypeItem(
                     label = "3s",
                     count = data.threes,
-                    color = LiveBlue,
+                    color = colors.statusInfo,
                     modifier = Modifier.weight(1f)
                 )
                 RunTypeItem(
                     label = "4/6",
                     count = data.boundaries,
-                    color = BoundarySix,
+                    color = colors.goldPrimary,
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -330,17 +331,18 @@ private fun BatsmanContribution(
     isStriker: Boolean,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(12.dp),
-        color = if (isStriker) SuccessGreen.copy(alpha = 0.1f) else CardBorder.copy(alpha = 0.1f)
+        color = if (isStriker) colors.statusSuccess.copy(alpha = 0.1f) else colors.glassBorder.copy(alpha = 0.1f)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .border(
                     width = 1.dp,
-                    color = if (isStriker) SuccessGreen.copy(alpha = 0.3f) else CardBorder.copy(alpha = 0.2f),
+                    color = if (isStriker) colors.statusSuccess.copy(alpha = 0.3f) else colors.glassBorder.copy(alpha = 0.2f),
                     shape = RoundedCornerShape(12.dp)
                 )
                 .padding(12.dp),
@@ -355,14 +357,14 @@ private fun BatsmanContribution(
                     Box(
                         modifier = Modifier
                             .size(8.dp)
-                            .background(SuccessGreen, CircleShape)
+                            .background(colors.statusSuccess, CircleShape)
                     )
                 }
                 Text(
                     text = name,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = TextPrimary,
+                    color = colors.textPrimary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -372,13 +374,13 @@ private fun BatsmanContribution(
                 text = "$runs",
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
-                color = if (isStriker) SuccessGreen else TextPrimary
+                color = if (isStriker) colors.statusSuccess else colors.textPrimary
             )
             
             Text(
                 text = "${percentage.toInt()}%",
                 fontSize = 10.sp,
-                color = TextSecondary
+                color = colors.textSecondary
             )
         }
     }
@@ -391,6 +393,7 @@ private fun RunTypeItem(
     color: Color,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(8.dp),
@@ -412,7 +415,7 @@ private fun RunTypeItem(
             Text(
                 text = label,
                 fontSize = 9.sp,
-                color = TextSecondary
+                color = colors.textSecondary
             )
         }
     }
@@ -426,11 +429,12 @@ fun CompactStrikeRotation(
     rotationRate: Float,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val color = when {
-        rotationRate >= 70 -> SuccessGreen
-        rotationRate >= 50 -> ShinyGoldDeep
-        rotationRate >= 30 -> WarningYellow
-        else -> WicketRed
+        rotationRate >= 70 -> colors.statusSuccess
+        rotationRate >= 50 -> colors.goldPrimary
+        rotationRate >= 30 -> colors.statusWarning
+        else -> colors.statusLive
     }
     
     Row(

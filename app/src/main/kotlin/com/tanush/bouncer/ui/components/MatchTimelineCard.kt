@@ -20,6 +20,7 @@ import androidx.compose.ui.draw.*
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -101,29 +102,31 @@ private fun getMomentIcon(type: MatchMomentType): ImageVector {
 /**
  * Get color for a moment type
  */
+@Composable
 private fun getMomentColor(type: MatchMomentType): Color {
+    val colors = BouncerDesignSystem.colors
     return when (type) {
-        MatchMomentType.WICKET -> WicketRed
-        MatchMomentType.BOUNDARY_FOUR -> BoundaryFour
-        MatchMomentType.BOUNDARY_SIX -> BoundarySix
-        MatchMomentType.FIFTY -> ShinyGoldDeep
-        MatchMomentType.CENTURY -> ShinyGoldDeep
-        MatchMomentType.HAT_TRICK -> ChartPurple
-        MatchMomentType.FIVE_WICKETS -> ChartPurple
-        MatchMomentType.INNINGS_START -> ChartBlue
+        MatchMomentType.WICKET -> StatusLive
+        MatchMomentType.BOUNDARY_FOUR -> StatusInfo
+        MatchMomentType.BOUNDARY_SIX -> GoldPrimary
+        MatchMomentType.FIFTY -> GoldPrimary
+        MatchMomentType.CENTURY -> GoldPrimary
+        MatchMomentType.HAT_TRICK -> colors.statusInfo
+        MatchMomentType.FIVE_WICKETS -> colors.statusInfo
+        MatchMomentType.INNINGS_START -> StatusInfo
         MatchMomentType.INNINGS_END -> TextTertiary
         MatchMomentType.DRINKS_BREAK -> ChartCyan
-        MatchMomentType.PARTNERSHIP_50 -> SuccessGreen
-        MatchMomentType.PARTNERSHIP_100 -> ShinyGoldDeep
+        MatchMomentType.PARTNERSHIP_50 -> colors.statusSuccess
+        MatchMomentType.PARTNERSHIP_100 -> GoldPrimary
         MatchMomentType.POWERPLAY_START -> WarningOrange
         MatchMomentType.POWERPLAY_END -> WarningOrange
         MatchMomentType.STRATEGIC_TIMEOUT -> TextTertiary
-        MatchMomentType.NEW_BALL -> ChartBlue
-        MatchMomentType.REVIEW_SUCCESSFUL -> SuccessGreen
-        MatchMomentType.REVIEW_UNSUCCESSFUL -> ErrorRed
-        MatchMomentType.RUN_OUT -> WicketRed
+        MatchMomentType.NEW_BALL -> StatusInfo
+        MatchMomentType.REVIEW_SUCCESSFUL -> colors.statusSuccess
+        MatchMomentType.REVIEW_UNSUCCESSFUL -> StatusLive
+        MatchMomentType.RUN_OUT -> StatusLive
         MatchMomentType.DROPPED_CATCH -> WarningOrange
-        MatchMomentType.STUMPING -> WicketRed
+        MatchMomentType.STUMPING -> StatusLive
     }
 }
 
@@ -153,11 +156,11 @@ fun MatchTimelineCard(
             .shadow(
                 elevation = 16.dp,
                 shape = RoundedCornerShape(24.dp),
-                spotColor = ShinyGoldDeep.copy(alpha = 0.15f)
+                spotColor = GoldPrimary.copy(alpha = 0.15f)
             ),
-        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.05f)),
+        colors = CardDefaults.cardColors(containerColor = GlassSurface),
         shape = RoundedCornerShape(24.dp),
-        border = BorderStroke(0.5.dp, CardBorder.copy(alpha = 0.3f))
+        border = BorderStroke(0.5.dp, GoldPrimary.copy(alpha = 0.15f))
     ) {
         Column(
             modifier = Modifier.padding(20.dp)
@@ -175,20 +178,24 @@ fun MatchTimelineCard(
                     Icon(
                         Icons.Default.Timeline,
                         contentDescription = null,
-                        tint = ShinyGoldDeep,
+                        tint = GoldPrimary,
                         modifier = Modifier.size(20.dp)
                     )
                     Text(
                         "MATCH TIMELINE",
-                        color = TextPrimary,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.sp
+                        style = TextStyle(
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.sp,
+                            brush = Brush.verticalGradient(
+                                colors = listOf(Color.White, GoldPrimary, GoldDark)
+                            )
+                        )
                     )
                 }
                 
                 Surface(
-                    color = Color.White.copy(alpha = 0.08f),
+                    color = GlassSurface,
                     shape = RoundedCornerShape(8.dp)
                 ) {
                     Text(
@@ -285,7 +292,7 @@ private fun TimelineMomentItem(
                     modifier = Modifier
                         .weight(1f)
                         .height(2.dp)
-                        .background(CardBorder.copy(alpha = 0.4f))
+                        .background(GoldPrimary.copy(alpha = 0.15f))
                 )
             } else {
                 Spacer(modifier = Modifier.weight(1f))
@@ -321,7 +328,7 @@ private fun TimelineMomentItem(
                     modifier = Modifier
                         .weight(1f)
                         .height(2.dp)
-                        .background(CardBorder.copy(alpha = 0.4f))
+                        .background(GoldPrimary.copy(alpha = 0.15f))
                 )
             } else {
                 Spacer(modifier = Modifier.weight(1f))
@@ -420,7 +427,7 @@ private fun VerticalTimelineItem(
                     modifier = Modifier
                         .width(2.dp)
                         .height(16.dp)
-                        .background(CardBorder.copy(alpha = 0.4f))
+                        .background(GoldPrimary.copy(alpha = 0.15f))
                 )
             } else {
                 Spacer(modifier = Modifier.height(16.dp))
@@ -432,7 +439,7 @@ private fun VerticalTimelineItem(
                 modifier = Modifier
                     .size(32.dp)
                     .shadow(8.dp, CircleShape, spotColor = color.copy(alpha = 0.3f))
-                    .background(Color.White.copy(alpha = 0.05f), CircleShape)
+                    .background(GlassSurface, CircleShape)
                     .border(2.dp, color.copy(alpha = 0.8f), CircleShape)
             ) {
                 Icon(
@@ -449,7 +456,7 @@ private fun VerticalTimelineItem(
                     modifier = Modifier
                         .width(2.dp)
                         .height(16.dp)
-                        .background(CardBorder.copy(alpha = 0.4f))
+                        .background(GoldPrimary.copy(alpha = 0.15f))
                 )
             }
         }
@@ -461,7 +468,7 @@ private fun VerticalTimelineItem(
             modifier = Modifier
                 .weight(1f)
                 .padding(bottom = if (isLast) 0.dp else 8.dp),
-            color = Color.White.copy(alpha = 0.08f),
+            color = GlassSurface,
             shape = RoundedCornerShape(12.dp),
             border = BorderStroke(0.5.dp, color.copy(alpha = 0.2f))
         ) {
@@ -531,7 +538,7 @@ fun MiniMatchTimeline(
         modifier = modifier
             .height(24.dp)
             .clip(RoundedCornerShape(4.dp))
-            .background(CardDarkBlue),
+            .background(GlassSurface),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(2.dp)
     ) {

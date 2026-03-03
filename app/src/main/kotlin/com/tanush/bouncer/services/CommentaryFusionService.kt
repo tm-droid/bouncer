@@ -5,7 +5,6 @@ import com.tanush.bouncer.BuildConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONArray
@@ -20,7 +19,7 @@ class CommentaryFusionService {
     // API key loaded from BuildConfig (set in local.properties)
     private val openRouterApiKey = BuildConfig.OPENROUTER_API_KEY
 
-    private val client = OkHttpClient()
+    private val client = com.tanush.bouncer.network.HttpClientProvider.sharedClient
 
     companion object {
         const val FUSION_PROMPT_TEMPLATE = """

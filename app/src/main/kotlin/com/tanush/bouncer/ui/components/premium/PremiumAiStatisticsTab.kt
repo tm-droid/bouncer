@@ -9,7 +9,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Psychology
-import androidx.compose.material.icons.filled.TrendingUp
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -96,7 +96,7 @@ private fun AiImpactHero() {
         Canvas(modifier = Modifier.size(240.dp)) {
             // High-fidelity background glow
             drawCircle(
-                brush = Brush.radialGradient(listOf(ShinyGoldDeep.copy(alpha = 0.2f), Color.Transparent)),
+                brush = Brush.radialGradient(listOf(GoldPrimary.copy(alpha = 0.2f), Color.Transparent)),
                 radius = 120.dp.toPx()
             )
             
@@ -106,7 +106,7 @@ private fun AiImpactHero() {
             }) {
                 // Technical Grid Rings
                 drawCircle(
-                    color = ShinyGoldDeep.copy(alpha = 0.15f),
+                    color = GoldPrimary.copy(alpha = 0.15f),
                     style = Stroke(width = 2.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(20f, 15f))),
                     radius = 105.dp.toPx()
                 )
@@ -122,7 +122,7 @@ private fun AiImpactHero() {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
                 "BOUNCER AI IMPACT SCORE",
-                color = ShinyGoldDeep,
+                color = GoldPrimary,
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Black,
                 letterSpacing = 2.5.sp
@@ -137,12 +137,12 @@ private fun AiImpactHero() {
             Box(
                 modifier = Modifier
                     .clip(CircleShape)
-                    .background(SuccessGreen.copy(alpha = 0.1f))
-                    .border(0.5.dp, SuccessGreen.copy(alpha = 0.3f), CircleShape)
+                    .background(StatusSuccess.copy(alpha = 0.1f))
+                    .border(0.5.dp, StatusSuccess.copy(alpha = 0.3f), CircleShape)
                     .padding(horizontal = 14.dp, vertical = 6.dp)
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Icon(Icons.Default.TrendingUp, null, tint = SuccessGreen, modifier = Modifier.size(16.dp))
+                    Icon(Icons.AutoMirrored.Filled.TrendingUp, null, tint = StatusSuccess, modifier = Modifier.size(16.dp))
                     Text("ELITE STATUS", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
                 }
             }
@@ -156,7 +156,7 @@ private fun InsightPill(text: String) {
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(20.dp))
-            .background(Color.White.copy(alpha = 0.08f))
+            .background(GlassBorder)
             .border(
                 0.5.dp,
                 Brush.horizontalGradient(
@@ -169,7 +169,7 @@ private fun InsightPill(text: String) {
         contentAlignment = Alignment.Center
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            Icon(Icons.Default.AutoAwesome, null, tint = ShinyGoldDeep, modifier = Modifier.size(20.dp))
+            Icon(Icons.Default.AutoAwesome, null, tint = GoldPrimary, modifier = Modifier.size(20.dp))
             Text(
                 text = text.uppercase(), 
                 color = Color.White, 
@@ -189,7 +189,7 @@ private fun ValueAddedChart() {
             Column {
                 Text(
                     "ANALYTIC CONTRIBUTION", 
-                    color = ShinyGoldDeep, 
+                    color = GoldPrimary, 
                     fontSize = 10.sp, 
                     fontWeight = FontWeight.Black, 
                     letterSpacing = 2.sp
@@ -203,7 +203,7 @@ private fun ValueAddedChart() {
             }
             Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text("+42", color = Color.White, fontSize = 32.sp, fontWeight = FontWeight.Black)
-                Text("PTS", color = ShinyGoldDeep, fontSize = 12.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(bottom = 6.dp))
+                Text("PTS", color = GoldPrimary, fontSize = 12.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(bottom = 6.dp))
             }
         }
 
@@ -212,8 +212,8 @@ private fun ValueAddedChart() {
                 .fillMaxWidth()
                 .height(280.dp)
                 .clip(RoundedCornerShape(28.dp))
-                .background(Color.White.copy(alpha = 0.08f))
-                .border(0.5.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(28.dp))
+                .background(GlassBorder)
+                .border(0.5.dp, GlassBorder, RoundedCornerShape(28.dp))
                 .padding(24.dp)
         ) {
             Canvas(modifier = Modifier.fillMaxSize()) {
@@ -257,15 +257,15 @@ private fun ValueAddedChart() {
                                 .clip(RoundedCornerShape(6.dp))
                                 .background(
                                     if (isProjected) Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.2f), Color.Transparent))
-                                    else Brush.verticalGradient(listOf(ShinyGoldDeep, ShinyGoldDeep.copy(alpha = 0.2f)))
+                                    else Brush.verticalGradient(listOf(GoldPrimary, GoldPrimary.copy(alpha = 0.2f)))
                                 )
                                 .then(
-                                    if (isHighlighted) Modifier.shadow(16.dp, CircleShape, spotColor = ShinyGoldDeep.copy(alpha = 0.4f)) else Modifier
+                                    if (isHighlighted) Modifier.shadow(16.dp, CircleShape, spotColor = GoldPrimary.copy(alpha = 0.4f)) else Modifier
                                 )
                         )
                         Text(
                             text = "${10 + index * 5}",
-                            color = if (isHighlighted) ShinyGoldDeep else TextMuted,
+                            color = if (isHighlighted) GoldPrimary else TextMuted,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Black
                         )
@@ -285,7 +285,7 @@ private fun DuelMetricsRow() {
             name = "PRIMARY TARGET",
             value = "82.4",
             subLabel = "PRESSURE",
-            color = ShinyGoldDeep
+            color = GoldPrimary
         )
         DuelCard(
             modifier = Modifier.weight(1f),
@@ -293,7 +293,7 @@ private fun DuelMetricsRow() {
             name = "LIMITING FACTOR",
             value = "14.2",
             subLabel = "RISK",
-            color = ErrorRed
+            color = StatusLive
         )
     }
 }
@@ -303,8 +303,8 @@ private fun DuelCard(modifier: Modifier, label: String, name: String, value: Str
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(24.dp))
-            .background(Color.White.copy(alpha = 0.08f))
-            .border(0.5.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(24.dp))
+            .background(GlassBorder)
+            .border(0.5.dp, GlassBorder, RoundedCornerShape(24.dp))
             .padding(20.dp)
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
@@ -348,22 +348,22 @@ private fun PredictiveInsightCard() {
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(28.dp))
-            .background(Color.White.copy(alpha = 0.08f))
-            .border(0.5.dp, Color.White.copy(alpha = 0.12f), RoundedCornerShape(28.dp))
+            .background(GlassBorder)
+            .border(0.5.dp, GlassBorderHighlight, RoundedCornerShape(28.dp))
     ) {
         Column(modifier = Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Icon(Icons.Default.Psychology, null, tint = ShinyGoldDeep, modifier = Modifier.size(22.dp))
+                    Icon(Icons.Default.Psychology, null, tint = GoldPrimary, modifier = Modifier.size(22.dp))
                     Text("BOUNCER PREDICTIVE ENGINE", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.5.sp)
                 }
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(8.dp))
-                        .background(ShinyGoldDeep.copy(alpha = 0.15f))
+                        .background(GoldPrimary.copy(alpha = 0.15f))
                         .padding(horizontal = 12.dp, vertical = 6.dp)
                 ) {
-                    Text("CONFIDENCE: 92%", color = ShinyGoldDeep, fontSize = 9.sp, fontWeight = FontWeight.Black)
+                    Text("CONFIDENCE: 92%", color = GoldPrimary, fontSize = 9.sp, fontWeight = FontWeight.Black)
                 }
             }
             
@@ -393,7 +393,7 @@ private fun PredictiveInsightCard() {
                     contentAlignment = Alignment.Center
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("RISK", color = ErrorRed, fontSize = 10.sp, fontWeight = FontWeight.Black)
+                        Text("RISK", color = StatusLive, fontSize = 10.sp, fontWeight = FontWeight.Black)
                         Text("HIGH", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Black)
                     }
                 }

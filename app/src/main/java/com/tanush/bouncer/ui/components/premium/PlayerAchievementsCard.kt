@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.ui.components.CoilImage
 import com.tanush.bouncer.ui.theme.*
+import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 
 /**
  * Player Achievements Card
@@ -85,6 +86,9 @@ fun PlayerAchievementsCard(
         label = "spark",
     )
 
+    val colors = BouncerDesignSystem.colors
+    val goldDarkC = colors.goldDark
+
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
@@ -104,7 +108,7 @@ fun PlayerAchievementsCard(
                     val y = centerY + kotlin.math.sin(angle) * radius
 
                     drawCircle(
-                        color = ShinyGoldMid.copy(alpha = 0.1f * glowPulse),
+                        color = goldDarkC.copy(alpha = 0.1f * glowPulse),
                         radius = 3f,
                         center = Offset(x, y),
                     )
@@ -125,7 +129,7 @@ fun PlayerAchievementsCard(
                     Icon(
                         imageVector = Icons.Default.Whatshot,
                         contentDescription = null,
-                        tint = ShinyGoldMid,
+                        tint = colors.goldDark,
                         modifier = Modifier.size(24.dp),
                     )
 
@@ -133,7 +137,7 @@ fun PlayerAchievementsCard(
 
                     Text(
                         text = "MILESTONES",
-                        color = ShinyGoldMid,
+                        color = colors.goldDark,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 2.sp,
@@ -144,7 +148,7 @@ fun PlayerAchievementsCard(
                     Icon(
                         imageVector = Icons.Default.Whatshot,
                         contentDescription = null,
-                        tint = ShinyGoldMid,
+                        tint = colors.goldDark,
                         modifier = Modifier.size(24.dp),
                     )
                 }
@@ -172,12 +176,13 @@ private fun AchievementRow(
     glowPulse: Float,
     modifier: Modifier = Modifier,
 ) {
+    val colors = BouncerDesignSystem.colors
     val milestoneColor = when (achievement.milestoneType) {
-        "century" -> ShinyGoldMid
-        "half_century" -> ChartBlue
-        "five_wicket" -> WicketRed
-        "hat_trick" -> SuccessGreen
-        else -> ShinyGoldMid
+        "century" -> colors.goldDark
+        "half_century" -> colors.statusInfo
+        "five_wicket" -> colors.statusLive
+        "hat_trick" -> colors.statusSuccess
+        else -> colors.goldDark
     }
 
     val milestoneEmoji = when (achievement.milestoneType) {

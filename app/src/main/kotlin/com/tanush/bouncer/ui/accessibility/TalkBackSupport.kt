@@ -9,6 +9,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.semantics.*
 import androidx.compose.ui.semantics.CustomAccessibilityAction as ComposeCustomAccessibilityAction
+import io.sentry.Sentry
 
 /**
  * TalkBack Support for Bouncer Cricket App
@@ -275,7 +276,12 @@ object TraversalOrder {
      * Modifier to set traversal index for logical navigation order
      */
     fun Modifier.traversalIndex(index: Float): Modifier = this.semantics {
-        traversalIndex = index
+        try {
+            traversalIndex = index
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     /**
@@ -283,7 +289,12 @@ object TraversalOrder {
      */
     @OptIn(ExperimentalComposeUiApi::class)
     fun Modifier.invisibleToAccessibility(): Modifier = this.semantics {
-        invisibleToUser()
+        try {
+            invisibleToUser()
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     /**

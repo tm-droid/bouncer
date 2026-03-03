@@ -44,6 +44,7 @@ import com.tanush.bouncer.ui.components.CoilImage
 import com.tanush.bouncer.ui.theme.ChartBlue
 import com.tanush.bouncer.ui.theme.ShinyGoldDeep
 import com.tanush.bouncer.ui.theme.ShinyGoldMid
+import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 
 /**
  * Match Awards Card
@@ -76,6 +77,7 @@ fun MatchAwardsCard(
     otherAwards: List<MatchAward> = emptyList(),
     modifier: Modifier = Modifier,
 ) {
+    val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "awards")
 
     val trophyScale by infiniteTransition.animateFloat(
@@ -115,12 +117,14 @@ fun MatchAwardsCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 12.dp),
     ) {
         Box {
+            val goldDarkC = colors.goldDark
+            val goldPrimaryC = colors.goldPrimary
             // Premium shimmer background
             Canvas(modifier = Modifier.fillMaxSize()) {
                 val shimmerBrush = Brush.linearGradient(
                     colors = listOf(
                         Color.Transparent,
-                        ShinyGoldMid.copy(alpha = 0.15f),
+                        goldDarkC.copy(alpha = 0.15f),
                         Color.Transparent,
                     ),
                     start = Offset(size.width * shimmerOffset, 0f),
@@ -143,7 +147,7 @@ fun MatchAwardsCard(
                     Icon(
                         imageVector = Icons.Default.EmojiEvents,
                         contentDescription = null,
-                        tint = ShinyGoldMid,
+                        tint = colors.goldDark,
                         modifier = Modifier
                             .size(28.dp)
                             .scale(trophyScale),
@@ -153,7 +157,7 @@ fun MatchAwardsCard(
 
                     Text(
                         text = "MATCH AWARDS",
-                        color = ShinyGoldMid,
+                        color = colors.goldDark,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 2.sp,
@@ -164,7 +168,7 @@ fun MatchAwardsCard(
                     Icon(
                         imageVector = Icons.Default.EmojiEvents,
                         contentDescription = null,
-                        tint = ShinyGoldMid,
+                        tint = colors.goldDark,
                         modifier = Modifier
                             .size(28.dp)
                             .scale(trophyScale),
@@ -181,8 +185,8 @@ fun MatchAwardsCard(
                         .background(
                             Brush.verticalGradient(
                                 colors = listOf(
-                                    ShinyGoldDeep.copy(alpha = 0.3f),
-                                    ShinyGoldMid.copy(alpha = 0.15f),
+                                    colors.goldPrimary.copy(alpha = 0.3f),
+                                    colors.goldDark.copy(alpha = 0.15f),
                                     Color.Transparent,
                                 ),
                             ),
@@ -199,7 +203,7 @@ fun MatchAwardsCard(
                                 Icon(
                                     imageVector = Icons.Default.Star,
                                     contentDescription = null,
-                                    tint = ShinyGoldMid.copy(alpha = if (index == 1) sparkleAlpha else 0.5f),
+                                    tint = colors.goldDark.copy(alpha = if (index == 1) sparkleAlpha else 0.5f),
                                     modifier = Modifier.size(if (index == 1) 24.dp else 16.dp),
                                 )
                             }
@@ -209,7 +213,7 @@ fun MatchAwardsCard(
 
                         Text(
                             text = playerOfMatch.title,
-                            color = ShinyGoldMid,
+                            color = colors.goldDark,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 2.sp,
@@ -226,8 +230,8 @@ fun MatchAwardsCard(
                                     .background(
                                         Brush.radialGradient(
                                             colors = listOf(
-                                                ShinyGoldMid.copy(alpha = 0.5f),
-                                                ShinyGoldDeep.copy(alpha = 0.3f),
+                                                colors.goldDark.copy(alpha = 0.5f),
+                                                colors.goldPrimary.copy(alpha = 0.3f),
                                                 Color.Transparent,
                                             ),
                                         ),
@@ -251,7 +255,7 @@ fun MatchAwardsCard(
                                     .clip(CircleShape)
                                     .background(
                                         Brush.radialGradient(
-                                            colors = listOf(ShinyGoldMid, ShinyGoldDeep),
+                                            colors = listOf(colors.goldDark, colors.goldPrimary),
                                         ),
                                     ),
                                 contentAlignment = Alignment.Center,
@@ -289,8 +293,8 @@ fun MatchAwardsCard(
                                 .background(
                                     Brush.horizontalGradient(
                                         colors = listOf(
-                                            ShinyGoldDeep.copy(alpha = 0.4f),
-                                            ShinyGoldMid.copy(alpha = 0.4f),
+                                            colors.goldPrimary.copy(alpha = 0.4f),
+                                            colors.goldDark.copy(alpha = 0.4f),
                                         ),
                                     ),
                                 )
@@ -343,6 +347,7 @@ private fun OtherAwardRow(
     award: MatchAward,
     modifier: Modifier = Modifier,
 ) {
+    val colors = BouncerDesignSystem.colors
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -372,7 +377,7 @@ private fun OtherAwardRow(
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = award.title,
-                color = ChartBlue,
+                color = colors.statusInfo,
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Bold,
             )
@@ -392,7 +397,7 @@ private fun OtherAwardRow(
         Column(horizontalAlignment = Alignment.End) {
             Text(
                 text = award.stats,
-                color = ShinyGoldMid,
+                color = colors.goldDark,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
             )

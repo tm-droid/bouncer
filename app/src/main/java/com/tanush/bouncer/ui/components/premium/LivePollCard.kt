@@ -49,6 +49,7 @@ import com.tanush.bouncer.ui.theme.SuccessGreen
 import com.tanush.bouncer.ui.theme.WarningYellow
 import com.tanush.bouncer.ui.theme.ShinyGoldMid
 import com.tanush.bouncer.ui.theme.WicketRed
+import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 
 /**
  * Live fan poll card for match engagement
@@ -94,6 +95,7 @@ fun LivePollCard(
     hasVoted: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
+    val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "poll")
 
     val liveIndicatorAlpha by infiniteTransition.animateFloat(
@@ -128,7 +130,7 @@ fun LivePollCard(
                 val shimmerBrush = Brush.linearGradient(
                     colors = listOf(
                         Color.Transparent,
-                        ChartBlue.copy(alpha = 0.05f),
+                        colors.statusInfo.copy(alpha = 0.05f),
                         Color.Transparent,
                     ),
                     start = Offset(size.width * shimmerOffset, 0f),
@@ -155,7 +157,7 @@ fun LivePollCard(
                                 .clip(RoundedCornerShape(12.dp))
                                 .background(
                                     Brush.linearGradient(
-                                        colors = listOf(ChartBlue, Color(0xFF26C6DA)),
+                                        colors = listOf(colors.statusInfo, Color(0xFF26C6DA)),
                                     ),
                                 ),
                             contentAlignment = Alignment.Center,
@@ -174,7 +176,7 @@ fun LivePollCard(
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text(
                                     text = "FAN POLL",
-                                    color = ChartBlue,
+                                    color = colors.statusInfo,
                                     fontSize = 10.sp,
                                     fontWeight = FontWeight.Bold,
                                     letterSpacing = 1.5.sp,
@@ -187,14 +189,14 @@ fun LivePollCard(
                                         modifier = Modifier
                                             .size(8.dp)
                                             .clip(CircleShape)
-                                            .background(SuccessGreen.copy(alpha = liveIndicatorAlpha)),
+                                            .background(colors.statusSuccess.copy(alpha = liveIndicatorAlpha)),
                                     )
 
                                     Spacer(modifier = Modifier.width(4.dp))
 
                                     Text(
                                         text = "LIVE",
-                                        color = SuccessGreen,
+                                        color = colors.statusSuccess,
                                         fontSize = 9.sp,
                                         fontWeight = FontWeight.Bold,
                                     )
@@ -213,12 +215,12 @@ fun LivePollCard(
                         Box(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(8.dp))
-                                .background(WarningYellow.copy(alpha = 0.15f))
+                                .background(colors.statusWarning.copy(alpha = 0.15f))
                                 .padding(horizontal = 10.dp, vertical = 4.dp),
                         ) {
                             Text(
                                 text = time,
-                                color = WarningYellow,
+                                color = colors.statusWarning,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
                             )
@@ -279,6 +281,7 @@ private fun PollOptionItem(
     onVote: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
+    val colors = BouncerDesignSystem.colors
     val animatedProgress = remember { Animatable(0f) }
 
     LaunchedEffect(showResults) {
@@ -291,10 +294,10 @@ private fun PollOptionItem(
     }
 
     val optionColor = when (index) {
-        0 -> ChartBlue
-        1 -> WicketRed
-        2 -> ShinyGoldMid
-        else -> SuccessGreen
+        0 -> colors.statusInfo
+        1 -> colors.statusLive
+        2 -> colors.goldDark
+        else -> colors.statusSuccess
     }
 
     Box(

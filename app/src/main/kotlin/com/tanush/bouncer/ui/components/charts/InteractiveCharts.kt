@@ -31,7 +31,7 @@ import kotlin.math.min
 // Chart color palette
 val ChartColors = listOf(
     ChartCyan,
-    ChartBlue,
+    StatusInfo,
     ChartGreen,
     ChartPurple,
     ChartOrange
@@ -264,7 +264,7 @@ fun AnimatedLineChart(
                         )
                         
                         drawCircle(
-                            color = BlackSurface,
+                            color = Surface1,
                             radius = pointRadius,
                             center = point
                         )
@@ -278,7 +278,7 @@ fun AnimatedLineChart(
                         // Draw selection indicator
                         if (isSelected) {
                             drawCircle(
-                                color = ShinyGoldDeep,
+                                color = GoldPrimary,
                                 radius = pointRadius + 4.dp.toPx(),
                                 center = point,
                                 style = Stroke(width = 2.dp.toPx())
@@ -310,7 +310,7 @@ fun AnimatedLineChart(
 fun AnimatedBarChart(
     data: List<Pair<String, Float>>,
     modifier: Modifier = Modifier,
-    barColor: Color = ChartBlue,
+    barColor: Color = StatusInfo,
     showLabels: Boolean = true,
     showValues: Boolean = true,
     animationDuration: Int = 800,
@@ -372,7 +372,7 @@ fun AnimatedBarChart(
             val y = size.height - bottomPadding - animatedHeight
             
             val isSelected = index == selectedIndex
-            val currentColor = if (isSelected) ShinyGoldDeep else barColor
+            val currentColor = if (isSelected) GoldPrimary else barColor
             
             // Bar shadow/glow
             drawRoundRect(
@@ -416,7 +416,7 @@ fun AnimatedBarChart(
             // Selection indicator
             if (isSelected) {
                 drawRoundRect(
-                    color = ShinyGoldDeep,
+                    color = GoldPrimary,
                     topLeft = Offset(x - 2.dp.toPx(), y - 2.dp.toPx()),
                     size = Size(barWidth + 4.dp.toPx(), animatedHeight + 4.dp.toPx()),
                     cornerRadius = CornerRadius(8.dp.toPx()),
@@ -741,7 +741,7 @@ fun AreaChart(
                     val isPointSelected = dataPoint == selectedPoint
                     
                     drawCircle(
-                        color = BlackSurface,
+                        color = Surface1,
                         radius = 5.dp.toPx(),
                         center = point
                     )
@@ -753,7 +753,7 @@ fun AreaChart(
                     
                     if (isPointSelected) {
                         drawCircle(
-                            color = ShinyGoldDeep,
+                            color = GoldPrimary,
                             radius = 8.dp.toPx(),
                             center = point,
                             style = Stroke(width = 2.dp.toPx())
@@ -770,7 +770,7 @@ fun AreaChart(
             modifier = Modifier
                 .padding(top = 8.dp)
                 .clip(RoundedCornerShape(8.dp))
-                .background(Color.White.copy(alpha = 0.08f))
+                .background(GlassBorder)
                 .padding(horizontal = 12.dp, vertical = 6.dp)
         ) {
             Text(
@@ -807,7 +807,7 @@ private fun DataPointTooltip(
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(8.dp))
-            .background(Color.White.copy(alpha = 0.08f).copy(alpha = alpha))
+            .background(GlassBorder.copy(alpha = alpha))
             .padding(horizontal = 12.dp, vertical = 8.dp)
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {

@@ -24,7 +24,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ShowChart
+import androidx.compose.material.icons.automirrored.filled.ShowChart
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -49,6 +49,7 @@ import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.ui.theme.*
 import kotlin.math.cos
 import kotlin.math.sin
+import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 
 /**
  * Pressure index card showing match pressure on batsmen/bowlers
@@ -88,9 +89,9 @@ fun PressureIndexCard(
     battingTeam: String,
     modifier: Modifier = Modifier,
 ) {
-    val colors = BouncerDesign.colors
-    val dimens = BouncerDesign.dimens
-    val typography = BouncerDesign.typography
+    val colors = BouncerDesignSystem.colors
+    val dimens = BouncerDesignSystem.dimens
+    val typography = BouncerDesignSystem.typography
 
     val animatedPressure = remember { Animatable(0f) }
     val animatedProgress = remember { Animatable(0f) }
@@ -167,7 +168,7 @@ fun PressureIndexCard(
                         contentAlignment = Alignment.Center,
                     ) {
                         Icon(
-                            Icons.Default.ShowChart,
+                            Icons.AutoMirrored.Filled.ShowChart,
                             contentDescription = null,
                             tint = Color.Black,
                             modifier = Modifier.size(dimens.iconSize.lg),
@@ -215,6 +216,9 @@ fun PressureIndexCard(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 // Circular pressure gauge
+                val statusSuccessC = colors.statusSuccess
+                val statusWarningC = colors.statusWarning
+                val statusLiveC = colors.statusLive
                 Box(
                     modifier = Modifier.size(140.dp),
                     contentAlignment = Alignment.Center,
@@ -239,7 +243,7 @@ fun PressureIndexCard(
                         val sweepAngle = 270f * (animatedPressure.value / 100f)
                         drawArc(
                             brush = Brush.sweepGradient(
-                                colors = listOf(SuccessGreen, WarningYellow, WicketRed),
+                                colors = listOf(statusSuccessC, statusWarningC, statusLiveC),
                                 center = center,
                             ),
                             startAngle = 135f,
@@ -288,22 +292,22 @@ fun PressureIndexCard(
                     PressureStatRow(
                         label = "Required RR",
                         value = String.format("%.2f", data.requiredRate),
-                        color = if (data.requiredRate > 10) WicketRed else if (data.requiredRate > 7) WarningYellow else Color.White,
+                        color = if (data.requiredRate > 10) colors.statusLive else if (data.requiredRate > 7) colors.statusWarning else Color.White,
                     )
                     PressureStatRow(
                         label = "Current RR",
                         value = String.format("%.2f", data.currentRate),
-                        color = if (data.currentRate >= data.requiredRate) SuccessGreen else WarningYellow,
+                        color = if (data.currentRate >= data.requiredRate) colors.statusSuccess else colors.statusWarning,
                     )
                     PressureStatRow(
                         label = "Wickets Left",
                         value = "${data.wicketsInHand}",
-                        color = if (data.wicketsInHand <= 3) WicketRed else Color.White,
+                        color = if (data.wicketsInHand <= 3) colors.statusLive else Color.White,
                     )
                     PressureStatRow(
                         label = "Balls Left",
                         value = "${data.ballsRemaining}",
-                        color = if (data.ballsRemaining <= 30) WarningYellow else Color.White,
+                        color = if (data.ballsRemaining <= 30) colors.statusWarning else Color.White,
                     )
                 }
             }
@@ -404,7 +408,7 @@ fun PressureIndexCard(
                 ) {
                     Text(
                         text = "PRESSURE FACTORS",
-                        color = ShinyGoldLight,
+                        color = colors.goldLight,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 1.sp,
@@ -433,7 +437,7 @@ fun PressureIndexCard(
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                val impactColor = if (factor.impact > 0) WicketRed else SuccessGreen
+                                val impactColor = if (factor.impact > 0) colors.statusLive else colors.statusSuccess
                                 val impactText = if (factor.impact > 0) "+${factor.impact.toInt()}" else "${factor.impact.toInt()}"
 
                                 Text(
@@ -457,6 +461,7 @@ private fun PressureStatRow(
     value: String,
     color: Color,
 ) {
+    val colors = BouncerDesignSystem.colors
     Row(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
@@ -478,6 +483,7 @@ private fun PressureStatRow(
 
 @Composable
 fun PressureIndexCardPreview() {
+    val colors = BouncerDesignSystem.colors
     PressureIndexCard(
         data = PressureIndexData(
             currentPressure = 72f,

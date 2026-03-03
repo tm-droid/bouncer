@@ -47,8 +47,8 @@ data class TrackerMomentumData(
     val team2Name: String,
     val currentMomentum: Float, // -100 to +100
     val momentumHistory: List<TrackerMomentumPoint>,
-    val team1Color: Color = ShinyGoldDeep,
-    val team2Color: Color = LiveBlue
+    val team1Color: Color = GoldPrimary,
+    val team2Color: Color = StatusInfo
 )
 
 /**
@@ -60,6 +60,7 @@ fun MomentumTrackerCard(
     data: TrackerMomentumData,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "momentum")
     
     // Pulse animation for current momentum
@@ -96,7 +97,7 @@ fun MomentumTrackerCard(
                 spotColor = currentColor.copy(alpha = 0.2f)
             ),
         shape = RoundedCornerShape(20.dp),
-        color = Color.White.copy(alpha = 0.05f)
+        color = colors.glassSurface
     ) {
         Column(
             modifier = Modifier.padding(20.dp),
@@ -114,12 +115,12 @@ fun MomentumTrackerCard(
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 1.5.sp,
-                        color = ShinyGoldDeep
+                        color = colors.goldPrimary
                     )
                     Text(
                         text = "Match Flow Analysis",
                         fontSize = 10.sp,
-                        color = TextSecondary
+                        color = colors.textSecondary
                     )
                 }
                 
@@ -213,7 +214,7 @@ fun MomentumTrackerCard(
                     
                     // Center line (neutral)
                     drawLine(
-                        color = CardBorder.copy(alpha = 0.3f),
+                        color = colors.glassBorder.copy(alpha = 0.3f),
                         start = Offset(0f, centerY),
                         end = Offset(width, centerY),
                         strokeWidth = 1.dp.toPx(),
@@ -224,7 +225,7 @@ fun MomentumTrackerCard(
                     listOf(0.25f, 0.5f, 0.75f).forEach { fraction ->
                         val y = height * fraction
                         drawLine(
-                            color = CardBorder.copy(alpha = 0.1f),
+                            color = colors.glassBorder.copy(alpha = 0.1f),
                             start = Offset(0f, y),
                             end = Offset(width, y),
                             strokeWidth = 0.5.dp.toPx()
@@ -325,7 +326,7 @@ fun MomentumTrackerCard(
                             center = Offset(lastX, lastY)
                         )
                         drawCircle(
-                            color = Color.White,
+                            color = colors.textPrimary,
                             radius = 4.dp.toPx(),
                             center = Offset(lastX, lastY)
                         )
@@ -337,13 +338,13 @@ fun MomentumTrackerCard(
                                 val eventY = centerY - (point.momentumValue / 100f * centerY * 0.9f)
                                 
                                 val eventColor = when (event.type) {
-                                    TrackerMomentumEventType.WICKET -> WicketRed
-                                    TrackerMomentumEventType.BOUNDARY_SPREE -> BoundarySix
-                                    TrackerMomentumEventType.DROPPED_CATCH -> WarningYellow
-                                    TrackerMomentumEventType.MILESTONE -> SuccessGreen
-                                    TrackerMomentumEventType.COLLAPSE -> WicketRed
-                                    TrackerMomentumEventType.FIGHTBACK -> SuccessGreen
-                                    TrackerMomentumEventType.POWERPLAY -> LiveBlue
+                                    TrackerMomentumEventType.WICKET -> colors.statusLive
+                                    TrackerMomentumEventType.BOUNDARY_SPREE -> colors.goldPrimary
+                                    TrackerMomentumEventType.DROPPED_CATCH -> colors.statusWarning
+                                    TrackerMomentumEventType.MILESTONE -> colors.statusSuccess
+                                    TrackerMomentumEventType.COLLAPSE -> colors.statusLive
+                                    TrackerMomentumEventType.FIGHTBACK -> colors.statusSuccess
+                                    TrackerMomentumEventType.POWERPLAY -> colors.statusInfo
                                 }
                                 
                                 drawCircle(
@@ -399,6 +400,7 @@ private fun MomentumBadge(
     team2Color: Color,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val leadingTeam = if (momentum >= 0) team1Name else team2Name
     val color = if (momentum >= 0) team1Color else team2Color
     val intensity = abs(momentum).toInt()
@@ -439,7 +441,7 @@ private fun MomentumBadge(
                 text = intensityLabel,
                 fontSize = 9.sp,
                 fontWeight = FontWeight.Medium,
-                color = if (intensity >= 20) TextSecondary else color
+                color = if (intensity >= 20) colors.textSecondary else color
             )
         }
     }
@@ -452,6 +454,7 @@ private fun CurrentMomentumBar(
     team2Color: Color,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val animatedMomentum by animateFloatAsState(
         targetValue = momentum,
         animationSpec = tween(800, easing = FastOutSlowInEasing),
@@ -463,7 +466,7 @@ private fun CurrentMomentumBar(
             .fillMaxWidth()
             .height(8.dp)
             .background(
-                color = CardBorder.copy(alpha = 0.2f),
+                color = colors.glassBorder.copy(alpha = 0.2f),
                 shape = RoundedCornerShape(4.dp)
             )
     ) {
@@ -473,7 +476,7 @@ private fun CurrentMomentumBar(
                 .align(Alignment.Center)
                 .width(2.dp)
                 .fillMaxHeight()
-                .background(CardBorder.copy(alpha = 0.5f))
+                .background(colors.glassBorder.copy(alpha = 0.5f))
         )
         
         // Momentum indicator
@@ -511,7 +514,8 @@ fun CompactMomentumIndicator(
     team2Name: String,
     modifier: Modifier = Modifier
 ) {
-    val color = if (momentum >= 0) ShinyGoldDeep else LiveBlue
+    val colors = BouncerDesignSystem.colors
+    val color = if (momentum >= 0) colors.goldPrimary else colors.statusInfo
     val teamName = if (momentum >= 0) team1Name else team2Name
     val intensity = abs(momentum).toInt()
     

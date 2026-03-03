@@ -16,6 +16,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -31,6 +32,8 @@ import kotlin.math.sin
 fun SplashScreen(
     onSplashComplete: () -> Unit
 ) {
+    val colors = BouncerDesignSystem.colors
+    
     var showContent by remember { mutableStateOf(false) }
     var showLogo by remember { mutableStateOf(false) }
     var showTagline by remember { mutableStateOf(false) }
@@ -99,20 +102,48 @@ fun SplashScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(BlackBackground),
+            .background(colors.backgroundBase),
         contentAlignment = Alignment.Center
     ) {
-        // Animated background with orbiting particles
+        // Animated background with stadium gradient and gold bloom
         Canvas(modifier = Modifier.fillMaxSize()) {
             val centerX = size.width / 2
             val centerY = size.height / 2
+            
+            // Stadium-style radial gradient: lighter center to dark edges
+            drawRect(
+                brush = Brush.radialGradient(
+                    colors = listOf(
+                        Color(0xFF1A1D22),
+                        Color(0xFF141619),
+                        colors.backgroundBase
+                    ),
+                    center = Offset(centerX, centerY),
+                    radius = size.width * 0.9f
+                )
+            )
+            
+            // Gold bloom at the top
+            drawCircle(
+                brush = Brush.radialGradient(
+                    colors = listOf(
+                        colors.goldPrimary.copy(alpha = 0.10f * glowAlpha),
+                        colors.goldDark.copy(alpha = 0.04f * glowAlpha),
+                        Color.Transparent
+                    ),
+                    center = Offset(centerX, size.height * 0.15f),
+                    radius = size.width * 0.7f
+                ),
+                radius = size.width * 0.7f,
+                center = Offset(centerX, size.height * 0.15f)
+            )
             
             // Large outer glow
             drawCircle(
                 brush = Brush.radialGradient(
                     colors = listOf(
-                        GoldDark.copy(alpha = 0.08f * glowAlpha),
-                        GoldDark.copy(alpha = 0.03f * glowAlpha),
+                        colors.goldDark.copy(alpha = 0.08f * glowAlpha),
+                        colors.goldDark.copy(alpha = 0.03f * glowAlpha),
                         Color.Transparent
                     ),
                     center = Offset(centerX, centerY),
@@ -126,8 +157,8 @@ fun SplashScreen(
             drawCircle(
                 brush = Brush.radialGradient(
                     colors = listOf(
-                        GoldPrimary.copy(alpha = 0.12f * glowAlpha),
-                        GoldDark.copy(alpha = 0.05f * glowAlpha),
+                        colors.goldPrimary.copy(alpha = 0.12f * glowAlpha),
+                        colors.goldDark.copy(alpha = 0.05f * glowAlpha),
                         Color.Transparent
                     ),
                     center = Offset(centerX, centerY),
@@ -145,7 +176,7 @@ fun SplashScreen(
                 val y = centerY + (sin(angle) * radius).toFloat()
                 
                 drawCircle(
-                    color = GoldLight.copy(alpha = 0.4f + (i * 0.1f)),
+                    color = colors.goldLight.copy(alpha = 0.4f + (i * 0.1f)),
                     radius = 4.dp.toPx() + i * 1.5f,
                     center = Offset(x, y)
                 )
@@ -157,7 +188,7 @@ fun SplashScreen(
                     val trailY = centerY + (sin(trailAngle) * radius).toFloat()
                     
                     drawCircle(
-                        color = GoldLight.copy(alpha = 0.15f / j),
+                        color = colors.goldLight.copy(alpha = 0.15f / j),
                         radius = (4.dp.toPx() + i * 1.5f) * (1f - j * 0.2f),
                         center = Offset(trailX, trailY)
                     )
@@ -169,7 +200,7 @@ fun SplashScreen(
             for (i in 0..20) {
                 val y = (size.height / 20) * i
                 drawLine(
-                    color = GoldDark.copy(alpha = gridAlpha),
+                    color = colors.goldDark.copy(alpha = gridAlpha),
                     start = Offset(0f, y),
                     end = Offset(size.width, y),
                     strokeWidth = 0.5.dp.toPx()
@@ -178,7 +209,7 @@ fun SplashScreen(
             for (i in 0..20) {
                 val x = (size.width / 20) * i
                 drawLine(
-                    color = GoldDark.copy(alpha = gridAlpha),
+                    color = colors.goldDark.copy(alpha = gridAlpha),
                     start = Offset(x, 0f),
                     end = Offset(x, size.height),
                     strokeWidth = 0.5.dp.toPx()
@@ -194,41 +225,54 @@ fun SplashScreen(
             // Cricket ball logo
             AnimatedVisibility(
                 visible = showLogo,
-                enter = fadeIn(tween(600)) + scaleIn(
-                    initialScale = 0.5f,
-                    animationSpec = spring(
-                        dampingRatio = Spring.DampingRatioMediumBouncy,
-                        stiffness = Spring.StiffnessLow
+                enter = fadeIn(tween(800)) + scaleIn(
+                    initialScale = 0.8f,
+                    animationSpec = tween(
+                        durationMillis = 800,
+                        easing = CubicBezierEasing(0.34f, 1.56f, 0.64f, 1.0f)
                     )
                 )
             ) {
                 Box(
                     modifier = Modifier
-                        .size(140.dp)
+                        .size(144.dp)
                         .scale(pulseScale),
                     contentAlignment = Alignment.Center
                 ) {
-                    // Outer glow ring
+                    // Pulsing gold glow / shimmer around logo
                     Box(
                         modifier = Modifier
-                            .size(140.dp)
+                            .size(144.dp)
                             .drawBehind {
+                                // Outer pulsing gold glow
                                 drawCircle(
                                     brush = Brush.radialGradient(
                                         colors = listOf(
-                                            GoldDark.copy(alpha = glowAlpha * 0.5f),
-                                            GoldDark.copy(alpha = glowAlpha * 0.2f),
+                                            colors.goldPrimary.copy(alpha = glowAlpha * 0.35f),
+                                            colors.goldDark.copy(alpha = glowAlpha * 0.15f),
+                                            colors.goldDark.copy(alpha = glowAlpha * 0.05f),
                                             Color.Transparent
                                         )
                                     ),
-                                    radius = size.width / 2 + 30.dp.toPx()
+                                    radius = size.width / 2 + 40.dp.toPx()
+                                )
+                                // Inner shimmer ring
+                                drawCircle(
+                                    brush = Brush.radialGradient(
+                                        colors = listOf(
+                                            colors.goldLight.copy(alpha = glowAlpha * 0.2f),
+                                            colors.goldPrimary.copy(alpha = glowAlpha * 0.1f),
+                                            Color.Transparent
+                                        )
+                                    ),
+                                    radius = size.width / 2 + 16.dp.toPx()
                                 )
                             }
                     )
                     
                     // Cricket ball
                     CricketBallLogo(
-                        modifier = Modifier.size(100.dp),
+                        modifier = Modifier.size(96.dp),
                         shimmerOffset = shimmerOffset
                     )
                 }
@@ -236,24 +280,36 @@ fun SplashScreen(
             
             Spacer(modifier = Modifier.height(32.dp))
             
-            // App name with shimmer
+            // App name with etched gold gradient + shimmer
             AnimatedVisibility(
                 visible = showLogo,
-                enter = fadeIn(tween(500)) + slideInVertically(
+                enter = fadeIn(tween(800)) + slideInVertically(
                     initialOffsetY = { it / 2 },
-                    animationSpec = spring(
-                        dampingRatio = Spring.DampingRatioMediumBouncy,
-                        stiffness = Spring.StiffnessLow
+                    animationSpec = tween(
+                        durationMillis = 800,
+                        easing = CubicBezierEasing(0.34f, 1.56f, 0.64f, 1.0f)
                     )
                 )
             ) {
                 Box {
+                    // Etched gold gradient text
                     Text(
                         text = "BOUNCER",
-                        fontSize = 42.sp,
-                        fontWeight = FontWeight.Black,
-                        letterSpacing = 8.sp,
-                        color = GoldDark
+                        style = TextStyle(
+                            fontSize = 42.sp,
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = 8.sp,
+                            fontFamily = InterFontFamily,
+                            brush = Brush.linearGradient(
+                                colors = listOf(
+                                    Color.White,
+                                    colors.goldLight,
+                                    colors.goldPrimary,
+                                    colors.etchedGold,
+                                    colors.goldDark
+                                )
+                            )
+                        )
                     )
                     
                     // Shimmer overlay
@@ -262,6 +318,7 @@ fun SplashScreen(
                         fontSize = 42.sp,
                         fontWeight = FontWeight.Black,
                         letterSpacing = 8.sp,
+                        fontFamily = InterFontFamily,
                         color = Color.Transparent,
                         modifier = Modifier.drawWithContent {
                             drawContent()
@@ -269,9 +326,9 @@ fun SplashScreen(
                                 brush = Brush.horizontalGradient(
                                     colors = listOf(
                                         Color.Transparent,
-                                        GoldLight.copy(alpha = 0.5f),
-                                        GoldPrimary.copy(alpha = 0.7f),
-                                        GoldLight.copy(alpha = 0.5f),
+                                        colors.goldLight.copy(alpha = 0.5f),
+                                        colors.goldPrimary.copy(alpha = 0.7f),
+                                        colors.goldLight.copy(alpha = 0.5f),
                                         Color.Transparent
                                     ),
                                     startX = size.width * shimmerOffset - size.width * 0.5f,
@@ -284,9 +341,9 @@ fun SplashScreen(
                 }
             }
             
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(16.dp))
             
-            // Tagline
+            // Tagline with subtle gold accent
             AnimatedVisibility(
                 visible = showTagline,
                 enter = fadeIn(tween(500)) + slideInVertically(
@@ -296,14 +353,23 @@ fun SplashScreen(
             ) {
                 Text(
                     text = "Live Cricket. Elevated.",
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Medium,
-                    letterSpacing = 3.sp,
-                    color = TextSecondary
+                    style = TextStyle(
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Medium,
+                        letterSpacing = 3.sp,
+                        fontFamily = InterFontFamily,
+                        brush = Brush.linearGradient(
+                            colors = listOf(
+                                colors.textSecondary,
+                                colors.goldPrimary.copy(alpha = 0.6f),
+                                colors.textSecondary
+                            )
+                        )
+                    )
                 )
             }
             
-            Spacer(modifier = Modifier.height(60.dp))
+            Spacer(modifier = Modifier.height(64.dp))
             
             // Premium loading indicator
             AnimatedVisibility(
@@ -317,7 +383,7 @@ fun SplashScreen(
             }
         }
         
-        // Bottom branding
+        // Bottom branding + version
         AnimatedVisibility(
             visible = showTagline,
             enter = fadeIn(tween(800)),
@@ -333,7 +399,16 @@ fun SplashScreen(
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Medium,
                     letterSpacing = 1.sp,
-                    color = TextMuted
+                    fontFamily = InterFontFamily,
+                    color = colors.textMuted
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "v1.0",
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Normal,
+                    fontFamily = InterFontFamily,
+                    color = colors.textMuted.copy(alpha = 0.5f)
                 )
             }
         }
@@ -461,6 +536,7 @@ private fun CricketBallLogo(
 private fun PremiumLoadingIndicator(
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "loader")
     
     val rotation by infiniteTransition.animateFloat(
@@ -479,7 +555,7 @@ private fun PremiumLoadingIndicator(
         
         // Background ring
         drawCircle(
-            color = ShinyGoldDark.copy(alpha = 0.2f),
+            color = colors.goldDark.copy(alpha = 0.2f),
             radius = radius,
             style = Stroke(width = strokeWidth)
         )
@@ -490,11 +566,11 @@ private fun PremiumLoadingIndicator(
                 brush = Brush.sweepGradient(
                     colors = listOf(
                         Color.Transparent,
-                        ShinyGoldLight.copy(alpha = 0.3f),
-                        ShinyGoldMid,
-                        ShinyGoldDeep,
-                        ShinyGoldMid,
-                        ShinyGoldLight.copy(alpha = 0.3f),
+                        colors.goldLight.copy(alpha = 0.3f),
+                        colors.goldPrimary,
+                        colors.goldDark,
+                        colors.goldPrimary,
+                        colors.goldLight.copy(alpha = 0.3f),
                         Color.Transparent
                     )
                 ),

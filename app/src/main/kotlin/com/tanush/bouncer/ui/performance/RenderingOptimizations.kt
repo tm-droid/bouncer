@@ -23,6 +23,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.security.MessageDigest
 import kotlin.math.abs
+import io.sentry.Sentry
 
 // ==========================================
 // BOUNCER - Rendering Optimizations
@@ -44,7 +45,12 @@ object ImageCacheManager {
     // Bitmap cache with automatic size-based eviction
     private val bitmapCache = object : LruCache<String, Bitmap>(cacheSize) {
         override fun sizeOf(key: String, bitmap: Bitmap): Int {
-            return bitmap.byteCount / 1024
+            try {
+                return bitmap.byteCount / 1024
+            } catch (e: Exception) {
+                Sentry.captureException(e)
+                throw e
+            }
         }
         
         override fun entryRemoved(
@@ -54,8 +60,13 @@ object ImageCacheManager {
             newValue: Bitmap?
         ) {
             if (evicted && !oldValue.isRecycled) {
-                // Mark for recycling, don't recycle immediately to avoid crashes
-                oldValue.prepareToDraw()
+                try {
+                    // Mark for recycling, don't recycle immediately to avoid crashes
+                    oldValue.prepareToDraw()
+                } catch (e: Exception) {
+                    Sentry.captureException(e)
+                    throw e
+                }
             }
         }
     }
@@ -63,7 +74,12 @@ object ImageCacheManager {
     // Vector drawable cache (stores as ImageBitmap for Compose)
     private val vectorCache = object : LruCache<String, ImageBitmap>(cacheSize / 2) {
         override fun sizeOf(key: String, bitmap: ImageBitmap): Int {
-            return bitmap.width * bitmap.height * 4 / 1024
+            try {
+                return bitmap.width * bitmap.height * 4 / 1024
+            } catch (e: Exception) {
+                Sentry.captureException(e)
+                throw e
+            }
         }
     }
     
@@ -81,10 +97,15 @@ object ImageCacheManager {
         val cacheKey = "$key-${width}x$height"
         
         return mutex.withLock {
-            bitmapCache.get(cacheKey) ?: run {
-                val bitmap = create()
-                bitmapCache.put(cacheKey, bitmap)
-                bitmap
+            try {
+                bitmapCache.get(cacheKey) ?: run {
+                    val bitmap = create()
+                    bitmapCache.put(cacheKey, bitmap)
+                    bitmap
+                }
+            } catch (e: Exception) {
+                Sentry.captureException(e)
+                throw e
             }
         }
     }
@@ -96,15 +117,20 @@ object ImageCacheManager {
         key: String,
         width: Int,
         height: Int,
-        create: () -> ImageBitmap
+        create: suspend () -> ImageBitmap
     ): ImageBitmap {
         val cacheKey = "$key-${width}x$height"
         
         return mutex.withLock {
-            vectorCache.get(cacheKey) ?: run {
-                val bitmap = create()
-                vectorCache.put(cacheKey, bitmap)
-                bitmap
+            try {
+                vectorCache.get(cacheKey) ?: run {
+                    val bitmap = create()
+                    vectorCache.put(cacheKey, bitmap)
+                    bitmap
+                }
+            } catch (e: Exception) {
+                Sentry.captureException(e)
+                throw e
             }
         }
     }
@@ -113,44 +139,69 @@ object ImageCacheManager {
      * Cache an existing bitmap with a specific key
      */
     fun cacheBitmap(key: String, bitmap: Bitmap) {
-        bitmapCache.put(key, bitmap)
+        try {
+            bitmapCache.put(key, bitmap)
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     /**
      * Cache a vector as ImageBitmap with a specific key
      */
     fun cacheVector(key: String, imageBitmap: ImageBitmap) {
-        vectorCache.put(key, imageBitmap)
+        try {
+            vectorCache.put(key, imageBitmap)
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     /**
      * Remove a specific cached item
      */
     fun evict(key: String) {
-        bitmapCache.remove(key)
-        vectorCache.remove(key)
+        try {
+            bitmapCache.remove(key)
+            vectorCache.remove(key)
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     /**
      * Clear all cached images
      */
     fun clearAll() {
-        bitmapCache.evictAll()
-        vectorCache.evictAll()
+        try {
+            bitmapCache.evictAll()
+            vectorCache.evictAll()
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     /**
      * Get current cache statistics
      */
     fun getStats(): CacheStats {
-        return CacheStats(
-            bitmapCacheSize = bitmapCache.size(),
-            bitmapCacheHits = bitmapCache.hitCount(),
-            bitmapCacheMisses = bitmapCache.missCount(),
-            vectorCacheSize = vectorCache.size(),
-            vectorCacheHits = vectorCache.hitCount(),
-            vectorCacheMisses = vectorCache.missCount()
-        )
+        try {
+            return CacheStats(
+                bitmapCacheSize = bitmapCache.size(),
+                bitmapCacheHits = bitmapCache.hitCount(),
+                bitmapCacheMisses = bitmapCache.missCount(),
+                vectorCacheSize = vectorCache.size(),
+                vectorCacheHits = vectorCache.hitCount(),
+                vectorCacheMisses = vectorCache.missCount()
+            )
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     data class CacheStats(
@@ -244,7 +295,12 @@ object RenderEffectCache {
     
     private val blurCache = object : LruCache<BlurCacheKey, ImageBitmap>(maxCacheSize) {
         override fun sizeOf(key: BlurCacheKey, bitmap: ImageBitmap): Int {
-            return 1 // Count-based eviction
+            try {
+                return 1 // Count-based eviction
+            } catch (e: Exception) {
+                Sentry.captureException(e)
+                throw e
+            }
         }
     }
     
@@ -270,10 +326,15 @@ object RenderEffectCache {
         val key = BlurCacheKey(contentHash, blurRadius, width, height)
         
         return mutex.withLock {
-            blurCache.get(key) ?: run {
-                val blurred = render()
-                blurCache.put(key, blurred)
-                blurred
+            try {
+                blurCache.get(key) ?: run {
+                    val blurred = render()
+                    blurCache.put(key, blurred)
+                    blurred
+                }
+            } catch (e: Exception) {
+                Sentry.captureException(e)
+                throw e
             }
         }
     }
@@ -282,25 +343,40 @@ object RenderEffectCache {
      * Check if a blur result is cached
      */
     fun isCached(contentHash: String, blurRadius: Float, width: Int, height: Int): Boolean {
-        val key = BlurCacheKey(contentHash, blurRadius, width, height)
-        return blurCache.get(key) != null
+        try {
+            val key = BlurCacheKey(contentHash, blurRadius, width, height)
+            return blurCache.get(key) != null
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     /**
      * Clear all cached blur effects
      */
     fun clearAll() {
-        blurCache.evictAll()
+        try {
+            blurCache.evictAll()
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     /**
      * Generate a hash for content identification
      */
     fun hashContent(vararg elements: Any?): String {
-        val combined = elements.joinToString("|") { it?.toString() ?: "null" }
-        val digest = MessageDigest.getInstance("MD5")
-        val bytes = digest.digest(combined.toByteArray())
-        return bytes.joinToString("") { "%02x".format(it) }
+        try {
+            val combined = elements.joinToString("|") { it?.toString() ?: "null" }
+            val digest = MessageDigest.getInstance("MD5")
+            val bytes = digest.digest(combined.toByteArray())
+            return bytes.joinToString("") { "%02x".format(it) }
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
 }
 
@@ -315,7 +391,12 @@ fun Modifier.optimizedDraw(
 ): Modifier = this.drawWithCache {
     val cached = onBuildCache()
     onDrawBehind {
-        cached.draw(this)
+        try {
+            cached.draw(this)
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
 }
 
@@ -326,7 +407,12 @@ data class CachedDrawResult(
     private val drawBlock: DrawScope.() -> Unit
 ) {
     fun draw(scope: DrawScope) {
-        drawBlock(scope)
+        try {
+            drawBlock(scope)
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
 }
 
@@ -378,21 +464,36 @@ object StableKeyGenerator {
      * Generate a stable key from multiple properties
      */
     fun generate(vararg components: Any?): Any {
-        return StableKey(components.toList())
+        try {
+            return StableKey(components.toList())
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     /**
      * Generate a stable key with a prefix
      */
     fun generateWithPrefix(prefix: String, vararg components: Any?): Any {
-        return StableKey(listOf(prefix) + components.toList())
+        try {
+            return StableKey(listOf(prefix) + components.toList())
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     /**
      * Generate a hash-based key for complex objects
      */
     fun generateHash(obj: Any?): Int {
-        return obj?.hashCode() ?: 0
+        try {
+            return obj?.hashCode() ?: 0
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     @Immutable
@@ -448,14 +549,24 @@ class StableState<T>(
      * Update value with a transformation function
      */
     fun update(transform: (T) -> T) {
-        value = transform(_value)
+        try {
+            value = transform(_value)
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     /**
      * Force update regardless of equivalence
      */
     fun forceUpdate(newValue: T) {
-        _value = newValue
+        try {
+            _value = newValue
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
 }
 
@@ -483,7 +594,12 @@ class StableList<T>(
     fun keyAt(index: Int): Any = keyExtractor(items[index])
     
     fun itemsWithKeys(): List<Pair<Any, T>> {
-        return items.map { keyExtractor(it) to it }
+        try {
+            return items.map { keyExtractor(it) to it }
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
 }
 
@@ -511,9 +627,7 @@ fun rememberCachedImage(
     LaunchedEffect(key, width, height) {
         state.value = ImageLoadState.Loading
         try {
-            val bitmap = ImageCacheManager.getVectorBitmap(key, width, height) {
-                kotlinx.coroutines.runBlocking { load() }
-            }
+            val bitmap = ImageCacheManager.getVectorBitmap(key, width, height) { load() }
             state.value = ImageLoadState.Success(bitmap)
         } catch (e: Exception) {
             state.value = ImageLoadState.Error(e)
@@ -534,29 +648,44 @@ object RenderingPerformanceMonitor {
     private val frameTimeThreshold = 16_666_666L // 60 FPS = ~16.67ms per frame
     
     fun onFrameRendered() {
-        frameCount++
-        val currentTime = System.nanoTime()
-        val frameDuration = currentTime - lastFrameTime
+        try {
+            frameCount++
+            val currentTime = System.nanoTime()
+            val frameDuration = currentTime - lastFrameTime
         
-        if (frameDuration > frameTimeThreshold) {
-            droppedFrames++
+            if (frameDuration > frameTimeThreshold) {
+                droppedFrames++
+            }
+        
+            lastFrameTime = currentTime
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
         }
-        
-        lastFrameTime = currentTime
     }
     
     fun getStats(): RenderStats {
-        return RenderStats(
-            totalFrames = frameCount,
-            droppedFrames = droppedFrames,
-            dropRate = if (frameCount > 0) droppedFrames.toFloat() / frameCount else 0f
-        )
+        try {
+            return RenderStats(
+                totalFrames = frameCount,
+                droppedFrames = droppedFrames,
+                dropRate = if (frameCount > 0) droppedFrames.toFloat() / frameCount else 0f
+            )
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     fun reset() {
-        frameCount = 0
-        droppedFrames = 0
-        lastFrameTime = System.nanoTime()
+        try {
+            frameCount = 0
+            droppedFrames = 0
+            lastFrameTime = System.nanoTime()
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     data class RenderStats(

@@ -17,6 +17,7 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import io.sentry.Sentry
 
 /**
  * Native Android UI Polish Utilities
@@ -37,7 +38,12 @@ fun Modifier.enhancedShadow(
 ): Modifier = drawBehind {
     val shadowColor = color.copy(alpha = alpha)
     val paint = Paint().apply {
-        this.color = shadowColor
+        try {
+            this.color = shadowColor
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     drawIntoCanvas { canvas ->

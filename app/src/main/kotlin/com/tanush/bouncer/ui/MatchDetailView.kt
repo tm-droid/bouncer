@@ -24,6 +24,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.*
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -42,9 +43,14 @@ import com.tanush.bouncer.ui.components.*
 import com.tanush.bouncer.ui.components.PowerPlayPhase
 import com.tanush.bouncer.ui.components.premium.*
 import com.tanush.bouncer.ui.components.premium.MomentumEvent
+import com.tanush.bouncer.models.AchievementKind
+import com.tanush.bouncer.ui.components.celebrations.*
+import com.tanush.bouncer.ui.components.ToastType
+import androidx.compose.ui.platform.LocalContext
 import com.tanush.bouncer.ui.theme.*
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
+import io.sentry.Sentry
 
 /**
  * Match Detail View
@@ -72,10 +78,107 @@ fun MatchDetailView(
     var isRefreshing by remember { mutableStateOf(false) }
     var commentary by remember { mutableStateOf(listOf("Synchronizing Elite Data...")) }
     
+    // Live Score State - Updated every poll cycle
+    var liveTeam1Score by remember { mutableStateOf(match.teams.getOrNull(0)?.score ?: "") }
+    var liveTeam2Score by remember { mutableStateOf(match.teams.getOrNull(1)?.score ?: "") }
+    var liveTeam1Overs by remember { mutableStateOf(match.teams.getOrNull(0)?.overs ?: "") }
+    var liveTeam2Overs by remember { mutableStateOf(match.teams.getOrNull(1)?.overs ?: "") }
+    var liveCurrentRunRate by remember { mutableStateOf(match.score?.currentRunRate) }
+    var liveRequiredRunRate by remember { mutableStateOf(match.score?.requiredRunRate) }
+    
     val scraper = remember { CricBuzzScraper() }
     val commentaryManager = remember { LiveCommentaryManager() }
-    val pagerState = rememberPagerState(pageCount = { 6 })
+    val pagerState = rememberPagerState(pageCount = { 5 })
     
+    // Achievement Auto-Unlock State
+    val context = LocalContext.current
+    var unlockedAchievements by remember { mutableStateOf(AchievementKind.loadUnlocked(context)) }
+    var showAchievementToast by remember { mutableStateOf(false) }
+    var latestAchievementTitle by remember { mutableStateOf("") }
+    var latestAchievementDesc by remember { mutableStateOf("") }
+    var showCenturyCelebration by remember { mutableStateOf(false) }
+    var centuryCelebrationPlayer by remember { mutableStateOf("") }
+    var centuryCelebrationRuns by remember { mutableIntStateOf(100) }
+    var centuryCelebrationBalls by remember { mutableStateOf<Int?>(null) }
+    var showFiveWicketCelebration by remember { mutableStateOf(false) }
+    var fiveWicketBowlerName by remember { mutableStateOf("") }
+    var fiveWicketCount by remember { mutableIntStateOf(5) }
+    var fiveWicketRuns by remember { mutableIntStateOf(0) }
+    var fiveWicketOvers by remember { mutableStateOf("") }
+    var showConfettiRain by remember { mutableStateOf(false) }
+    val hapticPlayer = rememberHapticPlayer()
+
+    // Achievement unlock helper
+    fun unlockAchievement(kind: AchievementKind, title: String, desc: String) {
+        try {
+            if (!unlockedAchievements.contains(kind)) {
+                val wasNew = AchievementKind.unlock(context, kind)
+                if (wasNew) {
+                    unlockedAchievements = AchievementKind.loadUnlocked(context)
+                    latestAchievementTitle = title
+                    latestAchievementDesc = desc
+                    showAchievementToast = true
+                    showConfettiRain = true
+                    hapticPlayer.play(CricketHapticEvent.MILESTONE)
+                }
+            }
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
+    }
+
+    // Achievement check — mirrors iOS checkForAchievements()
+    fun checkForAchievements() {
+        try {
+            for (batsman in batsmen) {
+                val runs = batsman.runs.toIntOrNull() ?: 0
+                val balls = batsman.balls.toIntOrNull()
+                if (runs >= 30) unlockAchievement(AchievementKind.RUNS_30, "30 Runs!", "${batsman.name} scored 30 runs")
+                if (runs >= 50) unlockAchievement(AchievementKind.RUNS_50, "Fifty!", "${batsman.name} scored a Fifty")
+                if (runs >= 75) unlockAchievement(AchievementKind.RUNS_75, "75 Runs!", "${batsman.name} scored 75 runs")
+                if (runs >= 100) {
+                    val wasAlreadyUnlocked = unlockedAchievements.contains(AchievementKind.RUNS_100)
+                    unlockAchievement(AchievementKind.RUNS_100, "Century!", "${batsman.name} scored a Century")
+                    if (!wasAlreadyUnlocked) {
+                        showCenturyCelebration = true
+                        centuryCelebrationPlayer = batsman.name
+                        centuryCelebrationRuns = runs
+                        centuryCelebrationBalls = balls
+                    }
+                }
+                if (runs >= 150) unlockAchievement(AchievementKind.RUNS_150, "150 Runs!", "${batsman.name} scored 150 runs")
+                if (runs >= 200) unlockAchievement(AchievementKind.RUNS_200, "Double Century!", "${batsman.name} scored a Double Century")
+                if (runs >= 250) unlockAchievement(AchievementKind.RUNS_250, "250 Runs!", "${batsman.name} scored 250 runs")
+                if (runs >= 300) unlockAchievement(AchievementKind.RUNS_300, "Triple Century!", "${batsman.name} scored a Triple Century")
+            }
+            bowler?.let { b ->
+                val wickets = b.wickets.toIntOrNull() ?: 0
+                if (wickets >= 3) unlockAchievement(AchievementKind.WICKETS_3, "Three-for!", "${b.name} took 3 wickets")
+                if (wickets >= 4) unlockAchievement(AchievementKind.WICKETS_4, "Four-for!", "${b.name} took 4 wickets")
+                if (wickets >= 5) {
+                    val wasAlreadyUnlocked = unlockedAchievements.contains(AchievementKind.WICKETS_5)
+                    unlockAchievement(AchievementKind.WICKETS_5, "Five-for!", "${b.name} took 5 wickets")
+                    if (!wasAlreadyUnlocked) {
+                        showFiveWicketCelebration = true
+                        fiveWicketBowlerName = b.name
+                        fiveWicketCount = wickets
+                        fiveWicketRuns = b.runs.toIntOrNull() ?: 0
+                        fiveWicketOvers = b.overs
+                    }
+                }
+                if (wickets >= 10) unlockAchievement(AchievementKind.WICKETS_10, "10 Wickets!", "${b.name} took 10 wickets")
+            }
+            for (team in match.teams) {
+                val teamScore = team.score.split("/").firstOrNull()?.trim()?.toIntOrNull() ?: 0
+                if (teamScore >= 200) unlockAchievement(AchievementKind.TEAM_200, "200+ Total!", "${team.name} scored 200+ runs")
+            }
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
+    }
+
     LaunchedEffect(selectedTab) {
         if (pagerState.currentPage != selectedTab) {
             pagerState.animateScrollToPage(selectedTab)
@@ -94,7 +197,19 @@ fun MatchDetailView(
                 batsmen = details.batsmen
                 bowler = details.bowler
                 recentBalls = details.recentBalls
+                
+                // Wire live score data to UI state
+                details.team1Score?.let { liveTeam1Score = it }
+                details.team2Score?.let { liveTeam2Score = it }
+                details.team1Overs?.let { liveTeam1Overs = it }
+                details.team2Overs?.let { liveTeam2Overs = it }
+                details.currentRunRate?.let { liveCurrentRunRate = it }
+                details.requiredRunRate?.let { liveRequiredRunRate = it }
+                
                 scorecard = scraper.fetchScorecard(match.id)
+                
+                // Check for achievements after data poll
+                checkForAchievements()
                 
                 val keyNames = batsmen.map { it.name }.toMutableList()
                 bowler?.let { keyNames.add(it.name) }
@@ -116,7 +231,16 @@ fun MatchDetailView(
 
     Scaffold(
         containerColor = BgBase,
-        topBar = { EliteMatchDetailHeader(match, onBackClick) },
+        topBar = { EliteMatchDetailHeader(
+            match = match,
+            onBackClick = onBackClick,
+            liveTeam1Score = liveTeam1Score,
+            liveTeam2Score = liveTeam2Score,
+            liveTeam1Overs = liveTeam1Overs,
+            liveTeam2Overs = liveTeam2Overs,
+            liveCurrentRunRate = liveCurrentRunRate,
+            liveRequiredRunRate = liveRequiredRunRate
+        ) },
         bottomBar = { EliteFloatingMatchNav(selectedTab, { selectedTab = it }, onArClick) }
     ) { paddingValues ->
         Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
@@ -155,14 +279,63 @@ fun MatchDetailView(
                     contentPadding = PaddingValues(top = Spacing.sm)
                 ) { page ->
                     when (page) {
-                        0 -> EliteOverviewTab(match, batsmen, bowler, recentBalls, commentary)
+                        0 -> EliteOverviewTab(match, batsmen, bowler, recentBalls, commentary, liveCurrentRunRate, liveRequiredRunRate)
                         1 -> EliteScorecardTab(scorecard)
                         2 -> EliteSquadsTab(match, scorecard)
                         3 -> EliteStatisticsTab(match, scorecard)
-                        4 -> EliteAiInsightsTab(match)
-                        5 -> EliteVenueInfoTab(match)
+                        4 -> EliteVenueInfoTab(match)
                     }
                 }
+            }
+            
+            // === ACHIEVEMENT CELEBRATION OVERLAYS ===
+            
+            // Achievement toast (slides in from top)
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.TopCenter
+            ) {
+                AchievementToast(
+                    title = latestAchievementTitle,
+                    description = latestAchievementDesc,
+                    isVisible = showAchievementToast,
+                    type = ToastType.ACHIEVEMENT,
+                    onDismiss = { showAchievementToast = false }
+                )
+            }
+            
+            // Confetti rain for any achievement unlock
+            if (showConfettiRain) {
+                ConfettiRain(
+                    modifier = Modifier.fillMaxSize(),
+                    particleCount = 100,
+                    duration = 3000L,
+                    isActive = true,
+                    onComplete = { showConfettiRain = false }
+                )
+            }
+            
+            // Full-screen century celebration
+            if (showCenturyCelebration) {
+                CenturyExplosion(
+                    playerName = centuryCelebrationPlayer,
+                    runs = centuryCelebrationRuns,
+                    balls = centuryCelebrationBalls,
+                    isVisible = true,
+                    onDismiss = { showCenturyCelebration = false }
+                )
+            }
+            
+            // Full-screen five-wicket celebration
+            if (showFiveWicketCelebration) {
+                FiveWicketHaulCelebration(
+                    bowlerName = fiveWicketBowlerName,
+                    wickets = fiveWicketCount,
+                    runs = fiveWicketRuns,
+                    overs = fiveWicketOvers,
+                    isVisible = true,
+                    onDismiss = { showFiveWicketCelebration = false }
+                )
             }
         }
     }
@@ -170,16 +343,33 @@ fun MatchDetailView(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun EliteMatchDetailHeader(match: CricketMatch, onBackClick: () -> Unit) {
-    val battingTeam = match.teams.find { it.isBatting } ?: match.teams.firstOrNull()
-    val otherTeam = match.teams.find { !it.isBatting } ?: match.teams.getOrNull(1)
+private fun EliteMatchDetailHeader(
+    match: CricketMatch,
+    onBackClick: () -> Unit,
+    liveTeam1Score: String,
+    liveTeam2Score: String,
+    liveTeam1Overs: String,
+    liveTeam2Overs: String,
+    liveCurrentRunRate: String?,
+    liveRequiredRunRate: String?
+) {
+    val team1 = match.teams.getOrNull(0)
+    val team2 = match.teams.getOrNull(1)
+    val battingTeam = match.teams.find { it.isBatting } ?: team1
+    val otherTeam = match.teams.find { !it.isBatting } ?: team2
     
-    val team1Logo = TeamLogoManager.getBestLogoUrl(battingTeam?.name, battingTeam?.logoUrl)
-    val team2Logo = TeamLogoManager.getBestLogoUrl(otherTeam?.name, otherTeam?.logoUrl)
+    val team1Logo = TeamLogoManager.getBestLogoUrl(team1?.name, team1?.logoUrl)
+    val team2Logo = TeamLogoManager.getBestLogoUrl(team2?.name, team2?.logoUrl)
     
-    // Parse overs and CRR from score if available
-    val overs = battingTeam?.overs ?: ""
-    val score = battingTeam?.score ?: "0/0"
+    // Use live scores (updated from polling) with fallback to initial match data
+    val score1 = liveTeam1Score.ifBlank { team1?.score ?: "" }
+    val score2 = liveTeam2Score.ifBlank { team2?.score ?: "" }
+    val overs1 = liveTeam1Overs.ifBlank { team1?.overs ?: "" }
+    val overs2 = liveTeam2Overs.ifBlank { team2?.overs ?: "" }
+    
+    // Determine which team is batting for highlighting
+    val team1IsBatting = team1?.isBatting == true
+    val team2IsBatting = team2?.isBatting == true
 
     Column(
         modifier = Modifier
@@ -187,12 +377,28 @@ private fun EliteMatchDetailHeader(match: CricketMatch, onBackClick: () -> Unit)
             .background(
                 Brush.verticalGradient(
                     colors = listOf(
-                        Color(0xFF0F1115),
-                        Color(0xFF0F1115).copy(alpha = 0.95f),
+                        BgBase,
+                        BgBase.copy(alpha = 0.95f),
                         Color.Transparent
                     )
                 )
             )
+            .drawBehind {
+                // Gold bloom radial gradient behind score header
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            Gold400.copy(alpha = 0.12f),
+                            Gold400.copy(alpha = 0.04f),
+                            Color.Transparent
+                        ),
+                        center = Offset(size.width / 2f, size.height * 0.6f),
+                        radius = size.width * 0.7f
+                    ),
+                    center = Offset(size.width / 2f, size.height * 0.6f),
+                    radius = size.width * 0.7f
+                )
+            }
     ) {
         // Top bar: Back, Title, Share
         CenterAlignedTopAppBar(
@@ -200,9 +406,10 @@ private fun EliteMatchDetailHeader(match: CricketMatch, onBackClick: () -> Unit)
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
                         text = match.matchTitle,
-                        color = TextSecondary,
+                        color = Gold400.copy(alpha = 0.6f),
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Medium,
+                        letterSpacing = 2.sp,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -215,9 +422,10 @@ private fun EliteMatchDetailHeader(match: CricketMatch, onBackClick: () -> Unit)
                         .padding(start = Spacing.xs)
                         .size(40.dp)
                         .clip(CircleShape)
-                        .background(Color.White.copy(alpha = 0.05f))
+                        .background(GlassSurface)
+                        .border(BorderWidth.hairline, Gold400.copy(alpha = 0.2f), CircleShape)
                 ) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = Color.White, modifier = Modifier.size(IconSize.sm))
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = Gold400.copy(alpha = 0.8f), modifier = Modifier.size(IconSize.sm))
                 }
             },
             actions = {
@@ -227,9 +435,10 @@ private fun EliteMatchDetailHeader(match: CricketMatch, onBackClick: () -> Unit)
                         .padding(end = Spacing.xs)
                         .size(40.dp)
                         .clip(CircleShape)
-                        .background(Color.White.copy(alpha = 0.05f))
+                        .background(GlassSurface)
+                        .border(BorderWidth.hairline, Gold400.copy(alpha = 0.2f), CircleShape)
                 ) {
-                    Icon(Icons.Default.Share, null, tint = Color.White, modifier = Modifier.size(IconSize.sm))
+                    Icon(Icons.Default.Share, null, tint = Gold400.copy(alpha = 0.8f), modifier = Modifier.size(IconSize.sm))
                 }
             },
             colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color.Transparent)
@@ -240,17 +449,18 @@ private fun EliteMatchDetailHeader(match: CricketMatch, onBackClick: () -> Unit)
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = Spacing.screenHorizontal)
-                .clip(RoundedCornerShape(CornerRadius.lg))
-                .background(Color.White.copy(alpha = 0.05f))
+                .clip(RoundedCornerShape(CornerRadius.xl))
+                .background(GlassSurface)
                 .border(
-                    BorderWidth.hairline,
+                    BorderWidth.medium,
                     Brush.verticalGradient(
                         colors = listOf(
-                            Gold400.copy(alpha = 0.20f),
-                            Gold400.copy(alpha = 0.08f)
+                            Gold400.copy(alpha = 0.25f),
+                            Gold400.copy(alpha = 0.10f),
+                            Gold400.copy(alpha = 0.15f)
                         )
                     ),
-                    RoundedCornerShape(CornerRadius.lg)
+                    RoundedCornerShape(CornerRadius.xl)
                 )
                 .padding(Spacing.md),
             horizontalAlignment = Alignment.CenterHorizontally
@@ -277,13 +487,13 @@ private fun EliteMatchDetailHeader(match: CricketMatch, onBackClick: () -> Unit)
             // Live badge
             if (match.status.contains("live", ignoreCase = true) || match.status.contains("batting", ignoreCase = true) || match.status.contains("bowling", ignoreCase = true)) {
                 Surface(
-                    color = Color(0xFF22C55E).copy(alpha = 0.12f),
-                    shape = RoundedCornerShape(CornerRadius.xs),
-                    border = BorderStroke(BorderWidth.hairline, Color(0xFF22C55E).copy(alpha = 0.3f)),
+                    color = LiveGreen.copy(alpha = 0.12f),
+                    shape = RoundedCornerShape(CornerRadius.pill),
+                    border = BorderStroke(BorderWidth.hairline, LiveGreen.copy(alpha = 0.3f)),
                     modifier = Modifier.padding(bottom = Spacing.sm)
                 ) {
                     Row(
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                        modifier = Modifier.padding(horizontal = Spacing.sm, vertical = 2.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
@@ -291,20 +501,20 @@ private fun EliteMatchDetailHeader(match: CricketMatch, onBackClick: () -> Unit)
                             modifier = Modifier
                                 .size(6.dp)
                                 .clip(CircleShape)
-                                .background(Color(0xFF22C55E))
+                                .background(LiveGreen)
                         )
-                        Text("LIVE", color = Color(0xFF22C55E), fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                        Text("LIVE", color = LiveGreen, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
                     }
                 }
             }
 
-            // Teams + Score Row
+            // Teams + Score Row — Each team shows its own score
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                // Team 1 (Batting)
+                // Team 1 with score
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier.weight(1f)
@@ -316,51 +526,64 @@ private fun EliteMatchDetailHeader(match: CricketMatch, onBackClick: () -> Unit)
                             .size(48.dp)
                             .clip(CircleShape)
                             .border(
-                                if (battingTeam?.isBatting == true) 2.dp else BorderWidth.hairline,
-                                if (battingTeam?.isBatting == true) Gold400.copy(alpha = 0.6f) else Color.White.copy(alpha = 0.1f),
+                                if (team1IsBatting) 2.dp else BorderWidth.hairline,
+                                if (team1IsBatting) Gold400.copy(alpha = 0.6f) else Color.White.copy(alpha = 0.1f),
                                 CircleShape
                             )
                     )
-                    Spacer(modifier = Modifier.height(6.dp))
+                    Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = battingTeam?.acronym ?: "",
+                        text = team1?.acronym ?: "",
                         color = Color.White,
-                        fontSize = 13.sp,
+                        fontSize = 12.sp,
                         fontWeight = FontWeight.Bold
                     )
-                }
-
-                // Score Display - Etched Gold Effect
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.weight(2f)
-                ) {
-                    Text(
-                        text = score,
-                        style = androidx.compose.ui.text.TextStyle(
-                            fontSize = 44.sp,
-                            fontWeight = FontWeight.ExtraBold,
-                            letterSpacing = (-2).sp,
-                            brush = Brush.verticalGradient(
-                                colors = listOf(
-                                    Color.White,
-                                    Gold400,
-                                    Color(0xFFB08D26)
+                    if (score1.isNotBlank()) {
+                        Text(
+                            text = score1,
+                            style = androidx.compose.ui.text.TextStyle(
+                                fontSize = 28.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                letterSpacing = (-1).sp,
+                                brush = if (team1IsBatting) Brush.verticalGradient(
+                                    colors = listOf(Color.White, Gold400, GoldDark)
+                                ) else Brush.verticalGradient(
+                                    colors = listOf(TextSecondary, TextMuted)
                                 )
                             )
                         )
-                    )
-                    if (overs.isNotBlank()) {
+                        if (overs1.isNotBlank()) {
+                            Text(
+                                text = "($overs1 Ov)",
+                                color = TextSecondary,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    } else {
                         Text(
-                            text = "($overs Ov)",
-                            color = TextSecondary,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Medium
+                            text = "-",
+                            color = TextMuted,
+                            fontSize = 28.sp,
+                            fontWeight = FontWeight.ExtraBold
                         )
                     }
                 }
 
-                // Team 2
+                // VS separator
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.padding(horizontal = Spacing.xs)
+                ) {
+                    Text(
+                        text = "vs",
+                        color = Gold400.copy(alpha = 0.4f),
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+
+                // Team 2 with score
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier.weight(1f)
@@ -372,43 +595,107 @@ private fun EliteMatchDetailHeader(match: CricketMatch, onBackClick: () -> Unit)
                             .size(48.dp)
                             .clip(CircleShape)
                             .border(
-                                if (otherTeam?.isBatting == true) 2.dp else BorderWidth.hairline,
-                                if (otherTeam?.isBatting == true) Gold400.copy(alpha = 0.6f) else Color.White.copy(alpha = 0.1f),
+                                if (team2IsBatting) 2.dp else BorderWidth.hairline,
+                                if (team2IsBatting) Gold400.copy(alpha = 0.6f) else Color.White.copy(alpha = 0.1f),
                                 CircleShape
                             )
                     )
-                    Spacer(modifier = Modifier.height(6.dp))
+                    Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = otherTeam?.acronym ?: "",
+                        text = team2?.acronym ?: "",
                         color = Color.White,
-                        fontSize = 13.sp,
+                        fontSize = 12.sp,
                         fontWeight = FontWeight.Bold
                     )
+                    if (score2.isNotBlank()) {
+                        Text(
+                            text = score2,
+                            style = androidx.compose.ui.text.TextStyle(
+                                fontSize = 28.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                letterSpacing = (-1).sp,
+                                brush = if (team2IsBatting) Brush.verticalGradient(
+                                    colors = listOf(Color.White, Gold400, GoldDark)
+                                ) else Brush.verticalGradient(
+                                    colors = listOf(TextSecondary, TextMuted)
+                                )
+                            )
+                        )
+                        if (overs2.isNotBlank()) {
+                            Text(
+                                text = "($overs2 Ov)",
+                                color = TextSecondary,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    } else {
+                        Text(
+                            text = "-",
+                            color = TextMuted,
+                            fontSize = 28.sp,
+                            fontWeight = FontWeight.ExtraBold
+                        )
+                    }
                 }
             }
 
             Spacer(modifier = Modifier.height(Spacing.sm))
 
-            // Stat Pills Row
+            // Gold gradient separator line
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(0.6f)
+                    .height(1.dp)
+                    .background(
+                        Brush.horizontalGradient(
+                            colors = listOf(
+                                Color.Transparent,
+                                Gold400.copy(alpha = 0.3f),
+                                Gold400.copy(alpha = 0.5f),
+                                Gold400.copy(alpha = 0.3f),
+                                Color.Transparent
+                            )
+                        )
+                    )
+            )
+
+            Spacer(modifier = Modifier.height(Spacing.sm))
+
+            // Stat Pills Row — using live data
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally)
+                horizontalArrangement = Arrangement.spacedBy(Spacing.sm, Alignment.CenterHorizontally)
             ) {
-                if (overs.isNotBlank()) {
-                    StatPill(label = "Overs", value = overs)
+                // Show batting team overs
+                val battingOvers = if (team1IsBatting) overs1 else overs2
+                val battingScore = if (team1IsBatting) score1 else score2
+                if (battingOvers.isNotBlank()) {
+                    StatPill(label = "Overs", value = battingOvers)
                 }
-                // CRR calculation
-                val scoreParts = score.split("/", "-")
-                val runs = scoreParts.firstOrNull()?.trim()?.toIntOrNull() ?: 0
-                val oversNum = overs.toFloatOrNull() ?: 0f
-                if (oversNum > 0) {
-                    val crr = runs / oversNum
-                    StatPill(label = "CRR", value = String.format("%.2f", crr))
+                // CRR - prefer live data, fallback to calculation
+                if (liveCurrentRunRate != null) {
+                    StatPill(label = "CRR", value = liveCurrentRunRate)
+                } else {
+                    val scoreParts = battingScore.split("/", "-")
+                    val runs = scoreParts.firstOrNull()?.trim()?.toIntOrNull() ?: 0
+                    val oversNum = battingOvers.toFloatOrNull() ?: 0f
+                    if (oversNum > 0) {
+                        val crr = runs / oversNum
+                        StatPill(label = "CRR", value = String.format("%.2f", crr))
+                    }
                 }
-                // Target if available from other team
-                val otherScore = otherTeam?.score
-                if (otherScore != null && otherScore.isNotBlank()) {
-                    StatPill(label = "Target", value = otherScore)
+                // RRR if available
+                if (liveRequiredRunRate != null) {
+                    StatPill(label = "RRR", value = liveRequiredRunRate)
+                }
+                // Target - show non-batting team's score as target in chase
+                val targetScore = if (team1IsBatting) score2 else score1
+                if (targetScore.isNotBlank() && (team1IsBatting && !team2IsBatting || team2IsBatting && !team1IsBatting)) {
+                    val targetRuns = targetScore.split("/", "-").firstOrNull()?.trim()?.toIntOrNull()
+                    if (targetRuns != null && targetRuns > 0) {
+                        StatPill(label = "Target", value = "${targetRuns + 1}")
+                    }
                 }
             }
 
@@ -439,12 +726,19 @@ private fun EliteMatchDetailHeader(match: CricketMatch, onBackClick: () -> Unit)
 private fun StatPill(label: String, value: String) {
     Row(
         modifier = Modifier
-            .clip(RoundedCornerShape(8.dp))
-            .background(Color.White.copy(alpha = 0.05f))
+            .clip(RoundedCornerShape(CornerRadius.pill))
+            .background(
+                Brush.linearGradient(
+                    colors = listOf(
+                        GlassSurface,
+                        Color.Black.copy(alpha = 0.3f)
+                    )
+                )
+            )
             .border(
                 BorderWidth.hairline,
-                Gold400.copy(alpha = 0.12f),
-                RoundedCornerShape(8.dp)
+                Gold400.copy(alpha = 0.15f),
+                RoundedCornerShape(CornerRadius.pill)
             )
             .padding(horizontal = 10.dp, vertical = 6.dp),
         horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -452,13 +746,14 @@ private fun StatPill(label: String, value: String) {
     ) {
         Text(
             text = label,
-            color = TextSecondary.copy(alpha = 0.7f),
+            color = Gold400.copy(alpha = 0.6f),
             fontSize = 9.sp,
-            fontWeight = FontWeight.Medium
+            fontWeight = FontWeight.SemiBold,
+            letterSpacing = 0.5.sp
         )
         Text(
             text = value,
-            color = Color.White,
+            color = TextPrimary,
             fontSize = 11.sp,
             fontWeight = FontWeight.Bold
         )
@@ -467,53 +762,43 @@ private fun StatPill(label: String, value: String) {
 
 @Composable
 private fun EliteTabRow(selectedTab: Int, onTabSelected: (Int) -> Unit) {
-    val tabs = listOf("Live", "Scorecard", "Squads", "Overs", "Stats", "Info")
+    val tabs = listOf("Live", "Scorecard", "Lineups", "Overs", "Info")
     
-    LazyRow(
+    // Pill-shaped segmented control matching futuristic glass mockup
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = Spacing.screenHorizontal, vertical = Spacing.xs)
-            .clip(RoundedCornerShape(CornerRadius.md))
-            .background(Color.White.copy(alpha = 0.05f))
+            .padding(horizontal = Spacing.screenHorizontal, vertical = Spacing.sm)
+            .clip(RoundedCornerShape(CornerRadius.pill))
+            .background(Color.Black.copy(alpha = 0.3f))
             .border(
                 BorderWidth.hairline,
-                Brush.linearGradient(
-                    colors = listOf(
-                        Gold400.copy(alpha = 0.25f),
-                        Gold400.copy(alpha = 0.08f),
-                        Gold400.copy(alpha = 0.15f)
-                    )
-                ),
-                RoundedCornerShape(CornerRadius.md)
+                Color.White.copy(alpha = 0.1f),
+                RoundedCornerShape(CornerRadius.pill)
             )
             .padding(4.dp),
         horizontalArrangement = Arrangement.spacedBy(2.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        items(tabs.size) { index ->
+        tabs.forEachIndexed { index, tab ->
             val isSelected = selectedTab == index
             val animatedAlpha by animateFloatAsState(
                 targetValue = if (isSelected) 1f else 0f,
-                animationSpec = tween(250, easing = FastOutSlowInEasing),
+                animationSpec = tween(300, easing = FastOutSlowInEasing),
                 label = "tabAlpha"
             )
             
             Box(
                 modifier = Modifier
-                    .clip(RoundedCornerShape(CornerRadius.sm))
+                    .weight(1f)
+                    .clip(RoundedCornerShape(CornerRadius.pill))
                     .then(
                         if (isSelected) {
                             Modifier
-                                .background(
-                                    Brush.linearGradient(
-                                        colors = listOf(Gold400, Color(0xFFB08D26)),
-                                        start = Offset.Zero,
-                                        end = Offset(200f, 200f)
-                                    )
-                                )
+                                .background(Gold400.copy(alpha = 0.9f))
                                 .shadow(
                                     elevation = 8.dp,
-                                    shape = RoundedCornerShape(CornerRadius.sm),
+                                    shape = RoundedCornerShape(CornerRadius.pill),
                                     ambientColor = Gold400.copy(alpha = 0.3f),
                                     spotColor = Gold400.copy(alpha = 0.3f)
                                 )
@@ -525,14 +810,15 @@ private fun EliteTabRow(selectedTab: Int, onTabSelected: (Int) -> Unit) {
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null
                     ) { onTabSelected(index) }
-                    .padding(horizontal = 14.dp, vertical = 8.dp),
+                    .padding(vertical = Spacing.sm),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = tabs[index],
-                    color = if (isSelected) Color.White else TextSecondary.copy(alpha = 0.7f),
-                    fontSize = 12.sp,
-                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                    text = tab,
+                    color = if (isSelected) Color.Black else Color.White.copy(alpha = 0.6f),
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 0.5.sp,
                     maxLines = 1
                 )
             }
@@ -546,18 +832,20 @@ private fun EliteOverviewTab(
     batsmen: List<ScrapedBatsman>,
     bowler: ScrapedBowler?,
     recentBalls: List<String>,
-    commentary: List<String>
+    commentary: List<String>,
+    liveCurrentRunRate: String?,
+    liveRequiredRunRate: String?
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(28.dp)
     ) {
-        // Quick Stats Bar - Cricbuzz Style
+        // Quick Stats Bar - Uses live data
         item {
             QuickMatchStatsBar(
-                currentRunRate = match.score?.currentRunRate ?: "6.42",
-                requiredRunRate = match.score?.requiredRunRate,
+                currentRunRate = liveCurrentRunRate ?: match.score?.currentRunRate ?: "--",
+                requiredRunRate = liveRequiredRunRate ?: match.score?.requiredRunRate,
                 partnership = "42(28)",
                 lastWicket = "23(18)"
             )
@@ -1511,14 +1799,19 @@ private fun EliteSquadsTab(match: CricketMatch, scorecard: Scorecard?) {
  * or index position in the squad list.
  */
 private fun inferPlayerRole(playerName: String, index: Int, totalPlayers: Int): String {
-    val nameLower = playerName.lowercase()
-    // Simple heuristics for role detection
-    return when {
-        index == 0 && totalPlayers > 5 -> "BAT"
-        index == 1 && totalPlayers > 5 -> "BAT"
-        index < totalPlayers / 3 -> "BAT"
-        index >= totalPlayers - (totalPlayers / 3) -> "BOWL"
-        else -> "ALL"
+    try {
+        val nameLower = playerName.lowercase()
+        // Simple heuristics for role detection
+        return when {
+            index == 0 && totalPlayers > 5 -> "BAT"
+            index == 1 && totalPlayers > 5 -> "BAT"
+            index < totalPlayers / 3 -> "BAT"
+            index >= totalPlayers - (totalPlayers / 3) -> "BOWL"
+            else -> "ALL"
+        }
+    } catch (e: Exception) {
+        Sentry.captureException(e)
+        throw e
     }
 }
 
@@ -1526,13 +1819,18 @@ private fun inferPlayerRole(playerName: String, index: Int, totalPlayers: Int): 
  * Returns the color for a given role badge.
  */
 private fun roleBadgeColor(role: String): Color {
-    return when (role.uppercase()) {
-        "WK" -> Gold400
-        "C" -> Gold400
-        "BAT" -> ChartBlue
-        "ALL" -> StatusSuccess
-        "BOWL" -> Color(0xFF8B5CF6) // Purple
-        else -> Color.White.copy(alpha = 0.4f)
+    try {
+        return when (role.uppercase()) {
+            "WK" -> Gold400
+            "C" -> Gold400
+            "BAT" -> ChartBlue
+            "ALL" -> StatusSuccess
+            "BOWL" -> Color(0xFF8B5CF6) // Purple
+            else -> Color.White.copy(alpha = 0.4f)
+        }
+    } catch (e: Exception) {
+        Sentry.captureException(e)
+        throw e
     }
 }
 

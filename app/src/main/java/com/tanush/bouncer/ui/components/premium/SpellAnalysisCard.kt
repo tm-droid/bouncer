@@ -40,6 +40,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.ui.theme.*
+import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 
 /**
  * Bowler spell analysis showing spell-by-spell performance
@@ -78,6 +79,7 @@ fun SpellAnalysisCard(
     totalRuns: Int,
     modifier: Modifier = Modifier,
 ) {
+    val colors = BouncerDesignSystem.colors
     val animatedProgress = remember { Animatable(0f) }
 
     LaunchedEffect(spells) {
@@ -111,7 +113,7 @@ fun SpellAnalysisCard(
                             .clip(CircleShape)
                             .background(
                                 Brush.linearGradient(
-                                    colors = listOf(ShinyGoldMid, ShinyGoldDeep),
+                                    colors = listOf(colors.goldDark, colors.goldPrimary),
                                 ),
                             ),
                         contentAlignment = Alignment.Center,
@@ -129,7 +131,7 @@ fun SpellAnalysisCard(
                     Column {
                         Text(
                             text = "SPELL ANALYSIS",
-                            color = ShinyGoldLight,
+                            color = colors.goldLight,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.5.sp,
@@ -147,7 +149,7 @@ fun SpellAnalysisCard(
                 Column(horizontalAlignment = Alignment.End) {
                     Text(
                         text = "$totalWickets/$totalRuns",
-                        color = ShinyGoldMid,
+                        color = colors.goldDark,
                         fontSize = 24.sp,
                         fontWeight = FontWeight.Bold,
                     )
@@ -195,10 +197,10 @@ fun SpellAnalysisCard(
                         }
 
                         val spellColor = when {
-                            economy <= 4f -> SuccessGreen
-                            economy <= 6f -> ChartBlue
-                            economy <= 8f -> WarningYellow
-                            else -> WicketRed
+                            economy <= 4f -> colors.statusSuccess
+                            economy <= 6f -> colors.statusInfo
+                            economy <= 8f -> colors.statusWarning
+                            else -> colors.statusLive
                         }
 
                         // Draw spell block
@@ -217,7 +219,7 @@ fun SpellAnalysisCard(
                                 val wicketY = height / 2 - blockHeight / 2 - 10f - (w * 12f)
 
                                 drawCircle(
-                                    color = WicketRed,
+                                    color = colors.statusLive,
                                     radius = 5f,
                                     center = Offset(wicketX, wicketY),
                                 )
@@ -234,10 +236,10 @@ fun SpellAnalysisCard(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly,
             ) {
-                LegendItem(color = SuccessGreen, text = "Econ < 4")
-                LegendItem(color = ChartBlue, text = "Econ 4-6")
-                LegendItem(color = WarningYellow, text = "Econ 6-8")
-                LegendItem(color = WicketRed, text = "Econ > 8")
+                LegendItem(color = colors.statusSuccess, text = "Econ < 4")
+                LegendItem(color = colors.statusInfo, text = "Econ 4-6")
+                LegendItem(color = colors.statusWarning, text = "Econ 6-8")
+                LegendItem(color = colors.statusLive, text = "Econ > 8")
             }
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -311,10 +313,10 @@ fun SpellAnalysisCard(
                     }
 
                     val economyColor = when {
-                        economy <= 4f -> SuccessGreen
-                        economy <= 6f -> ChartBlue
-                        economy <= 8f -> WarningYellow
-                        else -> WicketRed
+                        economy <= 4f -> colors.statusSuccess
+                        economy <= 6f -> colors.statusInfo
+                        economy <= 8f -> colors.statusWarning
+                        else -> colors.statusLive
                     }
 
                     Row(
@@ -324,7 +326,7 @@ fun SpellAnalysisCard(
                     ) {
                         Text(
                             text = "#${spell.spellNumber}",
-                            color = ShinyGoldMid,
+                            color = colors.goldDark,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
                             modifier = Modifier.width(50.dp),
@@ -337,7 +339,7 @@ fun SpellAnalysisCard(
                         )
                         Text(
                             text = "${spell.maidens}",
-                            color = if (spell.maidens > 0) SuccessGreen else Color.White,
+                            color = if (spell.maidens > 0) colors.statusSuccess else Color.White,
                             fontSize = 12.sp,
                             modifier = Modifier.width(30.dp),
                         )
@@ -349,7 +351,7 @@ fun SpellAnalysisCard(
                         )
                         Text(
                             text = "${spell.wickets}",
-                            color = if (spell.wickets > 0) WicketRed else Color.White,
+                            color = if (spell.wickets > 0) colors.statusLive else Color.White,
                             fontSize = 12.sp,
                             fontWeight = if (spell.wickets > 0) FontWeight.Bold else FontWeight.Normal,
                             modifier = Modifier.width(30.dp),
@@ -383,7 +385,7 @@ fun SpellAnalysisCard(
                         .background(
                             Brush.horizontalGradient(
                                 colors = listOf(
-                                    SuccessGreen.copy(alpha = 0.2f),
+                                    colors.statusSuccess.copy(alpha = 0.2f),
                                     Color.Transparent,
                                 ),
                             ),
@@ -395,7 +397,7 @@ fun SpellAnalysisCard(
                     Column {
                         Text(
                             text = "BEST SPELL",
-                            color = SuccessGreen,
+                            color = colors.statusSuccess,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.sp,
@@ -410,7 +412,7 @@ fun SpellAnalysisCard(
 
                     Text(
                         text = "${spell.wickets}/${spell.runs}",
-                        color = SuccessGreen,
+                        color = colors.statusSuccess,
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
                     )
@@ -425,6 +427,7 @@ private fun LegendItem(
     color: Color,
     text: String,
 ) {
+    val colors = BouncerDesignSystem.colors
     Row(
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -445,6 +448,7 @@ private fun LegendItem(
 
 @Composable
 fun SpellAnalysisCardPreview() {
+    val colors = BouncerDesignSystem.colors
     val spells = listOf(
         BowlerSpell(1, "4", 1, 18, 2, 14, 2, 1, 4),
         BowlerSpell(2, "3", 0, 24, 0, 8, 4, 8, 11),

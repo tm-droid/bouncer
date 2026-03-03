@@ -1,6 +1,7 @@
 package com.tanush.bouncer.utils
 
 import android.content.Context
+import io.sentry.Sentry
 
 object PreferencesHelper {
     private const val PREFS = "bouncer_prefs"
@@ -12,23 +13,43 @@ object PreferencesHelper {
     const val KEY_AI_INSIGHTS = "ai_insights"
 
     fun getBoolean(context: Context, key: String, default: Boolean): Boolean {
-        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        return prefs.getBoolean(key, default)
+        try {
+            val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            return prefs.getBoolean(key, default)
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
 
     fun setBoolean(context: Context, key: String, value: Boolean) {
-        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        prefs.edit().putBoolean(key, value).apply()
+        try {
+            val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            prefs.edit().putBoolean(key, value).apply()
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
 
     // Follow helpers (simple per-stat follow flag stored under key)
     fun isFollowed(context: Context, statKey: String): Boolean {
-        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        return prefs.getBoolean("follow_\$statKey", false)
+        try {
+            val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            return prefs.getBoolean("follow_\$statKey", false)
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
 
     fun setFollowed(context: Context, statKey: String, followed: Boolean) {
-        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        prefs.edit().putBoolean("follow_\$statKey", followed).apply()
+        try {
+            val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            prefs.edit().putBoolean("follow_\$statKey", followed).apply()
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
 }

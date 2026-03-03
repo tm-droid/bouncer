@@ -6,6 +6,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
+import io.sentry.Sentry
 
 /**
  * Accessibility Extensions for Native Android Experience
@@ -17,21 +18,36 @@ import androidx.compose.ui.semantics.liveRegion
  * Add content description for TalkBack
  */
 fun Modifier.contentDescription(description: String): Modifier = semantics {
-    contentDescription = description
+    try {
+        contentDescription = description
+    } catch (e: Exception) {
+        Sentry.captureException(e)
+        throw e
+    }
 }
 
 /**
  * Add state description for dynamic content
  */
 fun Modifier.stateDescription(description: String): Modifier = semantics {
-    stateDescription = description
+    try {
+        stateDescription = description
+    } catch (e: Exception) {
+        Sentry.captureException(e)
+        throw e
+    }
 }
 
 /**
  * Mark region for live updates (live scores, etc)
  */
 fun Modifier.liveRegion(mode: LiveRegionMode = LiveRegionMode.Polite): Modifier = semantics {
-    liveRegion = mode
+    try {
+        liveRegion = mode
+    } catch (e: Exception) {
+        Sentry.captureException(e)
+        throw e
+    }
 }
 
 /**
@@ -39,26 +55,51 @@ fun Modifier.liveRegion(mode: LiveRegionMode = LiveRegionMode.Polite): Modifier 
  */
 object CricketAccessibility {
     fun matchCard(team1: String, score1: String, team2: String, score2: String, status: String): String {
-        return "Match: $team1 $score1 versus $team2 $score2. Status: $status"
+        try {
+            return "Match: $team1 $score1 versus $team2 $score2. Status: $status"
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     fun liveScore(runs: Int, wickets: Int, overs: String): String {
-        return "Current score: $runs for $wickets in $overs overs"
+        try {
+            return "Current score: $runs for $wickets in $overs overs"
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     fun over(ballNumber: Int, runs: Int, isWicket: Boolean): String {
-        return if (isWicket) {
-            "Ball $ballNumber: Wicket!"
-        } else {
-            "Ball $ballNumber: $runs runs"
+        try {
+            return if (isWicket) {
+                "Ball $ballNumber: Wicket!"
+            } else {
+                "Ball $ballNumber: $runs runs"
+            }
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
         }
     }
     
     fun winProbability(team: String, probability: Int): String {
-        return "$team has $probability percent win probability"
+        try {
+            return "$team has $probability percent win probability"
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     fun playerStats(name: String, stat: String, value: String): String {
-        return "$name: $stat is $value"
+        try {
+            return "$name: $stat is $value"
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
 }

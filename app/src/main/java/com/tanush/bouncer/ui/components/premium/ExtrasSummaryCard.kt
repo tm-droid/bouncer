@@ -20,6 +20,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.ui.theme.*
+import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 
 /**
  * Extras Summary Card
@@ -53,6 +54,7 @@ fun ExtrasSummaryCard(
     totalRuns: Int,
     modifier: Modifier = Modifier,
 ) {
+    val colors = BouncerDesignSystem.colors
     val animatedProgress = remember { Animatable(0f) }
 
     LaunchedEffect(extras) {
@@ -90,8 +92,8 @@ fun ExtrasSummaryCard(
                             .background(
                                 Brush.linearGradient(
                                     colors = listOf(
-                                        if (isHighExtras) WicketRed else WarningYellow,
-                                        if (isHighExtras) WicketRed.copy(alpha = 0.6f) else WarningYellow.copy(alpha = 0.6f),
+                                        if (isHighExtras) colors.statusLive else colors.statusWarning,
+                                        if (isHighExtras) colors.statusLive.copy(alpha = 0.6f) else colors.statusWarning.copy(alpha = 0.6f),
                                     ),
                                 ),
                             ),
@@ -110,7 +112,7 @@ fun ExtrasSummaryCard(
                     Column {
                         Text(
                             text = "EXTRAS ANALYSIS",
-                            color = ShinyGoldMid,
+                            color = colors.goldDark,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.5.sp,
@@ -128,7 +130,7 @@ fun ExtrasSummaryCard(
                 Column(horizontalAlignment = Alignment.End) {
                     Text(
                         text = "$totalExtras",
-                        color = if (isHighExtras) WicketRed else ShinyGoldMid,
+                        color = if (isHighExtras) colors.statusLive else colors.goldDark,
                         fontSize = 32.sp,
                         fontWeight = FontWeight.Bold,
                     )
@@ -160,7 +162,7 @@ fun ExtrasSummaryCard(
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     ExtrasLegendItem(
-                        color = WicketRed,
+                        color = colors.statusLive,
                         label = "Wides",
                         value = extras.wides,
                         totalExtras = totalExtras,
@@ -168,7 +170,7 @@ fun ExtrasSummaryCard(
                     )
 
                     ExtrasLegendItem(
-                        color = WarningYellow,
+                        color = colors.statusWarning,
                         label = "No Balls",
                         value = extras.noBalls,
                         totalExtras = totalExtras,
@@ -176,7 +178,7 @@ fun ExtrasSummaryCard(
                     )
 
                     ExtrasLegendItem(
-                        color = ChartBlue,
+                        color = colors.statusInfo,
                         label = "Byes",
                         value = extras.byes,
                         totalExtras = totalExtras,
@@ -184,7 +186,7 @@ fun ExtrasSummaryCard(
                     )
 
                     ExtrasLegendItem(
-                        color = SuccessGreen,
+                        color = colors.statusSuccess,
                         label = "Leg Byes",
                         value = extras.legByes,
                         totalExtras = totalExtras,
@@ -228,7 +230,7 @@ fun ExtrasSummaryCard(
                     label = "Wides",
                     value = extras.wides,
                     maxValue = maxExtra,
-                    color = WicketRed,
+                    color = colors.statusLive,
                     progress = animatedProgress.value,
                 )
 
@@ -238,7 +240,7 @@ fun ExtrasSummaryCard(
                     label = "No Balls",
                     value = extras.noBalls,
                     maxValue = maxExtra,
-                    color = WarningYellow,
+                    color = colors.statusWarning,
                     progress = animatedProgress.value,
                 )
 
@@ -248,7 +250,7 @@ fun ExtrasSummaryCard(
                     label = "Byes",
                     value = extras.byes,
                     maxValue = maxExtra,
-                    color = ChartBlue,
+                    color = colors.statusInfo,
                     progress = animatedProgress.value,
                 )
 
@@ -258,7 +260,7 @@ fun ExtrasSummaryCard(
                     label = "Leg Byes",
                     value = extras.legByes,
                     maxValue = maxExtra,
-                    color = SuccessGreen,
+                    color = colors.statusSuccess,
                     progress = animatedProgress.value,
                 )
             }
@@ -271,20 +273,20 @@ fun ExtrasSummaryCard(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(8.dp))
-                        .background(WicketRed.copy(alpha = 0.15f))
+                        .background(colors.statusLive.copy(alpha = 0.15f))
                         .padding(12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Icon(
                         imageVector = Icons.Default.Error,
                         contentDescription = null,
-                        tint = WicketRed,
+                        tint = colors.statusLive,
                         modifier = Modifier.size(18.dp),
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = "High extras percentage! This is affecting bowling economy.",
-                        color = WicketRed,
+                        color = colors.statusLive,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Medium,
                     )
@@ -300,6 +302,11 @@ private fun ExtrasPieChart(
     progress: Float,
     modifier: Modifier = Modifier,
 ) {
+    val colors = BouncerDesignSystem.colors
+    val statusLiveC = colors.statusLive
+    val statusWarningC = colors.statusWarning
+    val statusInfoC = colors.statusInfo
+    val statusSuccessC = colors.statusSuccess
     Canvas(modifier = modifier) {
         val total = extras.wides + extras.noBalls + extras.byes + extras.legByes + extras.penalties
         if (total == 0) return@Canvas
@@ -311,10 +318,10 @@ private fun ExtrasPieChart(
         var startAngle = -90f
 
         val segments = listOf(
-            Triple(extras.wides, WicketRed, "Wides"),
-            Triple(extras.noBalls, WarningYellow, "No Balls"),
-            Triple(extras.byes, ChartBlue, "Byes"),
-            Triple(extras.legByes, SuccessGreen, "Leg Byes"),
+            Triple(extras.wides, statusLiveC, "Wides"),
+            Triple(extras.noBalls, statusWarningC, "No Balls"),
+            Triple(extras.byes, statusInfoC, "Byes"),
+            Triple(extras.legByes, statusSuccessC, "Leg Byes"),
             Triple(extras.penalties, Color.Magenta, "Penalties"),
         ).filter { it.first > 0 }
 
@@ -361,6 +368,7 @@ private fun ExtrasLegendItem(
     totalExtras: Int,
     progress: Float,
 ) {
+    val colors = BouncerDesignSystem.colors
     val percentage = if (totalExtras > 0) (value.toFloat() / totalExtras * 100) else 0f
 
     Row(
@@ -407,6 +415,7 @@ private fun ExtrasBarRow(
     color: Color,
     progress: Float,
 ) {
+    val colors = BouncerDesignSystem.colors
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,

@@ -56,6 +56,7 @@ fun StatusChip(
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
+    val colors = BouncerDesignSystem.colors
     val haptic = rememberHapticFeedback()
     
     val animatedElevation by animateFloatAsState(
@@ -81,9 +82,9 @@ fun StatusChip(
     val backgroundBrush = if (isSelected) {
         Brush.linearGradient(
             colors = listOf(
-                ShinyGoldLight.copy(alpha = shimmerAlpha),
-                ShinyGoldDeep,
-                ShinyGoldMid
+                colors.goldLight.copy(alpha = shimmerAlpha),
+                colors.goldPrimary,
+                colors.goldPrimary
             )
         )
     } else {
@@ -100,8 +101,8 @@ fun StatusChip(
             .shadow(
                 elevation = animatedElevation.dp,
                 shape = CircleShape,
-                spotColor = if (isSelected) ShinyGoldDeep.copy(alpha = 0.65f) else Color.Black.copy(alpha = 0.3f),
-                ambientColor = if (isSelected) ShinyGoldDeep.copy(alpha = 0.25f) else Color.Transparent
+                spotColor = if (isSelected) colors.goldPrimary.copy(alpha = 0.65f) else Color.Black.copy(alpha = 0.3f),
+                ambientColor = if (isSelected) colors.goldPrimary.copy(alpha = 0.25f) else Color.Transparent
             )
             .clip(CircleShape)
             .background(backgroundBrush)
@@ -109,8 +110,8 @@ fun StatusChip(
                 if (!isSelected) Modifier.border(
                     1.dp, 
                     Brush.linearGradient(listOf(
-                        CardBorder.copy(alpha = 0.4f), 
-                        CardBorder.copy(alpha = 0.2f),
+                        colors.glassBorder.copy(alpha = 0.4f), 
+                        colors.glassBorder.copy(alpha = 0.2f),
                         Color.Transparent
                     )), 
                     CircleShape
@@ -120,8 +121,8 @@ fun StatusChip(
                     Brush.linearGradient(
                         colors = listOf(
                             Color.White.copy(alpha = 0.7f),
-                            ShinyGoldLight.copy(alpha = 0.5f),
-                            ShinyGoldDeep.copy(alpha = 0.2f)
+                            colors.goldLight.copy(alpha = 0.5f),
+                            colors.goldPrimary.copy(alpha = 0.2f)
                         )
                     ), 
                     CircleShape
@@ -131,7 +132,7 @@ fun StatusChip(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = ripple(
                     bounded = true,
-                    color = if (isSelected) Color.Black.copy(alpha = 0.3f) else ShinyGoldDeep.copy(alpha = 0.3f)
+                    color = if (isSelected) Color.Black.copy(alpha = 0.3f) else colors.goldPrimary.copy(alpha = 0.3f)
                 )
             ) {
                 haptic.click()
@@ -147,7 +148,7 @@ fun StatusChip(
             text = text.uppercase(),
             fontSize = 13.sp,
             fontWeight = if (isSelected) FontWeight.Black else FontWeight.Bold,
-            color = if (isSelected) BlackBackground else TextSecondary,
+            color = if (isSelected) colors.backgroundBase else colors.textSecondary,
             letterSpacing = 1.sp
         )
     }
@@ -162,6 +163,7 @@ fun AnimatedCheckmark(
     isChecked: Boolean,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val scale by animateFloatAsState(
         targetValue = if (isChecked) 1f else 0f,
         animationSpec = spring(
@@ -176,12 +178,12 @@ fun AnimatedCheckmark(
             .size(20.dp)
             .clip(CircleShape)
             .background(
-                if (isChecked) SuccessGreen.copy(alpha = 0.8f) 
+                if (isChecked) colors.statusSuccess.copy(alpha = 0.8f) 
                 else Color.Gray.copy(alpha = 0.2f)
             )
             .border(
                 width = 1.5.dp,
-                color = if (isChecked) SuccessGreen else Color.Gray.copy(alpha = 0.3f),
+                color = if (isChecked) colors.statusSuccess else Color.Gray.copy(alpha = 0.3f),
                 shape = CircleShape
             ),
         contentAlignment = Alignment.Center
@@ -205,6 +207,7 @@ fun CategoryChip(
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
+    val colors = BouncerDesignSystem.colors
     val haptic = rememberHapticFeedback()
     
     val animatedElevation by animateFloatAsState(
@@ -256,7 +259,7 @@ fun CategoryChip(
             .background(backgroundBrush)
             .border(
                 width = if (isSelected) 0.8.dp else 0.5.dp,
-                color = if (isSelected) Color.White.copy(alpha = 0.35f) else CardBorder.copy(alpha = 0.25f),
+                color = if (isSelected) Color.White.copy(alpha = 0.35f) else colors.glassBorder.copy(alpha = 0.25f),
                 shape = CircleShape
             )
             .clickable(

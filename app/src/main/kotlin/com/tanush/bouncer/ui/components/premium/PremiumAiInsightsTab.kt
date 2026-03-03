@@ -11,7 +11,7 @@ import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Gavel
 import androidx.compose.material.icons.filled.Map
-import androidx.compose.material.icons.filled.RotateRight
+import androidx.compose.material.icons.automirrored.filled.RotateRight
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -32,8 +32,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.ui.components.CoilImage
-import com.tanush.bouncer.ui.theme.ShinyGoldDeep
-import com.tanush.bouncer.ui.theme.BlackBackground
+import com.tanush.bouncer.ui.theme.GoldPrimary
+import com.tanush.bouncer.ui.theme.BackgroundBase
 
 @Composable
 fun PremiumAiInsightsTab(match: CricketMatch) {
@@ -72,7 +72,7 @@ fun PremiumAiInsightsTab(match: CricketMatch) {
                 .fillMaxWidth()
                 .background(
                     Brush.verticalGradient(
-                        listOf(Color.Transparent, BlackBackground.copy(alpha = 0.95f), BlackBackground)
+                        listOf(Color.Transparent, BackgroundBase.copy(alpha = 0.95f), BackgroundBase)
                     )
                 )
                 .padding(20.dp)
@@ -91,7 +91,7 @@ fun PremiumAiInsightsTab(match: CricketMatch) {
                     onClick = {},
                     modifier = Modifier.weight(2f).height(56.dp),
                     shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = ShinyGoldDeep, contentColor = Color.Black),
+                    colors = ButtonDefaults.buttonColors(containerColor = GoldPrimary, contentColor = Color.Black),
                     elevation = ButtonDefaults.buttonElevation(defaultElevation = 8.dp)
                 ) {
                     Icon(Icons.Default.Gavel, null, modifier = Modifier.size(20.dp))
@@ -119,7 +119,7 @@ private fun AiNeuralBanner() {
             .height(160.dp)
             .clip(RoundedCornerShape(24.dp))
             .background(Color.Black)
-            .border(1.dp, ShinyGoldDeep.copy(alpha = 0.15f), RoundedCornerShape(24.dp))
+            .border(1.dp, GoldPrimary.copy(alpha = 0.15f), RoundedCornerShape(24.dp))
     ) {
         CoilImage(
             model = "https://lh3.googleusercontent.com/aida-public/AB6AXuDsb8zoInOAQHjBtC0v9FTTkw8IqC3dtvi8A4nCNTV53qtEobfL9te1_VjsKiDXphFOC2kUQNmQaULYU2ELAjNUSkGWIrB0iFo8GSHMKZwYVtOO2DXQKTboZfjRW7ty2xB2HztlFdmonHfWXtnzUYMD89sYx9plVY8yDtGuFsn9rgHY2D7Qu4pTNQHEUrwrs84Wzl9jZMtReEvqZvnLM7uBgOfycETUXv-bxW21XZspH8qHPoz-2xO-M9e9XsZDwzncF2fh_LWv2bU",
@@ -131,8 +131,8 @@ private fun AiNeuralBanner() {
         
         Column(modifier = Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Icon(Icons.Default.AutoAwesome, null, tint = ShinyGoldDeep, modifier = Modifier.size(18.dp))
-                Text("AI ANALYSIS", color = ShinyGoldDeep, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 2.5.sp)
+                Icon(Icons.Default.AutoAwesome, null, tint = GoldPrimary, modifier = Modifier.size(18.dp))
+                Text("AI ANALYSIS", color = GoldPrimary, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 2.5.sp)
             }
             Text("Match Critical Analysis", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Black, letterSpacing = (-0.5).sp)
             Text(
@@ -144,7 +144,7 @@ private fun AiNeuralBanner() {
             )
         }
         
-        Box(modifier = Modifier.align(Alignment.BottomStart).fillMaxWidth().height(3.dp).background(Brush.horizontalGradient(listOf(ShinyGoldDeep, Color.Transparent))))
+        Box(modifier = Modifier.align(Alignment.BottomStart).fillMaxWidth().height(3.dp).background(Brush.horizontalGradient(listOf(GoldPrimary, Color.Transparent))))
     }
 }
 
@@ -183,7 +183,7 @@ private fun DrsVisualizationCard() {
                 Column(modifier = Modifier.padding(20.dp).align(Alignment.BottomEnd), horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     DrsIndicator("PITCHING", "IN LINE", Color(0xFF00F0FF))
                     DrsIndicator("IMPACT", "IN LINE", Color(0xFF00F0FF))
-                    DrsIndicator("WICKETS", "HITTING", ShinyGoldDeep)
+                    DrsIndicator("WICKETS", "HITTING", GoldPrimary)
                 }
             }
             
@@ -221,10 +221,10 @@ private fun VerdictModule() {
 
     Column(modifier = Modifier.fillMaxWidth().padding(vertical = 20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         Box(contentAlignment = Alignment.Center) {
-            Box(modifier = Modifier.size(120.dp, 60.dp).background(ShinyGoldDeep.copy(alpha = 0.1f), CircleShape).blur(glowIntensity.dp))
+            Box(modifier = Modifier.size(120.dp, 60.dp).background(GoldPrimary.copy(alpha = 0.1f), CircleShape).blur(glowIntensity.dp))
             Text(
                 "OUT",
-                color = ShinyGoldDeep,
+                color = GoldPrimary,
                 fontSize = 64.sp,
                 fontWeight = FontWeight.Black,
                 fontStyle = FontStyle.Italic,
@@ -244,7 +244,7 @@ private fun DeliveryMetricsSection() {
     Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Box(modifier = Modifier.size(4.dp, 18.dp).background(ShinyGoldDeep, RoundedCornerShape(2.dp)))
+                Box(modifier = Modifier.size(4.dp, 18.dp).background(GoldPrimary, RoundedCornerShape(2.dp)))
                 Text("DELIVERY METRICS", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Black, letterSpacing = 1.2.sp)
             }
             Icon(Icons.Default.BarChart, null, tint = Color.White.copy(alpha = 0.3f), modifier = Modifier.size(20.dp))
@@ -252,7 +252,7 @@ private fun DeliveryMetricsSection() {
         
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
             MetricCard(modifier = Modifier.weight(1f), label = "Impact Speed", value = "142", unit = "kph", icon = Icons.Default.Speed)
-            MetricCard(modifier = Modifier.weight(1f), label = "Turn Degree", value = "2.1°", icon = Icons.Default.RotateRight)
+            MetricCard(modifier = Modifier.weight(1f), label = "Turn Degree", value = "2.1°", icon = Icons.AutoMirrored.Filled.RotateRight)
             MetricCard(modifier = Modifier.weight(1f), label = "Confidence", value = "98%", icon = Icons.Default.AutoAwesome)
         }
     }
@@ -269,7 +269,7 @@ private fun MetricCard(modifier: Modifier, label: String, value: String, unit: S
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Box(modifier = Modifier.size(36.dp).background(Color.White.copy(alpha = 0.06f), CircleShape), contentAlignment = Alignment.Center) {
-                Icon(icon, null, tint = ShinyGoldDeep, modifier = Modifier.size(18.dp))
+                Icon(icon, null, tint = GoldPrimary, modifier = Modifier.size(18.dp))
             }
             Column {
                 Text(label.uppercase(), color = Color.White.copy(alpha = 0.5f), fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 0.5.sp)
@@ -302,7 +302,7 @@ private fun PitchMapMiniCard() {
                 }
                 Column {
                     Text("Pitch Map", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Black)
-                    Text("Good Length", color = ShinyGoldDeep, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                    Text("Good Length", color = GoldPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                 }
             }
             Icon(Icons.Default.ChevronRight, null, tint = Color.White.copy(alpha = 0.3f))

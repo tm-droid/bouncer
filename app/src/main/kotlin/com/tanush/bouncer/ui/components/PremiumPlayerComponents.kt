@@ -9,8 +9,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.filled.TrendingUp
-import androidx.compose.material.icons.filled.TrendingDown
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
+import androidx.compose.material.icons.automirrored.filled.TrendingDown
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -77,6 +77,8 @@ fun PremiumPlayerCard(
         label = "glow"
     )
     
+    val colors = BouncerDesignSystem.colors
+
     Box(
         modifier = modifier
             .fillMaxWidth()
@@ -84,8 +86,8 @@ fun PremiumPlayerCard(
             .background(
                 brush = Brush.verticalGradient(
                     colors = listOf(
-                        Color.White.copy(alpha = 0.05f),
-                        Color.White.copy(alpha = 0.05f)
+                        colors.glassSurface,
+                        colors.glassSurface
                     )
                 )
             )
@@ -93,8 +95,8 @@ fun PremiumPlayerCard(
                 width = 1.dp,
                 brush = Brush.linearGradient(
                     colors = listOf(
-                        ShinyGoldMid.copy(alpha = if (player.isOnStrike) glowAlpha else 0.3f),
-                        ShinyGoldLight.copy(alpha = if (player.isOnStrike) glowAlpha * 0.5f else 0.1f)
+                        colors.goldPrimary.copy(alpha = if (player.isOnStrike) glowAlpha else 0.3f),
+                        colors.goldLight.copy(alpha = if (player.isOnStrike) glowAlpha * 0.5f else 0.1f)
                     )
                 ),
                 shape = RoundedCornerShape(16.dp)
@@ -129,7 +131,7 @@ fun PremiumPlayerCard(
                     ) {
                         Text(
                             text = player.name,
-                            color = if (player.isOut) Color.White.copy(alpha = 0.5f) else Color.White,
+                            color = if (player.isOut) colors.textMuted else colors.textPrimary,
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
                             maxLines = 1,
@@ -140,7 +142,7 @@ fun PremiumPlayerCard(
                             Box(
                                 modifier = Modifier
                                     .size(8.dp)
-                                    .background(ShinyGoldMid, CircleShape)
+                                    .background(colors.goldPrimary, CircleShape)
                             )
                         }
                     }
@@ -148,7 +150,7 @@ fun PremiumPlayerCard(
                     if (player.role.isNotEmpty()) {
                         Text(
                             text = player.role,
-                            color = ShinyGoldMid.copy(alpha = 0.8f),
+                            color = colors.goldPrimary.copy(alpha = 0.8f),
                             fontSize = 12.sp
                         )
                     }
@@ -156,7 +158,7 @@ fun PremiumPlayerCard(
                     if (player.isOut && player.dismissalInfo.isNotEmpty()) {
                         Text(
                             text = player.dismissalInfo,
-                            color = Color.White.copy(alpha = 0.5f),
+                            color = colors.textMuted,
                             fontSize = 11.sp,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
@@ -185,6 +187,8 @@ fun PlayerAvatar(
     isOnStrike: Boolean = false,
     isOut: Boolean = false
 ) {
+    val colors = BouncerDesignSystem.colors
+
     Box(
         modifier = Modifier.size(size),
         contentAlignment = Alignment.Center
@@ -195,7 +199,7 @@ fun PlayerAvatar(
                 modifier = Modifier
                     .size(size + 8.dp)
                     .blur(8.dp)
-                    .background(ShinyGoldMid.copy(alpha = 0.4f), CircleShape)
+                    .background(colors.goldPrimary.copy(alpha = 0.4f), CircleShape)
             )
         }
         
@@ -207,19 +211,19 @@ fun PlayerAvatar(
                     if (isOut) 
                         Color.Gray.copy(alpha = 0.3f) 
                     else 
-                        Color.White.copy(alpha = 0.05f)
+                        colors.glassSurface
                 )
                 .border(
                     width = 2.dp,
                     brush = if (isOnStrike) {
                         Brush.linearGradient(
-                            colors = listOf(ShinyGoldMid, ShinyGoldLight)
+                            colors = listOf(colors.goldPrimary, colors.goldLight)
                         )
                     } else {
                         Brush.linearGradient(
                             colors = listOf(
-                                ShinyGoldMid.copy(alpha = 0.5f),
-                                ShinyGoldLight.copy(alpha = 0.2f)
+                                colors.goldPrimary.copy(alpha = 0.5f),
+                                colors.goldLight.copy(alpha = 0.2f)
                             )
                         )
                     },
@@ -239,7 +243,7 @@ fun PlayerAvatar(
             } else {
                 Text(
                     text = name.take(2).uppercase(),
-                    color = if (isOut) Color.White.copy(alpha = 0.5f) else ShinyGoldMid,
+                    color = if (isOut) colors.textMuted else colors.goldPrimary,
                     fontSize = (size.value / 3).sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -250,6 +254,8 @@ fun PlayerAvatar(
 
 @Composable
 private fun BatsmanStatsDisplay(player: PlayerStats) {
+    val colors = BouncerDesignSystem.colors
+
     Column(
         horizontalAlignment = Alignment.End,
         verticalArrangement = Arrangement.spacedBy(4.dp)
@@ -261,13 +267,13 @@ private fun BatsmanStatsDisplay(player: PlayerStats) {
         ) {
             Text(
                 text = "${player.runs}",
-                color = Color.White,
+                color = colors.textPrimary,
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold
             )
             Text(
                 text = "(${player.balls})",
-                color = Color.White.copy(alpha = 0.6f),
+                color = colors.textTertiary,
                 fontSize = 14.sp
             )
         }
@@ -281,7 +287,7 @@ private fun BatsmanStatsDisplay(player: PlayerStats) {
             text = "SR: %.1f".format(strikeRate),
             color = when {
                 strikeRate >= 150 -> Color(0xFF22C55E)
-                strikeRate >= 100 -> ShinyGoldMid
+                strikeRate >= 100 -> colors.goldPrimary
                 else -> Color(0xFFEF4444)
             },
             fontSize = 12.sp,
@@ -295,12 +301,12 @@ private fun BatsmanStatsDisplay(player: PlayerStats) {
             ) {
                 Text(
                     text = "4s: ${player.fours}",
-                    color = Color.White.copy(alpha = 0.7f),
+                    color = colors.textSecondary,
                     fontSize = 11.sp
                 )
                 Text(
                     text = "6s: ${player.sixes}",
-                    color = Color.White.copy(alpha = 0.7f),
+                    color = colors.textSecondary,
                     fontSize = 11.sp
                 )
             }
@@ -310,6 +316,8 @@ private fun BatsmanStatsDisplay(player: PlayerStats) {
 
 @Composable
 private fun BowlerStatsDisplay(player: PlayerStats) {
+    val colors = BouncerDesignSystem.colors
+
     Column(
         horizontalAlignment = Alignment.End,
         verticalArrangement = Arrangement.spacedBy(4.dp)
@@ -321,13 +329,13 @@ private fun BowlerStatsDisplay(player: PlayerStats) {
         ) {
             Text(
                 text = "${player.wickets}/${player.runs}",
-                color = Color.White,
+                color = colors.textPrimary,
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold
             )
             Text(
                 text = "(${player.overs})",
-                color = Color.White.copy(alpha = 0.6f),
+                color = colors.textTertiary,
                 fontSize = 14.sp
             )
         }
@@ -337,7 +345,7 @@ private fun BowlerStatsDisplay(player: PlayerStats) {
             text = "Econ: %.1f".format(player.economy),
             color = when {
                 player.economy <= 6 -> Color(0xFF22C55E)
-                player.economy <= 8 -> ShinyGoldMid
+                player.economy <= 8 -> colors.goldPrimary
                 else -> Color(0xFFEF4444)
             },
             fontSize = 12.sp,
@@ -348,7 +356,7 @@ private fun BowlerStatsDisplay(player: PlayerStats) {
         if (player.maidens > 0) {
             Text(
                 text = "Maidens: ${player.maidens}",
-                color = Color.White.copy(alpha = 0.7f),
+                color = colors.textSecondary,
                 fontSize = 11.sp
             )
         }
@@ -359,10 +367,11 @@ private fun BowlerStatsDisplay(player: PlayerStats) {
 fun PlayerPerformanceChart(
     recentScores: List<Int>,
     modifier: Modifier = Modifier,
-    lineColor: Color = ShinyGoldMid
+    lineColor: Color = GoldPrimary
 ) {
     if (recentScores.isEmpty()) return
     
+    val colors = BouncerDesignSystem.colors
     val maxScore = (recentScores.maxOrNull() ?: 0).coerceAtLeast(1)
     
     val animatedProgress by animateFloatAsState(
@@ -430,7 +439,7 @@ fun PlayerPerformanceChart(
                 center = Offset(x, y)
             )
             drawCircle(
-                color = Color.White,
+                color = colors.textPrimary,
                 radius = 2.dp.toPx(),
                 center = Offset(x, y)
             )
@@ -445,6 +454,8 @@ fun PlayerStatItem(
     trend: Int = 0, // -1 down, 0 neutral, 1 up
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
+
     Column(
         modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -456,14 +467,14 @@ fun PlayerStatItem(
         ) {
             Text(
                 text = value,
-                color = Color.White,
+                color = colors.textPrimary,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold
             )
             
             if (trend != 0) {
                 Icon(
-                    imageVector = if (trend > 0) Icons.Default.TrendingUp else Icons.Default.TrendingDown,
+                    imageVector = if (trend > 0) Icons.AutoMirrored.Filled.TrendingUp else Icons.AutoMirrored.Filled.TrendingDown,
                     contentDescription = null,
                     tint = if (trend > 0) Color(0xFF22C55E) else Color(0xFFEF4444),
                     modifier = Modifier.size(14.dp)
@@ -473,7 +484,7 @@ fun PlayerStatItem(
         
         Text(
             text = label,
-            color = Color.White.copy(alpha = 0.6f),
+            color = colors.textTertiary,
             fontSize = 11.sp
         )
     }
@@ -485,10 +496,12 @@ fun PlayerRatingBadge(
     maxRating: Float = 10f,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
+
     val normalizedRating = (rating / maxRating).coerceIn(0f, 1f)
     val ratingColor = when {
         normalizedRating >= 0.8f -> Color(0xFF22C55E)
-        normalizedRating >= 0.6f -> ShinyGoldMid
+        normalizedRating >= 0.6f -> colors.goldPrimary
         normalizedRating >= 0.4f -> Color(0xFFFFAA00)
         else -> Color(0xFFEF4444)
     }
@@ -514,7 +527,7 @@ fun PlayerRatingBadge(
     ) {
         Text(
             text = "%.1f".format(rating),
-            color = Color.White,
+            color = colors.textPrimary,
             fontSize = 14.sp,
             fontWeight = FontWeight.Bold
         )
@@ -549,6 +562,8 @@ fun PlayerOfTheMatchCard(
         label = "star"
     )
     
+    val colors = BouncerDesignSystem.colors
+
     Box(
         modifier = modifier
             .fillMaxWidth()
@@ -556,9 +571,9 @@ fun PlayerOfTheMatchCard(
             .background(
                 brush = Brush.linearGradient(
                     colors = listOf(
-                        ShinyGoldDeep.copy(alpha = 0.3f),
-                        ShinyGoldMid.copy(alpha = 0.2f),
-                        ShinyGoldDeep.copy(alpha = 0.3f)
+                        colors.goldDark.copy(alpha = 0.3f),
+                        colors.goldPrimary.copy(alpha = 0.2f),
+                        colors.goldDark.copy(alpha = 0.3f)
                     ),
                     start = Offset(shimmerProgress * 1000, 0f),
                     end = Offset((shimmerProgress + 1) * 1000, 0f)
@@ -567,7 +582,7 @@ fun PlayerOfTheMatchCard(
             .border(
                 width = 2.dp,
                 brush = Brush.linearGradient(
-                    colors = listOf(ShinyGoldDeep, ShinyGoldMid, ShinyGoldLight)
+                    colors = listOf(colors.goldDark, colors.goldPrimary, colors.goldLight)
                 ),
                 shape = RoundedCornerShape(20.dp)
             )
@@ -586,14 +601,14 @@ fun PlayerOfTheMatchCard(
                 Icon(
                     imageVector = Icons.Default.Star,
                     contentDescription = null,
-                    tint = ShinyGoldMid,
+                    tint = colors.goldPrimary,
                     modifier = Modifier
                         .size(24.dp)
                         .scale(starScale)
                 )
                 Text(
                     text = "PLAYER OF THE MATCH",
-                    color = ShinyGoldMid,
+                    color = colors.goldPrimary,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 2.sp
@@ -601,7 +616,7 @@ fun PlayerOfTheMatchCard(
                 Icon(
                     imageVector = Icons.Default.Star,
                     contentDescription = null,
-                    tint = ShinyGoldMid,
+                    tint = colors.goldPrimary,
                     modifier = Modifier
                         .size(24.dp)
                         .scale(starScale)
@@ -619,7 +634,7 @@ fun PlayerOfTheMatchCard(
             // Player name
             Text(
                 text = player.name,
-                color = Color.White,
+                color = colors.textPrimary,
                 fontSize = 22.sp,
                 fontWeight = FontWeight.Bold
             )
@@ -628,7 +643,7 @@ fun PlayerOfTheMatchCard(
             if (player.role.isNotEmpty()) {
                 Text(
                     text = player.role,
-                    color = ShinyGoldMid,
+                    color = colors.goldPrimary,
                     fontSize = 14.sp
                 )
             }
@@ -636,7 +651,7 @@ fun PlayerOfTheMatchCard(
             // Performance summary
             Text(
                 text = reason,
-                color = Color.White.copy(alpha = 0.8f),
+                color = colors.textSecondary,
                 fontSize = 14.sp,
                 textAlign = TextAlign.Center
             )
@@ -651,13 +666,15 @@ fun MiniPlayerBadge(
     stat: String,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
+
     Row(
         modifier = modifier
             .clip(RoundedCornerShape(20.dp))
-            .background(Color.White.copy(alpha = 0.05f))
+            .background(colors.glassSurface)
             .border(
                 width = 1.dp,
-                color = ShinyGoldMid.copy(alpha = 0.3f),
+                color = colors.goldPrimary.copy(alpha = 0.3f),
                 shape = RoundedCornerShape(20.dp)
             )
             .padding(horizontal = 12.dp, vertical = 8.dp),
@@ -673,7 +690,7 @@ fun MiniPlayerBadge(
         Column {
             Text(
                 text = name,
-                color = Color.White,
+                color = colors.textPrimary,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Medium,
                 maxLines = 1,
@@ -681,7 +698,7 @@ fun MiniPlayerBadge(
             )
             Text(
                 text = stat,
-                color = ShinyGoldMid,
+                color = colors.goldPrimary,
                 fontSize = 11.sp
             )
         }

@@ -25,6 +25,7 @@ import com.tanush.bouncer.ui.components.BouncerImportance
 import com.tanush.bouncer.ui.components.GlassCard
 import com.tanush.bouncer.ui.components.GlassSurface
 import com.tanush.bouncer.ui.theme.*
+import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 
 /**
  * Premium Sleek Hot Streak Card.
@@ -57,6 +58,7 @@ fun HotStreakCard(
     streakData: HotStreakData,
     modifier: Modifier = Modifier,
 ) {
+    val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "hotstreak")
     val glowAlpha by infiniteTransition.animateFloat(
         initialValue = 0.02f,
@@ -97,14 +99,14 @@ fun HotStreakCard(
                     Box(
                         modifier = Modifier
                             .size(32.dp)
-                            .background(ShinyGoldDeep.copy(alpha = 0.05f), CircleShape)
+                            .background(colors.goldPrimary.copy(alpha = 0.05f), CircleShape)
                             .border(0.5.dp, GoldHairline.copy(alpha = 0.2f), CircleShape),
                         contentAlignment = Alignment.Center,
                     ) {
                         Icon(
                             Icons.Default.LocalFireDepartment,
                             contentDescription = null,
-                            tint = ShinyGoldDeep.copy(alpha = 0.8f),
+                            tint = colors.goldPrimary.copy(alpha = 0.8f),
                             modifier = Modifier.size(16.dp),
                         )
                     }
@@ -132,21 +134,21 @@ fun HotStreakCard(
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(6.dp))
-                        .background(ShinyGoldDeep.copy(alpha = 0.1f))
+                        .background(colors.goldPrimary.copy(alpha = 0.1f))
                         .border(0.5.dp, GoldHairline.copy(alpha = 0.15f), RoundedCornerShape(6.dp))
                         .padding(horizontal = 10.dp, vertical = 4.dp),
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
                             text = "${streakData.streakLength}",
-                            color = ShinyGoldDeep,
+                            color = colors.goldPrimary,
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Black,
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
                             text = "GAMES",
-                            color = ShinyGoldDeep.copy(alpha = 0.6f),
+                            color = colors.goldPrimary.copy(alpha = 0.6f),
                             fontSize = 7.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -193,7 +195,7 @@ fun HotStreakCard(
 
                     Text(
                         text = streakData.currentForm.uppercase(),
-                        color = SuccessGreen.copy(alpha = 0.9f),
+                        color = colors.statusSuccess.copy(alpha = 0.9f),
                         fontSize = 9.sp,
                         fontWeight = FontWeight.Bold,
                     )
@@ -232,10 +234,11 @@ private fun PerformanceChip(
     performance: StreakPerformance,
     modifier: Modifier = Modifier,
 ) {
+    val colors = BouncerDesignSystem.colors
     Column(
         modifier = modifier
             .clip(RoundedCornerShape(6.dp))
-            .background(if (performance.isHighlight) ShinyGoldDeep.copy(alpha = 0.08f) else Color.White.copy(alpha = 0.05f))
+            .background(if (performance.isHighlight) colors.goldPrimary.copy(alpha = 0.08f) else Color.White.copy(alpha = 0.05f))
             .border(
                 0.5.dp, 
                 if (performance.isHighlight) GoldHairline.copy(alpha = 0.2f) else Color.White.copy(alpha = 0.05f), 
@@ -255,7 +258,7 @@ private fun PerformanceChip(
 
         Text(
             text = performance.performance,
-            color = if (performance.isHighlight) ShinyGoldDeep else TextPrimary,
+            color = if (performance.isHighlight) colors.goldPrimary else TextPrimary,
             fontSize = 11.sp,
             fontWeight = FontWeight.Black,
         )

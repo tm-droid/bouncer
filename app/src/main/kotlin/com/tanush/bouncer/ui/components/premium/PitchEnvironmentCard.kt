@@ -60,8 +60,8 @@ fun PitchEnvironmentCard(
 
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 EnvRow("Humidity", humidity, Color.White)
-                EnvRow("Fatigue", fatigue, SuccessGreen)
-                EnvRow("Dew Factor", dew, ErrorRed)
+                EnvRow("Fatigue", fatigue, StatusSuccess)
+                EnvRow("Dew Factor", dew, StatusLive)
             }
         }
     }

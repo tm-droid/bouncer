@@ -1,5 +1,6 @@
 package com.tanush.bouncer.services
 
+import android.util.Log
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.util.Date
@@ -9,6 +10,7 @@ import java.util.Date
  * Mirrors the iOS AICacheService implementation
  */
 object AICacheService {
+    private const val TAG = "AICacheService"
     private val mutex = Mutex()
     private val cache = mutableMapOf<String, CommentaryEntry>()
     
@@ -29,11 +31,11 @@ object AICacheService {
         val ageMs = now.time - cached.timestamp.time
         
         if (ageMs < CACHE_EXPIRATION_INTERVAL_MS) {
-            println("AICacheService: Using cached commentary for key $key (valid for ${CACHE_EXPIRATION_INTERVAL_MS}ms)")
+            Log.d(TAG, "Using cached commentary for key $key (valid for ${CACHE_EXPIRATION_INTERVAL_MS}ms)")
             return@withLock cached.commentary
         }
         
-        println("AICacheService: Cache expired for key $key")
+        Log.d(TAG, "Cache expired for key $key")
         return@withLock null
     }
     
@@ -41,7 +43,7 @@ object AICacheService {
      * Set cached commentary for a specific key
      */
     suspend fun setCommentary(commentary: String, key: String) = mutex.withLock {
-        println("AICacheService: Updating cache for key $key")
+        Log.d(TAG, "Updating cache for key $key")
         cache[key] = CommentaryEntry(commentary, Date())
     }
     
@@ -49,7 +51,7 @@ object AICacheService {
      * Clear all cached AI commentary
      */
     suspend fun clearCache() = mutex.withLock {
-        println("AICacheService: Clearing all cached AI commentary")
+        Log.d(TAG, "Clearing all cached AI commentary")
         cache.clear()
     }
     

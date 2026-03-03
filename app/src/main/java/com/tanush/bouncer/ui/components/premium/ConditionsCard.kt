@@ -22,6 +22,7 @@ import com.tanush.bouncer.ui.components.BouncerImportance
 import com.tanush.bouncer.ui.components.GlassCard
 import com.tanush.bouncer.ui.components.GlassSurface
 import com.tanush.bouncer.ui.theme.*
+import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 
 /**
  * Conditions Card (Weather & Pitch) - Technical Meta-Data Readout.
@@ -54,6 +55,7 @@ fun ConditionsCard(
     venue: String,
     modifier: Modifier = Modifier,
 ) {
+    val colors = BouncerDesignSystem.colors
     val animatedProgress = remember { Animatable(0f) }
 
     LaunchedEffect(weather, pitch) {
@@ -142,7 +144,7 @@ fun ConditionsCard(
                         }
                         Column(horizontalAlignment = Alignment.End) {
                             Text("HUMIDITY", color = TextTertiary, fontSize = 8.sp, fontWeight = FontWeight.Black)
-                            Text("${weather.humidity}%", color = ChartBlue, fontSize = 16.sp, fontWeight = FontWeight.Black)
+                            Text("${weather.humidity}%", color = colors.statusInfo, fontSize = 16.sp, fontWeight = FontWeight.Black)
                         }
                     }
                 }
@@ -158,7 +160,7 @@ fun ConditionsCard(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text("PITCH TYPE", color = TextTertiary, fontSize = 8.sp, fontWeight = FontWeight.Black)
-                        Text(pitch.type.uppercase(), color = SuccessGreen, fontSize = 16.sp, fontWeight = FontWeight.Black)
+                        Text(pitch.type.uppercase(), color = colors.statusSuccess, fontSize = 16.sp, fontWeight = FontWeight.Black)
                     }
                 }
             }
@@ -175,10 +177,10 @@ fun ConditionsCard(
                     letterSpacing = 1.sp
                 )
                 
-                PitchCharacteristicRow(label = "PACE", value = pitch.pace, progress = animatedProgress.value, color = ChartBlue)
-                PitchCharacteristicRow(label = "BOUNCE", value = pitch.bounce, progress = animatedProgress.value, color = SuccessGreen)
-                PitchCharacteristicRow(label = "SPIN", value = pitch.spin, progress = animatedProgress.value, color = ShinyGoldDeep.copy(alpha = 0.7f))
-                PitchCharacteristicRow(label = "SEAM", value = pitch.seam, progress = animatedProgress.value, color = WicketRed)
+                PitchCharacteristicRow(label = "PACE", value = pitch.pace, progress = animatedProgress.value, color = colors.statusInfo)
+                PitchCharacteristicRow(label = "BOUNCE", value = pitch.bounce, progress = animatedProgress.value, color = colors.statusSuccess)
+                PitchCharacteristicRow(label = "SPIN", value = pitch.spin, progress = animatedProgress.value, color = colors.goldPrimary.copy(alpha = 0.7f))
+                PitchCharacteristicRow(label = "SEAM", value = pitch.seam, progress = animatedProgress.value, color = colors.statusLive)
             }
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -208,6 +210,7 @@ fun ConditionsCard(
 
 @Composable
 private fun WeatherEmoji(condition: String) {
+    val colors = BouncerDesignSystem.colors
     val icon = when (condition) {
         "Sunny" -> "☀️"
         "Cloudy" -> "⛅"
@@ -226,6 +229,7 @@ private fun PitchCharacteristicRow(
     progress: Float,
     color: Color,
 ) {
+    val colors = BouncerDesignSystem.colors
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,

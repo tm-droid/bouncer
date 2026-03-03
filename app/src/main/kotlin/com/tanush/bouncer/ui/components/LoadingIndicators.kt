@@ -26,6 +26,10 @@ fun GoldLoadingIndicator(
     modifier: Modifier = Modifier,
     size: Dp = 48.dp
 ) {
+    val colors = BouncerDesignSystem.colors
+    val goldDark = colors.goldDark
+    val goldPrimary = colors.goldPrimary
+    val glassBorder = colors.glassBorder
     val infiniteTransition = rememberInfiniteTransition(label = "loadingRotation")
     
     val rotation by infiniteTransition.animateFloat(
@@ -55,7 +59,7 @@ fun GoldLoadingIndicator(
         
         // Draw subtle background ring
         drawCircle(
-            color = CardBorder.copy(alpha = 0.3f),
+            color = glassBorder.copy(alpha = 0.3f),
             radius = radius - 4.dp.toPx(),
             center = Offset(centerX, centerY),
             style = Stroke(width = 3.dp.toPx())
@@ -69,9 +73,9 @@ fun GoldLoadingIndicator(
             drawArc(
                 brush = Brush.sweepGradient(
                     colors = listOf(
-                        ShinyGoldMid.copy(alpha = alpha),
-                        ShinyGoldDeep.copy(alpha = alpha * 0.8f),
-                        ShinyGoldBronze.copy(alpha = alpha * 0.5f),
+                        goldDark.copy(alpha = alpha),
+                        goldPrimary.copy(alpha = alpha * 0.8f),
+                        goldDark.copy(alpha = alpha * 0.5f),
                         Color.Transparent
                     )
                 ),
@@ -89,8 +93,8 @@ fun GoldLoadingIndicator(
         drawCircle(
             brush = Brush.radialGradient(
                 colors = listOf(
-                    ShinyGoldMid.copy(alpha = alpha),
-                    ShinyGoldDeep.copy(alpha = alpha * 0.5f),
+                    goldDark.copy(alpha = alpha),
+                    goldPrimary.copy(alpha = alpha * 0.5f),
                     Color.Transparent
                 ),
                 center = Offset(centerX, centerY),
@@ -101,7 +105,7 @@ fun GoldLoadingIndicator(
         )
         
         drawCircle(
-            color = ShinyGoldMid.copy(alpha = alpha),
+            color = goldDark.copy(alpha = alpha),
             radius = 5.dp.toPx(),
             center = Offset(centerX, centerY)
         )
@@ -113,6 +117,11 @@ fun CricketBallLoadingIndicator(
     modifier: Modifier = Modifier,
     size: Dp = 56.dp
 ) {
+    val colors = BouncerDesignSystem.colors
+    val goldPrimary = colors.goldPrimary
+    val goldLight = colors.goldLight
+    val goldDark = colors.goldDark
+    val backgroundBase = colors.backgroundBase
     val infiniteTransition = rememberInfiniteTransition(label = "ballRotation")
     
     val rotation by infiniteTransition.animateFloat(
@@ -144,7 +153,7 @@ fun CricketBallLoadingIndicator(
         drawCircle(
             brush = Brush.radialGradient(
                 colors = listOf(
-                    ShinyGoldDeep.copy(alpha = 0.2f),
+                    goldPrimary.copy(alpha = 0.2f),
                     Color.Transparent
                 ),
                 center = Offset(centerX, centerY),
@@ -158,10 +167,10 @@ fun CricketBallLoadingIndicator(
         drawCircle(
             brush = Brush.radialGradient(
                 colors = listOf(
-                    ShinyGoldLight,
-                    ShinyGoldMid,
-                    ShinyGoldDeep,
-                    ShinyGoldDark
+                    goldLight,
+                    goldDark,
+                    goldPrimary,
+                    goldDark
                 ),
                 center = Offset(centerX - radius * 0.2f, centerY - radius * 0.2f),
                 radius = radius * 1.2f
@@ -182,7 +191,7 @@ fun CricketBallLoadingIndicator(
             val y2 = centerY - sin(lineAngle).toFloat() * seamOffset
             
             drawLine(
-                color = BlackBackground.copy(alpha = 0.5f),
+                color = backgroundBase.copy(alpha = 0.5f),
                 start = Offset(x1, y1),
                 end = Offset(x2, y2),
                 strokeWidth = 2.5.dp.toPx(),
@@ -203,5 +212,23 @@ fun CricketBallLoadingIndicator(
             radius = radius * 0.4f,
             center = Offset(centerX - radius * 0.3f, centerY - radius * 0.3f)
         )
+    }
+}
+
+// ── Previews ────────────────────────────────────────────────────────────────
+
+@androidx.compose.ui.tooling.preview.Preview(showBackground = true, backgroundColor = 0xFF121212)
+@Composable
+private fun GoldLoadingIndicatorPreview() {
+    com.tanush.bouncer.ui.theme.BouncerPreviewTheme {
+        GoldLoadingIndicator(size = 64.dp)
+    }
+}
+
+@androidx.compose.ui.tooling.preview.Preview(showBackground = true, backgroundColor = 0xFF121212)
+@Composable
+private fun CricketBallLoadingIndicatorPreview() {
+    com.tanush.bouncer.ui.theme.BouncerPreviewTheme {
+        CricketBallLoadingIndicator(size = 72.dp)
     }
 }

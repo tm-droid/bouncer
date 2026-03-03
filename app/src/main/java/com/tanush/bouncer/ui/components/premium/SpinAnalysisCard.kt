@@ -46,10 +46,14 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.tanush.bouncer.ui.theme.*
+import com.tanush.bouncer.ui.theme.ChartBlue
+import com.tanush.bouncer.ui.theme.SuccessGreen
+import com.tanush.bouncer.ui.theme.WarningYellow
+import com.tanush.bouncer.ui.theme.WicketRed
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
+import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 
 /**
  * Spin analysis card for spin bowlers
@@ -93,6 +97,7 @@ fun SpinAnalysisCard(
     spinData: SpinAnalysisData,
     modifier: Modifier = Modifier,
 ) {
+    val colors = BouncerDesignSystem.colors
     val animatedProgress = remember { Animatable(0f) }
 
     val infiniteTransition = rememberInfiniteTransition(label = "spin")
@@ -114,11 +119,11 @@ fun SpinAnalysisCard(
     }
 
     val spinTypeColor = when (spinData.spinType) {
-        SpinType.OFF_SPIN -> ChartBlue
+        SpinType.OFF_SPIN -> colors.statusInfo
         SpinType.LEG_SPIN -> Color(0xFFE91E63)
-        SpinType.LEFT_ARM_ORTHODOX -> SuccessGreen
+        SpinType.LEFT_ARM_ORTHODOX -> colors.statusSuccess
         SpinType.LEFT_ARM_CHINAMAN -> Color(0xFF9C27B0)
-        SpinType.CARROM_BALL -> WarningYellow
+        SpinType.CARROM_BALL -> colors.statusWarning
     }
 
     Card(
@@ -163,7 +168,7 @@ fun SpinAnalysisCard(
                     Column {
                         Text(
                             text = "SPIN ANALYSIS",
-                            color = ShinyGoldLight,
+                            color = colors.goldLight,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.5.sp,
@@ -227,8 +232,8 @@ fun SpinAnalysisCard(
                     drawCircle(
                         brush = Brush.radialGradient(
                             colors = listOf(
-                                WicketRed.copy(alpha = 0.9f),
-                                WicketRed.copy(alpha = 0.6f),
+                                colors.statusLive.copy(alpha = 0.9f),
+                                colors.statusLive.copy(alpha = 0.6f),
                             ),
                             center = Offset(centerX - 10.dp.toPx(), centerY - 10.dp.toPx()),
                             radius = ballRadius,
@@ -362,6 +367,7 @@ private fun SpinMetricItem(
     value: String,
     progress: Float,
 ) {
+    val colors = BouncerDesignSystem.colors
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
@@ -389,6 +395,7 @@ private fun SpinDeliveryRow(
     color: Color,
     progress: Float,
 ) {
+    val colors = BouncerDesignSystem.colors
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -432,7 +439,7 @@ private fun SpinDeliveryRow(
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
                     text = "${delivery.wickets}",
-                    color = if (delivery.wickets > 0) WicketRed else Color.Gray,
+                    color = if (delivery.wickets > 0) colors.statusLive else Color.Gray,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
                 )
@@ -447,9 +454,9 @@ private fun SpinDeliveryRow(
                 Text(
                     text = String.format("%.1f", delivery.economy),
                     color = if (delivery.economy < 6f) {
-                        SuccessGreen
+                        colors.statusSuccess
                     } else if (delivery.economy > 8f) {
-                        WicketRed
+                        colors.statusLive
                     } else {
                         Color.White
                     },
@@ -468,6 +475,7 @@ private fun SpinDeliveryRow(
 
 @Composable
 fun SpinAnalysisCardPreview() {
+    val colors = BouncerDesignSystem.colors
     SpinAnalysisCard(
         spinData = SpinAnalysisData(
             bowlerName = "R Ashwin",

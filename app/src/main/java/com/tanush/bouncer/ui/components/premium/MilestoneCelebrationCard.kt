@@ -37,6 +37,7 @@ import com.tanush.bouncer.ui.theme.ShinyGoldLight
 import com.tanush.bouncer.ui.theme.ShinyGoldMid
 import com.tanush.bouncer.ui.theme.WicketRed
 import kotlin.math.*
+import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 
 /**
  * Milestone celebration card for player achievements
@@ -80,6 +81,7 @@ fun MilestoneCelebrationCard(
     milestone: MilestoneData,
     modifier: Modifier = Modifier,
 ) {
+    val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "milestone")
 
     val celebrationPulse by infiniteTransition.animateFloat(
@@ -112,11 +114,11 @@ fun MilestoneCelebrationCard(
     }
 
     val milestoneColor = when (milestone.milestoneType) {
-        MilestoneType.CENTURY, MilestoneType.DOUBLE_CENTURY, MilestoneType.TRIPLE_CENTURY -> ShinyGoldMid
+        MilestoneType.CENTURY, MilestoneType.DOUBLE_CENTURY, MilestoneType.TRIPLE_CENTURY -> colors.goldDark
         MilestoneType.FIFTY -> Color(0xFFC0C0C0) // Silver
         MilestoneType.FIVE_WICKETS, MilestoneType.TEN_WICKETS -> Color(0xFF00BCD4)
-        MilestoneType.FASTEST_FIFTY, MilestoneType.FASTEST_CENTURY -> WicketRed
-        else -> ShinyGoldLight
+        MilestoneType.FASTEST_FIFTY, MilestoneType.FASTEST_CENTURY -> colors.statusLive
+        else -> colors.goldLight
     }
 
     val milestoneLabel = when (milestone.milestoneType) {
@@ -151,7 +153,6 @@ fun MilestoneCelebrationCard(
         MilestoneType.CAREER_WICKETS -> "◉"
         MilestoneType.CATCH_RECORD -> "○"
         MilestoneType.MOST_SIXES -> "⬡"
-        else -> "★"
     }
 
     Card(
@@ -231,7 +232,7 @@ fun MilestoneCelebrationCard(
                         Column {
                             Text(
                                 text = "MILESTONE",
-                                color = ShinyGoldLight,
+                                color = colors.goldLight,
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.Bold,
                                 letterSpacing = 1.5.sp,
@@ -248,12 +249,12 @@ fun MilestoneCelebrationCard(
                         Box(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(8.dp))
-                                .background(WicketRed.copy(alpha = 0.3f))
+                                .background(colors.statusLive.copy(alpha = 0.3f))
                                 .padding(horizontal = 10.dp, vertical = 4.dp),
                         ) {
                             Text(
                                 text = "🏆 RECORD",
-                                color = WicketRed,
+                                color = colors.statusLive,
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold,
                             )
@@ -390,6 +391,7 @@ fun MilestoneCelebrationCard(
 
 @Composable
 fun MilestoneCelebrationCardPreview() {
+    val colors = BouncerDesignSystem.colors
     MilestoneCelebrationCard(
         milestone = MilestoneData(
             playerName = "Virat Kohli",

@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.RotateRight
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -83,6 +84,8 @@ fun ArBallTrackingScreen(
 
 @Composable
 private fun ArTrajectoryOverlay(pulse: Float) {
+    val colors = BouncerDesignSystem.colors
+    val goldPrimary = colors.goldPrimary
     Canvas(modifier = Modifier.fillMaxSize()) {
         val centerX = size.width / 2
         val centerY = size.height / 2
@@ -96,13 +99,13 @@ private fun ArTrajectoryOverlay(pulse: Float) {
         // Glow
         drawPath(
             path = path,
-            color = ShinyGoldDeep.copy(alpha = 0.2f * pulse),
+            color = goldPrimary.copy(alpha = 0.2f * pulse),
             style = Stroke(width = 12.dp.toPx(), cap = StrokeCap.Round)
         )
         // Core
         drawPath(
             path = path,
-            color = ShinyGoldDeep,
+            color = goldPrimary,
             style = Stroke(
                 width = 3.dp.toPx(), 
                 cap = StrokeCap.Round,
@@ -127,6 +130,8 @@ private fun ArTrajectoryOverlay(pulse: Float) {
 
 @Composable
 private fun ArReticleFocus() {
+    val colors = BouncerDesignSystem.colors
+    val goldPrimary = colors.goldPrimary
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -141,26 +146,27 @@ private fun ArReticleFocus() {
                 val stroke = 2.dp.toPx()
                 
                 // Top Left
-                drawLine(ShinyGoldDeep, Offset(left, top), Offset(left + cornerLen, top), stroke)
-                drawLine(ShinyGoldDeep, Offset(left, top), Offset(left, top + cornerLen), stroke)
+                drawLine(goldPrimary, Offset(left, top), Offset(left + cornerLen, top), stroke)
+                drawLine(goldPrimary, Offset(left, top), Offset(left, top + cornerLen), stroke)
                 
                 // Top Right
-                drawLine(ShinyGoldDeep, Offset(left + w, top), Offset(left + w - cornerLen, top), stroke)
-                drawLine(ShinyGoldDeep, Offset(left + w, top), Offset(left + w, top + cornerLen), stroke)
+                drawLine(goldPrimary, Offset(left + w, top), Offset(left + w - cornerLen, top), stroke)
+                drawLine(goldPrimary, Offset(left + w, top), Offset(left + w, top + cornerLen), stroke)
                 
                 // Bottom Left
-                drawLine(ShinyGoldDeep, Offset(left, top + h), Offset(left + cornerLen, top + h), stroke)
-                drawLine(ShinyGoldDeep, Offset(left, top + h), Offset(left, top + h - cornerLen), stroke)
+                drawLine(goldPrimary, Offset(left, top + h), Offset(left + cornerLen, top + h), stroke)
+                drawLine(goldPrimary, Offset(left, top + h), Offset(left, top + h - cornerLen), stroke)
                 
                 // Bottom Right
-                drawLine(ShinyGoldDeep, Offset(left + w, top + h), Offset(left + w - cornerLen, top + h), stroke)
-                drawLine(ShinyGoldDeep, Offset(left + w, top + h), Offset(left + w, top + h - cornerLen), stroke)
+                drawLine(goldPrimary, Offset(left + w, top + h), Offset(left + w - cornerLen, top + h), stroke)
+                drawLine(goldPrimary, Offset(left + w, top + h), Offset(left + w, top + h - cornerLen), stroke)
             }
     )
 }
 
 @Composable
 private fun EliteArHeader(onBackClick: () -> Unit) {
+    val colors = BouncerDesignSystem.colors
     Surface(
         modifier = Modifier
             .fillMaxWidth()
@@ -175,8 +181,8 @@ private fun EliteArHeader(onBackClick: () -> Unit) {
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Box(modifier = Modifier.size(32.dp).background(ShinyGoldDeep.copy(alpha = 0.2f), CircleShape), contentAlignment = Alignment.Center) {
-                    Icon(Icons.Default.EmergencyRecording, null, tint = ShinyGoldDeep, modifier = Modifier.size(18.dp))
+                Box(modifier = Modifier.size(32.dp).background(colors.goldPrimary.copy(alpha = 0.2f), CircleShape), contentAlignment = Alignment.Center) {
+                    Icon(Icons.Default.EmergencyRecording, null, tint = colors.goldPrimary, modifier = Modifier.size(18.dp))
                 }
                 Column {
                     Text("IND vs AUS", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
@@ -184,8 +190,8 @@ private fun EliteArHeader(onBackClick: () -> Unit) {
                 }
             }
             
-            Surface(color = ShinyGoldDeep.copy(alpha = 0.2f), shape = RoundedCornerShape(4.dp)) {
-                Text("OVER 14.2", color = ShinyGoldDeep, fontSize = 9.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
+            Surface(color = colors.goldPrimary.copy(alpha = 0.2f), shape = RoundedCornerShape(4.dp)) {
+                Text("OVER 14.2", color = colors.goldPrimary, fontSize = 9.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
             }
         }
     }
@@ -193,6 +199,7 @@ private fun EliteArHeader(onBackClick: () -> Unit) {
 
 @Composable
 private fun ArSpeedHeadline() {
+    val colors = BouncerDesignSystem.colors
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Box(contentAlignment = Alignment.Center) {
             Text(
@@ -204,10 +211,10 @@ private fun ArSpeedHeadline() {
             )
             Text(
                 "145.2", 
-                color = ShinyGoldDeep, 
+                color = colors.goldPrimary, 
                 fontSize = 72.sp, 
                 fontWeight = FontWeight.Black,
-                modifier = Modifier.shadow(20.dp, spotColor = ShinyGoldDeep)
+                modifier = Modifier.shadow(20.dp, spotColor = colors.goldPrimary)
             )
         }
         Text("KPH", color = Color.White.copy(alpha = 0.8f), fontSize = 24.sp, fontWeight = FontWeight.Bold)
@@ -221,6 +228,7 @@ private fun ArSpeedHeadline() {
 
 @Composable
 private fun ArBottomSection() {
+    val colors = BouncerDesignSystem.colors
     Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
         // Floating Widgets
         Row(
@@ -228,7 +236,7 @@ private fun ArBottomSection() {
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             ArWidget("Pitch Map", "Good", Icons.Default.Layers, ChartCyan)
-            ArWidget("Spin Rate", "2400 RPM", Icons.Default.RotateRight, ShinyGoldDeep)
+            ArWidget("Spin Rate", "2400 RPM", Icons.AutoMirrored.Filled.RotateRight, colors.goldPrimary)
             ArWidget("Swing", "1.2°", Icons.Default.AirlineStops, ChartCyan)
         }
 
@@ -252,10 +260,10 @@ private fun ArBottomSection() {
                 Box(
                     modifier = Modifier
                         .size(64.dp)
-                        .background(ShinyGoldDeep.copy(alpha = 0.2f), CircleShape)
-                        .border(2.dp, ShinyGoldDeep, CircleShape)
+                        .background(colors.goldPrimary.copy(alpha = 0.2f), CircleShape)
+                        .border(2.dp, colors.goldPrimary, CircleShape)
                         .padding(6.dp)
-                        .background(ShinyGoldDeep, CircleShape)
+                        .background(colors.goldPrimary, CircleShape)
                         .clickable { },
                     contentAlignment = Alignment.Center
                 ) {

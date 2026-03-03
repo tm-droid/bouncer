@@ -50,6 +50,7 @@ fun PremiumTeamCard(
     modifier: Modifier = Modifier
 ) {
     var isPressed by remember { mutableStateOf(false) }
+    val colors = BouncerDesignSystem.colors
     
     val infiniteTransition = rememberInfiniteTransition(label = "teamCard")
     
@@ -87,23 +88,23 @@ fun PremiumTeamCard(
             .shadow(
                 elevation = if (isFavorite) 20.dp else 12.dp,
                 shape = RoundedCornerShape(24.dp),
-                spotColor = if (isFavorite) ShinyGoldDeep.copy(alpha = 0.25f) else Color.Transparent
+                spotColor = if (isFavorite) colors.goldPrimary.copy(alpha = 0.25f) else Color.Transparent
             )
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
-                indication = ripple(color = ShinyGoldDeep.copy(alpha = 0.1f)),
+                indication = ripple(color = colors.goldPrimary.copy(alpha = 0.1f)),
                 onClick = onClick
             ),
         shape = RoundedCornerShape(24.dp),
-        color = Color.White.copy(alpha = 0.05f),
+        color = colors.glassSurface,
         border = if (isFavorite) {
             BorderStroke(
                 2.dp,
                 Brush.linearGradient(
                     colors = listOf(
-                        ShinyGoldDeep.copy(alpha = 0.6f),
-                        ShinyGoldMid,
-                        ShinyGoldDeep.copy(alpha = 0.6f)
+                        colors.goldPrimary.copy(alpha = 0.6f),
+                        colors.goldPrimary,
+                        colors.goldPrimary.copy(alpha = 0.6f)
                     )
                 )
             )
@@ -157,7 +158,7 @@ fun PremiumTeamCard(
                                 text = teamName,
                                 fontSize = 18.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = Color.White,
+                                color = colors.textPrimary,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
@@ -172,7 +173,7 @@ fun PremiumTeamCard(
                                     Text(
                                         text = it,
                                         fontSize = 11.sp,
-                                        color = TextMuted
+                                        color = colors.textMuted
                                     )
                                 }
                             }
@@ -191,7 +192,7 @@ fun PremiumTeamCard(
                         Icon(
                             imageVector = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
                             contentDescription = "Favorite",
-                            tint = if (isFavorite) ErrorRed else TextMuted,
+                            tint = if (isFavorite) colors.statusLive else colors.textMuted,
                             modifier = Modifier.size(24.dp)
                         )
                     }
@@ -205,7 +206,7 @@ fun PremiumTeamCard(
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.sp,
-                            color = TextMuted
+                            color = colors.textMuted
                         )
                         
                         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -218,16 +219,16 @@ fun PremiumTeamCard(
                 
                 // Quick stats
                 stats?.let { teamStats ->
-                    HorizontalDivider(color = CardBorder.copy(alpha = 0.3f))
+                    HorizontalDivider(color = colors.glassBorder.copy(alpha = 0.3f))
                     
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceEvenly
                     ) {
                         QuickStat(label = "Matches", value = "${teamStats.matchesPlayed}")
-                        QuickStat(label = "Won", value = "${teamStats.wins}", valueColor = SuccessGreen)
-                        QuickStat(label = "Lost", value = "${teamStats.losses}", valueColor = WicketRed)
-                        QuickStat(label = "Win %", value = "${teamStats.winPercentage}%", valueColor = ShinyGoldDeep)
+                        QuickStat(label = "Won", value = "${teamStats.wins}", valueColor = colors.statusSuccess)
+                        QuickStat(label = "Lost", value = "${teamStats.losses}", valueColor = colors.statusLive)
+                        QuickStat(label = "Win %", value = "${teamStats.winPercentage}%", valueColor = colors.goldPrimary)
                     }
                 }
             }
@@ -248,9 +249,9 @@ enum class MatchResult {
 }
 
 enum class TeamType(val displayName: String, val color: Color) {
-    INTERNATIONAL("International", LiveBlue),
-    FRANCHISE("Franchise", BoundarySix),
-    DOMESTIC("Domestic", SuccessGreen),
+    INTERNATIONAL("International", StatusInfo),
+    FRANCHISE("Franchise", GoldPrimary),
+    DOMESTIC("Domestic", StatusSuccess),
     WOMEN("Women", Color(0xFFE91E63))
 }
 
@@ -261,6 +262,8 @@ private fun TeamLogoLarge(
     isFavorite: Boolean
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "logo")
+    val colors = BouncerDesignSystem.colors
+
     val glowPulse by infiniteTransition.animateFloat(
         initialValue = 0.3f,
         targetValue = 0.6f,
@@ -280,7 +283,7 @@ private fun TeamLogoLarge(
                         drawCircle(
                             brush = Brush.radialGradient(
                                 colors = listOf(
-                                    ShinyGoldDeep.copy(alpha = glowPulse * 0.4f),
+                                    colors.goldPrimary.copy(alpha = glowPulse * 0.4f),
                                     Color.Transparent
                                 )
                             ),
@@ -293,17 +296,17 @@ private fun TeamLogoLarge(
                 width = if (isFavorite) 2.dp else 1.dp,
                 brush = if (isFavorite) {
                     Brush.linearGradient(
-                        colors = listOf(ShinyGoldDeep, ShinyGoldMid)
+                        colors = listOf(colors.goldPrimary, colors.goldPrimary)
                     )
                 } else {
                     Brush.linearGradient(
-                        colors = listOf(CardBorder, CardBorder.copy(alpha = 0.5f))
+                        colors = listOf(colors.glassBorder, colors.glassBorder.copy(alpha = 0.5f))
                     )
                 },
                 CircleShape
             )
             .clip(CircleShape)
-            .background(CardDarkBlue),
+            .background(colors.surface1),
         contentAlignment = Alignment.Center
     ) {
         if (!logo.isNullOrEmpty()) {
@@ -320,7 +323,7 @@ private fun TeamLogoLarge(
                 text = name.take(3).uppercase(),
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Black,
-                color = ShinyGoldDeep
+                color = colors.goldPrimary
             )
         }
     }
@@ -344,11 +347,12 @@ private fun TeamTypeBadge(type: TeamType) {
 
 @Composable
 private fun FormIndicator(result: MatchResult) {
+    val colors = BouncerDesignSystem.colors
     val colorAndText: Pair<Color, String> = when (result) {
-        MatchResult.WIN -> SuccessGreen to "W"
-        MatchResult.LOSS -> WicketRed to "L"
-        MatchResult.DRAW -> WarningYellow to "D"
-        MatchResult.NO_RESULT -> TextMuted to "NR"
+        MatchResult.WIN -> colors.statusSuccess to "W"
+        MatchResult.LOSS -> colors.statusLive to "L"
+        MatchResult.DRAW -> colors.statusWarning to "D"
+        MatchResult.NO_RESULT -> colors.textMuted to "NR"
     }
     val color = colorAndText.first
     val text = colorAndText.second
@@ -373,8 +377,9 @@ private fun FormIndicator(result: MatchResult) {
 private fun QuickStat(
     label: String,
     value: String,
-    valueColor: Color = Color.White
+    valueColor: Color = TextPrimary
 ) {
+    val colors = BouncerDesignSystem.colors
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
             text = value,
@@ -385,7 +390,7 @@ private fun QuickStat(
         Text(
             text = label,
             fontSize = 10.sp,
-            color = TextMuted
+            color = colors.textMuted
         )
     }
 }
@@ -403,6 +408,7 @@ fun FavoriteTeamChip(
     modifier: Modifier = Modifier
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "chip")
+    val colors = BouncerDesignSystem.colors
     val glowPulse by infiniteTransition.animateFloat(
         initialValue = 0.4f,
         targetValue = 0.7f,
@@ -421,7 +427,7 @@ fun FavoriteTeamChip(
                         drawRoundRect(
                             brush = Brush.radialGradient(
                                 colors = listOf(
-                                    ShinyGoldDeep.copy(alpha = glowPulse * 0.3f),
+                                    colors.goldPrimary.copy(alpha = glowPulse * 0.3f),
                                     Color.Transparent
                                 )
                             ),
@@ -433,15 +439,15 @@ fun FavoriteTeamChip(
             .shadow(
                 elevation = if (isSelected) 12.dp else 6.dp,
                 shape = RoundedCornerShape(24.dp),
-                spotColor = if (isSelected) ShinyGoldDeep.copy(alpha = 0.2f) else Color.Transparent
+                spotColor = if (isSelected) colors.goldPrimary.copy(alpha = 0.2f) else Color.Transparent
             )
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(24.dp),
-        color = if (isSelected) Color.White.copy(alpha = 0.08f) else Color.White.copy(alpha = 0.05f),
+        color = if (isSelected) colors.glassBorderHighlight else colors.glassSurface,
         border = if (isSelected) {
-            BorderStroke(1.5.dp, ShinyGoldDeep.copy(alpha = 0.6f))
+            BorderStroke(1.5.dp, colors.goldPrimary.copy(alpha = 0.6f))
         } else {
-            BorderStroke(1.dp, CardBorder.copy(alpha = 0.3f))
+            BorderStroke(1.dp, colors.glassBorder.copy(alpha = 0.3f))
         }
     ) {
         Row(
@@ -455,11 +461,11 @@ fun FavoriteTeamChip(
                     .size(36.dp)
                     .border(
                         1.dp,
-                        if (isSelected) ShinyGoldDeep.copy(alpha = 0.5f) else CardBorder,
+                        if (isSelected) colors.goldPrimary.copy(alpha = 0.5f) else colors.glassBorder,
                         CircleShape
                     )
                     .clip(CircleShape)
-                    .background(CardDarkBlue),
+                    .background(colors.surface1),
                 contentAlignment = Alignment.Center
             ) {
                 if (!teamLogo.isNullOrEmpty()) {
@@ -476,7 +482,7 @@ fun FavoriteTeamChip(
                         text = teamName.take(2).uppercase(),
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Black,
-                        color = ShinyGoldDeep
+                        color = colors.goldPrimary
                     )
                 }
             }
@@ -486,7 +492,7 @@ fun FavoriteTeamChip(
                 text = teamName,
                 fontSize = 13.sp,
                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                color = if (isSelected) ShinyGoldDeep else Color.White,
+                color = if (isSelected) colors.goldPrimary else colors.textPrimary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -500,7 +506,7 @@ fun FavoriteTeamChip(
                     imageVector = Icons.Default.Close,
                     contentDescription = "Remove",
                     modifier = Modifier.size(16.dp),
-                    tint = TextMuted
+                    tint = colors.textMuted
                 )
             }
         }
@@ -550,6 +556,7 @@ private fun TeamSelectorChip(
         animationSpec = spring(stiffness = Spring.StiffnessHigh),
         label = "chipScale"
     )
+    val colors = BouncerDesignSystem.colors
 
     Surface(
         modifier = Modifier
@@ -560,13 +567,13 @@ private fun TeamSelectorChip(
             .shadow(
                 elevation = if (isSelected) 10.dp else 4.dp,
                 shape = RoundedCornerShape(16.dp),
-                spotColor = if (isSelected) ShinyGoldDeep.copy(alpha = 0.2f) else Color.Transparent
+                spotColor = if (isSelected) colors.goldPrimary.copy(alpha = 0.2f) else Color.Transparent
             )
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(16.dp),
-        color = if (isSelected) Color.White.copy(alpha = 0.08f) else Color.White.copy(alpha = 0.05f),
+        color = if (isSelected) colors.glassBorderHighlight else colors.glassSurface,
         border = if (isSelected) {
-            BorderStroke(1.5.dp, ShinyGoldDeep)
+            BorderStroke(1.5.dp, colors.goldPrimary)
         } else null
     ) {
         Column(
@@ -579,10 +586,10 @@ private fun TeamSelectorChip(
                 modifier = Modifier
                     .size(44.dp)
                     .clip(CircleShape)
-                    .background(CardDarkBlue)
+                    .background(colors.surface1)
                     .border(
                         if (isSelected) 2.dp else 1.dp,
-                        if (isSelected) ShinyGoldDeep else CardBorder,
+                        if (isSelected) colors.goldPrimary else colors.glassBorder,
                         CircleShape
                     ),
                 contentAlignment = Alignment.Center
@@ -601,7 +608,7 @@ private fun TeamSelectorChip(
                         text = (team.shortName ?: team.name).take(3).uppercase(),
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Black,
-                        color = if (isSelected) ShinyGoldDeep else TextSecondary
+                        color = if (isSelected) colors.goldPrimary else colors.textSecondary
                     )
                 }
             }
@@ -611,7 +618,7 @@ private fun TeamSelectorChip(
                 text = team.shortName ?: team.name,
                 fontSize = 10.sp,
                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                color = if (isSelected) ShinyGoldDeep else TextSecondary,
+                color = if (isSelected) colors.goldPrimary else colors.textSecondary,
                 maxLines = 1,
                 textAlign = TextAlign.Center
             )
@@ -630,16 +637,18 @@ fun TeamVsTeamCard(
     team2Stats: VersusStats,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
+
     Surface(
         modifier = modifier
             .fillMaxWidth()
             .shadow(
                 elevation = 16.dp,
                 shape = RoundedCornerShape(24.dp),
-                spotColor = ShinyGoldDeep.copy(alpha = 0.15f)
+                spotColor = colors.goldPrimary.copy(alpha = 0.15f)
             ),
         shape = RoundedCornerShape(24.dp),
-        color = Color.White.copy(alpha = 0.05f)
+        color = colors.glassSurface
     ) {
         Column(
             modifier = Modifier.padding(24.dp),
@@ -659,7 +668,7 @@ fun TeamVsTeamCard(
                         text = team1.shortName ?: team1.name,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,
-                        color = ShinyGoldDeep
+                        color = colors.goldPrimary
                     )
                 }
                 
@@ -668,7 +677,7 @@ fun TeamVsTeamCard(
                     text = "VS",
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Black,
-                    color = TextMuted
+                    color = colors.textMuted
                 )
                 
                 // Team 2
@@ -679,12 +688,12 @@ fun TeamVsTeamCard(
                         text = team2.shortName ?: team2.name,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,
-                        color = TextSecondary
+                        color = colors.textSecondary
                     )
                 }
             }
             
-            HorizontalDivider(color = CardBorder.copy(alpha = 0.3f))
+            HorizontalDivider(color = colors.glassBorder.copy(alpha = 0.3f))
             
             // Stats comparison
             VersusStatRow(label = "Matches Won", value1 = team1Stats.wins, value2 = team2Stats.wins)
@@ -714,6 +723,7 @@ private fun VersusStatRow(
         animationSpec = tween(800, easing = FastOutSlowInEasing),
         label = "vsRatio"
     )
+    val colors = BouncerDesignSystem.colors
 
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(
@@ -724,18 +734,18 @@ private fun VersusStatRow(
                 text = "$value1",
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
-                color = if (value1 > value2) ShinyGoldDeep else TextSecondary
+                color = if (value1 > value2) colors.goldPrimary else colors.textSecondary
             )
             Text(
                 text = label,
                 fontSize = 12.sp,
-                color = TextMuted
+                color = colors.textMuted
             )
             Text(
                 text = "$value2",
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
-                color = if (value2 > value1) ShinyGoldDeep else TextSecondary
+                color = if (value2 > value1) colors.goldPrimary else colors.textSecondary
             )
         }
         
@@ -745,7 +755,7 @@ private fun VersusStatRow(
                 .fillMaxWidth()
                 .height(6.dp)
                 .clip(RoundedCornerShape(3.dp))
-                .background(CardBorder)
+                .background(colors.glassBorder)
         ) {
             Row {
                 Box(
@@ -754,7 +764,7 @@ private fun VersusStatRow(
                         .fillMaxWidth(animatedRatio)
                         .background(
                             Brush.horizontalGradient(
-                                colors = listOf(ShinyGoldDeep, ShinyGoldMid)
+                                colors = listOf(colors.goldPrimary, colors.goldPrimary)
                             )
                         )
                 )

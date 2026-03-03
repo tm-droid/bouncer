@@ -22,6 +22,7 @@ import com.tanush.bouncer.ui.components.BouncerImportance
 import com.tanush.bouncer.ui.components.CoilImage
 import com.tanush.bouncer.ui.components.GlassCard
 import com.tanush.bouncer.ui.theme.*
+import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 
 /**
  * Toss Result Card - Minimalist Technical Readout.
@@ -35,8 +36,8 @@ data class TossDetails(
     val team2Logo: String,
     val tossWinner: String,
     val decision: String, // "bat" or "bowl"
-    val team1Color: Color = ChartBlue,
-    val team2Color: Color = WicketRed,
+    val team1Color: Color = StatusInfo,
+    val team2Color: Color = StatusLive,
 )
 
 @Composable
@@ -44,6 +45,7 @@ fun TossResultCard(
     tossDetails: TossDetails,
     modifier: Modifier = Modifier,
 ) {
+    val colors = BouncerDesignSystem.colors
     val isTeam1Winner = tossDetails.tossWinner == tossDetails.team1Name
     val winnerColor = if (isTeam1Winner) tossDetails.team1Color else tossDetails.team2Color
 
@@ -150,7 +152,7 @@ fun TossResultCard(
                 TossStatItem(
                     label = "DEW FACTOR",
                     value = "HIGH",
-                    color = SuccessGreen,
+                    color = colors.statusSuccess,
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -165,6 +167,7 @@ private fun TossStatItem(
     color: Color,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     Column(
         modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally

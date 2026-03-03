@@ -45,7 +45,7 @@
             android:label="@string/title_reminders" />
 
         <receiver android:name=".ui.widgets.LiveMatchWidgetProvider"
-                  android:exported="false">
+                  android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>
@@ -66,7 +66,14 @@
         </provider>
     
     <!-- Required: set your sentry.io project identifier (DSN) -->
-    <meta-data android:name="io.sentry.dsn" android:value="https://da18196cef92219d21454c5b3a63d05a@o4510958403518464.ingest.us.sentry.io/4510958405287936" />
+    <meta-data android:name="io.sentry.dsn" android:value="${sentryDsn}" />
+
+    <!-- Enable debug logging so we can see Sentry activity in Logcat (filter tag: Sentry) -->
+    <!-- TODO: disable in production release builds once errors are confirmed working -->
+    <meta-data android:name="io.sentry.debug" android:value="true" />
+
+    <!-- Tag events by environment so they appear in the right section on sentry.io -->
+    <meta-data android:name="io.sentry.environment" android:value="${sentryEnvironment}" />
 
     <!-- enable automatic breadcrumbs for user interactions (clicks, swipes, scrolls) -->
     <meta-data android:name="io.sentry.traces.user-interaction.enable" android:value="true" />
@@ -76,7 +83,7 @@
     <meta-data android:name="io.sentry.attach-view-hierarchy" android:value="true" />
 
     <!-- enable the performance API by setting a sample-rate, adjust in production env -->
-    <meta-data android:name="io.sentry.traces.sample-rate" android:value="1.0" />
+    <meta-data android:name="io.sentry.traces.sample-rate" android:value="0.2" />
 </application>
 
 </manifest>

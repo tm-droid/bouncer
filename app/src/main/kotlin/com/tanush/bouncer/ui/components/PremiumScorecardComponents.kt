@@ -15,12 +15,15 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.ui.theme.*
@@ -77,6 +80,7 @@ fun PremiumBattingScorecard(
     overs: String,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     var isVisible by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { isVisible = true }
     
@@ -88,14 +92,14 @@ fun PremiumBattingScorecard(
                 spotColor = teamColor.copy(alpha = 0.15f),
                 ambientColor = Color.Black.copy(alpha = 0.3f)
             ),
-        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.05f)),
+        colors = CardDefaults.cardColors(containerColor = GlassSurface),
         shape = RoundedCornerShape(28.dp),
-        border = BorderStroke(0.5.dp, CardBorder.copy(alpha = 0.3f))
+        border = BorderStroke(0.5.dp, GlassBorder)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(20.dp)
+                .padding(24.dp)
         ) {
             // Header
             Row(
@@ -134,12 +138,12 @@ fun PremiumBattingScorecard(
                             teamName,
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
-                            color = TextPrimary
+                            color = colors.textPrimary
                         )
                         Text(
                             "Batting",
                             fontSize = 12.sp,
-                            color = TextSecondary
+                            color = colors.textSecondary
                         )
                     }
                 }
@@ -156,19 +160,22 @@ fun PremiumBattingScorecard(
                     Text(
                         "($overs ov)",
                         fontSize = 12.sp,
-                        color = TextSecondary
+                        color = colors.textSecondary
                     )
                 }
             }
             
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(24.dp))
             
             // Column Headers
             ScorecardHeader()
             
             Spacer(modifier = Modifier.height(8.dp))
             
-            HorizontalDivider(color = CardBorder.copy(alpha = 0.3f), thickness = 0.5.dp)
+            HorizontalDivider(
+                color = colors.goldPrimary.copy(alpha = 0.15f),
+                thickness = 0.5.dp
+            )
             
             // Batsmen rows
             batsmen.forEachIndexed { index, batsman ->
@@ -190,91 +197,156 @@ fun PremiumBattingScorecard(
                 
                 if (index < batsmen.lastIndex) {
                     HorizontalDivider(
-                        color = CardBorder.copy(alpha = 0.15f),
+                        color = GlassBorderLight,
                         thickness = 0.5.dp,
                         modifier = Modifier.padding(vertical = 2.dp)
                     )
                 }
             }
             
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(16.dp))
             
-            HorizontalDivider(color = CardBorder.copy(alpha = 0.3f), thickness = 0.5.dp)
-            
-            Spacer(modifier = Modifier.height(12.dp))
-            
-            // Extras
+            // Extras row with glass surface background
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        GlassBackgroundHover,
+                        RoundedCornerShape(8.dp)
+                    )
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
                     "Extras",
-                    fontSize = 13.sp,
+                    fontSize = 12.sp,
                     fontWeight = FontWeight.Medium,
-                    color = TextSecondary
+                    color = colors.textSecondary
                 )
                 Text(
                     "$extras",
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Bold,
-                    color = TextPrimary
+                    color = colors.textPrimary
                 )
             }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Total row with gold accent
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    "TOTAL",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Black,
+                    color = colors.goldPrimary,
+                    letterSpacing = 2.sp
+                )
+                Text(
+                    total,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Black,
+                    color = colors.textPrimary
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Gold gradient divider (between batting and bowling sections)
+            GoldGradientDivider()
         }
     }
 }
 
+/**
+ * Gold gradient divider — horizontal separator matching the mockup's
+ * "from-transparent via-primary/30 to-transparent" effect.
+ */
+@Composable
+fun GoldGradientDivider(modifier: Modifier = Modifier) {
+    val colors = BouncerDesignSystem.colors
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(1.dp)
+            .background(
+                Brush.horizontalGradient(
+                    colors = listOf(
+                        Color.Transparent,
+                        colors.goldPrimary.copy(alpha = 0.30f),
+                        Color.Transparent
+                    )
+                )
+            )
+    )
+}
+
 @Composable
 private fun ScorecardHeader() {
+    val colors = BouncerDesignSystem.colors
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
-            "Batter",
-            fontSize = 11.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = TextTertiary,
+            "BATTER",
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Bold,
+            color = colors.goldPrimary.copy(alpha = 0.6f),
+            letterSpacing = 1.sp,
             modifier = Modifier.weight(1f)
         )
         Text(
             "R",
-            fontSize = 11.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = TextTertiary,
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Bold,
+            color = colors.goldPrimary.copy(alpha = 0.6f),
+            letterSpacing = 0.5.sp,
             textAlign = TextAlign.Center,
             modifier = Modifier.width(32.dp)
         )
         Text(
             "B",
-            fontSize = 11.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = TextTertiary,
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Bold,
+            color = colors.goldPrimary.copy(alpha = 0.6f),
+            letterSpacing = 0.5.sp,
             textAlign = TextAlign.Center,
             modifier = Modifier.width(32.dp)
         )
         Text(
             "4s",
-            fontSize = 11.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = TextTertiary,
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Bold,
+            color = colors.goldPrimary.copy(alpha = 0.6f),
+            letterSpacing = 0.5.sp,
             textAlign = TextAlign.Center,
             modifier = Modifier.width(28.dp)
         )
         Text(
             "6s",
-            fontSize = 11.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = TextTertiary,
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Bold,
+            color = colors.goldPrimary.copy(alpha = 0.6f),
+            letterSpacing = 0.5.sp,
             textAlign = TextAlign.Center,
             modifier = Modifier.width(28.dp)
         )
         Text(
-            "SR",
-            fontSize = 11.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = TextTertiary,
+            "S/R",
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Bold,
+            color = colors.goldPrimary.copy(alpha = 0.6f),
+            letterSpacing = 0.5.sp,
             textAlign = TextAlign.End,
             modifier = Modifier.width(48.dp)
         )
@@ -287,20 +359,53 @@ private fun BatsmanRow(
     teamColor: Color,
     animationProgress: Float
 ) {
+    val colors = BouncerDesignSystem.colors
     val isHighScore = batsman.runs >= 50
     val isCentury = batsman.runs >= 100
     
     val rowAlpha = animationProgress
     val slideOffset = (1f - animationProgress) * 20f
     
-    Row(
-        modifier = Modifier
+    // Capture for drawBehind scope
+    val goldPrimaryColor = colors.goldPrimary
+
+    // Strike-row: gold inset left border + subtle team-tinted gradient background
+    val strikeRowModifier = if (batsman.isNotOut) {
+        Modifier
             .fillMaxWidth()
+            .background(
+                Brush.horizontalGradient(
+                    colors = listOf(
+                        teamColor.copy(alpha = 0.10f),
+                        teamColor.copy(alpha = 0.02f)
+                    )
+                ),
+                RoundedCornerShape(4.dp)
+            )
+            .drawBehind {
+                // Gold inset left border (3dp wide)
+                drawRect(
+                    color = goldPrimaryColor,
+                    topLeft = Offset.Zero,
+                    size = Size(3.dp.toPx(), size.height)
+                )
+            }
+    } else {
+        Modifier.fillMaxWidth()
+    }
+
+    Row(
+        modifier = strikeRowModifier
             .graphicsLayer {
                 alpha = rowAlpha
                 translationX = slideOffset
             }
-            .padding(vertical = 10.dp),
+            .padding(
+                start = if (batsman.isNotOut) 12.dp else 0.dp,
+                end = 0.dp,
+                top = 8.dp,
+                bottom = 8.dp
+            ),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(
@@ -313,7 +418,7 @@ private fun BatsmanRow(
                     batsman.name,
                     fontSize = 14.sp,
                     fontWeight = if (batsman.isNotOut) FontWeight.Bold else FontWeight.Medium,
-                    color = if (batsman.isNotOut) teamColor else TextPrimary,
+                    color = if (batsman.isNotOut) colors.textPrimary else colors.textPrimary.copy(alpha = 0.7f),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -325,7 +430,7 @@ private fun BatsmanRow(
                             .size(8.dp)
                             .background(
                                 Brush.radialGradient(
-                                    colors = listOf(ShinyGoldDeep, ShinyGoldLight)
+                                    colors = listOf(colors.goldPrimary, colors.goldLight)
                                 ),
                                 CircleShape
                             )
@@ -337,7 +442,7 @@ private fun BatsmanRow(
                     MilestoneBadge("100", NeonSuccess)
                 } else if (isHighScore) {
                     Spacer(modifier = Modifier.width(6.dp))
-                    MilestoneBadge("50", ShinyGoldDeep)
+                    MilestoneBadge("50", colors.goldPrimary)
                 }
             }
             
@@ -345,17 +450,26 @@ private fun BatsmanRow(
                 Text(
                     batsman.dismissal,
                     fontSize = 11.sp,
-                    color = TextTertiary,
+                    color = colors.textTertiary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
             } else if (batsman.isNotOut) {
-                Text(
-                    "not out",
-                    fontSize = 11.sp,
-                    color = NeonSuccess.copy(alpha = 0.8f),
-                    fontWeight = FontWeight.Medium
-                )
+                // Pill-shaped "not out" status badge
+                Spacer(modifier = Modifier.height(2.dp))
+                Surface(
+                    color = NeonSuccess.copy(alpha = 0.12f),
+                    shape = RoundedCornerShape(50),
+                    border = BorderStroke(0.5.dp, NeonSuccess.copy(alpha = 0.25f))
+                ) {
+                    Text(
+                        "not out",
+                        fontSize = 9.sp,
+                        color = NeonSuccess.copy(alpha = 0.9f),
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                    )
+                }
             }
         }
         
@@ -364,21 +478,21 @@ private fun BatsmanRow(
             "${batsman.runs}",
             fontSize = 14.sp,
             fontWeight = FontWeight.Bold,
-            color = if (isHighScore) teamColor else TextPrimary,
+            color = if (isHighScore) teamColor else colors.textPrimary,
             textAlign = TextAlign.Center,
             modifier = Modifier.width(32.dp)
         )
         Text(
             "${batsman.balls}",
             fontSize = 13.sp,
-            color = TextSecondary,
+            color = colors.textSecondary,
             textAlign = TextAlign.Center,
             modifier = Modifier.width(32.dp)
         )
         Text(
             "${batsman.fours}",
             fontSize = 13.sp,
-            color = if (batsman.fours > 0) BoundaryBlue else TextTertiary,
+            color = if (batsman.fours > 0) BoundaryBlue else colors.textTertiary,
             fontWeight = if (batsman.fours > 0) FontWeight.Medium else FontWeight.Normal,
             textAlign = TextAlign.Center,
             modifier = Modifier.width(28.dp)
@@ -386,7 +500,7 @@ private fun BatsmanRow(
         Text(
             "${batsman.sixes}",
             fontSize = 13.sp,
-            color = if (batsman.sixes > 0) SixerPurple else TextTertiary,
+            color = if (batsman.sixes > 0) SixerPurple else colors.textTertiary,
             fontWeight = if (batsman.sixes > 0) FontWeight.Medium else FontWeight.Normal,
             textAlign = TextAlign.Center,
             modifier = Modifier.width(28.dp)
@@ -396,8 +510,8 @@ private fun BatsmanRow(
             fontSize = 13.sp,
             color = when {
                 batsman.strikeRate >= 150 -> NeonSuccess
-                batsman.strikeRate >= 100 -> TextPrimary
-                else -> TextSecondary
+                batsman.strikeRate >= 100 -> colors.textPrimary
+                else -> colors.textSecondary
             },
             fontWeight = FontWeight.Medium,
             textAlign = TextAlign.End,
@@ -436,6 +550,7 @@ fun PremiumBowlingScorecard(
     bowlers: List<BowlerScoreData>,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     var isVisible by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { isVisible = true }
     
@@ -447,14 +562,14 @@ fun PremiumBowlingScorecard(
                 spotColor = teamColor.copy(alpha = 0.12f),
                 ambientColor = Color.Black.copy(alpha = 0.25f)
             ),
-        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.05f)),
+        colors = CardDefaults.cardColors(containerColor = GlassSurface),
         shape = RoundedCornerShape(24.dp),
-        border = BorderStroke(0.5.dp, CardBorder.copy(alpha = 0.3f))
+        border = BorderStroke(0.5.dp, GlassBorder)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(20.dp)
+                .padding(24.dp)
         ) {
             // Header
             Row(
@@ -482,7 +597,7 @@ fun PremiumBowlingScorecard(
                     "Bowling",
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
-                    color = TextPrimary
+                    color = colors.textPrimary
                 )
             }
             
@@ -493,7 +608,10 @@ fun PremiumBowlingScorecard(
             
             Spacer(modifier = Modifier.height(8.dp))
             
-            HorizontalDivider(color = CardBorder.copy(alpha = 0.3f), thickness = 0.5.dp)
+            HorizontalDivider(
+                color = colors.goldPrimary.copy(alpha = 0.15f),
+                thickness = 0.5.dp
+            )
             
             // Bowler rows
             bowlers.forEachIndexed { index, bowler ->
@@ -515,7 +633,7 @@ fun PremiumBowlingScorecard(
                 
                 if (index < bowlers.lastIndex) {
                     HorizontalDivider(
-                        color = CardBorder.copy(alpha = 0.15f),
+                        color = GlassBorderLight,
                         thickness = 0.5.dp,
                         modifier = Modifier.padding(vertical = 2.dp)
                     )
@@ -527,54 +645,63 @@ fun PremiumBowlingScorecard(
 
 @Composable
 private fun BowlingHeader() {
+    val colors = BouncerDesignSystem.colors
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
-            "Bowler",
-            fontSize = 11.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = TextTertiary,
+            "BOWLER",
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Bold,
+            color = colors.goldPrimary.copy(alpha = 0.6f),
+            letterSpacing = 1.sp,
             modifier = Modifier.weight(1f)
         )
         Text(
             "O",
-            fontSize = 11.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = TextTertiary,
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Bold,
+            color = colors.goldPrimary.copy(alpha = 0.6f),
+            letterSpacing = 0.5.sp,
             textAlign = TextAlign.Center,
             modifier = Modifier.width(32.dp)
         )
         Text(
             "M",
-            fontSize = 11.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = TextTertiary,
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Bold,
+            color = colors.goldPrimary.copy(alpha = 0.6f),
+            letterSpacing = 0.5.sp,
             textAlign = TextAlign.Center,
             modifier = Modifier.width(28.dp)
         )
         Text(
             "R",
-            fontSize = 11.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = TextTertiary,
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Bold,
+            color = colors.goldPrimary.copy(alpha = 0.6f),
+            letterSpacing = 0.5.sp,
             textAlign = TextAlign.Center,
             modifier = Modifier.width(32.dp)
         )
         Text(
             "W",
-            fontSize = 11.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = TextTertiary,
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Bold,
+            color = colors.goldPrimary.copy(alpha = 0.6f),
+            letterSpacing = 0.5.sp,
             textAlign = TextAlign.Center,
             modifier = Modifier.width(28.dp)
         )
         Text(
-            "ECO",
-            fontSize = 11.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = TextTertiary,
+            "ECON",
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Bold,
+            color = colors.goldPrimary.copy(alpha = 0.6f),
+            letterSpacing = 0.5.sp,
             textAlign = TextAlign.End,
             modifier = Modifier.width(44.dp)
         )
@@ -587,17 +714,26 @@ private fun BowlerRow(
     teamColor: Color,
     animationProgress: Float
 ) {
+    val colors = BouncerDesignSystem.colors
     val isGoodFigures = bowler.wickets >= 3
     val isFiveWicket = bowler.wickets >= 5
+
+    // Subtle glass surface highlight for current bowler
+    val rowBackground = if (bowler.isBowling) {
+        Modifier.background(GlassBackgroundHover, RoundedCornerShape(4.dp))
+    } else {
+        Modifier
+    }
     
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .then(rowBackground)
             .graphicsLayer {
                 alpha = animationProgress
                 translationX = (1f - animationProgress) * 20f
             }
-            .padding(vertical = 10.dp),
+            .padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Row(
@@ -608,7 +744,7 @@ private fun BowlerRow(
                 bowler.name,
                 fontSize = 14.sp,
                 fontWeight = if (bowler.isBowling) FontWeight.Bold else FontWeight.Medium,
-                color = if (bowler.isBowling) teamColor else TextPrimary,
+                color = if (bowler.isBowling) colors.textPrimary else colors.textPrimary.copy(alpha = 0.85f),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -620,7 +756,7 @@ private fun BowlerRow(
                         .size(8.dp)
                         .background(
                             Brush.radialGradient(
-                                colors = listOf(ShinyGoldDeep, ShinyGoldLight)
+                                colors = listOf(colors.goldPrimary, colors.goldLight)
                             ),
                             CircleShape
                         )
@@ -632,40 +768,40 @@ private fun BowlerRow(
                 MilestoneBadge("5W", NeonSuccess)
             } else if (isGoodFigures) {
                 Spacer(modifier = Modifier.width(6.dp))
-                MilestoneBadge("3W", ShinyGoldDeep)
+                MilestoneBadge("3W", colors.goldPrimary)
             }
         }
         
         Text(
             String.format("%.1f", bowler.overs),
             fontSize = 13.sp,
-            color = TextSecondary,
+            color = colors.textSecondary,
             textAlign = TextAlign.Center,
             modifier = Modifier.width(32.dp)
         )
         Text(
             "${bowler.maidens}",
             fontSize = 13.sp,
-            color = if (bowler.maidens > 0) NeonSuccess else TextTertiary,
+            color = if (bowler.maidens > 0) NeonSuccess else colors.textTertiary,
             textAlign = TextAlign.Center,
             modifier = Modifier.width(28.dp)
         )
         Text(
             "${bowler.runs}",
             fontSize = 13.sp,
-            color = TextSecondary,
+            color = colors.textSecondary,
             textAlign = TextAlign.Center,
             modifier = Modifier.width(32.dp)
         )
+        // Wickets — gold-colored per mockup
         Text(
             "${bowler.wickets}",
             fontSize = 14.sp,
             fontWeight = FontWeight.Bold,
             color = when {
                 isFiveWicket -> NeonSuccess
-                isGoodFigures -> teamColor
-                bowler.wickets > 0 -> TextPrimary
-                else -> TextTertiary
+                bowler.wickets > 0 -> colors.goldPrimary
+                else -> colors.textTertiary
             },
             textAlign = TextAlign.Center,
             modifier = Modifier.width(28.dp)
@@ -676,8 +812,8 @@ private fun BowlerRow(
             fontWeight = FontWeight.Medium,
             color = when {
                 bowler.economy <= 6 -> NeonSuccess
-                bowler.economy <= 8 -> TextPrimary
-                bowler.economy <= 10 -> ShinyGoldDeep
+                bowler.economy <= 8 -> colors.textPrimary
+                bowler.economy <= 10 -> colors.goldDark
                 else -> NeonError
             },
             textAlign = TextAlign.End,
@@ -695,6 +831,8 @@ fun FallOfWicketsTimeline(
     teamColor: Color,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
+    val glassBorderColor = colors.glassBorder
     var isVisible by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { isVisible = true }
     
@@ -705,9 +843,9 @@ fun FallOfWicketsTimeline(
                 shape = RoundedCornerShape(20.dp),
                 spotColor = teamColor.copy(alpha = 0.1f)
             ),
-        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.05f)),
+        colors = CardDefaults.cardColors(containerColor = GlassSurface),
         shape = RoundedCornerShape(20.dp),
-        border = BorderStroke(0.5.dp, CardBorder.copy(alpha = 0.25f))
+        border = BorderStroke(0.5.dp, GlassBorder)
     ) {
         Column(
             modifier = Modifier
@@ -720,7 +858,7 @@ fun FallOfWicketsTimeline(
                 Icon(
                     Icons.Default.Timeline,
                     contentDescription = null,
-                    tint = ShinyGoldDeep,
+                    tint = colors.goldPrimary,
                     modifier = Modifier.size(18.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
@@ -728,7 +866,7 @@ fun FallOfWicketsTimeline(
                     "Fall of Wickets",
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Bold,
-                    color = TextPrimary
+                    color = colors.textPrimary
                 )
             }
             
@@ -749,9 +887,9 @@ fun FallOfWicketsTimeline(
                     drawLine(
                         brush = Brush.horizontalGradient(
                             colors = listOf(
-                                CardBorder.copy(alpha = 0.2f),
+                                glassBorderColor.copy(alpha = 0.2f),
                                 teamColor.copy(alpha = 0.5f),
-                                CardBorder.copy(alpha = 0.2f)
+                                glassBorderColor.copy(alpha = 0.2f)
                             )
                         ),
                         start = Offset(0f, lineY),
@@ -795,6 +933,7 @@ private fun WicketMarker(
     teamColor: Color,
     scale: Float
 ) {
+    val colors = BouncerDesignSystem.colors
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier.graphicsLayer {
@@ -807,7 +946,7 @@ private fun WicketMarker(
             "${fow.score}",
             fontSize = 11.sp,
             fontWeight = FontWeight.Bold,
-            color = TextPrimary
+            color = colors.textPrimary
         )
         
         Box(
@@ -836,7 +975,7 @@ private fun WicketMarker(
         Text(
             "${fow.overNumber}",
             fontSize = 10.sp,
-            color = TextTertiary
+            color = colors.textTertiary
         )
     }
 }
@@ -853,6 +992,7 @@ fun ExtrasBreakdown(
     penalty: Int = 0,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val total = wides + noBalls + byes + legByes + penalty
     
     Card(
@@ -860,11 +1000,11 @@ fun ExtrasBreakdown(
             .shadow(
                 elevation = 8.dp,
                 shape = RoundedCornerShape(16.dp),
-                spotColor = ShinyGoldDeep.copy(alpha = 0.08f)
+                spotColor = colors.goldPrimary.copy(alpha = 0.08f)
             ),
-        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.06f)),
+        colors = CardDefaults.cardColors(containerColor = GlassSurface),
         shape = RoundedCornerShape(16.dp),
-        border = BorderStroke(0.5.dp, CardBorder.copy(alpha = 0.2f))
+        border = BorderStroke(0.5.dp, GlassBorder)
     ) {
         Row(
             modifier = Modifier
@@ -873,16 +1013,16 @@ fun ExtrasBreakdown(
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            ExtraItem(label = "Wd", value = wides, color = ShinyGoldDeep)
+            ExtraItem(label = "Wd", value = wides, color = colors.goldPrimary)
             ExtraItem(label = "Nb", value = noBalls, color = NeonError)
-            ExtraItem(label = "B", value = byes, color = TextSecondary)
-            ExtraItem(label = "Lb", value = legByes, color = TextSecondary)
+            ExtraItem(label = "B", value = byes, color = colors.textSecondary)
+            ExtraItem(label = "Lb", value = legByes, color = colors.textSecondary)
             
             Box(
                 modifier = Modifier
                     .height(32.dp)
                     .width(1.dp)
-                    .background(CardBorder.copy(alpha = 0.3f))
+                    .background(colors.glassBorder.copy(alpha = 0.3f))
             )
             
             Column(
@@ -892,12 +1032,12 @@ fun ExtrasBreakdown(
                     "$total",
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Black,
-                    color = TextPrimary
+                    color = colors.textPrimary
                 )
                 Text(
                     "Total",
                     fontSize = 10.sp,
-                    color = TextTertiary
+                    color = colors.textTertiary
                 )
             }
         }
@@ -910,6 +1050,7 @@ private fun ExtraItem(
     value: Int,
     color: Color
 ) {
+    val colors = BouncerDesignSystem.colors
     Column(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -917,12 +1058,12 @@ private fun ExtraItem(
             "$value",
             fontSize = 16.sp,
             fontWeight = FontWeight.Bold,
-            color = if (value > 0) color else TextTertiary
+            color = if (value > 0) color else colors.textTertiary
         )
         Text(
             label,
             fontSize = 10.sp,
-            color = TextTertiary
+            color = colors.textTertiary
         )
     }
 }

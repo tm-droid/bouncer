@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.ui.theme.*
 import kotlin.math.*
+import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 
 /**
  * Scoring summary card
@@ -67,6 +68,7 @@ fun ScoringSummaryCard(
     summaryData: ScoringSummaryData,
     modifier: Modifier = Modifier,
 ) {
+    val colors = BouncerDesignSystem.colors
     val animatedProgress = remember { Animatable(0f) }
 
     val infiniteTransition = rememberInfiniteTransition(label = "scoring")
@@ -111,7 +113,7 @@ fun ScoringSummaryCard(
                             .clip(CircleShape)
                             .background(
                                 Brush.linearGradient(
-                                    colors = listOf(ShinyGoldMid, ShinyGoldDeep),
+                                    colors = listOf(colors.goldDark, colors.goldPrimary),
                                 ),
                             ),
                         contentAlignment = Alignment.Center,
@@ -129,7 +131,7 @@ fun ScoringSummaryCard(
                     Column {
                         Text(
                             text = "SCORING SUMMARY",
-                            color = ShinyGoldLight,
+                            color = colors.goldLight,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.5.sp,
@@ -159,7 +161,7 @@ fun ScoringSummaryCard(
 
                 Text(
                     text = "VS",
-                    color = ShinyGoldMid,
+                    color = colors.goldDark,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Black,
                 )
@@ -223,22 +225,22 @@ fun ScoringSummaryCard(
                         ExtrasItem(
                             label = "Wides",
                             value = summaryData.extras.wides,
-                            color = WarningYellow,
+                            color = colors.statusWarning,
                         )
                         ExtrasItem(
                             label = "No Balls",
                             value = summaryData.extras.noBalls,
-                            color = WicketRed,
+                            color = colors.statusLive,
                         )
                         ExtrasItem(
                             label = "Byes",
                             value = summaryData.extras.byes,
-                            color = ChartBlue,
+                            color = colors.statusInfo,
                         )
                         ExtrasItem(
                             label = "Leg Byes",
                             value = summaryData.extras.legByes,
-                            color = SuccessGreen,
+                            color = colors.statusSuccess,
                         )
                     }
 
@@ -299,6 +301,7 @@ private fun TeamScoreColumn(
     score: String,
     isLeading: Boolean,
 ) {
+    val colors = BouncerDesignSystem.colors
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
             text = teamName,
@@ -311,7 +314,7 @@ private fun TeamScoreColumn(
 
         Text(
             text = score,
-            color = if (isLeading) ShinyGoldMid else Color.White,
+            color = if (isLeading) colors.goldDark else Color.White,
             fontSize = 28.sp,
             fontWeight = FontWeight.Black,
         )
@@ -323,6 +326,7 @@ private fun ScoringComparisonBar(
     item: ScoringBreakdownItem,
     progress: Float,
 ) {
+    val colors = BouncerDesignSystem.colors
     val total = (item.team1Value + item.team2Value).coerceAtLeast(1)
     val team1Ratio = item.team1Value.toFloat() / total
 
@@ -335,7 +339,7 @@ private fun ScoringComparisonBar(
         ) {
             Text(
                 text = "${item.team1Value}",
-                color = ChartBlue,
+                color = colors.statusInfo,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
             )
@@ -346,7 +350,7 @@ private fun ScoringComparisonBar(
             )
             Text(
                 text = "${item.team2Value}",
-                color = ShinyGoldMid,
+                color = colors.goldDark,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
             )
@@ -364,14 +368,14 @@ private fun ScoringComparisonBar(
                 modifier = Modifier
                     .fillMaxHeight()
                     .weight((team1Ratio * progress).coerceAtLeast(0.05f))
-                    .background(ChartBlue),
+                    .background(colors.statusInfo),
             )
             Spacer(modifier = Modifier.width(2.dp))
             Box(
                 modifier = Modifier
                     .fillMaxHeight()
                     .weight(((1f - team1Ratio) * progress).coerceAtLeast(0.05f))
-                    .background(ShinyGoldMid),
+                    .background(colors.goldDark),
             )
         }
     }
@@ -383,6 +387,7 @@ private fun ExtrasItem(
     value: Int,
     color: Color,
 ) {
+    val colors = BouncerDesignSystem.colors
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
             text = "$value",
@@ -405,6 +410,7 @@ private fun TopPerformerChip(
     emoji: String,
     modifier: Modifier = Modifier,
 ) {
+    val colors = BouncerDesignSystem.colors
     Row(
         modifier = modifier
             .clip(RoundedCornerShape(10.dp))
@@ -437,6 +443,7 @@ private fun TopPerformerChip(
 
 @Composable
 fun ScoringSummaryCardPreview() {
+    val colors = BouncerDesignSystem.colors
     ScoringSummaryCard(
         summaryData = ScoringSummaryData(
             team1Name = "India",

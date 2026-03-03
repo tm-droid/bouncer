@@ -19,6 +19,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.ui.theme.*
+import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 
 /**
  * Team batting order card showing remaining batsmen
@@ -59,6 +60,7 @@ fun BattingOrderCard(
     wicketsFallen: Int,
     modifier: Modifier = Modifier,
 ) {
+    val colors = BouncerDesignSystem.colors
     val animatedProgress = remember { Animatable(0f) }
 
     LaunchedEffect(battingOrder) {
@@ -92,7 +94,7 @@ fun BattingOrderCard(
                             .clip(CircleShape)
                             .background(
                                 Brush.linearGradient(
-                                    colors = listOf(ShinyGoldMid, ShinyGoldDeep),
+                                    colors = listOf(colors.goldDark, colors.goldPrimary),
                                 ),
                             ),
                         contentAlignment = Alignment.Center,
@@ -110,7 +112,7 @@ fun BattingOrderCard(
                     Column {
                         Text(
                             text = "BATTING ORDER",
-                            color = ShinyGoldLight,
+                            color = colors.goldLight,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.5.sp,
@@ -128,7 +130,7 @@ fun BattingOrderCard(
                 Column(horizontalAlignment = Alignment.End) {
                     Text(
                         text = "${10 - wicketsFallen}",
-                        color = if (wicketsFallen >= 7) WicketRed else ShinyGoldMid,
+                        color = if (wicketsFallen >= 7) colors.statusLive else colors.goldDark,
                         fontSize = 24.sp,
                         fontWeight = FontWeight.Bold,
                     )
@@ -172,9 +174,9 @@ fun BattingOrderCard(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly,
             ) {
-                StatusLegendItem(color = LiveBlue, text = "On Strike")
-                StatusLegendItem(color = SuccessGreen, text = "Non-Striker")
-                StatusLegendItem(color = WicketRed, text = "Out")
+                StatusLegendItem(color = colors.statusInfo, text = "On Strike")
+                StatusLegendItem(color = colors.statusSuccess, text = "Non-Striker")
+                StatusLegendItem(color = colors.statusLive, text = "Out")
                 StatusLegendItem(color = Color.Gray, text = "Yet to Bat")
             }
         }
@@ -186,12 +188,13 @@ private fun BattingOrderRow(
     entry: BattingOrderEntry,
     alpha: Float,
 ) {
+    val colors = BouncerDesignSystem.colors
     val statusColor = when (entry.status) {
-        BattingStatus.ON_STRIKE -> LiveBlue
-        BattingStatus.NON_STRIKER -> SuccessGreen
-        BattingStatus.OUT -> WicketRed
+        BattingStatus.ON_STRIKE -> colors.statusInfo
+        BattingStatus.NON_STRIKER -> colors.statusSuccess
+        BattingStatus.OUT -> colors.statusLive
         BattingStatus.YET_TO_BAT -> Color.Gray
-        BattingStatus.RETIRED_HURT -> WarningYellow
+        BattingStatus.RETIRED_HURT -> colors.statusWarning
     }
 
     val infiniteTransition = rememberInfiniteTransition(label = "batting")
@@ -213,7 +216,7 @@ private fun BattingOrderRow(
                 if (entry.status == BattingStatus.ON_STRIKE) {
                     Modifier
                         .clip(RoundedCornerShape(8.dp))
-                        .background(LiveBlue.copy(alpha = 0.15f * strikeGlow))
+                        .background(colors.statusInfo.copy(alpha = 0.15f * strikeGlow))
                         .padding(8.dp)
                 } else {
                     Modifier.padding(8.dp)
@@ -260,7 +263,7 @@ private fun BattingOrderRow(
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
                         text = "*",
-                        color = LiveBlue,
+                        color = colors.statusInfo,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
                     )
@@ -273,7 +276,7 @@ private fun BattingOrderRow(
                     BattingStatus.RETIRED_HURT -> "Retired Hurt"
                     else -> entry.role
                 },
-                color = if (entry.status == BattingStatus.OUT) WicketRed.copy(alpha = 0.7f) else Color.Gray,
+                color = if (entry.status == BattingStatus.OUT) colors.statusLive.copy(alpha = 0.7f) else Color.Gray,
                 fontSize = 11.sp,
             )
         }
@@ -304,9 +307,9 @@ private fun BattingOrderRow(
                     Text(
                         text = "SR: ${String.format("%.1f", sr)}",
                         color = when {
-                            sr >= 150 -> SuccessGreen
+                            sr >= 150 -> colors.statusSuccess
                             sr >= 100 -> Color.White
-                            else -> WarningYellow
+                            else -> colors.statusWarning
                         },
                         fontSize = 10.sp,
                     )
@@ -327,6 +330,7 @@ private fun StatusLegendItem(
     color: Color,
     text: String,
 ) {
+    val colors = BouncerDesignSystem.colors
     Row(verticalAlignment = Alignment.CenterVertically) {
         Box(
             modifier = Modifier
@@ -345,6 +349,7 @@ private fun StatusLegendItem(
 
 @Composable
 fun BattingOrderCardPreview() {
+    val colors = BouncerDesignSystem.colors
     val battingOrder = listOf(
         BattingOrderEntry(1, "Rohit Sharma", "Opener", BattingStatus.OUT, 45, 32, true, "c Smith b Starc", 140.6f),
         BattingOrderEntry(2, "Shubman Gill", "Opener", BattingStatus.OUT, 23, 18, true, "b Hazlewood", 127.8f),

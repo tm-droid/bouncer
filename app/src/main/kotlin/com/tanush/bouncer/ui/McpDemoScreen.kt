@@ -9,7 +9,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.Alignment
 import com.tanush.bouncer.mcp.McpViewModel
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.*
+import io.sentry.Sentry
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -28,8 +30,13 @@ fun McpDemoScreen(
     var error by remember { mutableStateOf("") }
 
     fun handleLoading(start: Boolean) {
-        loading = start
-        if (start) error = ""
+        try {
+            loading = start
+            if (start) error = ""
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
 
     Surface(modifier = Modifier.fillMaxSize()) {
@@ -72,7 +79,7 @@ fun McpDemoScreen(
                         handleLoading(false)
                         if (echoResult.startsWith("Error") || echoResult.startsWith("Echo tool error")) error = echoResult else error = ""
                     }, modifier = Modifier.fillMaxWidth()) {
-                        Icon(imageVector = Icons.Filled.Send, contentDescription = null)
+                        Icon(imageVector = Icons.AutoMirrored.Filled.Send, contentDescription = null)
                         Spacer(modifier = Modifier.width(8.dp))
                         Text("Call Echo")
                     }

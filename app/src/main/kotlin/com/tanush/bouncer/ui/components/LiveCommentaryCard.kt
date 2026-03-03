@@ -2,6 +2,7 @@ package com.tanush.bouncer.ui.components
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -20,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.*
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.*
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -27,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.ui.theme.*
 import kotlinx.coroutines.delay
+import io.sentry.Sentry
 
 /**
  * Data class for a single commentary ball
@@ -97,11 +100,12 @@ fun LiveCommentaryCard(
             .shadow(
                 elevation = 16.dp,
                 shape = RoundedCornerShape(24.dp),
-                spotColor = ShinyGoldDeep.copy(alpha = 0.12f),
+                spotColor = GoldPrimary.copy(alpha = 0.12f),
                 ambientColor = Color.Black.copy(alpha = 0.25f)
             ),
         shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.05f))
+        colors = CardDefaults.cardColors(containerColor = GlassSurface),
+        border = BorderStroke(0.5.dp, GoldPrimary.copy(alpha = 0.15f))
     ) {
         Column(
             modifier = Modifier
@@ -120,10 +124,14 @@ fun LiveCommentaryCard(
                 ) {
                     Text(
                         text = title,
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = TextPrimary,
-                        letterSpacing = (-0.3).sp
+                        style = TextStyle(
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = (-0.3).sp,
+                            brush = Brush.verticalGradient(
+                                colors = listOf(Color.White, GoldPrimary, GoldDark)
+                            )
+                        )
                     )
                     
                     // Live indicator
@@ -258,9 +266,10 @@ private fun RecentBallsStrip(
         modifier = Modifier
             .fillMaxWidth()
             .background(
-                CardDarkBlue.copy(alpha = 0.5f),
+                GlassSurface,
                 RoundedCornerShape(12.dp)
             )
+            .border(0.5.dp, GoldPrimary.copy(alpha = 0.1f), RoundedCornerShape(12.dp))
             .padding(12.dp),
         horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -291,9 +300,25 @@ private fun BallBadge(
     isLatest: Boolean,
     shimmerOffset: Float
 ) {
+    val colors = BouncerDesignSystem.colors
     val color = getBallColor(result)
     val size = if (isLatest) 36.dp else 32.dp
-    
+    val isWicket = result == "W"
+
+    // Subtle pulse animation for wicket balls
+    val wicketPulseAlpha = if (isWicket) {
+        val infiniteTransition = rememberInfiniteTransition(label = "wicketPulse")
+        infiniteTransition.animateFloat(
+            initialValue = 0.5f,
+            targetValue = 1f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(1500, easing = FastOutSlowInEasing),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "wicketPulseAlpha"
+        ).value
+    } else 1f
+
     Box(
         modifier = Modifier
             .size(size)
@@ -303,18 +328,26 @@ private fun BallBadge(
                         2.dp,
                         Brush.linearGradient(
                             colors = listOf(
-                                ShinyGoldLight.copy(alpha = 0.8f),
-                                ShinyGoldDeep.copy(alpha = 0.6f),
-                                ShinyGoldLight.copy(alpha = 0.8f)
+                                colors.goldLight.copy(alpha = 0.8f),
+                                GoldPrimary.copy(alpha = 0.6f),
+                                colors.goldLight.copy(alpha = 0.8f)
                             )
                         ),
-                        RoundedCornerShape(8.dp)
+                        CircleShape
                     )
+                } else if (isWicket) {
+                    Modifier
+                        .border(
+                            1.5.dp,
+                            GoldPrimary.copy(alpha = 0.8f * wicketPulseAlpha),
+                            CircleShape
+                        )
+                        .shadow(4.dp, CircleShape, spotColor = GoldPrimary.copy(alpha = 0.3f * wicketPulseAlpha))
                 } else Modifier
             )
             .background(
-                color.copy(alpha = 0.15f),
-                RoundedCornerShape(8.dp)
+                color.copy(alpha = if (isWicket) 0.2f * wicketPulseAlpha else 0.15f),
+                CircleShape
             ),
         contentAlignment = Alignment.Center
     ) {
@@ -322,15 +355,15 @@ private fun BallBadge(
             text = getBallDisplayText(result),
             fontSize = if (isLatest) 14.sp else 12.sp,
             fontWeight = FontWeight.Bold,
-            color = color
+            color = color.copy(alpha = wicketPulseAlpha)
         )
-        
+
         // Shimmer for latest
         if (isLatest) {
             Box(
                 modifier = Modifier
                     .matchParentSize()
-                    .clip(RoundedCornerShape(8.dp))
+                    .clip(CircleShape)
                     .background(
                         Brush.horizontalGradient(
                             colors = listOf(
@@ -353,6 +386,7 @@ private fun OverHeader(
     runs: Int,
     wickets: Int
 ) {
+    val colors = BouncerDesignSystem.colors
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -367,16 +401,16 @@ private fun OverHeader(
             Box(
                 modifier = Modifier
                     .background(
-                        ShinyGoldDeep.copy(alpha = 0.15f),
+                        colors.goldPrimary.copy(alpha = 0.15f),
                         RoundedCornerShape(6.dp)
                     )
-                    .padding(horizontal = 10.dp, vertical = 4.dp)
+                    .padding(horizontal = 8.dp, vertical = 4.dp)
             ) {
                 Text(
                     text = "Over $over",
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
-                    color = ShinyGoldDeep
+                    color = colors.goldPrimary
                 )
             }
         }
@@ -388,21 +422,21 @@ private fun OverHeader(
                 text = "$runs runs",
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Medium,
-                color = TextSecondary
+                color = colors.textSecondary
             )
             if (wickets > 0) {
                 Text(
                     text = "$wickets wkt${if (wickets > 1) "s" else ""}",
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Medium,
-                    color = WicketRed
+                    color = colors.statusLive
                 )
             }
         }
     }
     
     HorizontalDivider(
-        color = CardBorder.copy(alpha = 0.3f),
+        color = GoldPrimary.copy(alpha = 0.12f),
         thickness = 0.5.dp
     )
 }
@@ -428,7 +462,7 @@ private fun CommentaryBallItem(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 6.dp)
+                .padding(vertical = 8.dp)
                 .then(
                     if (isNew) {
                         Modifier
@@ -455,7 +489,7 @@ private fun CommentaryBallItem(
                             )
                     } else Modifier
                 )
-                .padding(horizontal = 8.dp, vertical = 6.dp)
+                .padding(horizontal = 8.dp, vertical = 8.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -479,16 +513,21 @@ private fun CommentaryBallItem(
                     // Ball result badge
                     Box(
                         modifier = Modifier
-                            .size(28.dp)
+                            .size(32.dp)
                             .background(
                                 color.copy(alpha = 0.2f),
                                 CircleShape
+                            )
+                            .then(
+                                if (ball.result == "W") Modifier.border(
+                                    1.dp, GoldPrimary.copy(alpha = 0.6f), CircleShape
+                                ) else Modifier
                             ),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
                             text = getBallDisplayText(ball.result),
-                            fontSize = 11.sp,
+                            fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
                             color = color
                         )
@@ -509,7 +548,7 @@ private fun CommentaryBallItem(
                                     text = it,
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.SemiBold,
-                                    color = LiveBlue
+                                    color = StatusInfo
                                 )
                             }
                             Text(
@@ -522,7 +561,7 @@ private fun CommentaryBallItem(
                                     text = it,
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.SemiBold,
-                                    color = ShinyGoldDeep
+                                    color = GoldPrimary
                                 )
                             }
                         }
@@ -534,8 +573,7 @@ private fun CommentaryBallItem(
                         text = ball.commentary,
                         fontSize = 13.sp,
                         color = TextPrimary,
-                        lineHeight = 18.sp,
-                        fontStyle = if (isHighlight) FontStyle.Normal else FontStyle.Normal
+                        lineHeight = 20.sp
                     )
                 }
             }
@@ -545,13 +583,13 @@ private fun CommentaryBallItem(
 
 // Helper functions
 private fun getBallColor(result: String): Color = when (result) {
-    "0" -> DotBall
-    "1", "2", "3" -> ChartBlue
-    "4" -> BoundaryFour
-    "6" -> BoundarySix
-    "W" -> WicketRed
-    "WD", "NB" -> WarningOrange
-    "LB", "B" -> ChartPurple
+    "0" -> TextMuted
+    "1", "2", "3" -> TextPrimary
+    "4" -> StatusInfo
+    "6" -> GoldPrimary
+    "W" -> GoldPrimary
+    "WD", "NB" -> StatusWarning
+    "LB", "B" -> StatusInfo
     else -> TextSecondary
 }
 

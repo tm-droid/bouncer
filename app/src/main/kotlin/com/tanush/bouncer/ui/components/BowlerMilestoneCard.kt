@@ -68,6 +68,7 @@ fun BowlerMilestoneCard(
     milestoneInfo: BowlerMilestoneInfo,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "bowler_milestone_animation")
     
     val flameRotation by infiniteTransition.animateFloat(
@@ -109,16 +110,16 @@ fun BowlerMilestoneCard(
     val milestoneColor = when (milestoneInfo.milestone) {
         BowlerMilestoneType.FIVE_WICKETS -> Color(0xFFFF6B6B)
         BowlerMilestoneType.SIX_WICKETS -> Color(0xFFFF8E3C)
-        BowlerMilestoneType.SEVEN_WICKETS -> ShinyGoldMid
-        BowlerMilestoneType.EIGHT_WICKETS -> SuccessGreen
-        BowlerMilestoneType.NINE_WICKETS -> ChartBlue
+        BowlerMilestoneType.SEVEN_WICKETS -> colors.goldPrimary
+        BowlerMilestoneType.EIGHT_WICKETS -> colors.statusSuccess
+        BowlerMilestoneType.NINE_WICKETS -> colors.statusInfo
         BowlerMilestoneType.TEN_WICKETS -> Color(0xFFE040FB)
     }
     
     Card(
         modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = Color(0xFF0D1117)
+            containerColor = colors.backgroundBase
         ),
         shape = RoundedCornerShape(24.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 12.dp)
@@ -223,13 +224,13 @@ fun BowlerMilestoneCard(
                 // Player name
                 Text(
                     text = milestoneInfo.playerName,
-                    color = Color.White,
+                    color = colors.textPrimary,
                     fontSize = 28.sp,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
                     text = milestoneInfo.teamName,
-                    color = Color.White.copy(alpha = 0.6f),
+                    color = colors.textSecondary,
                     fontSize = 14.sp
                 )
                 
@@ -285,7 +286,7 @@ fun BowlerMilestoneCard(
                             )
                             Text(
                                 text = "WKTS",
-                                color = Color.White.copy(alpha = 0.5f),
+                                color = colors.textTertiary,
                                 fontSize = 10.sp,
                                 letterSpacing = 1.sp
                             )
@@ -296,7 +297,7 @@ fun BowlerMilestoneCard(
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
                             text = "FIGURES",
-                            color = Color.White.copy(alpha = 0.5f),
+                            color = colors.textTertiary,
                             fontSize = 10.sp,
                             letterSpacing = 1.sp
                         )
@@ -309,19 +310,19 @@ fun BowlerMilestoneCard(
                             )
                             Text(
                                 text = "/",
-                                color = Color.White.copy(alpha = 0.5f),
+                                color = colors.textTertiary,
                                 fontSize = 36.sp
                             )
                             Text(
                                 text = "${milestoneInfo.runs}",
-                                color = Color.White,
+                                color = colors.textPrimary,
                                 fontSize = 48.sp,
                                 fontWeight = FontWeight.Bold
                             )
                         }
                         Text(
                             text = "${milestoneInfo.overs} overs",
-                            color = Color.White.copy(alpha = 0.7f),
+                            color = colors.textSecondary,
                             fontSize = 14.sp
                         )
                     }
@@ -337,33 +338,33 @@ fun BowlerMilestoneCard(
                     BowlingStatBox(
                         label = "MAIDENS",
                         value = "${milestoneInfo.maidens}",
-                        color = SuccessGreen
+                        color = colors.statusSuccess
                     )
                     BowlingStatBox(
                         label = "ECONOMY",
                         value = String.format("%.2f", milestoneInfo.economy),
-                        color = if (milestoneInfo.economy < 4.0f) SuccessGreen 
-                               else if (milestoneInfo.economy < 6.0f) WarningYellow 
-                               else WicketRed
+                        color = if (milestoneInfo.economy < 4.0f) colors.statusSuccess 
+                               else if (milestoneInfo.economy < 6.0f) colors.statusWarning 
+                               else colors.statusLive
                     )
                     BowlingStatBox(
                         label = "AVG",
                         value = if (milestoneInfo.wickets > 0) 
                             String.format("%.1f", milestoneInfo.runs.toFloat() / milestoneInfo.wickets) 
                             else "-",
-                        color = ChartBlue
+                        color = colors.statusInfo
                     )
                 }
                 
                 // Wicket breakdown
                 if (milestoneInfo.wicketBreakdown.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(20.dp))
-                    Divider(color = Color.White.copy(alpha = 0.1f))
+                    HorizontalDivider(color = Color.White.copy(alpha = 0.1f))
                     Spacer(modifier = Modifier.height(16.dp))
                     
                     Text(
                         text = "WICKET BREAKDOWN",
-                        color = Color.White.copy(alpha = 0.5f),
+                        color = colors.textTertiary,
                         fontSize = 10.sp,
                         letterSpacing = 1.sp
                     )
@@ -384,7 +385,7 @@ fun BowlerMilestoneCard(
                 // Career context
                 if (milestoneInfo.bestBowling != null || milestoneInfo.careerWickets != null) {
                     Spacer(modifier = Modifier.height(16.dp))
-                    Divider(color = Color.White.copy(alpha = 0.1f))
+                    HorizontalDivider(color = Color.White.copy(alpha = 0.1f))
                     Spacer(modifier = Modifier.height(16.dp))
                     
                     Row(
@@ -395,12 +396,12 @@ fun BowlerMilestoneCard(
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text(
                                     text = "Best Bowling",
-                                    color = Color.White.copy(alpha = 0.5f),
+                                    color = colors.textTertiary,
                                     fontSize = 11.sp
                                 )
                                 Text(
                                     text = milestoneInfo.bestBowling,
-                                    color = Color.White,
+                                    color = colors.textPrimary,
                                     fontSize = 18.sp,
                                     fontWeight = FontWeight.Bold
                                 )
@@ -410,7 +411,7 @@ fun BowlerMilestoneCard(
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text(
                                     text = "Career Wickets",
-                                    color = Color.White.copy(alpha = 0.5f),
+                                    color = colors.textTertiary,
                                     fontSize = 11.sp
                                 )
                                 Text(
@@ -443,7 +444,7 @@ private fun BowlingStatBox(
         )
         Text(
             text = label,
-            color = Color.White.copy(alpha = 0.5f),
+            color = TextTertiary,
             fontSize = 10.sp,
             letterSpacing = 1.sp
         )
@@ -481,20 +482,20 @@ private fun WicketRow(
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = wicket.batsmanName,
-                color = Color.White,
+                color = TextPrimary,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Medium
             )
             Text(
                 text = wicket.dismissalType,
-                color = Color.White.copy(alpha = 0.5f),
+                color = TextTertiary,
                 fontSize = 11.sp
             )
         }
         
         Text(
             text = "${wicket.runs}",
-            color = Color.White.copy(alpha = 0.7f),
+            color = TextSecondary,
             fontSize = 14.sp,
             fontWeight = FontWeight.Medium
         )

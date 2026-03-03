@@ -41,9 +41,9 @@ data class MomentumEvent(
 @Composable
 fun EliteMomentumTracker(
     events: List<MomentumEvent> = listOf(
-        MomentumEvent("18.4", "WICKET", "Bowled · 142kph Yorker", "W", Icons.Default.HeartBroken, WicketRed),
-        MomentumEvent("18.3", "MASSIVE SIX", "Pull Shot · 94 Meters", "6", Icons.Default.Flare, SuccessGreen),
-        MomentumEvent("17.6", "TIGHT OVER", "Only 3 runs conceded", "3", Icons.Default.Security, ChartBlue)
+        MomentumEvent("18.4", "WICKET", "Bowled · 142kph Yorker", "W", Icons.Default.HeartBroken, StatusLive),
+        MomentumEvent("18.3", "MASSIVE SIX", "Pull Shot · 94 Meters", "6", Icons.Default.Flare, StatusSuccess),
+        MomentumEvent("17.6", "TIGHT OVER", "Only 3 runs conceded", "3", Icons.Default.Security, StatusInfo)
     )
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {

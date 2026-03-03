@@ -76,7 +76,7 @@ fun MatchDetailScreen(matchId: String) {
                 text = "MATCH PROBABILITY",
                 style = typography.headingLarge,
                 fontWeight = FontWeight.Black,
-                color = Color.White,
+                color = colors.textPrimary,
                 letterSpacing = 2.sp,
                 modifier = Modifier.staggeredFadeIn(0)
             )

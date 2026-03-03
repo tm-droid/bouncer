@@ -28,6 +28,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.ui.theme.*
+import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 
 /**
  * Innings Break Card - Elite "Masterpiece" Edition.
@@ -49,6 +50,7 @@ fun InningsBreakCard(
     breakInfo: BreakDetails,
     modifier: Modifier = Modifier,
 ) {
+    val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "break_anim")
     
     val timerGlow by infiniteTransition.animateFloat(
@@ -71,7 +73,7 @@ fun InningsBreakCard(
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .shadow(24.dp, RoundedCornerShape(28.dp), spotColor = ShinyGoldDeep.copy(alpha = 0.2f)),
+            .shadow(24.dp, RoundedCornerShape(28.dp), spotColor = colors.goldPrimary.copy(alpha = 0.2f)),
         shape = RoundedCornerShape(28.dp),
         colors = CardDefaults.cardColors(containerColor = BlackBackground),
         border = BorderStroke(1.dp, GoldHairline),
@@ -92,7 +94,7 @@ fun InningsBreakCard(
             // Background Decorative Elements
             Canvas(modifier = Modifier.fillMaxSize()) {
                 drawCircle(
-                    brush = Brush.radialGradient(listOf(ShinyGoldDeep.copy(alpha = 0.05f), Color.Transparent)),
+                    brush = Brush.radialGradient(listOf(colors.goldPrimary.copy(alpha = 0.05f), Color.Transparent)),
                     radius = size.width * 0.6f,
                     center = Offset(size.width, 0f)
                 )
@@ -104,9 +106,9 @@ fun InningsBreakCard(
             ) {
                 // Header: Premium Badge
                 Surface(
-                    color = ShinyGoldDeep.copy(alpha = 0.1f),
+                    color = colors.goldPrimary.copy(alpha = 0.1f),
                     shape = CircleShape,
-                    border = BorderStroke(1.dp, ShinyGoldDeep.copy(alpha = 0.3f))
+                    border = BorderStroke(1.dp, colors.goldPrimary.copy(alpha = 0.3f))
                 ) {
                     Row(
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
@@ -116,7 +118,7 @@ fun InningsBreakCard(
                         Icon(
                             Icons.Default.EmojiEvents, 
                             null, 
-                            tint = ShinyGoldDeep, 
+                            tint = colors.goldPrimary, 
                             modifier = Modifier.size(18.dp).graphicsLayer { rotationZ = trophyRotation }
                         )
                         Text(
@@ -140,7 +142,7 @@ fun InningsBreakCard(
                             style = Stroke(width = 2.dp.toPx())
                         )
                         drawArc(
-                            brush = Brush.sweepGradient(listOf(ShinyGoldDeep, ShinyGoldMid, ShinyGoldDeep)),
+                            brush = Brush.sweepGradient(listOf(colors.goldPrimary, colors.goldDark, colors.goldPrimary)),
                             startAngle = -90f,
                             sweepAngle = (breakInfo.timeRemaining.toFloat() / breakInfo.totalDuration.toFloat()) * 360f,
                             useCenter = false,
@@ -161,7 +163,7 @@ fun InningsBreakCard(
                             color = Color.White,
                             fontSize = 48.sp,
                             fontWeight = FontWeight.Black,
-                            modifier = Modifier.shadow(12.dp * timerGlow, CircleShape, spotColor = ShinyGoldDeep)
+                            modifier = Modifier.shadow(12.dp * timerGlow, CircleShape, spotColor = colors.goldPrimary)
                         )
                     }
                 }
@@ -195,7 +197,7 @@ fun InningsBreakCard(
                     Column(modifier = Modifier.padding(20.dp)) {
                         Text(
                             "BOUNCER IQ STRATEGY",
-                            color = ShinyGoldDeep,
+                            color = colors.goldPrimary,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Black,
                             letterSpacing = 1.sp
@@ -217,11 +219,12 @@ fun InningsBreakCard(
 
 @Composable
 private fun EliteKpiBox(label: String, value: String, modifier: Modifier, isHighlight: Boolean = false) {
+    val colors = BouncerDesignSystem.colors
     Column(
         modifier = modifier
             .clip(RoundedCornerShape(16.dp))
-            .background(if (isHighlight) ShinyGoldDeep.copy(alpha = 0.05f) else Color.White.copy(alpha = 0.03f))
-            .border(1.dp, if (isHighlight) ShinyGoldDeep.copy(alpha = 0.2f) else Color.Transparent, RoundedCornerShape(16.dp))
+            .background(if (isHighlight) colors.goldPrimary.copy(alpha = 0.05f) else Color.White.copy(alpha = 0.03f))
+            .border(1.dp, if (isHighlight) colors.goldPrimary.copy(alpha = 0.2f) else Color.Transparent, RoundedCornerShape(16.dp))
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -229,7 +232,7 @@ private fun EliteKpiBox(label: String, value: String, modifier: Modifier, isHigh
         Spacer(modifier = Modifier.height(6.dp))
         Text(
             value, 
-            color = if (isHighlight) ShinyGoldDeep else Color.White, 
+            color = if (isHighlight) colors.goldPrimary else Color.White, 
             fontSize = 20.sp, 
             fontWeight = FontWeight.Black
         )

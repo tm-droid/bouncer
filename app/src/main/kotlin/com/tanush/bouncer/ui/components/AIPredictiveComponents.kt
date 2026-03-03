@@ -9,6 +9,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -50,6 +51,7 @@ fun NextOverForecastCarousel(
     onViewHistory: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     Column(modifier = modifier.fillMaxWidth()) {
         // Header
         Row(
@@ -67,12 +69,12 @@ fun NextOverForecastCarousel(
                     Icon(
                         imageVector = Icons.Default.AutoAwesome,
                         contentDescription = null,
-                        tint = ShinyGoldDeep,
+                        tint = colors.goldDark,
                         modifier = Modifier.size(18.dp)
                     )
                     Text(
                         text = "NEXT OVER FORECAST",
-                        color = Color.White,
+                        color = colors.textPrimary,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Black,
                         letterSpacing = 1.sp
@@ -80,7 +82,7 @@ fun NextOverForecastCarousel(
                 }
                 Text(
                     text = "Over ${overNumber + 1} Predictions",
-                    color = Color.White.copy(alpha = 0.5f),
+                    color = colors.textMuted,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Medium
                 )
@@ -89,14 +91,14 @@ fun NextOverForecastCarousel(
             TextButton(onClick = onViewHistory) {
                 Text(
                     text = "View History",
-                    color = ShinyGoldDeep,
+                    color = colors.goldDark,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold
                 )
                 Icon(
                     imageVector = Icons.Default.ChevronRight,
                     contentDescription = null,
-                    tint = ShinyGoldDeep,
+                    tint = colors.goldDark,
                     modifier = Modifier.size(16.dp)
                 )
             }
@@ -134,12 +136,13 @@ private fun AIPredictionCard(
 ) {
     val isHighConfidence = prediction.confidence >= 0.8f
     val isCritical = prediction.predictedOutcome.equals("Wicket", ignoreCase = true)
+    val colors = BouncerDesignSystem.colors
     
     val accentColor = when {
-        isCritical -> WicketRed
-        prediction.predictedOutcome.contains("6") -> BoundarySix
-        prediction.predictedOutcome.contains("4") || prediction.predictedOutcome.contains("Boundary") -> BoundaryFour
-        else -> ShinyGoldDeep
+        isCritical -> colors.statusLive
+        prediction.predictedOutcome.contains("6") -> colors.goldPrimary
+        prediction.predictedOutcome.contains("4") || prediction.predictedOutcome.contains("Boundary") -> colors.statusInfo
+        else -> colors.goldDark
     }
     
     val infiniteTransition = rememberInfiniteTransition(label = "predictionPulse")
@@ -159,15 +162,15 @@ private fun AIPredictionCard(
             .height(180.dp),
         shape = RoundedCornerShape(16.dp),
         color = if (isCritical) 
-            Color.White.copy(alpha = 0.08f) 
+            colors.glassBorderHighlight 
         else if (prediction.isHighlight) 
             accentColor.copy(alpha = 0.05f) 
         else 
-            Color.White.copy(alpha = 0.05f),
+            colors.glassSurface,
         border = BorderStroke(
             if (isCritical) 1.5.dp else 0.5.dp,
             if (isCritical) accentColor.copy(alpha = pulseAlpha) 
-            else Gold400.copy(alpha = 0.15f)
+            else colors.goldPrimary.copy(alpha = 0.15f)
         )
     ) {
         Column(
@@ -179,7 +182,7 @@ private fun AIPredictionCard(
             // Ball Number
             Text(
                 text = prediction.ballNumber,
-                color = if (isCritical) accentColor else Color.White.copy(alpha = 0.5f),
+                color = if (isCritical) accentColor else colors.textMuted,
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 0.5.sp
@@ -211,13 +214,13 @@ private fun AIPredictionCard(
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
                         text = "${(prediction.confidence * 100).toInt()}",
-                        color = if (isCritical) accentColor else Color.White,
+                        color = if (isCritical) accentColor else colors.textPrimary,
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Black
                     )
                     Text(
                         text = "%",
-                        color = if (isCritical) accentColor.copy(alpha = 0.7f) else Color.White.copy(alpha = 0.6f),
+                        color = if (isCritical) accentColor.copy(alpha = 0.7f) else colors.textTertiary,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Medium
                     )
@@ -229,11 +232,11 @@ private fun AIPredictionCard(
             // Outcome Badge
             Surface(
                 shape = RoundedCornerShape(6.dp),
-                color = if (isCritical) accentColor else Color.White.copy(alpha = 0.05f)
+                color = if (isCritical) accentColor else colors.glassSurface
             ) {
                 Text(
                     text = prediction.predictedOutcome.uppercase(),
-                    color = if (isCritical) BlackBackground else Color.White,
+                    color = if (isCritical) colors.backgroundBase else colors.textPrimary,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Black,
                     letterSpacing = 0.5.sp,
@@ -251,7 +254,7 @@ private fun AIPredictionCard(
                     prediction.confidence >= 0.5f -> "Moderate"
                     else -> "Uncertain"
                 },
-                color = if (isCritical) accentColor else Color.White.copy(alpha = 0.4f),
+                color = if (isCritical) accentColor else colors.textMuted,
                 fontSize = 8.sp,
                 fontWeight = FontWeight.Medium
             )
@@ -280,7 +283,7 @@ private fun ConfidenceRing(
         
         // Background Ring
         drawCircle(
-            color = Color.White.copy(alpha = 0.1f),
+            color = TextPrimary.copy(alpha = 0.1f),
             radius = radius,
             center = center,
             style = Stroke(width = strokeWidth)
@@ -304,6 +307,7 @@ private fun EngineConfidenceBadge(
     confidence: Float,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     Row(
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -312,8 +316,8 @@ private fun EngineConfidenceBadge(
         Surface(
             modifier = Modifier.weight(1f),
             shape = RoundedCornerShape(12.dp),
-            color = Color.White.copy(alpha = 0.05f),
-            border = BorderStroke(0.5.dp, Gold400.copy(alpha = 0.15f))
+            color = colors.glassSurface,
+            border = BorderStroke(0.5.dp, colors.goldPrimary.copy(alpha = 0.15f))
         ) {
             Row(
                 modifier = Modifier
@@ -330,12 +334,12 @@ private fun EngineConfidenceBadge(
                         Icon(
                             imageVector = Icons.Default.Psychology,
                             contentDescription = null,
-                            tint = ShinyGoldDeep,
+                            tint = colors.goldDark,
                             modifier = Modifier.size(14.dp)
                         )
                         Text(
                             text = "ENGINE",
-                            color = Color.White.copy(alpha = 0.5f),
+                            color = colors.textMuted,
                             fontSize = 8.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.sp
@@ -343,7 +347,7 @@ private fun EngineConfidenceBadge(
                     }
                     Text(
                         text = "CONFIDENCE",
-                        color = Color.White.copy(alpha = 0.5f),
+                        color = colors.textMuted,
                         fontSize = 8.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 1.sp
@@ -356,13 +360,13 @@ private fun EngineConfidenceBadge(
                 ) {
                     Text(
                         text = "${(confidence * 100).toInt()}%",
-                        color = Color.White,
+                        color = colors.textPrimary,
                         fontSize = 22.sp,
                         fontWeight = FontWeight.Black
                     )
                     Text(
                         text = "+2.1%",
-                        color = SuccessGreen,
+                        color = colors.statusSuccess,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.padding(bottom = 4.dp)
@@ -375,8 +379,8 @@ private fun EngineConfidenceBadge(
         Surface(
             modifier = Modifier.weight(0.6f),
             shape = RoundedCornerShape(12.dp),
-            color = Color.White.copy(alpha = 0.05f),
-            border = BorderStroke(0.5.dp, ShinyGoldDeep.copy(alpha = 0.3f))
+            color = colors.glassSurface,
+            border = BorderStroke(0.5.dp, colors.goldDark.copy(alpha = 0.3f))
         ) {
             Row(
                 modifier = Modifier
@@ -389,20 +393,20 @@ private fun EngineConfidenceBadge(
                     modifier = Modifier
                         .size(8.dp)
                         .clip(CircleShape)
-                        .background(ShinyGoldDeep)
+                        .background(colors.goldDark)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
                         text = "MCP",
-                        color = ShinyGoldDeep,
+                        color = colors.goldDark,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Black,
                         letterSpacing = 1.sp
                     )
                     Text(
                         text = "LIVE",
-                        color = Color.White.copy(alpha = 0.6f),
+                        color = colors.textTertiary,
                         fontSize = 8.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -424,15 +428,16 @@ fun AiAnalysisCard(
     type: AnalysisType = AnalysisType.NEUTRAL,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val accentColor = when (type) {
-        AnalysisType.POSITIVE -> SuccessGreen
-        AnalysisType.WARNING -> WarningOrange
-        AnalysisType.CRITICAL -> WicketRed
-        AnalysisType.NEUTRAL -> ShinyGoldDeep
+        AnalysisType.POSITIVE -> colors.statusSuccess
+        AnalysisType.WARNING -> colors.statusWarning
+        AnalysisType.CRITICAL -> colors.statusLive
+        AnalysisType.NEUTRAL -> colors.goldDark
     }
     
     val icon = when (type) {
-        AnalysisType.POSITIVE -> Icons.Default.TrendingUp
+        AnalysisType.POSITIVE -> Icons.AutoMirrored.Filled.TrendingUp
         AnalysisType.WARNING -> Icons.Default.Warning
         AnalysisType.CRITICAL -> Icons.Default.ErrorOutline
         AnalysisType.NEUTRAL -> Icons.Default.Landscape
@@ -443,7 +448,7 @@ fun AiAnalysisCard(
             .fillMaxWidth()
             .padding(horizontal = 16.dp),
         shape = RoundedCornerShape(16.dp),
-        color = Color.White.copy(alpha = 0.05f),
+        color = colors.glassSurface,
         border = BorderStroke(0.5.dp, accentColor.copy(alpha = 0.2f))
     ) {
         Row(modifier = Modifier.fillMaxWidth()) {
@@ -482,7 +487,7 @@ fun AiAnalysisCard(
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = title,
-                        color = Color.White,
+                        color = colors.textPrimary,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -491,7 +496,7 @@ fun AiAnalysisCard(
                     
                     Text(
                         text = description,
-                        color = Color.White.copy(alpha = 0.6f),
+                        color = colors.textTertiary,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Medium,
                         lineHeight = 18.sp
@@ -532,13 +537,14 @@ fun PitchConditionWidget(
     pitchType: String = "Batting Friendly",
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     Surface(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp),
         shape = RoundedCornerShape(16.dp),
-        color = Color.White.copy(alpha = 0.05f),
-        border = BorderStroke(0.5.dp, Gold400.copy(alpha = 0.15f))
+        color = colors.glassSurface,
+        border = BorderStroke(0.5.dp, colors.goldPrimary.copy(alpha = 0.15f))
     ) {
         Row(
             modifier = Modifier
@@ -555,18 +561,18 @@ fun PitchConditionWidget(
                     .background(
                         Brush.radialGradient(
                             colors = listOf(
-                                Color.White.copy(alpha = 0.08f),
-                                Color.White.copy(alpha = 0.08f)
+                                colors.glassBorderHighlight,
+                                colors.glassBorderHighlight
                             )
                         )
                     )
-                    .border(1.dp, Color.White.copy(alpha = 0.1f), CircleShape),
+                    .border(1.dp, colors.glassBorder.copy(alpha = 0.3f), CircleShape),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = Icons.Default.WbSunny,
                     contentDescription = null,
-                    tint = ShinyGoldDeep,
+                    tint = colors.goldDark,
                     modifier = Modifier.size(32.dp)
                 )
             }
@@ -575,13 +581,13 @@ fun PitchConditionWidget(
             Column {
                 Text(
                     text = temperature,
-                    color = Color.White,
+                    color = colors.textPrimary,
                     fontSize = 28.sp,
                     fontWeight = FontWeight.Black
                 )
                 Text(
                     text = condition.uppercase(),
-                    color = Color.White.copy(alpha = 0.5f),
+                    color = colors.textMuted,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 1.sp
@@ -600,17 +606,18 @@ fun PitchConditionWidget(
 
 @Composable
 private fun WeatherMiniStat(label: String, value: String) {
+    val colors = BouncerDesignSystem.colors
     Column(horizontalAlignment = Alignment.End) {
         Text(
             text = label.uppercase(),
-            color = Color.White.copy(alpha = 0.4f),
+            color = colors.textMuted,
             fontSize = 8.sp,
             fontWeight = FontWeight.Bold,
             letterSpacing = 0.5.sp
         )
         Text(
             text = value,
-            color = Color.White,
+            color = colors.textPrimary,
             fontSize = 12.sp,
             fontWeight = FontWeight.Bold
         )

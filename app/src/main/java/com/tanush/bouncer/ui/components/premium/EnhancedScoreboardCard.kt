@@ -38,6 +38,7 @@ import com.tanush.bouncer.ui.theme.BouncerTheme
 import com.tanush.bouncer.ui.theme.GlassCardShape
 import com.tanush.bouncer.ui.theme.labelAllCaps
 import com.tanush.bouncer.ui.theme.tabularBody
+import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 
 /**
  * Enhanced Scoreboard Card for detailed batting stats.
@@ -61,6 +62,7 @@ fun EnhancedScoreboardCard(
     onTeamToggle: (Int) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
+    val colors = BouncerDesignSystem.colors
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = GlassCardShape,
@@ -149,6 +151,7 @@ fun EnhancedScoreboardCard(
 
 @Composable
 private fun ScoreboardHeaderRow() {
+    val colors = BouncerDesignSystem.colors
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
@@ -175,6 +178,7 @@ private fun ScoreboardHeaderRow() {
 
 @Composable
 private fun BatsmanRow(batsman: ScrapedBatsman) {
+    val colors = BouncerDesignSystem.colors
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -259,6 +263,7 @@ private fun StatsCell(
     bold: Boolean = false,
     width: Dp = BouncerDimens.scoreboardStatColumnWidth,
 ) {
+    val colors = BouncerDesignSystem.colors
     Text(
         text = text,
         modifier = Modifier.width(width),
@@ -279,6 +284,7 @@ private fun StatsCell(
 @Preview(showBackground = true)
 @Composable
 private fun EnhancedScoreboardCardPreview() {
+    val colors = BouncerDesignSystem.colors
     BouncerTheme(darkTheme = true, dynamicColor = false) {
         EnhancedScoreboardCard(
             teamName = "Australia",

@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.ui.theme.*
 import kotlin.math.*
+import io.sentry.Sentry
 
 /**
  * Live Poll card showing fan voting with animated results
@@ -364,9 +365,14 @@ private fun PollOptionBar(
 }
 
 private fun formatVoteCount(count: Int): String {
-    return when {
-        count >= 1_000_000 -> "${count / 1_000_000}M votes"
-        count >= 1_000 -> "${count / 1_000}K votes"
-        else -> "$count votes"
+    try {
+        return when {
+            count >= 1_000_000 -> "${count / 1_000_000}M votes"
+            count >= 1_000 -> "${count / 1_000}K votes"
+            else -> "$count votes"
+        }
+    } catch (e: Exception) {
+        Sentry.captureException(e)
+        throw e
     }
 }

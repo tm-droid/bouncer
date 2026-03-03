@@ -232,3 +232,12 @@ fun MatchListSkeleton(
         }
     }
 }
+
+/**
+ * Legacy alias for [BouncerMatchCardSkeleton].
+ * Kept for backward compatibility with screens that import this name.
+ */
+@Composable
+fun MatchCardSkeleton(modifier: Modifier = Modifier) {
+    BouncerMatchCardSkeleton(modifier = modifier)
+}

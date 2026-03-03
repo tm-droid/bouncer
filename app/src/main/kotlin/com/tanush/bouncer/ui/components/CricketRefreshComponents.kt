@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.TrendingDown
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -86,7 +88,7 @@ fun CricketBallRefreshIndicator(
                         drawCircle(
                             brush = Brush.radialGradient(
                                 colors = listOf(
-                                    WicketRed.copy(alpha = glowPulse * 0.4f),
+                                    StatusLive.copy(alpha = glowPulse * 0.4f),
                                     Color.Transparent
                                 )
                             ),
@@ -108,7 +110,7 @@ fun CricketBallRefreshIndicator(
                     }
                 }
         ) {
-            val ballColor = WicketRed
+            val ballColor = StatusLive
             val seamColor = Color.White
             
             // Ball body
@@ -204,7 +206,7 @@ fun CricketBallRefreshIndicator(
 @Composable
 fun WicketLoadingIndicator(
     modifier: Modifier = Modifier,
-    color: Color = ShinyGoldDeep
+    color: Color = GoldDark
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "wicket")
     
@@ -305,7 +307,7 @@ fun WicketLoadingIndicator(
 fun AnimatedScoreFlip(
     score: String,
     modifier: Modifier = Modifier,
-    color: Color = ShinyGoldDeep,
+    color: Color = GoldDark,
     fontSize: Int = 28
 ) {
     var previousScore by remember { mutableStateOf(score) }
@@ -399,6 +401,7 @@ fun RunRateVisualization(
     )
     
     val maxRate = maxOf(currentRunRate, requiredRunRate, 12f)
+    val colors = BouncerDesignSystem.colors
     
     val infiniteTransition = rememberInfiniteTransition(label = "runRate")
     val glowPulse by infiniteTransition.animateFloat(
@@ -415,10 +418,10 @@ fun RunRateVisualization(
         modifier = modifier.shadow(
             elevation = 12.dp,
             shape = RoundedCornerShape(20.dp),
-            spotColor = ShinyGoldDeep.copy(alpha = 0.15f)
+            spotColor = colors.goldDark.copy(alpha = 0.15f)
         ),
         shape = RoundedCornerShape(20.dp),
-        color = Color.White.copy(alpha = 0.05f)
+        color = colors.glassSurface
     ) {
         Column(
             modifier = Modifier
@@ -432,7 +435,7 @@ fun RunRateVisualization(
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 1.5.sp,
-                color = ShinyGoldDeep
+                color = colors.goldDark
             )
             
             // Current run rate
@@ -446,13 +449,13 @@ fun RunRateVisualization(
                         text = "Current",
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Medium,
-                        color = TextSecondary
+                        color = colors.textSecondary
                     )
                     Text(
                         text = String.format("%.2f", animatedCurrent),
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Black,
-                        color = SuccessGreen
+                        color = colors.statusSuccess
                     )
                 }
                 
@@ -461,7 +464,7 @@ fun RunRateVisualization(
                         .fillMaxWidth()
                         .height(12.dp)
                         .clip(RoundedCornerShape(6.dp))
-                        .background(CardBorder)
+                        .background(colors.glassBorder)
                 ) {
                     Box(
                         modifier = Modifier
@@ -471,7 +474,7 @@ fun RunRateVisualization(
                                 drawRect(
                                     brush = Brush.radialGradient(
                                         colors = listOf(
-                                            SuccessGreen.copy(alpha = glowPulse),
+                                            colors.statusSuccess.copy(alpha = glowPulse),
                                             Color.Transparent
                                         ),
                                         center = Offset(size.width, size.height / 2),
@@ -482,8 +485,8 @@ fun RunRateVisualization(
                             .background(
                                 Brush.horizontalGradient(
                                     colors = listOf(
-                                        SuccessGreen.copy(alpha = 0.6f),
-                                        SuccessGreen
+                                        colors.statusSuccess.copy(alpha = 0.6f),
+                                        colors.statusSuccess
                                     )
                                 ),
                                 RoundedCornerShape(6.dp)
@@ -503,13 +506,13 @@ fun RunRateVisualization(
                         text = "Required",
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Medium,
-                        color = TextSecondary
+                        color = colors.textSecondary
                     )
                     Text(
                         text = String.format("%.2f", animatedRequired),
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Black,
-                        color = if (requiredRunRate > currentRunRate) WarningOrange else LiveBlue
+                        color = if (requiredRunRate > currentRunRate) colors.statusWarning else colors.statusInfo
                     )
                 }
                 
@@ -518,9 +521,9 @@ fun RunRateVisualization(
                         .fillMaxWidth()
                         .height(12.dp)
                         .clip(RoundedCornerShape(6.dp))
-                        .background(CardBorder)
+                        .background(colors.glassBorder)
                 ) {
-                    val barColor = if (requiredRunRate > currentRunRate) WarningOrange else LiveBlue
+                    val barColor = if (requiredRunRate > currentRunRate) colors.statusWarning else colors.statusInfo
                     
                     Box(
                         modifier = Modifier
@@ -561,7 +564,7 @@ fun RunRateVisualization(
             
             Surface(
                 shape = RoundedCornerShape(8.dp),
-                color = if (difference > 0) WarningOrange.copy(alpha = 0.12f) else SuccessGreen.copy(alpha = 0.12f)
+                color = if (difference > 0) colors.statusWarning.copy(alpha = 0.12f) else colors.statusSuccess.copy(alpha = 0.12f)
             ) {
                 Row(
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
@@ -569,16 +572,16 @@ fun RunRateVisualization(
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     Icon(
-                        imageVector = if (difference > 0) Icons.Default.TrendingUp else Icons.Default.TrendingDown,
+                        imageVector = if (difference > 0) Icons.AutoMirrored.Filled.TrendingUp else Icons.AutoMirrored.Filled.TrendingDown,
                         contentDescription = null,
-                        tint = if (difference > 0) WarningOrange else SuccessGreen,
+                        tint = if (difference > 0) colors.statusWarning else colors.statusSuccess,
                         modifier = Modifier.size(14.dp)
                     )
                     Text(
                         text = differenceText,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = if (difference > 0) WarningOrange else SuccessGreen
+                        color = if (difference > 0) colors.statusWarning else colors.statusSuccess
                     )
                 }
             }

@@ -97,6 +97,8 @@ fun PartnershipAnalysisCard(
                 .fillMaxWidth()
                 .padding(20.dp)
         ) {
+            val colors = BouncerDesignSystem.colors
+
             // Header
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -107,13 +109,13 @@ fun PartnershipAnalysisCard(
                     Icon(
                         imageVector = Icons.Filled.Groups,
                         contentDescription = null,
-                        tint = ShinyGoldMid,
+                        tint = colors.goldPrimary,
                         modifier = Modifier.size(24.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = "Partnership",
-                        color = Color.White,
+                        color = colors.textPrimary,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -121,12 +123,12 @@ fun PartnershipAnalysisCard(
                 
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Surface(
-                        color = ShinyGoldDeep.copy(alpha = 0.2f),
+                        color = colors.goldPrimary.copy(alpha = 0.2f),
                         shape = RoundedCornerShape(8.dp)
                     ) {
                         Text(
                             text = "#${partnership.partnershipNumber}",
-                            color = ShinyGoldMid,
+                            color = colors.goldPrimary,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
@@ -139,7 +141,7 @@ fun PartnershipAnalysisCard(
                             modifier = Modifier
                                 .size(10.dp)
                                 .clip(CircleShape)
-                                .background(LiveBlue.copy(alpha = pulseAlpha))
+                                .background(colors.statusInfo.copy(alpha = pulseAlpha))
                         )
                     }
                 }
@@ -169,7 +171,7 @@ fun PartnershipAnalysisCard(
                             for (i in 0 until 4) {
                                 val startAngle = i * 90f
                                 drawArc(
-                                    color = ShinyGoldMid.copy(alpha = 0.3f),
+                                    color = colors.goldPrimary.copy(alpha = 0.3f),
                                     startAngle = startAngle,
                                     sweepAngle = 45f,
                                     useCenter = false,
@@ -185,13 +187,13 @@ fun PartnershipAnalysisCard(
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
                             text = "${partnership.totalRuns}",
-                            color = ShinyGoldMid,
+                            color = colors.goldPrimary,
                             fontSize = 42.sp,
                             fontWeight = FontWeight.Black
                         )
                         Text(
                             text = "${partnership.totalBalls} balls",
-                            color = Color.White.copy(alpha = 0.7f),
+                            color = colors.textSecondary,
                             fontSize = 14.sp
                         )
                     }
@@ -208,13 +210,13 @@ fun PartnershipAnalysisCard(
                 ) {
                     Text(
                         text = partnership.batsman1Name.split(" ").lastOrNull() ?: partnership.batsman1Name,
-                        color = ChartBlue,
+                        color = colors.statusInfo,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Medium
                     )
                     Text(
                         text = partnership.batsman2Name.split(" ").lastOrNull() ?: partnership.batsman2Name,
-                        color = ShinyGoldMid,
+                        color = colors.goldPrimary,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Medium
                     )
@@ -234,7 +236,7 @@ fun PartnershipAnalysisCard(
                             .weight(batsman1Contribution.coerceAtLeast(0.01f))
                             .background(
                                 Brush.horizontalGradient(
-                                    colors = listOf(ChartBlue.copy(alpha = 0.7f), ChartBlue)
+                                    colors = listOf(colors.statusInfo.copy(alpha = 0.7f), colors.statusInfo)
                                 )
                             ),
                         contentAlignment = Alignment.Center
@@ -242,7 +244,7 @@ fun PartnershipAnalysisCard(
                         if (batsman1Contribution > 0.15f) {
                             Text(
                                 text = "${(batsman1Contribution * 100).toInt()}%",
-                                color = Color.White,
+                                color = colors.textPrimary,
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold
                             )
@@ -262,7 +264,7 @@ fun PartnershipAnalysisCard(
                             .weight((1f - batsman1Contribution - (partnership.extras.toFloat() / partnership.totalRuns.coerceAtLeast(1))).coerceAtLeast(0.01f))
                             .background(
                                 Brush.horizontalGradient(
-                                    colors = listOf(ShinyGoldMid, ShinyGoldMid.copy(alpha = 0.7f))
+                                    colors = listOf(colors.goldPrimary, colors.goldPrimary.copy(alpha = 0.7f))
                                 )
                             ),
                         contentAlignment = Alignment.Center
@@ -290,7 +292,7 @@ fun PartnershipAnalysisCard(
                     name = partnership.batsman1Name,
                     runs = partnership.batsman1Runs,
                     balls = partnership.batsman1Balls,
-                    color = ChartBlue,
+                    color = colors.statusInfo,
                     imageUrl = partnership.batsman1ImageUrl,
                     modifier = Modifier.weight(1f)
                 )
@@ -301,7 +303,7 @@ fun PartnershipAnalysisCard(
                     name = partnership.batsman2Name,
                     runs = partnership.batsman2Runs,
                     balls = partnership.batsman2Balls,
-                    color = ShinyGoldMid,
+                    color = colors.goldPrimary,
                     imageUrl = partnership.batsman2ImageUrl,
                     modifier = Modifier.weight(1f)
                 )
@@ -317,17 +319,17 @@ fun PartnershipAnalysisCard(
                 PartnershipStatBox(
                     label = "RUN RATE",
                     value = String.format("%.2f", partnership.runRate),
-                    color = SuccessGreen
+                    color = colors.statusSuccess
                 )
                 PartnershipStatBox(
                     label = "FOURS",
                     value = "${partnership.fours}",
-                    color = BoundaryFour
+                    color = colors.statusInfo
                 )
                 PartnershipStatBox(
                     label = "SIXES",
                     value = "${partnership.sixes}",
-                    color = BoundarySix
+                    color = colors.goldPrimary
                 )
                 PartnershipStatBox(
                     label = "EXTRAS",
@@ -348,6 +350,8 @@ private fun BatsmanContributionBox(
     imageUrl: String? = null,
     modifier: Modifier = Modifier
 ) {
+    val dsColors = BouncerDesignSystem.colors
+
     Surface(
         color = color.copy(alpha = 0.1f),
         shape = RoundedCornerShape(12.dp),
@@ -385,7 +389,7 @@ private fun BatsmanContributionBox(
             
             Text(
                 text = name.split(" ").lastOrNull() ?: name,
-                color = Color.White,
+                color = dsColors.textPrimary,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Medium,
                 maxLines = 1,
@@ -403,7 +407,7 @@ private fun BatsmanContributionBox(
                 )
                 Text(
                     text = " ($balls)",
-                    color = Color.White.copy(alpha = 0.5f),
+                    color = dsColors.textSecondary,
                     fontSize = 12.sp
                 )
             }
@@ -412,7 +416,7 @@ private fun BatsmanContributionBox(
             val sr = if (balls > 0) (runs * 100f / balls) else 0f
             Text(
                 text = "SR: ${String.format("%.1f", sr)}",
-                color = Color.White.copy(alpha = 0.6f),
+                color = dsColors.textTertiary,
                 fontSize = 10.sp
             )
         }
@@ -434,7 +438,7 @@ private fun PartnershipStatBox(
         )
         Text(
             text = label,
-            color = Color.White.copy(alpha = 0.5f),
+            color = BouncerDesignSystem.colors.textSecondary,
             fontSize = 9.sp,
             letterSpacing = 0.5.sp
         )

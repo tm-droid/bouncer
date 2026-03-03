@@ -34,6 +34,7 @@ import com.tanush.bouncer.ui.theme.ShinyGoldMid
 import com.tanush.bouncer.ui.theme.SuccessGreen
 import com.tanush.bouncer.ui.theme.WarningYellow
 import com.tanush.bouncer.ui.theme.WicketRed
+import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 
 /**
  * AI prediction insights card showing match outcome predictions
@@ -101,7 +102,9 @@ fun PredictionInsightsCard(
     )
 
     val favoriteTeam = if (prediction.team1WinProbability > prediction.team2WinProbability) 1 else 2
-    val favoriteColor = if (favoriteTeam == 1) ChartBlue else WicketRed
+    val colors = BouncerDesignSystem.colors
+    val goldDarkC = colors.goldDark
+    val favoriteColor = if (favoriteTeam == 1) colors.statusInfo else colors.statusLive
     val favoriteProbability = maxOf(prediction.team1WinProbability, prediction.team2WinProbability)
 
     Card(
@@ -128,7 +131,7 @@ fun PredictionInsightsCard(
                 val shimmerBrush = Brush.linearGradient(
                     colors = listOf(
                         Color.Transparent,
-                        ShinyGoldMid.copy(alpha = 0.08f),
+                        goldDarkC.copy(alpha = 0.08f),
                         Color.Transparent,
                     ),
                     start = Offset(size.width * shimmerOffset, 0f),
@@ -155,7 +158,7 @@ fun PredictionInsightsCard(
                                 .clip(RoundedCornerShape(12.dp))
                                 .background(
                                     Brush.linearGradient(
-                                        colors = listOf(ShinyGoldDeep, ShinyGoldMid),
+                                        colors = listOf(colors.goldPrimary, colors.goldDark),
                                     ),
                                 ),
                             contentAlignment = Alignment.Center,
@@ -173,7 +176,7 @@ fun PredictionInsightsCard(
                         Column {
                             Text(
                                 text = "AI PREDICTION",
-                                color = ShinyGoldMid,
+                                color = colors.goldDark,
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold,
                                 letterSpacing = 1.5.sp,
@@ -192,8 +195,8 @@ fun PredictionInsightsCard(
                             .clip(RoundedCornerShape(12.dp))
                             .background(
                                 when {
-                                    prediction.confidence >= 0.8f -> SuccessGreen.copy(alpha = 0.2f)
-                                    prediction.confidence >= 0.6f -> WarningYellow.copy(alpha = 0.2f)
+                                    prediction.confidence >= 0.8f -> colors.statusSuccess.copy(alpha = 0.2f)
+                                    prediction.confidence >= 0.6f -> colors.statusWarning.copy(alpha = 0.2f)
                                     else -> Color.White.copy(alpha = 0.1f)
                                 },
                             )
@@ -202,8 +205,8 @@ fun PredictionInsightsCard(
                         Text(
                             text = "${(prediction.confidence * 100).toInt()}% confident",
                             color = when {
-                                prediction.confidence >= 0.8f -> SuccessGreen
-                                prediction.confidence >= 0.6f -> WarningYellow
+                                prediction.confidence >= 0.8f -> colors.statusSuccess
+                                prediction.confidence >= 0.6f -> colors.statusWarning
                                 else -> Color.White.copy(alpha = 0.7f)
                             },
                             fontSize = 10.sp,
@@ -227,7 +230,7 @@ fun PredictionInsightsCard(
                     ) {
                         Text(
                             text = prediction.team1Name,
-                            color = ChartBlue,
+                            color = colors.statusInfo,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold,
                         )
@@ -242,7 +245,7 @@ fun PredictionInsightsCard(
                                     if (favoriteTeam == 1) {
                                         Brush.radialGradient(
                                             colors = listOf(
-                                                ChartBlue.copy(alpha = 0.3f),
+                                                colors.statusInfo.copy(alpha = 0.3f),
                                                 Color.Transparent,
                                             ),
                                         )
@@ -260,14 +263,14 @@ fun PredictionInsightsCard(
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text(
                                     text = "${(prediction.team1WinProbability * 100).toInt()}%",
-                                    color = if (favoriteTeam == 1) ChartBlue else Color.White.copy(alpha = 0.7f),
+                                    color = if (favoriteTeam == 1) colors.statusInfo else Color.White.copy(alpha = 0.7f),
                                     fontSize = 24.sp,
                                     fontWeight = FontWeight.Bold,
                                 )
                                 if (favoriteTeam == 1) {
                                     Text(
                                         text = "FAVORITE",
-                                        color = ChartBlue,
+                                        color = colors.statusInfo,
                                         fontSize = 8.sp,
                                         fontWeight = FontWeight.Bold,
                                     )
@@ -302,7 +305,7 @@ fun PredictionInsightsCard(
                     ) {
                         Text(
                             text = prediction.team2Name,
-                            color = WicketRed,
+                            color = colors.statusLive,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold,
                         )
@@ -317,7 +320,7 @@ fun PredictionInsightsCard(
                                     if (favoriteTeam == 2) {
                                         Brush.radialGradient(
                                             colors = listOf(
-                                                WicketRed.copy(alpha = 0.3f),
+                                                colors.statusLive.copy(alpha = 0.3f),
                                                 Color.Transparent,
                                             ),
                                         )
@@ -335,14 +338,14 @@ fun PredictionInsightsCard(
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text(
                                     text = "${(prediction.team2WinProbability * 100).toInt()}%",
-                                    color = if (favoriteTeam == 2) WicketRed else Color.White.copy(alpha = 0.7f),
+                                    color = if (favoriteTeam == 2) colors.statusLive else Color.White.copy(alpha = 0.7f),
                                     fontSize = 24.sp,
                                     fontWeight = FontWeight.Bold,
                                 )
                                 if (favoriteTeam == 2) {
                                     Text(
                                         text = "FAVORITE",
-                                        color = WicketRed,
+                                        color = colors.statusLive,
                                         fontSize = 8.sp,
                                         fontWeight = FontWeight.Bold,
                                     )
@@ -379,11 +382,12 @@ private fun PredictionFactorRow(
     factor: PredictionFactor,
     modifier: Modifier = Modifier,
 ) {
+    val colors = BouncerDesignSystem.colors
     val impactColor = when {
-        factor.impact > 0.3f -> SuccessGreen
-        factor.impact > 0 -> ChartBlue
-        factor.impact < -0.3f -> WicketRed
-        factor.impact < 0 -> WarningYellow
+        factor.impact > 0.3f -> colors.statusSuccess
+        factor.impact > 0 -> colors.statusInfo
+        factor.impact < -0.3f -> colors.statusLive
+        factor.impact < 0 -> colors.statusWarning
         else -> Color.White.copy(alpha = 0.5f)
     }
 

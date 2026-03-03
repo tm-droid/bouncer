@@ -3,6 +3,7 @@ package com.tanush.bouncer.ui.theme
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.geometry.Offset
+import io.sentry.Sentry
 
 // ==========================================
 // BOUNCER – Gradient Presets
@@ -274,20 +275,25 @@ object GradientPresets {
      * Status badge gradient based on live state
      */
     fun statusBadge(isLive: Boolean, alpha: Float = 1f): Brush {
-        return if (isLive) {
-            Brush.linearGradient(
-                colors = listOf(
-                    GoldLight.copy(alpha = alpha),
-                    GoldDark.copy(alpha = alpha)
+        try {
+            return if (isLive) {
+                Brush.linearGradient(
+                    colors = listOf(
+                        GoldLight.copy(alpha = alpha),
+                        GoldDark.copy(alpha = alpha)
+                    )
                 )
-            )
-        } else {
-            Brush.linearGradient(
-                colors = listOf(
-                    CardSurfaceLight.copy(alpha = alpha),
-                    CardSurface.copy(alpha = alpha)
+            } else {
+                Brush.linearGradient(
+                    colors = listOf(
+                        CardSurfaceLight.copy(alpha = alpha),
+                        CardSurface.copy(alpha = alpha)
+                    )
                 )
-            )
+            }
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
         }
     }
     
@@ -306,12 +312,17 @@ object GradientPresets {
      * Score highlight gradient
      */
     fun scoreHighlight(isWinning: Boolean) = if (isWinning) {
-        Brush.linearGradient(
-            colors = listOf(
-                GoldPrimary,
-                GoldDark
+        try {
+            Brush.linearGradient(
+                colors = listOf(
+                    GoldPrimary,
+                    GoldDark
+                )
             )
-        )
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     } else {
         Brush.linearGradient(
             colors = listOf(

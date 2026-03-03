@@ -6,7 +6,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CompareArrows
+import androidx.compose.material.icons.automirrored.filled.CompareArrows
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -23,6 +23,7 @@ import com.tanush.bouncer.ui.components.BouncerImportance
 import com.tanush.bouncer.ui.components.GlassCard
 import com.tanush.bouncer.ui.components.GlassSurface
 import com.tanush.bouncer.ui.theme.*
+import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 
 /**
  * Premium Sleek Scorecard Comparison Card.
@@ -53,6 +54,7 @@ fun ScorecardComparisonCard(
     comparison: InningsComparisonData,
     modifier: Modifier = Modifier,
 ) {
+    val colors = BouncerDesignSystem.colors
     GlassCard(
         modifier = modifier.fillMaxWidth(),
         importance = BouncerImportance.STANDARD,
@@ -70,7 +72,7 @@ fun ScorecardComparisonCard(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Icon(
-                    imageVector = Icons.Filled.CompareArrows,
+                    imageVector = Icons.AutoMirrored.Filled.CompareArrows,
                     contentDescription = null,
                     tint = TextTertiary, // Subdued from gold
                     modifier = Modifier.size(16.dp),
@@ -99,7 +101,7 @@ fun ScorecardComparisonCard(
                     team = comparison.innings1.teamShort,
                     score = "${comparison.innings1.totalRuns}/${comparison.innings1.wickets}",
                     overs = "${comparison.innings1.overs} OV",
-                    color = ChartBlue,
+                    color = colors.statusInfo,
                     modifier = Modifier.weight(1f)
                 )
 
@@ -123,7 +125,7 @@ fun ScorecardComparisonCard(
                     team = comparison.innings2.teamShort,
                     score = "${comparison.innings2.totalRuns}/${comparison.innings2.wickets}",
                     overs = "${comparison.innings2.overs} OV",
-                    color = WicketRed,
+                    color = colors.statusLive,
                     isRightAligned = true,
                     modifier = Modifier.weight(1f)
                 )
@@ -138,8 +140,8 @@ fun ScorecardComparisonCard(
                     value1 = comparison.innings1.runRate,
                     value2 = comparison.innings2.runRate,
                     format = "%.2f",
-                    color1 = ChartBlue,
-                    color2 = WicketRed
+                    color1 = colors.statusInfo,
+                    color2 = colors.statusLive
                 )
 
                 ComparisonMetric(
@@ -147,8 +149,8 @@ fun ScorecardComparisonCard(
                     value1 = (comparison.innings1.fours + comparison.innings1.sixes).toFloat(),
                     value2 = (comparison.innings2.fours + comparison.innings2.sixes).toFloat(),
                     format = "%.0f",
-                    color1 = ChartBlue,
-                    color2 = WicketRed
+                    color1 = colors.statusInfo,
+                    color2 = colors.statusLive
                 )
 
                 ComparisonMetric(
@@ -156,8 +158,8 @@ fun ScorecardComparisonCard(
                     value1 = comparison.innings1.sixes.toFloat(),
                     value2 = comparison.innings2.sixes.toFloat(),
                     format = "%.0f",
-                    color1 = ChartBlue,
-                    color2 = WicketRed
+                    color1 = colors.statusInfo,
+                    color2 = colors.statusLive
                 )
             }
 
@@ -194,6 +196,7 @@ private fun ScoreHeader(
     isRightAligned: Boolean = false,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     Column(
         modifier = modifier,
         horizontalAlignment = if (isRightAligned) Alignment.End else Alignment.Start
@@ -230,6 +233,7 @@ private fun ComparisonMetric(
     color1: Color,
     color2: Color
 ) {
+    val colors = BouncerDesignSystem.colors
     val total = (value1 + value2).coerceAtLeast(1f)
     val ratio1 = value1 / total
     
@@ -295,6 +299,7 @@ private fun PerformerColumn(
     val2: Pair<String, Any>,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     GlassSurface(
         modifier = modifier,
         importance = BouncerImportance.MINIMAL,
@@ -312,15 +317,16 @@ private fun PerformerColumn(
             )
             Spacer(modifier = Modifier.height(8.dp))
             
-            PerformerRow(name = val1.first, stat = val1.second.toString(), color = ChartBlue)
+            PerformerRow(name = val1.first, stat = val1.second.toString(), color = colors.statusInfo)
             Spacer(modifier = Modifier.height(6.dp))
-            PerformerRow(name = val2.first, stat = val2.second.toString(), color = WicketRed)
+            PerformerRow(name = val2.first, stat = val2.second.toString(), color = colors.statusLive)
         }
     }
 }
 
 @Composable
 private fun PerformerRow(name: String, stat: String, color: Color) {
+    val colors = BouncerDesignSystem.colors
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,

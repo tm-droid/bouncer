@@ -21,6 +21,7 @@ import com.tanush.bouncer.ui.components.BouncerImportance
 import com.tanush.bouncer.ui.components.GlassCard
 import com.tanush.bouncer.ui.components.GlassSurface
 import com.tanush.bouncer.ui.theme.*
+import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 
 /**
  * Live Commentary Card - Technical Timeline Aesthetic.
@@ -41,6 +42,7 @@ fun CommentaryCard(
     isLive: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
+    val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "commentary")
 
     val liveIndicatorAlpha by infiniteTransition.animateFloat(
@@ -128,7 +130,7 @@ fun CommentaryCard(
                             modifier = Modifier
                                 .size(6.dp)
                                 .clip(CircleShape)
-                                .background(LiveBlue.copy(alpha = liveIndicatorAlpha)),
+                                .background(colors.statusInfo.copy(alpha = liveIndicatorAlpha)),
                         )
 
                         Spacer(modifier = Modifier.width(6.dp))
@@ -169,13 +171,14 @@ private fun CommentaryEntryRow(
     isFirst: Boolean,
     isLast: Boolean
 ) {
+    val colors = BouncerDesignSystem.colors
     val delayedProgress = ((progress - index * 0.08f) / 0.92f).coerceIn(0f, 1f)
 
     val eventColor = when (entry.eventType) {
-        "WICKET" -> WicketRed
-        "SIX" -> BoundarySix
-        "FOUR" -> BoundaryFour
-        "REVIEW" -> WarningYellow
+        "WICKET" -> colors.statusLive
+        "SIX" -> colors.statusWarning
+        "FOUR" -> colors.statusWarning
+        "REVIEW" -> colors.statusWarning
         else -> null
     }
 
@@ -291,11 +294,12 @@ private fun CommentaryEntryRow(
 
 @Composable
 private fun EventBadge(eventType: String) {
+    val colors = BouncerDesignSystem.colors
     val (color, label) = when (eventType) {
-        "WICKET" -> Pair(WicketRed, "WICKET")
-        "SIX" -> Pair(BoundarySix, "SIX")
-        "FOUR" -> Pair(BoundaryFour, "FOUR")
-        "REVIEW" -> Pair(WarningYellow, "REVIEW")
+        "WICKET" -> Pair(colors.statusLive, "WICKET")
+        "SIX" -> Pair(colors.statusWarning, "SIX")
+        "FOUR" -> Pair(colors.statusWarning, "FOUR")
+        "REVIEW" -> Pair(colors.statusWarning, "REVIEW")
         else -> Pair(TextTertiary, eventType)
     }
 

@@ -44,6 +44,7 @@ fun PredictionMatchCard(
     modifier: Modifier = Modifier
 ) {
     val haptic = rememberHapticFeedback()
+    val colors = BouncerDesignSystem.colors
     val team1 = match.teams.firstOrNull()
     val team2 = match.teams.getOrNull(1)
     
@@ -65,13 +66,13 @@ fun PredictionMatchCard(
             .shadow(
                 elevation = 14.dp,
                 shape = RoundedCornerShape(28.dp),
-                spotColor = if (isLive) LiveBlue.copy(alpha = 0.3f) else Color.Black.copy(alpha = 0.25f)
+                spotColor = if (isLive) colors.statusInfo.copy(alpha = 0.3f) else Color.Black.copy(alpha = 0.25f)
             )
             .clip(RoundedCornerShape(28.dp))
             .background(
                 Brush.linearGradient(
                     colors = listOf(
-                        CardDarkBlue,
+                        colors.surface1,
                         CardAlmostBlack
                     )
                 )
@@ -90,7 +91,7 @@ fun PredictionMatchCard(
         ) {
             Text(
                 text = match.matchTitle.substringBefore(","),
-                color = Color.White.copy(alpha = 0.7f),
+                color = colors.textSecondary,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.SemiBold,
                 letterSpacing = 0.4.sp,
@@ -104,12 +105,12 @@ fun PredictionMatchCard(
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.TrendingUp,
                     contentDescription = "Prediction",
-                    tint = ShinyGoldDeep,
+                    tint = colors.goldPrimary,
                     modifier = Modifier.size(16.dp)
                 )
                 Text(
                     text = "AI PREDICTION",
-                    color = ShinyGoldDeep,
+                    color = colors.goldPrimary,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Black,
                     letterSpacing = 0.8.sp
@@ -153,7 +154,7 @@ private fun PredictionTeamsSection(
     team1Probability: Float
 ) {
     val context = LocalContext.current
-    
+    val colors = BouncerDesignSystem.colors
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceEvenly,
@@ -168,7 +169,7 @@ private fun PredictionTeamsSection(
             Box(
                 modifier = Modifier
                     .size(64.dp)
-                    .shadow(8.dp, CircleShape, spotColor = ShinyGoldDeep.copy(alpha = 0.3f))
+                    .shadow(8.dp, CircleShape, spotColor = colors.goldPrimary.copy(alpha = 0.3f))
                     .background(
                         Brush.radialGradient(
                             colors = listOf(
@@ -199,7 +200,7 @@ private fun PredictionTeamsSection(
             Text(
                 text = team1?.acronym?.takeIf { it.isNotEmpty() }
                     ?: team1?.name?.take(3)?.uppercase() ?: "T1",
-                color = Color.White,
+                color = colors.textPrimary,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 1.sp
@@ -210,12 +211,12 @@ private fun PredictionTeamsSection(
             // Win probability percentage
             Box(
                 modifier = Modifier
-                    .shadow(6.dp, RoundedCornerShape(12.dp), spotColor = ShinyGoldDeep.copy(alpha = 0.3f))
+                    .shadow(6.dp, RoundedCornerShape(12.dp), spotColor = colors.goldPrimary.copy(alpha = 0.3f))
                     .background(
                         Brush.linearGradient(
                             colors = listOf(
-                                ShinyGoldDeep.copy(alpha = 0.2f),
-                                ShinyGoldMid.copy(alpha = 0.15f)
+                                colors.goldPrimary.copy(alpha = 0.2f),
+                                colors.goldPrimary.copy(alpha = 0.15f)
                             )
                         ),
                         RoundedCornerShape(12.dp)
@@ -224,7 +225,7 @@ private fun PredictionTeamsSection(
             ) {
                 Text(
                     text = "${(team1Probability * 100).toInt()}%",
-                    color = ShinyGoldDeep,
+                    color = colors.goldPrimary,
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Black,
                     letterSpacing = 0.5.sp
@@ -237,12 +238,12 @@ private fun PredictionTeamsSection(
             modifier = Modifier
                 .padding(horizontal = 16.dp)
                 .size(48.dp)
-                .background(Color.White.copy(alpha = 0.05f), CircleShape),
+                .background(colors.glassSurface, CircleShape),
             contentAlignment = Alignment.Center
         ) {
             Text(
                 text = "VS",
-                color = Color.White.copy(alpha = 0.4f),
+                color = colors.textMuted,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Black,
                 letterSpacing = 1.sp
@@ -258,7 +259,7 @@ private fun PredictionTeamsSection(
             Box(
                 modifier = Modifier
                     .size(64.dp)
-                    .shadow(8.dp, CircleShape, spotColor = ShinyGoldDeep.copy(alpha = 0.3f))
+                    .shadow(8.dp, CircleShape, spotColor = colors.goldPrimary.copy(alpha = 0.3f))
                     .background(
                         Brush.radialGradient(
                             colors = listOf(
@@ -289,7 +290,7 @@ private fun PredictionTeamsSection(
             Text(
                 text = team2?.acronym?.takeIf { it.isNotEmpty() }
                     ?: team2?.name?.take(3)?.uppercase() ?: "T2",
-                color = Color.White,
+                color = colors.textPrimary,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 1.sp
@@ -299,12 +300,12 @@ private fun PredictionTeamsSection(
             
             Box(
                 modifier = Modifier
-                    .shadow(6.dp, RoundedCornerShape(12.dp), spotColor = ShinyGoldDeep.copy(alpha = 0.3f))
+                    .shadow(6.dp, RoundedCornerShape(12.dp), spotColor = colors.goldPrimary.copy(alpha = 0.3f))
                     .background(
                         Brush.linearGradient(
                             colors = listOf(
-                                ShinyGoldDeep.copy(alpha = 0.2f),
-                                ShinyGoldMid.copy(alpha = 0.15f)
+                                colors.goldPrimary.copy(alpha = 0.2f),
+                                colors.goldPrimary.copy(alpha = 0.15f)
                             )
                         ),
                         RoundedCornerShape(12.dp)
@@ -313,7 +314,7 @@ private fun PredictionTeamsSection(
             ) {
                 Text(
                     text = "${((1 - team1Probability) * 100).toInt()}%",
-                    color = ShinyGoldDeep,
+                    color = colors.goldPrimary,
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Black,
                     letterSpacing = 0.5.sp
@@ -329,6 +330,7 @@ private fun WinProbabilityBar(
     team2Name: String,
     team1Probability: Float
 ) {
+    val colors = BouncerDesignSystem.colors
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -336,14 +338,14 @@ private fun WinProbabilityBar(
         ) {
             Text(
                 text = team1Name,
-                color = Color.White.copy(alpha = 0.7f),
+                color = colors.textSecondary,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 0.5.sp
             )
             Text(
                 text = team2Name,
-                color = Color.White.copy(alpha = 0.7f),
+                color = colors.textSecondary,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 0.5.sp
@@ -368,9 +370,9 @@ private fun WinProbabilityBar(
                     .background(
                         Brush.horizontalGradient(
                             colors = listOf(
-                                ShinyGoldLight,
-                                ShinyGoldMid,
-                                ShinyGoldDeep
+                                colors.goldLight,
+                                colors.goldPrimary,
+                                colors.goldPrimary
                             )
                         )
                     )
@@ -392,6 +394,7 @@ private fun WinProbabilityBar(
 private fun KeyStatsComparison(match: CricketMatch) {
     val team1 = match.teams.firstOrNull()
     val team2 = match.teams.getOrNull(1)
+    val colors = BouncerDesignSystem.colors
     
     Column(
         modifier = Modifier
@@ -405,7 +408,7 @@ private fun KeyStatsComparison(match: CricketMatch) {
     ) {
         Text(
             text = "LIVE STATS",
-            color = ShinyGoldDeep,
+            color = colors.goldPrimary,
             fontSize = 10.sp,
             fontWeight = FontWeight.Black,
             letterSpacing = 1.sp
@@ -443,6 +446,7 @@ private fun StatComparisonRow(
     format: (Float) -> String,
     inverse: Boolean = false
 ) {
+    val colors = BouncerDesignSystem.colors
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -451,19 +455,19 @@ private fun StatComparisonRow(
         ) {
             Text(
                 text = String.format(format(team1Value), team1Value),
-                color = Color.White,
+                color = colors.textPrimary,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Bold
             )
             Text(
                 text = label,
-                color = Color.White.copy(alpha = 0.5f),
+                color = colors.textTertiary,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Medium
             )
             Text(
                 text = String.format(format(team2Value), team2Value),
-                color = Color.White,
+                color = colors.textPrimary,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Bold
             )
@@ -489,7 +493,7 @@ private fun StatComparisonRow(
                         .weight(if (inverse) 1f - team1Fraction else team1Fraction)
                         .fillMaxHeight()
                         .background(
-                            if (!inverse && team1Value > team2Value) ShinyGoldDeep 
+                            if (!inverse && team1Value > team2Value) colors.goldPrimary 
                             else Color.Gray.copy(alpha = 0.3f)
                         )
                 )
@@ -502,7 +506,7 @@ private fun StatComparisonRow(
                         .weight(if (inverse) 1f - team2Fraction else team2Fraction)
                         .fillMaxHeight()
                         .background(
-                            if (!inverse && team2Value > team1Value) ShinyGoldDeep
+                            if (!inverse && team2Value > team1Value) colors.goldPrimary
                             else Color.Gray.copy(alpha = 0.3f)
                         )
                 )

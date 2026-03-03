@@ -54,6 +54,7 @@ fun ExtrasAnalysisCard(
     team2Extras: ExtrasData,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "extras")
     
     val rotationAngle by infiniteTransition.animateFloat(
@@ -72,11 +73,11 @@ fun ExtrasAnalysisCard(
             .shadow(
                 elevation = 20.dp,
                 shape = RoundedCornerShape(28.dp),
-                spotColor = WarningYellow.copy(alpha = 0.1f)
+                spotColor = colors.statusWarning.copy(alpha = 0.1f)
             ),
-        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.05f)),
+        colors = CardDefaults.cardColors(containerColor = colors.glassSurface),
         shape = RoundedCornerShape(28.dp),
-        border = BorderStroke(0.5.dp, CardBorder.copy(alpha = 0.3f))
+        border = BorderStroke(0.5.dp, colors.glassBorder.copy(alpha = 0.3f))
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
             // Header
@@ -92,12 +93,12 @@ fun ExtrasAnalysisCard(
                     Icon(
                         Icons.Default.AddCircle,
                         contentDescription = null,
-                        tint = WarningYellow,
+                        tint = colors.statusWarning,
                         modifier = Modifier.size(20.dp)
                     )
                     Text(
                         "EXTRAS ANALYSIS",
-                        color = TextPrimary,
+                        color = colors.textPrimary,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 1.sp
@@ -111,7 +112,7 @@ fun ExtrasAnalysisCard(
                     ExtrasTotalBadge(total = team1Extras.total, teamName = team1Extras.teamName)
                     Text(
                         text = "vs",
-                        color = TextTertiary,
+                        color = colors.textTertiary,
                         fontSize = 10.sp
                     )
                     ExtrasTotalBadge(total = team2Extras.total, teamName = team2Extras.teamName)
@@ -153,10 +154,11 @@ fun ExtrasAnalysisCard(
  */
 @Composable
 private fun ExtrasTotalBadge(total: Int, teamName: String) {
+    val colors = BouncerDesignSystem.colors
     Surface(
         shape = RoundedCornerShape(6.dp),
-        color = WarningYellow.copy(alpha = 0.1f),
-        border = BorderStroke(0.5.dp, WarningYellow.copy(alpha = 0.3f))
+        color = colors.statusWarning.copy(alpha = 0.1f),
+        border = BorderStroke(0.5.dp, colors.statusWarning.copy(alpha = 0.3f))
     ) {
         Column(
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
@@ -164,13 +166,13 @@ private fun ExtrasTotalBadge(total: Int, teamName: String) {
         ) {
             Text(
                 text = "$total",
-                color = WarningYellow,
+                color = colors.statusWarning,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold
             )
             Text(
                 text = teamName.take(6),
-                color = TextTertiary,
+                color = colors.textTertiary,
                 fontSize = 8.sp
             )
         }
@@ -185,12 +187,13 @@ private fun ExtrasPieChart(
     extras: ExtrasData,
     rotationAngle: Float
 ) {
+    val colors = BouncerDesignSystem.colors
     Column(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
             text = extras.teamName,
-            color = TextPrimary,
+            color = colors.textPrimary,
             fontSize = 11.sp,
             fontWeight = FontWeight.SemiBold
         )
@@ -210,9 +213,9 @@ private fun ExtrasPieChart(
                 drawCircle(
                     brush = Brush.sweepGradient(
                         colors = listOf(
-                            WarningYellow.copy(alpha = 0.1f),
-                            ChartBlue.copy(alpha = 0.1f),
-                            WarningYellow.copy(alpha = 0.1f)
+                            colors.statusWarning.copy(alpha = 0.1f),
+                            colors.statusInfo.copy(alpha = 0.1f),
+                            colors.statusWarning.copy(alpha = 0.1f)
                         )
                     ),
                     radius = radius + 4.dp.toPx(),
@@ -223,10 +226,10 @@ private fun ExtrasPieChart(
                 var startAngle = rotationAngle - 90f
                 
                 val segments = listOf(
-                    extras.wides.toFloat() to WarningYellow,
-                    extras.noBalls.toFloat() to ErrorRed,
-                    extras.byes.toFloat() to ChartBlue,
-                    extras.legByes.toFloat() to SuccessGreen
+                    extras.wides.toFloat() to colors.statusWarning,
+                    extras.noBalls.toFloat() to colors.statusLive,
+                    extras.byes.toFloat() to colors.statusInfo,
+                    extras.legByes.toFloat() to colors.statusSuccess
                 )
                 
                 segments.forEach { (value, color) ->
@@ -246,7 +249,7 @@ private fun ExtrasPieChart(
                 
                 // Center circle
                 drawCircle(
-                    color = CardSurface,
+                    color = colors.surface1,
                     radius = radius * 0.55f,
                     center = center
                 )
@@ -256,13 +259,13 @@ private fun ExtrasPieChart(
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
                     text = "${extras.total}",
-                    color = WarningYellow,
+                    color = colors.statusWarning,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Black
                 )
                 Text(
                     text = "extras",
-                    color = TextTertiary,
+                    color = colors.textTertiary,
                     fontSize = 8.sp
                 )
             }
@@ -274,10 +277,10 @@ private fun ExtrasPieChart(
         Row(
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            MiniLegendDot(color = WarningYellow, value = extras.wides, label = "W")
-            MiniLegendDot(color = ErrorRed, value = extras.noBalls, label = "NB")
-            MiniLegendDot(color = ChartBlue, value = extras.byes, label = "B")
-            MiniLegendDot(color = SuccessGreen, value = extras.legByes, label = "LB")
+            MiniLegendDot(color = colors.statusWarning, value = extras.wides, label = "W")
+            MiniLegendDot(color = colors.statusLive, value = extras.noBalls, label = "NB")
+            MiniLegendDot(color = colors.statusInfo, value = extras.byes, label = "B")
+            MiniLegendDot(color = colors.statusSuccess, value = extras.legByes, label = "LB")
         }
     }
 }
@@ -287,6 +290,7 @@ private fun ExtrasPieChart(
  */
 @Composable
 private fun MiniLegendDot(color: Color, value: Int, label: String) {
+    val colors = BouncerDesignSystem.colors
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Box(
             modifier = Modifier
@@ -295,13 +299,13 @@ private fun MiniLegendDot(color: Color, value: Int, label: String) {
         )
         Text(
             text = "$value",
-            color = TextPrimary,
+            color = colors.textPrimary,
             fontSize = 10.sp,
             fontWeight = FontWeight.Medium
         )
         Text(
             text = label,
-            color = TextTertiary,
+            color = colors.textTertiary,
             fontSize = 7.sp
         )
     }
@@ -312,10 +316,11 @@ private fun MiniLegendDot(color: Color, value: Int, label: String) {
  */
 @Composable
 private fun ExtrasComparisonTable(team1: ExtrasData, team2: ExtrasData) {
+    val colors = BouncerDesignSystem.colors
     Surface(
         shape = RoundedCornerShape(12.dp),
-        color = Color.White.copy(alpha = 0.08f).copy(alpha = 0.3f),
-        border = BorderStroke(0.5.dp, CardBorder.copy(alpha = 0.2f)),
+        color = colors.glassBorderHighlight.copy(alpha = 0.3f),
+        border = BorderStroke(0.5.dp, colors.glassBorder.copy(alpha = 0.2f)),
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
@@ -326,40 +331,40 @@ private fun ExtrasComparisonTable(team1: ExtrasData, team2: ExtrasData) {
             ) {
                 Text(
                     text = "Type",
-                    color = TextTertiary,
+                    color = colors.textTertiary,
                     fontSize = 10.sp,
                     modifier = Modifier.weight(1.5f)
                 )
                 Text(
                     text = team1.teamName.take(8),
-                    color = TextTertiary,
+                    color = colors.textTertiary,
                     fontSize = 10.sp,
                     modifier = Modifier.weight(1f)
                 )
                 Text(
                     text = team2.teamName.take(8),
-                    color = TextTertiary,
+                    color = colors.textTertiary,
                     fontSize = 10.sp,
                     modifier = Modifier.weight(1f)
                 )
             }
             
             Spacer(modifier = Modifier.height(8.dp))
-            HorizontalDivider(color = CardBorder.copy(alpha = 0.2f))
+            HorizontalDivider(color = colors.glassBorder.copy(alpha = 0.2f))
             Spacer(modifier = Modifier.height(8.dp))
             
             // Data rows
-            ComparisonRow("Wides", team1.wides, team2.wides, WarningYellow)
-            ComparisonRow("No Balls", team1.noBalls, team2.noBalls, ErrorRed)
-            ComparisonRow("Byes", team1.byes, team2.byes, ChartBlue)
-            ComparisonRow("Leg Byes", team1.legByes, team2.legByes, SuccessGreen)
+            ComparisonRow("Wides", team1.wides, team2.wides, colors.statusWarning)
+            ComparisonRow("No Balls", team1.noBalls, team2.noBalls, colors.statusLive)
+            ComparisonRow("Byes", team1.byes, team2.byes, colors.statusInfo)
+            ComparisonRow("Leg Byes", team1.legByes, team2.legByes, colors.statusSuccess)
             
             if (team1.penalty > 0 || team2.penalty > 0) {
-                ComparisonRow("Penalty", team1.penalty, team2.penalty, TextTertiary)
+                ComparisonRow("Penalty", team1.penalty, team2.penalty, colors.textTertiary)
             }
             
             Spacer(modifier = Modifier.height(8.dp))
-            HorizontalDivider(color = CardBorder.copy(alpha = 0.2f))
+            HorizontalDivider(color = colors.glassBorder.copy(alpha = 0.2f))
             Spacer(modifier = Modifier.height(8.dp))
             
             // Total row
@@ -369,21 +374,21 @@ private fun ExtrasComparisonTable(team1: ExtrasData, team2: ExtrasData) {
             ) {
                 Text(
                     text = "TOTAL",
-                    color = TextPrimary,
+                    color = colors.textPrimary,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.weight(1.5f)
                 )
                 Text(
                     text = "${team1.total}",
-                    color = WarningYellow,
+                    color = colors.statusWarning,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.weight(1f)
                 )
                 Text(
                     text = "${team2.total}",
-                    color = WarningYellow,
+                    color = colors.statusWarning,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.weight(1f)
@@ -398,6 +403,7 @@ private fun ExtrasComparisonTable(team1: ExtrasData, team2: ExtrasData) {
  */
 @Composable
 private fun ComparisonRow(label: String, value1: Int, value2: Int, color: Color) {
+    val colors = BouncerDesignSystem.colors
     val better = when {
         value1 < value2 -> 1
         value2 < value1 -> 2
@@ -422,20 +428,20 @@ private fun ComparisonRow(label: String, value1: Int, value2: Int, color: Color)
             )
             Text(
                 text = label,
-                color = TextSecondary,
+                color = colors.textSecondary,
                 fontSize = 11.sp
             )
         }
         Text(
             text = "$value1",
-            color = if (better == 1) SuccessGreen else TextPrimary,
+            color = if (better == 1) colors.statusSuccess else colors.textPrimary,
             fontSize = 12.sp,
             fontWeight = if (better == 1) FontWeight.Bold else FontWeight.Normal,
             modifier = Modifier.weight(1f)
         )
         Text(
             text = "$value2",
-            color = if (better == 2) SuccessGreen else TextPrimary,
+            color = if (better == 2) colors.statusSuccess else colors.textPrimary,
             fontSize = 12.sp,
             fontWeight = if (better == 2) FontWeight.Bold else FontWeight.Normal,
             modifier = Modifier.weight(1f)
@@ -448,36 +454,37 @@ private fun ComparisonRow(label: String, value1: Int, value2: Int, color: Color)
  */
 @Composable
 private fun ExtrasInsights(team1: ExtrasData, team2: ExtrasData) {
+    val colors = BouncerDesignSystem.colors
     val insights = mutableListOf<Pair<String, Color>>()
     
     // Bowling discipline comparison
     if (team1.bowlingExtras > team2.bowlingExtras + 5) {
-        insights.add("${team1.teamName} conceded ${team1.bowlingExtras - team2.bowlingExtras} more bowling extras" to WarningYellow)
+        insights.add("${team1.teamName} conceded ${team1.bowlingExtras - team2.bowlingExtras} more bowling extras" to colors.statusWarning)
     } else if (team2.bowlingExtras > team1.bowlingExtras + 5) {
-        insights.add("${team2.teamName} conceded ${team2.bowlingExtras - team1.bowlingExtras} more bowling extras" to WarningYellow)
+        insights.add("${team2.teamName} conceded ${team2.bowlingExtras - team1.bowlingExtras} more bowling extras" to colors.statusWarning)
     }
     
     // High wides
     if (team1.wides >= 10) {
-        insights.add("${team1.teamName} bowled ${team1.wides} wides - poor discipline" to ErrorRed)
+        insights.add("${team1.teamName} bowled ${team1.wides} wides - poor discipline" to colors.statusLive)
     }
     if (team2.wides >= 10) {
-        insights.add("${team2.teamName} bowled ${team2.wides} wides - poor discipline" to ErrorRed)
+        insights.add("${team2.teamName} bowled ${team2.wides} wides - poor discipline" to colors.statusLive)
     }
     
     // Good keeping
     if (team1.byes <= 2 && team1.legByes <= 2) {
-        insights.add("${team1.teamName} had excellent fielding extras (${team1.fieldingExtras})" to SuccessGreen)
+        insights.add("${team1.teamName} had excellent fielding extras (${team1.fieldingExtras})" to colors.statusSuccess)
     }
     if (team2.byes <= 2 && team2.legByes <= 2) {
-        insights.add("${team2.teamName} had excellent fielding extras (${team2.fieldingExtras})" to SuccessGreen)
+        insights.add("${team2.teamName} had excellent fielding extras (${team2.fieldingExtras})" to colors.statusSuccess)
     }
     
     if (insights.isNotEmpty()) {
         Column {
             Text(
                 text = "INSIGHTS",
-                color = TextTertiary,
+                color = colors.textTertiary,
                 fontSize = 10.sp,
                 letterSpacing = 0.5.sp,
                 modifier = Modifier.padding(bottom = 8.dp)
@@ -499,7 +506,7 @@ private fun ExtrasInsights(team1: ExtrasData, team2: ExtrasData) {
                     )
                     Text(
                         text = insight,
-                        color = TextSecondary,
+                        color = colors.textSecondary,
                         fontSize = 11.sp
                     )
                 }
@@ -519,12 +526,13 @@ fun MiniExtrasDisplay(
     legByes: Int,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val total = wides + noBalls + byes + legByes
     
     Surface(
         shape = RoundedCornerShape(8.dp),
-        color = WarningYellow.copy(alpha = 0.1f),
-        border = BorderStroke(0.5.dp, WarningYellow.copy(alpha = 0.3f)),
+        color = colors.statusWarning.copy(alpha = 0.1f),
+        border = BorderStroke(0.5.dp, colors.statusWarning.copy(alpha = 0.3f)),
         modifier = modifier
     ) {
         Row(
@@ -534,18 +542,18 @@ fun MiniExtrasDisplay(
         ) {
             Text(
                 text = "Extras:",
-                color = TextTertiary,
+                color = colors.textTertiary,
                 fontSize = 10.sp
             )
             Text(
                 text = "$total",
-                color = WarningYellow,
+                color = colors.statusWarning,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold
             )
             Text(
                 text = "(w$wides, nb$noBalls, b$byes, lb$legByes)",
-                color = TextTertiary,
+                color = colors.textTertiary,
                 fontSize = 9.sp
             )
         }

@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.ui.theme.*
 import kotlin.math.*
+import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 
 /**
  * Ball speed tracker showing bowling speed over time
@@ -56,6 +57,12 @@ fun BallSpeedTrackerCard(
     minSpeed: Float,
     modifier: Modifier = Modifier,
 ) {
+    val colors = BouncerDesignSystem.colors
+    val goldDarkC = colors.goldDark
+    val statusSuccessC = colors.statusSuccess
+    val statusWarningC = colors.statusWarning
+    val statusLiveC = colors.statusLive
+    val statusInfoC = colors.statusInfo
     val animatedProgress = remember { Animatable(0f) }
 
     LaunchedEffect(speedData) {
@@ -100,7 +107,7 @@ fun BallSpeedTrackerCard(
                             .clip(CircleShape)
                             .background(
                                 Brush.linearGradient(
-                                    colors = listOf(ShinyGoldMid, ShinyGoldDeep),
+                                    colors = listOf(colors.goldDark, colors.goldPrimary),
                                 ),
                             ),
                         contentAlignment = Alignment.Center,
@@ -118,7 +125,7 @@ fun BallSpeedTrackerCard(
                     Column {
                         Text(
                             text = "BALL SPEED TRACKER",
-                            color = ShinyGoldLight,
+                            color = colors.goldLight,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.5.sp,
@@ -172,7 +179,7 @@ fun BallSpeedTrackerCard(
                         val sweepAngle = 270f * speedNormalized * animatedProgress.value
                         drawArc(
                             brush = Brush.sweepGradient(
-                                colors = listOf(SuccessGreen, WarningYellow, WicketRed),
+                                colors = listOf(statusSuccessC, statusWarningC, statusLiveC),
                                 center = center,
                             ),
                             startAngle = 135f,
@@ -199,7 +206,7 @@ fun BallSpeedTrackerCard(
 
                         // Center dot
                         drawCircle(
-                            color = ShinyGoldMid,
+                            color = goldDarkC,
                             radius = 8f,
                             center = center,
                         )
@@ -235,17 +242,17 @@ fun BallSpeedTrackerCard(
                     SpeedStatItem(
                         label = "Max",
                         value = "${maxSpeed.toInt()} km/h",
-                        color = WicketRed,
+                        color = colors.statusLive,
                     )
                     SpeedStatItem(
                         label = "Average",
                         value = "${averageSpeed.toInt()} km/h",
-                        color = ChartBlue,
+                        color = colors.statusInfo,
                     )
                     SpeedStatItem(
                         label = "Min",
                         value = "${minSpeed.toInt()} km/h",
-                        color = SuccessGreen,
+                        color = colors.statusSuccess,
                     )
                 }
             }
@@ -301,9 +308,9 @@ fun BallSpeedTrackerCard(
                                 val y = height - barHeight
 
                                 val barColor = when {
-                                    ball.speed >= 145 -> WicketRed
-                                    ball.speed >= 135 -> WarningYellow
-                                    else -> ChartBlue
+                                    ball.speed >= 145 -> statusLiveC
+                                    ball.speed >= 135 -> statusWarningC
+                                    else -> statusInfoC
                                 }
 
                                 drawRoundRect(
@@ -331,7 +338,7 @@ fun BallSpeedTrackerCard(
                 ) {
                     Text(
                         text = "RECENT DELIVERIES",
-                        color = ShinyGoldLight,
+                        color = colors.goldLight,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 1.sp,
@@ -345,9 +352,9 @@ fun BallSpeedTrackerCard(
                     ) {
                         speedData.takeLast(6).reversed().forEach { ball ->
                             val bgColor = when {
-                                ball.speed >= 145 -> WicketRed
-                                ball.speed >= 135 -> WarningYellow
-                                else -> ChartBlue
+                                ball.speed >= 145 -> colors.statusLive
+                                ball.speed >= 135 -> colors.statusWarning
+                                else -> colors.statusInfo
                             }
 
                             Column(
@@ -384,6 +391,7 @@ private fun SpeedStatItem(
     value: String,
     color: Color,
 ) {
+    val colors = BouncerDesignSystem.colors
     Row(
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -412,6 +420,7 @@ private fun SpeedStatItem(
 
 @Composable
 fun BallSpeedTrackerCardPreview() {
+    val colors = BouncerDesignSystem.colors
     val speedData = listOf(
         BallSpeedData(1, 142f, "Jasprit Bumrah", "Yorker", "Dot"),
         BallSpeedData(2, 145f, "Jasprit Bumrah", "Bouncer", "Wide"),

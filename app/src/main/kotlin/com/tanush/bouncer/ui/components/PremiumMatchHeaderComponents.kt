@@ -82,6 +82,8 @@ fun PremiumMatchHeader(
         label = "pulse"
     )
     
+    val colors = BouncerDesignSystem.colors
+
     Box(
         modifier = modifier
             .fillMaxWidth()
@@ -89,8 +91,8 @@ fun PremiumMatchHeader(
             .background(
                 brush = Brush.verticalGradient(
                     colors = listOf(
-                        ShinyGoldDeep.copy(alpha = 0.12f),
-                        BlackBackground
+                        colors.goldPrimary.copy(alpha = 0.12f),
+                        colors.backgroundBase
                     )
                 )
             )
@@ -110,7 +112,7 @@ fun PremiumMatchHeader(
                 Column {
                     Text(
                         text = seriesName.uppercase(),
-                        color = ShinyGoldDeep,
+                        color = colors.goldPrimary,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Black,
                         letterSpacing = 2.sp,
@@ -119,7 +121,7 @@ fun PremiumMatchHeader(
                     )
                     Text(
                         text = "ELITE BROADCAST FEED",
-                        color = TextMuted,
+                        color = colors.textMuted,
                         fontSize = 9.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 1.sp
@@ -144,13 +146,13 @@ fun PremiumMatchHeader(
                     modifier = Modifier
                         .padding(horizontal = 20.dp)
                         .size(56.dp)
-                        .background(Color.White.copy(alpha = 0.03f), CircleShape)
-                        .border(0.5.dp, GoldHairline, CircleShape),
+                        .background(colors.glassSurface.copy(alpha = 0.03f), CircleShape)
+                        .border(0.5.dp, colors.goldPrimary.copy(alpha = 0.3f), CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = "VS",
-                        color = TextTertiary,
+                        color = colors.textTertiary,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Black
                     )
@@ -163,13 +165,13 @@ fun PremiumMatchHeader(
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(8.dp))
-                    .background(Color.White.copy(alpha = 0.05f))
-                    .border(0.5.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(8.dp))
+                    .background(colors.glassSurface)
+                    .border(0.5.dp, colors.glassBorderHighlight, RoundedCornerShape(8.dp))
                     .padding(horizontal = 14.dp, vertical = 6.dp)
             ) {
                 Text(
                     text = matchType.uppercase(),
-                    color = Color.White,
+                    color = colors.textPrimary,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Black,
                     letterSpacing = 1.5.sp
@@ -185,6 +187,8 @@ private fun TeamHeaderDisplay(
     logoUrl: String?,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
+
     Column(
         modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -200,18 +204,18 @@ private fun TeamHeaderDisplay(
                     .size(80.dp)
                     .blur(20.dp)
                     .alpha(0.2f)
-                    .background(ShinyGoldDeep, CircleShape)
+                    .background(colors.goldPrimary, CircleShape)
             )
             
             Box(
                 modifier = Modifier
                     .size(72.dp)
                     .clip(CircleShape)
-                    .background(Color.White.copy(alpha = 0.05f))
+                    .background(colors.glassSurface)
                     .border(
                         width = 1.dp,
                         brush = Brush.verticalGradient(
-                            colors = listOf(ShinyGoldDeep, Color.Transparent)
+                            colors = listOf(colors.goldPrimary, Color.Transparent)
                         ),
                         shape = CircleShape
                     ),
@@ -227,7 +231,7 @@ private fun TeamHeaderDisplay(
                 } else {
                     Text(
                         text = name.take(3).uppercase(),
-                        color = ShinyGoldDeep,
+                        color = colors.goldPrimary,
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Black
                     )
@@ -237,7 +241,7 @@ private fun TeamHeaderDisplay(
         
         Text(
             text = name,
-            color = Color.White,
+            color = colors.textPrimary,
             fontSize = 14.sp,
             fontWeight = FontWeight.Black,
             textAlign = TextAlign.Center,
@@ -253,11 +257,13 @@ private fun LiveIndicatorBadge(
     modifier: Modifier = Modifier,
     pulseScale: Float = 1f
 ) {
+    val colors = BouncerDesignSystem.colors
+
     Row(
         modifier = modifier
             .clip(RoundedCornerShape(6.dp))
-            .background(Color.Red.copy(alpha = 0.1f))
-            .border(0.5.dp, Color.Red.copy(alpha = 0.2f), RoundedCornerShape(6.dp))
+            .background(colors.statusLive.copy(alpha = 0.1f))
+            .border(0.5.dp, colors.statusLive.copy(alpha = 0.2f), RoundedCornerShape(6.dp))
             .padding(horizontal = 10.dp, vertical = 6.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -269,12 +275,12 @@ private fun LiveIndicatorBadge(
                     scaleX = pulseScale
                     scaleY = pulseScale
                 }
-                .background(Color.Red, CircleShape)
+                .background(colors.statusLive, CircleShape)
         )
         
         Text(
             text = "LIVE",
-            color = Color.Red,
+            color = colors.statusLive,
             fontSize = 10.sp,
             fontWeight = FontWeight.Black,
             letterSpacing = 1.5.sp
@@ -287,14 +293,16 @@ fun VenueCard(
     venue: VenueInfo,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
+
     Box(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(24.dp))
-            .background(Color.White.copy(alpha = 0.05f))
+            .background(colors.glassSurface)
             .border(
                 width = 0.5.dp,
-                brush = Brush.linearGradient(listOf(GoldHairline, Color.Transparent)),
+                brush = Brush.linearGradient(listOf(colors.goldPrimary.copy(alpha = 0.3f), Color.Transparent)),
                 shape = RoundedCornerShape(24.dp)
             )
     ) {
@@ -334,13 +342,13 @@ fun VenueCard(
                     modifier = Modifier
                         .size(48.dp)
                         .clip(CircleShape)
-                        .background(ShinyGoldDeep.copy(alpha = 0.1f)),
+                        .background(colors.goldPrimary.copy(alpha = 0.1f)),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = Icons.Default.Stadium,
                         contentDescription = null,
-                        tint = ShinyGoldDeep,
+                        tint = colors.goldPrimary,
                         modifier = Modifier.size(24.dp)
                     )
                 }
@@ -348,21 +356,21 @@ fun VenueCard(
                 Column {
                     Text(
                         text = "STADIUM TELEMETRY",
-                        color = ShinyGoldDeep,
+                        color = colors.goldPrimary,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Black,
                         letterSpacing = 2.sp
                     )
                     Text(
                         text = venue.name,
-                        color = Color.White,
+                        color = colors.textPrimary,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Black,
                         letterSpacing = (-0.5).sp
                     )
                     Text(
                         text = "${venue.city}, ${venue.country}",
-                        color = TextSecondary,
+                        color = colors.textSecondary,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Medium
                     )
@@ -388,17 +396,19 @@ fun VenueCard(
 
 @Composable
 private fun VenueInfoChip(label: String, value: String) {
+    val colors = BouncerDesignSystem.colors
+
     Column {
         Text(
             text = label,
-            color = TextMuted,
+            color = colors.textMuted,
             fontSize = 9.sp,
             fontWeight = FontWeight.Black,
             letterSpacing = 1.sp
         )
         Text(
             text = value,
-            color = Color.White,
+            color = colors.textPrimary,
             fontSize = 13.sp,
             fontWeight = FontWeight.Bold
         )
@@ -410,14 +420,16 @@ fun WeatherCard(
     weather: WeatherInfo,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
+
     Box(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(24.dp))
-            .background(Color.White.copy(alpha = 0.05f))
+            .background(colors.glassSurface)
             .border(
                 width = 0.5.dp,
-                brush = Brush.linearGradient(listOf(GoldHairline, Color.Transparent)),
+                brush = Brush.linearGradient(listOf(colors.goldPrimary.copy(alpha = 0.3f), Color.Transparent)),
                 shape = RoundedCornerShape(24.dp)
             )
             .padding(24.dp)
@@ -441,14 +453,14 @@ fun WeatherCard(
                     modifier = Modifier
                         .size(56.dp)
                         .clip(RoundedCornerShape(16.dp))
-                        .background(Color.White.copy(alpha = 0.03f))
-                        .border(0.5.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(16.dp)),
+                        .background(colors.glassSurface.copy(alpha = 0.03f))
+                        .border(0.5.dp, colors.glassBorderHighlight, RoundedCornerShape(16.dp)),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = weatherIcon,
                         contentDescription = null,
-                        tint = ShinyGoldDeep,
+                        tint = colors.goldPrimary,
                         modifier = Modifier.size(32.dp)
                     )
                 }
@@ -456,7 +468,7 @@ fun WeatherCard(
                 Column {
                     Text(
                         text = "ATMOSPHERIC DATA",
-                        color = ShinyGoldDeep,
+                        color = colors.goldPrimary,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Black,
                         letterSpacing = 1.5.sp
@@ -464,13 +476,13 @@ fun WeatherCard(
                     Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text(
                             text = "${weather.temperature}°C",
-                            color = Color.White,
+                            color = colors.textPrimary,
                             fontSize = 28.sp,
                             fontWeight = FontWeight.Black
                         )
                         Text(
                             text = weather.condition.uppercase(),
-                            color = TextSecondary,
+                            color = colors.textSecondary,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
                             modifier = Modifier.padding(bottom = 6.dp)
@@ -489,9 +501,11 @@ fun WeatherCard(
 
 @Composable
 private fun WeatherStatItemCompact(icon: ImageVector, value: String, label: String) {
+    val colors = BouncerDesignSystem.colors
+
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(text = "$value $label", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Black)
-        Icon(imageVector = icon, contentDescription = null, tint = ShinyGoldDeep.copy(alpha = 0.6f), modifier = Modifier.size(12.dp))
+        Text(text = "$value $label", color = colors.textPrimary, fontSize = 11.sp, fontWeight = FontWeight.Black)
+        Icon(imageVector = icon, contentDescription = null, tint = colors.goldPrimary.copy(alpha = 0.6f), modifier = Modifier.size(12.dp))
     }
 }
 
@@ -503,14 +517,16 @@ fun PitchReportCard(
     battingFriendly: Float,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
+
     Box(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(24.dp))
-            .background(Color.White.copy(alpha = 0.05f))
+            .background(colors.glassSurface)
             .border(
                 width = 0.5.dp,
-                brush = Brush.linearGradient(listOf(GoldHairline, Color.Transparent)),
+                brush = Brush.linearGradient(listOf(colors.goldPrimary.copy(alpha = 0.3f), Color.Transparent)),
                 shape = RoundedCornerShape(24.dp)
             )
             .padding(24.dp)
@@ -524,20 +540,20 @@ fun PitchReportCard(
                 Column {
                     Text(
                         text = "SURFACE ANALYSIS",
-                        color = ShinyGoldDeep,
+                        color = colors.goldPrimary,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Black,
                         letterSpacing = 2.sp
                     )
                     Text(
                         text = pitchType,
-                        color = Color.White,
+                        color = colors.textPrimary,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Black
                     )
                 }
                 
-                Icon(Icons.Default.AutoAwesome, null, tint = ShinyGoldDeep.copy(alpha = 0.3f), modifier = Modifier.size(20.dp))
+                Icon(Icons.Default.AutoAwesome, null, tint = colors.goldPrimary.copy(alpha = 0.3f), modifier = Modifier.size(20.dp))
             }
             
             PitchVisualization(
@@ -549,7 +565,7 @@ fun PitchReportCard(
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 PitchStatBlock(modifier = Modifier.weight(1f), label = "PACE", value = paceFriendly, color = Color(0xFF3B82F6))
                 PitchStatBlock(modifier = Modifier.weight(1f), label = "SPIN", value = spinFriendly, color = Color(0xFF10B981))
-                PitchStatBlock(modifier = Modifier.weight(1f), label = "BAT", value = battingFriendly, color = ShinyGoldDeep)
+                PitchStatBlock(modifier = Modifier.weight(1f), label = "BAT", value = battingFriendly, color = colors.goldPrimary)
             }
         }
     }
@@ -557,14 +573,16 @@ fun PitchReportCard(
 
 @Composable
 private fun PitchStatBlock(modifier: Modifier, label: String, value: Float, color: Color) {
+    val colors = BouncerDesignSystem.colors
+
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(text = label, color = TextMuted, fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
+        Text(text = label, color = colors.textMuted, fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(4.dp)
                 .clip(CircleShape)
-                .background(Color.White.copy(alpha = 0.05f))
+                .background(colors.glassSurface)
         ) {
             Box(
                 modifier = Modifier
@@ -573,7 +591,7 @@ private fun PitchStatBlock(modifier: Modifier, label: String, value: Float, colo
                     .background(color, CircleShape)
             )
         }
-        Text(text = "${(value * 100).toInt()}%", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Black)
+        Text(text = "${(value * 100).toInt()}%", color = colors.textPrimary, fontSize = 13.sp, fontWeight = FontWeight.Black)
     }
 }
 
@@ -583,6 +601,7 @@ private fun PitchVisualization(
     spinFriendly: Float,
     battingFriendly: Float
 ) {
+    val colors = BouncerDesignSystem.colors
     val animatedPace by animateFloatAsState(targetValue = paceFriendly, animationSpec = tween(1500), label = "pace")
     val animatedSpin by animateFloatAsState(targetValue = spinFriendly, animationSpec = tween(1500), label = "spin")
     val animatedBat by animateFloatAsState(targetValue = battingFriendly, animationSpec = tween(1500), label = "bat")
@@ -608,7 +627,7 @@ private fun PitchVisualization(
         
         val angles = listOf(-90f, 30f, 150f)
         val values = listOf(animatedPace, animatedSpin, animatedBat)
-        val colors = listOf(Color(0xFF3B82F6), Color(0xFF10B981), ShinyGoldDeep)
+        val segmentColors = listOf(Color(0xFF3B82F6), Color(0xFF10B981), colors.goldPrimary)
         
         val path = Path()
         angles.forEachIndexed { index, angle ->
@@ -627,11 +646,11 @@ private fun PitchVisualization(
                 strokeWidth = 1.dp.toPx()
             )
             
-            drawCircle(color = colors[index], radius = 4.dp.toPx(), center = Offset(x, y))
+            drawCircle(color = segmentColors[index], radius = 4.dp.toPx(), center = Offset(x, y))
         }
         path.close()
         
-        drawPath(path = path, brush = Brush.radialGradient(listOf(ShinyGoldDeep.copy(alpha = 0.15f), Color.Transparent)), alpha = 0.5f)
-        drawPath(path = path, color = ShinyGoldDeep, style = Stroke(width = 2.dp.toPx()))
+        drawPath(path = path, brush = Brush.radialGradient(listOf(colors.goldPrimary.copy(alpha = 0.15f), Color.Transparent)), alpha = 0.5f)
+        drawPath(path = path, color = colors.goldPrimary, style = Stroke(width = 2.dp.toPx()))
     }
 }

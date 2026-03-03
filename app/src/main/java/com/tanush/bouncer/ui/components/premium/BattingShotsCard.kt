@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.ui.theme.*
 import kotlin.math.*
+import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 
 /**
  * Batting shots analysis card
@@ -58,6 +59,7 @@ fun BattingShotsCard(
     shotsData: BattingShotsData,
     modifier: Modifier = Modifier,
 ) {
+    val colors = BouncerDesignSystem.colors
     val animatedProgress = remember { Animatable(0f) }
 
     val infiniteTransition = rememberInfiniteTransition(label = "shots")
@@ -104,7 +106,7 @@ fun BattingShotsCard(
                             .clip(CircleShape)
                             .background(
                                 Brush.linearGradient(
-                                    colors = listOf(ShinyGoldMid, ShinyGoldDeep),
+                                    colors = listOf(colors.goldDark, colors.goldPrimary),
                                 ),
                             ),
                         contentAlignment = Alignment.Center,
@@ -122,7 +124,7 @@ fun BattingShotsCard(
                     Column {
                         Text(
                             text = "BATTING SHOTS",
-                            color = ShinyGoldLight,
+                            color = colors.goldLight,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.5.sp,
@@ -139,7 +141,7 @@ fun BattingShotsCard(
                 Column(horizontalAlignment = Alignment.End) {
                     Text(
                         text = "${shotsData.totalRuns}",
-                        color = ShinyGoldMid,
+                        color = colors.goldDark,
                         fontSize = 24.sp,
                         fontWeight = FontWeight.Black,
                     )
@@ -161,6 +163,9 @@ fun BattingShotsCard(
                     .clip(RoundedCornerShape(16.dp)),
                 contentAlignment = Alignment.Center,
             ) {
+                val statusWarningC = colors.statusWarning
+                val statusInfoC = colors.statusInfo
+                val goldDarkC = colors.goldDark
                 Canvas(modifier = Modifier.fillMaxSize()) {
                     val centerX = size.width / 2
                     val centerY = size.height / 2
@@ -185,9 +190,9 @@ fun BattingShotsCard(
                     shotsData.shots.forEach { shot ->
                         val intensity = (shot.runs.toFloat() / maxRuns).coerceIn(0.1f, 1f)
                         val color = when {
-                            shot.boundaries > 3 -> BoundarySix
-                            shot.boundaries > 0 -> BoundaryFour
-                            shot.percentage > 15 -> ChartBlue
+                            shot.boundaries > 3 -> statusWarningC
+                            shot.boundaries > 0 -> statusWarningC
+                            shot.percentage > 15 -> statusInfoC
                             else -> Color.White.copy(alpha = 0.3f)
                         }
 
@@ -254,8 +259,8 @@ fun BattingShotsCard(
                     drawCircle(
                         brush = Brush.radialGradient(
                             colors = listOf(
-                                ShinyGoldMid.copy(alpha = glowPulse),
-                                ShinyGoldMid.copy(alpha = 0f),
+                                goldDarkC.copy(alpha = glowPulse),
+                                goldDarkC.copy(alpha = 0f),
                             ),
                             center = Offset(centerX, centerY),
                             radius = 25.dp.toPx() * glowPulse,
@@ -265,7 +270,7 @@ fun BattingShotsCard(
                     )
 
                     drawCircle(
-                        color = ShinyGoldMid,
+                        color = goldDarkC,
                         radius = 8.dp.toPx(),
                         center = Offset(centerX, centerY),
                     )
@@ -306,10 +311,11 @@ private fun ShotBreakdownRow(
     maxRuns: Int,
     progress: Float,
 ) {
+    val colors = BouncerDesignSystem.colors
     val barColor = when {
-        shot.boundaries > 3 -> BoundarySix
-        shot.boundaries > 0 -> BoundaryFour
-        else -> ChartBlue
+        shot.boundaries > 3 -> colors.statusWarning
+        shot.boundaries > 0 -> colors.statusWarning
+        else -> colors.statusInfo
     }
 
     Row(
@@ -366,6 +372,7 @@ private fun ShotBreakdownRow(
 
 @Composable
 fun BattingShotsCardPreview() {
+    val colors = BouncerDesignSystem.colors
     BattingShotsCard(
         shotsData = BattingShotsData(
             batsmanName = "Virat Kohli",

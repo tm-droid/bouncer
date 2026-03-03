@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
+import io.sentry.Sentry
 
 // ==========================================
 // BOUNCER - List Optimizations
@@ -263,62 +264,77 @@ class LazyListPrefetcher(
     }
     
     fun onVisibleItemsChanged(newVisibleIndices: Set<Int>, itemCount: Int) {
-        val firstVisible = newVisibleIndices.minOrNull() ?: 0
+        try {
+            val firstVisible = newVisibleIndices.minOrNull() ?: 0
         
-        scrollDirection = when {
-            firstVisible > lastFirstVisible -> ScrollDirection.DOWN
-            firstVisible < lastFirstVisible -> ScrollDirection.UP
-            else -> ScrollDirection.IDLE
+            scrollDirection = when {
+                firstVisible > lastFirstVisible -> ScrollDirection.DOWN
+                firstVisible < lastFirstVisible -> ScrollDirection.UP
+                else -> ScrollDirection.IDLE
+            }
+        
+            lastFirstVisible = firstVisible
+            visibleIndices = newVisibleIndices
+            totalItems = itemCount
+        
+            updatePrefetchIndices()
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
         }
-        
-        lastFirstVisible = firstVisible
-        visibleIndices = newVisibleIndices
-        totalItems = itemCount
-        
-        updatePrefetchIndices()
     }
     
     private fun updatePrefetchIndices() {
-        val minVisible = visibleIndices.minOrNull() ?: 0
-        val maxVisible = visibleIndices.maxOrNull() ?: 0
+        try {
+            val minVisible = visibleIndices.minOrNull() ?: 0
+            val maxVisible = visibleIndices.maxOrNull() ?: 0
         
-        val indicesToPrefetch = mutableSetOf<Int>()
+            val indicesToPrefetch = mutableSetOf<Int>()
         
-        when (scrollDirection) {
-            ScrollDirection.DOWN -> {
-                // Prefetch items ahead (below visible area)
-                for (i in 1..prefetchCount) {
-                    val index = maxVisible + i
-                    if (index < totalItems) {
-                        indicesToPrefetch.add(index)
+            when (scrollDirection) {
+                ScrollDirection.DOWN -> {
+                    // Prefetch items ahead (below visible area)
+                    for (i in 1..prefetchCount) {
+                        val index = maxVisible + i
+                        if (index < totalItems) {
+                            indicesToPrefetch.add(index)
+                        }
+                    }
+                }
+                ScrollDirection.UP -> {
+                    // Prefetch items behind (above visible area)
+                    for (i in 1..prefetchCount) {
+                        val index = minVisible - i
+                        if (index >= 0) {
+                            indicesToPrefetch.add(index)
+                        }
+                    }
+                }
+                ScrollDirection.IDLE -> {
+                    // Prefetch in both directions
+                    for (i in 1..prefetchCount) {
+                        val indexBelow = maxVisible + i
+                        val indexAbove = minVisible - i
+                        if (indexBelow < totalItems) indicesToPrefetch.add(indexBelow)
+                        if (indexAbove >= 0) indicesToPrefetch.add(indexAbove)
                     }
                 }
             }
-            ScrollDirection.UP -> {
-                // Prefetch items behind (above visible area)
-                for (i in 1..prefetchCount) {
-                    val index = minVisible - i
-                    if (index >= 0) {
-                        indicesToPrefetch.add(index)
-                    }
-                }
-            }
-            ScrollDirection.IDLE -> {
-                // Prefetch in both directions
-                for (i in 1..prefetchCount) {
-                    val indexBelow = maxVisible + i
-                    val indexAbove = minVisible - i
-                    if (indexBelow < totalItems) indicesToPrefetch.add(indexBelow)
-                    if (indexAbove >= 0) indicesToPrefetch.add(indexAbove)
-                }
-            }
+        
+            prefetchIndices = indicesToPrefetch
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
         }
-        
-        prefetchIndices = indicesToPrefetch
     }
     
     fun shouldPrefetch(index: Int): Boolean {
-        return index in prefetchIndices
+        try {
+            return index in prefetchIndices
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     fun getScrollDirection(): ScrollDirection = scrollDirection
@@ -432,26 +448,41 @@ class VisibilityTracker {
     private val retentionWindow = 5 // Keep items visible for a short time after scrolling away
     
     fun updateVisibility(newVisibleIndices: Set<Int>) {
-        // Add newly visible indices to recently visible set
-        _recentlyVisibleIndices.addAll(_visibleIndices.value)
+        try {
+            // Add newly visible indices to recently visible set
+            _recentlyVisibleIndices.addAll(_visibleIndices.value)
         
-        // Remove indices that are too far from current visibility
-        val minVisible = newVisibleIndices.minOrNull() ?: 0
-        val maxVisible = newVisibleIndices.maxOrNull() ?: 0
+            // Remove indices that are too far from current visibility
+            val minVisible = newVisibleIndices.minOrNull() ?: 0
+            val maxVisible = newVisibleIndices.maxOrNull() ?: 0
         
-        _recentlyVisibleIndices.removeAll { index ->
-            index < minVisible - retentionWindow || index > maxVisible + retentionWindow
+            _recentlyVisibleIndices.removeAll { index ->
+                index < minVisible - retentionWindow || index > maxVisible + retentionWindow
+            }
+        
+            _visibleIndices.value = newVisibleIndices
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
         }
-        
-        _visibleIndices.value = newVisibleIndices
     }
     
     fun isVisible(index: Int): Boolean {
-        return index in _visibleIndices.value
+        try {
+            return index in _visibleIndices.value
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     fun isRecentlyVisible(index: Int): Boolean {
-        return index in _recentlyVisibleIndices
+        try {
+            return index in _recentlyVisibleIndices
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     fun getVisibleIndices(): Set<Int> = _visibleIndices.value
@@ -459,8 +490,13 @@ class VisibilityTracker {
     fun getRecentlyVisibleIndices(): Set<Int> = _recentlyVisibleIndices.toSet()
     
     fun clear() {
-        _visibleIndices.value = emptySet()
-        _recentlyVisibleIndices.clear()
+        try {
+            _visibleIndices.value = emptySet()
+            _recentlyVisibleIndices.clear()
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
 }
 
@@ -487,28 +523,43 @@ class RecycledItemState<T>(
      * Bind a new item to this state
      */
     fun bind(item: T) {
-        if (_currentItem != item) {
-            onRecycle?.invoke(_currentItem)
-            _currentItem = item
-            _bindCount++
-            onBind?.invoke(item)
+        try {
+            if (_currentItem != item) {
+                onRecycle?.invoke(_currentItem)
+                _currentItem = item
+                _bindCount++
+                onBind?.invoke(item)
+            }
+            _isActive = true
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
         }
-        _isActive = true
     }
     
     /**
      * Mark this state as inactive (when scrolled off-screen)
      */
     fun deactivate() {
-        _isActive = false
+        try {
+            _isActive = false
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     /**
      * Recycle this state for reuse
      */
     fun recycle() {
-        onRecycle?.invoke(_currentItem)
-        _isActive = false
+        try {
+            onRecycle?.invoke(_currentItem)
+            _isActive = false
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
 }
 
@@ -549,7 +600,12 @@ data class StableListItem<T>(
  * Convert list to stable list items
  */
 fun <T> List<T>.toStableItems(keyExtractor: (T) -> Any): List<StableListItem<T>> {
-    return map { StableListItem(keyExtractor(it), it) }
+    try {
+        return map { StableListItem(keyExtractor(it), it) }
+    } catch (e: Exception) {
+        Sentry.captureException(e)
+        throw e
+    }
 }
 
 /**
@@ -595,29 +651,39 @@ class ScrollPositionState {
     val velocity: Float get() = _velocity
     
     fun update(newPosition: ScrollPosition) {
-        val currentTime = System.currentTimeMillis()
-        val timeDelta = (currentTime - lastUpdateTime).coerceAtLeast(1)
+        try {
+            val currentTime = System.currentTimeMillis()
+            val timeDelta = (currentTime - lastUpdateTime).coerceAtLeast(1)
         
-        // Calculate scroll direction
-        _scrollDirection = when {
-            newPosition.firstVisibleIndex > previousIndex -> LazyListPrefetcher.ScrollDirection.DOWN
-            newPosition.firstVisibleIndex < previousIndex -> LazyListPrefetcher.ScrollDirection.UP
-            newPosition.firstVisibleOffset > previousOffset -> LazyListPrefetcher.ScrollDirection.DOWN
-            newPosition.firstVisibleOffset < previousOffset -> LazyListPrefetcher.ScrollDirection.UP
-            else -> LazyListPrefetcher.ScrollDirection.IDLE
+            // Calculate scroll direction
+            _scrollDirection = when {
+                newPosition.firstVisibleIndex > previousIndex -> LazyListPrefetcher.ScrollDirection.DOWN
+                newPosition.firstVisibleIndex < previousIndex -> LazyListPrefetcher.ScrollDirection.UP
+                newPosition.firstVisibleOffset > previousOffset -> LazyListPrefetcher.ScrollDirection.DOWN
+                newPosition.firstVisibleOffset < previousOffset -> LazyListPrefetcher.ScrollDirection.UP
+                else -> LazyListPrefetcher.ScrollDirection.IDLE
+            }
+        
+            // Calculate velocity (pixels per second)
+            val pixelDelta = kotlin.math.abs(newPosition.firstVisibleOffset - previousOffset)
+            _velocity = (pixelDelta.toFloat() / timeDelta) * 1000f
+        
+            previousIndex = newPosition.firstVisibleIndex
+            previousOffset = newPosition.firstVisibleOffset
+            lastUpdateTime = currentTime
+            _position = newPosition
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
         }
-        
-        // Calculate velocity (pixels per second)
-        val pixelDelta = kotlin.math.abs(newPosition.firstVisibleOffset - previousOffset)
-        _velocity = (pixelDelta.toFloat() / timeDelta) * 1000f
-        
-        previousIndex = newPosition.firstVisibleIndex
-        previousOffset = newPosition.firstVisibleOffset
-        lastUpdateTime = currentTime
-        _position = newPosition
     }
     
     fun isScrollingFast(threshold: Float = 1000f): Boolean {
-        return _velocity > threshold
+        try {
+            return _velocity > threshold
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
 }

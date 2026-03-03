@@ -1,37 +1,19 @@
 package com.tanush.bouncer.network
 
-import okhttp3.OkHttpClient
-import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
-import java.util.concurrent.TimeUnit
 
 object RetrofitClient {
     private const val BASE_URL_VERCEL = "https://api-iota-jade.vercel.app/"
     private const val BASE_URL_RAPID = "https://cricket-api-free-data.p.rapidapi.com/"
+    private const val BASE_URL_CRICBUZZ_RAPID = "https://cricbuzz-cricket.p.rapidapi.com/"
     // Local development API (Android emulator uses 10.0.2.2 to reach host localhost)
     private const val BASE_URL_LOCAL = "http://10.0.2.2:8000/"
-
-    private fun createOkHttpClient(): OkHttpClient {
-        val logging = HttpLoggingInterceptor().apply {
-            level = HttpLoggingInterceptor.Level.BASIC
-        }
-
-        return OkHttpClient.Builder()
-            .connectTimeout(15, TimeUnit.SECONDS)
-            .readTimeout(20, TimeUnit.SECONDS)
-            .writeTimeout(20, TimeUnit.SECONDS)
-            .retryOnConnectionFailure(true)
-            .addInterceptor(logging)
-            .build()
-    }
-
-    private val sharedClient by lazy { createOkHttpClient() }
 
     val vercelApi: VercelApi by lazy {
         Retrofit.Builder()
             .baseUrl(BASE_URL_VERCEL)
-            .client(sharedClient)
+            .client(HttpClientProvider.sharedClient)
             .addConverterFactory(GsonConverterFactory.create())
             .build()
             .create(VercelApi::class.java)
@@ -40,7 +22,7 @@ object RetrofitClient {
     val rapidApi: RapidApi by lazy {
         Retrofit.Builder()
             .baseUrl(BASE_URL_RAPID)
-            .client(sharedClient)
+            .client(HttpClientProvider.sharedClient)
             .addConverterFactory(GsonConverterFactory.create())
             .build()
             .create(RapidApi::class.java)
@@ -50,10 +32,20 @@ object RetrofitClient {
     val localApi: LocalApi by lazy {
         Retrofit.Builder()
             .baseUrl(BASE_URL_LOCAL)
-            .client(sharedClient)
+            .client(HttpClientProvider.sharedClient)
             .addConverterFactory(GsonConverterFactory.create())
             .build()
             .create(LocalApi::class.java)
+    }
+
+    // Cricbuzz News API via RapidAPI
+    val cricbuzzNewsApi: CricbuzzNewsApi by lazy {
+        Retrofit.Builder()
+            .baseUrl(BASE_URL_CRICBUZZ_RAPID)
+            .client(HttpClientProvider.sharedClient)
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+            .create(CricbuzzNewsApi::class.java)
     }
 }
 

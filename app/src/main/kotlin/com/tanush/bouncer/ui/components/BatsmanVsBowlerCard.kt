@@ -91,11 +91,12 @@ fun BatsmanVsBowlerCard(
     // Determine advantage
     val batsmanAdvantage = matchupInfo.strikeRate > 100f && matchupInfo.dismissals == 0
     val bowlerAdvantage = matchupInfo.strikeRate < 80f || matchupInfo.dismissals >= 2
+    val colors = BouncerDesignSystem.colors
     
     Card(
         modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = Color(0xFF0D1117)
+            containerColor = colors.backgroundBase
         ),
         shape = RoundedCornerShape(24.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 12.dp)
@@ -114,7 +115,7 @@ fun BatsmanVsBowlerCard(
                         drawLine(
                             brush = Brush.linearGradient(
                                 colors = listOf(
-                                    ShinyGoldMid.copy(alpha = 0.4f * glowAlpha),
+                                    GoldPrimary.copy(alpha = 0.4f * glowAlpha),
                                     Color.Transparent
                                 ),
                                 start = center,
@@ -149,13 +150,13 @@ fun BatsmanVsBowlerCard(
                         Icon(
                             imageVector = Icons.Filled.Gavel,
                             contentDescription = null,
-                            tint = ShinyGoldMid,
+                            tint = colors.goldPrimary,
                             modifier = Modifier.size(24.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = "Head to Head",
-                            color = Color.White,
+                            color = colors.textPrimary,
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -163,7 +164,7 @@ fun BatsmanVsBowlerCard(
                     
                     if (matchupInfo.isLiveMatchup) {
                         Surface(
-                            color = LiveBlue.copy(alpha = 0.2f),
+                            color = colors.statusInfo.copy(alpha = 0.2f),
                             shape = RoundedCornerShape(12.dp)
                         ) {
                             Row(
@@ -174,12 +175,12 @@ fun BatsmanVsBowlerCard(
                                     modifier = Modifier
                                         .size(8.dp)
                                         .clip(CircleShape)
-                                        .background(LiveBlue.copy(alpha = glowAlpha))
+                                        .background(colors.statusInfo.copy(alpha = glowAlpha))
                                 )
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Text(
                                     text = "LIVE",
-                                    color = LiveBlue,
+                                    color = colors.statusInfo,
                                     fontSize = 10.sp,
                                     fontWeight = FontWeight.Bold,
                                     letterSpacing = 1.sp
@@ -210,14 +211,14 @@ fun BatsmanVsBowlerCard(
                                     if (batsmanAdvantage) 
                                         Brush.radialGradient(
                                             colors = listOf(
-                                                SuccessGreen.copy(alpha = 0.3f),
+                                                colors.statusSuccess.copy(alpha = 0.3f),
                                                 Color.Transparent
                                             )
                                         ) 
                                     else 
                                         Brush.radialGradient(
                                             colors = listOf(
-                                                ChartBlue.copy(alpha = 0.3f),
+                                                colors.statusInfo.copy(alpha = 0.3f),
                                                 Color.Transparent
                                             )
                                         )
@@ -228,7 +229,7 @@ fun BatsmanVsBowlerCard(
                                 modifier = Modifier
                                     .size(64.dp)
                                     .clip(CircleShape)
-                                    .background(ChartBlue.copy(alpha = 0.3f)),
+                                    .background(colors.statusInfo.copy(alpha = 0.3f)),
                                 contentAlignment = Alignment.Center
                             ) {
                                 if (matchupInfo.batsmanImageUrl != null) {
@@ -250,7 +251,7 @@ fun BatsmanVsBowlerCard(
                         
                         Text(
                             text = matchupInfo.batsmanName.split(" ").lastOrNull() ?: matchupInfo.batsmanName,
-                            color = Color.White,
+                            color = colors.textPrimary,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold,
                             textAlign = TextAlign.Center,
@@ -258,7 +259,7 @@ fun BatsmanVsBowlerCard(
                         )
                         Text(
                             text = "BATSMAN",
-                            color = ChartBlue,
+                            color = colors.statusInfo,
                             fontSize = 9.sp,
                             letterSpacing = 1.sp
                         )
@@ -275,12 +276,12 @@ fun BatsmanVsBowlerCard(
                             modifier = Modifier
                                 .size(50.dp)
                                 .clip(CircleShape)
-                                .background(ShinyGoldMid.copy(alpha = 0.2f)),
+                                .background(colors.goldPrimary.copy(alpha = 0.2f)),
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
                                 text = "VS",
-                                color = ShinyGoldMid,
+                                color = colors.goldPrimary,
                                 fontSize = 16.sp,
                                 fontWeight = FontWeight.Black
                             )
@@ -300,14 +301,14 @@ fun BatsmanVsBowlerCard(
                                     if (bowlerAdvantage) 
                                         Brush.radialGradient(
                                             colors = listOf(
-                                                SuccessGreen.copy(alpha = 0.3f),
+                                                colors.statusSuccess.copy(alpha = 0.3f),
                                                 Color.Transparent
                                             )
                                         ) 
                                     else 
                                         Brush.radialGradient(
                                             colors = listOf(
-                                                WicketRed.copy(alpha = 0.3f),
+                                                colors.statusLive.copy(alpha = 0.3f),
                                                 Color.Transparent
                                             )
                                         )
@@ -318,7 +319,7 @@ fun BatsmanVsBowlerCard(
                                 modifier = Modifier
                                     .size(64.dp)
                                     .clip(CircleShape)
-                                    .background(WicketRed.copy(alpha = 0.3f)),
+                                    .background(colors.statusLive.copy(alpha = 0.3f)),
                                 contentAlignment = Alignment.Center
                             ) {
                                 if (matchupInfo.bowlerImageUrl != null) {
@@ -331,7 +332,7 @@ fun BatsmanVsBowlerCard(
                                     Icon(
                                         imageVector = Icons.Filled.SportsCricket,
                                         contentDescription = null,
-                                        tint = WicketRed,
+                                        tint = colors.statusLive,
                                         modifier = Modifier.size(32.dp)
                                     )
                                 }
@@ -342,7 +343,7 @@ fun BatsmanVsBowlerCard(
                         
                         Text(
                             text = matchupInfo.bowlerName.split(" ").lastOrNull() ?: matchupInfo.bowlerName,
-                            color = Color.White,
+                            color = colors.textPrimary,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold,
                             textAlign = TextAlign.Center,
@@ -350,7 +351,7 @@ fun BatsmanVsBowlerCard(
                         )
                         Text(
                             text = "BOWLER",
-                            color = WicketRed,
+                            color = colors.statusLive,
                             fontSize = 9.sp,
                             letterSpacing = 1.sp
                         )
@@ -361,7 +362,7 @@ fun BatsmanVsBowlerCard(
                 
                 // Career stats
                 Surface(
-                    color = Color.White.copy(alpha = 0.05f),
+                    color = colors.glassSurface,
                     shape = RoundedCornerShape(16.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
@@ -370,7 +371,7 @@ fun BatsmanVsBowlerCard(
                     ) {
                         Text(
                             text = "CAREER RECORD",
-                            color = Color.White.copy(alpha = 0.5f),
+                            color = colors.textMuted,
                             fontSize = 10.sp,
                             letterSpacing = 1.sp,
                             modifier = Modifier.fillMaxWidth(),
@@ -387,22 +388,22 @@ fun BatsmanVsBowlerCard(
                             MatchupStatColumn(
                                 label = "BALLS",
                                 value = "${matchupInfo.ballsFaced}",
-                                color = Color.White
+                                color = colors.textPrimary
                             )
                             MatchupStatColumn(
                                 label = "RUNS",
                                 value = "${matchupInfo.runsScored}",
-                                color = ChartBlue
+                                color = colors.statusInfo
                             )
                             MatchupStatColumn(
                                 label = "OUTS",
                                 value = "${matchupInfo.dismissals}",
-                                color = WicketRed
+                                color = colors.statusLive
                             )
                             MatchupStatColumn(
                                 label = "S/R",
                                 value = String.format("%.1f", matchupInfo.strikeRate),
-                                color = ShinyGoldMid
+                                color = colors.goldPrimary
                             )
                         }
                     }
@@ -418,12 +419,12 @@ fun BatsmanVsBowlerCard(
                     BoundaryBox(
                         label = "4s",
                         value = matchupInfo.fours,
-                        color = BoundaryFour
+                        color = colors.statusInfo
                     )
                     BoundaryBox(
                         label = "6s",
                         value = matchupInfo.sixes,
-                        color = BoundarySix
+                        color = colors.goldPrimary
                     )
                     BoundaryBox(
                         label = "Dots",
@@ -437,7 +438,7 @@ fun BatsmanVsBowlerCard(
                     Spacer(modifier = Modifier.height(16.dp))
                     
                     Surface(
-                        color = LiveBlue.copy(alpha = 0.1f),
+                        color = colors.statusInfo.copy(alpha = 0.1f),
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier.fillMaxWidth()
                     ) {
@@ -447,7 +448,7 @@ fun BatsmanVsBowlerCard(
                         ) {
                             Text(
                                 text = "THIS MATCH",
-                                color = LiveBlue,
+                                color = colors.statusInfo,
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold,
                                 letterSpacing = 1.sp
@@ -459,24 +460,24 @@ fun BatsmanVsBowlerCard(
                             ) {
                                 Text(
                                     text = "${matchupInfo.thisMatchRuns}",
-                                    color = Color.White,
+                                    color = colors.textPrimary,
                                     fontSize = 28.sp,
                                     fontWeight = FontWeight.Bold
                                 )
                                 Text(
                                     text = " runs off ",
-                                    color = Color.White.copy(alpha = 0.7f),
+                                    color = colors.textSecondary,
                                     fontSize = 14.sp
                                 )
                                 Text(
                                     text = "${matchupInfo.thisMatchBalls}",
-                                    color = Color.White,
+                                    color = colors.textPrimary,
                                     fontSize = 28.sp,
                                     fontWeight = FontWeight.Bold
                                 )
                                 Text(
                                     text = " balls",
-                                    color = Color.White.copy(alpha = 0.7f),
+                                    color = colors.textSecondary,
                                     fontSize = 14.sp
                                 )
                             }
@@ -489,9 +490,9 @@ fun BatsmanVsBowlerCard(
                     Spacer(modifier = Modifier.height(16.dp))
                     
                     val advantageColor = when {
-                        batsmanAdvantage -> SuccessGreen
-                        bowlerAdvantage -> WicketRed
-                        else -> ShinyGoldMid
+                        batsmanAdvantage -> colors.statusSuccess
+                        bowlerAdvantage -> colors.statusLive
+                        else -> colors.goldPrimary
                     }
                     
                     Surface(
@@ -522,6 +523,7 @@ private fun MatchupStatColumn(
     value: String,
     color: Color
 ) {
+    val colors = BouncerDesignSystem.colors
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
             text = value,
@@ -531,7 +533,7 @@ private fun MatchupStatColumn(
         )
         Text(
             text = label,
-            color = Color.White.copy(alpha = 0.5f),
+            color = colors.textMuted,
             fontSize = 9.sp,
             letterSpacing = 0.5.sp
         )

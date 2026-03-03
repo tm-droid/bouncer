@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.ui.theme.ChartBlue
 import com.tanush.bouncer.ui.theme.ShinyGoldMid
 import com.tanush.bouncer.ui.theme.SuccessGreen
+import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 
 /**
  * Partnership Breakdown Card
@@ -69,6 +70,7 @@ fun PartnershipBreakdownCard(
     partnerships: List<PartnershipEntry>,
     modifier: Modifier = Modifier,
 ) {
+    val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "partnership")
 
     val activeGlow by infiniteTransition.animateFloat(
@@ -117,7 +119,7 @@ fun PartnershipBreakdownCard(
                             .clip(RoundedCornerShape(12.dp))
                             .background(
                                 Brush.linearGradient(
-                                    colors = listOf(ChartBlue, SuccessGreen),
+                                    colors = listOf(colors.statusInfo, colors.statusSuccess),
                                 ),
                             ),
                         contentAlignment = Alignment.Center,
@@ -135,7 +137,7 @@ fun PartnershipBreakdownCard(
                     Column {
                         Text(
                             text = "PARTNERSHIPS",
-                            color = ShinyGoldMid,
+                            color = colors.goldDark,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.5.sp,
@@ -152,7 +154,7 @@ fun PartnershipBreakdownCard(
                 Column(horizontalAlignment = Alignment.End) {
                     Text(
                         text = "$totalRuns",
-                        color = ShinyGoldMid,
+                        color = colors.goldDark,
                         fontSize = 24.sp,
                         fontWeight = FontWeight.Bold,
                     )
@@ -189,7 +191,7 @@ fun PartnershipBreakdownCard(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(12.dp))
-                        .background(ShinyGoldMid.copy(alpha = 0.1f))
+                        .background(colors.goldDark.copy(alpha = 0.1f))
                         .padding(12.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
@@ -197,7 +199,7 @@ fun PartnershipBreakdownCard(
                     Column {
                         Text(
                             text = "BEST PARTNERSHIP",
-                            color = ShinyGoldMid,
+                            color = colors.goldDark,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.sp,
@@ -213,7 +215,7 @@ fun PartnershipBreakdownCard(
                     Column(horizontalAlignment = Alignment.End) {
                         Text(
                             text = "${best.totalRuns} (${best.totalBalls})",
-                            color = ShinyGoldMid,
+                            color = colors.goldDark,
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
                         )
@@ -237,6 +239,7 @@ private fun PartnershipRow(
     activeGlow: Float,
     index: Int,
 ) {
+    val colors = BouncerDesignSystem.colors
     val delayedProgress = ((progress - index * 0.08f) / 0.92f).coerceIn(0f, 1f)
     val barWidth = (partnership.totalRuns.toFloat() / maxRuns * delayedProgress)
 
@@ -268,7 +271,7 @@ private fun PartnershipRow(
                         .size(24.dp)
                         .clip(CircleShape)
                         .background(
-                            if (partnership.isActive) ShinyGoldMid else Color.White.copy(alpha = 0.1f),
+                            if (partnership.isActive) colors.goldDark else Color.White.copy(alpha = 0.1f),
                         ),
                     contentAlignment = Alignment.Center,
                 ) {
@@ -284,7 +287,7 @@ private fun PartnershipRow(
 
                 Text(
                     text = "${partnership.batter1Name.split(" ").last()} (${partnership.batter1Runs})",
-                    color = ChartBlue,
+                    color = colors.statusInfo,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Medium,
                 )
@@ -297,7 +300,7 @@ private fun PartnershipRow(
 
                 Text(
                     text = "${partnership.batter2Name.split(" ").last()} (${partnership.batter2Runs})",
-                    color = SuccessGreen,
+                    color = colors.statusSuccess,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Medium,
                 )
@@ -305,7 +308,7 @@ private fun PartnershipRow(
 
             Text(
                 text = "${partnership.totalRuns} (${partnership.totalBalls})",
-                color = if (partnership.isActive) ShinyGoldMid else Color.White,
+                color = if (partnership.isActive) colors.goldDark else Color.White,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
             )
@@ -330,7 +333,7 @@ private fun PartnershipRow(
                         .background(
                             Brush.horizontalGradient(
                                 colors = listOf(
-                                    ShinyGoldMid.copy(alpha = activeGlow * 0.3f),
+                                    colors.goldDark.copy(alpha = activeGlow * 0.3f),
                                     Color.Transparent,
                                 ),
                             ),
@@ -347,7 +350,7 @@ private fun PartnershipRow(
                         .clip(RoundedCornerShape(topStart = 6.dp, bottomStart = 6.dp))
                         .background(
                             Brush.horizontalGradient(
-                                colors = listOf(ChartBlue, ChartBlue.copy(alpha = 0.7f)),
+                                colors = listOf(colors.statusInfo, colors.statusInfo.copy(alpha = 0.7f)),
                             ),
                         ),
                 )
@@ -360,7 +363,7 @@ private fun PartnershipRow(
                         .clip(RoundedCornerShape(topEnd = 6.dp, bottomEnd = 6.dp))
                         .background(
                             Brush.horizontalGradient(
-                                colors = listOf(SuccessGreen.copy(alpha = 0.7f), SuccessGreen),
+                                colors = listOf(colors.statusSuccess.copy(alpha = 0.7f), colors.statusSuccess),
                             ),
                         ),
                 )

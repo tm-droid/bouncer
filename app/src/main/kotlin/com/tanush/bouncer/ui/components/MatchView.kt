@@ -41,6 +41,7 @@ fun GlassyMatchView(
     onClick: () -> Unit,
     aiCommentary: String? = null // iOS-inspired: Display latest AI fused commentary
 ) {
+    val colors = BouncerDesignSystem.colors
     val team1 = match.teams.firstOrNull()
     val team2 = match.teams.getOrNull(1)
 
@@ -68,7 +69,7 @@ fun GlassyMatchView(
                 ambientColor = Color.Black
             )
             .clip(RoundedCornerShape(20.dp))
-            .background(Color.White.copy(alpha = 0.08f))
+            .background(colors.glassBorderHighlight)
             .border(
                 0.5.dp,
                 Brush.linearGradient(
@@ -103,7 +104,7 @@ fun GlassyMatchView(
             ) {
                 Text(
                     text = match.matchTitle.uppercase(),
-                    color = ShinyGoldDeep.copy(alpha = 0.8f),
+                    color = colors.goldPrimary.copy(alpha = 0.8f),
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Black,
                     letterSpacing = 2.sp
@@ -134,7 +135,7 @@ fun GlassyMatchView(
                     )
                     Text(
                         text = "VS",
-                        color = TextTertiary,
+                        color = colors.textTertiary,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Black,
                         modifier = Modifier.padding(vertical = 4.dp)
@@ -164,12 +165,12 @@ fun GlassyMatchView(
                     Box(
                         modifier = Modifier
                             .size(6.dp)
-                            .background(ShinyGoldDeep.copy(alpha = 0.4f), CircleShape)
+                            .background(colors.goldPrimary.copy(alpha = 0.4f), CircleShape)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = match.venue.take(28),
-                        color = TextSecondary,
+                        color = colors.textSecondary,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Medium,
                         maxLines = 1
@@ -218,6 +219,7 @@ fun GlassyMatchView(
 
 @Composable
 fun TeamSleekInfo(team: CricketMatch.Team?, isRightAligned: Boolean = false, color: Color) {
+    val colors = BouncerDesignSystem.colors
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = if (isRightAligned) Arrangement.End else Arrangement.Start,
@@ -231,14 +233,14 @@ fun TeamSleekInfo(team: CricketMatch.Team?, isRightAligned: Boolean = false, col
         Column(horizontalAlignment = if (isRightAligned) Alignment.End else Alignment.Start) {
             Text(
                 text = team?.acronym ?: team?.name?.take(3)?.uppercase() ?: "---",
-                color = TextPrimary,
+                color = colors.textPrimary,
                 fontWeight = FontWeight.Black,
                 fontSize = 22.sp,
                 letterSpacing = (-1).sp
             )
             Text(
                 text = team?.score?.ifEmpty { "Y.T.B" } ?: "---",
-                color = if (team?.isBatting == true) ShinyGoldDeep else TextSecondary,
+                color = if (team?.isBatting == true) colors.goldPrimary else colors.textSecondary,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = (-0.2).sp
@@ -254,12 +256,13 @@ fun TeamSleekInfo(team: CricketMatch.Team?, isRightAligned: Boolean = false, col
 
 @Composable
 private fun LogoContainer(team: CricketMatch.Team?, color: Color) {
+    val colors = BouncerDesignSystem.colors
     val url = TeamLogoManager.getBestLogoUrl(team?.name, team?.logoUrl, 256, 256)
     Box(
         modifier = Modifier
             .size(52.dp)
             .clip(RoundedCornerShape(12.dp))
-            .background(Color.White.copy(alpha = 0.05f))
+            .background(colors.glassSurface)
             .border(
                 0.5.dp,
                 Brush.verticalGradient(

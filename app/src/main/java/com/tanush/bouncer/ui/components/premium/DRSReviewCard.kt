@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.models.DRSReviewData
 import com.tanush.bouncer.ui.theme.*
+import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 
 /**
  * DRS Review Card - "Elite" Dramatic UI (v2.0).
@@ -41,6 +42,7 @@ fun DRSReviewCard(
     review: DRSReviewData,
     modifier: Modifier = Modifier,
 ) {
+    val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "drs_elite")
     val neonPulse by infiniteTransition.animateFloat(
         initialValue = 0.4f,
@@ -114,7 +116,7 @@ fun DRSReviewCard(
             ) {
                 DrsStatusRow("PITCHING", "IN LINE", ChartCyan)
                 DrsStatusRow("IMPACT", "IN LINE", ChartCyan)
-                DrsStatusRow("WICKETS", "HITTING", ShinyGoldDeep)
+                DrsStatusRow("WICKETS", "HITTING", colors.goldPrimary)
             }
         }
 
@@ -122,16 +124,16 @@ fun DRSReviewCard(
         Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
                 text = if (review.isSuccessful) "OUT" else "NOT OUT",
-                color = ShinyGoldDeep,
+                color = colors.goldPrimary,
                 fontSize = 52.sp,
                 fontWeight = FontWeight.Black,
                 fontStyle = FontStyle.Italic,
                 letterSpacing = (-2).sp,
-                modifier = Modifier.shadow(20.dp, spotColor = ShinyGoldDeep.copy(alpha = 0.4f))
+                modifier = Modifier.shadow(20.dp, spotColor = colors.goldPrimary.copy(alpha = 0.4f))
             )
             Text(
                 "UMPIRE'S DECISION OVERTURNED",
-                color = TextSecondary,
+                color = colors.textSecondary,
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 2.sp
@@ -149,6 +151,7 @@ fun DRSReviewCard(
 
 @Composable
 private fun DrsStatusRow(label: String, value: String, color: Color) {
+    val colors = BouncerDesignSystem.colors
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(label, color = Color.White.copy(alpha = 0.6f), fontSize = 10.sp, fontWeight = FontWeight.Bold)
         Text(value, color = color, fontSize = 10.sp, fontWeight = FontWeight.Black)
@@ -157,6 +160,7 @@ private fun DrsStatusRow(label: String, value: String, color: Color) {
 
 @Composable
 private fun MetricGlassCard(label: String, value: String, icon: androidx.compose.ui.graphics.vector.ImageVector, modifier: Modifier) {
+    val colors = BouncerDesignSystem.colors
     Surface(
         modifier = modifier.height(100.dp),
         shape = RoundedCornerShape(16.dp),
@@ -165,10 +169,10 @@ private fun MetricGlassCard(label: String, value: String, icon: androidx.compose
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Box(modifier = Modifier.size(32.dp).background(Color.White.copy(alpha = 0.05f), CircleShape), contentAlignment = Alignment.Center) {
-                Icon(icon, null, tint = ShinyGoldDeep, modifier = Modifier.size(16.dp))
+                Icon(icon, null, tint = colors.goldPrimary, modifier = Modifier.size(16.dp))
             }
             Spacer(modifier = Modifier.weight(1f))
-            Text(label, color = TextSecondary, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+            Text(label, color = colors.textSecondary, fontSize = 9.sp, fontWeight = FontWeight.Bold)
             Text(value, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Black)
         }
     }

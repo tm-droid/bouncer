@@ -19,6 +19,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.ui.theme.*
+import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 
 /**
  * Death Overs Analysis Card
@@ -64,6 +65,7 @@ fun DeathOversAnalysisCard(
     deathRunRate: Double,
     modifier: Modifier = Modifier,
 ) {
+    val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "death")
 
     val warningPulse by infiniteTransition.animateFloat(
@@ -97,7 +99,7 @@ fun DeathOversAnalysisCard(
                 drawCircle(
                     brush = Brush.radialGradient(
                         colors = listOf(
-                            WicketRed.copy(alpha = 0.15f * warningPulse),
+                            colors.statusLive.copy(alpha = 0.15f * warningPulse),
                             Color.Transparent,
                         ),
                         center = Offset(size.width * 0.8f, size.height * 0.2f),
@@ -126,7 +128,7 @@ fun DeathOversAnalysisCard(
                                 .clip(RoundedCornerShape(12.dp))
                                 .background(
                                     Brush.linearGradient(
-                                        colors = listOf(WicketRed, WicketRed.copy(alpha = 0.6f)),
+                                        colors = listOf(colors.statusLive, colors.statusLive.copy(alpha = 0.6f)),
                                     ),
                                 ),
                             contentAlignment = Alignment.Center,
@@ -144,7 +146,7 @@ fun DeathOversAnalysisCard(
                         Column {
                             Text(
                                 text = "DEATH OVERS",
-                                color = WicketRed,
+                                color = colors.statusLive,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
                                 letterSpacing = 1.5.sp,
@@ -162,13 +164,13 @@ fun DeathOversAnalysisCard(
                     Column(horizontalAlignment = Alignment.End) {
                         Text(
                             text = "$totalDeathRuns/$totalDeathWickets",
-                            color = ShinyGoldMid,
+                            color = colors.goldDark,
                             fontSize = 24.sp,
                             fontWeight = FontWeight.Bold,
                         )
                         Text(
                             text = "RR: ${String.format("%.2f", deathRunRate)}",
-                            color = if (deathRunRate > 10) SuccessGreen else WicketRed,
+                            color = if (deathRunRate > 10) colors.statusSuccess else colors.statusLive,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Medium,
                         )
@@ -204,13 +206,13 @@ fun DeathOversAnalysisCard(
                     DeathStatItem(
                         value = deathOvers.sumOf { over -> over.balls.count { it.isBoundary } }.toString(),
                         label = "Fours",
-                        color = BoundaryFour,
+                        color = colors.statusWarning,
                     )
 
                     DeathStatItem(
                         value = deathOvers.sumOf { over -> over.balls.count { it.isSix } }.toString(),
                         label = "Sixes",
-                        color = BoundarySix,
+                        color = colors.statusWarning,
                     )
 
                     DeathStatItem(
@@ -222,7 +224,7 @@ fun DeathOversAnalysisCard(
                     DeathStatItem(
                         value = totalDeathWickets.toString(),
                         label = "Wickets",
-                        color = WicketRed,
+                        color = colors.statusLive,
                     )
                 }
             }
@@ -236,6 +238,7 @@ private fun DeathOverRow(
     progress: Float,
     index: Int,
 ) {
+    val colors = BouncerDesignSystem.colors
     val delayedProgress = ((progress - index * 0.15f) / 0.85f).coerceIn(0f, 1f)
 
     Row(
@@ -282,9 +285,9 @@ private fun DeathOverRow(
         Text(
             text = "${overData.totalRuns}/${overData.wickets}",
             color = when {
-                overData.wickets >= 2 -> WicketRed
-                overData.totalRuns >= 15 -> SuccessGreen
-                else -> ShinyGoldMid
+                overData.wickets >= 2 -> colors.statusLive
+                overData.totalRuns >= 15 -> colors.statusSuccess
+                else -> colors.goldDark
             },
             fontSize = 14.sp,
             fontWeight = FontWeight.Bold,
@@ -295,13 +298,14 @@ private fun DeathOverRow(
 
 @Composable
 private fun BallIndicator(ball: DeathOversBall) {
+    val colors = BouncerDesignSystem.colors
     val backgroundColor = when {
-        ball.isWicket -> WicketRed
-        ball.isSix -> BoundarySix
-        ball.isBoundary -> BoundaryFour
+        ball.isWicket -> colors.statusLive
+        ball.isSix -> colors.statusWarning
+        ball.isBoundary -> colors.statusWarning
         ball.isDot -> Color.Gray.copy(alpha = 0.4f)
-        ball.isWide || ball.isNoBall -> WarningYellow.copy(alpha = 0.6f)
-        else -> ChartBlue.copy(alpha = 0.5f)
+        ball.isWide || ball.isNoBall -> colors.statusWarning.copy(alpha = 0.6f)
+        else -> colors.statusInfo.copy(alpha = 0.5f)
     }
 
     val text = when {
@@ -336,6 +340,7 @@ private fun DeathStatItem(
     label: String,
     color: Color,
 ) {
+    val colors = BouncerDesignSystem.colors
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
             text = value,

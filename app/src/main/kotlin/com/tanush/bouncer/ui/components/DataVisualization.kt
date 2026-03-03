@@ -34,6 +34,7 @@ fun StatCard(
     trend: Float? = null,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val shimmer by rememberInfiniteTransition(label = "statShimmer").animateFloat(
         initialValue = 0.7f,
         targetValue = 1f,
@@ -46,12 +47,12 @@ fun StatCard(
     
     Box(
         modifier = modifier
-            .shadow(6.dp, RoundedCornerShape(16.dp), spotColor = ShinyGoldDeep.copy(alpha = 0.2f))
+            .shadow(6.dp, RoundedCornerShape(16.dp), spotColor = colors.goldPrimary.copy(alpha = 0.2f))
             .background(
                 Brush.linearGradient(
                     colors = listOf(
-                        CardDarkBlue,
-                        Color.White.copy(alpha = 0.05f)
+                        colors.surface1,
+                        colors.glassSurface
                     )
                 ),
                 RoundedCornerShape(16.dp)
@@ -61,7 +62,7 @@ fun StatCard(
         Column {
             Text(
                 text = label,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                color = colors.textSecondary,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Medium,
                 letterSpacing = 0.5.sp
@@ -73,7 +74,7 @@ fun StatCard(
             ) {
                 Text(
                     text = value,
-                    color = ShinyGoldDeep.copy(alpha = shimmer),
+                    color = colors.goldPrimary.copy(alpha = shimmer),
                     fontSize = 24.sp,
                     fontWeight = FontWeight.ExtraBold,
                     letterSpacing = 0.5.sp
@@ -88,7 +89,8 @@ fun StatCard(
 
 @Composable
 private fun TrendIndicator(trend: Float) {
-    val color = if (trend > 0) SuccessGreen else ErrorRed
+    val colors = BouncerDesignSystem.colors
+    val color = if (trend > 0) colors.statusSuccess else colors.statusLive
     val symbol = if (trend > 0) "↑" else "↓"
     
     Text(
@@ -106,6 +108,7 @@ fun ProgressBar(
     label: String? = null,
     showPercentage: Boolean = true
 ) {
+    val colors = BouncerDesignSystem.colors
     val animatedProgress by animateFloatAsState(
         targetValue = progress.coerceIn(0f, 1f),
         animationSpec = spring(
@@ -123,14 +126,14 @@ fun ProgressBar(
             ) {
                 Text(
                     text = label,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
+                    color = colors.textSecondary,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Medium
                 )
                 if (showPercentage) {
                     Text(
                         text = "${(animatedProgress * 100).toInt()}%",
-                        color = ShinyGoldDeep,
+                        color = colors.goldPrimary,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -143,7 +146,7 @@ fun ProgressBar(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(8.dp)
-                .background(Color.Gray.copy(alpha = 0.2f), RoundedCornerShape(4.dp))
+                .background(colors.glassBorder, RoundedCornerShape(4.dp))
         ) {
             Box(
                 modifier = Modifier
@@ -152,9 +155,9 @@ fun ProgressBar(
                     .background(
                         Brush.horizontalGradient(
                             colors = listOf(
-                                ShinyGoldLight,
-                                ShinyGoldMid,
-                                ShinyGoldDeep
+                                colors.goldLight,
+                                colors.goldPrimary,
+                                colors.goldDark
                             )
                         ),
                         RoundedCornerShape(4.dp)
@@ -171,6 +174,7 @@ fun CircularProgressIndicator(
     label: String? = null,
     size: androidx.compose.ui.unit.Dp = 100.dp
 ) {
+    val colors = BouncerDesignSystem.colors
     val animatedProgress by animateFloatAsState(
         targetValue = progress.coerceIn(0f, 1f),
         animationSpec = spring(
@@ -192,7 +196,7 @@ fun CircularProgressIndicator(
             
             // Background circle
             drawCircle(
-                color = Color.Gray.copy(alpha = 0.2f),
+                color = colors.glassBorder,
                 radius = radius,
                 center = Offset(centerX, centerY),
                 style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
@@ -203,10 +207,10 @@ fun CircularProgressIndicator(
             drawArc(
                 brush = Brush.sweepGradient(
                     colors = listOf(
-                        ShinyGoldLight,
-                        ShinyGoldMid,
-                        ShinyGoldDeep,
-                        ShinyGoldLight
+                        colors.goldLight,
+                        colors.goldPrimary,
+                        colors.goldDark,
+                        colors.goldLight
                     )
                 ),
                 startAngle = -90f,
@@ -221,14 +225,14 @@ fun CircularProgressIndicator(
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
                 text = "${(animatedProgress * 100).toInt()}%",
-                color = ShinyGoldDeep,
+                color = colors.goldPrimary,
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Black
             )
             label?.let {
                 Text(
                     text = it,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                    color = colors.textTertiary,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Medium
                 )
@@ -243,6 +247,7 @@ fun BarChart(
     modifier: Modifier = Modifier,
     maxValue: Float? = null
 ) {
+    val colors = BouncerDesignSystem.colors
     val max = maxValue ?: data.maxOfOrNull { it.second } ?: 1f
     
     Row(
@@ -273,9 +278,9 @@ fun BarChart(
                         .background(
                             Brush.verticalGradient(
                                 colors = listOf(
-                                    ShinyGoldLight,
-                                    ShinyGoldMid,
-                                    ShinyGoldDeep
+                                    colors.goldLight,
+                                    colors.goldPrimary,
+                                    colors.goldDark
                                 )
                             ),
                             RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp)
@@ -284,7 +289,7 @@ fun BarChart(
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(
                     text = label,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                    color = colors.textSecondary,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Medium,
                     maxLines = 1
@@ -326,7 +331,7 @@ fun RadarChart(
             
             drawPath(
                 path = webPath,
-                color = Color.Gray.copy(alpha = 0.2f),
+                color = GlassBorder,
                 style = Stroke(width = 1.dp.toPx())
             )
         }
@@ -351,8 +356,8 @@ fun RadarChart(
             path = dataPath,
             brush = Brush.radialGradient(
                 colors = listOf(
-                    ShinyGoldLight.copy(alpha = 0.4f),
-                    ShinyGoldDeep.copy(alpha = 0.2f)
+                    GoldLight.copy(alpha = 0.4f),
+                    GoldPrimary.copy(alpha = 0.2f)
                 ),
                 center = Offset(centerX, centerY),
                 radius = radius
@@ -361,7 +366,7 @@ fun RadarChart(
         
         drawPath(
             path = dataPath,
-            color = ShinyGoldDeep,
+            color = GoldPrimary,
             style = Stroke(width = 2.dp.toPx())
         )
     }
@@ -371,7 +376,7 @@ fun RadarChart(
 fun MiniSparkline(
     data: List<Float>,
     modifier: Modifier = Modifier,
-    color: Color = ShinyGoldDeep
+    color: Color = GoldPrimary
 ) {
     Canvas(modifier = modifier
         .fillMaxWidth()

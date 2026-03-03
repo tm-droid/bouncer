@@ -42,12 +42,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.ui.theme.ChartBlue
-import com.tanush.bouncer.ui.theme.ShinyGoldDeep
-import com.tanush.bouncer.ui.theme.ShinyGoldLight
-import com.tanush.bouncer.ui.theme.ShinyGoldMid
 import com.tanush.bouncer.ui.theme.SuccessGreen
 import com.tanush.bouncer.ui.theme.WicketRed
 import kotlin.math.*
+import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 
 /**
  * Swing and seam movement analysis card
@@ -81,6 +79,7 @@ fun SwingSeamAnalysisCard(
     averageSeam: Float,
     modifier: Modifier = Modifier,
 ) {
+    val colors = BouncerDesignSystem.colors
     val animatedProgress = remember { Animatable(0f) }
 
     LaunchedEffect(movementData) {
@@ -118,7 +117,7 @@ fun SwingSeamAnalysisCard(
                             .clip(CircleShape)
                             .background(
                                 Brush.linearGradient(
-                                    colors = listOf(ShinyGoldMid, ShinyGoldDeep),
+                                    colors = listOf(colors.goldDark, colors.goldPrimary),
                                 ),
                             ),
                         contentAlignment = Alignment.Center,
@@ -136,7 +135,7 @@ fun SwingSeamAnalysisCard(
                     Column {
                         Text(
                             text = "SWING & SEAM",
-                            color = ShinyGoldLight,
+                            color = colors.goldLight,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.5.sp,
@@ -154,7 +153,7 @@ fun SwingSeamAnalysisCard(
                 Column(horizontalAlignment = Alignment.End) {
                     Text(
                         text = "${movementData.size}",
-                        color = ShinyGoldMid,
+                        color = colors.goldDark,
                         fontSize = 24.sp,
                         fontWeight = FontWeight.Bold,
                     )
@@ -167,6 +166,11 @@ fun SwingSeamAnalysisCard(
             }
 
             Spacer(modifier = Modifier.height(20.dp))
+
+            // Capture color for Canvas scope
+            val goldDark = colors.goldDark
+            val statusInfoColor = colors.statusInfo
+            val statusLiveColor = colors.statusLive
 
             // Movement visualization
             Box(
@@ -196,14 +200,14 @@ fun SwingSeamAnalysisCard(
 
                     // Draw zone lines
                     drawLine(
-                        color = ChartBlue.copy(alpha = 0.3f),
+                        color = statusInfoColor.copy(alpha = 0.3f),
                         start = Offset(0f, topZone),
                         end = Offset(width, topZone),
                         strokeWidth = 1f,
                         pathEffect = PathEffect.dashPathEffect(floatArrayOf(3f, 3f)),
                     )
                     drawLine(
-                        color = WicketRed.copy(alpha = 0.3f),
+                        color = statusLiveColor.copy(alpha = 0.3f),
                         start = Offset(0f, bottomZone),
                         end = Offset(width, bottomZone),
                         strokeWidth = 1f,
@@ -230,9 +234,9 @@ fun SwingSeamAnalysisCard(
 
                             // Draw ball point
                             val pointColor = when {
-                                ball.swingDegree < -0.5f -> ChartBlue // Inswing
-                                ball.swingDegree > 0.5f -> WicketRed // Outswing
-                                else -> SuccessGreen // Straight
+                                ball.swingDegree < -0.5f -> statusInfoColor // Inswing
+                                ball.swingDegree > 0.5f -> statusLiveColor // Outswing
+                                else -> colors.statusSuccess // Straight
                             }
 
                             drawCircle(
@@ -245,7 +249,7 @@ fun SwingSeamAnalysisCard(
                         // Draw connecting line
                         drawPath(
                             path = path,
-                            color = ShinyGoldMid.copy(alpha = 0.5f),
+                            color = goldDark.copy(alpha = 0.5f),
                             style = Stroke(width = 2f, cap = StrokeCap.Round),
                         )
                     }
@@ -258,9 +262,9 @@ fun SwingSeamAnalysisCard(
                         .padding(start = 8.dp, top = 12.dp, bottom = 12.dp),
                     verticalArrangement = Arrangement.SpaceBetween,
                 ) {
-                    Text("Away", color = ChartBlue.copy(alpha = 0.7f), fontSize = 9.sp)
+                    Text("Away", color = colors.statusInfo.copy(alpha = 0.7f), fontSize = 9.sp)
                     Text("Straight", color = Color.Gray, fontSize = 9.sp)
-                    Text("Into", color = WicketRed.copy(alpha = 0.7f), fontSize = 9.sp)
+                    Text("Into", color = colors.statusLive.copy(alpha = 0.7f), fontSize = 9.sp)
                 }
             }
 
@@ -274,7 +278,7 @@ fun SwingSeamAnalysisCard(
                 MovementStatColumn(
                     value = "$outswingCount",
                     label = "Outswing",
-                    color = ChartBlue,
+                    color = colors.statusInfo,
                 )
 
                 Box(
@@ -287,7 +291,7 @@ fun SwingSeamAnalysisCard(
                 MovementStatColumn(
                     value = "$straightCount",
                     label = "Straight",
-                    color = SuccessGreen,
+                    color = colors.statusSuccess,
                 )
 
                 Box(
@@ -300,7 +304,7 @@ fun SwingSeamAnalysisCard(
                 MovementStatColumn(
                     value = "$inswingCount",
                     label = "Inswing",
-                    color = WicketRed,
+                    color = colors.statusLive,
                 )
             }
 
@@ -349,7 +353,7 @@ fun SwingSeamAnalysisCard(
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
                                 text = if (averageSwing < 0) "into" else "away",
-                                color = if (averageSwing < 0) WicketRed else ChartBlue,
+                                color = if (averageSwing < 0) colors.statusLive else colors.statusInfo,
                                 fontSize = 12.sp,
                             )
                         }
@@ -402,19 +406,19 @@ fun SwingSeamAnalysisCard(
                                 modifier = Modifier
                                     .fillMaxHeight()
                                     .weight((outswingCount.toFloat() / total * animatedProgress.value).coerceAtLeast(0.01f))
-                                    .background(ChartBlue),
+                                    .background(colors.statusInfo),
                             )
                             Box(
                                 modifier = Modifier
                                     .fillMaxHeight()
                                     .weight((straightCount.toFloat() / total * animatedProgress.value).coerceAtLeast(0.01f))
-                                    .background(SuccessGreen),
+                                    .background(colors.statusSuccess),
                             )
                             Box(
                                 modifier = Modifier
                                     .fillMaxHeight()
                                     .weight((inswingCount.toFloat() / total * animatedProgress.value).coerceAtLeast(0.01f))
-                                    .background(WicketRed),
+                                    .background(colors.statusLive),
                             )
                         }
                     }
@@ -430,6 +434,7 @@ private fun MovementStatColumn(
     label: String,
     color: Color,
 ) {
+    val colors = BouncerDesignSystem.colors
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
@@ -460,6 +465,7 @@ private fun MovementStatColumn(
 
 @Composable
 fun SwingSeamAnalysisCardPreview() {
+    val colors = BouncerDesignSystem.colors
     val data = listOf(
         BallMovementData(1, 1.2f, 2.1f, 142f, "Dot"),
         BallMovementData(2, -0.8f, 1.5f, 138f, "Single"),

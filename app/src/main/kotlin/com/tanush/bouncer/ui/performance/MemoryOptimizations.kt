@@ -16,6 +16,7 @@ import java.lang.ref.WeakReference
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
+import io.sentry.Sentry
 
 // ==========================================
 // BOUNCER - Memory Optimizations
@@ -56,29 +57,34 @@ object BitmapPool {
         val key = BitmapKey(width, height, config)
         
         return mutex.withLock {
-            val candidates = pool[key]
+            try {
+                val candidates = pool[key]
             
-            // Try to find a reusable bitmap
-            candidates?.let { list ->
-                val iterator = list.iterator()
-                while (iterator.hasNext()) {
-                    val ref = iterator.next()
-                    val bitmap = ref.get()
-                    if (bitmap != null && !bitmap.isRecycled) {
-                        iterator.remove()
-                        reuseCount.incrementAndGet()
-                        // Clear the bitmap for reuse
-                        bitmap.eraseColor(0)
-                        return@withLock bitmap
-                    } else {
-                        iterator.remove() // Remove null/recycled references
+                // Try to find a reusable bitmap
+                candidates?.let { list ->
+                    val iterator = list.iterator()
+                    while (iterator.hasNext()) {
+                        val ref = iterator.next()
+                        val bitmap = ref.get()
+                        if (bitmap != null && !bitmap.isRecycled) {
+                            iterator.remove()
+                            reuseCount.incrementAndGet()
+                            // Clear the bitmap for reuse
+                            bitmap.eraseColor(0)
+                            return@withLock bitmap
+                        } else {
+                            iterator.remove() // Remove null/recycled references
+                        }
                     }
                 }
-            }
             
-            // No reusable bitmap found, create new one
-            allocCount.incrementAndGet()
-            Bitmap.createBitmap(width, height, config)
+                // No reusable bitmap found, create new one
+                allocCount.incrementAndGet()
+                Bitmap.createBitmap(width, height, config)
+            } catch (e: Exception) {
+                Sentry.captureException(e)
+                throw e
+            }
         }
     }
     
@@ -86,21 +92,26 @@ object BitmapPool {
      * Return a bitmap to the pool for reuse
      */
     suspend fun release(bitmap: Bitmap) {
-        if (bitmap.isRecycled) return
+        try {
+            if (bitmap.isRecycled) return
         
-        val key = BitmapKey(bitmap.width, bitmap.height, bitmap.config ?: Bitmap.Config.ARGB_8888)
+            val key = BitmapKey(bitmap.width, bitmap.height, bitmap.config ?: Bitmap.Config.ARGB_8888)
         
-        mutex.withLock {
-            val list = pool.getOrPut(key) { mutableListOf() }
+            mutex.withLock {
+                val list = pool.getOrPut(key) { mutableListOf() }
             
-            // Limit pool size per key
-            if (list.size < maxPoolSize / pool.size.coerceAtLeast(1)) {
-                list.add(SoftReference(bitmap))
-                recycleCount.incrementAndGet()
-            } else {
-                // Pool is full, let GC handle it
-                bitmap.recycle()
+                // Limit pool size per key
+                if (list.size < maxPoolSize / pool.size.coerceAtLeast(1)) {
+                    list.add(SoftReference(bitmap))
+                    recycleCount.incrementAndGet()
+                } else {
+                    // Pool is full, let GC handle it
+                    bitmap.recycle()
+                }
             }
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
         }
     }
     
@@ -108,13 +119,18 @@ object BitmapPool {
      * Clear the entire pool
      */
     suspend fun clear() {
-        mutex.withLock {
-            pool.values.forEach { list ->
-                list.forEach { ref ->
-                    ref.get()?.recycle()
+        try {
+            mutex.withLock {
+                pool.values.forEach { list ->
+                    list.forEach { ref ->
+                        ref.get()?.recycle()
+                    }
                 }
+                pool.clear()
             }
-            pool.clear()
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
         }
     }
     
@@ -122,16 +138,21 @@ object BitmapPool {
      * Trim pool to reduce memory usage
      */
     suspend fun trim(fraction: Float = 0.5f) {
-        mutex.withLock {
-            pool.values.forEach { list ->
-                val removeCount = (list.size * fraction).toInt()
-                repeat(removeCount) {
-                    if (list.isNotEmpty()) {
-                        val ref = list.removeAt(0)
-                        ref.get()?.recycle()
+        try {
+            mutex.withLock {
+                pool.values.forEach { list ->
+                    val removeCount = (list.size * fraction).toInt()
+                    repeat(removeCount) {
+                        if (list.isNotEmpty()) {
+                            val ref = list.removeAt(0)
+                            ref.get()?.recycle()
+                        }
                     }
                 }
             }
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
         }
     }
     
@@ -139,19 +160,24 @@ object BitmapPool {
      * Get pool statistics
      */
     fun getStats(): PoolStats {
-        val totalPooled = pool.values.sumOf { list ->
-            list.count { it.get() != null && !it.get()!!.isRecycled }
-        }
+        try {
+            val totalPooled = pool.values.sumOf { list ->
+                list.count { it.get() != null && !it.get()!!.isRecycled }
+            }
         
-        return PoolStats(
-            allocations = allocCount.get(),
-            reuses = reuseCount.get(),
-            recycles = recycleCount.get(),
-            currentPoolSize = totalPooled,
-            reuseRate = if (allocCount.get() > 0) {
-                reuseCount.get().toFloat() / (allocCount.get() + reuseCount.get())
-            } else 0f
-        )
+            return PoolStats(
+                allocations = allocCount.get(),
+                reuses = reuseCount.get(),
+                recycles = recycleCount.get(),
+                currentPoolSize = totalPooled,
+                reuseRate = if (allocCount.get() > 0) {
+                    reuseCount.get().toFloat() / (allocCount.get() + reuseCount.get())
+                } else 0f
+            )
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     data class PoolStats(
@@ -183,67 +209,102 @@ class DisposableEffectManager {
      * Register a disposable resource
      */
     fun register(key: String, resource: DisposableResource) {
-        // Dispose existing resource with same key
-        disposables[key]?.dispose()
-        disposables[key] = resource
+        try {
+            // Dispose existing resource with same key
+            disposables[key]?.dispose()
+            disposables[key] = resource
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     /**
      * Register with a custom dispose action
      */
     fun register(key: String, onDispose: () -> Unit): DisposableResource {
-        val resource = object : DisposableResource {
-            private var disposed = false
+        try {
+            val resource = object : DisposableResource {
+                private var disposed = false
             
-            override fun dispose() {
-                if (!disposed) {
-                    disposed = true
-                    onDispose()
+                override fun dispose() {
+                    if (!disposed) {
+                        disposed = true
+                        onDispose()
+                    }
                 }
-            }
             
-            override val isDisposed: Boolean get() = disposed
-        }
+                override val isDisposed: Boolean get() = disposed
+            }
         
-        register(key, resource)
-        return resource
+            register(key, resource)
+            return resource
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     /**
      * Dispose a specific resource
      */
     fun dispose(key: String) {
-        disposables.remove(key)?.dispose()
+        try {
+            disposables.remove(key)?.dispose()
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     /**
      * Dispose all resources
      */
     fun disposeAll() {
-        disposables.values.forEach { it.dispose() }
-        disposables.clear()
+        try {
+            disposables.values.forEach { it.dispose() }
+            disposables.clear()
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     /**
      * Get count of active disposables
      */
     fun activeCount(): Int {
-        return disposables.count { !it.value.isDisposed }
+        try {
+            return disposables.count { !it.value.isDisposed }
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     /**
      * Cleanup disposed resources
      */
     fun cleanup() {
-        disposables.entries.removeIf { it.value.isDisposed }
+        try {
+            disposables.entries.removeIf { it.value.isDisposed }
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     /**
      * Shutdown manager
      */
     fun shutdown() {
-        disposeAll()
-        scope.cancel()
+        try {
+            disposeAll()
+            scope.cancel()
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
 }
 
@@ -294,10 +355,15 @@ class FlowDebouncer(
     ): Flow<T> = flow {
         var lastEmissionTime = 0L
         source.collect { value ->
-            val currentTime = System.currentTimeMillis()
-            if (currentTime - lastEmissionTime >= windowMs) {
-                lastEmissionTime = currentTime
-                emit(value)
+            try {
+                val currentTime = System.currentTimeMillis()
+                if (currentTime - lastEmissionTime >= windowMs) {
+                    lastEmissionTime = currentTime
+                    emit(value)
+                }
+            } catch (e: Exception) {
+                Sentry.captureException(e)
+                throw e
             }
         }
     }
@@ -314,11 +380,16 @@ class FlowDebouncer(
         val mutex = Mutex()
         
         launch {
-            source.collect { value ->
-                mutex.withLock {
-                    latestValue = value
-                    hasValue = true
+            try {
+                source.collect { value ->
+                    mutex.withLock {
+                        latestValue = value
+                        hasValue = true
+                    }
                 }
+            } catch (e: Exception) {
+                Sentry.captureException(e)
+                throw e
             }
         }
         
@@ -346,13 +417,18 @@ class FlowDebouncer(
         var lastEmitTime = System.currentTimeMillis()
         
         source.collect { value ->
-            batch.add(value)
-            val currentTime = System.currentTimeMillis()
+            try {
+                batch.add(value)
+                val currentTime = System.currentTimeMillis()
             
-            if (batch.size >= batchSize || currentTime - lastEmitTime >= timeoutMs) {
-                emit(batch.toList())
-                batch.clear()
-                lastEmitTime = currentTime
+                if (batch.size >= batchSize || currentTime - lastEmitTime >= timeoutMs) {
+                    emit(batch.toList())
+                    batch.clear()
+                    lastEmitTime = currentTime
+                }
+            } catch (e: Exception) {
+                Sentry.captureException(e)
+                throw e
             }
         }
         
@@ -363,7 +439,12 @@ class FlowDebouncer(
     }
     
     fun cancel() {
-        scope.cancel()
+        try {
+            scope.cancel()
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
 }
 
@@ -459,52 +540,77 @@ class WeakReferenceCache<K, V> {
      * Get value from cache
      */
     fun get(key: K): V? {
-        val ref = cache[key] ?: return null
-        val value = ref.get()
+        try {
+            val ref = cache[key] ?: return null
+            val value = ref.get()
         
-        if (value == null) {
-            // Reference was collected, clean up
-            cache.remove(key)
-            creationTime.remove(key)
+            if (value == null) {
+                // Reference was collected, clean up
+                cache.remove(key)
+                creationTime.remove(key)
+            }
+        
+            return value
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
         }
-        
-        return value
     }
     
     /**
      * Put value into cache
      */
     fun put(key: K, value: V) {
-        cache[key] = WeakReference(value)
-        creationTime[key] = System.currentTimeMillis()
+        try {
+            cache[key] = WeakReference(value)
+            creationTime[key] = System.currentTimeMillis()
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     /**
      * Get or create value
      */
     fun getOrPut(key: K, defaultValue: () -> V): V {
-        val existing = get(key)
-        if (existing != null) return existing
+        try {
+            val existing = get(key)
+            if (existing != null) return existing
         
-        val newValue = defaultValue()
-        put(key, newValue)
-        return newValue
+            val newValue = defaultValue()
+            put(key, newValue)
+            return newValue
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     /**
      * Remove specific key
      */
     fun remove(key: K) {
-        cache.remove(key)
-        creationTime.remove(key)
+        try {
+            cache.remove(key)
+            creationTime.remove(key)
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     /**
      * Clear all entries
      */
     fun clear() {
-        cache.clear()
-        creationTime.clear()
+        try {
+            cache.clear()
+            creationTime.clear()
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     /**
@@ -516,20 +622,30 @@ class WeakReferenceCache<K, V> {
      * Get count of valid (non-collected) entries
      */
     fun validCount(): Int {
-        return cache.count { it.value.get() != null }
+        try {
+            return cache.count { it.value.get() != null }
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     /**
      * Cleanup collected references
      */
     fun cleanup() {
-        val keysToRemove = cache.entries
-            .filter { it.value.get() == null }
-            .map { it.key }
+        try {
+            val keysToRemove = cache.entries
+                .filter { it.value.get() == null }
+                .map { it.key }
         
-        keysToRemove.forEach { key ->
-            cache.remove(key)
-            creationTime.remove(key)
+            keysToRemove.forEach { key ->
+                cache.remove(key)
+                creationTime.remove(key)
+            }
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
         }
     }
     
@@ -537,14 +653,19 @@ class WeakReferenceCache<K, V> {
      * Remove entries older than specified age
      */
     fun removeOlderThan(maxAgeMs: Long) {
-        val now = System.currentTimeMillis()
-        val keysToRemove = creationTime.entries
-            .filter { now - it.value > maxAgeMs }
-            .map { it.key }
+        try {
+            val now = System.currentTimeMillis()
+            val keysToRemove = creationTime.entries
+                .filter { now - it.value > maxAgeMs }
+                .map { it.key }
         
-        keysToRemove.forEach { key ->
-            cache.remove(key)
-            creationTime.remove(key)
+            keysToRemove.forEach { key ->
+                cache.remove(key)
+                creationTime.remove(key)
+            }
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
         }
     }
 }
@@ -560,35 +681,60 @@ class SoftReferenceCache<K, V> {
     private val cache = ConcurrentHashMap<K, SoftReference<V>>()
     
     fun get(key: K): V? {
-        val ref = cache[key] ?: return null
-        val value = ref.get()
+        try {
+            val ref = cache[key] ?: return null
+            val value = ref.get()
         
-        if (value == null) {
-            cache.remove(key)
+            if (value == null) {
+                cache.remove(key)
+            }
+        
+            return value
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
         }
-        
-        return value
     }
     
     fun put(key: K, value: V) {
-        cache[key] = SoftReference(value)
+        try {
+            cache[key] = SoftReference(value)
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     fun getOrPut(key: K, defaultValue: () -> V): V {
-        val existing = get(key)
-        if (existing != null) return existing
+        try {
+            val existing = get(key)
+            if (existing != null) return existing
         
-        val newValue = defaultValue()
-        put(key, newValue)
-        return newValue
+            val newValue = defaultValue()
+            put(key, newValue)
+            return newValue
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     fun remove(key: K) {
-        cache.remove(key)
+        try {
+            cache.remove(key)
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     fun clear() {
-        cache.clear()
+        try {
+            cache.clear()
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     fun size(): Int = cache.size
@@ -596,10 +742,15 @@ class SoftReferenceCache<K, V> {
     fun validCount(): Int = cache.count { it.value.get() != null }
     
     fun cleanup() {
-        val keysToRemove = cache.entries
-            .filter { it.value.get() == null }
-            .map { it.key }
-        keysToRemove.forEach { cache.remove(it) }
+        try {
+            val keysToRemove = cache.entries
+                .filter { it.value.get() == null }
+                .map { it.key }
+            keysToRemove.forEach { cache.remove(it) }
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
 }
 
@@ -626,9 +777,14 @@ class MemoryWarningHandler(
      * Register this handler to receive memory callbacks
      */
     fun register() {
-        if (!isRegistered) {
-            context.registerComponentCallbacks(this)
-            isRegistered = true
+        try {
+            if (!isRegistered) {
+                context.registerComponentCallbacks(this)
+                isRegistered = true
+            }
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
         }
     }
     
@@ -636,9 +792,14 @@ class MemoryWarningHandler(
      * Unregister this handler
      */
     fun unregister() {
-        if (isRegistered) {
-            context.unregisterComponentCallbacks(this)
-            isRegistered = false
+        try {
+            if (isRegistered) {
+                context.unregisterComponentCallbacks(this)
+                isRegistered = false
+            }
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
         }
     }
     
@@ -646,39 +807,61 @@ class MemoryWarningHandler(
      * Add a listener for memory warnings
      */
     fun addListener(listener: MemoryWarningListener) {
-        listeners.add(listener)
+        try {
+            listeners.add(listener)
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     /**
      * Remove a listener
      */
     fun removeListener(listener: MemoryWarningListener) {
-        listeners.remove(listener)
+        try {
+            listeners.remove(listener)
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     override fun onLowMemory() {
-        listeners.forEach { it.onLowMemory() }
-        performEmergencyCleanup()
+        try {
+            listeners.forEach { it.onLowMemory() }
+            performEmergencyCleanup()
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
+    @Suppress("OVERRIDE_DEPRECATION", "DEPRECATION")
     override fun onTrimMemory(level: Int) {
-        lastMemoryLevel = level
-        listeners.forEach { it.onTrimMemory(level) }
+        try {
+            lastMemoryLevel = level
+            listeners.forEach { it.onTrimMemory(level) }
         
-        when (level) {
-            ComponentCallbacks2.TRIM_MEMORY_RUNNING_CRITICAL,
-            ComponentCallbacks2.TRIM_MEMORY_COMPLETE -> {
-                performAggressiveCleanup()
+            @Suppress("DEPRECATION")
+            when (level) {
+                ComponentCallbacks2.TRIM_MEMORY_RUNNING_CRITICAL,
+                ComponentCallbacks2.TRIM_MEMORY_COMPLETE -> {
+                    performAggressiveCleanup()
+                }
+                ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW,
+                ComponentCallbacks2.TRIM_MEMORY_MODERATE -> {
+                    performModerateCleanup()
+                }
+                ComponentCallbacks2.TRIM_MEMORY_RUNNING_MODERATE,
+                ComponentCallbacks2.TRIM_MEMORY_BACKGROUND,
+                ComponentCallbacks2.TRIM_MEMORY_UI_HIDDEN -> {
+                    performLightCleanup()
+                }
             }
-            ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW,
-            ComponentCallbacks2.TRIM_MEMORY_MODERATE -> {
-                performModerateCleanup()
-            }
-            ComponentCallbacks2.TRIM_MEMORY_RUNNING_MODERATE,
-            ComponentCallbacks2.TRIM_MEMORY_BACKGROUND,
-            ComponentCallbacks2.TRIM_MEMORY_UI_HIDDEN -> {
-                performLightCleanup()
-            }
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
         }
     }
     
@@ -687,33 +870,53 @@ class MemoryWarningHandler(
     }
     
     private fun performEmergencyCleanup() {
-        CoroutineScope(Dispatchers.Default).launch {
-            // Clear all caches
-            ImageCacheManager.clearAll()
-            RenderEffectCache.clearAll()
-            BitmapPool.clear()
+        try {
+            CoroutineScope(Dispatchers.Default).launch {
+                // Clear all caches
+                ImageCacheManager.clearAll()
+                RenderEffectCache.clearAll()
+                BitmapPool.clear()
+            }
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
         }
     }
     
     private fun performAggressiveCleanup() {
-        CoroutineScope(Dispatchers.Default).launch {
-            // Clear most caches, keep only essential data
-            RenderEffectCache.clearAll()
-            BitmapPool.trim(0.75f)
+        try {
+            CoroutineScope(Dispatchers.Default).launch {
+                // Clear most caches, keep only essential data
+                RenderEffectCache.clearAll()
+                BitmapPool.trim(0.75f)
+            }
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
         }
     }
     
     private fun performModerateCleanup() {
-        CoroutineScope(Dispatchers.Default).launch {
-            // Trim caches by half
-            BitmapPool.trim(0.5f)
+        try {
+            CoroutineScope(Dispatchers.Default).launch {
+                // Trim caches by half
+                BitmapPool.trim(0.5f)
+            }
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
         }
     }
     
     private fun performLightCleanup() {
-        CoroutineScope(Dispatchers.Default).launch {
-            // Light cleanup - remove oldest entries
-            BitmapPool.trim(0.25f)
+        try {
+            CoroutineScope(Dispatchers.Default).launch {
+                // Light cleanup - remove oldest entries
+                BitmapPool.trim(0.25f)
+            }
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
         }
     }
     
@@ -721,21 +924,26 @@ class MemoryWarningHandler(
      * Get current memory info
      */
     fun getMemoryInfo(): MemoryInfo {
-        val runtime = Runtime.getRuntime()
-        val activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
-        val memoryInfo = ActivityManager.MemoryInfo()
-        activityManager.getMemoryInfo(memoryInfo)
+        try {
+            val runtime = Runtime.getRuntime()
+            val activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+            val memoryInfo = ActivityManager.MemoryInfo()
+            activityManager.getMemoryInfo(memoryInfo)
         
-        return MemoryInfo(
-            totalMemory = runtime.totalMemory(),
-            freeMemory = runtime.freeMemory(),
-            maxMemory = runtime.maxMemory(),
-            usedMemory = runtime.totalMemory() - runtime.freeMemory(),
-            availableMemory = memoryInfo.availMem,
-            lowMemoryThreshold = memoryInfo.threshold,
-            isLowMemory = memoryInfo.lowMemory,
-            lastTrimLevel = lastMemoryLevel
-        )
+            return MemoryInfo(
+                totalMemory = runtime.totalMemory(),
+                freeMemory = runtime.freeMemory(),
+                maxMemory = runtime.maxMemory(),
+                usedMemory = runtime.totalMemory() - runtime.freeMemory(),
+                availableMemory = memoryInfo.availMem,
+                lowMemoryThreshold = memoryInfo.threshold,
+                isLowMemory = memoryInfo.lowMemory,
+                lastTrimLevel = lastMemoryLevel
+            )
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     data class MemoryInfo(
@@ -777,8 +985,13 @@ fun rememberMemoryWarningHandler(
         handler.register()
         
         onDispose {
-            handler.removeListener(listener)
-            handler.unregister()
+            try {
+                handler.removeListener(listener)
+                handler.unregister()
+            } catch (e: Exception) {
+                Sentry.captureException(e)
+                throw e
+            }
         }
     }
     
@@ -805,13 +1018,23 @@ class MemoryOptimizedMutableState<T>(
         }
     
     fun setValue(newValue: T) {
-        _value = newValue
-        isCleared = false
+        try {
+            _value = newValue
+            isCleared = false
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     fun clear() {
-        _value = null
-        isCleared = true
+        try {
+            _value = null
+            isCleared = true
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
 }
 

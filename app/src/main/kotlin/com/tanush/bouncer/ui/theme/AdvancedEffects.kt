@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlin.math.cos
 import kotlin.math.sin
+import io.sentry.Sentry
 
 // ==========================================
 // BOUNCER – Visual Effects System
@@ -319,31 +320,36 @@ fun Modifier.multiLayerShadow(
     val density = LocalDensity.current
     
     drawBehind {
-        layers.forEach { layer ->
-            with(density) {
-                drawIntoCanvas { canvas ->
-                    val paint = Paint().apply {
-                        color = layer.color
+        try {
+            layers.forEach { layer ->
+                with(density) {
+                    drawIntoCanvas { canvas ->
+                        val paint = Paint().apply {
+                            color = layer.color
+                        }
+                    
+                        val frameworkPaint = paint.asFrameworkPaint()
+                        frameworkPaint.setShadowLayer(
+                            layer.blurRadius.toPx(),
+                            layer.offsetX.toPx(),
+                            layer.offsetY.toPx(),
+                            layer.color.toArgb()
+                        )
+                    
+                        // Draw shadow rect
+                        canvas.drawRect(
+                            rect = Rect(
+                                offset = Offset(layer.offsetX.toPx(), layer.offsetY.toPx()),
+                                size = size
+                            ),
+                            paint = paint
+                        )
                     }
-                    
-                    val frameworkPaint = paint.asFrameworkPaint()
-                    frameworkPaint.setShadowLayer(
-                        layer.blurRadius.toPx(),
-                        layer.offsetX.toPx(),
-                        layer.offsetY.toPx(),
-                        layer.color.toArgb()
-                    )
-                    
-                    // Draw shadow rect
-                    canvas.drawRect(
-                        rect = Rect(
-                            offset = Offset(layer.offsetX.toPx(), layer.offsetY.toPx()),
-                            size = size
-                        ),
-                        paint = paint
-                    )
                 }
             }
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
         }
     }
 }
@@ -729,38 +735,38 @@ fun Modifier.edgeHighlight(
     position: EdgePosition = EdgePosition.Top
 ): Modifier = drawBehind {
     val gradientBrush = when (position) {
-        EdgePosition.Top -> Brush.verticalGradient(
-            colors = listOf(
-                highlightColor.copy(alpha = alpha),
-                Color.Transparent
-            ),
-            startY = 0f,
-            endY = size.height * 0.15f
-        )
-        EdgePosition.Bottom -> Brush.verticalGradient(
-            colors = listOf(
-                Color.Transparent,
-                highlightColor.copy(alpha = alpha)
-            ),
-            startY = size.height * 0.85f,
-            endY = size.height
-        )
-        EdgePosition.Left -> Brush.horizontalGradient(
-            colors = listOf(
-                highlightColor.copy(alpha = alpha),
-                Color.Transparent
-            ),
-            startX = 0f,
-            endX = size.width * 0.15f
-        )
-        EdgePosition.Right -> Brush.horizontalGradient(
-            colors = listOf(
-                Color.Transparent,
-                highlightColor.copy(alpha = alpha)
-            ),
-            startX = size.width * 0.85f,
-            endX = size.width
-        )
+            EdgePosition.Top -> Brush.verticalGradient(
+                colors = listOf(
+                    highlightColor.copy(alpha = alpha),
+                    Color.Transparent
+                ),
+                startY = 0f,
+                endY = size.height * 0.15f
+            )
+            EdgePosition.Bottom -> Brush.verticalGradient(
+                colors = listOf(
+                    Color.Transparent,
+                    highlightColor.copy(alpha = alpha)
+                ),
+                startY = size.height * 0.85f,
+                endY = size.height
+            )
+            EdgePosition.Left -> Brush.horizontalGradient(
+                colors = listOf(
+                    highlightColor.copy(alpha = alpha),
+                    Color.Transparent
+                ),
+                startX = 0f,
+                endX = size.width * 0.15f
+            )
+            EdgePosition.Right -> Brush.horizontalGradient(
+                colors = listOf(
+                    Color.Transparent,
+                    highlightColor.copy(alpha = alpha)
+                ),
+                startX = size.width * 0.85f,
+                endX = size.width
+            )
     }
     
     drawRect(brush = gradientBrush)
@@ -789,30 +795,35 @@ fun Modifier.innerShadow(
     val density = LocalDensity.current
     
     Modifier.drawBehind {
-        with(density) {
-            // Top inner shadow
-            drawRect(
-                brush = Brush.verticalGradient(
-                    colors = listOf(
-                        shadowColor.copy(alpha = alpha),
-                        Color.Transparent
-                    ),
-                    startY = 0f,
-                    endY = blur.toPx()
+        try {
+            with(density) {
+                // Top inner shadow
+                drawRect(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(
+                            shadowColor.copy(alpha = alpha),
+                            Color.Transparent
+                        ),
+                        startY = 0f,
+                        endY = blur.toPx()
+                    )
                 )
-            )
             
-            // Left inner shadow
-            drawRect(
-                brush = Brush.horizontalGradient(
-                    colors = listOf(
-                        shadowColor.copy(alpha = alpha * 0.7f),
-                        Color.Transparent
-                    ),
-                    startX = 0f,
-                    endX = blur.toPx() * 0.5f
+                // Left inner shadow
+                drawRect(
+                    brush = Brush.horizontalGradient(
+                        colors = listOf(
+                            shadowColor.copy(alpha = alpha * 0.7f),
+                            Color.Transparent
+                        ),
+                        startX = 0f,
+                        endX = blur.toPx() * 0.5f
+                    )
                 )
-            )
+            }
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
         }
     }
 }
@@ -831,9 +842,9 @@ fun Modifier.premiumCardEffect(
     this
         .multiLayerShadow(
             layers = when {
-                isLive -> liveShadowLayers()
-                isHighlighted -> goldShadowLayers()
-                else -> defaultShadowLayers()
+                    isLive -> liveShadowLayers()
+                    isHighlighted -> goldShadowLayers()
+                    else -> defaultShadowLayers()
             }
         )
         .then(
@@ -859,11 +870,16 @@ fun Modifier.premiumCardEffect(
  * Hero element effect with floating and spotlight
  */
 fun Modifier.heroEffect(): Modifier = composed {
-    this
-        .floatingParallax(amplitude = 6f)
-        .animatedSpotlight(
-            spotlightColor = ShinyGoldLight,
-            alpha = 0.12f
-        )
-        .multiLayerShadow(goldShadowLayers())
+    try {
+        this
+            .floatingParallax(amplitude = 6f)
+            .animatedSpotlight(
+                spotlightColor = ShinyGoldLight,
+                alpha = 0.12f
+            )
+            .multiLayerShadow(goldShadowLayers())
+    } catch (e: Exception) {
+        Sentry.captureException(e)
+        throw e
+    }
 }

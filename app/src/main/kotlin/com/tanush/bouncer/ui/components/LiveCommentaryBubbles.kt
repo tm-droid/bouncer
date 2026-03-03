@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.ui.theme.*
 import kotlinx.coroutines.delay
+import io.sentry.Sentry
 
 /**
  * Types of commentary events
@@ -65,16 +66,18 @@ data class CommentaryEntry(
 /**
  * Get the color for a commentary event type
  */
+@Composable
 private fun getEventColor(type: CommentaryEventType): Color {
+    val colors = BouncerDesignSystem.colors
     return when (type) {
-        CommentaryEventType.SIX -> BoundarySix
-        CommentaryEventType.FOUR -> BoundaryFour
-        CommentaryEventType.WICKET -> WicketRed
-        CommentaryEventType.MILESTONE -> ShinyGoldDeep
-        CommentaryEventType.WIDE, CommentaryEventType.NO_BALL -> ErrorRed.copy(alpha = 0.8f)
+        CommentaryEventType.SIX -> GoldPrimary
+        CommentaryEventType.FOUR -> StatusInfo
+        CommentaryEventType.WICKET -> GoldPrimary
+        CommentaryEventType.MILESTONE -> GoldPrimary
+        CommentaryEventType.WIDE, CommentaryEventType.NO_BALL -> WarningOrange
         CommentaryEventType.OVER_END -> TextTertiary
-        CommentaryEventType.INNINGS_END -> ShinyGoldMid
-        CommentaryEventType.REVIEW -> ChartPurple
+        CommentaryEventType.INNINGS_END -> GoldPrimary
+        CommentaryEventType.REVIEW -> colors.statusInfo
         else -> TextSecondary
     }
 }
@@ -122,11 +125,11 @@ fun LiveCommentaryBubbles(
             .shadow(
                 elevation = 20.dp,
                 shape = RoundedCornerShape(28.dp),
-                spotColor = ShinyGoldDeep.copy(alpha = 0.15f)
+                spotColor = GoldPrimary.copy(alpha = 0.15f)
             ),
-        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.05f)),
+        colors = CardDefaults.cardColors(containerColor = GlassSurface),
         shape = RoundedCornerShape(28.dp),
-        border = BorderStroke(0.5.dp, CardBorder.copy(alpha = 0.3f))
+        border = BorderStroke(0.5.dp, GoldPrimary.copy(alpha = 0.15f))
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
             // Header
@@ -217,7 +220,7 @@ private fun LiveIndicator() {
             modifier = Modifier
                 .size(20.dp * scale)
                 .background(
-                    color = ErrorRed.copy(alpha = 0.2f * alpha),
+                    color = StatusLive.copy(alpha = 0.2f * alpha),
                     shape = CircleShape
                 )
         )
@@ -227,7 +230,7 @@ private fun LiveIndicator() {
             modifier = Modifier
                 .size(10.dp)
                 .background(
-                    color = ErrorRed.copy(alpha = alpha),
+                    color = StatusLive.copy(alpha = alpha),
                     shape = CircleShape
                 )
         )
@@ -297,11 +300,11 @@ private fun CommentaryBubble(
                 color = if (isHighlight) {
                     eventColor.copy(alpha = 0.1f)
                 } else {
-                    Color.White.copy(alpha = 0.08f)
+                    GlassSurface
                 },
                 border = BorderStroke(
                     0.5.dp,
-                    if (isHighlight) eventColor.copy(alpha = 0.3f) else CardBorder.copy(alpha = 0.2f)
+                    if (isHighlight) eventColor.copy(alpha = 0.3f) else GoldPrimary.copy(alpha = 0.1f)
                 )
             ) {
                 Column(
@@ -399,10 +402,10 @@ private fun OverBadge(
     
     Surface(
         shape = RoundedCornerShape(8.dp),
-        color = if (isHighlight) eventColor.copy(alpha = 0.15f) else Color.White.copy(alpha = 0.08f),
+        color = if (isHighlight) eventColor.copy(alpha = 0.15f) else GlassSurface,
         border = BorderStroke(
             0.5.dp,
-            if (isHighlight) eventColor.copy(alpha = 0.3f) else CardBorder.copy(alpha = 0.2f)
+            if (isHighlight) eventColor.copy(alpha = 0.3f) else GoldPrimary.copy(alpha = 0.1f)
         ),
         modifier = Modifier.width(44.dp)
     ) {
@@ -469,14 +472,14 @@ fun CommentaryTicker(
             .fillMaxWidth()
             .height(44.dp),
         shape = RoundedCornerShape(12.dp),
-        color = Color.White.copy(alpha = 0.05f),
+        color = GlassSurface,
         border = BorderStroke(
             0.5.dp,
             Brush.linearGradient(
                 colors = listOf(
-                    ShinyGoldDeep.copy(alpha = 0.2f * shimmerOffset),
-                    CardBorder.copy(alpha = 0.2f),
-                    ShinyGoldDeep.copy(alpha = 0.2f * (1 - shimmerOffset))
+                    GoldPrimary.copy(alpha = 0.2f * shimmerOffset),
+                    GoldPrimary.copy(alpha = 0.1f),
+                    GoldPrimary.copy(alpha = 0.2f * (1 - shimmerOffset))
                 ),
                 start = Offset(shimmerOffset * 300, 0f),
                 end = Offset(shimmerOffset * 300 + 200, 44f)
@@ -529,33 +532,38 @@ fun CommentaryTicker(
  * Helper function to parse commentary text and determine event type
  */
 fun parseCommentaryType(text: String, runs: Int?): CommentaryEventType {
-    val lowerText = text.lowercase()
+    try {
+        val lowerText = text.lowercase()
     
-    return when {
-        lowerText.contains("wicket") || lowerText.contains("out") || 
-        lowerText.contains("caught") || lowerText.contains("bowled") ||
-        lowerText.contains("lbw") || lowerText.contains("run out") ||
-        lowerText.contains("stumped") -> CommentaryEventType.WICKET
+        return when {
+            lowerText.contains("wicket") || lowerText.contains("out") || 
+            lowerText.contains("caught") || lowerText.contains("bowled") ||
+            lowerText.contains("lbw") || lowerText.contains("run out") ||
+            lowerText.contains("stumped") -> CommentaryEventType.WICKET
         
-        lowerText.contains("six") || runs == 6 -> CommentaryEventType.SIX
-        lowerText.contains("four") || runs == 4 -> CommentaryEventType.FOUR
+            lowerText.contains("six") || runs == 6 -> CommentaryEventType.SIX
+            lowerText.contains("four") || runs == 4 -> CommentaryEventType.FOUR
         
-        lowerText.contains("century") || lowerText.contains("hundred") ||
-        lowerText.contains("fifty") || lowerText.contains("milestone") -> CommentaryEventType.MILESTONE
+            lowerText.contains("century") || lowerText.contains("hundred") ||
+            lowerText.contains("fifty") || lowerText.contains("milestone") -> CommentaryEventType.MILESTONE
         
-        lowerText.contains("wide") -> CommentaryEventType.WIDE
-        lowerText.contains("no ball") || lowerText.contains("no-ball") -> CommentaryEventType.NO_BALL
-        lowerText.contains("leg bye") -> CommentaryEventType.LEG_BYE
+            lowerText.contains("wide") -> CommentaryEventType.WIDE
+            lowerText.contains("no ball") || lowerText.contains("no-ball") -> CommentaryEventType.NO_BALL
+            lowerText.contains("leg bye") -> CommentaryEventType.LEG_BYE
         
-        lowerText.contains("review") || lowerText.contains("drs") -> CommentaryEventType.REVIEW
-        lowerText.contains("end of over") -> CommentaryEventType.OVER_END
-        lowerText.contains("innings") && (lowerText.contains("end") || lowerText.contains("all out")) -> CommentaryEventType.INNINGS_END
+            lowerText.contains("review") || lowerText.contains("drs") -> CommentaryEventType.REVIEW
+            lowerText.contains("end of over") -> CommentaryEventType.OVER_END
+            lowerText.contains("innings") && (lowerText.contains("end") || lowerText.contains("all out")) -> CommentaryEventType.INNINGS_END
         
-        runs == 0 || lowerText.contains("dot ball") -> CommentaryEventType.DOT_BALL
-        runs == 1 -> CommentaryEventType.SINGLE
-        runs == 2 -> CommentaryEventType.DOUBLE
-        runs == 3 -> CommentaryEventType.THREE
+            runs == 0 || lowerText.contains("dot ball") -> CommentaryEventType.DOT_BALL
+            runs == 1 -> CommentaryEventType.SINGLE
+            runs == 2 -> CommentaryEventType.DOUBLE
+            runs == 3 -> CommentaryEventType.THREE
         
-        else -> CommentaryEventType.REGULAR
+            else -> CommentaryEventType.REGULAR
+        }
+    } catch (e: Exception) {
+        Sentry.captureException(e)
+        throw e
     }
 }

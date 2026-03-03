@@ -50,6 +50,7 @@ fun PlayerBattleCard(
     modifier: Modifier = Modifier,
     onExpandChange: ((Boolean) -> Unit)? = null
 ) {
+    val colors = BouncerDesignSystem.colors
     var isExpanded by remember { mutableStateOf(false) }
     
     val infiniteTransition = rememberInfiniteTransition(label = "battleCard")
@@ -94,20 +95,20 @@ fun PlayerBattleCard(
                             .background(
                                 Brush.radialGradient(
                                     colors = listOf(
-                                        ShinyGoldDeep.copy(alpha = 0.3f),
+                                        colors.goldPrimary.copy(alpha = 0.3f),
                                         Color.Transparent
                                     )
                                 ),
                                 CircleShape
                             )
-                            .border(1.5.dp, ShinyGoldDeep.copy(alpha = 0.5f), CircleShape),
+                            .border(1.5.dp, colors.goldPrimary.copy(alpha = 0.5f), CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
                             text = batsmanName.take(2).uppercase(),
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Black,
-                            color = ShinyGoldDeep
+                            color = colors.goldPrimary
                         )
                     }
                     
@@ -117,7 +118,7 @@ fun PlayerBattleCard(
                         text = batsmanName,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,
-                        color = TextPrimary,
+                        color = colors.textPrimary,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -126,7 +127,7 @@ fun PlayerBattleCard(
                         text = "BATSMAN",
                         fontSize = 9.sp,
                         fontWeight = FontWeight.Bold,
-                        color = TextTertiary,
+                        color = colors.textTertiary,
                         letterSpacing = 1.5.sp
                     )
                 }
@@ -236,7 +237,7 @@ fun PlayerBattleCard(
                 BattleStatItem(
                     label = "RUNS",
                     value = "${headToHead.runsScored}",
-                    color = ShinyGoldDeep
+                    color = colors.goldPrimary
                 )
                 
                 BattleStatItem(
@@ -391,6 +392,7 @@ private fun DetailStatColumn(stats: List<Pair<String, String>>) {
 
 @Composable
 private fun DominanceBar(stats: BatsmanVsBowlerStats) {
+    val colors = BouncerDesignSystem.colors
     val batsmanDominance = stats.batsmanDominance
     
     Column(
@@ -404,21 +406,21 @@ private fun DominanceBar(stats: BatsmanVsBowlerStats) {
                 text = "BATSMAN",
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Bold,
-                color = if (batsmanDominance > 0.5f) ShinyGoldDeep else TextTertiary,
+                color = if (batsmanDominance > 0.5f) colors.goldPrimary else colors.textTertiary,
                 letterSpacing = 1.sp
             )
             Text(
                 text = "DOMINANCE",
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Bold,
-                color = TextTertiary,
+                color = colors.textTertiary,
                 letterSpacing = 1.sp
             )
             Text(
                 text = "BOWLER",
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Bold,
-                color = if (batsmanDominance < 0.5f) ErrorRed else TextTertiary,
+                color = if (batsmanDominance < 0.5f) colors.statusLive else colors.textTertiary,
                 letterSpacing = 1.sp
             )
         }
@@ -442,8 +444,8 @@ private fun DominanceBar(stats: BatsmanVsBowlerStats) {
                         .background(
                             Brush.horizontalGradient(
                                 colors = listOf(
-                                    ShinyGoldDark,
-                                    ShinyGoldDeep
+                                    colors.goldDark,
+                                    colors.goldPrimary
                                 )
                             )
                         )
@@ -477,7 +479,7 @@ private fun DominanceBar(stats: BatsmanVsBowlerStats) {
                 text = "${(batsmanDominance * 100).toInt()}%",
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
-                color = ShinyGoldDeep
+                color = colors.goldPrimary
             )
             Text(
                 text = "${((1 - batsmanDominance) * 100).toInt()}%",
@@ -559,6 +561,7 @@ fun PlayerBattleCardCompact(
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null
 ) {
+    val colors = BouncerDesignSystem.colors
     GlassSurface(
         modifier = modifier
             .clickable(enabled = onClick != null) { onClick?.invoke() },
@@ -578,14 +581,14 @@ fun PlayerBattleCardCompact(
                     text = batsmanName,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
-                    color = ShinyGoldDeep,
+                    color = colors.goldPrimary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
                     text = "vs $bowlerName",
                     fontSize = 10.sp,
-                    color = TextTertiary,
+                    color = colors.textTertiary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )

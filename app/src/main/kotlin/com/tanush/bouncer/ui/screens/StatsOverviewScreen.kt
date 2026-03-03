@@ -1,232 +1,328 @@
 package com.tanush.bouncer.ui.screens
 
-import androidx.compose.animation.*
-import androidx.compose.animation.core.*
-import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.*
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.tanush.bouncer.ui.components.*
+import com.tanush.bouncer.ui.components.glass.GlassBloomBackground
 import com.tanush.bouncer.ui.theme.*
-import kotlin.math.PI
-import kotlin.math.cos
-import kotlin.math.sin
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StatsOverviewScreen(onBackClick: () -> Unit) {
+    val colors = BouncerDesignSystem.colors
+
     Scaffold(
-        containerColor = BlackBackground,
+        containerColor = Color.Transparent,
         topBar = {
             CenterAlignedTopAppBar(
                 title = {
-                    Text("ANALYTICS HUB", fontSize = 18.sp, fontWeight = FontWeight.Black, letterSpacing = 3.sp, color = GoldDark)
+                    Text(
+                        "ANALYTICS HUB",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Black,
+                        letterSpacing = 3.sp,
+                        color = colors.goldPrimary
+                    )
                 },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = Color.White)
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back",
+                            tint = colors.textPrimary
+                        )
                     }
                 },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color.Transparent)
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = Color.Transparent
+                )
             )
         }
     ) { padding ->
+        GlassBloomBackground(modifier = Modifier.fillMaxSize()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .verticalScroll(rememberScrollState())
+                    .padding(bottom = 120.dp),
+                verticalArrangement = Arrangement.spacedBy(40.dp)
+            ) {
+                // Section 1 — Career Radar Chart
+                StaggeredFadeIn(index = 0) {
+                    CareerRadarSection()
+                }
+
+                // Section 2 — Player Impact Ratings
+                StaggeredFadeIn(index = 1) {
+                    PlayerImpactSection()
+                }
+
+                // Section 3 — Historical Trends
+                StaggeredFadeIn(index = 2) {
+                    TrendsSection()
+                }
+
+                // Section 4 — Run Rate Speedometer
+                StaggeredFadeIn(index = 3) {
+                    RunRateSection()
+                }
+
+                // Section 5 — Match Momentum
+                StaggeredFadeIn(index = 4) {
+                    MomentumSection()
+                }
+
+                // Section 6 — Game Overview
+                StaggeredFadeIn(index = 5) {
+                    GameOverviewSection()
+                }
+            }
+        }
+    }
+}
+
+// ─── Section 1: Career Radar ─────────────────────────────────────
+
+@Composable
+private fun CareerRadarSection() {
+    val colors = BouncerDesignSystem.colors
+
+    GlassCard(
+        modifier = Modifier
+            .padding(horizontal = 24.dp)
+            .fillMaxWidth(),
+        importance = BouncerImportance.CRITICAL
+    ) {
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .verticalScroll(rememberScrollState())
-                .padding(bottom = 120.dp),
-            verticalArrangement = Arrangement.spacedBy(40.dp)
+            modifier = Modifier.padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Career Radar Chart (Elite Analyst)
-            Box(modifier = Modifier.staggeredFadeIn(0)) {
-                EliteRadarAnalytics()
-            }
+            Text(
+                "CAREER PERFORMANCE RADAR",
+                color = colors.textSecondary,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Black,
+                letterSpacing = 2.sp
+            )
+            Spacer(modifier = Modifier.height(32.dp))
 
-            // Performance Leaderboard Rail
-            Box(modifier = Modifier.staggeredFadeIn(1)) {
-                PerformanceRail()
-            }
+            RadarChart(
+                data = mapOf(
+                    "Batting" to 85f,
+                    "Bowling" to 72f,
+                    "Fielding" to 94f,
+                    "Strategy" to 68f,
+                    "Pace" to 78f
+                ),
+                modifier = Modifier.size(220.dp)
+            )
 
-            // Historical Trends Grid
-            Box(modifier = Modifier.staggeredFadeIn(2)) {
-                HistoricalTrendsGrid()
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                PulsingBadge("Elite Power")
+                PulsingBadge("Pro Timing")
+                PulsingBadge("A-Grade Spin")
             }
         }
     }
 }
 
+// ─── Section 2: Player Impact Ratings ────────────────────────────
+
 @Composable
-private fun EliteRadarAnalytics() {
-    Card(
-        modifier = Modifier.padding(horizontal = 24.dp).fillMaxWidth(),
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.05f)),
-        border = BorderStroke(1.dp, GoldHairline)
+private fun PlayerImpactSection() {
+    val colors = BouncerDesignSystem.colors
+
+    Column(
+        modifier = Modifier.padding(horizontal = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Column(modifier = Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("CAREER PERFORMANCE RADAR", color = TextSecondary, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp)
-            Spacer(modifier = Modifier.height(32.dp))
-            
-            CareerRadarChart(
-                metrics = listOf(
-                    "Batting" to 0.85f,
-                    "Bowling" to 0.72f,
-                    "Fielding" to 0.94f,
-                    "Strategy" to 0.68f,
-                    "Pace" to 0.78f
+        Text(
+            "TOP ANALYSTS",
+            color = colors.textPrimary,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.ExtraBold
+        )
+
+        PlayerImpactRating(
+            playerName = "Virat Kohli",
+            impactScore = 9.4f,
+            stats = "Avg 53.4 | SR 138.2"
+        )
+        PlayerImpactRating(
+            playerName = "Steve Smith",
+            impactScore = 8.7f,
+            stats = "Avg 48.1 | SR 129.5"
+        )
+        PlayerImpactRating(
+            playerName = "Kane Williamson",
+            impactScore = 8.2f,
+            stats = "Avg 45.6 | SR 125.3"
+        )
+    }
+}
+
+// ─── Section 3: Historical Trends ────────────────────────────────
+
+@Composable
+private fun TrendsSection() {
+    val colors = BouncerDesignSystem.colors
+
+    Column(
+        modifier = Modifier.padding(horizontal = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Text(
+            "MARKET TRENDS",
+            color = colors.textPrimary,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.ExtraBold
+        )
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                StatCard(
+                    label = "Avg Score",
+                    value = "168.4",
+                    trend = 4.2f
                 )
-            )
-            
-            Spacer(modifier = Modifier.height(32.dp))
-            
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                AnalyticsBadge("Power", "Elite")
-                AnalyticsBadge("Timing", "Pro")
-                AnalyticsBadge("Spin", "A-Grade")
+                Spacer(modifier = Modifier.height(8.dp))
+                MiniSparkline(
+                    data = listOf(152f, 160f, 155f, 163f, 168f, 170f, 168.4f),
+                    color = colors.goldPrimary
+                )
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                StatCard(
+                    label = "Wicket Rate",
+                    value = "7.2",
+                    trend = -1.1f
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                MiniSparkline(
+                    data = listOf(8.0f, 7.8f, 7.5f, 7.6f, 7.3f, 7.1f, 7.2f),
+                    color = colors.statusLive
+                )
             }
         }
     }
 }
 
-@Composable
-fun CareerRadarChart(metrics: List<Pair<String, Float>>) {
-    Canvas(modifier = Modifier.size(220.dp)) {
-        val centerX = size.width / 2
-        val centerY = size.height / 2
-        val radius = size.width / 2
-        val sides = metrics.size
-        val angleStep = (2 * PI / sides).toFloat()
-
-        // Draw Radar Web
-        for (i in 1..4) {
-            val scale = i / 4f
-            val path = Path()
-            for (j in 0 until sides) {
-                val angle = j * angleStep - (PI / 2).toFloat()
-                val x = centerX + cos(angle) * radius * scale
-                val y = centerY + sin(angle) * radius * scale
-                if (j == 0) path.moveTo(x, y) else path.lineTo(x, y)
-            }
-            path.close()
-            drawPath(path, Color.White.copy(alpha = 0.05f), style = Stroke(width = 1.dp.toPx()))
-        }
-
-        // Draw Axis
-        for (j in 0 until sides) {
-            val angle = j * angleStep - (PI / 2).toFloat()
-            drawLine(
-                Color.White.copy(alpha = 0.05f),
-                Offset(centerX, centerY),
-                Offset(centerX + cos(angle) * radius, centerY + sin(angle) * radius)
-            )
-        }
-
-        // Draw Performance Area
-        val perfPath = Path()
-        metrics.forEachIndexed { j, metric ->
-            val angle = j * angleStep - (PI / 2).toFloat()
-            val x = centerX + cos(angle) * radius * metric.second
-            val y = centerY + sin(angle) * radius * metric.second
-            if (j == 0) perfPath.moveTo(x, y) else perfPath.lineTo(x, y)
-        }
-        perfPath.close()
-        
-        drawPath(
-            perfPath,
-            brush = Brush.radialGradient(listOf(GoldDark.copy(alpha = 0.4f), Color.Transparent)),
-        )
-        drawPath(
-            perfPath,
-            color = GoldDark,
-            style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round)
-        )
-    }
-}
+// ─── Section 4: Run Rate Speedometer ─────────────────────────────
 
 @Composable
-private fun AnalyticsBadge(label: String, value: String) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(label, color = TextMuted, fontSize = 9.sp, fontWeight = FontWeight.Black)
-        Text(value, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.ExtraBold)
-    }
-}
+private fun RunRateSection() {
+    val colors = BouncerDesignSystem.colors
 
-@Composable
-private fun PerformanceRail() {
-    Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
-        Text("TOP ANALYSTS", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(horizontal = 24.dp))
-        LazyRow(contentPadding = PaddingValues(horizontal = 24.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            items(listOf("Virat Kohli", "Steve Smith", "Kane Williamson")) { player ->
-                PlayerCard(player)
-            }
-        }
-    }
-}
-
-@Composable
-private fun PlayerCard(name: String) {
-    Surface(
-        modifier = Modifier.width(140.dp),
-        shape = RoundedCornerShape(20.dp),
-        color = Color.White.copy(alpha = 0.05f),
-        border = BorderStroke(1.dp, GlassBorderLight)
+    GlassCard(
+        modifier = Modifier
+            .padding(horizontal = 24.dp)
+            .fillMaxWidth(),
+        importance = BouncerImportance.STANDARD
     ) {
-        Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Box(modifier = Modifier.size(48.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.05f)))
-            Spacer(modifier = Modifier.height(12.dp))
-            Text(name, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1)
-            Text("94.2", color = GoldDark, fontSize = 11.sp, fontWeight = FontWeight.Black)
+        Column(
+            modifier = Modifier.padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                "RUN RATE ANALYSIS",
+                color = colors.textSecondary,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Black,
+                letterSpacing = 2.sp
+            )
+            Spacer(modifier = Modifier.height(24.dp))
+
+            RunRateSpeedometer(
+                currentRunRate = 8.4f,
+                requiredRunRate = 9.2f,
+                modifier = Modifier.align(Alignment.CenterHorizontally)
+            )
         }
     }
 }
 
-@Composable
-private fun HistoricalTrendsGrid() {
-    Column(modifier = Modifier.padding(horizontal = 24.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
-        Text("MARKET TRENDS", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.ExtraBold)
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            TrendCard(modifier = Modifier.weight(1f), title = "Avg Score", value = "168.4", trend = "+4.2%")
-            TrendCard(modifier = Modifier.weight(1f), title = "Wicket Rate", value = "7.2", trend = "-1.1%")
-        }
-    }
-}
+// ─── Section 5: Match Momentum ───────────────────────────────────
 
 @Composable
-private fun TrendCard(modifier: Modifier, title: String, value: String, trend: String) {
-    Surface(
-        modifier = modifier,
-        shape = RoundedCornerShape(20.dp),
-        color = Color.White.copy(alpha = 0.05f),
-        border = BorderStroke(1.dp, GlassBorderLight)
+private fun MomentumSection() {
+    val colors = BouncerDesignSystem.colors
+
+    GlassCard(
+        modifier = Modifier
+            .padding(horizontal = 24.dp)
+            .fillMaxWidth(),
+        importance = BouncerImportance.STANDARD
     ) {
-        Column(modifier = Modifier.padding(20.dp)) {
-            Text(title, color = TextMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-            Text(value, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Black)
-            Text(trend, color = if (trend.contains("+")) SuccessGreen else ErrorRed, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+        Column(modifier = Modifier.padding(24.dp)) {
+            Text(
+                "MATCH MOMENTUM",
+                color = colors.textSecondary,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Black,
+                letterSpacing = 2.sp
+            )
+            Spacer(modifier = Modifier.height(24.dp))
+
+            MomentumIndicator(
+                momentum = 0.35f,
+                team1Name = "India",
+                team2Name = "Australia"
+            )
+        }
+    }
+}
+
+// ─── Section 6: Game Overview ────────────────────────────────────
+
+@Composable
+private fun GameOverviewSection() {
+    val colors = BouncerDesignSystem.colors
+
+    GlassCard(
+        modifier = Modifier
+            .padding(horizontal = 24.dp)
+            .fillMaxWidth(),
+        importance = BouncerImportance.CRITICAL
+    ) {
+        Column(
+            modifier = Modifier.padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                "WIN PROBABILITY",
+                color = colors.textSecondary,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Black,
+                letterSpacing = 2.sp
+            )
+            Spacer(modifier = Modifier.height(24.dp))
+
+            PremiumWinProbabilityRing(
+                team1Name = "India",
+                team2Name = "Australia",
+                team1Probability = 0.62f,
+                modifier = Modifier.align(Alignment.CenterHorizontally)
+            )
         }
     }
 }

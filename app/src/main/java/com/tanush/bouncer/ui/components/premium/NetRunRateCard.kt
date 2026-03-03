@@ -19,7 +19,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ShowChart
+import androidx.compose.material.icons.automirrored.filled.ShowChart
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -44,6 +44,7 @@ import com.tanush.bouncer.ui.theme.ShinyGoldMid
 import com.tanush.bouncer.ui.theme.SuccessGreen
 import com.tanush.bouncer.ui.theme.WarningYellow
 import com.tanush.bouncer.ui.theme.WicketRed
+import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 
 /**
  * Net run rate card
@@ -88,6 +89,7 @@ fun NetRunRateCard(
     nrrData: NetRunRateData,
     modifier: Modifier = Modifier,
 ) {
+    val colors = BouncerDesignSystem.colors
     val animatedProgress = remember { Animatable(0f) }
     val animatedNRR = remember { Animatable(0f) }
 
@@ -103,10 +105,10 @@ fun NetRunRateCard(
     }
 
     val nrrColor = when {
-        nrrData.currentNRR > 1f -> SuccessGreen
-        nrrData.currentNRR > 0f -> ChartBlue
-        nrrData.currentNRR > -1f -> WarningYellow
-        else -> WicketRed
+        nrrData.currentNRR > 1f -> colors.statusSuccess
+        nrrData.currentNRR > 0f -> colors.statusInfo
+        nrrData.currentNRR > -1f -> colors.statusWarning
+        else -> colors.statusLive
     }
 
     val trendIcon = when (nrrData.trend) {
@@ -145,7 +147,7 @@ fun NetRunRateCard(
                         contentAlignment = Alignment.Center,
                     ) {
                         Icon(
-                            Icons.Filled.ShowChart,
+                            Icons.AutoMirrored.Filled.ShowChart,
                             contentDescription = null,
                             tint = Color.White,
                             modifier = Modifier.size(24.dp),
@@ -157,7 +159,7 @@ fun NetRunRateCard(
                     Column {
                         Text(
                             text = "NET RUN RATE",
-                            color = ShinyGoldLight,
+                            color = colors.goldLight,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.5.sp,
@@ -179,7 +181,7 @@ fun NetRunRateCard(
                 ) {
                     Text(
                         text = "#${nrrData.tournamentPosition}",
-                        color = ShinyGoldMid,
+                        color = colors.goldDark,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,
                     )
@@ -239,7 +241,7 @@ fun NetRunRateCard(
                     runs = nrrData.runsScored,
                     overs = nrrData.oversFaced,
                     runRate = nrrData.runsScored / nrrData.oversFaced,
-                    color = SuccessGreen,
+                    color = colors.statusSuccess,
                 )
 
                 Box(
@@ -254,7 +256,7 @@ fun NetRunRateCard(
                     runs = nrrData.runsConceded,
                     overs = nrrData.oversBowled,
                     runRate = nrrData.runsConceded / nrrData.oversBowled,
-                    color = WicketRed,
+                    color = colors.statusLive,
                 )
             }
 
@@ -319,9 +321,9 @@ fun NetRunRateCard(
                                 val currNRR = animatedHistory[index].nrr
 
                                 val lineColor = when {
-                                    currNRR > prevNRR -> SuccessGreen
-                                    currNRR < prevNRR -> WicketRed
-                                    else -> ChartBlue
+                                    currNRR > prevNRR -> colors.statusSuccess
+                                    currNRR < prevNRR -> colors.statusLive
+                                    else -> colors.statusInfo
                                 }
 
                                 drawLine(
@@ -334,7 +336,7 @@ fun NetRunRateCard(
                             }
 
                             // Point marker
-                            val pointColor = if (animatedHistory[index].nrr >= 0) SuccessGreen else WicketRed
+                            val pointColor = if (animatedHistory[index].nrr >= 0) colors.statusSuccess else colors.statusLive
                             drawCircle(
                                 color = pointColor,
                                 radius = 4.dp.toPx(),
@@ -372,6 +374,7 @@ private fun NRRBreakdownItem(
     runRate: Float,
     color: Color,
 ) {
+    val colors = BouncerDesignSystem.colors
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
@@ -414,6 +417,7 @@ private fun NRRBreakdownItem(
 
 @Composable
 fun NetRunRateCardPreview() {
+    val colors = BouncerDesignSystem.colors
     NetRunRateCard(
         nrrData = NetRunRateData(
             teamName = "India",

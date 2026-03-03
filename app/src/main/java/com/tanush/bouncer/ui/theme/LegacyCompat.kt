@@ -22,10 +22,10 @@ object Spacing {
     val micro: Dp = 2.dp
     val xs: Dp = 4.dp
     val sm: Dp = 8.dp
-    val md: Dp = 12.dp
-    val lg: Dp = 16.dp
-    val xl: Dp = 20.dp
-    val xxl: Dp = 24.dp
+    val md: Dp = 16.dp
+    val lg: Dp = 24.dp
+    val xl: Dp = 32.dp
+    val xxl: Dp = 48.dp
 
     // Numbered aliases used by legacy code
     val space1: Dp = 4.dp
@@ -49,6 +49,7 @@ object CornerRadius {
     val sm: Dp = 8.dp
     val md: Dp = 12.dp
     val lg: Dp = 16.dp
+    val xl: Dp = 24.dp
     val pill: Dp = 50.dp
     val circular: Dp = 50.dp
 }

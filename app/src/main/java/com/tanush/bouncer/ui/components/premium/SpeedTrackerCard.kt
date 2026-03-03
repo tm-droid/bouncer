@@ -51,6 +51,7 @@ import com.tanush.bouncer.ui.theme.*
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
+import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 
 /**
  * Speed Tracker Card
@@ -82,6 +83,7 @@ fun SpeedTrackerCard(
     speedData: BowlingSpeedData,
     modifier: Modifier = Modifier,
 ) {
+    val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "speed")
 
     val needlePulse by infiniteTransition.animateFloat(
@@ -118,10 +120,10 @@ fun SpeedTrackerCard(
 
     // Speed categories
     val speedColor = when {
-        speedData.currentSpeed >= 145 -> WicketRed
-        speedData.currentSpeed >= 135 -> ShinyGoldMid
-        speedData.currentSpeed >= 125 -> ChartBlue
-        else -> SuccessGreen
+        speedData.currentSpeed >= 145 -> colors.statusLive
+        speedData.currentSpeed >= 135 -> colors.goldDark
+        speedData.currentSpeed >= 125 -> colors.statusInfo
+        else -> colors.statusSuccess
     }
 
     val speedCategory = when {
@@ -248,10 +250,10 @@ fun SpeedTrackerCard(
                         drawArc(
                             brush = Brush.sweepGradient(
                                 colors = listOf(
-                                    SuccessGreen,
-                                    ChartBlue,
-                                    ShinyGoldMid,
-                                    WicketRed,
+                                    colors.statusSuccess,
+                                    colors.statusInfo,
+                                    colors.goldDark,
+                                    colors.statusLive,
                                 ),
                                 center = Offset(centerX, centerY),
                             ),
@@ -339,19 +341,19 @@ fun SpeedTrackerCard(
                     SpeedStatItem(
                         label = "Max",
                         value = "${speedData.maxSpeed.toInt()} km/h",
-                        color = WicketRed,
+                        color = colors.statusLive,
                     )
 
                     SpeedStatItem(
                         label = "Avg",
                         value = "${speedData.avgSpeed.toInt()} km/h",
-                        color = ShinyGoldMid,
+                        color = colors.goldDark,
                     )
 
                     SpeedStatItem(
                         label = "Min",
                         value = "${speedData.minSpeed.toInt()} km/h",
-                        color = ChartBlue,
+                        color = colors.statusInfo,
                     )
                 }
             }
@@ -366,6 +368,7 @@ private fun SpeedStatItem(
     color: Color,
     modifier: Modifier = Modifier,
 ) {
+    val colors = BouncerDesignSystem.colors
     Column(
         modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally,

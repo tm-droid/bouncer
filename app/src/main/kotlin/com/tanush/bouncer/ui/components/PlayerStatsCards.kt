@@ -57,15 +57,16 @@ fun BatsmanStatsCard(
         animationSpec = infiniteRepeatable(tween(1000, easing = FastOutSlowInEasing), RepeatMode.Reverse),
         label = "pulse"
     )
+    val colors = BouncerDesignSystem.colors
 
     Box(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(20.dp))
-            .background(if (isOut) Color.White.copy(alpha = 0.04f) else Color.White.copy(alpha = 0.08f))
+            .background(if (isOut) colors.glassSurface.copy(alpha = 0.5f) else colors.glassBorderHighlight)
             .border(
                 0.5.dp,
-                if (isOnStrike) Brush.linearGradient(listOf(ShinyGoldDeep, Color.Transparent)) else Brush.linearGradient(listOf(Color.White.copy(alpha = 0.05f), Color.Transparent)),
+                if (isOnStrike) Brush.linearGradient(listOf(colors.goldPrimary, Color.Transparent)) else Brush.linearGradient(listOf(colors.glassSurface, Color.Transparent)),
                 RoundedCornerShape(20.dp)
             )
             .then(if (onClick != null) Modifier.clickable { onClick() } else Modifier)
@@ -88,7 +89,7 @@ fun BatsmanStatsCard(
                             modifier = Modifier
                                 .size(54.dp)
                                 .blur(12.dp)
-                                .background(ShinyGoldDeep.copy(alpha = 0.15f * strikePulse), CircleShape)
+                                .background(colors.goldPrimary.copy(alpha = 0.15f * strikePulse), CircleShape)
                         )
                     }
                     
@@ -96,14 +97,14 @@ fun BatsmanStatsCard(
                         modifier = Modifier
                             .size(48.dp)
                             .clip(CircleShape)
-                            .background(Color.White.copy(alpha = 0.05f))
-                            .border(0.5.dp, if (isOnStrike) ShinyGoldDeep.copy(alpha = 0.5f) else Color.White.copy(alpha = 0.1f), CircleShape),
+                            .background(colors.glassSurface)
+                            .border(0.5.dp, if (isOnStrike) colors.goldPrimary.copy(alpha = 0.5f) else colors.glassSurface, CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
                         if (imageUrl != null) {
                             CoilImage(model = imageUrl, contentDescription = name, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
                         } else {
-                            Text(name.take(1), color = if (isOnStrike) ShinyGoldDeep else TextMuted, fontSize = 18.sp, fontWeight = FontWeight.Black)
+                            Text(name.take(1), color = if (isOnStrike) colors.goldPrimary else colors.textMuted, fontSize = 18.sp, fontWeight = FontWeight.Black)
                         }
                     }
                 }
@@ -112,17 +113,17 @@ fun BatsmanStatsCard(
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text(
                             text = name.uppercase(),
-                            color = if (isOut) TextMuted else Color.White,
+                            color = if (isOut) colors.textMuted else colors.textPrimary,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Black,
                             letterSpacing = (-0.3).sp,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
-                        if (isOnStrike) Box(modifier = Modifier.size(6.dp).background(ShinyGoldDeep, CircleShape))
+                        if (isOnStrike) Box(modifier = Modifier.size(6.dp).background(colors.goldPrimary, CircleShape))
                     }
                     if (isOut && dismissalType != null) {
-                        Text(dismissalType, color = ErrorRed.copy(alpha = 0.7f), fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                        Text(dismissalType, color = colors.statusLive.copy(alpha = 0.7f), fontSize = 10.sp, fontWeight = FontWeight.Bold)
                     }
                 }
             }
@@ -132,17 +133,17 @@ fun BatsmanStatsCard(
                 Column(horizontalAlignment = Alignment.End) {
                     Text(
                         text = runs.toString(),
-                        color = if (runs >= 50) ShinyGoldDeep else Color.White,
+                        color = if (runs >= 50) colors.goldPrimary else colors.textPrimary,
                         fontSize = 24.sp,
                         fontWeight = FontWeight.Black,
                         letterSpacing = (-1).sp
                     )
-                    Text("RUNS", color = TextMuted, fontSize = 8.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
+                    Text("RUNS", color = colors.textMuted, fontSize = 8.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
                 }
 
                 Column(horizontalAlignment = Alignment.End) {
-                    Text(balls.toString(), color = TextSecondary, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                    Text("BALLS", color = TextMuted, fontSize = 8.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
+                    Text(balls.toString(), color = colors.textSecondary, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    Text("BALLS", color = colors.textMuted, fontSize = 8.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
                 }
 
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -187,14 +188,16 @@ fun BowlerStatsCard(
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null
 ) {
+    val colors = BouncerDesignSystem.colors
+
     Box(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(20.dp))
-            .background(Color.White.copy(alpha = 0.08f))
+            .background(colors.glassBorderHighlight)
             .border(
                 0.5.dp,
-                if (isCurrentBowler) Brush.linearGradient(listOf(ChartCyan, Color.Transparent)) else Brush.linearGradient(listOf(Color.White.copy(alpha = 0.05f), Color.Transparent)),
+                if (isCurrentBowler) Brush.linearGradient(listOf(ChartCyan, Color.Transparent)) else Brush.linearGradient(listOf(colors.glassSurface, Color.Transparent)),
                 RoundedCornerShape(20.dp)
             )
             .then(if (onClick != null) Modifier.clickable { onClick() } else Modifier)
@@ -214,26 +217,26 @@ fun BowlerStatsCard(
                     modifier = Modifier
                         .size(48.dp)
                         .clip(CircleShape)
-                        .background(Color.White.copy(alpha = 0.05f))
-                        .border(0.5.dp, if (isCurrentBowler) ChartCyan.copy(alpha = 0.5f) else Color.White.copy(alpha = 0.1f), CircleShape),
+                        .background(colors.glassSurface)
+                        .border(0.5.dp, if (isCurrentBowler) ChartCyan.copy(alpha = 0.5f) else colors.glassSurface, CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
                     if (imageUrl != null) {
                         CoilImage(model = imageUrl, contentDescription = name, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
                     } else {
-                        Text(name.take(1), color = if (isCurrentBowler) ChartCyan else TextMuted, fontSize = 18.sp, fontWeight = FontWeight.Black)
+                        Text(name.take(1), color = if (isCurrentBowler) ChartCyan else colors.textMuted, fontSize = 18.sp, fontWeight = FontWeight.Black)
                     }
                 }
 
                 Column {
                     Text(
                         text = name.uppercase(),
-                        color = Color.White,
+                        color = colors.textPrimary,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Black,
                         letterSpacing = (-0.3).sp
                     )
-                    Text("$overs OVERS", color = TextMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                    Text("$overs OVERS", color = colors.textMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                 }
             }
 
@@ -241,28 +244,28 @@ fun BowlerStatsCard(
                 Column(horizontalAlignment = Alignment.End) {
                     Text(
                         text = "$wickets-$runs",
-                        color = if (wickets >= 3) SuccessGreen else Color.White,
+                        color = if (wickets >= 3) colors.statusSuccess else colors.textPrimary,
                         fontSize = 22.sp,
                         fontWeight = FontWeight.Black,
                         letterSpacing = (-0.5).sp
                     )
-                    Text("FIGURES", color = TextMuted, fontSize = 8.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
+                    Text("FIGURES", color = colors.textMuted, fontSize = 8.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
                 }
 
                 Column(horizontalAlignment = Alignment.End) {
                     Text(String.format("%.2f", economy), color = ChartCyan, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                    Text("ECON", color = TextMuted, fontSize = 8.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
+                    Text("ECON", color = colors.textMuted, fontSize = 8.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
                 }
                 
                 if (maidens > 0) {
                     Box(
                         modifier = Modifier
                             .clip(CircleShape)
-                            .background(ShinyGoldDeep.copy(alpha = 0.1f))
-                            .border(0.5.dp, ShinyGoldDeep.copy(alpha = 0.3f), CircleShape)
+                            .background(colors.goldPrimary.copy(alpha = 0.1f))
+                            .border(0.5.dp, colors.goldPrimary.copy(alpha = 0.3f), CircleShape)
                             .padding(horizontal = 8.dp, vertical = 4.dp)
                     ) {
-                        Text("M: $maidens", color = ShinyGoldDeep, fontSize = 10.sp, fontWeight = FontWeight.Black)
+                        Text("M: $maidens", color = colors.goldPrimary, fontSize = 10.sp, fontWeight = FontWeight.Black)
                     }
                 }
             }
@@ -279,9 +282,10 @@ fun CircularStatIndicator(
     maxValue: Float,
     label: String,
     displayValue: String,
-    color: Color = ShinyGoldDeep,
+    color: Color = GoldPrimary,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val progress = (value / maxValue).coerceIn(0f, 1f)
     val animatedProgress by animateFloatAsState(targetValue = progress, animationSpec = tween(1500), label = "progress")
     
@@ -289,7 +293,7 @@ fun CircularStatIndicator(
         Box(modifier = Modifier.size(68.dp), contentAlignment = Alignment.Center) {
             Canvas(modifier = Modifier.fillMaxSize()) {
                 val strokeWidth = 4.dp.toPx()
-                drawCircle(color = Color.White.copy(alpha = 0.05f), style = Stroke(width = strokeWidth))
+                drawCircle(color = colors.glassSurface, style = Stroke(width = strokeWidth))
                 drawArc(
                     brush = Brush.sweepGradient(listOf(color, color.copy(alpha = 0.3f), color)),
                     startAngle = -90f,
@@ -298,9 +302,9 @@ fun CircularStatIndicator(
                     style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
                 )
             }
-            Text(displayValue, fontSize = 16.sp, fontWeight = FontWeight.Black, color = Color.White)
+            Text(displayValue, fontSize = 16.sp, fontWeight = FontWeight.Black, color = colors.textPrimary)
         }
         Spacer(modifier = Modifier.height(8.dp))
-        Text(label.uppercase(), fontSize = 9.sp, fontWeight = FontWeight.Black, color = TextMuted, letterSpacing = 1.sp)
+        Text(label.uppercase(), fontSize = 9.sp, fontWeight = FontWeight.Black, color = colors.textMuted, letterSpacing = 1.sp)
     }
 }

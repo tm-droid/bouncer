@@ -31,7 +31,8 @@ class LiveCommentaryManager(
     var aiInsightCooldownMs: Long = 120_000L
     private val lastInsightAt = mutableMapOf<String, Long>()
 
-    private val scope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO + kotlinx.coroutines.SupervisorJob())
+    private val supervisorJob = kotlinx.coroutines.SupervisorJob()
+    private val scope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO + supervisorJob)
     
     fun generateOversSummary(commentaryLines: List<String>): String {
         if (commentaryLines.isEmpty()) return "No recent commentary available."
@@ -233,4 +234,12 @@ class LiveCommentaryManager(
     fun getMappedCricinfoId(cricbuzzId: String): String? = cricinfo.getMappedCricinfoId(cricbuzzId)
     fun getHistory(): List<String> = commentaryHistory
     fun isBallByBallCommentary(snippet: String): Boolean = scorer.isBallByBallCommentary(snippet)
+
+    /**
+     * Cancel all coroutines to prevent leaks.
+     * Call this when the manager is no longer needed.
+     */
+    fun close() {
+        supervisorJob.cancel()
+    }
 }

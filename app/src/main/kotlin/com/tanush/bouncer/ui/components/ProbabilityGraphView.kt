@@ -41,6 +41,7 @@ fun ProbabilityGraphView(
 ) {
     var selectedEvent by remember { mutableStateOf<ProbabilityEvent?>(null) }
     
+    val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "graphShimmer")
     val shimmerAlpha by infiniteTransition.animateFloat(
         initialValue = 0.6f,
@@ -59,7 +60,7 @@ fun ProbabilityGraphView(
             .shadow(
                 elevation = 16.dp,
                 shape = RoundedCornerShape(24.dp),
-                spotColor = ShinyGoldDeep.copy(alpha = 0.12f),
+                spotColor = colors.goldPrimary.copy(alpha = 0.12f),
                 ambientColor = Color.Black.copy(alpha = 0.25f)
             ),
         shape = RoundedCornerShape(24.dp),
@@ -82,7 +83,7 @@ fun ProbabilityGraphView(
                     text = "Win Probability",
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
-                    color = TextPrimary,
+                    color = colors.textPrimary,
                     letterSpacing = (-0.3).sp
                 )
                 
@@ -90,7 +91,7 @@ fun ProbabilityGraphView(
                     modifier = Modifier
                         .size(6.dp)
                         .background(
-                            ShinyGoldDeep.copy(alpha = shimmerAlpha),
+                            colors.goldPrimary.copy(alpha = shimmerAlpha),
                             CircleShape
                         )
                 )
@@ -104,7 +105,7 @@ fun ProbabilityGraphView(
                     text = currentMatchScore,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = ShinyGoldDeep,
+                    color = colors.goldPrimary,
                     modifier = Modifier.padding(bottom = 4.dp)
                 )
             }
@@ -114,7 +115,7 @@ fun ProbabilityGraphView(
                 Text(
                     text = latestEventDescription,
                     fontSize = 13.sp,
-                    color = TextSecondary,
+                    color = colors.textSecondary,
                     modifier = Modifier.padding(bottom = 12.dp),
                     lineHeight = 18.sp
                 )
@@ -142,9 +143,9 @@ fun ProbabilityGraphView(
                         .background(
                             Brush.horizontalGradient(
                                 colors = listOf(
-                                    ShinyGoldDeep.copy(alpha = 0.1f),
-                                    ShinyGoldMid.copy(alpha = 0.15f),
-                                    ShinyGoldDeep.copy(alpha = 0.1f)
+                                    colors.goldPrimary.copy(alpha = 0.1f),
+                                    colors.goldDark.copy(alpha = 0.15f),
+                                    colors.goldPrimary.copy(alpha = 0.1f)
                                 )
                             ),
                             RoundedCornerShape(14.dp)
@@ -155,7 +156,7 @@ fun ProbabilityGraphView(
                         text = matchResult,
                         fontSize = 15.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = ShinyGoldDeep,
+                        color = colors.goldPrimary,
                         letterSpacing = 0.2.sp
                     )
                 }
@@ -177,7 +178,7 @@ fun ProbabilityGraphView(
                     text = "Key Moments",
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
-                    color = TextPrimary,
+                    color = colors.textPrimary,
                     letterSpacing = (-0.2).sp,
                     modifier = Modifier.padding(bottom = 12.dp)
                 )
@@ -208,9 +209,13 @@ private fun ProbabilityGraph(
     modifier: Modifier = Modifier,
     predictiveOverlay: List<Pair<Int, Double>>? = null
 ) {
+    val colors = BouncerDesignSystem.colors
     val onSurfaceColor = MaterialTheme.colorScheme.onSurface
-    val primaryColor = ShinyGoldDeep
-    val secondaryColor = ShinyGoldMid
+    val primaryColor = colors.goldPrimary
+    val secondaryColor = colors.goldDark
+    val wicketBlue = colors.statusInfo
+    val boundarySix = colors.statusWarning
+    val goldDark = colors.goldDark
 
     Canvas(modifier = modifier) {
         val width = size.width
@@ -313,9 +318,9 @@ private fun ProbabilityGraph(
             val y = height - padding - event.probability.toFloat() * yScale
             
             val markerColor = when (event.eventType) {
-                ProbabilityEvent.EventType.WICKET -> WicketBlue
-                ProbabilityEvent.EventType.BOUNDARY -> BoundarySix
-                else -> ShinyGoldMid
+                ProbabilityEvent.EventType.WICKET -> wicketBlue
+                ProbabilityEvent.EventType.BOUNDARY -> boundarySix
+                else -> goldDark
             }
             
             // Outer glow
@@ -360,6 +365,7 @@ private fun EventDetailsCard(
     event: ProbabilityEvent,
     onDismiss: () -> Unit
 ) {
+    val colors = BouncerDesignSystem.colors
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -367,12 +373,12 @@ private fun EventDetailsCard(
             .shadow(
                 elevation = 8.dp,
                 shape = RoundedCornerShape(14.dp),
-                spotColor = ShinyGoldDeep.copy(alpha = 0.15f),
+                spotColor = colors.goldPrimary.copy(alpha = 0.15f),
                 ambientColor = Color.Black.copy(alpha = 0.2f)
             ),
         shape = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(
-            containerColor = CardDarkBlue
+            containerColor = colors.surface1
         )
     ) {
         Column(
@@ -389,13 +395,13 @@ private fun EventDetailsCard(
                     text = "Over ${event.over}",
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
-                    color = ShinyGoldDeep
+                    color = colors.goldPrimary
                 )
                 IconButton(
                     onClick = onDismiss,
                     modifier = Modifier.size(24.dp)
                 ) {
-                    Text("×", fontSize = 20.sp, color = TextSecondary)
+                    Text("×", fontSize = 20.sp, color = colors.textSecondary)
                 }
             }
             
@@ -404,7 +410,7 @@ private fun EventDetailsCard(
             Text(
                 text = event.description,
                 fontSize = 14.sp,
-                color = TextPrimary,
+                color = colors.textPrimary,
                 lineHeight = 20.sp
             )
 
@@ -414,13 +420,13 @@ private fun EventDetailsCard(
             Text(
                 text = "Batsman: Rohit Sharma  45(32)  4x4  2x6  SR: 140.6",
                 fontSize = 13.sp,
-                color = BoundarySix,
+                color = colors.statusWarning,
                 fontWeight = FontWeight.Medium
             )
             Text(
                 text = "Bowler: Rashid Khan  3-0-18-2  Econ: 6.0",
                 fontSize = 13.sp,
-                color = WicketBlue,
+                color = colors.statusInfo,
                 fontWeight = FontWeight.Medium
             )
 
@@ -430,7 +436,7 @@ private fun EventDetailsCard(
             Text(
                 text = "AI Insight: This wicket shifted the win probability by 12%. Momentum now with the bowling side.",
                 fontSize = 12.sp,
-                color = ShinyGoldDeep,
+                color = colors.goldPrimary,
                 fontWeight = FontWeight.SemiBold
             )
 
@@ -444,13 +450,13 @@ private fun EventDetailsCard(
                     text = "Win Probability: ${"%.1f".format(event.probability)}%",
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Medium,
-                    color = TextSecondary
+                    color = colors.textSecondary
                 )
                 Text(
                     text = "Impact: ${if (event.impact > 0) "+" else ""}${"%.1f".format(event.impact)}%",
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
-                    color = if (event.impact > 0) BoundarySix else WicketBlue
+                    color = if (event.impact > 0) colors.statusWarning else colors.statusInfo
                 )
             }
         }
@@ -459,6 +465,7 @@ private fun EventDetailsCard(
 
 @Composable
 private fun KeyMomentItem(event: ProbabilityEvent) {
+    val colors = BouncerDesignSystem.colors
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -475,8 +482,8 @@ private fun KeyMomentItem(event: ProbabilityEvent) {
                 .size(8.dp)
                 .background(
                     color = when (event.eventType) {
-                        ProbabilityEvent.EventType.WICKET -> WicketBlue
-                        ProbabilityEvent.EventType.BOUNDARY -> BoundarySix
+                        ProbabilityEvent.EventType.WICKET -> colors.statusInfo
+                        ProbabilityEvent.EventType.BOUNDARY -> colors.statusWarning
                         else -> LiveBlue
                     },
                     shape = CircleShape
@@ -490,7 +497,7 @@ private fun KeyMomentItem(event: ProbabilityEvent) {
                 text = "Over ${event.over} • ${event.description}",
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Medium,
-                color = TextPrimary,
+                color = colors.textPrimary,
                 lineHeight = 18.sp
             )
             Spacer(modifier = Modifier.height(4.dp))
@@ -498,7 +505,7 @@ private fun KeyMomentItem(event: ProbabilityEvent) {
                 text = "Impact: ${if (event.impact > 0) "+" else ""}${"%.1f".format(event.impact)}%",
                 fontSize = 11.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = if (event.impact > 0) BoundarySix else WicketBlue
+                color = if (event.impact > 0) colors.statusWarning else colors.statusInfo
             )
         }
         
@@ -506,7 +513,7 @@ private fun KeyMomentItem(event: ProbabilityEvent) {
             text = "${"%.1f".format(event.probability)}%",
             fontSize = 14.sp,
             fontWeight = FontWeight.Bold,
-            color = ShinyGoldDeep
+            color = colors.goldPrimary
         )
     }
 }

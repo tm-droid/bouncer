@@ -12,6 +12,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.material3.ripple
@@ -54,6 +57,7 @@ fun ExpandableMatchCardV2(
     modifier: Modifier = Modifier,
     initiallyExpanded: Boolean = false
 ) {
+    val colors = BouncerDesignSystem.colors
     var isExpanded by remember { mutableStateOf(initiallyExpanded) }
     val haptic = rememberHapticFeedback()
     
@@ -89,12 +93,12 @@ fun ExpandableMatchCardV2(
             .shadow(
                 elevation = cardElevation,
                 shape = RoundedCornerShape(24.dp),
-                spotColor = if (isLive) LiveBlue.copy(alpha = 0.4f) else ShinyGoldDeep.copy(alpha = 0.3f)
+                spotColor = if (isLive) colors.statusInfo.copy(alpha = 0.4f) else colors.goldPrimary.copy(alpha = 0.3f)
             )
             .clip(RoundedCornerShape(24.dp))
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
-                indication = ripple(color = ShinyGoldDeep.copy(alpha = 0.2f))
+                indication = ripple(color = colors.goldPrimary.copy(alpha = 0.2f))
             ) {
                 haptic.click()
                 isExpanded = !isExpanded
@@ -116,7 +120,7 @@ fun ExpandableMatchCardV2(
             ) {
                 Text(
                     text = match.matchTitle.substringBefore(",").trim().uppercase(),
-                    color = ShinyGoldLight.copy(alpha = 0.8f),
+                    color = colors.goldLight.copy(alpha = 0.8f),
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Black,
                     letterSpacing = 1.sp,
@@ -133,7 +137,7 @@ fun ExpandableMatchCardV2(
                 Icon(
                     imageVector = if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
                     contentDescription = if (isExpanded) "Collapse" else "Expand",
-                    tint = TextSecondary,
+                    tint = colors.textSecondary,
                     modifier = Modifier
                         .size(24.dp)
                         .graphicsLayer {
@@ -154,13 +158,13 @@ fun ExpandableMatchCardV2(
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = team1?.acronym ?: team1?.name?.take(3)?.uppercase() ?: "TBD",
-                        color = TextPrimary,
+                        color = colors.textPrimary,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
                         text = scoreInfo1.toDisplayString(),
-                        color = ShinyGoldDeep,
+                        color = colors.goldPrimary,
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Black
                     )
@@ -175,7 +179,7 @@ fun ExpandableMatchCardV2(
                 ) {
                     Text(
                         text = "VS",
-                        color = TextTertiary,
+                        color = colors.textTertiary,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Black
                     )
@@ -188,13 +192,13 @@ fun ExpandableMatchCardV2(
                 ) {
                     Text(
                         text = team2?.acronym ?: team2?.name?.take(3)?.uppercase() ?: "TBD",
-                        color = TextPrimary,
+                        color = colors.textPrimary,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
                         text = scoreInfo2.toDisplayString(),
-                        color = ShinyGoldDeep,
+                        color = colors.goldPrimary,
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Black
                     )
@@ -209,7 +213,7 @@ fun ExpandableMatchCardV2(
             ) {
                 Column(modifier = Modifier.padding(top = 16.dp)) {
                     HorizontalDivider(
-                        color = CardBorder.copy(alpha = 0.3f),
+                        color = colors.glassBorder.copy(alpha = 0.3f),
                         thickness = 0.5.dp
                     )
                     
@@ -219,7 +223,7 @@ fun ExpandableMatchCardV2(
                     if (!match.scrapedBatsmen.isNullOrEmpty()) {
                         Text(
                             text = "BATTING",
-                            color = TextMuted,
+                            color = colors.textMuted,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Black,
                             letterSpacing = 1.sp
@@ -243,7 +247,7 @@ fun ExpandableMatchCardV2(
                     match.currentBowler?.let { bowler ->
                         Text(
                             text = "BOWLING",
-                            color = TextMuted,
+                            color = colors.textMuted,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Black,
                             letterSpacing = 1.sp
@@ -276,13 +280,13 @@ fun ExpandableMatchCardV2(
                     ) {
                         Text(
                             text = "View Full Scorecard",
-                            color = ShinyGoldDeep,
+                            color = colors.goldPrimary,
                             fontWeight = FontWeight.Bold
                         )
                         Icon(
-                            imageVector = Icons.Default.ArrowForward,
+                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                             contentDescription = null,
-                            tint = ShinyGoldDeep,
+                            tint = colors.goldPrimary,
                             modifier = Modifier.size(18.dp)
                         )
                     }
@@ -298,6 +302,7 @@ private fun MiniPlayerRow(
     stat: String,
     isHighlighted: Boolean = false
 ) {
+    val colors = BouncerDesignSystem.colors
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -307,7 +312,7 @@ private fun MiniPlayerRow(
     ) {
         Text(
             text = name,
-            color = if (isHighlighted) TextPrimary else TextSecondary,
+            color = if (isHighlighted) colors.textPrimary else colors.textSecondary,
             fontSize = 13.sp,
             fontWeight = if (isHighlighted) FontWeight.SemiBold else FontWeight.Normal,
             maxLines = 1,
@@ -316,7 +321,7 @@ private fun MiniPlayerRow(
         )
         Text(
             text = stat,
-            color = if (isHighlighted) ShinyGoldDeep else TextSecondary,
+            color = if (isHighlighted) colors.goldPrimary else colors.textSecondary,
             fontSize = 13.sp,
             fontWeight = FontWeight.Bold
         )
@@ -325,6 +330,7 @@ private fun MiniPlayerRow(
 
 @Composable
 private fun LiveBadge() {
+    val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "liveBadge")
     val pulse by infiniteTransition.animateFloat(
         initialValue = 0.6f,
@@ -337,9 +343,9 @@ private fun LiveBadge() {
     )
     
     Surface(
-        color = LiveRedPulse.copy(alpha = 0.15f),
+        color = colors.statusLive.copy(alpha = 0.15f),
         shape = RoundedCornerShape(8.dp),
-        border = androidx.compose.foundation.BorderStroke(1.dp, LiveRedPulse.copy(alpha = 0.4f))
+        border = androidx.compose.foundation.BorderStroke(1.dp, colors.statusLive.copy(alpha = 0.4f))
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
@@ -350,11 +356,11 @@ private fun LiveBadge() {
                 modifier = Modifier
                     .size(6.dp)
                     .graphicsLayer { alpha = pulse }
-                    .background(LiveRedPulse, CircleShape)
+                    .background(colors.statusLive, CircleShape)
             )
             Text(
                 text = "LIVE",
-                color = LiveRedPulse,
+                color = colors.statusLive,
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Black,
                 letterSpacing = 0.5.sp
@@ -373,6 +379,7 @@ fun LiveCommentaryPeek(
     modifier: Modifier = Modifier,
     maxVisibleItems: Int = 3
 ) {
+    val colors = BouncerDesignSystem.colors
     val scrollState = rememberScrollState()
     val infiniteTransition = rememberInfiniteTransition(label = "commentaryPeek")
     
@@ -398,13 +405,13 @@ fun LiveCommentaryPeek(
             .fillMaxWidth()
             .heightIn(max = (maxVisibleItems * 60).dp),
         shape = RoundedCornerShape(16.dp),
-        color = CardDarkBlue.copy(alpha = 0.8f),
+        color = colors.surface1.copy(alpha = 0.8f),
         border = androidx.compose.foundation.BorderStroke(
             0.5.dp,
             Brush.horizontalGradient(
                 colors = listOf(
                     Color.Transparent,
-                    ShinyGoldDeep.copy(alpha = shimmer * 0.3f),
+                    colors.goldPrimary.copy(alpha = shimmer * 0.3f),
                     Color.Transparent
                 )
             )
@@ -421,7 +428,7 @@ fun LiveCommentaryPeek(
             ) {
                 Text(
                     text = "COMMENTARY",
-                    color = ShinyGoldDeep,
+                    color = colors.goldPrimary,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Black,
                     letterSpacing = 1.sp
@@ -429,7 +436,7 @@ fun LiveCommentaryPeek(
                 
                 Text(
                     text = "${commentaryItems.size} entries",
-                    color = TextMuted,
+                    color = colors.textMuted,
                     fontSize = 10.sp
                 )
             }
@@ -448,7 +455,7 @@ fun LiveCommentaryPeek(
                     
                     Text(
                         text = item,
-                        color = TextPrimary.copy(alpha = alpha),
+                        color = colors.textPrimary.copy(alpha = alpha),
                         fontSize = 12.sp,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
@@ -457,7 +464,7 @@ fun LiveCommentaryPeek(
                     
                     if (index < minOf(commentaryItems.size - 1, maxVisibleItems - 1)) {
                         HorizontalDivider(
-                            color = CardBorder.copy(alpha = 0.2f),
+                            color = colors.glassBorder.copy(alpha = 0.2f),
                             thickness = 0.5.dp
                         )
                     }
@@ -473,7 +480,7 @@ fun LiveCommentaryPeek(
                 ) {
                     Text(
                         text = "+ ${commentaryItems.size - maxVisibleItems} more",
-                        color = TextMuted,
+                        color = colors.textMuted,
                         fontSize = 10.sp
                     )
                 }
@@ -493,6 +500,7 @@ fun TeamMomentumIndicator(
     momentumValue: Float, // -1 to 1, negative = team1, positive = team2
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val haptic = rememberHapticFeedback()
     val animatedMomentum by animateFloatAsState(
         targetValue = momentumValue,
@@ -531,7 +539,7 @@ fun TeamMomentumIndicator(
         ) {
             Text(
                 text = "MOMENTUM",
-                color = TextMuted,
+                color = colors.textMuted,
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Black,
                 letterSpacing = 1.sp
@@ -546,13 +554,13 @@ fun TeamMomentumIndicator(
             ) {
                 Text(
                     text = team1Name.take(3).uppercase(),
-                    color = if (animatedMomentum < 0) ShinyGoldDeep else TextSecondary,
+                    color = if (animatedMomentum < 0) colors.goldPrimary else colors.textSecondary,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
                     text = team2Name.take(3).uppercase(),
-                    color = if (animatedMomentum > 0) ShinyGoldDeep else TextSecondary,
+                    color = if (animatedMomentum > 0) colors.goldPrimary else colors.textSecondary,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -582,7 +590,7 @@ fun TeamMomentumIndicator(
                         .width(2.dp)
                         .height(16.dp)
                         .align(Alignment.Center)
-                        .background(TextMuted)
+                        .background(colors.textMuted)
                 )
                 
                 // Momentum indicator
@@ -597,9 +605,9 @@ fun TeamMomentumIndicator(
                         .background(
                             brush = Brush.horizontalGradient(
                                 colors = if (animatedMomentum < 0) 
-                                    listOf(SuccessGreen, SuccessGreen.copy(alpha = 0.5f))
+                                    listOf(colors.statusSuccess, colors.statusSuccess.copy(alpha = 0.5f))
                                 else 
-                                    listOf(LiveBlue.copy(alpha = 0.5f), LiveBlue)
+                                    listOf(colors.statusInfo.copy(alpha = 0.5f), colors.statusInfo)
                             ),
                             shape = RoundedCornerShape(12.dp)
                         )
@@ -619,11 +627,11 @@ fun TeamMomentumIndicator(
                         repeat(minOf(3, (abs(animatedMomentum) * 5).toInt().coerceAtLeast(1))) {
                             Icon(
                                 imageVector = if (animatedMomentum < 0) 
-                                    Icons.Default.KeyboardArrowLeft 
+                                    Icons.AutoMirrored.Filled.KeyboardArrowLeft 
                                 else 
-                                    Icons.Default.KeyboardArrowRight,
+                                    Icons.AutoMirrored.Filled.KeyboardArrowRight,
                                 contentDescription = null,
-                                tint = if (animatedMomentum < 0) SuccessGreen else LiveBlue,
+                                tint = if (animatedMomentum < 0) colors.statusSuccess else colors.statusInfo,
                                 modifier = Modifier.size(16.dp)
                             )
                         }
@@ -641,9 +649,9 @@ fun TeamMomentumIndicator(
                     else -> "DOMINANCE"
                 },
                 color = when {
-                    abs(animatedMomentum) < 0.2f -> TextMuted
-                    animatedMomentum < 0 -> SuccessGreen
-                    else -> LiveBlue
+                    abs(animatedMomentum) < 0.2f -> colors.textMuted
+                    animatedMomentum < 0 -> colors.statusSuccess
+                    else -> colors.statusInfo
                 },
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Bold,
@@ -666,6 +674,7 @@ fun WeatherPitchOverlay(
     windSpeed: String? = null,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val weatherIcon = when (weather.lowercase()) {
         "sunny", "clear" -> Icons.Default.WbSunny
         "cloudy", "overcast" -> Icons.Default.Cloud
@@ -675,25 +684,25 @@ fun WeatherPitchOverlay(
     }
     
     val weatherColor = when (weather.lowercase()) {
-        "sunny", "clear" -> ShinyGoldDeep
-        "cloudy", "overcast" -> TextSecondary
-        "rainy", "rain" -> LiveBlue
-        else -> ShinyGoldMid
+        "sunny", "clear" -> colors.goldPrimary
+        "cloudy", "overcast" -> colors.textSecondary
+        "rainy", "rain" -> colors.statusInfo
+        else -> colors.goldPrimary
     }
     
     val pitchColor = when (pitchType.lowercase()) {
-        "batting", "flat" -> SuccessGreen
+        "batting", "flat" -> colors.statusSuccess
         "bowling", "green" -> ChartGreen
         "spin", "turning" -> ChartPurple
         "seaming" -> ChartCyan
-        else -> TextSecondary
+        else -> colors.textSecondary
     }
     
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(16.dp),
-        color = CardDarkBlue.copy(alpha = 0.8f),
-        border = androidx.compose.foundation.BorderStroke(0.5.dp, CardBorder)
+        color = colors.surface1.copy(alpha = 0.8f),
+        border = androidx.compose.foundation.BorderStroke(0.5.dp, colors.glassBorder)
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
@@ -714,7 +723,7 @@ fun WeatherPitchOverlay(
                 Column {
                     Text(
                         text = weather.uppercase(),
-                        color = TextPrimary,
+                        color = colors.textPrimary,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 0.5.sp
@@ -722,7 +731,7 @@ fun WeatherPitchOverlay(
                     if (temperature != null) {
                         Text(
                             text = "${temperature}°C",
-                            color = TextSecondary,
+                            color = colors.textSecondary,
                             fontSize = 10.sp
                         )
                     }
@@ -734,7 +743,7 @@ fun WeatherPitchOverlay(
                 modifier = Modifier
                     .width(1.dp)
                     .height(32.dp)
-                    .background(CardBorder)
+                    .background(colors.glassBorder)
             )
             
             // Humidity
@@ -746,12 +755,12 @@ fun WeatherPitchOverlay(
                     Icon(
                         imageVector = Icons.Default.WaterDrop,
                         contentDescription = "Humidity",
-                        tint = LiveBlue,
+                        tint = colors.statusInfo,
                         modifier = Modifier.size(18.dp)
                     )
                     Text(
                         text = "$humidity%",
-                        color = TextSecondary,
+                        color = colors.textSecondary,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Medium
                     )
@@ -772,7 +781,7 @@ fun WeatherPitchOverlay(
                     )
                     Text(
                         text = windSpeed,
-                        color = TextSecondary,
+                        color = colors.textSecondary,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Medium
                     )
@@ -814,6 +823,7 @@ fun MatchCountdown(
     onMatchStart: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     var remainingTime by remember { mutableLongStateOf(targetTimeMillis - System.currentTimeMillis()) }
     
     LaunchedEffect(targetTimeMillis) {
@@ -850,9 +860,9 @@ fun MatchCountdown(
             1.dp,
             Brush.linearGradient(
                 colors = listOf(
-                    ShinyGoldDeep.copy(alpha = 0.3f),
-                    ShinyGoldMid.copy(alpha = 0.1f),
-                    ShinyGoldDeep.copy(alpha = 0.3f)
+                    colors.goldPrimary.copy(alpha = 0.3f),
+                    colors.goldPrimary.copy(alpha = 0.1f),
+                    colors.goldPrimary.copy(alpha = 0.3f)
                 )
             )
         )
@@ -864,7 +874,7 @@ fun MatchCountdown(
             if (matchTitle.isNotEmpty()) {
                 Text(
                     text = matchTitle,
-                    color = TextSecondary,
+                    color = colors.textSecondary,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.SemiBold,
                     textAlign = TextAlign.Center,
@@ -876,7 +886,7 @@ fun MatchCountdown(
             
             Text(
                 text = "MATCH STARTS IN",
-                color = TextMuted,
+                color = colors.textMuted,
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Black,
                 letterSpacing = 2.sp
@@ -924,7 +934,7 @@ fun MatchCountdown(
                 Spacer(modifier = Modifier.height(12.dp))
                 Text(
                     text = "Starting Soon!",
-                    color = SuccessGreen,
+                    color = colors.statusSuccess,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -940,6 +950,7 @@ private fun CountdownUnit(
     pulse: Float = 1f,
     highlight: Boolean = false
 ) {
+    val colors = BouncerDesignSystem.colors
     Column(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -951,19 +962,19 @@ private fun CountdownUnit(
                     scaleY = pulse
                 }
                 .background(
-                    if (highlight) ShinyGoldDeep.copy(alpha = 0.2f) else Color.White.copy(alpha = 0.08f),
+                    if (highlight) colors.goldPrimary.copy(alpha = 0.2f) else Color.White.copy(alpha = 0.08f),
                     RoundedCornerShape(12.dp)
                 )
                 .border(
                     1.dp,
-                    if (highlight) ShinyGoldDeep.copy(alpha = 0.5f) else CardBorder.copy(alpha = 0.3f),
+                    if (highlight) colors.goldPrimary.copy(alpha = 0.5f) else colors.glassBorder.copy(alpha = 0.3f),
                     RoundedCornerShape(12.dp)
                 ),
             contentAlignment = Alignment.Center
         ) {
             Text(
                 text = String.format("%02d", value),
-                color = if (highlight) ShinyGoldDeep else TextPrimary,
+                color = if (highlight) colors.goldPrimary else colors.textPrimary,
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Black
             )
@@ -971,7 +982,7 @@ private fun CountdownUnit(
         Spacer(modifier = Modifier.height(6.dp))
         Text(
             text = label,
-            color = TextMuted,
+            color = colors.textMuted,
             fontSize = 9.sp,
             fontWeight = FontWeight.Bold,
             letterSpacing = 0.5.sp
@@ -981,6 +992,7 @@ private fun CountdownUnit(
 
 @Composable
 private fun CountdownSeparator() {
+    val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "separator")
     val alpha by infiniteTransition.animateFloat(
         initialValue = 0.3f,
@@ -1000,13 +1012,13 @@ private fun CountdownSeparator() {
             modifier = Modifier
                 .size(4.dp)
                 .graphicsLayer { this.alpha = alpha }
-                .background(ShinyGoldDeep, CircleShape)
+                .background(colors.goldPrimary, CircleShape)
         )
         Box(
             modifier = Modifier
                 .size(4.dp)
                 .graphicsLayer { this.alpha = alpha }
-                .background(ShinyGoldDeep, CircleShape)
+                .background(colors.goldPrimary, CircleShape)
         )
     }
 }
@@ -1045,19 +1057,20 @@ private fun QuickStatItem(
     label: String,
     value: String
 ) {
+    val colors = BouncerDesignSystem.colors
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier.widthIn(min = 60.dp)
     ) {
         Text(
             text = value,
-            color = TextPrimary,
+            color = colors.textPrimary,
             fontSize = 18.sp,
             fontWeight = FontWeight.Black
         )
         Text(
             text = label.uppercase(),
-            color = TextMuted,
+            color = colors.textMuted,
             fontSize = 9.sp,
             fontWeight = FontWeight.Bold,
             letterSpacing = 0.5.sp
@@ -1075,6 +1088,7 @@ fun RecentBallsTimeline(
     modifier: Modifier = Modifier,
     showOverMarkers: Boolean = true
 ) {
+    val colors = BouncerDesignSystem.colors
     val scrollState = rememberScrollState()
     
     Row(
@@ -1086,7 +1100,7 @@ fun RecentBallsTimeline(
     ) {
         Text(
             text = "RECENT",
-            color = TextMuted,
+            color = colors.textMuted,
             fontSize = 9.sp,
             fontWeight = FontWeight.Black,
             letterSpacing = 1.sp
@@ -1103,7 +1117,7 @@ fun RecentBallsTimeline(
                             Brush.verticalGradient(
                                 colors = listOf(
                                     Color.Transparent,
-                                    ShinyGoldDeep.copy(alpha = 0.5f),
+                                    colors.goldPrimary.copy(alpha = 0.5f),
                                     Color.Transparent
                                 )
                             )
@@ -1124,13 +1138,14 @@ private fun TimelineBall(
     ball: String,
     isLatest: Boolean = false
 ) {
+    val colors = BouncerDesignSystem.colors
     val (bgColor, textColor) = when {
-        ball.contains("W", ignoreCase = true) -> WicketRed to Color.White
-        ball == "6" -> BoundarySix to BlackBackground
-        ball == "4" -> BoundaryFour to BlackBackground
-        ball == "0" || ball == "." -> DotBall to TextMuted
-        ball.contains("WD") || ball.contains("NB") -> WarningOrange to BlackBackground
-        else -> Color.White.copy(alpha = 0.08f) to TextPrimary
+        ball.contains("W", ignoreCase = true) -> colors.statusLive to Color.White
+        ball == "6" -> colors.goldPrimary to colors.backgroundBase
+        ball == "4" -> colors.statusInfo to colors.backgroundBase
+        ball == "0" || ball == "." -> DotBall to colors.textMuted
+        ball.contains("WD") || ball.contains("NB") -> colors.statusWarning to colors.backgroundBase
+        else -> Color.White.copy(alpha = 0.08f) to colors.textPrimary
     }
     
     val infiniteTransition = rememberInfiniteTransition(label = "latestBall")
@@ -1161,7 +1176,7 @@ private fun TimelineBall(
             .background(bgColor, CircleShape)
             .border(
                 if (isLatest) 2.dp else 0.5.dp,
-                if (isLatest) ShinyGoldDeep else Color.White.copy(alpha = 0.1f),
+                if (isLatest) colors.goldPrimary else Color.White.copy(alpha = 0.1f),
                 CircleShape
             ),
         contentAlignment = Alignment.Center

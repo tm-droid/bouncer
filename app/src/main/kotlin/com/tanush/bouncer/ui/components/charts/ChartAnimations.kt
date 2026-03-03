@@ -192,7 +192,7 @@ fun BarExpandAnimation(
     values: List<Float>,
     labels: List<String>,
     modifier: Modifier = Modifier,
-    barColor: Color = ChartBlue,
+    barColor: Color = StatusInfo,
     animationDuration: Int = 800,
     staggerDelay: Int = 50,
     onBarTap: ((Int) -> Unit)? = null
@@ -268,8 +268,8 @@ fun BarExpandAnimation(
             drawRoundRect(
                 brush = Brush.verticalGradient(
                     colors = listOf(
-                        if (index == selectedIndex) ShinyGoldDeep else barColor,
-                        (if (index == selectedIndex) ShinyGoldDeep else barColor).copy(alpha = 0.7f)
+                        if (index == selectedIndex) GoldPrimary else barColor,
+                        (if (index == selectedIndex) GoldPrimary else barColor).copy(alpha = 0.7f)
                     )
                 ),
                 topLeft = Offset(scaledX, scaledY),
@@ -441,7 +441,7 @@ fun PieSliceAnimation(
                     // Border
                     drawPath(
                         path = path,
-                        color = if (isSelected) ShinyGoldDeep else Color.White.copy(alpha = 0.2f),
+                        color = if (isSelected) GoldPrimary else Color.White.copy(alpha = 0.2f),
                         style = Stroke(width = if (isSelected) 3.dp.toPx() else 1.dp.toPx())
                     )
                 } else {
@@ -519,7 +519,7 @@ fun DataPointPopup(
     title: String,
     value: String,
     subtitle: String? = null,
-    color: Color = ShinyGoldDeep,
+    color: Color = GoldPrimary,
     modifier: Modifier = Modifier
 ) {
     val alpha by animateFloatAsState(
@@ -553,7 +553,7 @@ fun DataPointPopup(
                 .scale(scale)
                 .alpha(alpha)
                 .clip(RoundedCornerShape(12.dp))
-                .background(Color.White.copy(alpha = 0.08f))
+                .background(GlassBorder)
                 .padding(12.dp)
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -775,7 +775,7 @@ fun AnimatedValue(
 @Composable
 fun LiveDataPulse(
     modifier: Modifier = Modifier,
-    color: Color = LiveRedPulse,
+    color: Color = StatusLive,
     size: Dp = 12.dp
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "livePulse")

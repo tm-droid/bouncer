@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.ui.theme.*
 import kotlin.math.*
+import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 
 /**
  * Weather conditions card showing impact on play
@@ -67,6 +68,7 @@ fun WeatherConditionsCard(
     weather: MatchWeatherData,
     modifier: Modifier = Modifier,
 ) {
+    val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "weather")
 
     val cloudOffset by infiniteTransition.animateFloat(
@@ -117,7 +119,7 @@ fun WeatherConditionsCard(
                 Column {
                     Text(
                         text = "MATCH CONDITIONS",
-                        color = ShinyGoldLight,
+                        color = colors.goldLight,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 1.5.sp,
@@ -233,9 +235,9 @@ fun WeatherConditionsCard(
                     Text(
                         text = "${weather.dewFactor}/10",
                         color = when {
-                            weather.dewFactor <= 3 -> SuccessGreen
-                            weather.dewFactor <= 6 -> WarningYellow
-                            else -> WicketRed
+                            weather.dewFactor <= 3 -> colors.statusSuccess
+                            weather.dewFactor <= 6 -> colors.statusWarning
+                            else -> colors.statusLive
                         },
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,
@@ -260,9 +262,9 @@ fun WeatherConditionsCard(
                             .background(
                                 Brush.horizontalGradient(
                                     colors = listOf(
-                                        SuccessGreen,
-                                        WarningYellow,
-                                        WicketRed,
+                                        colors.statusSuccess,
+                                        colors.statusWarning,
+                                        colors.statusLive,
                                     ),
                                     startX = 0f,
                                     endX = 500f,
@@ -296,7 +298,7 @@ fun WeatherConditionsCard(
             ) {
                 Text(
                     text = "PLAYING CONDITIONS IMPACT",
-                    color = ShinyGoldLight,
+                    color = colors.goldLight,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 1.sp,
@@ -323,9 +325,9 @@ fun WeatherConditionsCard(
                     Text(
                         text = weather.battingImpact,
                         color = when {
-                            weather.battingImpact.contains("Favor", ignoreCase = true) -> SuccessGreen
-                            weather.battingImpact.contains("Difficult", ignoreCase = true) -> WicketRed
-                            else -> WarningYellow
+                            weather.battingImpact.contains("Favor", ignoreCase = true) -> colors.statusSuccess
+                            weather.battingImpact.contains("Difficult", ignoreCase = true) -> colors.statusLive
+                            else -> colors.statusWarning
                         },
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Medium,
@@ -355,9 +357,9 @@ fun WeatherConditionsCard(
                     Text(
                         text = weather.bowlingImpact,
                         color = when {
-                            weather.bowlingImpact.contains("Favor", ignoreCase = true) -> SuccessGreen
-                            weather.bowlingImpact.contains("Difficult", ignoreCase = true) -> WicketRed
-                            else -> WarningYellow
+                            weather.bowlingImpact.contains("Favor", ignoreCase = true) -> colors.statusSuccess
+                            weather.bowlingImpact.contains("Difficult", ignoreCase = true) -> colors.statusLive
+                            else -> colors.statusWarning
                         },
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Medium,
@@ -396,6 +398,7 @@ private fun WeatherStatItem(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     color: Color,
 ) {
+    val colors = BouncerDesignSystem.colors
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
@@ -433,6 +436,7 @@ private fun WeatherStatItem(
 
 @Composable
 fun WeatherConditionsCardPreview() {
+    val colors = BouncerDesignSystem.colors
     WeatherConditionsCard(
         weather = MatchWeatherData(
             temperature = 32,

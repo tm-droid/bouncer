@@ -26,6 +26,7 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.ui.theme.*
+import io.sentry.Sentry
 
 /**
  * Innings progress data point
@@ -57,6 +58,7 @@ fun WormGraphCard(
     innings2: TeamInnings? = null,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     var selectedPoint by remember { mutableStateOf<Pair<Int, InningsDataPoint>?>(null) }
     val textMeasurer = rememberTextMeasurer()
     
@@ -73,7 +75,7 @@ fun WormGraphCard(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(28.dp))
-            .background(Color.White.copy(alpha = 0.08f))
+            .background(GlassBackground)
             .border(
                 0.5.dp,
                 Brush.linearGradient(listOf(GoldHairline, Color.White.copy(alpha = 0.05f))),
@@ -91,7 +93,7 @@ fun WormGraphCard(
                 Column {
                     Text(
                         "SCORING TRAJECTORY",
-                        color = ShinyGoldDeep,
+                        color = colors.goldPrimary,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Black,
                         letterSpacing = 2.sp
@@ -134,10 +136,10 @@ fun WormGraphCard(
                         ) {
                             Column {
                                 Text(team.teamName.uppercase(), color = team.teamColor, fontSize = 10.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
-                                Text("OVER ${String.format("%.1f", point.second.over)}", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Black)
+                                Text("OVER ${String.format("%.1f", point.second.over)}", color = TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.Black)
                             }
                             Column(horizontalAlignment = Alignment.End) {
-                                Text("${point.second.cumulativeRuns}/${point.second.wicketsDown}", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Black)
+                                Text("${point.second.cumulativeRuns}/${point.second.wicketsDown}", color = TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Black)
                                 Text("RUNS/WICKETS", color = TextMuted, fontSize = 8.sp, fontWeight = FontWeight.Black)
                             }
                         }
@@ -153,7 +155,7 @@ fun WormGraphCard(
                     .fillMaxWidth()
                     .height(220.dp)
                     .clip(RoundedCornerShape(16.dp))
-                    .background(Color.Black.copy(alpha = 0.2f))
+                    .background(GlassDark)
                     .pointerInput(innings1, innings2) {
                         detectTapGestures { offset ->
                             val xPos = (offset.x / size.width) * maxOvers
@@ -176,7 +178,7 @@ fun WormGraphCard(
                     for (i in 0..4) {
                         val y = graphHeight * (i / 4f)
                         drawLine(
-                            color = Color.White.copy(alpha = 0.03f),
+                            color = GlassBorder,
                             start = Offset(0f, y),
                             end = Offset(graphWidth, y),
                             strokeWidth = 1.dp.toPx()
@@ -198,17 +200,17 @@ fun WormGraphCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(16.dp))
-                    .background(Color.White.copy(alpha = 0.02f))
+                    .background(GlassBorderLight)
                     .padding(16.dp)
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
-                    WormStatBlock("MAX SCORE", maxRuns.toString(), ShinyGoldDeep)
-                    VerticalDivider(modifier = Modifier.height(24.dp).alpha(0.1f), color = Color.White)
-                    WormStatBlock("TOTAL OVERS", String.format("%.1f", maxOvers), ChartBlue)
-                    VerticalDivider(modifier = Modifier.height(24.dp).alpha(0.1f), color = Color.White)
+                    WormStatBlock("MAX SCORE", maxRuns.toString(), colors.goldPrimary)
+                    VerticalDivider(modifier = Modifier.height(24.dp), color = GlassBorder)
+                    WormStatBlock("TOTAL OVERS", String.format("%.1f", maxOvers), colors.statusInfo)
+                    VerticalDivider(modifier = Modifier.height(24.dp), color = GlassBorder)
                     WormStatBlock("WICKETS", allPoints.maxOfOrNull { it.wicketsDown }.toString(), ErrorRed)
                 }
             }
@@ -217,60 +219,70 @@ fun WormGraphCard(
 }
 
 private fun DrawScope.drawTechnicalWorm(innings: TeamInnings, maxOvers: Float, maxRuns: Int, progress: Float) {
-    val points = innings.dataPoints
-    if (points.size < 2) return
+    try {
+        val points = innings.dataPoints
+        if (points.size < 2) return
     
-    val path = Path()
-    val fillPath = Path()
+        val path = Path()
+        val fillPath = Path()
     
-    points.forEachIndexed { index, point ->
-        val x = (point.over / maxOvers) * size.width
-        val y = size.height - (point.cumulativeRuns.toFloat() / maxRuns) * size.height
+        points.forEachIndexed { index, point ->
+            val x = (point.over / maxOvers) * size.width
+            val y = size.height - (point.cumulativeRuns.toFloat() / maxRuns) * size.height
         
-        if (index == 0) {
-            path.moveTo(x, y)
-            fillPath.moveTo(x, size.height)
-            fillPath.lineTo(x, y)
-        } else {
-            path.lineTo(x, y)
-            fillPath.lineTo(x, y)
+            if (index == 0) {
+                path.moveTo(x, y)
+                fillPath.moveTo(x, size.height)
+                fillPath.lineTo(x, y)
+            } else {
+                path.lineTo(x, y)
+                fillPath.lineTo(x, y)
+            }
         }
-    }
     
-    fillPath.lineTo((points.last().over / maxOvers) * size.width, size.height)
-    fillPath.close()
+        fillPath.lineTo((points.last().over / maxOvers) * size.width, size.height)
+        fillPath.close()
     
-    // Ambient Fill
-    drawPath(
-        path = fillPath,
-        brush = Brush.verticalGradient(
-            colors = listOf(innings.teamColor.copy(alpha = 0.15f * progress), Color.Transparent)
+        // Ambient Fill
+        drawPath(
+            path = fillPath,
+            brush = Brush.verticalGradient(
+                colors = listOf(innings.teamColor.copy(alpha = 0.15f * progress), Color.Transparent)
+            )
         )
-    )
     
-    // Precision Line
-    drawPath(
-        path = path,
-        color = innings.teamColor.copy(alpha = 0.8f * progress),
-        style = Stroke(width = 2.5.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
-    )
+        // Precision Line
+        drawPath(
+            path = path,
+            color = innings.teamColor.copy(alpha = 0.8f * progress),
+            style = Stroke(width = 2.5.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
+        )
+    } catch (e: Exception) {
+        Sentry.captureException(e)
+        throw e
+    }
 }
 
 private fun DrawScope.drawWicketMarkers(innings: TeamInnings, maxOvers: Float, maxRuns: Int, progress: Float) {
-    innings.dataPoints.filter { it.isWicket }.forEach { point ->
-        val x = (point.over / maxOvers) * size.width * progress
-        val y = size.height - (point.cumulativeRuns.toFloat() / maxRuns) * size.height
+    try {
+        innings.dataPoints.filter { it.isWicket }.forEach { point ->
+            val x = (point.over / maxOvers) * size.width * progress
+            val y = size.height - (point.cumulativeRuns.toFloat() / maxRuns) * size.height
         
-        drawCircle(
-            color = ErrorRed,
-            radius = 3.dp.toPx(),
-            center = Offset(x, y)
-        )
-        drawCircle(
-            color = ErrorRed.copy(alpha = 0.2f),
-            radius = 8.dp.toPx(),
-            center = Offset(x, y)
-        )
+            drawCircle(
+                color = ErrorRed,
+                radius = 3.dp.toPx(),
+                center = Offset(x, y)
+            )
+            drawCircle(
+                color = ErrorRed.copy(alpha = 0.2f),
+                radius = 8.dp.toPx(),
+                center = Offset(x, y)
+            )
+        }
+    } catch (e: Exception) {
+        Sentry.captureException(e)
+        throw e
     }
 }
 

@@ -29,19 +29,20 @@ import com.tanush.bouncer.ui.theme.*
 fun PartnershipsCard(
     partnerships: List<Partnership>,
     teamName: String,
-    teamColor: Color = ShinyGoldDeep,
+    teamColor: Color = GoldPrimary,
     modifier: Modifier = Modifier
 ) {
     val maxRuns = partnerships.maxOfOrNull { it.totalRuns } ?: 100
-    
+    val colors = BouncerDesignSystem.colors
+
     Box(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(28.dp))
-            .background(Color.White.copy(alpha = 0.08f).copy(alpha = 0.8f))
+            .background(colors.glassBorderHighlight.copy(alpha = 0.8f))
             .border(
                 0.5.dp,
-                Brush.linearGradient(listOf(GoldHairline, Color.White.copy(alpha = 0.05f))),
+                Brush.linearGradient(listOf(GoldHairline, colors.glassSurface)),
                 RoundedCornerShape(28.dp)
             )
             .padding(24.dp)
@@ -56,14 +57,14 @@ fun PartnershipsCard(
                 Column {
                     Text(
                         "PARTNERSHIP DYNAMICS",
-                        color = ShinyGoldDeep,
+                        color = colors.goldPrimary,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Black,
                         letterSpacing = 2.sp
                     )
                     Text(
                         text = teamName.uppercase(),
-                        color = Color.White,
+                        color = colors.textPrimary,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Black,
                         letterSpacing = (-0.5).sp
@@ -73,7 +74,7 @@ fun PartnershipsCard(
                 Icon(
                     imageVector = Icons.Default.People,
                     contentDescription = null,
-                    tint = ShinyGoldDeep.copy(alpha = 0.3f),
+                    tint = colors.goldPrimary.copy(alpha = 0.3f),
                     modifier = Modifier.size(20.dp)
                 )
             }
@@ -94,7 +95,7 @@ fun PartnershipsCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(16.dp))
-                    .background(Color.White.copy(alpha = 0.02f))
+                    .background(colors.glassSurface)
                     .padding(16.dp)
             ) {
                 Row(
@@ -102,10 +103,10 @@ fun PartnershipsCard(
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
                     PartnershipSummaryStat("TOTAL STAND", partnerships.sumOf { it.totalRuns }.toString(), teamColor)
-                    VerticalDivider(modifier = Modifier.height(24.dp).alpha(0.1f), color = Color.White)
-                    PartnershipSummaryStat("BEST STAND", (partnerships.maxOfOrNull { it.totalRuns } ?: 0).toString(), SuccessGreen)
-                    VerticalDivider(modifier = Modifier.height(24.dp).alpha(0.1f), color = Color.White)
-                    PartnershipSummaryStat("50+ POSTS", partnerships.count { it.totalRuns >= 50 }.toString(), ShinyGoldDeep)
+                    VerticalDivider(modifier = Modifier.height(24.dp).alpha(0.1f), color = colors.textPrimary)
+                    PartnershipSummaryStat("BEST STAND", (partnerships.maxOfOrNull { it.totalRuns } ?: 0).toString(), colors.statusSuccess)
+                    VerticalDivider(modifier = Modifier.height(24.dp).alpha(0.1f), color = colors.textPrimary)
+                    PartnershipSummaryStat("50+ POSTS", partnerships.count { it.totalRuns >= 50 }.toString(), colors.goldPrimary)
                 }
             }
         }
@@ -118,6 +119,7 @@ private fun PartnershipTechnicalRow(
     maxRuns: Int,
     teamColor: Color
 ) {
+    val colors = BouncerDesignSystem.colors
     val progress = partnership.totalRuns.toFloat() / maxRuns
     val animatedProgress by animateFloatAsState(
         targetValue = progress,
@@ -137,20 +139,20 @@ private fun PartnershipTechnicalRow(
                     modifier = Modifier
                         .size(24.dp)
                         .clip(CircleShape)
-                        .background(if (partnership.isCurrentPartnership) teamColor.copy(alpha = 0.1f) else Color.White.copy(alpha = 0.05f))
-                        .border(0.5.dp, if (partnership.isCurrentPartnership) teamColor.copy(alpha = 0.4f) else Color.White.copy(alpha = 0.1f), CircleShape),
+                        .background(if (partnership.isCurrentPartnership) teamColor.copy(alpha = 0.1f) else colors.glassSurface)
+                        .border(0.5.dp, if (partnership.isCurrentPartnership) teamColor.copy(alpha = 0.4f) else colors.glassSurface, CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = partnership.wicketNumber.toString(),
-                        color = if (partnership.isCurrentPartnership) teamColor else TextMuted,
+                        color = if (partnership.isCurrentPartnership) teamColor else BouncerDesignSystem.colors.textMuted,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Black
                     )
                 }
                 Text(
                     text = "WICKET PARTNERSHIP",
-                    color = TextMuted,
+                    color = BouncerDesignSystem.colors.textMuted,
                     fontSize = 9.sp,
                     fontWeight = FontWeight.Black,
                     letterSpacing = 1.sp
@@ -160,13 +162,13 @@ private fun PartnershipTechnicalRow(
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(
                     text = partnership.totalRuns.toString(),
-                    color = Color.White,
+                    color = BouncerDesignSystem.colors.textPrimary,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Black
                 )
                 Text(
                     text = "(${partnership.totalBalls})",
-                    color = TextSecondary,
+                    color = BouncerDesignSystem.colors.textSecondary,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -179,7 +181,7 @@ private fun PartnershipTechnicalRow(
                 .fillMaxWidth()
                 .height(6.dp)
                 .clip(CircleShape)
-                .background(Color.White.copy(alpha = 0.03f))
+                .background(colors.glassSurface)
         ) {
             val p1Ratio = if (partnership.totalRuns > 0) partnership.batsman1Runs.toFloat() / partnership.totalRuns else 0.5f
 
@@ -215,7 +217,7 @@ private fun TechnicalPartnerInfo(name: String, runs: Int, balls: Int, color: Col
     Column(horizontalAlignment = if (isRightAligned) Alignment.End else Alignment.Start) {
         Text(
             text = name.uppercase(),
-            color = Color.White,
+            color = BouncerDesignSystem.colors.textPrimary,
             fontSize = 11.sp,
             fontWeight = FontWeight.Bold,
             maxLines = 1,
@@ -237,7 +239,7 @@ private fun TechnicalPartnerInfo(name: String, runs: Int, balls: Int, color: Col
 @Composable
 private fun PartnershipSummaryStat(label: String, value: String, color: Color) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(label, color = TextMuted, fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
+        Text(label, color = BouncerDesignSystem.colors.textMuted, fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
         Text(value, color = color, fontSize = 16.sp, fontWeight = FontWeight.Black)
     }
 }

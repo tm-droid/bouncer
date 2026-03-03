@@ -27,6 +27,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.ui.theme.*
+import io.sentry.Sentry
 
 /**
  * Data class for partnership information
@@ -75,17 +76,19 @@ fun PartnershipTracker(
         label = "shimmer"
     )
 
+    val colors = BouncerDesignSystem.colors
+
     Card(
         modifier = modifier
             .fillMaxWidth()
             .shadow(
                 elevation = 16.dp,
                 shape = RoundedCornerShape(24.dp),
-                spotColor = ShinyGoldDeep.copy(alpha = 0.12f),
+                spotColor = colors.goldPrimary.copy(alpha = 0.12f),
                 ambientColor = Color.Black.copy(alpha = 0.25f)
             ),
         shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.05f))
+        colors = CardDefaults.cardColors(containerColor = colors.glassSurface)
     ) {
         Column(
             modifier = Modifier
@@ -102,7 +105,7 @@ fun PartnershipTracker(
                     text = title,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
-                    color = TextPrimary,
+                    color = colors.textPrimary,
                     letterSpacing = (-0.3).sp
                 )
                 
@@ -112,7 +115,7 @@ fun PartnershipTracker(
                     text = "$totalRuns runs",
                     fontSize = 14.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = ShinyGoldDeep
+                    color = colors.goldPrimary
                 )
             }
             
@@ -157,6 +160,8 @@ private fun CurrentPartnershipCard(
     pulseAlpha: Float,
     shimmerOffset: Float
 ) {
+    val colors = BouncerDesignSystem.colors
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -164,9 +169,9 @@ private fun CurrentPartnershipCard(
             .background(
                 Brush.linearGradient(
                     colors = listOf(
-                        ShinyGoldDeep.copy(alpha = 0.12f),
-                        ShinyGoldMid.copy(alpha = 0.08f),
-                        ShinyGoldDeep.copy(alpha = 0.12f)
+                        colors.goldPrimary.copy(alpha = 0.12f),
+                        colors.goldPrimary.copy(alpha = 0.08f),
+                        colors.goldPrimary.copy(alpha = 0.12f)
                     )
                 )
             )
@@ -174,9 +179,9 @@ private fun CurrentPartnershipCard(
                 1.dp,
                 Brush.linearGradient(
                     colors = listOf(
-                        ShinyGoldDeep.copy(alpha = pulseAlpha * 0.5f),
-                        ShinyGoldLight.copy(alpha = 0.3f),
-                        ShinyGoldDeep.copy(alpha = pulseAlpha * 0.5f)
+                        colors.goldPrimary.copy(alpha = pulseAlpha * 0.5f),
+                        colors.goldLight.copy(alpha = 0.3f),
+                        colors.goldPrimary.copy(alpha = pulseAlpha * 0.5f)
                     )
                 ),
                 RoundedCornerShape(16.dp)
@@ -199,8 +204,8 @@ private fun CurrentPartnershipCard(
                             .background(
                                 Brush.radialGradient(
                                     colors = listOf(
-                                        SuccessGreen.copy(alpha = pulseAlpha),
-                                        SuccessGreen.copy(alpha = 0.3f)
+                                        colors.statusSuccess.copy(alpha = pulseAlpha),
+                                        colors.statusSuccess.copy(alpha = 0.3f)
                                     )
                                 ),
                                 CircleShape
@@ -211,14 +216,14 @@ private fun CurrentPartnershipCard(
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 1.sp,
-                        color = SuccessGreen
+                        color = colors.statusSuccess
                     )
                 }
                 
                 Text(
                     text = "${partnership.wicketNumber}${getOrdinalSuffix(partnership.wicketNumber)} wicket",
                     fontSize = 11.sp,
-                    color = TextSecondary
+                    color = colors.textSecondary
                 )
             }
             
@@ -237,7 +242,7 @@ private fun CurrentPartnershipCard(
                     balls = partnership.batsman1Balls,
                     percentage = if (partnership.totalRuns > 0) 
                         partnership.batsman1Runs * 100 / partnership.totalRuns else 0,
-                    color = ChartBlue
+                    color = colors.statusInfo
                 )
                 
                 // Total in center
@@ -249,7 +254,7 @@ private fun CurrentPartnershipCard(
                             text = "${partnership.totalRuns}",
                             fontSize = 36.sp,
                             fontWeight = FontWeight.Black,
-                            color = ShinyGoldDeep
+                            color = colors.goldPrimary
                         )
                         
                         // Shimmer overlay
@@ -264,7 +269,7 @@ private fun CurrentPartnershipCard(
                                     brush = Brush.horizontalGradient(
                                         colors = listOf(
                                             Color.Transparent,
-                                            ShinyGoldLight.copy(alpha = 0.5f),
+                                            colors.goldLight.copy(alpha = 0.5f),
                                             Color.Transparent
                                         ),
                                         startX = size.width * shimmerOffset - size.width * 0.5f,
@@ -279,8 +284,8 @@ private fun CurrentPartnershipCard(
                     Text(
                         text = "${partnership.totalBalls} balls",
                         fontSize = 12.sp,
-                        color = TextSecondary
-                    )
+                    color = colors.textSecondary
+                )
                     
                     val runRate = if (partnership.totalBalls > 0) 
                         (partnership.totalRuns * 6.0 / partnership.totalBalls) else 0.0
@@ -289,9 +294,9 @@ private fun CurrentPartnershipCard(
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Medium,
                         color = when {
-                            runRate >= 10 -> SuccessGreen
-                            runRate >= 6 -> ShinyGoldDeep
-                            else -> TextSecondary
+                            runRate >= 10 -> colors.statusSuccess
+                            runRate >= 6 -> colors.goldPrimary
+                            else -> colors.textSecondary
                         }
                     )
                 }
@@ -313,7 +318,7 @@ private fun CurrentPartnershipCard(
             ContributionBar(
                 value1 = partnership.batsman1Runs.toFloat(),
                 value2 = partnership.batsman2Runs.toFloat(),
-                color1 = ChartBlue,
+                color1 = colors.statusInfo,
                 color2 = ChartOrange
             )
         }
@@ -336,7 +341,7 @@ private fun PartnershipBatsmanStat(
             text = name.split(" ").lastOrNull() ?: name,
             fontSize = 13.sp,
             fontWeight = FontWeight.SemiBold,
-            color = TextPrimary,
+            color = BouncerDesignSystem.colors.textPrimary,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
@@ -353,7 +358,7 @@ private fun PartnershipBatsmanStat(
         Text(
             text = "$balls balls",
             fontSize = 10.sp,
-            color = TextMuted
+            color = BouncerDesignSystem.colors.textMuted
         )
         
         Text(
@@ -427,6 +432,7 @@ private fun PartnershipBarsChart(
     shimmerOffset: Float
 ) {
     val maxRuns = partnerships.maxOfOrNull { it.totalRuns } ?: 1
+    val colors = BouncerDesignSystem.colors
     
     Column(
         modifier = Modifier.fillMaxWidth(),
@@ -441,7 +447,7 @@ private fun PartnershipBarsChart(
                 label = "barAnim${partnership.wicketNumber}"
             )
             
-            val barColor = if (partnership.isCurrentPartnership) SuccessGreen else ShinyGoldDeep
+            val barColor = if (partnership.isCurrentPartnership) colors.statusSuccess else colors.goldPrimary
             
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -453,7 +459,7 @@ private fun PartnershipBarsChart(
                     text = "${partnership.wicketNumber}",
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Medium,
-                    color = TextMuted,
+                    color = colors.textMuted,
                     modifier = Modifier.width(16.dp)
                 )
                 
@@ -463,7 +469,7 @@ private fun PartnershipBarsChart(
                         .weight(1f)
                         .height(20.dp)
                         .clip(RoundedCornerShape(4.dp))
-                        .background(CardDarkBlue)
+                        .background(colors.surface1)
                 ) {
                     Box(
                         modifier = Modifier
@@ -506,7 +512,7 @@ private fun PartnershipBarsChart(
                     text = "${partnership.totalRuns}",
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
-                    color = if (partnership.isCurrentPartnership) SuccessGreen else TextPrimary,
+                    color = if (partnership.isCurrentPartnership) colors.statusSuccess else colors.textPrimary,
                     modifier = Modifier.width(32.dp)
                 )
             }
@@ -518,11 +524,13 @@ private fun PartnershipBarsChart(
 private fun PartnershipListItem(
     partnership: Partnership
 ) {
+    val colors = BouncerDesignSystem.colors
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .background(
-                Color.White.copy(alpha = 0.08f).copy(alpha = 0.3f),
+                colors.glassBorderHighlight.copy(alpha = 0.3f),
                 RoundedCornerShape(10.dp)
             )
             .padding(12.dp),
@@ -539,7 +547,7 @@ private fun PartnershipListItem(
                 modifier = Modifier
                     .size(28.dp)
                     .background(
-                        CardDarkBlue,
+                        colors.surface1,
                         RoundedCornerShape(6.dp)
                     ),
                 contentAlignment = Alignment.Center
@@ -548,7 +556,7 @@ private fun PartnershipListItem(
                     text = "${partnership.wicketNumber}",
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
-                    color = TextSecondary
+                    color = colors.textSecondary
                 )
             }
             
@@ -557,7 +565,7 @@ private fun PartnershipListItem(
                     text = "${partnership.batsman1Name.split(" ").lastOrNull() ?: partnership.batsman1Name} & ${partnership.batsman2Name.split(" ").lastOrNull() ?: partnership.batsman2Name}",
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Medium,
-                    color = TextPrimary,
+                    color = colors.textPrimary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -565,7 +573,7 @@ private fun PartnershipListItem(
                 Text(
                     text = "${partnership.batsman1Runs}(${partnership.batsman1Balls}) - ${partnership.batsman2Runs}(${partnership.batsman2Balls})",
                     fontSize = 11.sp,
-                    color = TextMuted
+                    color = colors.textMuted
                 )
             }
         }
@@ -578,23 +586,28 @@ private fun PartnershipListItem(
                 text = "${partnership.totalRuns}",
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
-                color = if (partnership.totalRuns >= 50) ShinyGoldDeep else TextPrimary
+                color = if (partnership.totalRuns >= 50) colors.goldPrimary else colors.textPrimary
             )
             Text(
                 text = "${partnership.totalBalls} balls",
                 fontSize = 10.sp,
-                color = TextMuted
+                color = colors.textMuted
             )
         }
     }
 }
 
 private fun getOrdinalSuffix(number: Int): String {
-    return when {
-        number % 100 in 11..13 -> "th"
-        number % 10 == 1 -> "st"
-        number % 10 == 2 -> "nd"
-        number % 10 == 3 -> "rd"
-        else -> "th"
+    try {
+        return when {
+            number % 100 in 11..13 -> "th"
+            number % 10 == 1 -> "st"
+            number % 10 == 2 -> "nd"
+            number % 10 == 3 -> "rd"
+            else -> "th"
+        }
+    } catch (e: Exception) {
+        Sentry.captureException(e)
+        throw e
     }
 }

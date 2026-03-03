@@ -48,6 +48,7 @@ fun FlipDigitScore(
     digitSize: Int = 40,
     showAnimation: Boolean = true
 ) {
+    val colors = BouncerDesignSystem.colors
     val scoreString = score.toString().padStart(3, '0')
     var previousScore by remember { mutableStateOf(score) }
     var isFlipping by remember { mutableStateOf(false) }
@@ -84,7 +85,7 @@ fun FlipDigitScore(
         if (wickets != null) {
             Text(
                 text = "/",
-                color = TextSecondary,
+                color = colors.textSecondary,
                 fontSize = (digitSize * 0.8).sp,
                 fontWeight = FontWeight.Light
             )
@@ -105,6 +106,7 @@ private fun FlipDigit(
     isFlipping: Boolean,
     size: Dp
 ) {
+    val colors = BouncerDesignSystem.colors
     val rotation by animateFloatAsState(
         targetValue = if (isFlipping) 180f else 0f,
         animationSpec = tween(300, easing = FastOutSlowInEasing),
@@ -124,14 +126,14 @@ private fun FlipDigit(
             )
             .border(
                 0.5.dp,
-                ShinyGoldDeep.copy(alpha = 0.3f),
+                colors.goldPrimary.copy(alpha = 0.3f),
                 RoundedCornerShape(8.dp)
             ),
         contentAlignment = Alignment.Center
     ) {
         Text(
             text = if (rotation > 90f) previousDigit.toString() else currentDigit.toString(),
-            color = ShinyGoldDeep,
+            color = colors.goldPrimary,
             fontSize = (size.value * 0.6).sp,
             fontWeight = FontWeight.Black,
             modifier = Modifier.graphicsLayer {
@@ -153,6 +155,7 @@ fun AnimatedScoreDisplay(
     teamName: String = "",
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "scoreDisplay")
     
     val shimmer by infiniteTransition.animateFloat(
@@ -184,7 +187,7 @@ fun AnimatedScoreDisplay(
                         Brush.horizontalGradient(
                             colors = listOf(
                                 Color.Transparent,
-                                ShinyGoldDeep.copy(alpha = 0.05f),
+                                colors.goldPrimary.copy(alpha = 0.05f),
                                 Color.Transparent
                             ),
                             startX = shimmer * 1000f - 200f,
@@ -200,7 +203,7 @@ fun AnimatedScoreDisplay(
                 if (teamName.isNotEmpty()) {
                     Text(
                         text = teamName.uppercase(),
-                        color = TextSecondary,
+                        color = colors.textSecondary,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 1.sp
@@ -223,7 +226,7 @@ fun AnimatedScoreDisplay(
                 
                 Text(
                     text = "OVERS: $overs",
-                    color = TextMuted,
+                    color = colors.textMuted,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.SemiBold
                 )
@@ -242,6 +245,7 @@ fun AutoScrollingPartnership(
     modifier: Modifier = Modifier,
     scrollSpeed: Int = 50 // pixels per second
 ) {
+    val colors = BouncerDesignSystem.colors
     val scrollState = rememberScrollState()
     var isAutoScrolling by remember { mutableStateOf(true) }
     
@@ -289,7 +293,7 @@ fun AutoScrollingPartnership(
             ) {
                 Text(
                     text = "PARTNERSHIPS",
-                    color = TextMuted,
+                    color = colors.textMuted,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Black,
                     letterSpacing = 1.sp
@@ -297,7 +301,7 @@ fun AutoScrollingPartnership(
                 
                 Text(
                     text = "${partnerships.size} total",
-                    color = TextTertiary,
+                    color = colors.textTertiary,
                     fontSize = 10.sp
                 )
             }
@@ -337,6 +341,7 @@ private fun PartnershipItem(
     partnershipNumber: Int,
     isHighlight: Boolean = false
 ) {
+    val colors = BouncerDesignSystem.colors
     val runRate = if (partnership.balls > 0) 
         (partnership.runs.toFloat() / partnership.balls * 6).let { String.format("%.2f", it) }
     else "0.00"
@@ -344,9 +349,9 @@ private fun PartnershipItem(
     Surface(
         modifier = Modifier.width(180.dp),
         shape = RoundedCornerShape(12.dp),
-        color = if (isHighlight) ShinyGoldDeep.copy(alpha = 0.1f) else Color.White.copy(alpha = 0.08f),
+        color = if (isHighlight) colors.goldPrimary.copy(alpha = 0.1f) else Color.White.copy(alpha = 0.08f),
         border = if (isHighlight) 
-            androidx.compose.foundation.BorderStroke(1.dp, ShinyGoldDeep.copy(alpha = 0.3f))
+            androidx.compose.foundation.BorderStroke(1.dp, colors.goldPrimary.copy(alpha = 0.3f))
         else null
     ) {
         Column(
@@ -359,7 +364,7 @@ private fun PartnershipItem(
             ) {
                 Text(
                     text = "#$partnershipNumber",
-                    color = TextMuted,
+                    color = colors.textMuted,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -370,13 +375,13 @@ private fun PartnershipItem(
                 ) {
                     Text(
                         text = "${partnership.runs}",
-                        color = if (isHighlight) ShinyGoldDeep else TextPrimary,
+                        color = if (isHighlight) colors.goldPrimary else colors.textPrimary,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Black
                     )
                     Text(
                         text = "(${partnership.balls})",
-                        color = TextSecondary,
+                        color = colors.textSecondary,
                         fontSize = 12.sp
                     )
                 }
@@ -405,7 +410,7 @@ private fun PartnershipItem(
                     modifier = Modifier
                         .weight((1f - contribution).coerceAtLeast(0.1f))
                         .fillMaxHeight()
-                        .background(ChartBlue)
+                        .background(colors.statusInfo)
                 )
             }
             
@@ -423,7 +428,7 @@ private fun PartnershipItem(
                 )
                 Text(
                     text = "${partnership.player2Runs} ${partnership.player2.take(8)}...",
-                    color = ChartBlue,
+                    color = colors.statusInfo,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Medium
                 )
@@ -433,7 +438,7 @@ private fun PartnershipItem(
             
             Text(
                 text = "RR: $runRate",
-                color = TextMuted,
+                color = colors.textMuted,
                 fontSize = 9.sp,
                 fontWeight = FontWeight.Medium,
                 modifier = Modifier.align(Alignment.CenterHorizontally)
@@ -451,9 +456,10 @@ fun StrikeRateSparkline(
     strikeRates: List<Float>,
     modifier: Modifier = Modifier,
     height: Dp = 40.dp,
-    lineColor: Color = ShinyGoldDeep,
+    lineColor: Color = GoldPrimary,
     showCurrentValue: Boolean = true
 ) {
+    val colors = BouncerDesignSystem.colors
     if (strikeRates.isEmpty()) return
     
     val maxRate = strikeRates.maxOrNull() ?: 200f
@@ -530,7 +536,7 @@ fun StrikeRateSparkline(
                     center = Offset(lastX, lastY)
                 )
                 drawCircle(
-                    color = CardSurface,
+                    color = colors.surface2,
                     radius = 2.dp.toPx(),
                     center = Offset(lastX, lastY)
                 )
@@ -549,7 +555,7 @@ fun StrikeRateSparkline(
                 )
                 Text(
                     text = "SR",
-                    color = TextMuted,
+                    color = colors.textMuted,
                     fontSize = 9.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -576,6 +582,7 @@ fun BatsmanMiniCard(
     recentScores: List<Int> = emptyList(),
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val strikeRate = if (balls > 0) (runs * 100.0 / balls) else 0.0
     
     val infiniteTransition = rememberInfiniteTransition(label = "batsmanCard")
@@ -596,7 +603,7 @@ fun BatsmanMiniCard(
         border = if (isOnStrike) 
             androidx.compose.foundation.BorderStroke(
                 2.dp, 
-                ShinyGoldDeep.copy(alpha = strikeGlow)
+                colors.goldPrimary.copy(alpha = strikeGlow)
             ) 
         else null
     ) {
@@ -615,7 +622,7 @@ fun BatsmanMiniCard(
                         .clip(CircleShape)
                         .background(Color.White.copy(alpha = 0.08f))
                         .then(
-                            if (isOnStrike) Modifier.shadow(8.dp, CircleShape, spotColor = ShinyGoldDeep.copy(alpha = strikeGlow))
+                            if (isOnStrike) Modifier.shadow(8.dp, CircleShape, spotColor = colors.goldPrimary.copy(alpha = strikeGlow))
                             else Modifier
                         ),
                     contentAlignment = Alignment.Center
@@ -630,7 +637,7 @@ fun BatsmanMiniCard(
                     } else {
                         Text(
                             text = name.split(" ").mapNotNull { it.firstOrNull()?.uppercase() }.take(2).joinToString(""),
-                            color = if (isOnStrike) ShinyGoldDeep else TextSecondary,
+                            color = if (isOnStrike) colors.goldPrimary else colors.textSecondary,
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -643,7 +650,7 @@ fun BatsmanMiniCard(
                         modifier = Modifier
                             .size(12.dp)
                             .align(Alignment.BottomEnd)
-                            .background(ShinyGoldDeep, CircleShape)
+                            .background(colors.goldPrimary, CircleShape)
                             .border(1.5.dp, Color.White.copy(alpha = 0.05f), CircleShape)
                     )
                 }
@@ -657,7 +664,7 @@ fun BatsmanMiniCard(
                 ) {
                     Text(
                         text = name,
-                        color = if (isOut) TextSecondary else TextPrimary,
+                        color = if (isOut) colors.textSecondary else colors.textPrimary,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
@@ -667,7 +674,7 @@ fun BatsmanMiniCard(
                     if (isOnStrike) {
                         Text(
                             text = "*",
-                            color = ShinyGoldDeep,
+                            color = colors.goldPrimary,
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Black
                         )
@@ -677,7 +684,7 @@ fun BatsmanMiniCard(
                 if (isOut && dismissalInfo != null) {
                     Text(
                         text = dismissalInfo,
-                        color = TextMuted,
+                        color = colors.textMuted,
                         fontSize = 11.sp,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -700,16 +707,16 @@ fun BatsmanMiniCard(
                     Text(
                         text = "$runs",
                         color = when {
-                            runs >= 100 -> ShinyGoldDeep
-                            runs >= 50 -> SuccessGreen
-                            else -> TextPrimary
+                            runs >= 100 -> colors.goldPrimary
+                            runs >= 50 -> colors.statusSuccess
+                            else -> colors.textPrimary
                         },
                         fontSize = 22.sp,
                         fontWeight = FontWeight.Black
                     )
                     Text(
                         text = "($balls)",
-                        color = TextSecondary,
+                        color = colors.textSecondary,
                         fontSize = 12.sp
                     )
                 }
@@ -720,7 +727,7 @@ fun BatsmanMiniCard(
                     if (fours > 0) {
                         Text(
                             text = "${fours}x4",
-                            color = BoundaryFour,
+                            color = colors.statusInfo,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -728,14 +735,14 @@ fun BatsmanMiniCard(
                     if (sixes > 0) {
                         Text(
                             text = "${sixes}x6",
-                            color = BoundarySix,
+                            color = colors.goldPrimary,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold
                         )
                     }
                     Text(
                         text = "SR ${String.format("%.1f", strikeRate)}",
-                        color = TextMuted,
+                        color = colors.textMuted,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Medium
                     )
@@ -750,6 +757,7 @@ private fun MiniFormSparkline(
     scores: List<Int>,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val maxScore = scores.maxOrNull()?.coerceAtLeast(50) ?: 50
     
     Canvas(modifier = modifier.width(60.dp)) {
@@ -760,10 +768,10 @@ private fun MiniFormSparkline(
             val x = index * (barWidth + 2.dp.toPx())
             
             val color = when {
-                score >= 50 -> SuccessGreen
-                score >= 30 -> ChartBlue
-                score >= 10 -> TextSecondary
-                else -> TextMuted
+                score >= 50 -> colors.statusSuccess
+                score >= 30 -> colors.statusInfo
+                score >= 10 -> colors.textSecondary
+                else -> colors.textMuted
             }
             
             drawRoundRect(
@@ -792,6 +800,7 @@ fun BowlerMiniCard(
     economyHistory: List<Float> = emptyList(),
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val economy = run {
         val oversFloat = overs.toFloatOrNull() ?: 0f
         if (oversFloat > 0) runs / oversFloat else 0f
@@ -845,7 +854,7 @@ fun BowlerMiniCard(
                 } else {
                     Text(
                         text = name.split(" ").mapNotNull { it.firstOrNull()?.uppercase() }.take(2).joinToString(""),
-                        color = if (isCurrentBowler) ChartCyan else TextSecondary,
+                        color = if (isCurrentBowler) ChartCyan else colors.textSecondary,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -856,7 +865,7 @@ fun BowlerMiniCard(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = name,
-                    color = TextPrimary,
+                    color = colors.textPrimary,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
@@ -874,7 +883,7 @@ fun BowlerMiniCard(
                 } else {
                     Text(
                         text = "$overs overs",
-                        color = TextMuted,
+                        color = colors.textMuted,
                         fontSize = 11.sp
                     )
                 }
@@ -889,16 +898,16 @@ fun BowlerMiniCard(
                     Text(
                         text = "$wickets",
                         color = when {
-                            wickets >= 5 -> ShinyGoldDeep
-                            wickets >= 3 -> SuccessGreen
-                            else -> TextPrimary
+                            wickets >= 5 -> colors.goldPrimary
+                            wickets >= 3 -> colors.statusSuccess
+                            else -> colors.textPrimary
                         },
                         fontSize = 22.sp,
                         fontWeight = FontWeight.Black
                     )
                     Text(
                         text = "-$runs",
-                        color = TextSecondary,
+                        color = colors.textSecondary,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -910,7 +919,7 @@ fun BowlerMiniCard(
                     if (maidens > 0) {
                         Text(
                             text = "M:$maidens",
-                            color = ShinyGoldMid,
+                            color = colors.goldPrimary,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -918,9 +927,9 @@ fun BowlerMiniCard(
                     Text(
                         text = "Econ ${String.format("%.2f", economy)}",
                         color = when {
-                            economy < 4 -> SuccessGreen
-                            economy < 8 -> TextSecondary
-                            else -> ErrorRed
+                            economy < 4 -> colors.statusSuccess
+                            economy < 8 -> colors.textSecondary
+                            else -> colors.statusLive
                         },
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Medium
@@ -937,6 +946,7 @@ private fun EconomyMiniGraph(
     currentEconomy: Float,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val maxEcon = economies.maxOrNull()?.coerceAtLeast(12f) ?: 12f
     val goodThreshold = 6f
     
@@ -948,9 +958,9 @@ private fun EconomyMiniGraph(
             val x = index * (barWidth + 2.dp.toPx())
             
             val color = when {
-                econ < goodThreshold -> SuccessGreen
-                econ < 8f -> WarningYellow
-                else -> ErrorRed
+                econ < goodThreshold -> colors.statusSuccess
+                econ < 8f -> colors.statusWarning
+                else -> colors.statusLive
             }
             
             drawRoundRect(
@@ -964,7 +974,7 @@ private fun EconomyMiniGraph(
         // Good economy threshold line
         val thresholdY = size.height - (goodThreshold / maxEcon * size.height)
         drawLine(
-            color = SuccessGreen.copy(alpha = 0.5f),
+            color = colors.statusSuccess.copy(alpha = 0.5f),
             start = Offset(0f, thresholdY),
             end = Offset(size.width, thresholdY),
             strokeWidth = 1.dp.toPx(),
@@ -986,6 +996,7 @@ fun OverSummaryRow(
     bowlerName: String = "",
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
@@ -1007,7 +1018,7 @@ fun OverSummaryRow(
             ) {
                 Text(
                     text = "$overNumber",
-                    color = TextPrimary,
+                    color = colors.textPrimary,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -1030,7 +1041,7 @@ fun OverSummaryRow(
             ) {
                 Text(
                     text = "$runs",
-                    color = ShinyGoldDeep,
+                    color = colors.goldPrimary,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Black
                 )
@@ -1038,12 +1049,12 @@ fun OverSummaryRow(
                 if (wickets > 0) {
                     Box(
                         modifier = Modifier
-                            .background(WicketRed.copy(alpha = 0.2f), RoundedCornerShape(4.dp))
+                            .background(colors.statusLive.copy(alpha = 0.2f), RoundedCornerShape(4.dp))
                             .padding(horizontal = 6.dp, vertical = 2.dp)
                     ) {
                         Text(
                             text = "${wickets}W",
-                            color = WicketRed,
+                            color = colors.statusLive,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -1056,12 +1067,13 @@ fun OverSummaryRow(
 
 @Composable
 private fun MicroBallChip(ball: String) {
+    val colors = BouncerDesignSystem.colors
     val (bgColor, textColor) = when {
-        ball.contains("W", ignoreCase = true) -> WicketRed to Color.White
-        ball == "6" -> BoundarySix to BlackBackground
-        ball == "4" -> BoundaryFour to BlackBackground
-        ball == "0" || ball == "." -> DotBall to TextMuted
-        else -> Color.White.copy(alpha = 0.05f) to TextPrimary
+        ball.contains("W", ignoreCase = true) -> colors.statusLive to Color.White
+        ball == "6" -> colors.goldPrimary to colors.backgroundBase
+        ball == "4" -> colors.statusInfo to colors.backgroundBase
+        ball == "0" || ball == "." -> DotBall to colors.textMuted
+        else -> Color.White.copy(alpha = 0.05f) to colors.textPrimary
     }
     
     Box(
@@ -1090,6 +1102,7 @@ fun WicketFallTimeline(
     wickets: List<WicketFallInfo>,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val scrollState = rememberScrollState()
     
     Surface(
@@ -1100,7 +1113,7 @@ fun WicketFallTimeline(
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
                 text = "FALL OF WICKETS",
-                color = TextMuted,
+                color = colors.textMuted,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Black,
                 letterSpacing = 1.sp
@@ -1130,8 +1143,8 @@ fun WicketFallTimeline(
                                 .background(
                                     Brush.horizontalGradient(
                                         colors = listOf(
-                                            WicketRed.copy(alpha = 0.5f),
-                                            WicketRed.copy(alpha = 0.2f)
+                                            colors.statusLive.copy(alpha = 0.5f),
+                                            colors.statusLive.copy(alpha = 0.2f)
                                         )
                                     )
                                 )
@@ -1155,6 +1168,7 @@ private fun WicketFallItem(
     wicket: WicketFallInfo,
     wicketNumber: Int
 ) {
+    val colors = BouncerDesignSystem.colors
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier.width(80.dp)
@@ -1163,13 +1177,13 @@ private fun WicketFallItem(
         Box(
             modifier = Modifier
                 .size(40.dp)
-                .background(WicketRed.copy(alpha = 0.15f), CircleShape)
-                .border(1.dp, WicketRed.copy(alpha = 0.4f), CircleShape),
+                .background(colors.statusLive.copy(alpha = 0.15f), CircleShape)
+                .border(1.dp, colors.statusLive.copy(alpha = 0.4f), CircleShape),
             contentAlignment = Alignment.Center
         ) {
             Text(
                 text = "${wicket.score}",
-                color = WicketRed,
+                color = colors.statusLive,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Black
             )
@@ -1180,7 +1194,7 @@ private fun WicketFallItem(
         // Wicket number
         Text(
             text = "$wicketNumber-${wicket.score}",
-            color = TextSecondary,
+            color = colors.textSecondary,
             fontSize = 11.sp,
             fontWeight = FontWeight.Bold
         )
@@ -1188,7 +1202,7 @@ private fun WicketFallItem(
         // Player name
         Text(
             text = wicket.playerName.split(" ").lastOrNull() ?: wicket.playerName,
-            color = TextMuted,
+            color = colors.textMuted,
             fontSize = 10.sp,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
@@ -1197,7 +1211,7 @@ private fun WicketFallItem(
         // Overs
         Text(
             text = wicket.overs,
-            color = TextTertiary,
+            color = colors.textTertiary,
             fontSize = 9.sp
         )
     }

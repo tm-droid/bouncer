@@ -62,6 +62,7 @@ fun FieldPlacementCard(
     fieldInfo: FieldPlacementInfo,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "field_animation")
     
     val pulseAlpha by infiniteTransition.animateFloat(
@@ -85,19 +86,19 @@ fun FieldPlacementCard(
     )
     
     val formationColor = when (fieldInfo.formation) {
-        FormationType.ATTACKING -> WicketRed
-        FormationType.DEFENSIVE -> ChartBlue
-        FormationType.POWERPLAY -> BoundarySix
-        FormationType.DEATH_OVERS -> WarningYellow
+        FormationType.ATTACKING -> colors.statusLive
+        FormationType.DEFENSIVE -> colors.statusInfo
+        FormationType.POWERPLAY -> colors.goldPrimary
+        FormationType.DEATH_OVERS -> colors.statusWarning
         FormationType.SPINNER -> Color(0xFFE040FB)
-        FormationType.PACER -> SuccessGreen
-        FormationType.STANDARD -> ShinyGoldMid
+        FormationType.PACER -> colors.statusSuccess
+        FormationType.STANDARD -> colors.goldPrimary
     }
     
     Card(
         modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = Color(0xFF0D1117)
+            containerColor = colors.backgroundBase
         ),
         shape = RoundedCornerShape(20.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
@@ -117,7 +118,7 @@ fun FieldPlacementCard(
                     Icon(
                         imageVector = Icons.Filled.Map,
                         contentDescription = null,
-                        tint = ShinyGoldMid,
+                        tint = colors.goldPrimary,
                         modifier = Modifier.size(24.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
@@ -259,7 +260,7 @@ fun FieldPlacementCard(
                                 center = Offset(fieldX, fieldY)
                             )
                             drawCircle(
-                                color = if (position.isSpecial) formationColor else ChartBlue,
+                                color = if (position.isSpecial) formationColor else colors.statusInfo,
                                 radius = 7f,
                                 center = Offset(fieldX, fieldY)
                             )
@@ -268,12 +269,12 @@ fun FieldPlacementCard(
                     
                     // Batsman position (center)
                     drawCircle(
-                        color = ShinyGoldMid,
+                        color = colors.goldPrimary,
                         radius = 8f,
                         center = center
                     )
                     drawCircle(
-                        color = ShinyGoldDeep,
+                        color = colors.goldPrimary,
                         radius = 5f,
                         center = center
                     )
@@ -327,12 +328,12 @@ fun FieldPlacementCard(
                 FieldStatBox(
                     label = "Slips",
                     value = "${fieldInfo.slipsCount}",
-                    color = WicketRed
+                    color = colors.statusLive
                 )
                 FieldStatBox(
                     label = "Behind Wicket",
                     value = "${fieldInfo.catchersBehind}",
-                    color = ChartBlue
+                    color = colors.statusInfo
                 )
                 FieldStatBox(
                     label = "In Circle",
@@ -340,7 +341,7 @@ fun FieldPlacementCard(
                         val dist = sqrt((it.x - 0.5f).pow(2) + (it.y - 0.5f).pow(2))
                         dist < 0.225f // Approximately 30 yard circle
                     }}",
-                    color = ShinyGoldMid
+                    color = colors.goldPrimary
                 )
             }
             
@@ -354,17 +355,17 @@ fun FieldPlacementCard(
                 StrategyIndicator(
                     label = "Saving Single",
                     isActive = fieldInfo.savingOne,
-                    activeColor = SuccessGreen
+                    activeColor = colors.statusSuccess
                 )
                 StrategyIndicator(
                     label = "Saving Boundary",
                     isActive = fieldInfo.savingBoundary,
-                    activeColor = BoundarySix
+                    activeColor = colors.goldPrimary
                 )
                 StrategyIndicator(
                     label = "Bowler Friendly",
                     isActive = fieldInfo.isBowlerFriendly,
-                    activeColor = ChartBlue
+                    activeColor = colors.statusInfo
                 )
             }
         }

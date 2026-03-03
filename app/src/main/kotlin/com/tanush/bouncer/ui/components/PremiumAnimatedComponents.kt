@@ -46,6 +46,7 @@ fun PremiumEmptyState(
     onAction: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "emptyState")
     
     val pulseScale by infiniteTransition.animateFloat(
@@ -104,8 +105,8 @@ fun PremiumEmptyState(
                     .background(
                         Brush.radialGradient(
                             colors = listOf(
-                                ShinyGoldDeep.copy(alpha = 0.4f),
-                                ShinyGoldDeep.copy(alpha = 0.1f),
+                                colors.goldPrimary.copy(alpha = 0.4f),
+                                colors.goldPrimary.copy(alpha = 0.1f),
                                 Color.Transparent
                             )
                         ),
@@ -120,7 +121,7 @@ fun PremiumEmptyState(
                     .shadow(
                         elevation = 16.dp,
                         shape = CircleShape,
-                        spotColor = ShinyGoldDeep.copy(alpha = 0.3f)
+                        spotColor = colors.goldPrimary.copy(alpha = 0.3f)
                     )
                     .background(
                         Brush.linearGradient(
@@ -135,8 +136,8 @@ fun PremiumEmptyState(
                         2.dp,
                         Brush.linearGradient(
                             colors = listOf(
-                                ShinyGoldLight.copy(alpha = 0.5f),
-                                ShinyGoldDeep.copy(alpha = 0.3f)
+                                colors.goldLight.copy(alpha = 0.5f),
+                                colors.goldPrimary.copy(alpha = 0.3f)
                             )
                         ),
                         CircleShape
@@ -146,7 +147,7 @@ fun PremiumEmptyState(
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
-                    tint = ShinyGoldDeep,
+                    tint = colors.goldPrimary,
                     modifier = Modifier.size(36.dp)
                 )
             }
@@ -159,7 +160,7 @@ fun PremiumEmptyState(
             text = title,
             fontSize = 22.sp,
             fontWeight = FontWeight.Bold,
-            color = TextPrimary,
+            color = colors.textPrimary,
             textAlign = TextAlign.Center,
             letterSpacing = (-0.5).sp
         )
@@ -171,7 +172,7 @@ fun PremiumEmptyState(
             text = description,
             fontSize = 15.sp,
             fontWeight = FontWeight.Normal,
-            color = TextSecondary,
+            color = colors.textSecondary,
             textAlign = TextAlign.Center,
             lineHeight = 22.sp
         )
@@ -199,6 +200,7 @@ fun PremiumActionButton(
     icon: ImageVector? = null,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     var isPressed by remember { mutableStateOf(false) }
     
     val scale by animateFloatAsState(
@@ -230,16 +232,16 @@ fun PremiumActionButton(
             .shadow(
                 elevation = 12.dp,
                 shape = RoundedCornerShape(16.dp),
-                spotColor = ShinyGoldDeep.copy(alpha = 0.4f)
+                spotColor = colors.goldPrimary.copy(alpha = 0.4f)
             )
             .clip(RoundedCornerShape(16.dp))
             .background(
                 if (enabled) {
                     Brush.linearGradient(
                         colors = listOf(
-                            ShinyGoldMid,
-                            ShinyGoldDeep,
-                            ShinyGoldDark
+                            colors.goldDark,
+                            colors.goldPrimary,
+                            colors.goldDark
                         ),
                         start = Offset(shimmerOffset * 100, 0f),
                         end = Offset((shimmerOffset + 1) * 100, 0f)
@@ -247,8 +249,8 @@ fun PremiumActionButton(
                 } else {
                     Brush.linearGradient(
                         colors = listOf(
-                            CardBorder,
-                            CardBorder.copy(alpha = 0.5f)
+                            colors.glassBorder,
+                            colors.glassBorder.copy(alpha = 0.5f)
                         )
                     )
                 }
@@ -270,7 +272,7 @@ fun PremiumActionButton(
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
-                    tint = if (enabled) BlackBackground else TextTertiary,
+                    tint = if (enabled) colors.backgroundBase else colors.textTertiary,
                     modifier = Modifier.size(20.dp)
                 )
             }
@@ -279,7 +281,7 @@ fun PremiumActionButton(
                 text = text.uppercase(),
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
-                color = if (enabled) BlackBackground else TextTertiary,
+                color = if (enabled) colors.backgroundBase else colors.textTertiary,
                 letterSpacing = 1.sp
             )
         }
@@ -294,6 +296,8 @@ fun CricketBallLoader(
     size: Dp = 60.dp,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
+    val statusLive = colors.statusLive
     val infiniteTransition = rememberInfiniteTransition(label = "cricketBall")
     
     val rotation by infiniteTransition.animateFloat(
@@ -333,7 +337,7 @@ fun CricketBallLoader(
             drawCircle(
                 brush = Brush.radialGradient(
                     colors = listOf(
-                        ErrorRed,
+                        statusLive,
                         Color(0xFFA01818),
                         Color(0xFF6B0F0F)
                     ),
@@ -395,6 +399,9 @@ fun WicketFallingAnimation(
     onComplete: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
+    val goldPrimary = colors.goldPrimary
+    val goldLight = colors.goldLight
     var hasStarted by remember { mutableStateOf(false) }
     
     LaunchedEffect(isActive) {
@@ -428,7 +435,7 @@ fun WicketFallingAnimation(
             pivot = Offset(size.width * 0.25f, size.height - stumpHeight * 0.3f)
         ) {
             drawRoundRect(
-                color = ShinyGoldDeep,
+                color = goldPrimary,
                 topLeft = Offset(size.width * 0.25f - stumpWidth/2, size.height - stumpHeight),
                 size = androidx.compose.ui.geometry.Size(stumpWidth, stumpHeight),
                 cornerRadius = androidx.compose.ui.geometry.CornerRadius(2.dp.toPx())
@@ -437,7 +444,7 @@ fun WicketFallingAnimation(
         
         // Middle stump
         drawRoundRect(
-            color = ShinyGoldDeep,
+            color = goldPrimary,
             topLeft = Offset(size.width * 0.5f - stumpWidth/2, size.height - stumpHeight),
             size = androidx.compose.ui.geometry.Size(stumpWidth, stumpHeight),
             cornerRadius = androidx.compose.ui.geometry.CornerRadius(2.dp.toPx())
@@ -449,7 +456,7 @@ fun WicketFallingAnimation(
             pivot = Offset(size.width * 0.75f, size.height - stumpHeight * 0.3f)
         ) {
             drawRoundRect(
-                color = ShinyGoldDeep,
+                color = goldPrimary,
                 topLeft = Offset(size.width * 0.75f - stumpWidth/2, size.height - stumpHeight),
                 size = androidx.compose.ui.geometry.Size(stumpWidth, stumpHeight),
                 cornerRadius = androidx.compose.ui.geometry.CornerRadius(2.dp.toPx())
@@ -462,7 +469,7 @@ fun WicketFallingAnimation(
             pivot = Offset(size.width * 0.4f, size.height - stumpHeight - bailHeight)
         ) {
             drawRoundRect(
-                color = ShinyGoldLight,
+                color = goldLight,
                 topLeft = Offset(
                     size.width * 0.3f,
                     size.height - stumpHeight - bailHeight - (fallRotation / 90f * 50f)
@@ -477,7 +484,7 @@ fun WicketFallingAnimation(
             pivot = Offset(size.width * 0.6f, size.height - stumpHeight - bailHeight)
         ) {
             drawRoundRect(
-                color = ShinyGoldLight,
+                color = goldLight,
                 topLeft = Offset(
                     size.width * 0.55f,
                     size.height - stumpHeight - bailHeight - (fallRotation / 90f * 30f)
@@ -497,9 +504,10 @@ fun AnimatedStatCard(
     value: Int,
     label: String,
     icon: ImageVector,
-    accentColor: Color = ShinyGoldDeep,
+    accentColor: Color = BouncerDesignSystem.colors.goldPrimary,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val animatedValue by animateIntAsState(
         targetValue = value,
         animationSpec = tween(1000, easing = FastOutSlowInEasing),
@@ -531,7 +539,7 @@ fun AnimatedStatCard(
             Brush.linearGradient(
                 colors = listOf(
                     accentColor.copy(alpha = 0.4f + shimmerOffset * 0.2f),
-                    CardBorder.copy(alpha = 0.3f)
+                    colors.glassBorder.copy(alpha = 0.3f)
                 )
             )
         )
@@ -565,7 +573,7 @@ fun AnimatedStatCard(
                 text = animatedValue.toString(),
                 fontSize = 28.sp,
                 fontWeight = FontWeight.Black,
-                color = TextPrimary,
+                color = colors.textPrimary,
                 letterSpacing = (-1).sp
             )
             
@@ -574,7 +582,7 @@ fun AnimatedStatCard(
                 text = label.uppercase(),
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Bold,
-                color = TextSecondary,
+                color = colors.textSecondary,
                 letterSpacing = 1.sp,
                 textAlign = TextAlign.Center
             )
@@ -592,6 +600,7 @@ fun TrophyBadge(
     unlocked: Boolean = true,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "trophy")
     
     val shimmerOffset by infiniteTransition.animateFloat(
@@ -607,12 +616,12 @@ fun TrophyBadge(
     val color = when (tier) {
         TrophyTier.BRONZE -> Color(0xFFCD7F32)
         TrophyTier.SILVER -> Color(0xFFC0C0C0)
-        TrophyTier.GOLD -> ShinyGoldDeep
+        TrophyTier.GOLD -> colors.goldPrimary
         TrophyTier.PLATINUM -> Color(0xFFE5E4E2)
         TrophyTier.DIAMOND -> Color(0xFFB9F2FF)
     }
     
-    val baseColor = if (unlocked) color else CardBorder
+    val baseColor = if (unlocked) color else colors.glassBorder
 
     Box(
         modifier = modifier.size(size),
@@ -658,7 +667,7 @@ fun TrophyBadge(
                 )
                 .border(
                     2.dp,
-                    if (unlocked) color.copy(alpha = 0.8f) else CardBorder.copy(alpha = 0.3f),
+                    if (unlocked) color.copy(alpha = 0.8f) else colors.glassBorder.copy(alpha = 0.3f),
                     CircleShape
                 ),
             contentAlignment = Alignment.Center
@@ -666,7 +675,7 @@ fun TrophyBadge(
             Icon(
                 imageVector = Icons.Default.EmojiEvents,
                 contentDescription = null,
-                tint = if (unlocked) Color.White else TextTertiary,
+                tint = if (unlocked) Color.White else colors.textTertiary,
                 modifier = Modifier.size(size * 0.45f)
             )
         }
@@ -685,8 +694,8 @@ fun AnimatedProgressRing(
     progress: Float,
     size: Dp = 80.dp,
     strokeWidth: Dp = 8.dp,
-    backgroundColor: Color = CardBorder.copy(alpha = 0.3f),
-    progressColor: Color = ShinyGoldDeep,
+    backgroundColor: Color = BouncerDesignSystem.colors.glassBorder.copy(alpha = 0.3f),
+    progressColor: Color = BouncerDesignSystem.colors.goldPrimary,
     content: @Composable () -> Unit = {},
     modifier: Modifier = Modifier
 ) {

@@ -69,8 +69,8 @@ fun CustomPullRefreshIndicator(
                         drawArc(
                             brush = Brush.sweepGradient(
                                 colors = listOf(
-                                    ShinyGoldDeep.copy(alpha = shimmer),
-                                    ShinyGoldMid,
+                                    GoldDark.copy(alpha = shimmer),
+                                    GoldPrimary,
                                     Color.Transparent
                                 )
                             ),
@@ -90,9 +90,9 @@ fun CustomPullRefreshIndicator(
                 drawArc(
                     brush = Brush.sweepGradient(
                         colors = listOf(
-                            ShinyGoldLight,
-                            ShinyGoldMid,
-                            ShinyGoldDeep
+                            GoldLight,
+                            GoldPrimary,
+                            GoldDark
                         )
                     ),
                     startAngle = -90f,
@@ -107,7 +107,7 @@ fun CustomPullRefreshIndicator(
             
             // Center dot
             drawCircle(
-                color = ShinyGoldDeep.copy(alpha = if (refreshing) shimmer else 0.8f),
+                color = GoldDark.copy(alpha = if (refreshing) shimmer else 0.8f),
                 radius = 4.dp.toPx(),
                 center = Offset(centerX, centerY)
             )
@@ -148,11 +148,11 @@ fun WaveLoadingIndicator(
             path = path,
             brush = Brush.horizontalGradient(
                 colors = listOf(
-                    ShinyGoldLight,
-                    ShinyGoldMid,
-                    ShinyGoldDeep,
-                    ShinyGoldMid,
-                    ShinyGoldLight
+                    GoldLight,
+                    GoldPrimary,
+                    GoldDark,
+                    GoldPrimary,
+                    GoldLight
                 )
             ),
             style = Stroke(
@@ -182,7 +182,7 @@ fun DotsLoadingIndicator(
             val alpha = 0.3f + 0.7f * kotlin.math.abs(kotlin.math.sin((phase * Math.PI * 2).toFloat()))
             
             drawCircle(
-                color = ShinyGoldDeep.copy(alpha = alpha),
+                color = GoldDark.copy(alpha = alpha),
                 radius = dotRadius * scale,
                 center = Offset(x, y)
             )
@@ -193,7 +193,7 @@ fun DotsLoadingIndicator(
 @Composable
 fun PulsingRing(
     modifier: Modifier = Modifier,
-    color: Color = ShinyGoldDeep
+    color: Color = GoldDark
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "ring")
     

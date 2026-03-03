@@ -12,7 +12,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -77,6 +77,14 @@ private fun MainAppContent() {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route ?: "home"
     
+    // Wire LiveNotificationManager so enriched notifications work
+    val context = androidx.compose.ui.platform.LocalContext.current
+    LaunchedEffect(Unit) {
+        viewModel.setNotificationManager(
+            com.tanush.bouncer.services.LiveNotificationManager(context.applicationContext)
+        )
+    }
+    
     // Derive live matches state for nav badge
     val currentMatches by viewModel.currentMatches.collectAsState()
     val hasLiveMatches = remember(currentMatches) {
@@ -94,24 +102,29 @@ private fun MainAppContent() {
         modifier = Modifier
             .fillMaxSize()
             .background(BgBase)
-            .drawBehind {
-                // Subtle grid pattern
+            .drawWithCache {
+                // Subtle grid pattern — cached to avoid recalculating every frame
                 val gridSpacing = 60.dp.toPx()
-                for (x in 0..(size.width / gridSpacing).toInt()) {
-                    drawLine(
-                        color = Color.White.copy(alpha = 0.005f),
-                        start = Offset(x * gridSpacing, 0f),
-                        end = Offset(x * gridSpacing, size.height),
-                        strokeWidth = 1f
-                    )
-                }
-                for (y in 0..(size.height / gridSpacing).toInt()) {
-                    drawLine(
-                        color = Color.White.copy(alpha = 0.005f),
-                        start = Offset(0f, y * gridSpacing),
-                        end = Offset(size.width, y * gridSpacing),
-                        strokeWidth = 1f
-                    )
+                val gridColor = Color.White.copy(alpha = 0.005f)
+                val xCount = (size.width / gridSpacing).toInt()
+                val yCount = (size.height / gridSpacing).toInt()
+                onDrawBehind {
+                    for (x in 0..xCount) {
+                        drawLine(
+                            color = gridColor,
+                            start = Offset(x * gridSpacing, 0f),
+                            end = Offset(x * gridSpacing, size.height),
+                            strokeWidth = 1f
+                        )
+                    }
+                    for (y in 0..yCount) {
+                        drawLine(
+                            color = gridColor,
+                            start = Offset(0f, y * gridSpacing),
+                            end = Offset(size.width, y * gridSpacing),
+                            strokeWidth = 1f
+                        )
+                    }
                 }
             }
     ) {

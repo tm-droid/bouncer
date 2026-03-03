@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.ui.theme.*
 import kotlin.math.*
+import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 
 /**
  * Fantasy points breakdown card
@@ -77,6 +78,7 @@ fun FantasyPointsCard(
     pointsData: FantasyPointsData,
     modifier: Modifier = Modifier,
 ) {
+    val colors = BouncerDesignSystem.colors
     val animatedProgress = remember { Animatable(0f) }
     val animatedPoints = remember { Animatable(0f) }
 
@@ -147,7 +149,7 @@ fun FantasyPointsCard(
                     Column {
                         Text(
                             text = "FANTASY POINTS",
-                            color = ShinyGoldLight,
+                            color = colors.goldLight,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.5.sp,
@@ -166,7 +168,7 @@ fun FantasyPointsCard(
                         modifier = Modifier
                             .size(32.dp)
                             .clip(CircleShape)
-                            .background(ShinyGoldDeep),
+                            .background(colors.goldPrimary),
                         contentAlignment = Alignment.Center,
                     ) {
                         Text(
@@ -227,7 +229,7 @@ fun FantasyPointsCard(
                         ) {
                             Text(
                                 text = "2x Captain bonus",
-                                color = ShinyGoldMid,
+                                color = colors.goldDark,
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Medium,
                             )
@@ -258,7 +260,7 @@ fun FantasyPointsCard(
                             .clip(RoundedCornerShape(6.dp))
                             .background(
                                 if (pointsData.rank <= 3) {
-                                    ShinyGoldDeep.copy(alpha = 0.3f)
+                                    colors.goldPrimary.copy(alpha = 0.3f)
                                 } else {
                                     Color.White.copy(alpha = 0.1f)
                                 },
@@ -267,7 +269,7 @@ fun FantasyPointsCard(
                     ) {
                         Text(
                             text = "Rank #${pointsData.rank}",
-                            color = if (pointsData.rank <= 3) ShinyGoldLight else Color.White,
+                            color = if (pointsData.rank <= 3) colors.goldLight else Color.White,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
                         )
@@ -338,6 +340,7 @@ private fun PointsBreakdownRow(
     breakdown: FantasyPointBreakdown,
     progress: Float,
 ) {
+    val colors = BouncerDesignSystem.colors
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -366,9 +369,9 @@ private fun PointsBreakdownRow(
                 .clip(RoundedCornerShape(6.dp))
                 .background(
                     if (breakdown.points > 0) {
-                        SuccessGreen.copy(alpha = 0.2f)
+                        colors.statusSuccess.copy(alpha = 0.2f)
                     } else {
-                        WicketRed.copy(alpha = 0.2f)
+                        colors.statusLive.copy(alpha = 0.2f)
                     },
                 )
                 .padding(horizontal = 10.dp, vertical = 4.dp),
@@ -379,7 +382,7 @@ private fun PointsBreakdownRow(
                 } else {
                     "${(breakdown.points * progress).toInt()}"
                 },
-                color = if (breakdown.points > 0) SuccessGreen else WicketRed,
+                color = if (breakdown.points > 0) colors.statusSuccess else colors.statusLive,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
             )
@@ -393,6 +396,7 @@ private fun SelectionStatItem(
     value: String,
     icon: String,
 ) {
+    val colors = BouncerDesignSystem.colors
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
             text = icon,
@@ -415,6 +419,7 @@ private fun SelectionStatItem(
 
 @Composable
 fun FantasyPointsCardPreview() {
+    val colors = BouncerDesignSystem.colors
     FantasyPointsCard(
         pointsData = FantasyPointsData(
             playerName = "Virat Kohli",

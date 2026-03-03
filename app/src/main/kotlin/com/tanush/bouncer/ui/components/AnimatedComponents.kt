@@ -75,6 +75,8 @@ fun SuccessToast(
         }
     }
     
+    val colors = BouncerDesignSystem.colors
+    
     AnimatedVisibility(
         visible = visible,
         enter = fadeIn(tween(250)) + slideInVertically(initialOffsetY = { -it }),
@@ -91,8 +93,8 @@ fun SuccessToast(
                     .background(
                         Brush.horizontalGradient(
                             colors = listOf(
-                                SuccessGreen,
-                                SuccessGreen.copy(alpha = 0.9f)
+                                colors.statusSuccess,
+                                colors.statusSuccess.copy(alpha = 0.9f)
                             )
                         ),
                         RoundedCornerShape(14.dp)
@@ -101,7 +103,7 @@ fun SuccessToast(
             ) {
                 Text(
                     text = message,
-                    color = Color.White,
+                    color = colors.textPrimary,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.SemiBold,
                     letterSpacing = 0.2.sp
@@ -124,6 +126,8 @@ fun ErrorToast(
         }
     }
     
+    val colors = BouncerDesignSystem.colors
+    
     AnimatedVisibility(
         visible = visible,
         enter = fadeIn(tween(250)) + slideInVertically(initialOffsetY = { -it }) + scaleIn(initialScale = 0.92f),
@@ -140,8 +144,8 @@ fun ErrorToast(
                     .background(
                         Brush.horizontalGradient(
                             colors = listOf(
-                                ErrorRed,
-                                ErrorRed.copy(alpha = 0.9f)
+                                colors.statusLive,
+                                colors.statusLive.copy(alpha = 0.9f)
                             )
                         ),
                         RoundedCornerShape(14.dp)
@@ -150,7 +154,7 @@ fun ErrorToast(
             ) {
                 Text(
                     text = message,
-                    color = Color.White,
+                    color = colors.textPrimary,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.SemiBold,
                     letterSpacing = 0.2.sp
@@ -165,6 +169,7 @@ fun PulsingBadge(
     text: String,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "badge")
     val alpha by infiniteTransition.animateFloat(
         initialValue = 0.7f,
@@ -193,8 +198,8 @@ fun PulsingBadge(
             .background(
                 Brush.linearGradient(
                     colors = listOf(
-                        LiveBlue,
-                        LiveBlue.copy(alpha = 0.85f)
+                        colors.statusInfo,
+                        colors.statusInfo.copy(alpha = 0.85f)
                     )
                 ),
                 RoundedCornerShape(8.dp)
@@ -203,7 +208,7 @@ fun PulsingBadge(
     ) {
         Text(
             text = text,
-            color = Color.White,
+            color = colors.textPrimary,
             fontSize = 10.sp,
             fontWeight = FontWeight.Bold,
             letterSpacing = 0.6.sp
@@ -221,6 +226,7 @@ fun AnimatedScore(
     textColor: Color = TextPrimary,
     fontSize: Float = 28f
 ) {
+    val colors = BouncerDesignSystem.colors
     var previousScore by remember { mutableStateOf(score) }
     var isAnimating by remember { mutableStateOf(false) }
     
@@ -243,7 +249,7 @@ fun AnimatedScore(
     )
     
     val animatedColor by animateColorAsState(
-        targetValue = if (isAnimating) ShinyGoldDeep else textColor,
+        targetValue = if (isAnimating) colors.goldPrimary else textColor,
         animationSpec = tween(300),
         label = "scoreColor"
     )
@@ -265,7 +271,7 @@ fun AnimatedScore(
 fun BouncingArrow(
     isExpanded: Boolean,
     modifier: Modifier = Modifier,
-    tint: Color = ShinyGoldDeep
+    tint: Color = GoldPrimary
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "arrowBounce")
     val bounce by infiniteTransition.animateFloat(

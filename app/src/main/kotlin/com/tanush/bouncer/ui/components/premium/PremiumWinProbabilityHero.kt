@@ -62,7 +62,7 @@ fun PremiumWinProbabilityHero(
             .fillMaxWidth()
             .height(240.dp)
             .clip(RoundedCornerShape(28.dp))
-            .background(Color.White.copy(alpha = 0.05f))
+            .background(GlassSurface)
             .border(
                 0.5.dp,
                 Brush.linearGradient(
@@ -77,7 +77,7 @@ fun PremiumWinProbabilityHero(
                 .size(150.dp)
                 .align(Alignment.Center)
                 .blur(60.dp)
-                .background(ShinyGoldDeep.copy(alpha = 0.05f * glowAlpha), CircleShape)
+                .background(GoldPrimary.copy(alpha = 0.05f * glowAlpha), CircleShape)
         )
 
         // Content
@@ -95,7 +95,7 @@ fun PremiumWinProbabilityHero(
                 Column {
                     Text(
                         text = "WIN PROBABILITY",
-                        color = ShinyGoldDeep,
+                        color = GoldPrimary,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Black,
                         letterSpacing = 2.sp
@@ -112,7 +112,7 @@ fun PremiumWinProbabilityHero(
                 Icon(
                     imageVector = Icons.Default.AutoAwesome,
                     contentDescription = null,
-                    tint = ShinyGoldDeep.copy(alpha = 0.4f),
+                    tint = GoldPrimary.copy(alpha = 0.4f),
                     modifier = Modifier.size(20.dp)
                 )
             }
@@ -144,7 +144,7 @@ fun PremiumWinProbabilityHero(
                     // Probability Arc with Glow
                     drawArc(
                         brush = Brush.horizontalGradient(
-                            colors = listOf(ShinyGoldDeep, ShinyGoldLight, ShinyGoldDeep)
+                            colors = listOf(GoldPrimary, GoldLight, GoldPrimary)
                         ),
                         startAngle = 180f,
                         sweepAngle = 180f * animatedProb,
@@ -179,7 +179,7 @@ fun PremiumWinProbabilityHero(
                     )
                     Text(
                         text = team1Name.uppercase(),
-                        color = ShinyGoldDeep,
+                        color = GoldPrimary,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Black,
                         letterSpacing = 1.5.sp

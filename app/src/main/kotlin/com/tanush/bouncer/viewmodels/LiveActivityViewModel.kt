@@ -6,6 +6,8 @@ import androidx.lifecycle.viewModelScope
 import com.tanush.bouncer.analysis.WinProbabilityCalculator
 import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.network.CricBuzzScraper
+import com.tanush.bouncer.network.CricBuzzUrls
+import com.tanush.bouncer.services.LiveNotificationManager
 import com.tanush.bouncer.services.MatchCacheService
 import com.tanush.bouncer.services.LiveCommentaryManager
 import kotlinx.coroutines.CancellationException
@@ -60,6 +62,18 @@ class LiveActivityViewModel : ViewModel() {
     private val scraper = CricBuzzScraper()
     private val liveCommentaryManager = LiveCommentaryManager()
     private val winCalculator = WinProbabilityCalculator()
+    
+    // Notification manager — set from Activity/Composable that has Context access
+    private var notificationManager: LiveNotificationManager? = null
+    
+    /**
+     * Initialize the live notification manager. Must be called from a context-aware
+     * component (Activity or Composable with LocalContext).
+     */
+    fun setNotificationManager(manager: LiveNotificationManager) {
+        notificationManager = manager
+    }
+    
     private val _keyEvent = MutableStateFlow<Pair<String, String>?>(null)
     val keyEvent: StateFlow<Pair<String, String>?> = _keyEvent.asStateFlow()
     
@@ -74,6 +88,10 @@ class LiveActivityViewModel : ViewModel() {
 
     private val _currentMatches = MutableStateFlow<List<CricketMatch>>(emptyList())
     val currentMatches: StateFlow<List<CricketMatch>> = _currentMatches.asStateFlow()
+
+    // Expose all matches (live + upcoming) for the home screen dashboard
+    private val _allMatchesForHome = MutableStateFlow<List<CricketMatch>>(emptyList())
+    val allMatchesForHome: StateFlow<List<CricketMatch>> = _allMatchesForHome.asStateFlow()
 
     private val _isLoading = MutableStateFlow(true)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
@@ -99,12 +117,45 @@ class LiveActivityViewModel : ViewModel() {
     private val cachedMatches = mutableMapOf<String, List<CricketMatch>>()
     private val pollingTasks = mutableMapOf<String, Job>()
     private var isPollingActive = false
+    // Track consecutive failures per status for adaptive backoff
+    private val consecutiveFailures = mutableMapOf<String, Int>()
 
     init {
-        // Wire commentary manager events into ViewModel flows
+        // Wire commentary manager events into ViewModel flows AND notification alerts
         liveCommentaryManager.onKeyEvent = { title, body ->
             viewModelScope.launch {
                 _keyEvent.value = title to body
+                
+                // Also push event-specific alert notifications
+                val manager = notificationManager ?: return@launch
+                val liveMatch = _currentMatches.value.firstOrNull { it.isLive } ?: return@launch
+                when {
+                    title.contains("Wicket", ignoreCase = true) -> manager.showWicketAlert(
+                        match = liveMatch,
+                        batsmanName = body.substringBefore(" ").take(30),
+                        bowlerName = "",
+                        dismissalType = "dismissed",
+                        runsScored = 0
+                    )
+                    title.contains("Six", ignoreCase = true) -> manager.showSixAlert(
+                        match = liveMatch,
+                        batsmanName = "",
+                        bowlerName = "",
+                        description = body.take(60)
+                    )
+                    title.contains("Boundary", ignoreCase = true) || title.contains("Four", ignoreCase = true) -> manager.showFourAlert(
+                        match = liveMatch,
+                        batsmanName = "",
+                        bowlerName = "",
+                        description = body.take(60)
+                    )
+                    title.contains("AI Strategic", ignoreCase = true) -> manager.showMilestoneAlert(
+                        match = liveMatch,
+                        playerName = "AI Insight",
+                        milestone = title,
+                        description = body.take(80)
+                    )
+                }
             }
         }
         startPolling()
@@ -235,8 +286,11 @@ class LiveActivityViewModel : ViewModel() {
         val job = viewModelScope.launch {
             while (isPollingActive) {
                 try {
-                    val interval = getPollingInterval(status)
-                    Log.d(TAG, "Waiting $interval ms before next update for $status")
+                    val failures = consecutiveFailures[status] ?: 0
+                    // Adaptive interval: back off on repeated failures (up to 5x normal interval)
+                    val baseInterval = getPollingInterval(status)
+                    val interval = baseInterval * (1 + failures.coerceAtMost(4))
+                    Log.d(TAG, "Waiting $interval ms before next update for $status (failures: $failures)")
                     delay(interval)
                     
                     if (!isPollingActive) {
@@ -249,18 +303,42 @@ class LiveActivityViewModel : ViewModel() {
                         Log.d(TAG, "Fetching new data for Live matches")
                         updateMatches(status)
                         updateAllLiveCommentaries()
+                        updateLiveNotifications()
                     } else if (!MatchCacheService.isCacheValid(status)) {
                         Log.d(TAG, "Cache expired, fetching new data for $status")
                         updateMatches(status)
                     } else {
                         Log.d(TAG, "Cache still valid for $status")
                     }
+                    // Reset failure counter on success
+                    consecutiveFailures[status] = 0
+                    if (_loadingState.value is LoadingState.Error) {
+                        _loadingState.value = LoadingState.Idle
+                    }
                 } catch (e: Exception) {
                     if (e is CancellationException) {
                         Log.d(TAG, "Polling task for $status was cancelled")
                         throw e
                     }
-                    Log.e(TAG, "Error in polling loop for $status", e)
+                    val failures = (consecutiveFailures[status] ?: 0) + 1
+                    consecutiveFailures[status] = failures
+                    Log.e(TAG, "Error in polling loop for $status (failure #$failures)", e)
+
+                    // Fall back to offline cache when network fails
+                    if (_currentMatches.value.isEmpty()) {
+                        val offline = MatchCacheService.getOfflineMatches(status)
+                        if (offline != null && offline.isNotEmpty()) {
+                            Log.d(TAG, "Using offline cache for $status (${offline.size} matches)")
+                            filterAndEmitMatches(offline)
+                            _loadingState.value = LoadingState.Error(
+                                "Showing cached data — couldn't reach server"
+                            )
+                        } else {
+                            _loadingState.value = LoadingState.Error(
+                                e.localizedMessage ?: "Network error"
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -301,6 +379,95 @@ class LiveActivityViewModel : ViewModel() {
         }
         
         _aiCommentary.value = updatedCommentary
+    }
+    
+    /**
+     * Push enriched data to the ongoing live notification for each live match.
+     * Fetches current batsmen, bowler, and recent balls to populate the
+     * expanded notification view (iOS Live Activity parity).
+     */
+    private suspend fun updateLiveNotifications() {
+        val manager = notificationManager ?: return
+        
+        for (match in _currentMatches.value) {
+            if (!match.isLive) continue
+            
+            try {
+                // Fetch latest scorecard details for enriched notification
+                val details = scraper.fetchBallByBallAndBatsmen(match.id)
+                
+                // Convert scraped batsmen to notification-friendly format
+                val batsmenInfo = details.batsmen.map { bat ->
+                    LiveNotificationManager.BatsmanInfo(
+                        name = bat.name,
+                        runs = bat.runs.toIntOrNull() ?: 0,
+                        balls = bat.balls.toIntOrNull() ?: 0,
+                        isStriker = bat.isStriker
+                    )
+                }
+                
+                // Convert scraped bowler to notification-friendly format
+                val bowlerInfo = details.bowler?.let { b ->
+                    LiveNotificationManager.BowlerInfo(
+                        name = b.name,
+                        overs = b.overs,
+                        runs = b.runs.toIntOrNull() ?: 0,
+                        wickets = b.wickets.toIntOrNull() ?: 0
+                    )
+                }
+                
+                // Determine win probability for the notification bar
+                val prob = match.winProbability.toFloat() / 100f
+                
+                // Detect last event type from recent commentary for accent colour
+                val lastCommentary = _aiCommentary.value[match.id]
+                val lastEvent = lastCommentary?.let { detectEventFromCommentary(it) }
+                
+                manager.showLiveMatchNotification(
+                    match = match,
+                    winProbability = prob,
+                    lastEvent = lastEvent,
+                    batsmen = batsmenInfo,
+                    bowler = bowlerInfo,
+                    recentBalls = details.recentBalls
+                )
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                Log.w(TAG, "Failed to update notification for match ${match.id}", e)
+            }
+        }
+    }
+    
+    /**
+     * Detect a MatchEvent from commentary text for accent colouring in notifications.
+     */
+    private fun detectEventFromCommentary(commentary: String): LiveNotificationManager.MatchEvent? {
+        val lower = commentary.lowercase()
+        return when {
+            lower.contains("wicket") || lower.contains("out!") || lower.contains("bowled") ||
+            lower.contains("lbw") || lower.contains("caught") || lower.contains("stumped") ->
+                LiveNotificationManager.MatchEvent(
+                    LiveNotificationManager.EventType.WICKET,
+                    commentary.take(80)
+                )
+            lower.contains("six") || lower.contains("6 runs") ->
+                LiveNotificationManager.MatchEvent(
+                    LiveNotificationManager.EventType.SIX,
+                    commentary.take(80)
+                )
+            lower.contains("four") || lower.contains("4 runs") || lower.contains("boundary") ->
+                LiveNotificationManager.MatchEvent(
+                    LiveNotificationManager.EventType.FOUR,
+                    commentary.take(80)
+                )
+            lower.contains("50") || lower.contains("century") || lower.contains("hundred") || 
+            lower.contains("milestone") || lower.contains("5-wicket") ->
+                LiveNotificationManager.MatchEvent(
+                    LiveNotificationManager.EventType.MILESTONE,
+                    commentary.take(80)
+                )
+            else -> null
+        }
     }
     
     /**
@@ -387,8 +554,10 @@ class LiveActivityViewModel : ViewModel() {
         updatedMap[matchId] = trimmedEvents
         _probabilityEvents.value = updatedMap
         
-        // Also update the match state probability immediately for overall UI
-        match.winProbability = newProbability
+        // Update match state immutably — emit a new list to trigger Compose recomposition
+        _currentMatches.value = _currentMatches.value.map { m ->
+            if (m.id == matchId) m.copy(winProbability = newProbability) else m
+        }
     }
     
     /**
@@ -415,40 +584,67 @@ class LiveActivityViewModel : ViewModel() {
     }
     
     private suspend fun updateMatches(status: String) {
-        val url = when (status) {
-            "Live" -> "https://www.cricbuzz.com/cricket-match/live-scores"
-            "Recent" -> "https://www.cricbuzz.com/cricket-match/live-scores/recent-matches"
-            "Upcoming" -> "https://www.cricbuzz.com/cricket-match/live-scores/upcoming-matches"
-            else -> "https://www.cricbuzz.com/cricket-match/live-scores"
-        }
+        val url = CricBuzzUrls.urlForStatus(status)
         
         val matches = scraper.fetchLiveMatches(url, status)
         val distinctMatches = matches.distinctBy { it.id }
         
-        // Calculate heuristic win probability for each match
-        distinctMatches.forEach { match ->
+        // Calculate heuristic win probability for each match (immutable copy)
+        val matchesWithProbability = distinctMatches.map { match ->
             if (match.isLive) {
-                match.winProbability = match.calculateHeuristicProbability()
+                match.copy(winProbability = match.calculateHeuristicProbability())
+            } else {
+                match
             }
         }
         
         // Update cache
-        MatchCacheService.updateCache(distinctMatches, status)
-        cachedMatches[status] = distinctMatches
+        MatchCacheService.updateCache(matchesWithProbability, status)
+        cachedMatches[status] = matchesWithProbability
         
         // Only emit if this is the currently selected status
         if (status == _selectedStatus.value) {
-            filterAndEmitMatches(distinctMatches)
+            filterAndEmitMatches(matchesWithProbability)
         }
+        
+        // Always update allMatchesForHome with combined live + upcoming
+        updateHomeMatches()
+    }
+
+    /**
+     * Combine cached live + upcoming matches for the home dashboard.
+     * Ensures live matches appear in the carousel and upcoming in the list.
+     */
+    private fun updateHomeMatches() {
+        val liveMatches = cachedMatches["Live"] ?: emptyList()
+        val upcomingMatches = cachedMatches["Upcoming"] ?: emptyList()
+        val combined = (liveMatches + upcomingMatches).distinctBy { it.id }
+        _allMatchesForHome.value = combined
     }
 
     private suspend fun fetchMatchesInternal() {
         try {
             val selectedTab = _selectedStatus.value
             updateMatches(selectedTab)
+            _loadingState.value = LoadingState.Idle
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: java.net.UnknownHostException) {
+            Log.e(TAG, "No internet connection during refresh", e)
+            _loadingState.value = LoadingState.Error("No internet connection. Check your network and try again.")
+        } catch (e: java.net.SocketTimeoutException) {
+            Log.e(TAG, "Request timed out during refresh", e)
+            _loadingState.value = LoadingState.Error("Request timed out. Pull to refresh to try again.")
         } catch (e: Exception) {
-            if (e is CancellationException) throw e
-            e.printStackTrace()
+            Log.e(TAG, "Error refreshing matches", e)
+            _loadingState.value = LoadingState.Error(
+                e.localizedMessage ?: "Failed to load matches. Pull to refresh to try again."
+            )
         }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        liveCommentaryManager.close()
     }
 }

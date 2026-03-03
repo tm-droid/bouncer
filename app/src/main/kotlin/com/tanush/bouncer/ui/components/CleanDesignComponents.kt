@@ -28,6 +28,7 @@ import com.tanush.bouncer.managers.TeamLogoManager
 import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.ui.theme.*
 import com.tanush.bouncer.utils.*
+import io.sentry.Sentry
 
 /**
  * Clean Design Components - iOS-Inspired UI System
@@ -54,6 +55,7 @@ fun HeroLiveMatchCard(
     match: CricketMatch,
     onClick: () -> Unit
 ) {
+    val colors = BouncerDesignSystem.colors
     val team1 = match.teams.firstOrNull()
     val team2 = match.teams.getOrNull(1)
     val isLive = match.isLive
@@ -76,11 +78,11 @@ fun HeroLiveMatchCard(
             .shadow(
                 elevation = 16.dp,
                 shape = RoundedCornerShape(24.dp),
-                spotColor = ShinyGoldDeep.copy(alpha = 0.15f)
+                spotColor = colors.goldPrimary.copy(alpha = 0.15f)
             ),
         shape = RoundedCornerShape(24.dp),
         color = Color.White.copy(alpha = 0.05f),
-        border = BorderStroke(0.5.dp, Gold400.copy(alpha = 0.12f)),
+        border = BorderStroke(0.5.dp, colors.goldPrimary.copy(alpha = 0.12f)),
         onClick = onClick
     ) {
         Column(
@@ -206,6 +208,7 @@ private fun TeamScoreDisplay(
     team: CricketMatch.Team?,
     alignment: Alignment.Horizontal
 ) {
+    val colors = BouncerDesignSystem.colors
     Column(
         horizontalAlignment = alignment,
         verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -218,7 +221,7 @@ private fun TeamScoreDisplay(
                 .background(Color.White.copy(alpha = 0.08f))
                 .border(
                     width = if (team?.isBatting == true) 2.dp else 0.5.dp,
-                    color = if (team?.isBatting == true) ShinyGoldDeep else Color.White.copy(alpha = 0.1f),
+                    color = if (team?.isBatting == true) colors.goldPrimary else Color.White.copy(alpha = 0.1f),
                     shape = CircleShape
                 ),
             contentAlignment = Alignment.Center
@@ -243,7 +246,7 @@ private fun TeamScoreDisplay(
         // Score
         Text(
             text = team?.score?.ifEmpty { "-" } ?: "-",
-            color = if (team?.isBatting == true) ShinyGoldDeep else TextSecondary,
+            color = if (team?.isBatting == true) colors.goldPrimary else colors.textSecondary,
             fontSize = 20.sp,
             fontWeight = FontWeight.Black
         )
@@ -251,15 +254,20 @@ private fun TeamScoreDisplay(
 }
 
 private fun getMatchStatusInfo(match: CricketMatch): Pair<String, Color> {
-    val status = match.status.lowercase()
-    return when {
-        match.isLive -> "Live" to SuccessGreen
-        status.contains("completed") || status.contains("won") || status.contains("result") -> "Completed" to ChartCyan
-        status.contains("upcoming") || status.contains("preview") -> "Upcoming" to LiveBlue
-        status.contains("delayed") || status.contains("postponed") -> "Delayed" to WarningOrange
-        status.contains("break") || status.contains("lunch") || status.contains("tea") || status.contains("stumps") -> "Break" to WarningYellow
-        status.contains("abandoned") -> "Abandoned" to ErrorRed
-        else -> "Scheduled" to TextSecondary
+    try {
+        val status = match.status.lowercase()
+        return when {
+            match.isLive -> "Live" to StatusSuccess
+            status.contains("completed") || status.contains("won") || status.contains("result") -> "Completed" to ChartCyan
+            status.contains("upcoming") || status.contains("preview") -> "Upcoming" to StatusInfo
+            status.contains("delayed") || status.contains("postponed") -> "Delayed" to StatusWarning
+            status.contains("break") || status.contains("lunch") || status.contains("tea") || status.contains("stumps") -> "Break" to StatusWarning
+            status.contains("abandoned") -> "Abandoned" to StatusLive
+            else -> "Scheduled" to TextSecondary
+        }
+    } catch (e: Exception) {
+        Sentry.captureException(e)
+        throw e
     }
 }
 
@@ -275,6 +283,7 @@ fun MatchCarouselCard(
     match: CricketMatch,
     onClick: () -> Unit
 ) {
+    val colors = BouncerDesignSystem.colors
     val team1 = match.teams.firstOrNull()
     val team2 = match.teams.getOrNull(1)
     
@@ -288,7 +297,7 @@ fun MatchCarouselCard(
             ),
         shape = RoundedCornerShape(20.dp),
         color = Color.White.copy(alpha = 0.05f),
-        border = BorderStroke(0.5.dp, Gold400.copy(alpha = 0.12f)),
+        border = BorderStroke(0.5.dp, colors.goldPrimary.copy(alpha = 0.12f)),
         onClick = onClick
     ) {
         Column(
@@ -340,7 +349,7 @@ fun MatchCarouselCard(
                                     .background(Color.White.copy(alpha = 0.08f))
                                     .border(
                                         if (team.isBatting) 1.5.dp else 0.5.dp,
-                                        if (team.isBatting) ShinyGoldDeep else Color.White.copy(alpha = 0.08f),
+                                        if (team.isBatting) colors.goldPrimary else Color.White.copy(alpha = 0.08f),
                                         CircleShape
                                     ),
                                 contentAlignment = Alignment.Center
@@ -362,7 +371,7 @@ fun MatchCarouselCard(
                         
                         Text(
                             text = team.score.ifEmpty { "-" },
-                            color = if (team.isBatting) ShinyGoldDeep else TextSecondary,
+                            color = if (team.isBatting) colors.goldPrimary else colors.textSecondary,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -489,6 +498,7 @@ private fun TeamScoreRow(
     team: CricketMatch.Team?,
     isBatting: Boolean
 ) {
+    val colors = BouncerDesignSystem.colors
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -529,7 +539,7 @@ private fun TeamScoreRow(
         Column(horizontalAlignment = Alignment.End) {
             Text(
                 text = team?.score?.ifEmpty { "-" } ?: "-",
-                color = if (isBatting) Gold400 else TextPrimary,
+                color = if (isBatting) colors.goldPrimary else colors.textPrimary,
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
                 fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
@@ -716,14 +726,15 @@ fun MarketInsightCard(
     subtitle: String,
     icon: ImageVector,
     badgeText: String? = null,
-    badgeColor: Color = SuccessGreen,
+    badgeColor: Color = StatusSuccess,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     Surface(
         modifier = modifier.height(100.dp),
         shape = RoundedCornerShape(16.dp),
         color = Color.White.copy(alpha = 0.05f),
-        border = BorderStroke(0.5.dp, Gold400.copy(alpha = 0.12f))
+        border = BorderStroke(0.5.dp, colors.goldPrimary.copy(alpha = 0.12f))
     ) {
         Column(
             modifier = Modifier.padding(14.dp),
@@ -737,7 +748,7 @@ fun MarketInsightCard(
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
-                    tint = ShinyGoldDeep.copy(alpha = 0.6f),
+                    tint = colors.goldPrimary.copy(alpha = 0.6f),
                     modifier = Modifier.size(18.dp)
                 )
                 
@@ -792,6 +803,7 @@ fun MarketInsightCard(
  */
 @Composable
 fun AppFooter() {
+    val colors = BouncerDesignSystem.colors
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -806,7 +818,7 @@ fun AppFooter() {
             Icon(
                 Icons.Default.SportsCricket,
                 contentDescription = null,
-                tint = ShinyGoldDeep.copy(alpha = 0.4f),
+                tint = colors.goldPrimary.copy(alpha = 0.4f),
                 modifier = Modifier.size(16.dp)
             )
             Text(

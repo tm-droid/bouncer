@@ -5,22 +5,43 @@ import android.view.View
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalView
+import io.sentry.Sentry
 
 class HapticFeedback(private val view: View) {
     fun click() {
-        view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+        try {
+            view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     fun longPress() {
-        view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+        try {
+            view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     fun success() {
-        view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+        try {
+            view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     fun error() {
-        view.performHapticFeedback(HapticFeedbackConstants.REJECT)
+        try {
+            view.performHapticFeedback(HapticFeedbackConstants.REJECT)
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
 }
 

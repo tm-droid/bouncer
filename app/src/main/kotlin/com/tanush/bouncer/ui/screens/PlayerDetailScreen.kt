@@ -28,11 +28,17 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.ui.components.CoilImage
+import com.tanush.bouncer.ui.components.PerformanceRadarChart
+import com.tanush.bouncer.ui.components.FormIndicator
+import com.tanush.bouncer.ui.components.AchievementBadges
+import com.tanush.bouncer.ui.components.PlayerAchievement
+import com.tanush.bouncer.ui.components.AchievementTier
+import com.tanush.bouncer.ui.components.glass.GlassBloomBackground
+import com.tanush.bouncer.ui.components.glass.GlassCard
 import coil.request.ImageRequest
 import com.tanush.bouncer.ui.theme.*
-import kotlin.math.PI
-import kotlin.math.cos
-import kotlin.math.sin
+import com.tanush.bouncer.ui.theme.BouncerDesignSystem
+import com.tanush.bouncer.ui.theme.BrandGradients
 
 /**
  * Player data model for the detail screen
@@ -163,6 +169,9 @@ fun PlayerDetailScreen(
         label = "pulse"
     )
 
+    val colors = BouncerDesignSystem.colors
+    val dimens = BouncerDesignSystem.dimens
+
     Scaffold(
         containerColor = Color.Transparent,
         topBar = {
@@ -173,12 +182,31 @@ fun PlayerDetailScreen(
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Black,
                         letterSpacing = 2.sp,
-                        color = GoldDark
+                        style = androidx.compose.ui.text.TextStyle(
+                            brush = Brush.verticalGradient(
+                                colors = listOf(
+                                    Color.White,
+                                    colors.goldPrimary,
+                                    colors.goldDark
+                                )
+                            )
+                        )
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = Color.White)
+                    Surface(
+                        onClick = onBackClick,
+                        shape = RoundedCornerShape(12.dp),
+                        color = colors.glassSurface,
+                        border = BorderStroke(0.5.dp, colors.goldDark.copy(alpha = 0.3f)),
+                        modifier = Modifier.padding(start = 8.dp)
+                    ) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            "Back",
+                            tint = colors.goldLight,
+                            modifier = Modifier.padding(8.dp)
+                        )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -187,55 +215,9 @@ fun PlayerDetailScreen(
             )
         }
     ) { paddingValues ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(BlackBackground)
+        GlassBloomBackground(
+            modifier = Modifier.fillMaxSize()
         ) {
-            // Premium animated background
-            Canvas(modifier = Modifier.fillMaxSize()) {
-                // Top glow
-                drawCircle(
-                    brush = Brush.radialGradient(
-                        colors = listOf(
-                            GoldDark.copy(alpha = 0.1f),
-                            GoldDark.copy(alpha = 0.02f),
-                            Color.Transparent
-                        ),
-                        center = Offset(size.width * 0.5f, 0f),
-                        radius = size.width * 0.9f
-                    ),
-                    radius = size.width * 0.9f,
-                    center = Offset(size.width * 0.5f, 0f)
-                )
-                // Bottom accent
-                drawCircle(
-                    brush = Brush.radialGradient(
-                        colors = listOf(
-                            ChartBlue.copy(alpha = 0.06f),
-                            Color.Transparent
-                        ),
-                        center = Offset(size.width * 0.8f, size.height),
-                        radius = size.width * 0.5f
-                    ),
-                    radius = size.width * 0.5f,
-                    center = Offset(size.width * 0.8f, size.height)
-                )
-                // Purple accent
-                drawCircle(
-                    brush = Brush.radialGradient(
-                        colors = listOf(
-                            ChartPurple.copy(alpha = 0.04f),
-                            Color.Transparent
-                        ),
-                        center = Offset(0f, size.height * 0.6f),
-                        radius = size.width * 0.4f
-                    ),
-                    radius = size.width * 0.4f,
-                    center = Offset(0f, size.height * 0.6f)
-                )
-            }
-
             if (isLoading) {
                 // Loading state
                 Box(
@@ -244,16 +226,16 @@ fun PlayerDetailScreen(
                 ) {
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                        verticalArrangement = Arrangement.spacedBy(dimens.md)
                     ) {
                         CircularProgressIndicator(
-                            color = GoldDark,
+                            color = colors.goldPrimary,
                             strokeWidth = 3.dp,
                             modifier = Modifier.size(48.dp)
                         )
                         Text(
                             "Loading player data...",
-                            color = TextSecondary,
+                            color = colors.textSecondary,
                             fontSize = 14.sp
                         )
                     }
@@ -263,8 +245,8 @@ fun PlayerDetailScreen(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(paddingValues),
-                    contentPadding = PaddingValues(20.dp),
-                    verticalArrangement = Arrangement.spacedBy(20.dp)
+                    contentPadding = PaddingValues(dimens.md + dimens.xs),
+                    verticalArrangement = Arrangement.spacedBy(dimens.md + dimens.xs)
                 ) {
                     // Player header card
                     item {
@@ -290,6 +272,17 @@ fun PlayerDetailScreen(
                             BattingStatsCard(stats = player!!.battingStats!!)
                         }
                     }
+
+                    // Recent form
+                    item {
+                        SectionTitle(title = "RECENT FORM", icon = Icons.AutoMirrored.Filled.TrendingUp)
+                    }
+                    item {
+                        FormIndicator(
+                            recentScores = listOf(45, 12, 78, 0, 102),
+                            showLabels = true
+                        )
+                    }
                     
                     // Bowling stats
                     if (player!!.bowlingStats != null) {
@@ -306,9 +299,37 @@ fun PlayerDetailScreen(
                         SectionTitle(title = "PERFORMANCE OVERVIEW", icon = Icons.Default.Radar)
                     }
                     item {
-                        PerformanceRadarCard(
-                            battingStats = player!!.battingStats,
-                            bowlingStats = player!!.bowlingStats
+                        val battingAvg = player!!.battingStats?.average?.toFloat() ?: 0f
+                        val matches = player!!.battingStats?.matches ?: 0
+                        val bowlingAvg = player!!.bowlingStats?.average?.toFloat()
+                        GlassCard(
+                            useGoldBorder = true
+                        ) {
+                            PerformanceRadarChart(
+                                battingSkill = (battingAvg / 60f * 100f).coerceIn(0f, 100f),
+                                bowlingSkill = if (bowlingAvg != null) ((60f - bowlingAvg) / 60f * 100f).coerceIn(0f, 100f) else 0f,
+                                fieldingSkill = 65f,
+                                fitnessSkill = 70f,
+                                experienceSkill = (matches / 100f * 100f).coerceIn(0f, 100f),
+                                playerName = player!!.name,
+                                primaryColor = colors.goldPrimary
+                            )
+                        }
+                    }
+
+                    // Achievements
+                    item {
+                        SectionTitle(title = "ACHIEVEMENTS", icon = Icons.Default.EmojiEvents)
+                    }
+                    item {
+                        AchievementBadges(
+                            achievements = listOf(
+                                PlayerAchievement("Century King", "Scored 8 centuries", Icons.Default.Star, true, AchievementTier.GOLD),
+                                PlayerAchievement("Run Machine", "3000+ career runs", Icons.AutoMirrored.Filled.TrendingUp, true, AchievementTier.PLATINUM),
+                                PlayerAchievement("Boundary Master", "300+ fours", Icons.Default.FlashOn, true, AchievementTier.SILVER),
+                                PlayerAchievement("Six Hitter", "150+ sixes", Icons.Default.Whatshot, true, AchievementTier.GOLD),
+                                PlayerAchievement("Match Winner", "10 MOM awards", Icons.Default.EmojiEvents, false, AchievementTier.PLATINUM)
+                            )
                         )
                     }
                     
@@ -324,23 +345,33 @@ fun PlayerDetailScreen(
 
 @Composable
 private fun SectionTitle(title: String, icon: ImageVector) {
+    val colors = BouncerDesignSystem.colors
+    val dimens = BouncerDesignSystem.dimens
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-        modifier = Modifier.padding(vertical = 8.dp)
+        horizontalArrangement = Arrangement.spacedBy(dimens.sm + dimens.xxs),
+        modifier = Modifier.padding(vertical = dimens.sm)
     ) {
         Icon(
             icon,
             contentDescription = null,
-            tint = ShinyGoldDeep,
+            tint = colors.goldPrimary,
             modifier = Modifier.size(18.dp)
         )
         Text(
             title,
-            color = TextSecondary,
             fontSize = 12.sp,
             fontWeight = FontWeight.Bold,
-            letterSpacing = 1.5.sp
+            letterSpacing = 1.5.sp,
+            style = androidx.compose.ui.text.TextStyle(
+                brush = Brush.horizontalGradient(
+                    colors = listOf(
+                        colors.goldLight,
+                        colors.goldPrimary,
+                        colors.goldDark
+                    )
+                )
+            )
         )
         Box(
             modifier = Modifier
@@ -349,7 +380,7 @@ private fun SectionTitle(title: String, icon: ImageVector) {
                 .background(
                     Brush.horizontalGradient(
                         colors = listOf(
-                            CardBorder.copy(alpha = 0.3f),
+                            colors.goldDark.copy(alpha = 0.3f),
                             Color.Transparent
                         )
                     )
@@ -365,155 +396,181 @@ private fun PlayerHeaderCard(
     pulseScale: Float,
     context: android.content.Context
 ) {
+    val colors = BouncerDesignSystem.colors
+    val dimens = BouncerDesignSystem.dimens
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .shadow(
                 elevation = 24.dp,
-                shape = RoundedCornerShape(28.dp),
-                spotColor = ShinyGoldDeep.copy(alpha = 0.25f)
+                shape = RoundedCornerShape(dimens.lg + dimens.xs),
+                spotColor = colors.goldDark.copy(alpha = 0.25f)
             ),
-        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.05f)),
-        shape = RoundedCornerShape(28.dp),
+        colors = CardDefaults.cardColors(containerColor = colors.glassSurface),
+        shape = RoundedCornerShape(dimens.lg + dimens.xs),
         border = BorderStroke(
             1.dp,
             Brush.linearGradient(
                 colors = listOf(
-                    ShinyGoldLight.copy(alpha = 0.4f * shimmerOffset),
-                    ShinyGoldDeep.copy(alpha = 0.2f),
+                    colors.goldLight.copy(alpha = 0.4f * shimmerOffset),
+                    colors.goldDark.copy(alpha = 0.2f),
                     Color.Transparent
                 )
             )
         )
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(28.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            // Player image with glow
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .graphicsLayer { scaleX = pulseScale; scaleY = pulseScale }
-                    .size(140.dp)
-                    .background(
-                        Brush.radialGradient(
-                            colors = listOf(
-                                ShinyGoldDeep.copy(alpha = 0.2f),
-                                ShinyGoldDeep.copy(alpha = 0.05f),
-                                Color.Transparent
-                            )
+        Box(modifier = Modifier.fillMaxWidth()) {
+            // Gold bloom radial gradient behind avatar
+            Canvas(modifier = Modifier.fillMaxWidth().height(200.dp)) {
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            colors.goldPrimary.copy(alpha = 0.12f),
+                            colors.goldDark.copy(alpha = 0.04f),
+                            Color.Transparent
                         ),
-                        CircleShape
-                    )
+                        center = Offset(size.width * 0.5f, size.height * 0.3f),
+                        radius = size.width * 0.6f
+                    ),
+                    radius = size.width * 0.6f,
+                    center = Offset(size.width * 0.5f, size.height * 0.3f)
+                )
+            }
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(dimens.lg + dimens.xs),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
+                // Player image with gold gradient border
                 Box(
+                    contentAlignment = Alignment.Center,
                     modifier = Modifier
-                        .size(110.dp)
-                        .shadow(
-                            elevation = 20.dp,
-                            shape = CircleShape,
-                            spotColor = ShinyGoldDeep.copy(alpha = 0.4f)
-                        )
-                        .background(Color.White.copy(alpha = 0.08f), CircleShape)
-                        .border(
-                            2.dp,
-                            Brush.linearGradient(
+                        .graphicsLayer { scaleX = pulseScale; scaleY = pulseScale }
+                        .size(140.dp)
+                        .background(
+                            Brush.radialGradient(
                                 colors = listOf(
-                                    ShinyGoldLight.copy(alpha = 0.6f),
-                                    ShinyGoldDeep,
-                                    ShinyGoldMid
+                                    colors.goldPrimary.copy(alpha = 0.2f),
+                                    colors.goldDark.copy(alpha = 0.05f),
+                                    Color.Transparent
                                 )
                             ),
                             CircleShape
-                        ),
-                    contentAlignment = Alignment.Center
+                        )
                 ) {
-                    if (!player.imageUrl.isNullOrEmpty()) {
-                        CoilImage(
-                            model = ImageRequest.Builder(context)
-                                .data(player.imageUrl)
-                                .crossfade(true)
-                                .build(),
-                            contentDescription = player.name,
+                    Box(
+                        modifier = Modifier
+                            .size(110.dp)
+                            .shadow(
+                                elevation = 20.dp,
+                                shape = CircleShape,
+                                spotColor = colors.goldDark.copy(alpha = 0.4f)
+                            )
+                            .background(colors.glassSurface, CircleShape)
+                            .border(
+                                2.dp,
+                                Brush.linearGradient(
+                                    colors = listOf(
+                                        colors.goldLight,
+                                        colors.goldPrimary,
+                                        colors.goldDark
+                                    )
+                                ),
+                                CircleShape
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (!player.imageUrl.isNullOrEmpty()) {
+                            CoilImage(
+                                model = ImageRequest.Builder(context)
+                                    .data(player.imageUrl)
+                                    .crossfade(true)
+                                    .build(),
+                                contentDescription = player.name,
+                                modifier = Modifier
+                                    .size(100.dp)
+                                    .clip(CircleShape),
+                                contentScale = ContentScale.Crop
+                            )
+                        } else {
+                            Icon(
+                                Icons.Default.Person,
+                                contentDescription = null,
+                                tint = colors.goldPrimary,
+                                modifier = Modifier.size(48.dp)
+                            )
+                        }
+                    }
+                    
+                    // Captain/WK badges
+                    if (player.isCaptain || player.isWicketKeeper) {
+                        Surface(
                             modifier = Modifier
-                                .size(100.dp)
-                                .clip(CircleShape),
-                            contentScale = ContentScale.Crop
-                        )
-                    } else {
-                        Icon(
-                            Icons.Default.Person,
-                            contentDescription = null,
-                            tint = ShinyGoldDeep,
-                            modifier = Modifier.size(48.dp)
-                        )
+                                .align(Alignment.BottomEnd)
+                                .offset(x = 5.dp, y = 5.dp),
+                            shape = CircleShape,
+                            color = if (player.isCaptain) colors.goldPrimary else colors.glassSurface,
+                            border = BorderStroke(1.5.dp, colors.goldDark.copy(alpha = 0.5f))
+                        ) {
+                            Text(
+                                if (player.isCaptain) "C" else "WK",
+                                color = if (player.isCaptain) colors.backgroundBase else colors.textPrimary,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(dimens.sm)
+                            )
+                        }
                     }
                 }
                 
-                // Captain/WK badges
-                if (player.isCaptain || player.isWicketKeeper) {
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.BottomEnd)
-                            .offset(x = 5.dp, y = 5.dp)
-                            .background(
-                                if (player.isCaptain) ShinyGoldDeep else ChartPurple,
-                                CircleShape
+                Spacer(modifier = Modifier.height(dimens.md + dimens.xs))
+                
+                // Player name with etched gold gradient text
+                Text(
+                    text = player.name,
+                    fontSize = 26.sp,
+                    fontWeight = FontWeight.Black,
+                    textAlign = TextAlign.Center,
+                    letterSpacing = (-0.5).sp,
+                    style = androidx.compose.ui.text.TextStyle(
+                        brush = Brush.verticalGradient(
+                            colors = listOf(
+                                Color.White,
+                                colors.goldPrimary,
+                                colors.goldDark
                             )
-                            .border(2.dp, Color.White.copy(alpha = 0.05f), CircleShape)
-                            .padding(8.dp)
-                    ) {
-                        Text(
-                            if (player.isCaptain) "C" else "WK",
-                            color = if (player.isCaptain) BlackBackground else Color.White,
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold
                         )
-                    }
+                    )
+                )
+                
+                Spacer(modifier = Modifier.height(dimens.sm))
+                
+                // Role badge - pill shape with gold accent
+                Surface(
+                    color = colors.goldDark.copy(alpha = 0.12f),
+                    shape = RoundedCornerShape(50),
+                    border = BorderStroke(0.5.dp, colors.goldDark.copy(alpha = 0.3f))
+                ) {
+                    Text(
+                        text = player.role.uppercase(),
+                        modifier = Modifier.padding(horizontal = dimens.md, vertical = 6.dp),
+                        color = colors.goldPrimary,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.2.sp
+                    )
                 }
-            }
-            
-            Spacer(modifier = Modifier.height(20.dp))
-            
-            // Player name
-            Text(
-                text = player.name,
-                fontSize = 26.sp,
-                fontWeight = FontWeight.Black,
-                color = TextPrimary,
-                textAlign = TextAlign.Center,
-                letterSpacing = (-0.5).sp
-            )
-            
-            Spacer(modifier = Modifier.height(8.dp))
-            
-            // Role badge
-            Surface(
-                color = ShinyGoldDeep.copy(alpha = 0.12f),
-                shape = RoundedCornerShape(12.dp),
-                border = BorderStroke(0.5.dp, ShinyGoldDeep.copy(alpha = 0.3f))
-            ) {
-                Text(
-                    text = player.role.uppercase(),
-                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
-                    color = ShinyGoldDeep,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.2.sp
-                )
-            }
-            
-            if (player.country != null) {
-                Spacer(modifier = Modifier.height(10.dp))
-                Text(
-                    text = player.country,
-                    color = TextSecondary,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Medium
-                )
+                
+                if (player.country != null) {
+                    Spacer(modifier = Modifier.height(dimens.sm + dimens.xxs))
+                    Text(
+                        text = player.country,
+                        color = colors.textSecondary,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
             }
         }
     }
@@ -521,16 +578,18 @@ private fun PlayerHeaderCard(
 
 @Composable
 private fun PlayerQuickInfo(player: PlayerDetails) {
+    val colors = BouncerDesignSystem.colors
+    val dimens = BouncerDesignSystem.dimens
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.05f)),
-        shape = RoundedCornerShape(20.dp),
-        border = BorderStroke(0.5.dp, CardBorder.copy(alpha = 0.3f))
+        colors = CardDefaults.cardColors(containerColor = colors.glassSurface),
+        shape = RoundedCornerShape(dimens.md + dimens.xs),
+        border = BorderStroke(0.5.dp, colors.goldDark.copy(alpha = 0.2f))
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(20.dp),
+                .padding(dimens.md + dimens.xs),
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
             QuickInfoItem(
@@ -560,6 +619,7 @@ private fun QuickInfoItem(
     value: String,
     icon: ImageVector
 ) {
+    val colors = BouncerDesignSystem.colors
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(6.dp)
@@ -567,18 +627,18 @@ private fun QuickInfoItem(
         Icon(
             icon,
             contentDescription = null,
-            tint = ShinyGoldDeep,
+            tint = colors.goldPrimary,
             modifier = Modifier.size(20.dp)
         )
         Text(
             value,
-            color = TextPrimary,
+            color = colors.textPrimary,
             fontSize = 16.sp,
             fontWeight = FontWeight.Bold
         )
         Text(
             label,
-            color = TextTertiary,
+            color = colors.textTertiary,
             fontSize = 11.sp,
             fontWeight = FontWeight.Medium
         )
@@ -587,57 +647,59 @@ private fun QuickInfoItem(
 
 @Composable
 private fun BattingStatsCard(stats: BattingStats) {
+    val colors = BouncerDesignSystem.colors
+    val dimens = BouncerDesignSystem.dimens
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .shadow(
                 elevation = 16.dp,
-                shape = RoundedCornerShape(24.dp),
-                spotColor = BoundarySix.copy(alpha = 0.15f)
+                shape = RoundedCornerShape(dimens.lg),
+                spotColor = colors.goldDark.copy(alpha = 0.15f)
             ),
-        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.05f)),
-        shape = RoundedCornerShape(24.dp),
-        border = BorderStroke(0.5.dp, BoundarySix.copy(alpha = 0.2f))
+        colors = CardDefaults.cardColors(containerColor = colors.glassSurface),
+        shape = RoundedCornerShape(dimens.lg),
+        border = BorderStroke(0.5.dp, colors.goldDark.copy(alpha = 0.2f))
     ) {
         Column(
-            modifier = Modifier.padding(24.dp)
+            modifier = Modifier.padding(dimens.lg)
         ) {
             // Main stats row
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                StatItem(label = "Matches", value = stats.matches.toString(), color = TextPrimary)
-                StatItem(label = "Runs", value = stats.runs.toString(), color = BoundarySix, large = true)
-                StatItem(label = "HS", value = stats.highScore, color = TextPrimary)
+                StatItem(label = "Matches", value = stats.matches.toString(), color = colors.textPrimary)
+                StatItem(label = "Runs", value = stats.runs.toString(), color = colors.goldPrimary, large = true)
+                StatItem(label = "HS", value = stats.highScore, color = colors.textPrimary)
             }
             
-            Spacer(modifier = Modifier.height(20.dp))
-            HorizontalDivider(color = CardBorder.copy(alpha = 0.2f))
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(dimens.md))
+            HorizontalDivider(color = colors.glassBorder)
+            Spacer(modifier = Modifier.height(dimens.md))
             
-            // Secondary stats
+            // Secondary stats - gold for key figures
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                StatItem(label = "Average", value = String.format("%.1f", stats.average), color = SuccessGreen)
-                StatItem(label = "SR", value = String.format("%.1f", stats.strikeRate), color = ChartBlue)
-                StatItem(label = "100s", value = stats.hundreds.toString(), color = ChartPurple)
-                StatItem(label = "50s", value = stats.fifties.toString(), color = ShinyGoldDeep)
+                StatItem(label = "Average", value = String.format("%.1f", stats.average), color = colors.goldPrimary)
+                StatItem(label = "SR", value = String.format("%.1f", stats.strikeRate), color = colors.statusInfo)
+                StatItem(label = "100s", value = stats.hundreds.toString(), color = colors.goldLight)
+                StatItem(label = "50s", value = stats.fifties.toString(), color = colors.goldDark)
             }
             
-            Spacer(modifier = Modifier.height(20.dp))
-            HorizontalDivider(color = CardBorder.copy(alpha = 0.2f))
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(dimens.md))
+            HorizontalDivider(color = colors.glassBorder)
+            Spacer(modifier = Modifier.height(dimens.md))
             
             // Boundary stats
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                BoundaryStatItem(label = "4s", value = stats.fours.toString(), color = BoundaryFour)
-                BoundaryStatItem(label = "6s", value = stats.sixes.toString(), color = BoundarySix)
+                BoundaryStatItem(label = "4s", value = stats.fours.toString(), color = colors.statusInfo)
+                BoundaryStatItem(label = "6s", value = stats.sixes.toString(), color = colors.goldPrimary)
             }
         }
     }
@@ -645,44 +707,46 @@ private fun BattingStatsCard(stats: BattingStats) {
 
 @Composable
 private fun BowlingStatsCard(stats: BowlingStats) {
+    val colors = BouncerDesignSystem.colors
+    val dimens = BouncerDesignSystem.dimens
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .shadow(
                 elevation = 16.dp,
-                shape = RoundedCornerShape(24.dp),
-                spotColor = WicketBlue.copy(alpha = 0.15f)
+                shape = RoundedCornerShape(dimens.lg),
+                spotColor = colors.goldDark.copy(alpha = 0.15f)
             ),
-        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.05f)),
-        shape = RoundedCornerShape(24.dp),
-        border = BorderStroke(0.5.dp, WicketBlue.copy(alpha = 0.2f))
+        colors = CardDefaults.cardColors(containerColor = colors.glassSurface),
+        shape = RoundedCornerShape(dimens.lg),
+        border = BorderStroke(0.5.dp, colors.goldDark.copy(alpha = 0.2f))
     ) {
         Column(
-            modifier = Modifier.padding(24.dp)
+            modifier = Modifier.padding(dimens.lg)
         ) {
             // Main stats row
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                StatItem(label = "Matches", value = stats.matches.toString(), color = TextPrimary)
-                StatItem(label = "Wickets", value = stats.wickets.toString(), color = WicketRed, large = true)
-                StatItem(label = "Best", value = stats.bestBowling, color = TextPrimary)
+                StatItem(label = "Matches", value = stats.matches.toString(), color = colors.textPrimary)
+                StatItem(label = "Wickets", value = stats.wickets.toString(), color = colors.statusLive, large = true)
+                StatItem(label = "Best", value = stats.bestBowling, color = colors.textPrimary)
             }
             
-            Spacer(modifier = Modifier.height(20.dp))
-            HorizontalDivider(color = CardBorder.copy(alpha = 0.2f))
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(dimens.md))
+            HorizontalDivider(color = colors.glassBorder)
+            Spacer(modifier = Modifier.height(dimens.md))
             
-            // Secondary stats
+            // Secondary stats - gold for key figures
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                StatItem(label = "Average", value = String.format("%.1f", stats.average), color = SuccessGreen)
-                StatItem(label = "Economy", value = String.format("%.1f", stats.economy), color = ChartBlue)
-                StatItem(label = "SR", value = String.format("%.1f", stats.strikeRate), color = ChartPurple)
-                StatItem(label = "5W", value = stats.fiveWickets.toString(), color = ShinyGoldDeep)
+                StatItem(label = "Average", value = String.format("%.1f", stats.average), color = colors.goldPrimary)
+                StatItem(label = "Economy", value = String.format("%.1f", stats.economy), color = colors.goldLight)
+                StatItem(label = "SR", value = String.format("%.1f", stats.strikeRate), color = colors.statusInfo)
+                StatItem(label = "5W", value = stats.fiveWickets.toString(), color = colors.goldDark)
             }
         }
     }
@@ -695,6 +759,7 @@ private fun StatItem(
     color: Color,
     large: Boolean = false
 ) {
+    val colors = BouncerDesignSystem.colors
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(4.dp)
@@ -708,7 +773,7 @@ private fun StatItem(
         )
         Text(
             label,
-            color = TextTertiary,
+            color = colors.textTertiary,
             fontSize = 11.sp,
             fontWeight = FontWeight.Medium,
             letterSpacing = 0.5.sp
@@ -722,9 +787,11 @@ private fun BoundaryStatItem(
     value: String,
     color: Color
 ) {
+    val colors = BouncerDesignSystem.colors
+    val dimens = BouncerDesignSystem.dimens
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
+        horizontalArrangement = Arrangement.spacedBy(dimens.sm + dimens.xs)
     ) {
         Box(
             modifier = Modifier
@@ -750,7 +817,7 @@ private fun BoundaryStatItem(
         }
         Text(
             value,
-            color = TextPrimary,
+            color = colors.textPrimary,
             fontSize = 24.sp,
             fontWeight = FontWeight.Bold
         )
@@ -758,150 +825,8 @@ private fun BoundaryStatItem(
 }
 
 @Composable
-private fun PerformanceRadarCard(
-    battingStats: BattingStats?,
-    bowlingStats: BowlingStats?
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .shadow(
-                elevation = 16.dp,
-                shape = RoundedCornerShape(24.dp),
-                spotColor = ChartPurple.copy(alpha = 0.15f)
-            ),
-        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.05f)),
-        shape = RoundedCornerShape(24.dp),
-        border = BorderStroke(0.5.dp, CardBorder.copy(alpha = 0.3f))
-    ) {
-        Column(
-            modifier = Modifier.padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            // Simple radar-style visualization
-            Box(
-                modifier = Modifier
-                    .size(200.dp)
-                    .drawBehind {
-                        val center = Offset(size.width / 2, size.height / 2)
-                        val maxRadius = size.width / 2 - 20.dp.toPx()
-                        
-                        // Draw concentric circles
-                        for (i in 1..4) {
-                            drawCircle(
-                                color = CardBorder.copy(alpha = 0.2f),
-                                radius = maxRadius * i / 4,
-                                center = center,
-                                style = Stroke(1.dp.toPx())
-                            )
-                        }
-                        
-                        // Draw axes
-                        val categories = 6
-                        for (i in 0 until categories) {
-                            val angle = (i * 2 * PI / categories) - PI / 2
-                            val endX = center.x + (maxRadius * cos(angle)).toFloat()
-                            val endY = center.y + (maxRadius * sin(angle)).toFloat()
-                            drawLine(
-                                color = CardBorder.copy(alpha = 0.3f),
-                                start = center,
-                                end = Offset(endX, endY),
-                                strokeWidth = 1.dp.toPx()
-                            )
-                        }
-                        
-                        // Draw performance polygon
-                        val values = listOf(
-                            (battingStats?.average ?: 0.0) / 60.0,
-                            (battingStats?.strikeRate ?: 0.0) / 200.0,
-                            (battingStats?.hundreds?.toDouble() ?: 0.0) / 20.0,
-                            (bowlingStats?.wickets?.toDouble() ?: 0.0) / 150.0,
-                            (60.0 - (bowlingStats?.average ?: 60.0)) / 60.0,
-                            (10.0 - (bowlingStats?.economy ?: 10.0)) / 10.0
-                        ).map { it.coerceIn(0.0, 1.0) }
-                        
-                        val path = Path()
-                        values.forEachIndexed { i, value ->
-                            val angle = (i * 2 * PI / categories) - PI / 2
-                            val x = center.x + (maxRadius * value * cos(angle)).toFloat()
-                            val y = center.y + (maxRadius * value * sin(angle)).toFloat()
-                            if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
-                        }
-                        path.close()
-                        
-                        drawPath(
-                            path = path,
-                            brush = Brush.radialGradient(
-                                colors = listOf(
-                                    ShinyGoldDeep.copy(alpha = 0.3f),
-                                    ShinyGoldDeep.copy(alpha = 0.1f)
-                                ),
-                                center = center
-                            )
-                        )
-                        drawPath(
-                            path = path,
-                            color = ShinyGoldDeep,
-                            style = Stroke(2.dp.toPx())
-                        )
-                        
-                        // Draw points
-                        values.forEachIndexed { i, value ->
-                            val angle = (i * 2 * PI / categories) - PI / 2
-                            val x = center.x + (maxRadius * value * cos(angle)).toFloat()
-                            val y = center.y + (maxRadius * value * sin(angle)).toFloat()
-                            drawCircle(
-                                color = ShinyGoldDeep,
-                                radius = 6.dp.toPx(),
-                                center = Offset(x, y)
-                            )
-                            drawCircle(
-                                color = CardSurface,
-                                radius = 3.dp.toPx(),
-                                center = Offset(x, y)
-                            )
-                        }
-                    },
-                contentAlignment = Alignment.Center
-            ) {
-                // Center label
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        "SKILL",
-                        color = TextTertiary,
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.sp
-                    )
-                    Text(
-                        "INDEX",
-                        color = TextTertiary,
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.sp
-                    )
-                }
-            }
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            // Legend
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                LegendItem(label = "Average", color = ChartBlue)
-                LegendItem(label = "Strike Rate", color = SuccessGreen)
-                LegendItem(label = "Impact", color = ChartPurple)
-            }
-        }
-    }
-}
-
-@Composable
 private fun LegendItem(label: String, color: Color) {
+    val colors = BouncerDesignSystem.colors
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -913,7 +838,7 @@ private fun LegendItem(label: String, color: Color) {
         )
         Text(
             label,
-            color = TextTertiary,
+            color = colors.textTertiary,
             fontSize = 10.sp,
             fontWeight = FontWeight.Medium
         )
@@ -922,10 +847,12 @@ private fun LegendItem(label: String, color: Color) {
 
 @Composable
 private fun PlayerFooter() {
+    val colors = BouncerDesignSystem.colors
+    val dimens = BouncerDesignSystem.dimens
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 24.dp),
+            .padding(vertical = dimens.lg),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Box(
@@ -936,7 +863,7 @@ private fun PlayerFooter() {
                     Brush.horizontalGradient(
                         colors = listOf(
                             Color.Transparent,
-                            ShinyGoldDeep.copy(alpha = 0.4f),
+                            colors.goldDark.copy(alpha = 0.4f),
                             Color.Transparent
                         )
                     ),
@@ -944,11 +871,11 @@ private fun PlayerFooter() {
                 )
         )
         
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(dimens.md))
         
         Text(
             text = "Stats powered by Bouncer",
-            color = TextTertiary,
+            color = colors.textTertiary,
             fontSize = 11.sp,
             fontWeight = FontWeight.Medium,
             letterSpacing = 0.5.sp

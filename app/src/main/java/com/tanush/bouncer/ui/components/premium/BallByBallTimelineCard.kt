@@ -25,6 +25,7 @@ import com.tanush.bouncer.models.BallDelivery
 import com.tanush.bouncer.ui.components.GlassCard
 import com.tanush.bouncer.ui.components.GlassSurface
 import com.tanush.bouncer.ui.theme.*
+import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 
 /**
  * BallByBallTimelineCard - Elite Technical Edition (v25.0).
@@ -36,6 +37,7 @@ fun BallByBallTimelineCard(
     currentOver: Float,
     modifier: Modifier = Modifier,
 ) {
+    val colors = BouncerDesignSystem.colors
     val animatedProgress = remember { Animatable(0f) }
 
     LaunchedEffect(deliveries) {
@@ -67,14 +69,14 @@ fun BallByBallTimelineCard(
                     Box(
                         modifier = Modifier
                             .size(32.dp)
-                            .background(ShinyGoldDeep.copy(alpha = 0.1f), CircleShape)
+                            .background(colors.goldPrimary.copy(alpha = 0.1f), CircleShape)
                             .border(0.5.dp, GoldHairline, CircleShape),
                         contentAlignment = Alignment.Center,
                     ) {
                         Icon(
                             Icons.Default.Insights,
                             contentDescription = null,
-                            tint = ShinyGoldDeep,
+                            tint = colors.goldPrimary,
                             modifier = Modifier.size(18.dp),
                         )
                     }
@@ -84,7 +86,7 @@ fun BallByBallTimelineCard(
                     Column {
                         Text(
                             text = "LIVE TELEMETRY".uppercase(),
-                            color = ShinyGoldDeep,
+                            color = colors.goldPrimary,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Black,
                             letterSpacing = 1.2.sp,
@@ -149,9 +151,9 @@ fun BallByBallTimelineCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
                 BallLegendItem(color = DotBall, text = "DOT")
-                BallLegendItem(color = SuccessGreen, text = "RUN")
+                BallLegendItem(color = colors.statusSuccess, text = "RUN")
                 BallLegendItem(color = SuccessGreenBright, text = "4S")
-                BallLegendItem(color = ShinyGoldDeep, text = "6S")
+                BallLegendItem(color = colors.goldPrimary, text = "6S")
                 BallLegendItem(color = ErrorRed, text = "WKT")
             }
 
@@ -164,10 +166,10 @@ fun BallByBallTimelineCard(
                 ) {
                     Column(modifier = Modifier.padding(12.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Box(modifier = Modifier.size(6.dp).background(ShinyGoldDeep, CircleShape))
+                            Box(modifier = Modifier.size(6.dp).background(colors.goldPrimary, CircleShape))
                             Text(
                                 text = "AI MATCH ANALYSIS",
-                                color = ShinyGoldDeep,
+                                color = colors.goldPrimary,
                                 fontSize = 9.sp,
                                 fontWeight = FontWeight.Black,
                                 letterSpacing = 1.sp,
@@ -194,6 +196,7 @@ private fun OverBlock(
     balls: List<BallDelivery>,
     progress: Float
 ) {
+    val colors = BouncerDesignSystem.colors
     val overRuns = balls.sumOf { it.runs }
     val wicketsInOver = balls.count { it.isWicket }
 
@@ -278,13 +281,14 @@ private fun BallTile(
     alpha: Float,
     modifier: Modifier = Modifier,
 ) {
+    val colors = BouncerDesignSystem.colors
     val bgColor = when {
         ball.isWicket -> ErrorRed
-        ball.isSix -> ShinyGoldDeep
+        ball.isSix -> colors.goldPrimary
         ball.isBoundary -> SuccessGreenBright
-        ball.isExtra -> WarningYellow
+        ball.isExtra -> colors.statusWarning
         ball.runs == 0 -> DotBall
-        else -> SuccessGreen
+        else -> colors.statusSuccess
     }
 
     val displayText = when {
@@ -321,6 +325,7 @@ private fun BallLegendItem(
     color: Color,
     text: String,
 ) {
+    val colors = BouncerDesignSystem.colors
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
         Box(modifier = Modifier.size(6.dp).clip(RoundedCornerShape(1.5.dp)).background(color))
         Text(text = text, color = TextTertiary, fontSize = 8.sp, fontWeight = FontWeight.Black)

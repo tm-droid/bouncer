@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.ui.theme.*
 import kotlin.math.*
+import io.sentry.Sentry
 
 /**
  * Shot data for wagon wheel visualization
@@ -89,10 +90,10 @@ fun EnhancedWagonWheel(
             .shadow(
                 elevation = 16.dp,
                 shape = RoundedCornerShape(24.dp),
-                spotColor = ShinyGoldDeep.copy(alpha = 0.1f)
+                spotColor = GoldPrimary.copy(alpha = 0.1f)
             ),
         shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.05f))
+        colors = CardDefaults.cardColors(containerColor = GlassSurface)
     ) {
         Column(
             modifier = Modifier
@@ -115,17 +116,17 @@ fun EnhancedWagonWheel(
                     Text(
                         text = batsmanName,
                         fontSize = 12.sp,
-                        color = ShinyGoldDeep
+                        color = GoldPrimary
                     )
                 }
                 
                 // Stats badges
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     shots.filter { it.runs == 4 }.size.let { count ->
-                        StatBadge(count.toString(), "4s", BoundaryFour)
+                        StatBadge(count.toString(), "4s", StatusInfo)
                     }
                     shots.filter { it.runs == 6 }.size.let { count ->
-                        StatBadge(count.toString(), "6s", BoundarySix)
+                        StatBadge(count.toString(), "6s", GoldPrimary)
                     }
                 }
             }
@@ -142,10 +143,10 @@ fun EnhancedWagonWheel(
                         2.dp,
                         Brush.sweepGradient(
                             colors = listOf(
-                                ShinyGoldDeep.copy(alpha = 0.4f),
-                                CardBorder,
-                                ShinyGoldDeep.copy(alpha = 0.6f),
-                                CardBorder
+                                GoldPrimary.copy(alpha = 0.4f),
+                                GlassBorder,
+                                GoldPrimary.copy(alpha = 0.6f),
+                                GlassBorder
                             )
                         ),
                         CircleShape
@@ -259,7 +260,7 @@ fun EnhancedWagonWheel(
                     
                     // Boundary circle
                     drawCircle(
-                        color = ShinyGoldDeep.copy(alpha = 0.6f),
+                        color = GoldPrimary.copy(alpha = 0.6f),
                         radius = maxRadius,
                         center = Offset(centerX, centerY),
                         style = Stroke(width = 2.dp.toPx())
@@ -291,13 +292,13 @@ fun EnhancedWagonWheel(
                         
                         // Velocity-based color interpolation
                         val velocityColor = when {
-                            shot.isWicket -> WicketRed
-                            shot.runs == 6 -> BoundarySix
-                            shot.runs == 4 -> BoundaryFour
+                            shot.isWicket -> StatusLive
+                            shot.runs == 6 -> GoldPrimary
+                            shot.runs == 4 -> StatusInfo
                             else -> Color(
-                                red = lerp(ChartBlue.red, ChartOrange.red, shot.velocity),
-                                green = lerp(ChartBlue.green, ChartOrange.green, shot.velocity),
-                                blue = lerp(ChartBlue.blue, ChartOrange.blue, shot.velocity),
+                                red = lerp(StatusInfo.red, ChartOrange.red, shot.velocity),
+                                green = lerp(StatusInfo.green, ChartOrange.green, shot.velocity),
+                                blue = lerp(StatusInfo.blue, ChartOrange.blue, shot.velocity),
                                 alpha = 1f
                             )
                         }
@@ -366,7 +367,7 @@ fun EnhancedWagonWheel(
                         
                         if (isSelected) {
                             drawCircle(
-                                color = ShinyGoldDeep,
+                                color = GoldPrimary,
                                 radius = dotRadius * pulseScale + 4.dp.toPx(),
                                 center = Offset(endX, endY),
                                 style = Stroke(width = 2.dp.toPx())
@@ -386,7 +387,7 @@ fun EnhancedWagonWheel(
                     // Center batsman indicator
                     drawCircle(
                         brush = Brush.radialGradient(
-                            colors = listOf(ShinyGoldMid, ShinyGoldDeep),
+                            colors = listOf(GoldPrimary, GoldPrimary),
                             center = Offset(centerX, centerY)
                         ),
                         radius = 10.dp.toPx(),
@@ -409,7 +410,7 @@ private fun SelectedShotInfo(shot: EnhancedShotData) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color.White.copy(alpha = 0.08f).copy(alpha = 0.5f), RoundedCornerShape(12.dp))
+            .background(GlassBorder.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
             .padding(12.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
@@ -438,10 +439,10 @@ private fun SelectedShotInfo(shot: EnhancedShotData) {
                 modifier = Modifier
                     .background(
                         when {
-                            shot.isWicket -> WicketRed
-                            shot.runs == 6 -> BoundarySix
-                            shot.runs == 4 -> BoundaryFour
-                            else -> ChartBlue
+                            shot.isWicket -> StatusLive
+                            shot.runs == 6 -> GoldPrimary
+                            shot.runs == 4 -> StatusInfo
+                            else -> StatusInfo
                         }.copy(alpha = 0.2f),
                         RoundedCornerShape(6.dp)
                     )
@@ -457,10 +458,10 @@ private fun SelectedShotInfo(shot: EnhancedShotData) {
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
                     color = when {
-                        shot.isWicket -> WicketRed
-                        shot.runs == 6 -> BoundarySix
-                        shot.runs == 4 -> BoundaryFour
-                        else -> ChartBlue
+                        shot.isWicket -> StatusLive
+                        shot.runs == 6 -> GoldPrimary
+                        shot.runs == 4 -> StatusInfo
+                        else -> StatusInfo
                     }
                 )
             }
@@ -498,7 +499,7 @@ fun InteractivePitchMap(
             .fillMaxWidth()
             .shadow(12.dp, RoundedCornerShape(20.dp)),
         shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.05f))
+        colors = CardDefaults.cardColors(containerColor = GlassSurface)
     ) {
         Column(
             modifier = Modifier.padding(16.dp)
@@ -590,7 +591,7 @@ fun InteractivePitchMap(
                                 "full" -> FullLength
                                 "good" -> GoodLength
                                 "short" -> ShortPitch
-                                else -> ChartBlue
+                                else -> StatusInfo
                             }
                             
                             drawRect(
@@ -602,7 +603,7 @@ fun InteractivePitchMap(
                         
                         // Zone border
                         drawRect(
-                            color = if (isSelected) ShinyGoldDeep else Color.White.copy(alpha = 0.2f),
+                            color = if (isSelected) GoldPrimary else Color.White.copy(alpha = 0.2f),
                             topLeft = Offset(zoneX, zoneY),
                             size = Size(zoneWidth, zoneHeight),
                             style = Stroke(width = if (isSelected) 2.dp.toPx() else 1.dp.toPx())
@@ -672,7 +673,7 @@ fun InteractivePitchMap(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(Color.White.copy(alpha = 0.08f), RoundedCornerShape(8.dp))
+                        .background(GlassBorder, RoundedCornerShape(8.dp))
                         .padding(12.dp),
                     horizontalArrangement = Arrangement.SpaceAround
                 ) {
@@ -685,7 +686,7 @@ fun InteractivePitchMap(
                         Text(text = "Runs", fontSize = 10.sp, color = TextSecondary)
                     }
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(text = zone.wickets.toString(), fontWeight = FontWeight.Bold, color = WicketRed)
+                        Text(text = zone.wickets.toString(), fontWeight = FontWeight.Bold, color = StatusLive)
                         Text(text = "Wickets", fontSize = 10.sp, color = TextSecondary)
                     }
                 }
@@ -752,7 +753,7 @@ fun ManhattanGraphEnhanced(
             .fillMaxWidth()
             .shadow(12.dp, RoundedCornerShape(20.dp)),
         shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.05f))
+        colors = CardDefaults.cardColors(containerColor = GlassSurface)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             // Header with legend
@@ -846,8 +847,8 @@ fun ManhattanGraphEnhanced(
                     drawRoundRect(
                         brush = Brush.verticalGradient(
                             colors = listOf(
-                                if (isSelected) ShinyGoldDeep else team1Color,
-                                (if (isSelected) ShinyGoldDeep else team1Color).copy(alpha = 0.7f)
+                                if (isSelected) GoldPrimary else team1Color,
+                                (if (isSelected) GoldPrimary else team1Color).copy(alpha = 0.7f)
                             )
                         ),
                         topLeft = Offset(x, y),
@@ -859,7 +860,7 @@ fun ManhattanGraphEnhanced(
                     if (data.wickets > 0) {
                         for (w in 0 until data.wickets) {
                             drawCircle(
-                                color = WicketRed,
+                                color = StatusLive,
                                 radius = 3.dp.toPx(),
                                 center = Offset(x + barWidth / 2, y - 6.dp.toPx() - w * 8.dp.toPx())
                             )
@@ -875,8 +876,8 @@ fun ManhattanGraphEnhanced(
                         drawRoundRect(
                             brush = Brush.verticalGradient(
                                 colors = listOf(
-                                    if (isSelected) ShinyGoldDeep.copy(alpha = 0.7f) else team2Color,
-                                    (if (isSelected) ShinyGoldDeep.copy(alpha = 0.7f) else team2Color).copy(alpha = 0.7f)
+                                    if (isSelected) GoldPrimary.copy(alpha = 0.7f) else team2Color,
+                                    (if (isSelected) GoldPrimary.copy(alpha = 0.7f) else team2Color).copy(alpha = 0.7f)
                                 )
                             ),
                             topLeft = Offset(x2, y2),
@@ -887,7 +888,7 @@ fun ManhattanGraphEnhanced(
                         if (team2Over.wickets > 0) {
                             for (w in 0 until team2Over.wickets) {
                                 drawCircle(
-                                    color = WicketRed,
+                                    color = StatusLive,
                                     radius = 3.dp.toPx(),
                                     center = Offset(x2 + barWidth / 2, y2 - 6.dp.toPx() - w * 8.dp.toPx())
                                 )
@@ -962,7 +963,7 @@ private fun OverComparisonCard(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color.White.copy(alpha = 0.08f), RoundedCornerShape(12.dp))
+            .background(GlassBorder, RoundedCornerShape(12.dp))
             .padding(12.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
@@ -970,7 +971,7 @@ private fun OverComparisonCard(
         Text(
             text = "Over $over",
             fontWeight = FontWeight.Bold,
-            color = ShinyGoldDeep,
+            color = GoldPrimary,
             fontSize = 14.sp
         )
         
@@ -979,7 +980,7 @@ private fun OverComparisonCard(
                 Text(text = team1Name, fontSize = 10.sp, color = team1Color)
                 Text(text = "${team1Data.runs} runs", fontWeight = FontWeight.Bold, color = TextPrimary, fontSize = 12.sp)
                 if (team1Data.wickets > 0) {
-                    Text(text = "${team1Data.wickets}W", color = WicketRed, fontSize = 10.sp)
+                    Text(text = "${team1Data.wickets}W", color = StatusLive, fontSize = 10.sp)
                 }
             }
             
@@ -988,7 +989,7 @@ private fun OverComparisonCard(
                     Text(text = team2Name, fontSize = 10.sp, color = team2Color)
                     Text(text = "${it.runs} runs", fontWeight = FontWeight.Bold, color = TextPrimary, fontSize = 12.sp)
                     if (it.wickets > 0) {
-                        Text(text = "${it.wickets}W", color = WicketRed, fontSize = 10.sp)
+                        Text(text = "${it.wickets}W", color = StatusLive, fontSize = 10.sp)
                     }
                 }
             }
@@ -1004,8 +1005,8 @@ fun WinProbabilityGaugeAnimated(
     team1Name: String,
     team2Name: String,
     team1Probability: Float,
-    team1Color: Color = ShinyGoldDeep,
-    team2Color: Color = ChartBlue,
+    team1Color: Color = GoldPrimary,
+    team2Color: Color = StatusInfo,
     confidenceBand: Float = 0.1f,
     modifier: Modifier = Modifier
 ) {
@@ -1034,7 +1035,7 @@ fun WinProbabilityGaugeAnimated(
             .fillMaxWidth()
             .shadow(16.dp, RoundedCornerShape(24.dp)),
         shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.05f))
+        colors = CardDefaults.cardColors(containerColor = GlassSurface)
     ) {
         Column(
             modifier = Modifier
@@ -1044,7 +1045,7 @@ fun WinProbabilityGaugeAnimated(
         ) {
             Text(
                 text = "WIN PROBABILITY",
-                color = ShinyGoldDeep,
+                color = GoldPrimary,
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Black,
                 letterSpacing = 1.5.sp
@@ -1064,7 +1065,7 @@ fun WinProbabilityGaugeAnimated(
                     
                     // Background arc
                     drawArc(
-                        color = Color.White.copy(alpha = 0.05f),
+                        color = GlassSurface,
                         startAngle = 180f,
                         sweepAngle = 180f,
                         useCenter = false,
@@ -1129,7 +1130,7 @@ fun WinProbabilityGaugeAnimated(
                     )
                     
                     // Center pivot
-                    drawCircle(color = BlackSurface, radius = 12.dp.toPx(), center = center)
+                    drawCircle(color = Surface1, radius = 12.dp.toPx(), center = center)
                     drawCircle(color = team1Color, radius = 6.dp.toPx(), center = center)
                 }
                 
@@ -1221,7 +1222,7 @@ fun RunRateChart(
             .fillMaxWidth()
             .shadow(12.dp, RoundedCornerShape(20.dp)),
         shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.05f))
+        colors = CardDefaults.cardColors(containerColor = GlassSurface)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(
@@ -1284,42 +1285,47 @@ fun RunRateChart(
                 }
                 
                 fun drawRunRateLine(data: List<Float>, color: Color, isDashed: Boolean = false) {
-                    if (data.size < 2) return
+                    try {
+                        if (data.size < 2) return
                     
-                    val animatedCount = (data.size * animatedProgress).toInt().coerceAtLeast(2)
-                    val path = Path()
+                        val animatedCount = (data.size * animatedProgress).toInt().coerceAtLeast(2)
+                        val path = Path()
                     
-                    data.take(animatedCount).forEachIndexed { index, rate ->
-                        val x = padding + (chartWidth * index / (data.size - 1))
-                        val normalizedY = (rate - minRate) / range
-                        val y = padding + chartHeight * (1 - normalizedY)
+                        data.take(animatedCount).forEachIndexed { index, rate ->
+                            val x = padding + (chartWidth * index / (data.size - 1))
+                            val normalizedY = (rate - minRate) / range
+                            val y = padding + chartHeight * (1 - normalizedY)
                         
-                        if (index == 0) {
-                            path.moveTo(x, y)
-                        } else {
-                            val prevX = padding + (chartWidth * (index - 1) / (data.size - 1))
-                            val controlX = prevX + (x - prevX) / 2
-                            val prevY = padding + chartHeight * (1 - (data[index - 1] - minRate) / range)
-                            path.cubicTo(controlX, prevY, controlX, y, x, y)
+                            if (index == 0) {
+                                path.moveTo(x, y)
+                            } else {
+                                val prevX = padding + (chartWidth * (index - 1) / (data.size - 1))
+                                val controlX = prevX + (x - prevX) / 2
+                                val prevY = padding + chartHeight * (1 - (data[index - 1] - minRate) / range)
+                                path.cubicTo(controlX, prevY, controlX, y, x, y)
+                            }
                         }
-                    }
                     
-                    if (isDashed) {
-                        drawPath(
-                            path = path,
-                            color = color,
-                            style = Stroke(
-                                width = 2.dp.toPx(),
-                                cap = StrokeCap.Round,
-                                pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 10f))
+                        if (isDashed) {
+                            drawPath(
+                                path = path,
+                                color = color,
+                                style = Stroke(
+                                    width = 2.dp.toPx(),
+                                    cap = StrokeCap.Round,
+                                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 10f))
+                                )
                             )
-                        )
-                    } else {
-                        drawPath(
-                            path = path,
-                            color = color,
-                            style = Stroke(width = 2.5.dp.toPx(), cap = StrokeCap.Round)
-                        )
+                        } else {
+                            drawPath(
+                                path = path,
+                                color = color,
+                                style = Stroke(width = 2.5.dp.toPx(), cap = StrokeCap.Round)
+                            )
+                        }
+                    } catch (e: Exception) {
+                        Sentry.captureException(e)
+                        throw e
                     }
                 }
                 
@@ -1340,8 +1346,8 @@ fun PitchHeatMap(
     heatData: List<List<Float>>,  // 4x3 grid (lengths x lines)
     title: String = "Pitch Heat Map",
     modifier: Modifier = Modifier,
-    lowColor: Color = ChartBlue,
-    highColor: Color = WicketRed.copy(alpha = 0.8f),
+    lowColor: Color = StatusInfo,
+    highColor: Color = StatusLive.copy(alpha = 0.8f),
     onZoneTapped: ((Int, Int, Float) -> Unit)? = null
 ) {
     var selectedCell by remember { mutableStateOf<Pair<Int, Int>?>(null) }
@@ -1351,7 +1357,7 @@ fun PitchHeatMap(
             .fillMaxWidth()
             .shadow(12.dp, RoundedCornerShape(20.dp)),
         shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.05f))
+        colors = CardDefaults.cardColors(containerColor = GlassSurface)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
@@ -1438,7 +1444,7 @@ fun PitchHeatMap(
                         
                         // Cell border
                         drawRect(
-                            color = if (isSelected) ShinyGoldDeep else Color.White.copy(alpha = 0.15f),
+                            color = if (isSelected) GoldPrimary else Color.White.copy(alpha = 0.15f),
                             topLeft = Offset(x, y),
                             size = Size(cellWidth, cellHeight),
                             style = Stroke(width = if (isSelected) 2.dp.toPx() else 1.dp.toPx())
@@ -1535,5 +1541,10 @@ private fun StatBadge(value: String, label: String, color: Color) {
 }
 
 private fun lerp(start: Float, end: Float, fraction: Float): Float {
-    return start + (end - start) * fraction.coerceIn(0f, 1f)
+    try {
+        return start + (end - start) * fraction.coerceIn(0f, 1f)
+    } catch (e: Exception) {
+        Sentry.captureException(e)
+        throw e
+    }
 }

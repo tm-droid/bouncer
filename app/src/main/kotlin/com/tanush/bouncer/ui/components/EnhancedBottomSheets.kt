@@ -44,6 +44,7 @@ import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.ui.theme.*
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
+import io.sentry.Sentry
 
 /**
  * Sheet expansion states for multi-stage sheets
@@ -103,21 +104,31 @@ fun DraggableBottomSheet(
     
     // Haptic feedback helper
     fun performHaptic() {
-        if (enableHaptics) {
-            view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+        try {
+            if (enableHaptics) {
+                view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+            }
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
         }
     }
     
     // Find closest snap point
     fun findClosestState(currentOffset: Float): SheetState {
-        val offsets = mapOf(
-            SheetState.HIDDEN to with(density) { screenHeight.toPx() },
-            SheetState.PEEK to with(density) { screenHeight.toPx() } - peekHeightPx,
-            SheetState.HALF to with(density) { screenHeight.toPx() } - halfHeightPx,
-            SheetState.EXPANDED to with(density) { screenHeight.toPx() } - expandedHeightPx
-        )
+        try {
+            val offsets = mapOf(
+                SheetState.HIDDEN to with(density) { screenHeight.toPx() },
+                SheetState.PEEK to with(density) { screenHeight.toPx() } - peekHeightPx,
+                SheetState.HALF to with(density) { screenHeight.toPx() } - halfHeightPx,
+                SheetState.EXPANDED to with(density) { screenHeight.toPx() } - expandedHeightPx
+            )
         
-        return offsets.minByOrNull { kotlin.math.abs(it.value - currentOffset) }?.key ?: SheetState.HALF
+            return offsets.minByOrNull { kotlin.math.abs(it.value - currentOffset) }?.key ?: SheetState.HALF
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     // Update state when visibility changes
@@ -303,7 +314,12 @@ fun MultiStageSheet(
     )
     
     fun performHaptic() {
-        view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+        try {
+            view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     LaunchedEffect(isVisible) {
@@ -457,6 +473,7 @@ private fun StageIndicator(
     isActive: Boolean,
     onClick: () -> Unit
 ) {
+    val colors = BouncerDesignSystem.colors
     val size by animateDpAsState(
         targetValue = if (isActive) 24.dp else 8.dp,
         animationSpec = spring(dampingRatio = 0.6f),
@@ -469,7 +486,7 @@ private fun StageIndicator(
             .width(size)
             .clip(RoundedCornerShape(4.dp))
             .background(
-                if (isActive) ShinyGoldDeep else CardBorder.copy(alpha = 0.5f)
+                if (isActive) colors.goldPrimary else colors.glassBorder.copy(alpha = 0.5f)
             )
             .clickable { onClick() }
     )
@@ -482,10 +499,11 @@ private fun StageIndicator(
 @Composable
 fun SheetHandle(
     modifier: Modifier = Modifier,
-    color: Color = CardBorder,
+    color: Color = GlassBorder,
     width: Dp = 40.dp,
     height: Dp = 4.dp
 ) {
+    val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "handleAnimation")
     
     val shimmer by infiniteTransition.animateFloat(
@@ -511,7 +529,7 @@ fun SheetHandle(
                     Brush.horizontalGradient(
                         colors = listOf(
                             color,
-                            ShinyGoldDeep.copy(alpha = shimmer * 0.5f),
+                            colors.goldPrimary.copy(alpha = shimmer * 0.5f),
                             color
                         )
                     )
@@ -533,6 +551,7 @@ fun SheetHeader(
     modifier: Modifier = Modifier,
     actions: @Composable RowScope.() -> Unit = {}
 ) {
+    val colors = BouncerDesignSystem.colors
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -543,14 +562,14 @@ fun SheetHeader(
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = title,
-                color = TextPrimary,
+                color = colors.textPrimary,
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold
             )
             if (subtitle.isNotEmpty()) {
                 Text(
                     text = subtitle,
-                    color = TextSecondary,
+                    color = colors.textSecondary,
                     fontSize = 13.sp
                 )
             }
@@ -572,7 +591,7 @@ fun SheetHeader(
                     Icon(
                         imageVector = Icons.Default.Close,
                         contentDescription = "Close sheet",
-                        tint = TextSecondary,
+                        tint = colors.textSecondary,
                         modifier = Modifier.size(20.dp)
                     )
                 }
@@ -596,6 +615,7 @@ fun NestedScrollSheet(
     maxHeight: Dp = 0.dp, // 0 = use screen height - 100dp
     content: @Composable () -> Unit
 ) {
+    val colors = BouncerDesignSystem.colors
     val density = LocalDensity.current
     val configuration = LocalConfiguration.current
     val screenHeight = configuration.screenHeightDp.dp
@@ -620,42 +640,57 @@ fun NestedScrollSheet(
     )
     
     fun performHaptic() {
-        view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+        try {
+            view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     // Custom nested scroll connection
     val nestedScrollConnection = remember {
         object : NestedScrollConnection {
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                // If scrolling down and content is at top, expand sheet
-                if (available.y > 0 && scrollState.value == 0 && sheetHeight < actualMaxHeight) {
-                    val newHeight = (sheetHeight + with(density) { available.y.toDp() })
-                        .coerceIn(minHeight, actualMaxHeight)
-                    if (newHeight != sheetHeight) {
-                        sheetHeight = newHeight
-                        return Offset(0f, available.y)
+                try {
+                    // If scrolling down and content is at top, expand sheet
+                    if (available.y > 0 && scrollState.value == 0 && sheetHeight < actualMaxHeight) {
+                        val newHeight = (sheetHeight + with(density) { available.y.toDp() })
+                            .coerceIn(minHeight, actualMaxHeight)
+                        if (newHeight != sheetHeight) {
+                            sheetHeight = newHeight
+                            return Offset(0f, available.y)
+                        }
                     }
-                }
                 
-                // If scrolling up and sheet is expanded, collapse first
-                if (available.y < 0 && sheetHeight > minHeight) {
-                    val newHeight = (sheetHeight + with(density) { available.y.toDp() })
-                        .coerceAtLeast(minHeight)
-                    if (newHeight != sheetHeight) {
-                        sheetHeight = newHeight
-                        return Offset(0f, available.y)
+                    // If scrolling up and sheet is expanded, collapse first
+                    if (available.y < 0 && sheetHeight > minHeight) {
+                        val newHeight = (sheetHeight + with(density) { available.y.toDp() })
+                            .coerceAtLeast(minHeight)
+                        if (newHeight != sheetHeight) {
+                            sheetHeight = newHeight
+                            return Offset(0f, available.y)
+                        }
                     }
-                }
                 
-                return Offset.Zero
+                    return Offset.Zero
+                } catch (e: Exception) {
+                    Sentry.captureException(e)
+                    throw e
+                }
             }
             
             override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
-                // Snap to nearest state after fling
-                val midpoint = (minHeight + actualMaxHeight) / 2
-                sheetHeight = if (sheetHeight > midpoint) actualMaxHeight else minHeight
-                performHaptic()
-                return super.onPostFling(consumed, available)
+                try {
+                    // Snap to nearest state after fling
+                    val midpoint = (minHeight + actualMaxHeight) / 2
+                    sheetHeight = if (sheetHeight > midpoint) actualMaxHeight else minHeight
+                    performHaptic()
+                    return super.onPostFling(consumed, available)
+                } catch (e: Exception) {
+                    Sentry.captureException(e)
+                    throw e
+                }
             }
         }
     }
@@ -727,7 +762,7 @@ fun NestedScrollSheet(
                         )
                         
                         HorizontalDivider(
-                            color = CardBorder.copy(alpha = 0.3f),
+                            color = colors.glassBorder.copy(alpha = 0.3f),
                             thickness = 0.5.dp,
                             modifier = Modifier.padding(horizontal = 20.dp)
                         )
@@ -760,10 +795,16 @@ fun QuickActionSheet(
     actions: List<SheetQuickAction>,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val view = LocalView.current
     
     fun performHaptic() {
-        view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+        try {
+            view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     AnimatedVisibility(
@@ -803,7 +844,7 @@ fun QuickActionSheet(
                     
                     Text(
                         text = title,
-                        color = TextPrimary,
+                        color = colors.textPrimary,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.padding(bottom = 16.dp)
@@ -838,7 +879,7 @@ fun QuickActionSheet(
                     ) {
                         Text(
                             text = "Cancel",
-                            color = TextSecondary,
+                            color = colors.textSecondary,
                             fontWeight = FontWeight.Medium
                         )
                     }
@@ -852,7 +893,7 @@ data class SheetQuickAction(
     val title: String,
     val subtitle: String = "",
     val icon: androidx.compose.ui.graphics.vector.ImageVector,
-    val iconTint: Color = ShinyGoldDeep,
+    val iconTint: Color = GoldPrimary,
     val isDestructive: Boolean = false,
     val dismissOnClick: Boolean = true,
     val onClick: () -> Unit
@@ -863,6 +904,7 @@ private fun QuickActionItem(
     action: SheetQuickAction,
     onClick: () -> Unit
 ) {
+    val colors = BouncerDesignSystem.colors
     Surface(
         modifier = Modifier
             .fillMaxWidth()
@@ -884,7 +926,7 @@ private fun QuickActionItem(
                     .size(48.dp)
                     .background(
                         if (action.isDestructive) 
-                            ErrorRed.copy(alpha = 0.1f) 
+                            colors.statusLive.copy(alpha = 0.1f) 
                         else 
                             action.iconTint.copy(alpha = 0.1f),
                         CircleShape
@@ -894,7 +936,7 @@ private fun QuickActionItem(
                 Icon(
                     imageVector = action.icon,
                     contentDescription = null,
-                    tint = if (action.isDestructive) ErrorRed else action.iconTint,
+                    tint = if (action.isDestructive) colors.statusLive else action.iconTint,
                     modifier = Modifier.size(24.dp)
                 )
             }
@@ -903,14 +945,14 @@ private fun QuickActionItem(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = action.title,
-                    color = if (action.isDestructive) ErrorRed else TextPrimary,
+                    color = if (action.isDestructive) colors.statusLive else colors.textPrimary,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.SemiBold
                 )
                 if (action.subtitle.isNotEmpty()) {
                     Text(
                         text = action.subtitle,
-                        color = TextSecondary,
+                        color = colors.textSecondary,
                         fontSize = 13.sp
                     )
                 }
@@ -919,7 +961,7 @@ private fun QuickActionItem(
             Icon(
                 imageVector = Icons.Default.ChevronRight,
                 contentDescription = null,
-                tint = TextMuted,
+                tint = colors.textMuted,
                 modifier = Modifier.size(20.dp)
             )
         }
@@ -941,10 +983,16 @@ fun ConfirmationSheet(
     isDestructive: Boolean = false,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val view = LocalView.current
     
     fun performHaptic() {
-        view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+        try {
+            view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
     }
     
     AnimatedVisibility(
@@ -988,13 +1036,13 @@ fun ConfirmationSheet(
                         Box(
                             modifier = Modifier
                                 .size(56.dp)
-                                .background(ErrorRed.copy(alpha = 0.1f), CircleShape),
+                                .background(colors.statusLive.copy(alpha = 0.1f), CircleShape),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Warning,
                                 contentDescription = null,
-                                tint = ErrorRed,
+                                tint = colors.statusLive,
                                 modifier = Modifier.size(28.dp)
                             )
                         }
@@ -1003,7 +1051,7 @@ fun ConfirmationSheet(
                     
                     Text(
                         text = title,
-                        color = TextPrimary,
+                        color = colors.textPrimary,
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -1012,7 +1060,7 @@ fun ConfirmationSheet(
                     
                     Text(
                         text = message,
-                        color = TextSecondary,
+                        color = colors.textSecondary,
                         fontSize = 14.sp,
                         lineHeight = 20.sp
                     )
@@ -1035,11 +1083,11 @@ fun ConfirmationSheet(
                                 .height(52.dp),
                             shape = RoundedCornerShape(16.dp),
                             colors = ButtonDefaults.outlinedButtonColors(
-                                contentColor = TextSecondary
+                                contentColor = colors.textSecondary
                             ),
                             border = androidx.compose.foundation.BorderStroke(
                                 1.dp,
-                                CardBorder.copy(alpha = 0.5f)
+                                colors.glassBorder.copy(alpha = 0.5f)
                             )
                         ) {
                             Text(
@@ -1059,8 +1107,8 @@ fun ConfirmationSheet(
                                 .height(52.dp),
                             shape = RoundedCornerShape(16.dp),
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = if (isDestructive) ErrorRed else ShinyGoldDeep,
-                                contentColor = if (isDestructive) Color.White else BlackBackground
+                                containerColor = if (isDestructive) colors.statusLive else colors.goldPrimary,
+                                contentColor = if (isDestructive) Color.White else colors.backgroundBase
                             )
                         ) {
                             Text(
@@ -1086,6 +1134,7 @@ fun InfoSheet(
     content: @Composable () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val view = LocalView.current
     
     AnimatedVisibility(
@@ -1132,7 +1181,7 @@ fun InfoSheet(
                     )
                     
                     HorizontalDivider(
-                        color = CardBorder.copy(alpha = 0.3f),
+                        color = colors.glassBorder.copy(alpha = 0.3f),
                         thickness = 0.5.dp,
                         modifier = Modifier.padding(vertical = 12.dp)
                     )

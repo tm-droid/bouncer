@@ -39,6 +39,7 @@ import com.tanush.bouncer.managers.TeamLogoManager
 import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.ui.theme.*
 import com.tanush.bouncer.utils.rememberHapticFeedback
+import io.sentry.Sentry
 
 @Composable
 fun CompactMatchCard(
@@ -64,6 +65,7 @@ fun CompactMatchCard(
         label = "compactLivePulse"
     )
     
+    val colors = BouncerDesignSystem.colors
     Surface(
         modifier = modifier
             .fillMaxWidth()
@@ -71,13 +73,13 @@ fun CompactMatchCard(
             .shadow(
                 elevation = if (isLive) Elevation.high else Elevation.medium,
                 shape = RoundedCornerShape(CornerRadius.md),
-                spotColor = if (isLive) LiveBlue.copy(alpha = 0.4f) else Color.Black.copy(alpha = 0.2f)
+                spotColor = if (isLive) colors.statusInfo.copy(alpha = 0.4f) else Color.Black.copy(alpha = 0.2f)
             ),
         shape = RoundedCornerShape(CornerRadius.md),
-        color = Color.White.copy(alpha = 0.05f),
+        color = colors.glassSurface,
         border = androidx.compose.foundation.BorderStroke(
             BorderWidth.hairline, 
-            if (isLive) LiveBlue.copy(alpha = 0.3f) else CardBorder.copy(alpha = 0.2f)
+            if (isLive) colors.statusInfo.copy(alpha = 0.3f) else colors.glassBorder.copy(alpha = 0.2f)
         )
     ) {
         Row(
@@ -99,9 +101,9 @@ fun CompactMatchCard(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Surface(
-                    color = if (isLive) LiveBlue.copy(alpha = 0.1f) else Color.White.copy(alpha = 0.04f),
+                    color = if (isLive) colors.statusInfo.copy(alpha = 0.1f) else Color.White.copy(alpha = 0.04f),
                     shape = RoundedCornerShape(8.dp),
-                    border = if (isLive) androidx.compose.foundation.BorderStroke(1.dp, LiveBlue.copy(alpha = 0.5f)) else null
+                    border = if (isLive) androidx.compose.foundation.BorderStroke(1.dp, colors.statusInfo.copy(alpha = 0.5f)) else null
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -113,12 +115,12 @@ fun CompactMatchCard(
                                 modifier = Modifier
                                     .size(6.dp)
                                     .graphicsLayer { alpha = livePulse }
-                                    .background(LiveRedPulse, CircleShape)
+                                    .background(colors.statusLive, CircleShape)
                             )
                         }
                         Text(
                             text = statusInfo,
-                            color = if (isLive) Color.White else TextTertiary,
+                            color = if (isLive) colors.textPrimary else colors.textTertiary,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Black,
                             letterSpacing = 0.5.sp
@@ -130,7 +132,7 @@ fun CompactMatchCard(
                 
                 Text(
                     text = "VS",
-                    color = TextMuted,
+                    color = colors.textMuted,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Black
                 )
@@ -148,6 +150,7 @@ private fun CompactTeamInfo(
     modifier: Modifier = Modifier,
     isRight: Boolean = false
 ) {
+    val colors = BouncerDesignSystem.colors
     val context = LocalContext.current
     val logoUrl = TeamLogoManager.getBestLogoUrl(team?.name, team?.logoUrl, 128, 128)
     
@@ -160,8 +163,8 @@ private fun CompactTeamInfo(
             Box(
                 modifier = Modifier
                     .size(40.dp)
-                    .background(Color.White.copy(alpha = 0.08f), CircleShape)
-                    .border(0.5.dp, ShinyGoldDeep.copy(alpha = 0.2f), CircleShape)
+                    .background(colors.glassBorderHighlight, CircleShape)
+                    .border(0.5.dp, colors.goldDark.copy(alpha = 0.2f), CircleShape)
                     .padding(6.dp)
             ) {
                 CoilImage(
@@ -180,13 +183,13 @@ private fun CompactTeamInfo(
         Column(horizontalAlignment = if (isRight) Alignment.End else Alignment.Start) {
             Text(
                 text = team?.acronym ?: team?.name?.take(3)?.uppercase() ?: "TBD",
-                color = TextSecondary,
+                color = colors.textSecondary,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Black
             )
             Text(
                 text = team?.score?.substringBefore("(")?.trim()?.takeIf { it.isNotEmpty() && it != "Data Not Found" } ?: "—",
-                color = TextPrimary,
+                color = colors.textPrimary,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Black
             )
@@ -197,8 +200,8 @@ private fun CompactTeamInfo(
             Box(
                 modifier = Modifier
                     .size(40.dp)
-                    .background(Color.White.copy(alpha = 0.08f), CircleShape)
-                    .border(0.5.dp, ShinyGoldDeep.copy(alpha = 0.2f), CircleShape)
+                    .background(colors.glassBorderHighlight, CircleShape)
+                    .border(0.5.dp, colors.goldDark.copy(alpha = 0.2f), CircleShape)
                     .padding(6.dp)
             ) {
                 CoilImage(
@@ -222,6 +225,7 @@ fun ExpandableMatchCard(
     modifier: Modifier = Modifier,
     initiallyExpanded: Boolean = false
 ) {
+    val colors = BouncerDesignSystem.colors
     var isExpanded by remember { mutableStateOf(initiallyExpanded) }
     val haptic = rememberHapticFeedback()
     
@@ -240,8 +244,8 @@ fun ExpandableMatchCard(
                 spotColor = Color.Black.copy(alpha = 0.3f)
             ),
         shape = RoundedCornerShape(CornerRadius.md),
-        color = Color.White.copy(alpha = 0.05f),
-        border = androidx.compose.foundation.BorderStroke(BorderWidth.hairline, CardBorder.copy(alpha = 0.3f))
+        color = colors.glassSurface,
+        border = androidx.compose.foundation.BorderStroke(BorderWidth.hairline, colors.glassBorder.copy(alpha = 0.3f))
     ) {
         Column {
             // Header/Main part (always visible)
@@ -278,7 +282,7 @@ fun ExpandableMatchCard(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = if (isExpanded) "LESS INFO" else "MORE INFO",
-                        color = ShinyGoldDeep,
+                        color = colors.goldDark,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Black,
                         letterSpacing = 1.sp
@@ -287,7 +291,7 @@ fun ExpandableMatchCard(
                     Icon(
                         imageVector = Icons.Default.KeyboardArrowDown,
                         contentDescription = null,
-                        tint = ShinyGoldDeep,
+                        tint = colors.goldDark,
                         modifier = Modifier
                             .size(18.dp)
                             .rotate(rotation)
@@ -322,14 +326,14 @@ fun ExpandableMatchCard(
                     
                     if (match.currentStatus.isNotEmpty()) {
                         Surface(
-                            color = ShinyGoldDeep.copy(alpha = 0.05f),
+                            color = colors.goldDark.copy(alpha = 0.05f),
                             shape = RoundedCornerShape(12.dp),
-                            border = androidx.compose.foundation.BorderStroke(0.5.dp, ShinyGoldDeep.copy(alpha = 0.2f))
+                            border = androidx.compose.foundation.BorderStroke(0.5.dp, colors.goldDark.copy(alpha = 0.2f))
                         ) {
                             Column(modifier = Modifier.padding(16.dp)) {
                                 Text(
                                     text = "LIVE SUMMARY",
-                                    color = ShinyGoldDeep,
+                                    color = colors.goldDark,
                                     fontSize = 10.sp,
                                     fontWeight = FontWeight.Black,
                                     letterSpacing = 1.sp
@@ -337,7 +341,7 @@ fun ExpandableMatchCard(
                                 Spacer(modifier = Modifier.height(8.dp))
                                 Text(
                                     text = match.currentStatus,
-                                    color = TextPrimary,
+                                    color = colors.textPrimary,
                                     fontSize = 13.sp,
                                     fontWeight = FontWeight.Medium,
                                     lineHeight = 20.sp
@@ -353,10 +357,11 @@ fun ExpandableMatchCard(
 
 @Composable
 private fun InfoBox(label: String, value: String, modifier: Modifier = Modifier) {
+    val colors = BouncerDesignSystem.colors
     Column(modifier = modifier) {
         Text(
             text = label,
-            color = TextTertiary,
+            color = colors.textTertiary,
             fontSize = 10.sp,
             fontWeight = FontWeight.Black,
             letterSpacing = 1.sp
@@ -364,7 +369,7 @@ private fun InfoBox(label: String, value: String, modifier: Modifier = Modifier)
         Spacer(modifier = Modifier.height(4.dp))
         Text(
             text = value,
-            color = TextPrimary,
+            color = colors.textPrimary,
             fontSize = 13.sp,
             fontWeight = FontWeight.Bold,
             maxLines = 1,
@@ -374,13 +379,18 @@ private fun InfoBox(label: String, value: String, modifier: Modifier = Modifier)
 }
 
 private fun getCompactMatchStatus(status: String): String {
-    val s = status.lowercase()
-    return when {
-        s.contains("won") || s.contains("complete") || s.contains("result") -> "DONE"
-        s.contains("delayed") || s.contains("rain") -> "DELAY"
-        s.contains("abandoned") -> "ABD"
-        s.contains("break") || s.contains("tea") || s.contains("lunch") -> "BREAK"
-        s.contains("upcoming") || s.contains("starts") || status.isEmpty() -> "SOON"
-        else -> "LIVE"
+    try {
+        val s = status.lowercase()
+        return when {
+            s.contains("won") || s.contains("complete") || s.contains("result") -> "DONE"
+            s.contains("delayed") || s.contains("rain") -> "DELAY"
+            s.contains("abandoned") -> "ABD"
+            s.contains("break") || s.contains("tea") || s.contains("lunch") -> "BREAK"
+            s.contains("upcoming") || s.contains("starts") || status.isEmpty() -> "SOON"
+            else -> "LIVE"
+        }
+    } catch (e: Exception) {
+        Sentry.captureException(e)
+        throw e
     }
 }

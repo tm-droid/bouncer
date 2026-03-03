@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Help
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -47,6 +48,8 @@ fun PremiumTooltip(
     modifier: Modifier = Modifier,
     position: TooltipPosition = TooltipPosition.BOTTOM
 ) {
+    val colors = BouncerDesignSystem.colors
+    val goldDark = colors.goldDark
     val alpha by animateFloatAsState(
         targetValue = if (isVisible) 1f else 0f,
         animationSpec = tween(200),
@@ -115,7 +118,7 @@ fun PremiumTooltip(
                 )
                 drawPath(
                     path = path,
-                    color = ShinyGoldMid.copy(alpha = 0.3f),
+                    color = goldDark.copy(alpha = 0.3f),
                     style = Stroke(width = 1.dp.toPx())
                 )
             }
@@ -152,6 +155,7 @@ fun InfoPopup(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val alpha by animateFloatAsState(
         targetValue = if (isVisible) 1f else 0f,
         animationSpec = tween(200),
@@ -174,7 +178,7 @@ fun InfoPopup(
                 .border(
                     width = 1.dp,
                     brush = Brush.linearGradient(
-                        colors = listOf(ShinyGoldMid.copy(alpha = 0.5f), ShinyGoldLight.copy(alpha = 0.2f))
+                        colors = listOf(colors.goldDark.copy(alpha = 0.5f), colors.goldLight.copy(alpha = 0.2f))
                     ),
                     shape = RoundedCornerShape(16.dp)
                 )
@@ -196,13 +200,13 @@ fun InfoPopup(
                             modifier = Modifier
                                 .size(32.dp)
                                 .clip(CircleShape)
-                                .background(ShinyGoldMid.copy(alpha = 0.2f)),
+                                .background(colors.goldDark.copy(alpha = 0.2f)),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 imageVector = icon,
                                 contentDescription = null,
-                                tint = ShinyGoldMid,
+                                tint = colors.goldDark,
                                 modifier = Modifier.size(18.dp)
                             )
                         }
@@ -410,13 +414,14 @@ fun ContextualHelp(
     tips: List<String>,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     Column(
         modifier = modifier
             .clip(RoundedCornerShape(16.dp))
             .background(Color.White.copy(alpha = 0.05f))
             .border(
                 width = 1.dp,
-                color = ShinyGoldMid.copy(alpha = 0.2f),
+                color = colors.goldDark.copy(alpha = 0.2f),
                 shape = RoundedCornerShape(16.dp)
             )
             .padding(16.dp),
@@ -427,9 +432,9 @@ fun ContextualHelp(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
-                imageVector = Icons.Default.Help,
+                imageVector = Icons.AutoMirrored.Filled.Help,
                 contentDescription = null,
-                tint = ShinyGoldMid,
+                tint = colors.goldDark,
                 modifier = Modifier.size(20.dp)
             )
             
@@ -454,7 +459,7 @@ fun ContextualHelp(
                             .padding(top = 6.dp)
                             .size(6.dp)
                             .clip(CircleShape)
-                            .background(ShinyGoldMid.copy(alpha = 0.6f))
+                            .background(colors.goldDark.copy(alpha = 0.6f))
                     )
                     
                     Text(
@@ -476,6 +481,7 @@ fun QuickTip(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "tip")
     
     val bounce by infiniteTransition.animateFloat(
@@ -496,14 +502,14 @@ fun QuickTip(
                 .background(
                     brush = Brush.horizontalGradient(
                         colors = listOf(
-                            ShinyGoldMid.copy(alpha = 0.2f),
-                            ShinyGoldLight.copy(alpha = 0.1f)
+                            colors.goldDark.copy(alpha = 0.2f),
+                            colors.goldLight.copy(alpha = 0.1f)
                         )
                     )
                 )
                 .border(
                     width = 1.dp,
-                    color = ShinyGoldMid.copy(alpha = 0.4f),
+                    color = colors.goldDark.copy(alpha = 0.4f),
                     shape = RoundedCornerShape(12.dp)
                 )
                 .padding(12.dp),
@@ -513,7 +519,7 @@ fun QuickTip(
             Icon(
                 imageVector = Icons.Default.TipsAndUpdates,
                 contentDescription = null,
-                tint = ShinyGoldMid,
+                tint = colors.goldDark,
                 modifier = Modifier.size(20.dp)
             )
             
@@ -542,6 +548,7 @@ fun GlossaryItem(
     definition: String,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -552,7 +559,7 @@ fun GlossaryItem(
     ) {
         Text(
             text = term,
-            color = ShinyGoldMid,
+            color = colors.goldDark,
             fontSize = 14.sp,
             fontWeight = FontWeight.Bold
         )
@@ -574,6 +581,7 @@ fun FeatureSpotlight(
     isNew: Boolean = false,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "spotlight")
     
     val pulse by infiniteTransition.animateFloat(
@@ -593,7 +601,7 @@ fun FeatureSpotlight(
             .background(
                 brush = Brush.verticalGradient(
                     colors = listOf(
-                        ShinyGoldMid.copy(alpha = 0.15f),
+                        colors.goldDark.copy(alpha = 0.15f),
                         Color.White.copy(alpha = 0.05f)
                     )
                 )
@@ -601,7 +609,7 @@ fun FeatureSpotlight(
             .border(
                 width = if (isNew) 2.dp else 1.dp,
                 brush = Brush.linearGradient(
-                    colors = listOf(ShinyGoldMid, ShinyGoldLight.copy(alpha = 0.5f))
+                    colors = listOf(colors.goldDark, colors.goldLight.copy(alpha = 0.5f))
                 ),
                 shape = RoundedCornerShape(16.dp)
             )
@@ -612,12 +620,12 @@ fun FeatureSpotlight(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
                     .clip(RoundedCornerShape(8.dp))
-                    .background(ShinyGoldMid)
+                    .background(colors.goldDark)
                     .padding(horizontal = 8.dp, vertical = 4.dp)
             ) {
                 Text(
                     text = "NEW",
-                    color = BlackBackground,
+                    color = colors.backgroundBase,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 1.sp
@@ -636,10 +644,10 @@ fun FeatureSpotlight(
                     modifier = Modifier
                         .size(48.dp)
                         .clip(CircleShape)
-                        .background(ShinyGoldMid.copy(alpha = 0.2f))
+                        .background(colors.goldDark.copy(alpha = 0.2f))
                         .border(
                             width = 1.dp,
-                            color = ShinyGoldMid.copy(alpha = 0.5f),
+                            color = colors.goldDark.copy(alpha = 0.5f),
                             shape = CircleShape
                         ),
                     contentAlignment = Alignment.Center
@@ -647,7 +655,7 @@ fun FeatureSpotlight(
                     Icon(
                         imageVector = icon,
                         contentDescription = null,
-                        tint = ShinyGoldMid,
+                        tint = colors.goldDark,
                         modifier = Modifier.size(24.dp)
                     )
                 }
@@ -677,13 +685,14 @@ fun InteractiveGuide(
     onStepChange: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     Column(
         modifier = modifier
             .clip(RoundedCornerShape(16.dp))
             .background(Color.White.copy(alpha = 0.05f))
             .border(
                 width = 1.dp,
-                color = ShinyGoldMid.copy(alpha = 0.2f),
+                color = colors.goldDark.copy(alpha = 0.2f),
                 shape = RoundedCornerShape(16.dp)
             )
             .padding(16.dp),
@@ -704,7 +713,7 @@ fun InteractiveGuide(
             
             Text(
                 text = "${currentStep + 1}/${steps.size}",
-                color = ShinyGoldMid,
+                color = colors.goldDark,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Medium
             )
@@ -715,7 +724,7 @@ fun InteractiveGuide(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(12.dp))
-                .background(ShinyGoldMid.copy(alpha = 0.1f))
+                .background(colors.goldDark.copy(alpha = 0.1f))
                 .padding(16.dp)
         ) {
             Text(
@@ -741,7 +750,7 @@ fun InteractiveGuide(
                         .size(if (isActive) 10.dp else 8.dp)
                         .clip(CircleShape)
                         .background(
-                            if (isActive) ShinyGoldMid else ShinyGoldMid.copy(alpha = 0.3f)
+                            if (isActive) colors.goldDark else colors.goldDark.copy(alpha = 0.3f)
                         )
                         .clickable { onStepChange(index) }
                 )
@@ -787,14 +796,14 @@ fun InteractiveGuide(
                 ) {
                     Text(
                         text = "Next",
-                        color = ShinyGoldMid,
+                        color = colors.goldDark,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Bold
                     )
                     Icon(
                         imageVector = Icons.Default.ChevronRight,
                         contentDescription = "Next",
-                        tint = ShinyGoldMid,
+                        tint = colors.goldDark,
                         modifier = Modifier.size(18.dp)
                     )
                 }

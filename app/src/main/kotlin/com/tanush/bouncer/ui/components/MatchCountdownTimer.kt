@@ -31,6 +31,7 @@ import kotlinx.coroutines.delay
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
+import io.sentry.Sentry
 
 /**
  * Match Countdown Timer with premium animated display
@@ -46,6 +47,7 @@ fun MatchCountdownTimer(
     matchTitle: String,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     var isVisible by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { isVisible = true }
     
@@ -77,7 +79,7 @@ fun MatchCountdownTimer(
             .shadow(
                 elevation = 24.dp,
                 shape = RoundedCornerShape(28.dp),
-                spotColor = ShinyGoldDeep.copy(alpha = 0.2f),
+                spotColor = colors.goldPrimary.copy(alpha = 0.2f),
                 ambientColor = Color.Black.copy(alpha = 0.4f)
             ),
         colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.05f)),
@@ -86,9 +88,9 @@ fun MatchCountdownTimer(
             1.dp,
             Brush.linearGradient(
                 colors = listOf(
-                    ShinyGoldDeep.copy(alpha = 0.3f),
-                    ShinyGoldLight.copy(alpha = 0.1f),
-                    ShinyGoldDeep.copy(alpha = 0.3f)
+                    colors.goldPrimary.copy(alpha = 0.3f),
+                    colors.goldLight.copy(alpha = 0.1f),
+                    colors.goldPrimary.copy(alpha = 0.3f)
                 )
             )
         )
@@ -104,7 +106,7 @@ fun MatchCountdownTimer(
                 text = matchTitle,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Medium,
-                color = TextSecondary,
+                color = colors.textSecondary,
                 textAlign = TextAlign.Center
             )
             
@@ -120,7 +122,7 @@ fun MatchCountdownTimer(
                     text = teamName1,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
-                    color = TextPrimary
+                    color = colors.textPrimary
                 )
                 
                 Spacer(modifier = Modifier.width(16.dp))
@@ -131,20 +133,20 @@ fun MatchCountdownTimer(
                         .background(
                             Brush.radialGradient(
                                 colors = listOf(
-                                    ShinyGoldDeep.copy(alpha = 0.2f),
+                                    colors.goldPrimary.copy(alpha = 0.2f),
                                     Color.Transparent
                                 )
                             ),
                             CircleShape
                         )
-                        .border(1.dp, ShinyGoldDeep.copy(alpha = 0.3f), CircleShape),
+                        .border(1.dp, colors.goldPrimary.copy(alpha = 0.3f), CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = "VS",
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Black,
-                        color = ShinyGoldDeep
+                        color = colors.goldPrimary
                     )
                 }
                 
@@ -154,7 +156,7 @@ fun MatchCountdownTimer(
                     text = teamName2,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
-                    color = TextPrimary
+                    color = colors.textPrimary
                 )
             }
             
@@ -168,7 +170,7 @@ fun MatchCountdownTimer(
                 Icon(
                     Icons.Default.AccessTime,
                     contentDescription = null,
-                    tint = ShinyGoldDeep,
+                    tint = colors.goldPrimary,
                     modifier = Modifier.size(18.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
@@ -176,7 +178,7 @@ fun MatchCountdownTimer(
                     text = "Match starts in",
                     fontSize = 13.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = TextSecondary
+                    color = colors.textSecondary
                 )
             }
             
@@ -190,21 +192,21 @@ fun MatchCountdownTimer(
                 CountdownUnit(
                     value = days,
                     label = "DAYS",
-                    color = ShinyGoldDeep,
+                    color = colors.goldPrimary,
                     scale = if (days > 0) pulseScale else 1f
                 )
                 CountdownSeparator()
                 CountdownUnit(
                     value = hours,
                     label = "HOURS",
-                    color = ShinyGoldMid,
+                    color = colors.goldDark,
                     scale = if (days == 0 && hours > 0) pulseScale else 1f
                 )
                 CountdownSeparator()
                 CountdownUnit(
                     value = minutes,
                     label = "MINS",
-                    color = ShinyGoldLight,
+                    color = colors.goldLight,
                     scale = if (days == 0 && hours == 0 && minutes > 0) pulseScale else 1f
                 )
                 CountdownSeparator()
@@ -234,6 +236,7 @@ private fun CountdownUnit(
     color: Color,
     scale: Float = 1f
 ) {
+    val colors = BouncerDesignSystem.colors
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier.graphicsLayer {
@@ -279,7 +282,7 @@ private fun CountdownUnit(
             text = label,
             fontSize = 9.sp,
             fontWeight = FontWeight.Bold,
-            color = TextTertiary,
+            color = colors.textTertiary,
             letterSpacing = 1.sp
         )
     }
@@ -287,6 +290,7 @@ private fun CountdownUnit(
 
 @Composable
 private fun CountdownSeparator() {
+    val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "separator")
     val alpha by infiniteTransition.animateFloat(
         initialValue = 0.3f,
@@ -305,13 +309,13 @@ private fun CountdownSeparator() {
         Box(
             modifier = Modifier
                 .size(4.dp)
-                .background(ShinyGoldDeep.copy(alpha = alpha), CircleShape)
+                .background(colors.goldPrimary.copy(alpha = alpha), CircleShape)
         )
         Spacer(modifier = Modifier.height(8.dp))
         Box(
             modifier = Modifier
                 .size(4.dp)
-                .background(ShinyGoldDeep.copy(alpha = alpha), CircleShape)
+                .background(colors.goldPrimary.copy(alpha = alpha), CircleShape)
         )
     }
 }
@@ -321,6 +325,12 @@ private fun CountdownProgressRing(
     progress: Float,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
+    val cardBorder = colors.glassBorder
+    val goldPrimary = colors.goldPrimary
+    val goldLight = colors.goldLight
+    val goldDark = colors.goldDark
+    val neonSuccess = colors.statusSuccess
     val animatedProgress by animateFloatAsState(
         targetValue = progress,
         animationSpec = tween(1000, easing = FastOutSlowInEasing),
@@ -345,7 +355,7 @@ private fun CountdownProgressRing(
         
         // Background ring
         drawCircle(
-            color = CardBorder.copy(alpha = 0.3f),
+            color = cardBorder.copy(alpha = 0.3f),
             radius = radius,
             center = center,
             style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
@@ -358,9 +368,9 @@ private fun CountdownProgressRing(
         drawArc(
             brush = Brush.sweepGradient(
                 colors = listOf(
-                    ShinyGoldDeep.copy(alpha = glowAlpha * 0.5f),
-                    ShinyGoldLight.copy(alpha = glowAlpha * 0.3f),
-                    NeonSuccess.copy(alpha = glowAlpha * 0.5f)
+                    goldPrimary.copy(alpha = glowAlpha * 0.5f),
+                    goldLight.copy(alpha = glowAlpha * 0.3f),
+                    neonSuccess.copy(alpha = glowAlpha * 0.5f)
                 ),
                 center = center
             ),
@@ -376,10 +386,10 @@ private fun CountdownProgressRing(
         drawArc(
             brush = Brush.sweepGradient(
                 colors = listOf(
-                    ShinyGoldLight,
-                    ShinyGoldDeep,
-                    ShinyGoldDark,
-                    NeonSuccess
+                    goldLight,
+                    goldPrimary,
+                    goldDark,
+                    neonSuccess
                 ),
                 center = center
             ),
@@ -400,7 +410,7 @@ private fun CountdownProgressRing(
             brush = Brush.radialGradient(
                 colors = listOf(
                     Color.White.copy(alpha = 0.8f),
-                    NeonSuccess.copy(alpha = 0.3f),
+                    neonSuccess.copy(alpha = 0.3f),
                     Color.Transparent
                 ),
                 center = Offset(endX, endY),
@@ -413,10 +423,15 @@ private fun CountdownProgressRing(
 }
 
 private fun calculateProgress(days: Int, hours: Int, minutes: Int, seconds: Int): Float {
-    // Assume max countdown is 7 days
-    val maxSeconds = 7 * 24 * 60 * 60
-    val currentSeconds = days * 24 * 60 * 60 + hours * 60 * 60 + minutes * 60 + seconds
-    return (maxSeconds - currentSeconds).toFloat() / maxSeconds
+    try {
+        // Assume max countdown is 7 days
+        val maxSeconds = 7 * 24 * 60 * 60
+        val currentSeconds = days * 24 * 60 * 60 + hours * 60 * 60 + minutes * 60 + seconds
+        return (maxSeconds - currentSeconds).toFloat() / maxSeconds
+    } catch (e: Exception) {
+        Sentry.captureException(e)
+        throw e
+    }
 }
 
 /**
@@ -429,6 +444,9 @@ fun CircularCountdown(
     label: String = "Time Left",
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
+    val cardBorder = colors.glassBorder
+    val goldPrimary = colors.goldPrimary
     val progress = seconds.toFloat() / totalSeconds
     
     val animatedProgress by animateFloatAsState(
@@ -466,7 +484,7 @@ fun CircularCountdown(
             
             // Background
             drawCircle(
-                color = CardBorder.copy(alpha = 0.2f),
+                color = cardBorder.copy(alpha = 0.2f),
                 radius = radius,
                 center = center,
                 style = Stroke(width = strokeWidth)
@@ -475,7 +493,7 @@ fun CircularCountdown(
             // Progress
             val color = when {
                 progress > 0.5f -> NeonSuccess
-                progress > 0.25f -> ShinyGoldDeep
+                progress > 0.25f -> goldPrimary
                 else -> NeonError
             }
             
@@ -499,23 +517,28 @@ fun CircularCountdown(
                 fontWeight = FontWeight.Black,
                 color = when {
                     progress > 0.5f -> NeonSuccess
-                    progress > 0.25f -> ShinyGoldDeep
+                    progress > 0.25f -> goldPrimary
                     else -> NeonError
                 }
             )
             Text(
                 text = label,
                 fontSize = 10.sp,
-                color = TextTertiary
+                color = colors.textTertiary
             )
         }
     }
 }
 
 private fun formatTime(seconds: Int): String {
-    val mins = seconds / 60
-    val secs = seconds % 60
-    return String.format("%02d:%02d", mins, secs)
+    try {
+        val mins = seconds / 60
+        val secs = seconds % 60
+        return String.format("%02d:%02d", mins, secs)
+    } catch (e: Exception) {
+        Sentry.captureException(e)
+        throw e
+    }
 }
 
 /**
@@ -526,6 +549,7 @@ fun AnimatedClockDisplay(
     time: String,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "clock")
     val colonAlpha by infiniteTransition.animateFloat(
         initialValue = 0.3f,
@@ -547,7 +571,7 @@ fun AnimatedClockDisplay(
                     text = ":",
                     fontSize = 32.sp,
                     fontWeight = FontWeight.Bold,
-                    color = ShinyGoldDeep.copy(alpha = colonAlpha),
+                    color = colors.goldPrimary.copy(alpha = colonAlpha),
                     modifier = Modifier.padding(horizontal = 2.dp)
                 )
             } else {
@@ -558,7 +582,7 @@ fun AnimatedClockDisplay(
                         .background(Color.White.copy(alpha = 0.08f))
                         .border(
                             0.5.dp,
-                            ShinyGoldDeep.copy(alpha = 0.2f),
+                            colors.goldPrimary.copy(alpha = 0.2f),
                             RoundedCornerShape(6.dp)
                         ),
                     contentAlignment = Alignment.Center
@@ -567,7 +591,7 @@ fun AnimatedClockDisplay(
                         text = char.toString(),
                         fontSize = 22.sp,
                         fontWeight = FontWeight.Bold,
-                        color = TextPrimary
+                        color = colors.textPrimary
                     )
                 }
             }

@@ -37,6 +37,7 @@ fun PremiumLoadingScreen(
     loadingProgress: Float = 0f,
     loadingMessage: String = "Loading elite analytics..."
 ) {
+    val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "loading")
     
     val ballRotation by infiniteTransition.animateFloat(
@@ -59,9 +60,12 @@ fun PremiumLoadingScreen(
         label = "logoPulse"
     )
     
+    // Capture colors for Canvas/drawBehind scopes
+    val goldPrimaryColor = colors.goldPrimary
+    
     Surface(
         modifier = Modifier.fillMaxSize(),
-        color = BlackBackground
+        color = colors.backgroundBase
     ) {
         Box(
             modifier = Modifier.fillMaxSize(),
@@ -75,7 +79,7 @@ fun PremiumLoadingScreen(
                         drawCircle(
                             brush = Brush.radialGradient(
                                 colors = listOf(
-                                    ShinyGoldDeep.copy(alpha = 0.05f),
+                                    goldPrimaryColor.copy(alpha = 0.05f),
                                     Color.Transparent
                                 )
                             ),
@@ -101,7 +105,7 @@ fun PremiumLoadingScreen(
                                 brush = Brush.sweepGradient(
                                     colors = listOf(
                                         Color.Transparent,
-                                        ShinyGoldDeep.copy(alpha = 0.8f),
+                                        goldPrimaryColor.copy(alpha = 0.8f),
                                         Color.Transparent
                                     )
                                 ),
@@ -123,7 +127,7 @@ fun PremiumLoadingScreen(
                                 scaleX = logoPulse
                                 scaleY = logoPulse
                             },
-                        tint = ShinyGoldDeep
+                        tint = colors.goldPrimary
                     )
                 }
                 
@@ -134,7 +138,7 @@ fun PremiumLoadingScreen(
                     fontSize = 42.sp,
                     fontWeight = FontWeight.Black,
                     letterSpacing = 6.sp,
-                    color = ShinyGoldMid,
+                    color = colors.goldDark,
                     modifier = Modifier.graphicsLayer { alpha = logoPulse }
                 )
                 
@@ -142,7 +146,7 @@ fun PremiumLoadingScreen(
                 
                 Text(
                     text = "ELITE CRICKET ANALYTICS",
-                    color = TextSecondary,
+                    color = colors.textSecondary,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 2.sp
@@ -157,7 +161,7 @@ fun PremiumLoadingScreen(
                             .width(180.dp)
                             .height(2.dp)
                             .clip(RoundedCornerShape(50))
-                            .background(Color.White.copy(alpha = 0.08f))
+                            .background(colors.surface1)
                     ) {
                         val progressWidth by animateFloatAsState(
                             targetValue = if (isLoading) 1f else loadingProgress,
@@ -177,7 +181,7 @@ fun PremiumLoadingScreen(
                                         translationX = (progressWidth * 180).dp.toPx() 
                                     } else Modifier
                                 )
-                                .background(ShinyGoldDeep)
+                                .background(colors.goldPrimary)
                         )
                     }
                     
@@ -185,7 +189,7 @@ fun PremiumLoadingScreen(
                     
                     Text(
                         text = loadingMessage.uppercase(),
-                        color = TextTertiary,
+                        color = colors.textTertiary,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Black,
                         letterSpacing = 1.sp
@@ -200,25 +204,26 @@ fun PremiumLoadingScreen(
  */
 @Composable
 private fun SkeletonTeam(isRight: Boolean = false) {
+    val colors = BouncerDesignSystem.colors
     Column(horizontalAlignment = if (isRight) Alignment.End else Alignment.Start) {
         Box(
             modifier = Modifier
                 .size(56.dp)
-                .background(Color.White.copy(alpha = 0.08f), CircleShape)
+                .background(colors.surface1, CircleShape)
         )
         Spacer(modifier = Modifier.height(16.dp))
         Box(
             modifier = Modifier
                 .width(50.dp)
                 .height(14.dp)
-                .background(Color.White.copy(alpha = 0.08f), RoundedCornerShape(4.dp))
+                .background(colors.surface1, RoundedCornerShape(4.dp))
         )
         Spacer(modifier = Modifier.height(8.dp))
         Box(
             modifier = Modifier
                 .width(80.dp)
                 .height(24.dp)
-                .background(Color.White.copy(alpha = 0.08f), RoundedCornerShape(4.dp))
+                .background(colors.surface1, RoundedCornerShape(4.dp))
         )
     }
 }

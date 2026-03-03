@@ -16,7 +16,7 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.ThumbUp
-import androidx.compose.material.icons.filled.TrendingUp
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -34,6 +34,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.ui.theme.*
+import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 
 /**
  * Fan Engagement Card
@@ -69,6 +70,7 @@ fun FanEngagementCard(
     engagement: FanEngagementData,
     modifier: Modifier = Modifier,
 ) {
+    val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "engagement")
 
     val heartScale by infiniteTransition.animateFloat(
@@ -102,9 +104,9 @@ fun FanEngagementCard(
     )
 
     val sentimentColor = when (engagement.fanSentiment) {
-        "electric" -> ShinyGoldMid
-        "intense" -> WicketRed
-        else -> ChartBlue
+        "electric" -> colors.goldDark
+        "intense" -> colors.statusLive
+        else -> colors.statusInfo
     }
 
     Card(
@@ -229,7 +231,7 @@ fun FanEngagementCard(
                     Column(horizontalAlignment = Alignment.Start) {
                         Text(
                             text = engagement.team1Name,
-                            color = ChartBlue,
+                            color = colors.statusInfo,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold,
                         )
@@ -244,7 +246,7 @@ fun FanEngagementCard(
                     Icon(
                         imageVector = Icons.Default.Favorite,
                         contentDescription = null,
-                        tint = WicketRed,
+                        tint = colors.statusLive,
                         modifier = Modifier
                             .size(28.dp)
                             .scale(heartScale),
@@ -253,7 +255,7 @@ fun FanEngagementCard(
                     Column(horizontalAlignment = Alignment.End) {
                         Text(
                             text = engagement.team2Name,
-                            color = WicketRed,
+                            color = colors.statusLive,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold,
                         )
@@ -281,7 +283,7 @@ fun FanEngagementCard(
                             .fillMaxHeight()
                             .background(
                                 Brush.horizontalGradient(
-                                    colors = listOf(ChartBlue, ChartBlue.copy(alpha = 0.7f)),
+                                    colors = listOf(colors.statusInfo, colors.statusInfo.copy(alpha = 0.7f)),
                                 ),
                             ),
                     )
@@ -292,7 +294,7 @@ fun FanEngagementCard(
                             .fillMaxHeight()
                             .background(
                                 Brush.horizontalGradient(
-                                    colors = listOf(WicketRed.copy(alpha = 0.7f), WicketRed),
+                                    colors = listOf(colors.statusLive.copy(alpha = 0.7f), colors.statusLive),
                                 ),
                             ),
                     )
@@ -313,14 +315,14 @@ fun FanEngagementCard(
                         icon = Icons.Default.ThumbUp,
                         value = formatNumber(engagement.reactions),
                         label = "Reactions",
-                        color = SuccessGreen,
+                        color = colors.statusSuccess,
                     )
 
                     EngagementStatItem(
                         icon = Icons.Default.Share,
                         value = formatNumber(engagement.shares),
                         label = "Shares",
-                        color = ChartBlue,
+                        color = colors.statusInfo,
                     )
 
                     EngagementStatItem(
@@ -328,7 +330,7 @@ fun FanEngagementCard(
                         emojiIcon = "💬",
                         value = formatNumber(engagement.comments),
                         label = "Comments",
-                        color = ShinyGoldMid,
+                        color = colors.goldDark,
                     )
                 }
 
@@ -351,7 +353,7 @@ fun FanEngagementCard(
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
-                            imageVector = Icons.Default.TrendingUp,
+                            imageVector = Icons.AutoMirrored.Filled.TrendingUp,
                             contentDescription = null,
                             tint = sentimentColor,
                             modifier = Modifier.size(16.dp)
@@ -389,6 +391,7 @@ private fun EngagementStatItem(
     color: Color,
     modifier: Modifier = Modifier,
 ) {
+    val colors = BouncerDesignSystem.colors
     Column(
         modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally,

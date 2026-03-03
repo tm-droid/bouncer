@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.ui.theme.*
 import kotlin.math.abs
+import io.sentry.Sentry
 
 /**
  * Fall of wicket data
@@ -67,20 +68,21 @@ fun FallOfWicketsCard(
     teamName: String,
     currentScore: Int,
     currentOvers: Float,
-    teamColor: Color = ShinyGoldDeep,
+    teamColor: Color = GoldPrimary,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     Card(
         modifier = modifier
             .fillMaxWidth()
             .shadow(
                 elevation = 24.dp,
                 shape = RoundedCornerShape(28.dp),
-                spotColor = ErrorRed.copy(alpha = 0.15f)
+                spotColor = colors.statusLive.copy(alpha = 0.15f)
             ),
-        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.05f)),
+        colors = CardDefaults.cardColors(containerColor = colors.glassSurface),
         shape = RoundedCornerShape(28.dp),
-        border = BorderStroke(0.5.dp, CardBorder.copy(alpha = 0.3f))
+        border = BorderStroke(0.5.dp, colors.glassBorder.copy(alpha = 0.3f))
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
             // Header
@@ -96,12 +98,12 @@ fun FallOfWicketsCard(
                     Icon(
                         Icons.AutoMirrored.Filled.TrendingDown,
                         contentDescription = null,
-                        tint = ErrorRed,
+                        tint = colors.statusLive,
                         modifier = Modifier.size(20.dp)
                     )
                     Text(
                         "FALL OF WICKETS",
-                        color = TextPrimary,
+                        color = colors.textPrimary,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 1.sp
@@ -190,7 +192,7 @@ private fun WicketTimeline(
             drawRoundRect(
                 brush = Brush.verticalGradient(
                     colors = listOf(
-                        ErrorRed.copy(alpha = 0.05f),
+                        StatusLive.copy(alpha = 0.05f),
                         Color.Transparent
                     )
                 ),
@@ -202,9 +204,9 @@ private fun WicketTimeline(
             zones.forEach { score ->
                 val y = chartHeight - (score.toFloat() / maxScore) * chartHeight
                 drawLine(
-                    color = CardBorder.copy(alpha = 0.2f),
+                    color = GlassBorder.copy(alpha = 0.2f),
                     start = Offset(0f, y),
-                    end = Offset(chartWidth, y),
+                    end = Offset(size.width, y),
                     strokeWidth = 1.dp.toPx(),
                     pathEffect = PathEffect.dashPathEffect(floatArrayOf(4f, 6f))
                 )
@@ -229,14 +231,14 @@ private fun WicketTimeline(
                 // Draw line shadow
                 drawPath(
                     path = path,
-                    color = ErrorRed.copy(alpha = 0.2f),
+                    color = StatusLive.copy(alpha = 0.2f),
                     style = Stroke(width = 6.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
                 )
                 
                 // Draw main line
                 drawPath(
                     path = path,
-                    color = ErrorRed,
+                    color = StatusLive,
                     style = Stroke(width = 2.5.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
                 )
                 
@@ -247,14 +249,14 @@ private fun WicketTimeline(
                     
                     // Outer glow
                     drawCircle(
-                        color = ErrorRed.copy(alpha = 0.3f),
+                        color = StatusLive.copy(alpha = 0.3f),
                         radius = 10.dp.toPx(),
                         center = Offset(x, y)
                     )
                     
                     // Dot
                     drawCircle(
-                        color = ErrorRed,
+                        color = StatusLive,
                         radius = 5.dp.toPx(),
                         center = Offset(x, y)
                     )
@@ -270,7 +272,7 @@ private fun WicketTimeline(
             
             // Baseline
             drawLine(
-                color = CardBorder.copy(alpha = 0.3f),
+                color = GlassBorder.copy(alpha = 0.3f),
                 start = Offset(0f, chartHeight),
                 end = Offset(chartWidth, chartHeight),
                 strokeWidth = 1.dp.toPx()
@@ -288,7 +290,7 @@ private fun WicketTimeline(
             (1..10).forEach { num ->
                 Text(
                     text = "$num",
-                    color = if (num <= wickets.size) ErrorRed else TextTertiary.copy(alpha = 0.5f),
+                    color = if (num <= wickets.size) StatusLive else TextTertiary.copy(alpha = 0.5f),
                     fontSize = 9.sp,
                     fontWeight = if (num <= wickets.size) FontWeight.Bold else FontWeight.Normal
                 )
@@ -306,6 +308,7 @@ private fun WicketCard(
     isLatest: Boolean,
     teamColor: Color
 ) {
+    val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "wicket")
     
     val borderAlpha by infiniteTransition.animateFloat(
@@ -320,10 +323,10 @@ private fun WicketCard(
     
     Surface(
         shape = RoundedCornerShape(14.dp),
-        color = if (isLatest) ErrorRed.copy(alpha = 0.1f) else Color.White.copy(alpha = 0.08f).copy(alpha = 0.3f),
+        color = if (isLatest) colors.statusLive.copy(alpha = 0.1f) else colors.glassBorderHighlight.copy(alpha = 0.3f),
         border = BorderStroke(
             1.dp,
-            if (isLatest) ErrorRed.copy(alpha = borderAlpha) else CardBorder.copy(alpha = 0.2f)
+            if (isLatest) colors.statusLive.copy(alpha = borderAlpha) else colors.glassBorder.copy(alpha = 0.2f)
         ),
         modifier = Modifier.width(160.dp)
     ) {
@@ -336,13 +339,13 @@ private fun WicketCard(
             ) {
                 Surface(
                     shape = CircleShape,
-                    color = ErrorRed.copy(alpha = 0.2f),
+                    color = colors.statusLive.copy(alpha = 0.2f),
                     modifier = Modifier.size(28.dp)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Text(
                             text = "${wicket.wicketNumber}",
-                            color = ErrorRed,
+                            color = colors.statusLive,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Black
                         )
@@ -352,26 +355,26 @@ private fun WicketCard(
                 Column(horizontalAlignment = Alignment.End) {
                     Text(
                         text = "${wicket.score}",
-                        color = TextPrimary,
+                        color = colors.textPrimary,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Black
                     )
                     Text(
                         text = "(${wicket.overs} ov)",
-                        color = TextTertiary,
+                        color = colors.textTertiary,
                         fontSize = 10.sp
                     )
                 }
             }
             
             Spacer(modifier = Modifier.height(10.dp))
-            HorizontalDivider(color = CardBorder.copy(alpha = 0.2f))
+            HorizontalDivider(color = colors.glassBorder.copy(alpha = 0.2f))
             Spacer(modifier = Modifier.height(10.dp))
             
             // Batsman info
             Text(
                 text = wicket.batsmanName,
-                color = TextPrimary,
+                color = colors.textPrimary,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1
@@ -408,7 +411,7 @@ private fun WicketCard(
             // Bowler
             Text(
                 text = wicket.bowlerName,
-                color = TextTertiary,
+                color = colors.textTertiary,
                 fontSize = 10.sp,
                 maxLines = 1
             )
@@ -420,13 +423,18 @@ private fun WicketCard(
  * Get color for dismissal type
  */
 private fun getDismissalColor(type: DismissalType): Color {
-    return when (type) {
-        DismissalType.BOWLED -> ErrorRed
-        DismissalType.LBW -> ChartBlue
-        DismissalType.CAUGHT, DismissalType.CAUGHT_BEHIND, DismissalType.CAUGHT_AND_BOWLED -> ShinyGoldDeep
-        DismissalType.RUN_OUT -> WarningYellow
-        DismissalType.STUMPED -> SuccessGreen
-        DismissalType.HIT_WICKET -> TextTertiary
+    try {
+        return when (type) {
+            DismissalType.BOWLED -> StatusLive
+            DismissalType.LBW -> StatusInfo
+            DismissalType.CAUGHT, DismissalType.CAUGHT_BEHIND, DismissalType.CAUGHT_AND_BOWLED -> GoldPrimary
+            DismissalType.RUN_OUT -> StatusWarning
+            DismissalType.STUMPED -> StatusSuccess
+            DismissalType.HIT_WICKET -> TextTertiary
+        }
+    } catch (e: Exception) {
+        Sentry.captureException(e)
+        throw e
     }
 }
 
@@ -435,6 +443,7 @@ private fun getDismissalColor(type: DismissalType): Color {
  */
 @Composable
 private fun WicketsSummary(wickets: List<FallOfWicket>, currentScore: Int) {
+    val colors = BouncerDesignSystem.colors
     val mostCommonDismissal = wickets.groupBy { it.dismissalType }
         .maxByOrNull { it.value.size }
     val avgPartnership = if (wickets.isNotEmpty()) {
@@ -445,8 +454,8 @@ private fun WicketsSummary(wickets: List<FallOfWicket>, currentScore: Int) {
     
     Surface(
         shape = RoundedCornerShape(12.dp),
-        color = Color.White.copy(alpha = 0.08f).copy(alpha = 0.3f),
-        border = BorderStroke(0.5.dp, CardBorder.copy(alpha = 0.2f)),
+        color = colors.glassBorderHighlight.copy(alpha = 0.3f),
+        border = BorderStroke(0.5.dp, colors.glassBorder.copy(alpha = 0.2f)),
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
@@ -457,13 +466,13 @@ private fun WicketsSummary(wickets: List<FallOfWicket>, currentScore: Int) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
                         text = "${wickets.size}",
-                        color = ErrorRed,
+                        color = colors.statusLive,
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Black
                     )
                     Text(
                         text = "Wickets",
-                        color = TextTertiary,
+                        color = colors.textTertiary,
                         fontSize = 9.sp
                     )
                 }
@@ -471,13 +480,13 @@ private fun WicketsSummary(wickets: List<FallOfWicket>, currentScore: Int) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
                         text = "$avgPartnership",
-                        color = ChartBlue,
+                        color = colors.statusInfo,
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Black
                     )
                     Text(
                         text = "Avg Partnership",
-                        color = TextTertiary,
+                        color = colors.textTertiary,
                         fontSize = 9.sp
                     )
                 }
@@ -492,7 +501,7 @@ private fun WicketsSummary(wickets: List<FallOfWicket>, currentScore: Int) {
                         )
                         Text(
                             text = type.label,
-                            color = TextTertiary,
+                            color = colors.textTertiary,
                             fontSize = 9.sp
                         )
                     }
@@ -502,7 +511,7 @@ private fun WicketsSummary(wickets: List<FallOfWicket>, currentScore: Int) {
             // Collapse warning if detected
             collapsePhase?.let { (start, end, wicketsLost) ->
                 Spacer(modifier = Modifier.height(12.dp))
-                HorizontalDivider(color = CardBorder.copy(alpha = 0.2f))
+                HorizontalDivider(color = colors.glassBorder.copy(alpha = 0.2f))
                 Spacer(modifier = Modifier.height(10.dp))
                 
                 Row(
@@ -513,13 +522,13 @@ private fun WicketsSummary(wickets: List<FallOfWicket>, currentScore: Int) {
                     Icon(
                         Icons.Default.Warning,
                         contentDescription = null,
-                        tint = WarningYellow,
+                        tint = colors.statusWarning,
                         modifier = Modifier.size(14.dp)
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
                         text = "Collapse: Lost $wicketsLost wkts between $start-$end",
-                        color = WarningYellow,
+                        color = colors.statusWarning,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Medium
                     )
@@ -533,19 +542,24 @@ private fun WicketsSummary(wickets: List<FallOfWicket>, currentScore: Int) {
  * Find collapse phase (3+ wickets in 20 runs or less)
  */
 private fun findCollapsePhase(wickets: List<FallOfWicket>): Triple<Int, Int, Int>? {
-    if (wickets.size < 3) return null
+    try {
+        if (wickets.size < 3) return null
     
-    for (i in 0 until wickets.size - 2) {
-        val startScore = if (i == 0) 0 else wickets[i - 1].score
-        for (j in i + 2 until wickets.size) {
-            val wicketsLost = j - i + 1
-            val runsScored = wickets[j].score - startScore
-            if (wicketsLost >= 3 && runsScored <= 20) {
-                return Triple(startScore, wickets[j].score, wicketsLost)
+        for (i in 0 until wickets.size - 2) {
+            val startScore = if (i == 0) 0 else wickets[i - 1].score
+            for (j in i + 2 until wickets.size) {
+                val wicketsLost = j - i + 1
+                val runsScored = wickets[j].score - startScore
+                if (wicketsLost >= 3 && runsScored <= 20) {
+                    return Triple(startScore, wickets[j].score, wicketsLost)
+                }
             }
         }
+        return null
+    } catch (e: Exception) {
+        Sentry.captureException(e)
+        throw e
     }
-    return null
 }
 
 /**
@@ -556,6 +570,7 @@ fun CompactFOWDisplay(
     wickets: List<FallOfWicket>,
     modifier: Modifier = Modifier
 ) {
+    val colors = BouncerDesignSystem.colors
     Row(
         modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -563,8 +578,8 @@ fun CompactFOWDisplay(
         wickets.forEach { wicket ->
             Surface(
                 shape = RoundedCornerShape(6.dp),
-                color = ErrorRed.copy(alpha = 0.1f),
-                border = BorderStroke(0.5.dp, ErrorRed.copy(alpha = 0.3f))
+                color = colors.statusLive.copy(alpha = 0.1f),
+                border = BorderStroke(0.5.dp, colors.statusLive.copy(alpha = 0.3f))
             ) {
                 Column(
                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
@@ -572,13 +587,13 @@ fun CompactFOWDisplay(
                 ) {
                     Text(
                         text = "${wicket.score}",
-                        color = TextPrimary,
+                        color = colors.textPrimary,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
                         text = "${wicket.wicketNumber}",
-                        color = ErrorRed,
+                        color = colors.statusLive,
                         fontSize = 9.sp
                     )
                 }

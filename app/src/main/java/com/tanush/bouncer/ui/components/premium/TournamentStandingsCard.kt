@@ -38,6 +38,7 @@ import com.tanush.bouncer.ui.theme.ShinyGoldMid
 import com.tanush.bouncer.ui.theme.SuccessGreen
 import com.tanush.bouncer.ui.theme.WicketRed
 import kotlin.math.*
+import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 
 /**
  * Tournament standings card showing points table
@@ -75,6 +76,7 @@ fun TournamentStandingsCard(
     highlightedTeam: String? = null,
     modifier: Modifier = Modifier,
 ) {
+    val colors = BouncerDesignSystem.colors
     val animatedProgress = remember { Animatable(0f) }
 
     LaunchedEffect(standings) {
@@ -108,7 +110,7 @@ fun TournamentStandingsCard(
                             .clip(CircleShape)
                             .background(
                                 Brush.linearGradient(
-                                    colors = listOf(ShinyGoldMid, ShinyGoldDeep),
+                                    colors = listOf(colors.goldDark, colors.goldPrimary),
                                 ),
                             ),
                         contentAlignment = Alignment.Center,
@@ -126,7 +128,7 @@ fun TournamentStandingsCard(
                     Column {
                         Text(
                             text = "POINTS TABLE",
-                            color = ShinyGoldLight,
+                            color = colors.goldLight,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.5.sp,
@@ -222,8 +224,8 @@ fun TournamentStandingsCard(
                             .clip(RoundedCornerShape(8.dp))
                             .background(
                                 when {
-                                    isHighlighted -> ShinyGoldDeep.copy(alpha = 0.2f)
-                                    isQualifyingPosition -> SuccessGreen.copy(alpha = 0.05f)
+                                    isHighlighted -> colors.goldPrimary.copy(alpha = 0.2f)
+                                    isQualifyingPosition -> colors.statusSuccess.copy(alpha = 0.05f)
                                     else -> Color(0xFF2D2D44).copy(alpha = 0.5f)
                                 },
                             )
@@ -237,10 +239,10 @@ fun TournamentStandingsCard(
                                 .clip(CircleShape)
                                 .background(
                                     when (team.position) {
-                                        1 -> ShinyGoldMid
+                                        1 -> colors.goldDark
                                         2 -> Color(0xFFC0C0C0)
                                         3 -> Color(0xFFCD7F32)
-                                        in 1..4 -> SuccessGreen.copy(alpha = 0.3f)
+                                        in 1..4 -> colors.statusSuccess.copy(alpha = 0.3f)
                                         else -> Color.Transparent
                                     },
                                 ),
@@ -260,7 +262,7 @@ fun TournamentStandingsCard(
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = team.teamCode,
-                                color = if (isHighlighted) ShinyGoldMid else Color.White,
+                                color = if (isHighlighted) colors.goldDark else Color.White,
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Bold,
                             )
@@ -276,8 +278,8 @@ fun TournamentStandingsCard(
                                             .clip(CircleShape)
                                             .background(
                                                 when (result) {
-                                                    MatchOutcome.WIN -> SuccessGreen
-                                                    MatchOutcome.LOSS -> WicketRed
+                                                    MatchOutcome.WIN -> colors.statusSuccess
+                                                    MatchOutcome.LOSS -> colors.statusLive
                                                     else -> Color.Gray
                                                 },
                                             ),
@@ -295,7 +297,7 @@ fun TournamentStandingsCard(
 
                         Text(
                             text = "${team.won}",
-                            color = SuccessGreen,
+                            color = colors.statusSuccess,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Medium,
                             modifier = Modifier.width(28.dp),
@@ -303,14 +305,14 @@ fun TournamentStandingsCard(
 
                         Text(
                             text = "${team.lost}",
-                            color = WicketRed,
+                            color = colors.statusLive,
                             fontSize = 13.sp,
                             modifier = Modifier.width(28.dp),
                         )
 
                         Text(
                             text = String.format("%+.3f", team.netRunRate),
-                            color = if (team.netRunRate >= 0) SuccessGreen else WicketRed,
+                            color = if (team.netRunRate >= 0) colors.statusSuccess else colors.statusLive,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Medium,
                             modifier = Modifier.width(50.dp),
@@ -318,7 +320,7 @@ fun TournamentStandingsCard(
 
                         Text(
                             text = "${team.points}",
-                            color = ShinyGoldMid,
+                            color = colors.goldDark,
                             fontSize = 15.sp,
                             fontWeight = FontWeight.Bold,
                             modifier = Modifier.width(36.dp),
@@ -339,7 +341,7 @@ fun TournamentStandingsCard(
                         modifier = Modifier
                             .size(10.dp)
                             .clip(RoundedCornerShape(2.dp))
-                            .background(SuccessGreen.copy(alpha = 0.3f)),
+                            .background(colors.statusSuccess.copy(alpha = 0.3f)),
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
@@ -354,7 +356,7 @@ fun TournamentStandingsCard(
                         modifier = Modifier
                             .size(8.dp)
                             .clip(CircleShape)
-                            .background(SuccessGreen),
+                            .background(colors.statusSuccess),
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
@@ -369,7 +371,7 @@ fun TournamentStandingsCard(
                         modifier = Modifier
                             .size(8.dp)
                             .clip(CircleShape)
-                            .background(WicketRed),
+                            .background(colors.statusLive),
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
@@ -385,6 +387,7 @@ fun TournamentStandingsCard(
 
 @Composable
 fun TournamentStandingsCardPreview() {
+    val colors = BouncerDesignSystem.colors
     val standings = listOf(
         TeamStanding(
             1, "India", "IND", 8, 7, 1, 0, 14, 1.234f,

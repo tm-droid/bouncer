@@ -45,12 +45,13 @@ fun EnhancedPremiumMatchCard(
     match: CricketMatch,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    team1Color: Color = ShinyGoldDeep,
-    team2Color: Color = ChartBlue
+    team1Color: Color = GoldPrimary,
+    team2Color: Color = StatusInfo
 ) {
     val team1 = match.teams.firstOrNull()
     val team2 = match.teams.getOrNull(1)
     val isLive = match.status.contains("live", ignoreCase = true)
+    val colors = BouncerDesignSystem.colors
     
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
@@ -95,16 +96,16 @@ fun EnhancedPremiumMatchCard(
             .shadow(
                 elevation = if (isLive) 20.dp else 12.dp,
                 shape = RoundedCornerShape(24.dp),
-                spotColor = if (isLive) LiveRedPulse.copy(alpha = 0.3f * liveGlow) else ShinyGoldDeep.copy(alpha = 0.2f),
+                spotColor = if (isLive) colors.statusLive.copy(alpha = 0.3f * liveGlow) else colors.goldPrimary.copy(alpha = 0.2f),
                 ambientColor = Color.Black.copy(alpha = 0.4f)
             )
             .clip(RoundedCornerShape(24.dp))
             .background(
                 Brush.linearGradient(
                     colors = listOf(
-                        Color.White.copy(alpha = 0.08f),
-                        Color.White.copy(alpha = 0.05f),
-                        CardDarkBlue
+                        colors.glassBorderHighlight,
+                        colors.glassSurface,
+                        colors.surface1
                     ),
                     start = Offset(0f, 0f),
                     end = Offset(800f, 600f)
@@ -116,10 +117,10 @@ fun EnhancedPremiumMatchCard(
                         width = 1.5.dp,
                         brush = Brush.linearGradient(
                             colors = listOf(
-                                LiveRedPulse.copy(alpha = liveGlow * 0.6f),
-                                LiveRedPulse.copy(alpha = liveGlow * 0.3f),
+                                colors.statusLive.copy(alpha = liveGlow * 0.6f),
+                                colors.statusLive.copy(alpha = liveGlow * 0.3f),
                                 Color.Transparent,
-                                LiveRedPulse.copy(alpha = liveGlow * 0.4f)
+                                colors.statusLive.copy(alpha = liveGlow * 0.4f)
                             )
                         ),
                         shape = RoundedCornerShape(24.dp)
@@ -127,7 +128,7 @@ fun EnhancedPremiumMatchCard(
                 } else {
                     Modifier.border(
                         width = 0.5.dp,
-                        color = CardBorder.copy(alpha = 0.3f),
+                        color = colors.glassBorder.copy(alpha = 0.3f),
                         shape = RoundedCornerShape(24.dp)
                     )
                 }
@@ -174,9 +175,9 @@ fun EnhancedPremiumMatchCard(
                 brush = Brush.linearGradient(
                     colors = listOf(
                         Color.Transparent,
-                        Color.White.copy(alpha = 0.03f),
-                        Color.White.copy(alpha = 0.08f),
-                        Color.White.copy(alpha = 0.03f),
+                        colors.glassBorderHighlight.copy(alpha = 0.03f),
+                        colors.glassBorderHighlight.copy(alpha = 0.08f),
+                        colors.glassBorderHighlight.copy(alpha = 0.03f),
                         Color.Transparent
                     ),
                     start = Offset(shimmerStart, 0f),
@@ -209,7 +210,7 @@ fun EnhancedPremiumMatchCard(
                     text = match.matchTime.ifEmpty { match.date },
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Medium,
-                    color = TextTertiary,
+                    color = colors.textTertiary,
                     letterSpacing = 0.3.sp
                 )
             }
@@ -259,10 +260,11 @@ fun EnhancedPremiumMatchCard(
 
 @Composable
 private fun LiveBadgeEnhanced(glowIntensity: Float) {
+    val colors = BouncerDesignSystem.colors
     Row(
         modifier = Modifier
             .background(
-                LiveRedPulse.copy(alpha = 0.15f),
+                colors.statusLive.copy(alpha = 0.15f),
                 RoundedCornerShape(12.dp)
             )
             .padding(horizontal = 10.dp, vertical = 6.dp),
@@ -275,18 +277,18 @@ private fun LiveBadgeEnhanced(glowIntensity: Float) {
                 .size(8.dp)
                 .drawBehind {
                     drawCircle(
-                        color = LiveRedPulse.copy(alpha = glowIntensity * 0.4f),
+                        color = colors.statusLive.copy(alpha = glowIntensity * 0.4f),
                         radius = size.maxDimension * (0.7f + glowIntensity * 0.5f)
                     )
                 }
-                .background(LiveRedPulse, CircleShape)
+                .background(colors.statusLive, CircleShape)
         )
         
         Text(
             text = "LIVE",
             fontSize = 11.sp,
             fontWeight = FontWeight.ExtraBold,
-            color = LiveRedPulse,
+            color = colors.statusLive,
             letterSpacing = 1.5.sp
         )
     }
@@ -294,15 +296,16 @@ private fun LiveBadgeEnhanced(glowIntensity: Float) {
 
 @Composable
 private fun MatchTypeBadge(matchType: String) {
+    val colors = BouncerDesignSystem.colors
     Surface(
-        color = ShinyGoldDeep.copy(alpha = 0.12f),
+        color = colors.goldPrimary.copy(alpha = 0.12f),
         shape = RoundedCornerShape(10.dp)
     ) {
         Text(
             text = matchType.uppercase(),
             fontSize = 10.sp,
             fontWeight = FontWeight.Bold,
-            color = ShinyGoldDeep,
+            color = colors.goldPrimary,
             letterSpacing = 1.sp,
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
         )
@@ -315,6 +318,7 @@ private fun TeamDisplay(
     accentColor: Color,
     isLeading: Boolean
 ) {
+    val colors = BouncerDesignSystem.colors
     Column(
         modifier = Modifier.width(120.dp),
         horizontalAlignment = if (isLeading) Alignment.Start else Alignment.End
@@ -346,7 +350,7 @@ private fun TeamDisplay(
                     CircleShape
                 )
                 .clip(CircleShape)
-                .background(CardDarkBlue),
+                .background(colors.surface1),
             contentAlignment = Alignment.Center
         ) {
             if (!team?.logoUrl.isNullOrEmpty()) {
@@ -375,7 +379,7 @@ private fun TeamDisplay(
             text = team?.name ?: "TBA",
             fontSize = 13.sp,
             fontWeight = FontWeight.SemiBold,
-            color = Color.White,
+            color = colors.textPrimary,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             textAlign = if (isLeading) TextAlign.Start else TextAlign.End
@@ -387,7 +391,7 @@ private fun TeamDisplay(
                 text = team?.score?.replace("-", "/") ?: "",
                 fontSize = 22.sp,
                 fontWeight = FontWeight.Black,
-                color = ShinyGoldDeep,
+                color = colors.goldPrimary,
                 letterSpacing = (-0.5).sp
             )
         }
@@ -396,6 +400,7 @@ private fun TeamDisplay(
 
 @Composable
 private fun VsDivider(isLive: Boolean, liveGlow: Float) {
+    val colors = BouncerDesignSystem.colors
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier.padding(horizontal = 8.dp)
@@ -408,7 +413,7 @@ private fun VsDivider(isLive: Boolean, liveGlow: Float) {
                     Brush.verticalGradient(
                         colors = listOf(
                             Color.Transparent,
-                            if (isLive) LiveRedPulse.copy(alpha = liveGlow * 0.5f) else CardBorder,
+                            if (isLive) colors.statusLive.copy(alpha = liveGlow * 0.5f) else colors.glassBorder,
                             Color.Transparent
                         )
                     )
@@ -419,7 +424,7 @@ private fun VsDivider(isLive: Boolean, liveGlow: Float) {
             text = "vs",
             fontSize = 12.sp,
             fontWeight = FontWeight.Bold,
-            color = TextMuted,
+            color = colors.textMuted,
             modifier = Modifier.padding(vertical = 4.dp)
         )
         
@@ -431,7 +436,7 @@ private fun VsDivider(isLive: Boolean, liveGlow: Float) {
                     Brush.verticalGradient(
                         colors = listOf(
                             Color.Transparent,
-                            if (isLive) LiveRedPulse.copy(alpha = liveGlow * 0.5f) else CardBorder,
+                            if (isLive) colors.statusLive.copy(alpha = liveGlow * 0.5f) else colors.glassBorder,
                             Color.Transparent
                         )
                     )
@@ -445,15 +450,16 @@ private fun MatchStatusBar(
     status: String,
     isLive: Boolean
 ) {
+    val colors = BouncerDesignSystem.colors
     Surface(
-        color = if (isLive) LiveRedPulse.copy(alpha = 0.08f) else CardDarkBlue.copy(alpha = 0.5f),
+        color = if (isLive) colors.statusLive.copy(alpha = 0.08f) else colors.surface1.copy(alpha = 0.5f),
         shape = RoundedCornerShape(10.dp)
     ) {
         Text(
             text = status,
             fontSize = 12.sp,
             fontWeight = FontWeight.Medium,
-            color = if (isLive) Color.White else TextSecondary,
+            color = if (isLive) colors.textPrimary else colors.textSecondary,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier
@@ -465,6 +471,7 @@ private fun MatchStatusBar(
 
 @Composable
 private fun RecentBallsStrip(balls: List<String>) {
+    val colors = BouncerDesignSystem.colors
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.Center,
@@ -474,7 +481,7 @@ private fun RecentBallsStrip(balls: List<String>) {
             text = "Recent: ",
             fontSize = 10.sp,
             fontWeight = FontWeight.Medium,
-            color = TextMuted
+            color = colors.textMuted
         )
         
         Row(
@@ -489,12 +496,13 @@ private fun RecentBallsStrip(balls: List<String>) {
 
 @Composable
 private fun BallChip(ball: String) {
+    val colors = BouncerDesignSystem.colors
     val (backgroundColor, textColor) = when {
-        ball == "6" -> BoundarySix.copy(alpha = 0.2f) to BoundarySix
-        ball == "4" -> BoundaryFour.copy(alpha = 0.2f) to BoundaryFour
-        ball == "W" -> WicketRed.copy(alpha = 0.2f) to WicketRed
+        ball == "6" -> colors.goldPrimary.copy(alpha = 0.2f) to colors.goldPrimary
+        ball == "4" -> colors.statusInfo.copy(alpha = 0.2f) to colors.statusInfo
+        ball == "W" -> colors.statusLive.copy(alpha = 0.2f) to colors.statusLive
         ball == "0" || ball == "." -> DotBall.copy(alpha = 0.15f) to DotBall
-        else -> CardBorder.copy(alpha = 0.2f) to TextSecondary
+        else -> colors.glassBorder.copy(alpha = 0.2f) to colors.textSecondary
     }
     
     Box(
@@ -521,7 +529,7 @@ fun QuickActionPill(
     label: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    accentColor: Color = ShinyGoldDeep
+    accentColor: Color = GoldPrimary
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
@@ -562,5 +570,33 @@ fun QuickActionPill(
                 color = accentColor
             )
         }
+    }
+}
+
+// ── Previews ────────────────────────────────────────────────────────────────
+
+@androidx.compose.ui.tooling.preview.Preview(showBackground = true, backgroundColor = 0xFF121212)
+@Composable
+private fun EnhancedPremiumMatchCardPreview() {
+    com.tanush.bouncer.ui.theme.BouncerPreviewTheme {
+        val mockMatch = com.tanush.bouncer.models.CricketMatch(
+            id = "preview-emc",
+            seriesId = "",
+            matchTitle = "India vs England",
+            matchType = "T20",
+            status = "Live",
+            teams = listOf(
+                com.tanush.bouncer.models.CricketMatch.Team("India", "192/3", "", true, null, "IND", "17.4"),
+                com.tanush.bouncer.models.CricketMatch.Team("England", "168/5", "", false, null, "ENG", "16.0")
+            ),
+            venue = "Wankhede Stadium, Mumbai",
+            date = "Today",
+            matchTime = "7:30 PM",
+            score = null,
+            currentStatus = "India lead by 24 runs",
+            info = "Live",
+            winProbability = 72.0
+        )
+        EnhancedPremiumMatchCard(match = mockMatch, onClick = {})
     }
 }

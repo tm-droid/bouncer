@@ -13,6 +13,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.TrendingDown
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.material3.ripple
@@ -39,7 +42,7 @@ data class QuickAction(
     val title: String,
     val subtitle: String = "",
     val icon: ImageVector,
-    val accentColor: Color = ShinyGoldDeep,
+    val accentColor: Color = GoldPrimary,
     val badge: Int = 0,
     val onClick: () -> Unit
 )
@@ -108,13 +111,13 @@ fun QuickActionWidget(
                     onClick = action.onClick
                 ),
             shape = RoundedCornerShape(20.dp),
-            color = Color.White.copy(alpha = 0.05f),
+            color = GlassSurface,
             border = BorderStroke(
                 1.dp,
                 Brush.linearGradient(
                     colors = listOf(
                         action.accentColor.copy(alpha = 0.4f),
-                        CardBorder.copy(alpha = 0.2f)
+                        GlassBorder.copy(alpha = 0.2f)
                     )
                 )
             )
@@ -177,14 +180,14 @@ fun QuickActionWidget(
                     .offset(x = 4.dp, y = (-4).dp)
                     .size(20.dp)
                     .background(BoundarySix, CircleShape)
-                    .border(2.dp, Color.White.copy(alpha = 0.05f), CircleShape),
+                    .border(2.dp, GlassSurface, CircleShape),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = if (action.badge > 9) "9+" else action.badge.toString(),
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
-                    color = BlackBackground
+                    color = BackgroundBase
                 )
             }
         }
@@ -199,7 +202,7 @@ fun LargeActionCard(
     title: String,
     description: String,
     icon: ImageVector,
-    accentColor: Color = ShinyGoldDeep,
+    accentColor: Color = GoldPrimary,
     backgroundGradient: List<Color>? = null,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
@@ -238,8 +241,8 @@ fun LargeActionCard(
                     } else {
                         Brush.linearGradient(
                             colors = listOf(
-                                Color.White.copy(alpha = 0.08f),
-                                Color.White.copy(alpha = 0.05f)
+                                GlassBorderHighlight,
+                                GlassSurface
                             )
                         )
                     }
@@ -249,7 +252,7 @@ fun LargeActionCard(
                     Brush.linearGradient(
                         colors = listOf(
                             accentColor.copy(alpha = 0.5f + shimmerOffset * 0.2f),
-                            CardBorder.copy(alpha = 0.3f)
+                            GlassBorder.copy(alpha = 0.3f)
                         )
                     ),
                     RoundedCornerShape(24.dp)
@@ -302,7 +305,7 @@ fun LargeActionCard(
                 
                 // Arrow
                 Icon(
-                    imageVector = Icons.Default.ArrowForward,
+                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                     contentDescription = null,
                     tint = accentColor,
                     modifier = Modifier.size(24.dp)
@@ -336,17 +339,17 @@ fun FloatingQuickBar(
             .shadow(
                 elevation = 20.dp,
                 shape = RoundedCornerShape(28.dp),
-                spotColor = ShinyGoldDeep.copy(alpha = glowAlpha)
+                spotColor = GoldPrimary.copy(alpha = glowAlpha)
             ),
         shape = RoundedCornerShape(28.dp),
-        color = Color.White.copy(alpha = 0.05f),
+        color = GlassSurface,
         border = BorderStroke(
             1.dp,
             Brush.horizontalGradient(
                 colors = listOf(
-                    ShinyGoldDeep.copy(alpha = 0.5f),
-                    CardBorder.copy(alpha = 0.3f),
-                    ShinyGoldDeep.copy(alpha = 0.5f)
+                    GoldPrimary.copy(alpha = 0.5f),
+                    GlassBorder.copy(alpha = 0.3f),
+                    GoldPrimary.copy(alpha = 0.5f)
                 )
             )
         )
@@ -398,7 +401,7 @@ fun FeatureHighlightCard(
                     modifier = Modifier
                         .size(48.dp)
                         .background(
-                            ShinyGoldDeep.copy(alpha = 0.15f),
+                            GoldPrimary.copy(alpha = 0.15f),
                             RoundedCornerShape(14.dp)
                         ),
                     contentAlignment = Alignment.Center
@@ -406,7 +409,7 @@ fun FeatureHighlightCard(
                     Icon(
                         imageVector = icon,
                         contentDescription = null,
-                        tint = ShinyGoldDeep,
+                        tint = GoldPrimary,
                         modifier = Modifier.size(26.dp)
                     )
                 }
@@ -461,8 +464,8 @@ fun FeatureHighlightCard(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(14.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = ShinyGoldDeep,
-                    contentColor = BlackBackground
+                    containerColor = GoldPrimary,
+                    contentColor = BackgroundBase
                 )
             ) {
                 Text(
@@ -484,14 +487,14 @@ fun CompactStatWidget(
     label: String,
     icon: ImageVector,
     trend: Float? = null, // percentage change
-    accentColor: Color = ShinyGoldDeep,
+    accentColor: Color = GoldPrimary,
     modifier: Modifier = Modifier
 ) {
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(16.dp),
-        color = Color.White.copy(alpha = 0.05f),
-        border = BorderStroke(1.dp, CardBorder.copy(alpha = 0.3f))
+        color = GlassSurface,
+        border = BorderStroke(1.dp, GlassBorder.copy(alpha = 0.3f))
     ) {
         Row(
             modifier = Modifier.padding(14.dp),
@@ -535,17 +538,17 @@ fun CompactStatWidget(
                             horizontalArrangement = Arrangement.spacedBy(2.dp)
                         ) {
                             Icon(
-                                imageVector = if (trend >= 0) Icons.Default.TrendingUp 
-                                    else Icons.Default.TrendingDown,
+                                imageVector = if (trend >= 0) Icons.AutoMirrored.Filled.TrendingUp 
+                                    else Icons.AutoMirrored.Filled.TrendingDown,
                                 contentDescription = null,
-                                tint = if (trend >= 0) ChartGreen else ErrorRed,
+                                tint = if (trend >= 0) ChartGreen else StatusLive,
                                 modifier = Modifier.size(14.dp)
                             )
                             Text(
                                 text = "${if (trend >= 0) "+" else ""}${trend.toInt()}%",
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Medium,
-                                color = if (trend >= 0) ChartGreen else ErrorRed
+                                color = if (trend >= 0) ChartGreen else StatusLive
                             )
                         }
                     }
@@ -572,7 +575,7 @@ fun CircularProgressWidget(
     value: String,
     size: Dp = 100.dp,
     strokeWidth: Dp = 10.dp,
-    progressColor: Color = ShinyGoldDeep,
+    progressColor: Color = GoldPrimary,
     modifier: Modifier = Modifier
 ) {
     val animatedProgress by animateFloatAsState(
@@ -592,7 +595,7 @@ fun CircularProgressWidget(
             androidx.compose.foundation.Canvas(modifier = Modifier.fillMaxSize()) {
                 // Background arc
                 drawArc(
-                    color = CardBorder.copy(alpha = 0.3f),
+                    color = GlassBorder.copy(alpha = 0.3f),
                     startAngle = -90f,
                     sweepAngle = 360f,
                     useCenter = false,
@@ -656,8 +659,8 @@ fun TipCard(
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(16.dp),
-        color = ShinyGoldDeep.copy(alpha = 0.1f),
-        border = BorderStroke(1.dp, ShinyGoldDeep.copy(alpha = 0.3f))
+        color = GoldPrimary.copy(alpha = 0.1f),
+        border = BorderStroke(1.dp, GoldPrimary.copy(alpha = 0.3f))
     ) {
         Row(
             modifier = Modifier.padding(16.dp),
@@ -667,7 +670,7 @@ fun TipCard(
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                tint = ShinyGoldDeep,
+                tint = GoldPrimary,
                 modifier = Modifier.size(24.dp)
             )
             
@@ -676,7 +679,7 @@ fun TipCard(
                     text = title,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
-                    color = ShinyGoldLight
+                    color = GoldLight
                 )
                 
                 Spacer(modifier = Modifier.height(4.dp))

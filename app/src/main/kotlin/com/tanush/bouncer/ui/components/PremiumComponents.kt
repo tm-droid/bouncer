@@ -48,6 +48,7 @@ fun SectionDivider(
         label = "shimmerAlpha"
     )
 
+    val colors = BouncerDesignSystem.colors
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -59,14 +60,14 @@ fun SectionDivider(
         Box(
             modifier = Modifier
                 .size(6.dp)
-                .background(ShinyGoldDeep, CircleShape)
+                .background(colors.goldPrimary, CircleShape)
                 .graphicsLayer { alpha = shimmerAlpha }
         )
         
         // Title
         Text(
             text = title.uppercase(),
-            color = ShinyGoldDeep,
+            color = colors.goldPrimary,
             fontSize = 12.sp,
             fontWeight = FontWeight.Black,
             letterSpacing = 2.sp,
@@ -81,8 +82,8 @@ fun SectionDivider(
                 .background(
                     Brush.horizontalGradient(
                         colors = listOf(
-                            ShinyGoldDeep.copy(alpha = 0.6f),
-                            ShinyGoldDeep.copy(alpha = 0.1f),
+                            colors.goldPrimary.copy(alpha = 0.6f),
+                            colors.goldPrimary.copy(alpha = 0.1f),
                             Color.Transparent
                         )
                     )
@@ -99,6 +100,7 @@ fun GoldSectionDivider(
     modifier: Modifier = Modifier,
     title: String? = null
 ) {
+    val colors = BouncerDesignSystem.colors
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -114,7 +116,7 @@ fun GoldSectionDivider(
                     Brush.horizontalGradient(
                         colors = listOf(
                             Color.Transparent,
-                            ShinyGoldDeep.copy(alpha = 0.5f)
+                            colors.goldPrimary.copy(alpha = 0.5f)
                         )
                     )
                 )
@@ -124,7 +126,7 @@ fun GoldSectionDivider(
             Spacer(modifier = Modifier.width(20.dp))
             Text(
                 text = title.uppercase(),
-                color = ShinyGoldMid,
+                color = colors.goldPrimary,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Black,
                 letterSpacing = 2.5.sp
@@ -140,7 +142,7 @@ fun GoldSectionDivider(
                 .background(
                     Brush.horizontalGradient(
                         colors = listOf(
-                            ShinyGoldDeep.copy(alpha = 0.5f),
+                            colors.goldPrimary.copy(alpha = 0.5f),
                             Color.Transparent
                         )
                     )
@@ -157,6 +159,7 @@ fun LiveBadge(
     modifier: Modifier = Modifier,
     text: String = "LIVE"
 ) {
+    val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "liveBadge")
     val pulse by infiniteTransition.animateFloat(
         initialValue = 0.8f,
@@ -183,9 +186,9 @@ fun LiveBadge(
             .shadow(
                 elevation = 16.dp,
                 shape = RoundedCornerShape(12.dp),
-                spotColor = ErrorRed.copy(alpha = glowAlpha)
+                spotColor = colors.statusLive.copy(alpha = glowAlpha)
             ),
-        color = ErrorRed,
+        color = colors.statusLive,
         shape = RoundedCornerShape(12.dp)
     ) {
         Row(
@@ -205,7 +208,7 @@ fun LiveBadge(
             )
             Text(
                 text = text.uppercase(),
-                color = Color.White,
+                color = colors.textPrimary,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Black,
                 letterSpacing = 1.2.sp
@@ -222,9 +225,10 @@ fun StatCard(
     label: String,
     value: String,
     modifier: Modifier = Modifier,
-    accentColor: Color = ShinyGoldDeep,
+    accentColor: Color = GoldPrimary,
     isHighlighted: Boolean = false
 ) {
+    val colors = BouncerDesignSystem.colors
     Surface(
         modifier = modifier
             .shadow(
@@ -233,10 +237,10 @@ fun StatCard(
                 spotColor = if (isHighlighted) accentColor.copy(alpha = 0.4f) else Color.Black.copy(alpha = 0.3f)
             ),
         shape = RoundedCornerShape(20.dp),
-        color = if (isHighlighted) Color.White.copy(alpha = 0.08f) else Color.White.copy(alpha = 0.05f),
+        color = if (isHighlighted) colors.glassBorderHighlight else colors.glassSurface,
         border = androidx.compose.foundation.BorderStroke(
             1.dp,
-            if (isHighlighted) accentColor.copy(alpha = 0.5f) else CardBorder.copy(alpha = 0.3f)
+            if (isHighlighted) accentColor.copy(alpha = 0.5f) else colors.glassBorder.copy(alpha = 0.3f)
         )
     ) {
         Column(
@@ -245,7 +249,7 @@ fun StatCard(
         ) {
             Text(
                 text = value,
-                color = if (isHighlighted) accentColor else TextPrimary,
+                color = if (isHighlighted) accentColor else colors.textPrimary,
                 fontSize = 28.sp,
                 fontWeight = FontWeight.Black,
                 letterSpacing = (-1).sp
@@ -253,7 +257,7 @@ fun StatCard(
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = label.uppercase(),
-                color = TextTertiary,
+                color = colors.textTertiary,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 1.5.sp
@@ -273,6 +277,7 @@ fun GoldProgressBar(
     backgroundColor: Color = Color.White.copy(alpha = 0.06f),
     showLabel: Boolean = true
 ) {
+    val colors = BouncerDesignSystem.colors
     Column(modifier = modifier) {
         if (showLabel) {
             Row(
@@ -282,14 +287,14 @@ fun GoldProgressBar(
             ) {
                 Text(
                     text = "WIN PROBABILITY",
-                    color = TextSecondary,
+                    color = colors.textSecondary,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Black,
                     letterSpacing = 1.sp
                 )
                 Text(
                     text = "${(progress * 100).toInt()}%",
-                    color = ShinyGoldMid,
+                    color = colors.goldPrimary,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Black
                 )
@@ -302,7 +307,7 @@ fun GoldProgressBar(
                 .height(height)
                 .clip(RoundedCornerShape(50))
                 .background(backgroundColor)
-                .border(0.5.dp, CardBorder.copy(alpha = 0.5f), RoundedCornerShape(50))
+                .border(0.5.dp, colors.glassBorder.copy(alpha = 0.5f), RoundedCornerShape(50))
         ) {
             Box(
                 modifier = Modifier
@@ -310,7 +315,7 @@ fun GoldProgressBar(
                     .fillMaxHeight()
                     .background(
                         Brush.horizontalGradient(
-                            colors = listOf(ShinyGoldDark, ShinyGoldDeep, ShinyGoldLight)
+                            colors = listOf(colors.goldDark, colors.goldPrimary, colors.goldLight)
                         ),
                         RoundedCornerShape(50)
                     )
@@ -323,7 +328,7 @@ fun GoldProgressBar(
 fun GlowingIconButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    glowColor: Color = ShinyGoldDeep,
+    glowColor: Color = GoldPrimary,
     backgroundColor: Color = Color.White.copy(alpha = 0.06f),
     content: @Composable () -> Unit
 ) {

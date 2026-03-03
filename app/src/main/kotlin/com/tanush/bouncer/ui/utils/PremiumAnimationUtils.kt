@@ -21,6 +21,7 @@ import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.platform.LocalView
 import com.tanush.bouncer.ui.theme.GoldDark
 import com.tanush.bouncer.ui.theme.GoldLight
+import io.sentry.Sentry
 
 /**
  * Haptic feedback types for premium interactions
@@ -40,38 +41,48 @@ enum class HapticType {
  * Perform haptic feedback based on type
  */
 fun performHaptic(view: View, type: HapticType) {
-    val constant = when (type) {
-        HapticType.LIGHT -> HapticFeedbackConstants.KEYBOARD_TAP
-        HapticType.MEDIUM -> HapticFeedbackConstants.VIRTUAL_KEY
-        HapticType.HEAVY -> HapticFeedbackConstants.LONG_PRESS
-        HapticType.SUCCESS -> HapticFeedbackConstants.CONFIRM
-        HapticType.WARNING -> HapticFeedbackConstants.REJECT
-        HapticType.ERROR -> HapticFeedbackConstants.REJECT
-        HapticType.SELECTION -> HapticFeedbackConstants.CLOCK_TICK
-        HapticType.IMPACT -> HapticFeedbackConstants.CONTEXT_CLICK
+    try {
+        val constant = when (type) {
+            HapticType.LIGHT -> HapticFeedbackConstants.KEYBOARD_TAP
+            HapticType.MEDIUM -> HapticFeedbackConstants.VIRTUAL_KEY
+            HapticType.HEAVY -> HapticFeedbackConstants.LONG_PRESS
+            HapticType.SUCCESS -> HapticFeedbackConstants.CONFIRM
+            HapticType.WARNING -> HapticFeedbackConstants.REJECT
+            HapticType.ERROR -> HapticFeedbackConstants.REJECT
+            HapticType.SELECTION -> HapticFeedbackConstants.CLOCK_TICK
+            HapticType.IMPACT -> HapticFeedbackConstants.CONTEXT_CLICK
+        }
+        view.performHapticFeedback(constant)
+    } catch (e: Exception) {
+        Sentry.captureException(e)
+        throw e
     }
-    view.performHapticFeedback(constant)
 }
 
 /**
  * Perform vibration with custom pattern
  */
 fun performVibration(context: Context, duration: Long = 10L, amplitude: Int = 50) {
-    val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-        val vibratorManager = context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
-        vibratorManager.defaultVibrator
-    } else {
-        @Suppress("DEPRECATION")
-        context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
-    }
+    try {
+        val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val vibratorManager = context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
+            vibratorManager.defaultVibrator
+        } else {
+            @Suppress("DEPRECATION")
+            context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+        }
     
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-        vibrator.vibrate(
-            VibrationEffect.createOneShot(duration, amplitude)
-        )
-    } else {
-        @Suppress("DEPRECATION")
-        vibrator.vibrate(duration)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            vibrator.vibrate(
+                VibrationEffect.createOneShot(duration, amplitude)
+            )
+        } else {
+            @Suppress("DEPRECATION")
+            vibrator.vibrate(duration)
+        }
+    } catch (e: Exception) {
+        Sentry.captureException(e)
+        throw e
     }
 }
 
@@ -99,21 +110,26 @@ object VibrationPatterns {
  * Perform pattern vibration
  */
 fun performPatternVibration(context: Context, pattern: LongArray) {
-    val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-        val vibratorManager = context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
-        vibratorManager.defaultVibrator
-    } else {
-        @Suppress("DEPRECATION")
-        context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
-    }
+    try {
+        val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val vibratorManager = context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
+            vibratorManager.defaultVibrator
+        } else {
+            @Suppress("DEPRECATION")
+            context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+        }
     
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-        vibrator.vibrate(
-            VibrationEffect.createWaveform(pattern, -1)
-        )
-    } else {
-        @Suppress("DEPRECATION")
-        vibrator.vibrate(pattern, -1)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            vibrator.vibrate(
+                VibrationEffect.createWaveform(pattern, -1)
+            )
+        } else {
+            @Suppress("DEPRECATION")
+            vibrator.vibrate(pattern, -1)
+        }
+    } catch (e: Exception) {
+        Sentry.captureException(e)
+        throw e
     }
 }
 
@@ -203,100 +219,140 @@ fun Modifier.pulseGlow(
  * Premium enter transition
  */
 fun premiumEnterTransition(): EnterTransition {
-    return fadeIn(
-        animationSpec = tween(300, easing = FastOutSlowInEasing)
-    ) + slideInHorizontally(
-        initialOffsetX = { it / 4 },
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessLow
+    try {
+        return fadeIn(
+            animationSpec = tween(300, easing = FastOutSlowInEasing)
+        ) + slideInHorizontally(
+            initialOffsetX = { it / 4 },
+            animationSpec = spring(
+                dampingRatio = Spring.DampingRatioMediumBouncy,
+                stiffness = Spring.StiffnessLow
+            )
         )
-    )
+    } catch (e: Exception) {
+        Sentry.captureException(e)
+        throw e
+    }
 }
 
 /**
  * Premium exit transition
  */
 fun premiumExitTransition(): ExitTransition {
-    return fadeOut(
-        animationSpec = tween(200, easing = FastOutLinearInEasing)
-    ) + slideOutHorizontally(
-        targetOffsetX = { -it / 4 },
-        animationSpec = tween(250)
-    )
+    try {
+        return fadeOut(
+            animationSpec = tween(200, easing = FastOutLinearInEasing)
+        ) + slideOutHorizontally(
+            targetOffsetX = { -it / 4 },
+            animationSpec = tween(250)
+        )
+    } catch (e: Exception) {
+        Sentry.captureException(e)
+        throw e
+    }
 }
 
 /**
  * Premium pop enter transition (going back)
  */
 fun premiumPopEnterTransition(): EnterTransition {
-    return fadeIn(
-        animationSpec = tween(300, easing = FastOutSlowInEasing)
-    ) + slideInHorizontally(
-        initialOffsetX = { -it / 4 },
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessLow
+    try {
+        return fadeIn(
+            animationSpec = tween(300, easing = FastOutSlowInEasing)
+        ) + slideInHorizontally(
+            initialOffsetX = { -it / 4 },
+            animationSpec = spring(
+                dampingRatio = Spring.DampingRatioMediumBouncy,
+                stiffness = Spring.StiffnessLow
+            )
         )
-    )
+    } catch (e: Exception) {
+        Sentry.captureException(e)
+        throw e
+    }
 }
 
 /**
  * Premium pop exit transition (going back)
  */
 fun premiumPopExitTransition(): ExitTransition {
-    return fadeOut(
-        animationSpec = tween(200, easing = FastOutLinearInEasing)
-    ) + slideOutHorizontally(
-        targetOffsetX = { it / 4 },
-        animationSpec = tween(250)
-    )
+    try {
+        return fadeOut(
+            animationSpec = tween(200, easing = FastOutLinearInEasing)
+        ) + slideOutHorizontally(
+            targetOffsetX = { it / 4 },
+            animationSpec = tween(250)
+        )
+    } catch (e: Exception) {
+        Sentry.captureException(e)
+        throw e
+    }
 }
 
 /**
  * Slide up enter transition for bottom sheets
  */
 fun slideUpEnterTransition(): EnterTransition {
-    return slideInVertically(
-        initialOffsetY = { it },
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessLow
-        )
-    ) + fadeIn(animationSpec = tween(300))
+    try {
+        return slideInVertically(
+            initialOffsetY = { it },
+            animationSpec = spring(
+                dampingRatio = Spring.DampingRatioMediumBouncy,
+                stiffness = Spring.StiffnessLow
+            )
+        ) + fadeIn(animationSpec = tween(300))
+    } catch (e: Exception) {
+        Sentry.captureException(e)
+        throw e
+    }
 }
 
 /**
  * Slide down exit transition for bottom sheets
  */
 fun slideDownExitTransition(): ExitTransition {
-    return slideOutVertically(
-        targetOffsetY = { it },
-        animationSpec = tween(200)
-    ) + fadeOut(animationSpec = tween(150))
+    try {
+        return slideOutVertically(
+            targetOffsetY = { it },
+            animationSpec = tween(200)
+        ) + fadeOut(animationSpec = tween(150))
+    } catch (e: Exception) {
+        Sentry.captureException(e)
+        throw e
+    }
 }
 
 /**
  * Scale and fade enter transition
  */
 fun scaleEnterTransition(): EnterTransition {
-    return scaleIn(
-        initialScale = 0.9f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessLow
-        )
-    ) + fadeIn(animationSpec = tween(300))
+    try {
+        return scaleIn(
+            initialScale = 0.9f,
+            animationSpec = spring(
+                dampingRatio = Spring.DampingRatioMediumBouncy,
+                stiffness = Spring.StiffnessLow
+            )
+        ) + fadeIn(animationSpec = tween(300))
+    } catch (e: Exception) {
+        Sentry.captureException(e)
+        throw e
+    }
 }
 
 /**
  * Scale and fade exit transition
  */
 fun scaleExitTransition(): ExitTransition {
-    return scaleOut(
-        targetScale = 0.9f,
-        animationSpec = tween(200)
-    ) + fadeOut(animationSpec = tween(150))
+    try {
+        return scaleOut(
+            targetScale = 0.9f,
+            animationSpec = tween(200)
+        ) + fadeOut(animationSpec = tween(150))
+    } catch (e: Exception) {
+        Sentry.captureException(e)
+        throw e
+    }
 }
 
 // ============ Animation Specs ============

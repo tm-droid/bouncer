@@ -41,6 +41,7 @@ import com.tanush.bouncer.ui.theme.SuccessGreen
 import com.tanush.bouncer.ui.theme.WarningYellow
 import com.tanush.bouncer.ui.theme.WicketRed
 import kotlin.math.*
+import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 
 /**
  * Team form card showing recent match results
@@ -81,6 +82,7 @@ fun TeamFormCard(
     isWinningStreak: Boolean,
     modifier: Modifier = Modifier,
 ) {
+    val colors = BouncerDesignSystem.colors
     val animatedProgress = remember { Animatable(0f) }
 
     LaunchedEffect(recentMatches) {
@@ -117,7 +119,7 @@ fun TeamFormCard(
                             .clip(CircleShape)
                             .background(
                                 Brush.linearGradient(
-                                    colors = listOf(ShinyGoldMid, ShinyGoldDeep),
+                                    colors = listOf(colors.goldDark, colors.goldPrimary),
                                 ),
                             ),
                         contentAlignment = Alignment.Center,
@@ -135,7 +137,7 @@ fun TeamFormCard(
                     Column {
                         Text(
                             text = "TEAM FORM",
-                            color = ShinyGoldLight,
+                            color = colors.goldLight,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.5.sp,
@@ -153,7 +155,7 @@ fun TeamFormCard(
                 Column(horizontalAlignment = Alignment.End) {
                     Text(
                         text = "${(winPercentage * animatedProgress.value).toInt()}%",
-                        color = ShinyGoldMid,
+                        color = colors.goldDark,
                         fontSize = 24.sp,
                         fontWeight = FontWeight.Bold,
                     )
@@ -174,9 +176,9 @@ fun TeamFormCard(
             ) {
                 recentMatches.takeLast(5).reversed().forEachIndexed { index, match ->
                     val bubbleColor = when (match.matchResult) {
-                        MatchOutcome.WIN -> SuccessGreen
-                        MatchOutcome.LOSS -> WicketRed
-                        MatchOutcome.DRAW, MatchOutcome.TIE -> WarningYellow
+                        MatchOutcome.WIN -> colors.statusSuccess
+                        MatchOutcome.LOSS -> colors.statusLive
+                        MatchOutcome.DRAW, MatchOutcome.TIE -> colors.statusWarning
                         MatchOutcome.NO_RESULT -> Color.Gray
                     }
 
@@ -236,7 +238,7 @@ fun TeamFormCard(
                 FormStatColumn(
                     value = "$wins",
                     label = "Wins",
-                    color = SuccessGreen,
+                    color = colors.statusSuccess,
                 )
 
                 Box(
@@ -249,7 +251,7 @@ fun TeamFormCard(
                 FormStatColumn(
                     value = "$losses",
                     label = "Losses",
-                    color = WicketRed,
+                    color = colors.statusLive,
                 )
 
                 Box(
@@ -262,7 +264,7 @@ fun TeamFormCard(
                 FormStatColumn(
                     value = "$currentStreak",
                     label = if (isWinningStreak) "Win Streak" else "Loss Streak",
-                    color = if (isWinningStreak) SuccessGreen else WicketRed,
+                    color = if (isWinningStreak) colors.statusSuccess else colors.statusLive,
                 )
             }
 
@@ -297,8 +299,8 @@ fun TeamFormCard(
                                 .clip(CircleShape)
                                 .background(
                                     when (match.matchResult) {
-                                        MatchOutcome.WIN -> SuccessGreen.copy(alpha = 0.2f)
-                                        MatchOutcome.LOSS -> WicketRed.copy(alpha = 0.2f)
+                                        MatchOutcome.WIN -> colors.statusSuccess.copy(alpha = 0.2f)
+                                        MatchOutcome.LOSS -> colors.statusLive.copy(alpha = 0.2f)
                                         else -> Color.Gray.copy(alpha = 0.2f)
                                     },
                                 ),
@@ -313,8 +315,8 @@ fun TeamFormCard(
                                     MatchOutcome.NO_RESULT -> "NR"
                                 },
                                 color = when (match.matchResult) {
-                                    MatchOutcome.WIN -> SuccessGreen
-                                    MatchOutcome.LOSS -> WicketRed
+                                    MatchOutcome.WIN -> colors.statusSuccess
+                                    MatchOutcome.LOSS -> colors.statusLive
                                     else -> Color.Gray
                                 },
                                 fontSize = 14.sp,
@@ -337,7 +339,7 @@ fun TeamFormCard(
                                 )
                                 Text(
                                     text = match.format,
-                                    color = ShinyGoldMid,
+                                    color = colors.goldDark,
                                     fontSize = 10.sp,
                                 )
                             }
@@ -373,6 +375,7 @@ private fun FormStatColumn(
     label: String,
     color: Color,
 ) {
+    val colors = BouncerDesignSystem.colors
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
@@ -392,6 +395,7 @@ private fun FormStatColumn(
 
 @Composable
 fun TeamFormCardPreview() {
+    val colors = BouncerDesignSystem.colors
     val matches = listOf(
         TeamMatchRecord("Australia", MatchOutcome.WIN, "186/4", "182/8", "Mumbai", "Nov 15", "T20I"),
         TeamMatchRecord("England", MatchOutcome.WIN, "224/2", "215/7", "Delhi", "Nov 12", "T20I"),

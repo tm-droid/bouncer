@@ -27,6 +27,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.ui.theme.*
+import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 
 /**
  * Match insights card showing key analysis points
@@ -56,6 +57,7 @@ fun MatchInsightsCard(
     keyHighlight: String,
     modifier: Modifier = Modifier,
 ) {
+    val colors = BouncerDesignSystem.colors
     val animatedProgress = remember { Animatable(0f) }
 
     val infiniteTransition = rememberInfiniteTransition(label = "insight")
@@ -101,7 +103,7 @@ fun MatchInsightsCard(
                             .background(
                                 Brush.linearGradient(
                                     colors = listOf(
-                                        WarningYellow.copy(alpha = lightPulse),
+                                        colors.statusWarning.copy(alpha = lightPulse),
                                         Color(0xFFFF9800).copy(alpha = lightPulse),
                                     ),
                                 ),
@@ -121,7 +123,7 @@ fun MatchInsightsCard(
                     Column {
                         Text(
                             text = "MATCH INSIGHTS",
-                            color = ShinyGoldLight,
+                            color = colors.goldLight,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.5.sp,
@@ -138,12 +140,12 @@ fun MatchInsightsCard(
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(8.dp))
-                        .background(ChartBlue.copy(alpha = 0.2f))
+                        .background(colors.statusInfo.copy(alpha = 0.2f))
                         .padding(horizontal = 10.dp, vertical = 4.dp),
                 ) {
                     Text(
                         text = "LIVE",
-                        color = ChartBlue,
+                        color = colors.statusInfo,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
                     )
@@ -160,8 +162,8 @@ fun MatchInsightsCard(
                     .background(
                         Brush.horizontalGradient(
                             colors = listOf(
-                                ShinyGoldDeep.copy(alpha = 0.3f),
-                                ShinyGoldMid.copy(alpha = 0.1f),
+                                colors.goldPrimary.copy(alpha = 0.3f),
+                                colors.goldDark.copy(alpha = 0.1f),
                             ),
                         ),
                     )
@@ -178,7 +180,7 @@ fun MatchInsightsCard(
                     Column {
                         Text(
                             text = "KEY INSIGHT",
-                            color = ShinyGoldLight,
+                            color = colors.goldLight,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.sp,
@@ -238,9 +240,10 @@ private fun InsightGridItem(
     progress: Float,
     modifier: Modifier = Modifier,
 ) {
+    val colors = BouncerDesignSystem.colors
     val trendColor = when (insight.trend) {
-        InsightTrend.POSITIVE -> SuccessGreen
-        InsightTrend.NEGATIVE -> WicketRed
+        InsightTrend.POSITIVE -> colors.statusSuccess
+        InsightTrend.NEGATIVE -> colors.statusLive
         InsightTrend.NEUTRAL -> Color.Gray
     }
 
@@ -312,6 +315,7 @@ private fun PhaseAnalysisRow(
     currentPhase: String,
     progress: Float,
 ) {
+    val colors = BouncerDesignSystem.colors
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -348,7 +352,7 @@ private fun PhaseAnalysisRow(
                             .background(
                                 if (isActive) {
                                     Brush.linearGradient(
-                                        colors = listOf(ShinyGoldMid, ShinyGoldDeep),
+                                        colors = listOf(colors.goldDark, colors.goldPrimary),
                                     )
                                 } else {
                                     Brush.linearGradient(
@@ -375,7 +379,7 @@ private fun PhaseAnalysisRow(
 
                     Text(
                         text = phase,
-                        color = if (isActive) ShinyGoldLight else Color.Gray,
+                        color = if (isActive) colors.goldLight else Color.Gray,
                         fontSize = 10.sp,
                         fontWeight = if (isActive) FontWeight.Bold else FontWeight.Normal,
                     )
@@ -399,9 +403,9 @@ private fun PhaseAnalysisRow(
                         .weight(0.3f)
                         .background(
                             if (currentPhase.contains("Powerplay")) {
-                                ShinyGoldMid
+                                colors.goldDark
                             } else if (progress > 0.3f) {
-                                SuccessGreen.copy(alpha = 0.5f)
+                                colors.statusSuccess.copy(alpha = 0.5f)
                             } else {
                                 Color.White.copy(alpha = 0.08f)
                             },
@@ -414,9 +418,9 @@ private fun PhaseAnalysisRow(
                         .weight(0.4f)
                         .background(
                             if (currentPhase.contains("Middle")) {
-                                ShinyGoldMid
+                                colors.goldDark
                             } else if (progress > 0.7f) {
-                                SuccessGreen.copy(alpha = 0.5f)
+                                colors.statusSuccess.copy(alpha = 0.5f)
                             } else {
                                 Color.White.copy(alpha = 0.08f)
                             },
@@ -429,7 +433,7 @@ private fun PhaseAnalysisRow(
                         .weight(0.3f)
                         .background(
                             if (currentPhase.contains("Death") || currentPhase.contains("Final")) {
-                                ShinyGoldMid
+                                colors.goldDark
                             } else {
                                 Color.White.copy(alpha = 0.08f)
                             },

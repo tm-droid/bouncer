@@ -51,6 +51,7 @@ import com.tanush.bouncer.ui.theme.ShinyGoldMid
 import com.tanush.bouncer.ui.theme.SuccessGreen
 import com.tanush.bouncer.ui.theme.WarningYellow
 import com.tanush.bouncer.ui.theme.WicketRed
+import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 
 /**
  * Impact player card showing most impactful moments
@@ -75,6 +76,7 @@ fun ImpactPlayerCard(
     negativeImpact: Float,
     modifier: Modifier = Modifier,
 ) {
+    val colors = BouncerDesignSystem.colors
     val animatedProgress = remember { Animatable(0f) }
 
     val infiniteTransition = rememberInfiniteTransition(label = "impact")
@@ -96,9 +98,9 @@ fun ImpactPlayerCard(
     }
 
     val impactColor = when {
-        totalImpact >= 80 -> SuccessGreen
-        totalImpact >= 50 -> ChartBlue
-        totalImpact >= 30 -> WarningYellow
+        totalImpact >= 80 -> colors.statusSuccess
+        totalImpact >= 50 -> colors.statusInfo
+        totalImpact >= 30 -> colors.statusWarning
         else -> Color.Gray
     }
 
@@ -126,7 +128,7 @@ fun ImpactPlayerCard(
                             .clip(CircleShape)
                             .background(
                                 Brush.linearGradient(
-                                    colors = listOf(ShinyGoldMid, ShinyGoldDeep),
+                                    colors = listOf(colors.goldDark, colors.goldPrimary),
                                 ),
                             ),
                         contentAlignment = Alignment.Center,
@@ -149,7 +151,7 @@ fun ImpactPlayerCard(
                     Column {
                         Text(
                             text = "IMPACT PLAYER",
-                            color = ShinyGoldLight,
+                            color = colors.goldLight,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.5.sp,
@@ -197,7 +199,7 @@ fun ImpactPlayerCard(
                         val sweepAngle = 270f * (totalImpact / 100f) * animatedProgress.value
                         drawArc(
                             brush = Brush.sweepGradient(
-                                colors = listOf(WicketRed, WarningYellow, SuccessGreen),
+                                colors = listOf(colors.statusLive, colors.statusWarning, colors.statusSuccess),
                                 center = center,
                             ),
                             startAngle = 135f,
@@ -231,14 +233,14 @@ fun ImpactPlayerCard(
                     ImpactBreakdownRow(
                         label = "Positive",
                         value = positiveImpact,
-                        color = SuccessGreen,
+                        color = colors.statusSuccess,
                         progress = animatedProgress.value,
                     )
 
                     ImpactBreakdownRow(
                         label = "Negative",
                         value = negativeImpact,
-                        color = WicketRed,
+                        color = colors.statusLive,
                         progress = animatedProgress.value,
                     )
 
@@ -256,7 +258,7 @@ fun ImpactPlayerCard(
                         )
                         Text(
                             text = "${if (positiveImpact - negativeImpact >= 0) "+" else ""}${(positiveImpact - negativeImpact).toInt()}",
-                            color = if (positiveImpact >= negativeImpact) SuccessGreen else WicketRed,
+                            color = if (positiveImpact >= negativeImpact) colors.statusSuccess else colors.statusLive,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold,
                         )
@@ -305,7 +307,7 @@ fun ImpactPlayerCard(
                         impactEvents.forEach { event ->
                             val x = (event.overNumber / maxOvers) * width * animatedProgress.value
                             val yOffset = if (event.isPositive) -20f else 20f
-                            val pointColor = if (event.isPositive) SuccessGreen else WicketRed
+                            val pointColor = if (event.isPositive) colors.statusSuccess else colors.statusLive
                             val radius = (event.impactPoints / 20f).coerceIn(4f, 12f)
 
                             // Draw line to point
@@ -359,16 +361,16 @@ fun ImpactPlayerCard(
                                     .clip(CircleShape)
                                     .background(
                                         if (event.isPositive) {
-                                            SuccessGreen.copy(alpha = 0.2f)
+                                            colors.statusSuccess.copy(alpha = 0.2f)
                                         } else {
-                                            WicketRed.copy(alpha = 0.2f)
+                                            colors.statusLive.copy(alpha = 0.2f)
                                         },
                                     ),
                                 contentAlignment = Alignment.Center,
                             ) {
                                 Text(
                                     text = if (event.isPositive) "+" else "-",
-                                    color = if (event.isPositive) SuccessGreen else WicketRed,
+                                    color = if (event.isPositive) colors.statusSuccess else colors.statusLive,
                                     fontSize = 18.sp,
                                     fontWeight = FontWeight.Bold,
                                 )
@@ -392,7 +394,7 @@ fun ImpactPlayerCard(
 
                             Text(
                                 text = "${if (event.isPositive) "+" else "-"}${event.impactPoints.toInt()}",
-                                color = if (event.isPositive) SuccessGreen else WicketRed,
+                                color = if (event.isPositive) colors.statusSuccess else colors.statusLive,
                                 fontSize = 16.sp,
                                 fontWeight = FontWeight.Bold,
                             )
@@ -411,6 +413,7 @@ private fun ImpactBreakdownRow(
     color: Color,
     progress: Float,
 ) {
+    val colors = BouncerDesignSystem.colors
     Row(
         modifier = Modifier.width(120.dp),
         horizontalArrangement = Arrangement.SpaceBetween,

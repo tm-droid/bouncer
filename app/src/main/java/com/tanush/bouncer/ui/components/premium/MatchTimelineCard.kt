@@ -38,6 +38,7 @@ import com.tanush.bouncer.ui.theme.ShinyGoldLight
 import com.tanush.bouncer.ui.theme.ShinyGoldMid
 import com.tanush.bouncer.ui.theme.WarningYellow
 import com.tanush.bouncer.ui.theme.WicketRed
+import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 
 /**
  * Match timeline card showing key events
@@ -78,6 +79,7 @@ fun MatchTimelineCard(
     matchPhase: String,
     modifier: Modifier = Modifier,
 ) {
+    val colors = BouncerDesignSystem.colors
     val animatedProgress = remember { Animatable(0f) }
 
     val infiniteTransition = rememberInfiniteTransition(label = "timeline")
@@ -140,7 +142,7 @@ fun MatchTimelineCard(
                     Column {
                         Text(
                             text = "MATCH TIMELINE",
-                            color = ShinyGoldLight,
+                            color = colors.goldLight,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.5.sp,
@@ -156,12 +158,12 @@ fun MatchTimelineCard(
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(8.dp))
-                        .background(LiveBlue.copy(alpha = 0.2f))
+                        .background(colors.statusInfo.copy(alpha = 0.2f))
                         .padding(horizontal = 10.dp, vertical = 4.dp),
                 ) {
                     Text(
                         text = "Over ${currentOver.toInt()}",
-                        color = LiveBlue,
+                        color = colors.statusInfo,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
                     )
@@ -198,7 +200,7 @@ fun MatchTimelineCard(
                     val progressWidth = (currentOver / maxOver) * width * animatedProgress.value
                     drawLine(
                         brush = Brush.horizontalGradient(
-                            colors = listOf(ShinyGoldMid, ShinyGoldDeep),
+                            colors = listOf(colors.goldDark, colors.goldPrimary),
                         ),
                         start = Offset(0f, centerY),
                         end = Offset(progressWidth, centerY),
@@ -210,9 +212,9 @@ fun MatchTimelineCard(
                     events.forEach { event ->
                         val x = (event.over / maxOver) * width
                         val markerColor = when (event.impactLevel) {
-                            ImpactLevel.CRITICAL -> WicketRed
-                            ImpactLevel.HIGH -> WarningYellow
-                            ImpactLevel.MEDIUM -> ChartBlue
+                            ImpactLevel.CRITICAL -> colors.statusLive
+                            ImpactLevel.HIGH -> colors.statusWarning
+                            ImpactLevel.MEDIUM -> colors.statusInfo
                             ImpactLevel.LOW -> Color.Gray
                         }
 
@@ -238,8 +240,8 @@ fun MatchTimelineCard(
                     drawCircle(
                         brush = Brush.radialGradient(
                             colors = listOf(
-                                ShinyGoldMid.copy(alpha = 0.4f * currentPulse),
-                                ShinyGoldMid.copy(alpha = 0f),
+                                colors.goldDark.copy(alpha = 0.4f * currentPulse),
+                                colors.goldDark.copy(alpha = 0f),
                             ),
                             center = Offset(currentX, centerY),
                             radius = 20.dp.toPx() * currentPulse,
@@ -250,7 +252,7 @@ fun MatchTimelineCard(
 
                     drawCircle(
                         brush = Brush.linearGradient(
-                            colors = listOf(ShinyGoldLight, ShinyGoldMid),
+                            colors = listOf(colors.goldLight, colors.goldDark),
                         ),
                         radius = 10.dp.toPx(),
                         center = Offset(currentX, centerY),
@@ -308,10 +310,11 @@ private fun TimelineEventRow(
     isLatest: Boolean,
     progress: Float,
 ) {
+    val colors = BouncerDesignSystem.colors
     val impactColor = when (event.impactLevel) {
-        ImpactLevel.CRITICAL -> WicketRed
-        ImpactLevel.HIGH -> WarningYellow
-        ImpactLevel.MEDIUM -> ChartBlue
+        ImpactLevel.CRITICAL -> colors.statusLive
+        ImpactLevel.HIGH -> colors.statusWarning
+        ImpactLevel.MEDIUM -> colors.statusInfo
         ImpactLevel.LOW -> Color.Gray
     }
 
@@ -391,6 +394,7 @@ private fun TimelineEventRow(
 
 @Composable
 fun MatchTimelineCardPreview() {
+    val colors = BouncerDesignSystem.colors
     val events = listOf(
         TimelineEventData(
             over = 18.4f,

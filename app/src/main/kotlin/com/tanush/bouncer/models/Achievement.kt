@@ -1,6 +1,7 @@
 package com.tanush.bouncer.models
 
 import android.content.Context
+import io.sentry.Sentry
 
 enum class AchievementKind(val id: String) {
     // Batting
@@ -20,26 +21,46 @@ enum class AchievementKind(val id: String) {
         private const val KEY_UNLOCKED = "unlocked_achievements"
         
         fun fromString(value: String): AchievementKind? {
-            return entries.find { it.id == value }
+            try {
+                return entries.find { it.id == value }
+            } catch (e: Exception) {
+                Sentry.captureException(e)
+                throw e
+            }
         }
         
         fun loadUnlocked(context: Context): Set<AchievementKind> {
-            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            val savedIds = prefs.getStringSet(KEY_UNLOCKED, emptySet()) ?: emptySet()
-            return savedIds.mapNotNull { fromString(it) }.toSet()
+            try {
+                val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                val savedIds = prefs.getStringSet(KEY_UNLOCKED, emptySet()) ?: emptySet()
+                return savedIds.mapNotNull { fromString(it) }.toSet()
+            } catch (e: Exception) {
+                Sentry.captureException(e)
+                throw e
+            }
         }
         
         fun saveUnlocked(context: Context, achievements: Set<AchievementKind>) {
-            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            prefs.edit().putStringSet(KEY_UNLOCKED, achievements.map { it.id }.toSet()).apply()
+            try {
+                val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                prefs.edit().putStringSet(KEY_UNLOCKED, achievements.map { it.id }.toSet()).apply()
+            } catch (e: Exception) {
+                Sentry.captureException(e)
+                throw e
+            }
         }
         
         fun unlock(context: Context, kind: AchievementKind): Boolean {
-            val current = loadUnlocked(context).toMutableSet()
-            if (current.contains(kind)) return false
-            current.add(kind)
-            saveUnlocked(context, current)
-            return true
+            try {
+                val current = loadUnlocked(context).toMutableSet()
+                if (current.contains(kind)) return false
+                current.add(kind)
+                saveUnlocked(context, current)
+                return true
+            } catch (e: Exception) {
+                Sentry.captureException(e)
+                throw e
+            }
         }
     }
 }

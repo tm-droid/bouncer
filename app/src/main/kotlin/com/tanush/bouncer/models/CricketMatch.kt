@@ -92,7 +92,7 @@ data class CricketMatch(
 
     data class MatchScore(
         @SerializedName("inningsBreak") val currentInnings: String,
-        @SerializedName("batsmanScores") var batsmen: List<BatsmanScore>,
+        @SerializedName("batsmanScores") val batsmen: List<BatsmanScore>,
         @SerializedName("bowlerScores") val bowlers: List<BowlerScore>,
         // Additional properties for live activity content state
         val overs: String?,

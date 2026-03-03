@@ -104,6 +104,12 @@ fun PowerplayStatusCard(
     
     val oversRemaining = powerplayInfo.totalPowerplayOvers - powerplayInfo.currentOver
     
+    val colors = BouncerDesignSystem.colors
+    // Capture colors for Canvas/draw scopes (non-composable)
+    val statusWarningColor = colors.statusWarning
+    val goldDarkColor = colors.goldDark
+    val statusInfoColor = colors.statusInfo
+    
     Card(
         modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -129,7 +135,7 @@ fun PowerplayStatusCard(
                         drawLine(
                             brush = Brush.linearGradient(
                                 colors = listOf(
-                                    BoundarySix.copy(alpha = 0.4f * glowAlpha),
+                                    statusWarningColor.copy(alpha = 0.4f * glowAlpha),
                                     Color.Transparent
                                 ),
                                 start = center,
@@ -159,7 +165,7 @@ fun PowerplayStatusCard(
                             Icon(
                                 imageVector = Icons.Filled.Bolt,
                                 contentDescription = null,
-                                tint = BoundarySix.copy(alpha = glowAlpha),
+                                tint = colors.statusWarning.copy(alpha = glowAlpha),
                                 modifier = Modifier
                                     .size(28.dp)
                                     .scale(pulseScale)
@@ -177,7 +183,7 @@ fun PowerplayStatusCard(
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text(
                                     text = powerplayInfo.powerplayType.displayName.uppercase(),
-                                    color = if (powerplayInfo.isActive) BoundarySix else Color.Gray,
+                                    color = if (powerplayInfo.isActive) colors.statusWarning else Color.Gray,
                                     fontSize = 14.sp,
                                     fontWeight = FontWeight.Black,
                                     letterSpacing = 2.sp
@@ -188,7 +194,7 @@ fun PowerplayStatusCard(
                                         modifier = Modifier
                                             .size(10.dp)
                                             .clip(CircleShape)
-                                            .background(LiveBlue.copy(alpha = glowAlpha))
+                                            .background(statusInfoColor.copy(alpha = glowAlpha))
                                     )
                                 }
                             }
@@ -202,12 +208,12 @@ fun PowerplayStatusCard(
                     
                     // Status badge
                     Surface(
-                        color = if (powerplayInfo.isActive) BoundarySix.copy(alpha = 0.2f) else SuccessGreen.copy(alpha = 0.2f),
+                        color = if (powerplayInfo.isActive) colors.statusWarning.copy(alpha = 0.2f) else colors.statusSuccess.copy(alpha = 0.2f),
                         shape = RoundedCornerShape(12.dp)
                     ) {
                         Text(
                             text = if (powerplayInfo.isActive) "ACTIVE" else "COMPLETED",
-                            color = if (powerplayInfo.isActive) BoundarySix else SuccessGreen,
+                            color = if (powerplayInfo.isActive) colors.statusWarning else colors.statusSuccess,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.sp,
@@ -247,9 +253,9 @@ fun PowerplayStatusCard(
                             drawArc(
                                 brush = Brush.sweepGradient(
                                     colors = listOf(
-                                        BoundarySix.copy(alpha = 0.5f),
-                                        BoundarySix,
-                                        ShinyGoldMid
+                                        statusWarningColor.copy(alpha = 0.5f),
+                                        statusWarningColor,
+                                        goldDarkColor
                                     ),
                                     center = center
                                 ),
@@ -268,12 +274,12 @@ fun PowerplayStatusCard(
                                 val dotY = center.y + radius * sin(dotAngle)
                                 
                                 drawCircle(
-                                    color = ShinyGoldMid.copy(alpha = glowAlpha),
+                                    color = goldDarkColor.copy(alpha = glowAlpha),
                                     radius = 12f,
                                     center = Offset(dotX, dotY)
                                 )
                                 drawCircle(
-                                    color = ShinyGoldMid,
+                                    color = goldDarkColor,
                                     radius = 6f,
                                     center = Offset(dotX, dotY)
                                 )
@@ -299,24 +305,24 @@ fun PowerplayStatusCard(
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
                             text = "${powerplayInfo.runs}/${powerplayInfo.wickets}",
-                            color = ShinyGoldMid,
+                            color = colors.goldDark,
                             fontSize = 42.sp,
                             fontWeight = FontWeight.Black
                         )
                         Surface(
                             color = when {
-                                powerplayInfo.runRate >= 8f -> SuccessGreen.copy(alpha = 0.2f)
-                                powerplayInfo.runRate >= 6f -> WarningYellow.copy(alpha = 0.2f)
-                                else -> WicketRed.copy(alpha = 0.2f)
+                                powerplayInfo.runRate >= 8f -> colors.statusSuccess.copy(alpha = 0.2f)
+                                powerplayInfo.runRate >= 6f -> colors.statusWarning.copy(alpha = 0.2f)
+                                else -> colors.statusLive.copy(alpha = 0.2f)
                             },
                             shape = RoundedCornerShape(8.dp)
                         ) {
                             Text(
                                 text = "RR: ${String.format("%.2f", powerplayInfo.runRate)}",
                                 color = when {
-                                    powerplayInfo.runRate >= 8f -> SuccessGreen
-                                    powerplayInfo.runRate >= 6f -> WarningYellow
-                                    else -> WicketRed
+                                    powerplayInfo.runRate >= 8f -> colors.statusSuccess
+                                    powerplayInfo.runRate >= 6f -> colors.statusWarning
+                                    else -> colors.statusLive
                                 },
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Bold,
@@ -331,7 +337,7 @@ fun PowerplayStatusCard(
                     Spacer(modifier = Modifier.height(16.dp))
                     
                     Surface(
-                        color = BoundarySix.copy(alpha = 0.1f),
+                        color = colors.statusWarning.copy(alpha = 0.1f),
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier.fillMaxWidth()
                     ) {
@@ -345,13 +351,13 @@ fun PowerplayStatusCard(
                             Icon(
                                 imageVector = Icons.Filled.AutoAwesome,
                                 contentDescription = null,
-                                tint = BoundarySix.copy(alpha = glowAlpha),
+                                tint = colors.statusWarning.copy(alpha = glowAlpha),
                                 modifier = Modifier.size(18.dp)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
                                 text = "${String.format("%.1f", oversRemaining)} overs remaining",
-                                color = BoundarySix,
+                                color = colors.statusWarning,
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Medium
                             )
@@ -359,7 +365,7 @@ fun PowerplayStatusCard(
                             if (powerplayInfo.projectedScore != null) {
                                 Text(
                                     text = " • Projected: ${powerplayInfo.projectedScore}",
-                                    color = ShinyGoldMid,
+                                    color = colors.goldDark,
                                     fontSize = 14.sp,
                                     fontWeight = FontWeight.Bold
                                 )
@@ -378,7 +384,7 @@ fun PowerplayStatusCard(
                     PowerplayStatBox(
                         label = "BOUNDARIES",
                         value = "${powerplayInfo.boundaries}",
-                        color = BoundaryFour
+                        color = colors.statusSuccess
                     )
                     PowerplayStatBox(
                         label = "DOT BALLS",
@@ -388,7 +394,7 @@ fun PowerplayStatusCard(
                     PowerplayStatBox(
                         label = "BALLS LEFT",
                         value = "${((powerplayInfo.totalPowerplayOvers - powerplayInfo.currentOver) * 6).toInt()}",
-                        color = ChartBlue
+                        color = colors.statusInfo
                     )
                 }
                 
@@ -449,6 +455,7 @@ private fun PowerplayComparisonRow(
 ) {
     val diff = currentRuns - comparison.runs
     val isAhead = diff >= 0
+    val colors = BouncerDesignSystem.colors
     
     Surface(
         color = Color.White.copy(alpha = 0.05f),
@@ -488,12 +495,12 @@ private fun PowerplayComparisonRow(
                 Spacer(modifier = Modifier.width(8.dp))
                 
                 Surface(
-                    color = if (isAhead) SuccessGreen.copy(alpha = 0.2f) else WicketRed.copy(alpha = 0.2f),
+                    color = if (isAhead) colors.statusSuccess.copy(alpha = 0.2f) else colors.statusLive.copy(alpha = 0.2f),
                     shape = RoundedCornerShape(6.dp)
                 ) {
                     Text(
                         text = if (isAhead) "+$diff" else "$diff",
-                        color = if (isAhead) SuccessGreen else WicketRed,
+                        color = if (isAhead) colors.statusSuccess else colors.statusLive,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
