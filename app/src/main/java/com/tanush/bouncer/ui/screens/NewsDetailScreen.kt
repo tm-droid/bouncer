@@ -224,15 +224,14 @@ fun NewsDetailScreen(
                             )
                         }
                     }
-                    else -> {
-                        val paragraphs = articleBody ?: emptyList()
+                    !articleBody.isNullOrEmpty() -> {
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(horizontal = dimens.screenHorizontalPadding),
                             verticalArrangement = Arrangement.spacedBy(dimens.md)
                         ) {
-                            paragraphs.forEach { paragraph ->
+                            articleBody?.forEach { paragraph ->
                                 Text(
                                     text = paragraph,
                                     style = typography.bodyMedium.copy(
