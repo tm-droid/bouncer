@@ -3,6 +3,9 @@ package com.tanush.bouncer.services
 import android.util.Log
 import com.tanush.bouncer.network.CricBuzzScraper
 import com.tanush.bouncer.network.CricInfoScraper
+import io.sentry.Breadcrumb
+import io.sentry.Sentry
+import io.sentry.SentryLevel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.withContext
@@ -56,14 +59,30 @@ class LiveCommentaryManager(
     ): String {
         val matchId = cricbuzzUrl.split("/").lastOrNull() ?: "unknown"
         
-        val details = try { cricbuzz.fetchBallByBallAndBatsmen(matchId) } catch (e: Exception) { null }
+        Sentry.addBreadcrumb(Breadcrumb().apply {
+            category = "service.commentary"
+            message = "Getting best commentary"
+            level = SentryLevel.INFO
+            setData("matchId", matchId)
+        })
+        
+        val details = try { cricbuzz.fetchBallByBallAndBatsmen(matchId) } catch (e: Exception) { 
+            Sentry.captureException(e)
+            null 
+        }
         val ballNumber = details?.overNumbers?.lastOrNull() ?: ""
         val bowlerName = details?.bowler?.name ?: ""
         val batsmanName = details?.batsmen?.firstOrNull { it.isStriker }?.name ?: details?.batsmen?.firstOrNull()?.name ?: ""
         val scoreContext = details?.score ?: ""
 
-        val buzzSnippets = try { cricbuzz.fetchLiveCommentary(cricbuzzUrl) } catch (e: Exception) { emptyList() }
-        val infoSnippets = try { cricinfo.fetchLiveCommentary(cricinfoUrl) } catch (e: Exception) { emptyList() }
+        val buzzSnippets = try { cricbuzz.fetchLiveCommentary(cricbuzzUrl) } catch (e: Exception) { 
+            Sentry.captureException(e)
+            emptyList() 
+        }
+        val infoSnippets = try { cricinfo.fetchLiveCommentary(cricinfoUrl) } catch (e: Exception) { 
+            Sentry.captureException(e)
+            emptyList() 
+        }
         
         val buzzLine = findBestBallSnippet(buzzSnippets, keyNames)
         val infoLine = findBestBallSnippet(infoSnippets, keyNames)
@@ -119,6 +138,14 @@ class LiveCommentaryManager(
         cricbuzzUrl: String, 
         keyNames: List<String>
     ): List<String> = withContext(Dispatchers.IO) {
+        Sentry.addBreadcrumb(Breadcrumb().apply {
+            category = "service.commentary"
+            message = "Getting best commentary for match"
+            level = SentryLevel.INFO
+            setData("matchTitle", matchTitle)
+            setData("cricbuzzId", cricbuzzId)
+        })
+        
         val mappedCricinfoId = cricinfo.getMappedCricinfoId(cricbuzzId)
         val resultValue: String
         
@@ -145,9 +172,22 @@ class LiveCommentaryManager(
     }
 
     private suspend fun fetchSingleSourceFusion(matchId: String, url: String, keyNames: List<String>): String {
-        val buzz = try { cricbuzz.fetchLiveCommentary(url) } catch (e: Exception) { emptyList() }
+        Sentry.addBreadcrumb(Breadcrumb().apply {
+            category = "service.commentary"
+            message = "Fetching single source fusion"
+            level = SentryLevel.INFO
+            setData("matchId", matchId)
+        })
+        
+        val buzz = try { cricbuzz.fetchLiveCommentary(url) } catch (e: Exception) { 
+            Sentry.captureException(e)
+            emptyList() 
+        }
         val buzzLine = findBestBallSnippet(buzz, keyNames)
-        val details = try { cricbuzz.fetchBallByBallAndBatsmen(matchId) } catch (e: Exception) { null }
+        val details = try { cricbuzz.fetchBallByBallAndBatsmen(matchId) } catch (e: Exception) { 
+            Sentry.captureException(e)
+            null 
+        }
         
         return fusion.fuse(
             snippet1 = buzzLine, 
@@ -207,7 +247,9 @@ class LiveCommentaryManager(
                 return
             }
             
-        } catch (_: Exception) {}
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+        }
     }
 
     private fun extractBallNumber(text: String): String? {
@@ -226,7 +268,9 @@ class LiveCommentaryManager(
                 try {
                     val insight = summarizer(aiCommentaryHistory.takeLast(6), matchId, 0)
                     onKeyEvent?.invoke("AI Strategic Insight", insight)
-                } catch (_: Exception) {}
+                } catch (e: Exception) {
+                    Sentry.captureException(e)
+                }
             }
         }
     }

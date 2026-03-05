@@ -1,6 +1,8 @@
 package com.tanush.bouncer.services
 
+import io.sentry.Breadcrumb
 import io.sentry.Sentry
+import io.sentry.SentryLevel
 
 class CommentaryScorer {
     // Example keywords for excitement/sentiment
@@ -80,6 +82,13 @@ class CommentaryScorer {
     fun categorizeCommentary(snippet: String): CommentaryType {
         try {
             if (snippet.isBlank()) return CommentaryType.UNKNOWN
+            
+            Sentry.addBreadcrumb(Breadcrumb().apply {
+                category = "service.commentary"
+                message = "Categorizing commentary"
+                level = SentryLevel.DEBUG
+                setData("snippetLength", snippet.length)
+            })
         
             val lower = snippet.lowercase().trim()
         
@@ -130,6 +139,14 @@ class CommentaryScorer {
      */
     fun score(snippet: String, keyNames: List<String>, recentHistory: List<String>, requireBallByBall: Boolean = true): Double {
         try {
+            Sentry.addBreadcrumb(Breadcrumb().apply {
+                category = "service.commentary"
+                message = "Scoring commentary snippet"
+                level = SentryLevel.DEBUG
+                setData("keyNamesCount", keyNames.size)
+                setData("historyCount", recentHistory.size)
+            })
+            
             var score = 0.0
         
             // Heavily penalize non-ball-by-ball content when expecting ball commentary

@@ -6,6 +6,9 @@ import androidx.lifecycle.viewModelScope
 import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.network.CricBuzzScraper
 import com.tanush.bouncer.network.CricBuzzUrls
+import io.sentry.Breadcrumb
+import io.sentry.Sentry
+import io.sentry.SentryLevel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -49,11 +52,21 @@ class MainViewModel : ViewModel() {
     }
 
     fun setStatus(status: String) {
+        Sentry.addBreadcrumb(Breadcrumb().apply {
+            category = "user.action"
+            message = "Status changed to: $status"
+            level = SentryLevel.INFO
+        })
         _selectedStatus.value = status
         fetchMatches(status)
     }
 
     fun toggleCategory(category: String) {
+        Sentry.addBreadcrumb(Breadcrumb().apply {
+            this.category = "user.action"
+            message = "Category toggled: $category"
+            level = SentryLevel.INFO
+        })
         val current = _selectedCategories.value.toMutableSet()
         if (current.contains(category)) {
             current.remove(category)
@@ -67,6 +80,11 @@ class MainViewModel : ViewModel() {
      * Retry the last failed fetch
      */
     fun retry() {
+        Sentry.addBreadcrumb(Breadcrumb().apply {
+            category = "user.action"
+            message = "Retrying fetch for status: ${_selectedStatus.value}"
+            level = SentryLevel.INFO
+        })
         fetchMatches(_selectedStatus.value)
     }
 
@@ -90,18 +108,38 @@ class MainViewModel : ViewModel() {
                 throw e
             } catch (e: java.net.UnknownHostException) {
                 Log.e(TAG, "No internet connection", e)
+                Sentry.addBreadcrumb(Breadcrumb().apply {
+                    category = "network.error"
+                    message = "No internet connection while fetching $status matches"
+                    level = SentryLevel.ERROR
+                })
+                Sentry.captureException(e)
                 _loadState.value = MatchLoadState.Error(
                     message = "No internet connection. Check your network and try again.",
                     isRetryable = true
                 )
             } catch (e: java.net.SocketTimeoutException) {
                 Log.e(TAG, "Request timed out", e)
+                Sentry.addBreadcrumb(Breadcrumb().apply {
+                    category = "network.error"
+                    message = "Socket timeout while fetching $status matches"
+                    level = SentryLevel.ERROR
+                })
+                Sentry.captureException(e)
                 _loadState.value = MatchLoadState.Error(
                     message = "Request timed out. Try again.",
                     isRetryable = true
                 )
             } catch (e: Exception) {
                 Log.e(TAG, "Error fetching matches for $status", e)
+                Sentry.addBreadcrumb(Breadcrumb().apply {
+                    category = "data.error"
+                    message = "Failed to fetch matches for status: $status"
+                    level = SentryLevel.ERROR
+                    setData("status", status)
+                    setData("error_type", e.javaClass.simpleName)
+                })
+                Sentry.captureException(e)
                 _loadState.value = MatchLoadState.Error(
                     message = "Failed to load matches: ${e.localizedMessage ?: "Unknown error"}",
                     isRetryable = true

@@ -5,6 +5,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tanush.bouncer.models.NewsArticleData
 import com.tanush.bouncer.network.RetrofitClient
+import io.sentry.Breadcrumb
+import io.sentry.Sentry
+import io.sentry.SentryLevel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -97,6 +100,13 @@ class NewsViewModel : ViewModel() {
                 throw e
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to fetch news", e)
+                Sentry.addBreadcrumb(Breadcrumb().apply {
+                    category = "news.error"
+                    message = "Failed to fetch news articles"
+                    level = SentryLevel.ERROR
+                    setData("error_type", e.javaClass.simpleName)
+                })
+                Sentry.captureException(e)
                 _error.value = e.localizedMessage ?: "Failed to load news"
             } finally {
                 _isLoading.value = false
@@ -109,6 +119,11 @@ class NewsViewModel : ViewModel() {
      * Force refresh news (e.g., from pull-to-refresh).
      */
     fun refreshNews() {
+        Sentry.addBreadcrumb(Breadcrumb().apply {
+            category = "user.action"
+            message = "Manual news refresh triggered"
+            level = SentryLevel.INFO
+        })
         lastFetchTime = 0L // Reset cooldown
         fetchNews()
     }
@@ -129,6 +144,12 @@ class NewsViewModel : ViewModel() {
                     throw e
                 } catch (e: Exception) {
                     Log.e(TAG, "Error during auto-refresh", e)
+                    Sentry.addBreadcrumb(Breadcrumb().apply {
+                        category = "news.error"
+                        message = "Auto-refresh failed"
+                        level = SentryLevel.WARNING
+                    })
+                    Sentry.captureException(e)
                 }
             }
         }
@@ -139,6 +160,12 @@ class NewsViewModel : ViewModel() {
      * Begins scraping the article body from cricbuzz.com.
      */
     fun selectArticle(article: NewsArticleData) {
+        Sentry.addBreadcrumb(Breadcrumb().apply {
+            category = "user.action"
+            message = "Article selected: ${article.headline.take(50)}"
+            level = SentryLevel.INFO
+            setData("article_id", article.id)
+        })
         _selectedArticle.value = article
         _articleBody.value = emptyList()
         fetchArticleBody(article.articleUrl)
@@ -191,6 +218,14 @@ class NewsViewModel : ViewModel() {
                 throw e
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to scrape article body from $url", e)
+                Sentry.addBreadcrumb(Breadcrumb().apply {
+                    category = "scraping.error"
+                    message = "Failed to scrape article body"
+                    level = SentryLevel.ERROR
+                    setData("url", url)
+                    setData("error_type", e.javaClass.simpleName)
+                })
+                Sentry.captureException(e)
                 _articleBody.value = listOf("Failed to load article. Please check your connection and try again.")
             } finally {
                 _isLoadingArticle.value = false

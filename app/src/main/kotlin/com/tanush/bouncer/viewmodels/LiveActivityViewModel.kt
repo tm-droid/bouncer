@@ -10,6 +10,9 @@ import com.tanush.bouncer.network.CricBuzzUrls
 import com.tanush.bouncer.services.LiveNotificationManager
 import com.tanush.bouncer.services.MatchCacheService
 import com.tanush.bouncer.services.LiveCommentaryManager
+import io.sentry.Breadcrumb
+import io.sentry.Sentry
+import io.sentry.SentryLevel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -124,37 +127,48 @@ class LiveActivityViewModel : ViewModel() {
         // Wire commentary manager events into ViewModel flows AND notification alerts
         liveCommentaryManager.onKeyEvent = { title, body ->
             viewModelScope.launch {
-                _keyEvent.value = title to body
-                
-                // Also push event-specific alert notifications
-                val manager = notificationManager ?: return@launch
-                val liveMatch = _currentMatches.value.firstOrNull { it.isLive } ?: return@launch
-                when {
-                    title.contains("Wicket", ignoreCase = true) -> manager.showWicketAlert(
-                        match = liveMatch,
-                        batsmanName = body.substringBefore(" ").take(30),
-                        bowlerName = "",
-                        dismissalType = "dismissed",
-                        runsScored = 0
-                    )
-                    title.contains("Six", ignoreCase = true) -> manager.showSixAlert(
-                        match = liveMatch,
-                        batsmanName = "",
-                        bowlerName = "",
-                        description = body.take(60)
-                    )
-                    title.contains("Boundary", ignoreCase = true) || title.contains("Four", ignoreCase = true) -> manager.showFourAlert(
-                        match = liveMatch,
-                        batsmanName = "",
-                        bowlerName = "",
-                        description = body.take(60)
-                    )
-                    title.contains("AI Strategic", ignoreCase = true) -> manager.showMilestoneAlert(
-                        match = liveMatch,
-                        playerName = "AI Insight",
-                        milestone = title,
-                        description = body.take(80)
-                    )
+                try {
+                    Sentry.addBreadcrumb(Breadcrumb().apply {
+                        category = "live.event"
+                        message = "Key event: $title"
+                        level = SentryLevel.INFO
+                    })
+                    _keyEvent.value = title to body
+                    
+                    // Also push event-specific alert notifications
+                    val manager = notificationManager ?: return@launch
+                    val liveMatch = _currentMatches.value.firstOrNull { it.isLive } ?: return@launch
+                    when {
+                        title.contains("Wicket", ignoreCase = true) -> manager.showWicketAlert(
+                            match = liveMatch,
+                            batsmanName = body.substringBefore(" ").take(30),
+                            bowlerName = "",
+                            dismissalType = "dismissed",
+                            runsScored = 0
+                        )
+                        title.contains("Six", ignoreCase = true) -> manager.showSixAlert(
+                            match = liveMatch,
+                            batsmanName = "",
+                            bowlerName = "",
+                            description = body.take(60)
+                        )
+                        title.contains("Boundary", ignoreCase = true) || title.contains("Four", ignoreCase = true) -> manager.showFourAlert(
+                            match = liveMatch,
+                            batsmanName = "",
+                            bowlerName = "",
+                            description = body.take(60)
+                        )
+                        title.contains("AI Strategic", ignoreCase = true) -> manager.showMilestoneAlert(
+                            match = liveMatch,
+                            playerName = "AI Insight",
+                            milestone = title,
+                            description = body.take(80)
+                        )
+                    }
+                } catch (e: Exception) {
+                    if (e is CancellationException) throw e
+                    Log.e(TAG, "Error processing key event: $title", e)
+                    Sentry.captureException(e)
                 }
             }
         }
@@ -186,6 +200,11 @@ class LiveActivityViewModel : ViewModel() {
 
     fun refreshMatches() {
         viewModelScope.launch {
+            Sentry.addBreadcrumb(Breadcrumb().apply {
+                category = "user.action"
+                message = "Manual refresh triggered"
+                level = SentryLevel.INFO
+            })
             _isRefreshing.value = true
             _loadingState.value = LoadingState.Refreshing
             fetchMatchesInternal()
@@ -195,6 +214,11 @@ class LiveActivityViewModel : ViewModel() {
     }
 
     fun setAndFetchMatches(status: String) {
+        Sentry.addBreadcrumb(Breadcrumb().apply {
+            category = "user.action"
+            message = "Status changed to: $status"
+            level = SentryLevel.INFO
+        })
         _selectedStatus.value = status
         // Immediately show cached if available
         cachedMatches[status]?.let {
@@ -206,11 +230,21 @@ class LiveActivityViewModel : ViewModel() {
     }
 
     fun setCompetitionType(type: String) {
+        Sentry.addBreadcrumb(Breadcrumb().apply {
+            category = "user.action"
+            message = "Competition type changed to: $type"
+            level = SentryLevel.INFO
+        })
         _selectedCompetitionType.value = type
         cachedMatches[_selectedStatus.value]?.let { filterAndEmitMatches(it) }
     }
 
     fun setGender(gender: String) {
+        Sentry.addBreadcrumb(Breadcrumb().apply {
+            category = "user.action"
+            message = "Gender filter changed to: $gender"
+            level = SentryLevel.INFO
+        })
         _selectedGender.value = gender
         cachedMatches[_selectedStatus.value]?.let { filterAndEmitMatches(it) }
     }
@@ -264,6 +298,13 @@ class LiveActivityViewModel : ViewModel() {
                 } catch (e: Exception) {
                     if (e is CancellationException) throw e
                     Log.e(TAG, "Initial fetch error for $status", e)
+                    Sentry.addBreadcrumb(Breadcrumb().apply {
+                        category = "data.error"
+                        message = "Initial fetch failed for status: $status"
+                        level = SentryLevel.ERROR
+                        setData("status", status)
+                    })
+                    Sentry.captureException(e)
                     _loadingState.value = LoadingState.Error(e.message ?: "Unknown error")
                 }
             }
@@ -323,6 +364,19 @@ class LiveActivityViewModel : ViewModel() {
                     val failures = (consecutiveFailures[status] ?: 0) + 1
                     consecutiveFailures[status] = failures
                     Log.e(TAG, "Error in polling loop for $status (failure #$failures)", e)
+                    
+                    Sentry.addBreadcrumb(Breadcrumb().apply {
+                        category = "polling.error"
+                        message = "Polling failed for status: $status (attempt #$failures)"
+                        level = SentryLevel.WARNING
+                        setData("status", status)
+                        setData("failure_count", failures)
+                    })
+                    
+                    // Only report to Sentry after 3 consecutive failures to reduce noise
+                    if (failures >= 3) {
+                        Sentry.captureException(e)
+                    }
 
                     // Fall back to offline cache when network fails
                     if (_currentMatches.value.isEmpty()) {
@@ -375,6 +429,13 @@ class LiveActivityViewModel : ViewModel() {
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
                 Log.e(TAG, "Error updating commentary for match ${match.id}", e)
+                Sentry.addBreadcrumb(Breadcrumb().apply {
+                    category = "commentary.error"
+                    message = "Failed to update commentary for match: ${match.id}"
+                    level = SentryLevel.WARNING
+                    setData("match_id", match.id)
+                })
+                Sentry.captureException(e)
             }
         }
         
@@ -434,6 +495,13 @@ class LiveActivityViewModel : ViewModel() {
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
                 Log.w(TAG, "Failed to update notification for match ${match.id}", e)
+                Sentry.addBreadcrumb(Breadcrumb().apply {
+                    category = "notification.error"
+                    message = "Failed to update live notification for match: ${match.id}"
+                    level = SentryLevel.WARNING
+                    setData("match_id", match.id)
+                })
+                Sentry.captureException(e)
             }
         }
     }
@@ -631,12 +699,31 @@ class LiveActivityViewModel : ViewModel() {
             throw e
         } catch (e: java.net.UnknownHostException) {
             Log.e(TAG, "No internet connection during refresh", e)
+            Sentry.addBreadcrumb(Breadcrumb().apply {
+                category = "network.error"
+                message = "No internet connection during refresh"
+                level = SentryLevel.ERROR
+            })
+            Sentry.captureException(e)
             _loadingState.value = LoadingState.Error("No internet connection. Check your network and try again.")
         } catch (e: java.net.SocketTimeoutException) {
             Log.e(TAG, "Request timed out during refresh", e)
+            Sentry.addBreadcrumb(Breadcrumb().apply {
+                category = "network.error"
+                message = "Socket timeout during refresh"
+                level = SentryLevel.ERROR
+            })
+            Sentry.captureException(e)
             _loadingState.value = LoadingState.Error("Request timed out. Pull to refresh to try again.")
         } catch (e: Exception) {
             Log.e(TAG, "Error refreshing matches", e)
+            Sentry.addBreadcrumb(Breadcrumb().apply {
+                category = "data.error"
+                message = "Failed to refresh matches"
+                level = SentryLevel.ERROR
+                setData("error_type", e.javaClass.simpleName)
+            })
+            Sentry.captureException(e)
             _loadingState.value = LoadingState.Error(
                 e.localizedMessage ?: "Failed to load matches. Pull to refresh to try again."
             )

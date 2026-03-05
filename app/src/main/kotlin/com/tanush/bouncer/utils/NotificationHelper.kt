@@ -9,7 +9,9 @@ import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import com.tanush.bouncer.MainActivity
+import io.sentry.Breadcrumb
 import io.sentry.Sentry
+import io.sentry.SentryLevel
 
 object NotificationHelper {
     private const val CHANNEL_ID = "live_match_events"
@@ -17,6 +19,13 @@ object NotificationHelper {
 
     fun createNotificationChannel(context: Context) {
         try {
+            Sentry.addBreadcrumb(Breadcrumb().apply {
+                category = "util.notification"
+                message = "Creating notification channel"
+                level = SentryLevel.INFO
+                setData("channelId", CHANNEL_ID)
+            })
+            
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 val channel = NotificationChannel(
                     CHANNEL_ID,
@@ -36,6 +45,14 @@ object NotificationHelper {
 
     fun notify(context: Context, id: Int, title: String, body: String) {
         try {
+            Sentry.addBreadcrumb(Breadcrumb().apply {
+                category = "util.notification"
+                message = "Sending notification"
+                level = SentryLevel.INFO
+                setData("notificationId", id)
+                setData("title", title)
+            })
+            
             createNotificationChannel(context)
 
             val intent = Intent(context, MainActivity::class.java).apply {

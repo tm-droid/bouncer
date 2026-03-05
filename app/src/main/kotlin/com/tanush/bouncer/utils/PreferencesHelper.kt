@@ -1,7 +1,9 @@
 package com.tanush.bouncer.utils
 
 import android.content.Context
+import io.sentry.Breadcrumb
 import io.sentry.Sentry
+import io.sentry.SentryLevel
 
 object PreferencesHelper {
     private const val PREFS = "bouncer_prefs"
@@ -14,6 +16,13 @@ object PreferencesHelper {
 
     fun getBoolean(context: Context, key: String, default: Boolean): Boolean {
         try {
+            Sentry.addBreadcrumb(Breadcrumb().apply {
+                category = "util.preferences"
+                message = "Reading boolean preference"
+                level = SentryLevel.DEBUG
+                setData("key", key)
+            })
+            
             val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             return prefs.getBoolean(key, default)
         } catch (e: Exception) {
@@ -24,6 +33,14 @@ object PreferencesHelper {
 
     fun setBoolean(context: Context, key: String, value: Boolean) {
         try {
+            Sentry.addBreadcrumb(Breadcrumb().apply {
+                category = "util.preferences"
+                message = "Setting boolean preference"
+                level = SentryLevel.DEBUG
+                setData("key", key)
+                setData("value", value)
+            })
+            
             val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             prefs.edit().putBoolean(key, value).apply()
         } catch (e: Exception) {

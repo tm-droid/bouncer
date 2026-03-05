@@ -13,6 +13,9 @@ import com.tanush.bouncer.models.BatsmanStats
 import com.tanush.bouncer.models.BowlerStats
 import com.tanush.bouncer.models.FallOfWicket
 import com.tanush.bouncer.models.PartnershipStats
+import io.sentry.Breadcrumb
+import io.sentry.Sentry
+import io.sentry.SentryLevel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -36,6 +39,14 @@ class CricBuzzScraper {
      * Includes retry with exponential backoff for transient failures.
      */
     suspend fun fetchLiveMatches(url: String, matchState: String): List<CricketMatch> = withContext(Dispatchers.IO) {
+        Sentry.addBreadcrumb(Breadcrumb().apply {
+            category = "network.cricbuzz"
+            message = "Fetching live matches"
+            level = SentryLevel.INFO
+            setData("url", url)
+            setData("matchState", matchState)
+        })
+        
         var lastException: Exception? = null
         var backoff = INITIAL_BACKOFF_MS
 
@@ -51,17 +62,48 @@ class CricBuzzScraper {
 
                 val filteredMatches = filterMatches(matches, matchState)
                 Log.d(TAG, "Found ${matches.size} total matches, filtered down to ${filteredMatches.size} for state: $matchState")
+                
+                Sentry.addBreadcrumb(Breadcrumb().apply {
+                    category = "network.cricbuzz"
+                    message = "Successfully fetched live matches"
+                    level = SentryLevel.INFO
+                    setData("totalMatches", matches.size)
+                    setData("filteredMatches", filteredMatches.size)
+                })
+                
                 return@withContext filteredMatches
             } catch (e: SocketTimeoutException) {
                 lastException = e
                 Log.w(TAG, "Timeout fetching $url (attempt $attempt/$MAX_RETRIES)", e)
+                Sentry.addBreadcrumb(Breadcrumb().apply {
+                    category = "network.cricbuzz"
+                    message = "Socket timeout fetching matches"
+                    level = SentryLevel.WARNING
+                    setData("url", url)
+                    setData("attempt", attempt)
+                })
             } catch (e: UnknownHostException) {
                 // No internet — retry won't help, fail fast
                 Log.e(TAG, "No internet connection fetching $url", e)
+                Sentry.addBreadcrumb(Breadcrumb().apply {
+                    category = "network.cricbuzz"
+                    message = "No internet connection"
+                    level = SentryLevel.ERROR
+                    setData("url", url)
+                })
+                Sentry.captureException(e)
                 return@withContext emptyList()
             } catch (e: Exception) {
                 lastException = e
                 Log.e(TAG, "Error fetching matches from $url (attempt $attempt/$MAX_RETRIES)", e)
+                Sentry.addBreadcrumb(Breadcrumb().apply {
+                    category = "network.cricbuzz"
+                    message = "Error fetching matches"
+                    level = SentryLevel.ERROR
+                    setData("url", url)
+                    setData("attempt", attempt)
+                    setData("error", e.message ?: "Unknown error")
+                })
             }
 
             if (attempt < MAX_RETRIES) {
@@ -72,6 +114,7 @@ class CricBuzzScraper {
         }
 
         Log.e(TAG, "All $MAX_RETRIES attempts failed for $url", lastException)
+        lastException?.let { Sentry.captureException(it) }
         emptyList()
     }
 
@@ -294,6 +337,13 @@ class CricBuzzScraper {
      * Includes retry with exponential backoff for transient failures.
      */
     suspend fun fetchBallByBallAndBatsmen(matchId: String): MatchDetails = withContext(Dispatchers.IO) {
+        Sentry.addBreadcrumb(Breadcrumb().apply {
+            category = "network.cricbuzz"
+            message = "Fetching ball-by-ball and batsmen data"
+            level = SentryLevel.INFO
+            setData("matchId", matchId)
+        })
+        
         val url = CricBuzzUrls.liveScoresUrl(matchId)
         var lastException: Exception? = null
         var backoff = INITIAL_BACKOFF_MS
@@ -394,12 +444,34 @@ class CricBuzzScraper {
         } catch (e: SocketTimeoutException) {
             lastException = e
             Log.w(TAG, "Timeout fetching match details for $matchId (attempt $attempt/$MAX_RETRIES)")
+            Sentry.addBreadcrumb(Breadcrumb().apply {
+                category = "network.cricbuzz"
+                message = "Timeout fetching match details"
+                level = SentryLevel.WARNING
+                setData("matchId", matchId)
+                setData("attempt", attempt)
+            })
         } catch (e: UnknownHostException) {
             Log.e(TAG, "No internet fetching match details for $matchId", e)
+            Sentry.addBreadcrumb(Breadcrumb().apply {
+                category = "network.cricbuzz"
+                message = "No internet fetching match details"
+                level = SentryLevel.ERROR
+                setData("matchId", matchId)
+            })
+            Sentry.captureException(e)
             return@withContext MatchDetails(emptyList(), emptyList(), emptyList(), null, null, null)
         } catch (e: Exception) {
             lastException = e
             Log.e(TAG, "Error fetching match details for $matchId (attempt $attempt/$MAX_RETRIES)", e)
+            Sentry.addBreadcrumb(Breadcrumb().apply {
+                category = "network.cricbuzz"
+                message = "Error fetching match details"
+                level = SentryLevel.ERROR
+                setData("matchId", matchId)
+                setData("attempt", attempt)
+                setData("error", e.message ?: "Unknown error")
+            })
         }
 
             if (attempt < MAX_RETRIES) {
@@ -409,6 +481,7 @@ class CricBuzzScraper {
         } // end retry loop
 
         Log.e(TAG, "All $MAX_RETRIES attempts failed for match details $matchId", lastException)
+        lastException?.let { Sentry.captureException(it) }
         MatchDetails(emptyList(), emptyList(), emptyList(), null, null, null)
     }
 
@@ -416,6 +489,13 @@ class CricBuzzScraper {
      * Enhanced Commentary Extraction with multi-source fallback.
      */
     suspend fun fetchLiveCommentary(matchUrl: String): List<String> = withContext(Dispatchers.IO) {
+        Sentry.addBreadcrumb(Breadcrumb().apply {
+            category = "network.cricbuzz"
+            message = "Fetching live commentary"
+            level = SentryLevel.INFO
+            setData("url", matchUrl)
+        })
+        
         try {
             val doc = Jsoup.connect(matchUrl).userAgent(USER_AGENT).timeout(12000).get()
             val lines = mutableListOf<String>()
@@ -425,9 +505,25 @@ class CricBuzzScraper {
             doc.select("div.flex.gap-4.border-dotted").forEach { lines.add(it.text().trim()) }
 
             Log.d(TAG, "Fetched ${lines.size} commentary lines from Cricbuzz")
+            
+            Sentry.addBreadcrumb(Breadcrumb().apply {
+                category = "network.cricbuzz"
+                message = "Successfully fetched commentary"
+                level = SentryLevel.INFO
+                setData("linesCount", lines.size)
+            })
+            
             lines.filter { it.length > 5 }.distinct()
         } catch (e: Exception) {
             Log.e(TAG, "Error fetching Cricbuzz commentary", e)
+            Sentry.addBreadcrumb(Breadcrumb().apply {
+                category = "network.cricbuzz"
+                message = "Error fetching commentary"
+                level = SentryLevel.ERROR
+                setData("url", matchUrl)
+                setData("error", e.message ?: "Unknown error")
+            })
+            Sentry.captureException(e)
             emptyList()
         }
     }
@@ -443,6 +539,13 @@ class CricBuzzScraper {
     }
 
     suspend fun fetchScorecard(matchId: String): Scorecard = withContext(Dispatchers.IO) {
+        Sentry.addBreadcrumb(Breadcrumb().apply {
+            category = "network.cricbuzz"
+            message = "Fetching scorecard"
+            level = SentryLevel.INFO
+            setData("matchId", matchId)
+        })
+        
         val url = CricBuzzUrls.scorecardUrl(matchId)
         try {
             val doc = Jsoup.connect(url).userAgent(USER_AGENT).timeout(15000).get()
@@ -536,9 +639,27 @@ class CricBuzzScraper {
 
                 inningsList.add(Innings(teamName, score, overs, batsmen, bowlers, fows, partnerships, "", ""))
             }
+            
+            Sentry.addBreadcrumb(Breadcrumb().apply {
+                category = "network.cricbuzz"
+                message = "Successfully fetched scorecard"
+                level = SentryLevel.INFO
+                setData("matchId", matchId)
+                setData("inningsCount", inningsList.size)
+            })
+            
             Scorecard(inningsList)
         } catch (e: Exception) {
             Log.e(TAG, "Error fetching scorecard", e)
+            Sentry.addBreadcrumb(Breadcrumb().apply {
+                category = "network.cricbuzz"
+                message = "Error fetching scorecard"
+                level = SentryLevel.ERROR
+                setData("matchId", matchId)
+                setData("url", url)
+                setData("error", e.message ?: "Unknown error")
+            })
+            Sentry.captureException(e)
             Scorecard(emptyList())
         }
     }

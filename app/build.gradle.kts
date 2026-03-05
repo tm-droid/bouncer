@@ -16,7 +16,7 @@ if (localPropertiesFile.exists()) {
 
 android {
     namespace = "com.tanush.bouncer"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.tanush.bouncer"
@@ -33,6 +33,7 @@ android {
         manifestPlaceholders["sentryDsn"] = localProperties.getProperty("SENTRY_DSN", "https://e9ade5d835c36a97939191077734e5a7@o4510958403518464.ingest.us.sentry.io/4510963429212160")
         // Default environment; overridden per build type below
         manifestPlaceholders["sentryEnvironment"] = "production"
+        manifestPlaceholders["sentryDebug"] = "false"
 
         // Only include 64-bit ABIs — androidx.graphics.path native lib doesn't ship armeabi-v7a
         ndk {
@@ -46,10 +47,12 @@ android {
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             manifestPlaceholders["sentryEnvironment"] = "production"
+            manifestPlaceholders["sentryDebug"] = "false"
         }
         debug {
             isCrunchPngs = false
             manifestPlaceholders["sentryEnvironment"] = "debug"
+            manifestPlaceholders["sentryDebug"] = "true"
         }
     }
 
@@ -171,12 +174,28 @@ dependencies {
 sentry {
     org.set("tanush-4w")
     projectName.set("android")
-    // Auth token from local.properties (never commit this file). Falls back to SENTRY_AUTH_TOKEN
-    // env var so CI builds work without local.properties.
     authToken.set(
         localProperties.getProperty("SENTRY_USER_AUTH_TOKEN")
             ?: System.getenv("SENTRY_AUTH_TOKEN")
             ?: ""
     )
     includeSourceContext.set(true)
+
+    // ── Performance & Tracing ────────────────────────────────────────────
+    tracingInstrumentation {
+        enabled.set(true)
+        features.set(
+            setOf(
+                io.sentry.android.gradle.extensions.InstrumentationFeature.DATABASE,
+                io.sentry.android.gradle.extensions.InstrumentationFeature.FILE_IO,
+                io.sentry.android.gradle.extensions.InstrumentationFeature.OKHTTP,
+                io.sentry.android.gradle.extensions.InstrumentationFeature.COMPOSE
+            )
+        )
+    }
+
+    // ── Auto-install Sentry SDK + integrations ──────────────────────────
+    autoInstallation {
+        enabled.set(true)
+    }
 }

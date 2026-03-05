@@ -5,7 +5,9 @@ import com.tanush.bouncer.managers.TeamLogoManager
 import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.network.RetrofitClient
 import com.tanush.bouncer.network.models.SanwebMatchSummary
+import io.sentry.Breadcrumb
 import io.sentry.Sentry
+import io.sentry.SentryLevel
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -30,6 +32,13 @@ class CricketAPIService(private val apiKey: String = "") {
      * Fetch matches for a specific status type
      */
     suspend fun fetchMatches(statusType: String): List<CricketMatch> {
+        Sentry.addBreadcrumb(Breadcrumb().apply {
+            category = "service.api"
+            message = "Fetching matches"
+            level = SentryLevel.INFO
+            setData("statusType", statusType)
+        })
+        
         handleRateLimiting()
         
         val apiType = when (statusType) {
@@ -44,6 +53,13 @@ class CricketAPIService(private val apiKey: String = "") {
     
     private suspend fun fetchSanwebMatches(type: String): List<CricketMatch> {
         return try {
+            Sentry.addBreadcrumb(Breadcrumb().apply {
+                category = "service.api"
+                message = "Fetching Sanweb matches"
+                level = SentryLevel.INFO
+                setData("type", type)
+            })
+            
             val listResponse = vercelApi.getMatches(type)
             
             if (type == "live") {
@@ -54,6 +70,7 @@ class CricketAPIService(private val apiKey: String = "") {
                             try {
                                 fetchSanwebMatchDetails(matchSummary.id, "Live")
                             } catch (e: Exception) {
+                                Sentry.captureException(e)
                                 null
                             }
                         }
@@ -115,6 +132,14 @@ class CricketAPIService(private val apiKey: String = "") {
     }
     
     private suspend fun fetchSanwebMatchDetails(id: String, category: String): CricketMatch {
+        Sentry.addBreadcrumb(Breadcrumb().apply {
+            this.category = "service.api"
+            message = "Fetching match details"
+            level = SentryLevel.INFO
+            setData("matchId", id)
+            setData("category", category)
+        })
+        
         val response = vercelApi.getMatchScore(id)
         
         // Parse title "Australia vs Pakistan, 2nd Test - Live Cricket Score"

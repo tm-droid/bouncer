@@ -19,7 +19,9 @@ import androidx.core.app.NotificationManagerCompat
 import com.tanush.bouncer.MainActivity
 import com.tanush.bouncer.R
 import com.tanush.bouncer.models.CricketMatch
+import io.sentry.Breadcrumb
 import io.sentry.Sentry
+import io.sentry.SentryLevel
 
 /**
  * LiveNotificationManager - Provides iOS-like Live Activity experience on Android
@@ -107,6 +109,15 @@ class LiveNotificationManager(private val context: Context) {
         bowler: BowlerInfo? = null,
         recentBalls: List<String>? = null
     ) {
+        Sentry.addBreadcrumb(Breadcrumb().apply {
+            category = "service.notification"
+            message = "Showing live match notification"
+            level = SentryLevel.INFO
+            setData("matchId", match.id)
+            setData("hasWinProbability", winProbability != null)
+            setData("hasLastEvent", lastEvent != null)
+        })
+        
         val intent = Intent(context, MainActivity::class.java).apply {
             try {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
@@ -152,6 +163,12 @@ class LiveNotificationManager(private val context: Context) {
             notificationManager.notify(NOTIFICATION_ID_LIVE, builder.build())
         } catch (e: SecurityException) {
             // Handle missing notification permission gracefully
+            Sentry.addBreadcrumb(Breadcrumb().apply {
+                category = "service.notification"
+                message = "Missing notification permission"
+                level = SentryLevel.WARNING
+                setData("matchId", match.id)
+            })
         }
     }
     
@@ -298,6 +315,15 @@ class LiveNotificationManager(private val context: Context) {
         dismissalType: String,
         runsScored: Int
     ) {
+        Sentry.addBreadcrumb(Breadcrumb().apply {
+            category = "service.notification"
+            message = "Showing wicket alert"
+            level = SentryLevel.INFO
+            setData("matchId", match.id)
+            setData("batsmanName", batsmanName)
+            setData("dismissalType", dismissalType)
+        })
+        
         showEventAlert(
             notificationId = NOTIFICATION_ID_WICKET,
             title = "WICKET!",
@@ -402,6 +428,13 @@ class LiveNotificationManager(private val context: Context) {
             notificationManager.notify(notificationId, builder.build())
         } catch (e: SecurityException) {
             // Handle missing notification permission gracefully
+            Sentry.addBreadcrumb(Breadcrumb().apply {
+                category = "service.notification"
+                message = "Missing notification permission for event alert"
+                level = SentryLevel.WARNING
+                setData("notificationId", notificationId)
+                setData("title", title)
+            })
         }
     }
     

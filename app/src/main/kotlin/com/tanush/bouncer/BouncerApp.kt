@@ -1,31 +1,55 @@
 package com.tanush.bouncer
 
 import android.app.Application
+import android.util.Log
 import coil.ImageLoader
 import coil.disk.DiskCache
 import coil.memory.MemoryCache
-
 import com.tanush.bouncer.managers.FavouriteTeamsManager
 import com.tanush.bouncer.managers.TeamLogoManager
 import com.tanush.bouncer.managers.TeamAcronymManager
 import com.tanush.bouncer.services.MatchCacheService
+import io.sentry.Breadcrumb
 import io.sentry.Sentry
+import io.sentry.SentryLevel
 import java.io.File
 
 class BouncerApp : Application() {
+
+    companion object {
+        private const val TAG = "BouncerApp"
+    }
+
     override fun onCreate() {
         super.onCreate()
 
-        // Initialize managers
-        TeamLogoManager.initialize(this)
-        TeamAcronymManager.initialize(this)
-        FavouriteTeamsManager.initialize(this)
-        
-        // Initialize disk cache for offline support
-        MatchCacheService.initDiskCache(this)
+        // ── Install global uncaught-exception handler ────────────────────
+        val defaultHandler = Thread.getDefaultUncaughtExceptionHandler()
+        Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
+            try {
+                Sentry.captureException(throwable)
+                Log.e(TAG, "Uncaught exception on thread ${thread.name}", throwable)
+            } catch (_: Exception) { /* Sentry itself failed, don't recurse */ }
+            defaultHandler?.uncaughtException(thread, throwable)
+        }
 
-        // Configure Coil ImageLoader with sensible memory/disk caches and OkHttp integration
-        try {
+        // ── Leave a startup breadcrumb ───────────────────────────────────
+        Sentry.addBreadcrumb(
+            Breadcrumb().apply {
+                category = "app.lifecycle"
+                message = "BouncerApp.onCreate started"
+                level = SentryLevel.INFO
+            }
+        )
+
+        // ── Initialize managers ──────────────────────────────────────────
+        initializeSafely("TeamLogoManager") { TeamLogoManager.initialize(this) }
+        initializeSafely("TeamAcronymManager") { TeamAcronymManager.initialize(this) }
+        initializeSafely("FavouriteTeamsManager") { FavouriteTeamsManager.initialize(this) }
+        initializeSafely("MatchCacheService") { MatchCacheService.initDiskCache(this) }
+
+        // ── Configure Coil ImageLoader ───────────────────────────────────
+        initializeSafely("CoilImageLoader") {
             val okHttpClient = com.tanush.bouncer.network.HttpClientProvider.sharedClient
 
             val imageLoader = ImageLoader.Builder(this)
@@ -33,22 +57,51 @@ class BouncerApp : Application() {
                 .diskCache {
                     DiskCache.Builder()
                         .directory(File(cacheDir, "image_cache"))
-                        .maxSizeBytes(40L * 1024 * 1024) // 40MB
+                        .maxSizeBytes(40L * 1024 * 1024) // 40 MB
                         .build()
                 }
                 .memoryCache {
                     MemoryCache.Builder(this)
-                        .maxSizePercent(0.15) // 15% of app memory
+                        .maxSizePercent(0.15) // 15 % of app memory
                         .build()
                 }
                 .respectCacheHeaders(false)
                 .build()
 
-            // Set as default for Coil's image loader
             coil.Coil.setImageLoader(imageLoader)
+        }
+
+        Sentry.addBreadcrumb(
+            Breadcrumb().apply {
+                category = "app.lifecycle"
+                message = "BouncerApp.onCreate completed"
+                level = SentryLevel.INFO
+            }
+        )
+        Log.i(TAG, "Application initialized successfully")
+    }
+
+    // ── Helper: wrap any init step so a failure is reported but never kills startup ──
+    private fun initializeSafely(componentName: String, block: () -> Unit) {
+        try {
+            block()
+            Sentry.addBreadcrumb(
+                Breadcrumb().apply {
+                    category = "app.init"
+                    message = "$componentName initialized"
+                    level = SentryLevel.INFO
+                }
+            )
         } catch (e: Exception) {
-            // If Coil initialization fails, report to Sentry but keep app functional
+            Log.e(TAG, "Failed to initialize $componentName", e)
             Sentry.captureException(e)
+            Sentry.addBreadcrumb(
+                Breadcrumb().apply {
+                    category = "app.init"
+                    message = "$componentName FAILED: ${e.message}"
+                    level = SentryLevel.ERROR
+                }
+            )
         }
     }
 }

@@ -78,15 +78,15 @@ class BouncerActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-    // waiting for view to draw to better represent a captured error with a screenshot
-    findViewById<android.view.View>(android.R.id.content).viewTreeObserver.addOnGlobalLayoutListener {
-      try {
-        throw Exception("This app uses Sentry! :)")
-      } catch (e: Exception) {
-        Sentry.captureException(e)
-      }
-    }
 
+        // Leave a startup breadcrumb so we know Sentry is connected
+        io.sentry.Sentry.addBreadcrumb(
+            io.sentry.Breadcrumb().apply {
+                category = "app.lifecycle"
+                message = "BouncerActivity.onCreate"
+                level = io.sentry.SentryLevel.INFO
+            }
+        )
 
         // Enable edge-to-edge display
         enableEdgeToEdge()

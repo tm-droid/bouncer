@@ -68,12 +68,15 @@
     <!-- Required: set your sentry.io project identifier (DSN) -->
     <meta-data android:name="io.sentry.dsn" android:value="${sentryDsn}" />
 
-    <!-- Enable debug logging so we can see Sentry activity in Logcat (filter tag: Sentry) -->
-    <!-- TODO: disable in production release builds once errors are confirmed working -->
-    <meta-data android:name="io.sentry.debug" android:value="true" />
+    <!-- Debug logging — only enabled for debug builds via manifestPlaceholders -->
+    <meta-data android:name="io.sentry.debug" android:value="${sentryDebug}" />
 
     <!-- Tag events by environment so they appear in the right section on sentry.io -->
     <meta-data android:name="io.sentry.environment" android:value="${sentryEnvironment}" />
+
+    <!-- Custom options configuration class for beforeSend / event filtering -->
+    <meta-data android:name="io.sentry.dsn.options-configuration"
+              android:value="com.tanush.bouncer.SentryOptionsConfig" />
 
     <!-- enable automatic breadcrumbs for user interactions (clicks, swipes, scrolls) -->
     <meta-data android:name="io.sentry.traces.user-interaction.enable" android:value="true" />

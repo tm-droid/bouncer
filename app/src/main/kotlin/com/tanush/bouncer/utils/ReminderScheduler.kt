@@ -5,11 +5,22 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.os.SystemClock
+import io.sentry.Breadcrumb
 import io.sentry.Sentry
+import io.sentry.SentryLevel
 
 object ReminderScheduler {
     fun scheduleReminder(context: Context, id: Int, title: String, body: String, delayMillis: Long) {
         try {
+            Sentry.addBreadcrumb(Breadcrumb().apply {
+                category = "util.reminder"
+                message = "Scheduling reminder"
+                level = SentryLevel.INFO
+                setData("reminderId", id)
+                setData("title", title)
+                setData("delayMillis", delayMillis)
+            })
+            
             val intent = Intent(context, ReminderReceiver::class.java).apply {
                 putExtra("title", title)
                 putExtra("body", body)
@@ -33,6 +44,13 @@ object ReminderScheduler {
 
     fun cancelReminder(context: Context, id: Int) {
         try {
+            Sentry.addBreadcrumb(Breadcrumb().apply {
+                category = "util.reminder"
+                message = "Canceling reminder"
+                level = SentryLevel.INFO
+                setData("reminderId", id)
+            })
+            
             val intent = Intent(context, ReminderReceiver::class.java)
             val pending = PendingIntent.getBroadcast(
                 context,

@@ -2,6 +2,9 @@ package com.tanush.bouncer.services
 
 import android.util.Log
 import com.tanush.bouncer.BuildConfig
+import io.sentry.Breadcrumb
+import io.sentry.Sentry
+import io.sentry.SentryLevel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
@@ -10,6 +13,8 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.IOException
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicLong
 
 class CommentaryFusionService {
     // OpenRouter.ai settings
@@ -20,6 +25,51 @@ class CommentaryFusionService {
     private val openRouterApiKey = BuildConfig.OPENROUTER_API_KEY
 
     private val client = com.tanush.bouncer.network.HttpClientProvider.sharedClient
+
+    // ── Permanent failure detection ──────────────────────────────────────
+    // A 402 "Insufficient credits" is a billing problem, not a transient
+    // network error.  Once detected we stop calling the API to avoid:
+    //   • wasting latency on guaranteed-failure requests
+    //   • flooding Sentry / logcat with identical 402 errors
+    private val apiPermanentlyFailed = AtomicBoolean(false)
+    private val permanentFailureReportedAt = AtomicLong(0L)
+    private val PERMANENT_FAILURE_RE_CHECK_MS = 600_000L // re-check every 10 min
+
+    /**
+     * Returns true while the API is known to be in a permanent failure
+     * state (e.g. 402 Insufficient credits, 401 bad key).  Allows a
+     * periodic re-check so the app auto-recovers when credits are topped up.
+     */
+    private fun isApiDisabled(): Boolean {
+        if (!apiPermanentlyFailed.get()) return false
+        // Allow a single re-check after the cool-down period
+        val now = System.currentTimeMillis()
+        if (now - permanentFailureReportedAt.get() > PERMANENT_FAILURE_RE_CHECK_MS) {
+            apiPermanentlyFailed.set(false)
+            Log.i("CommentaryFusionService", "Re-enabling API after cool-down period")
+            return false
+        }
+        return true
+    }
+
+    private fun markApiPermanentlyFailed(statusCode: Int, errorBody: String?) {
+        if (apiPermanentlyFailed.compareAndSet(false, true)) {
+            val now = System.currentTimeMillis()
+            permanentFailureReportedAt.set(now)
+            Log.e("CommentaryFusionService", "API permanently failed (HTTP $statusCode) — disabling for ${PERMANENT_FAILURE_RE_CHECK_MS / 1000}s")
+
+            // Report to Sentry exactly once
+            Sentry.captureMessage("OpenRouter API permanently failed: HTTP $statusCode")
+            Sentry.addBreadcrumb(Breadcrumb().apply {
+                category = "service.commentary"
+                message = "OpenRouter API disabled — permanent failure"
+                level = SentryLevel.ERROR
+                setData("statusCode", statusCode)
+                setData("errorBody", errorBody?.take(200) ?: "null")
+                setData("cooldownMs", PERMANENT_FAILURE_RE_CHECK_MS)
+            })
+        }
+    }
 
     companion object {
         const val FUSION_PROMPT_TEMPLATE = """
@@ -78,6 +128,15 @@ class CommentaryFusionService {
         batsman: String,
         scoreContext: String
     ): String {
+        Sentry.addBreadcrumb(Breadcrumb().apply {
+            category = "service.commentary"
+            message = "Fusing commentary snippets"
+            level = SentryLevel.INFO
+            setData("matchId", matchId)
+            setData("over", over)
+            setData("ballNumber", ballNumber)
+        })
+        
         // Generate cache key based on context hash
         val contextHash = (snippet1 + snippet2 + oversSummary).hashCode().toString()
         val cacheKey = "ai_commentary:$matchId:$over:$contextHash"
@@ -108,6 +167,15 @@ class CommentaryFusionService {
     suspend fun summarizeOversWithAI(commentaryLines: List<String>, matchId: String, over: Int): String {
         if (commentaryLines.isEmpty()) return "No recent commentary available."
         
+        Sentry.addBreadcrumb(Breadcrumb().apply {
+            category = "service.commentary"
+            message = "Summarizing overs with AI"
+            level = SentryLevel.INFO
+            setData("matchId", matchId)
+            setData("over", over)
+            setData("lineCount", commentaryLines.size)
+        })
+        
         // Generate cache key based on context hash
         val context = commentaryLines.joinToString(" ")
         val contextHash = context.hashCode().toString()
@@ -135,16 +203,29 @@ class CommentaryFusionService {
     }
 
     private suspend fun callOpenRouter(model: String, prompt: String): String? = withContext(Dispatchers.IO) {
+        // ── Short-circuit if API is known-broken ─────────────────────────
+        if (isApiDisabled()) {
+            Log.d("CommentaryFusionService", "API disabled (permanent failure) — returning null")
+            return@withContext null
+        }
+
         Log.d("CommentaryFusionService", "Using model: $model")
+        
+        Sentry.addBreadcrumb(Breadcrumb().apply {
+            category = "service.commentary"
+            message = "Calling OpenRouter API"
+            level = SentryLevel.INFO
+            setData("model", model)
+        })
         
         val jsonBody = JSONObject()
         jsonBody.put("model", model)
-        val messages = JSONArray()
-        val message = JSONObject()
-        message.put("role", "user")
-        message.put("content", prompt)
-        messages.put(message)
-        jsonBody.put("messages", messages)
+        val messagesArray = JSONArray()
+        val messageObj = JSONObject()
+        messageObj.put("role", "user")
+        messageObj.put("content", prompt)
+        messagesArray.put(messageObj)
+        jsonBody.put("messages", messagesArray)
         jsonBody.put("max_tokens", 512)
 
         val requestBody = jsonBody.toString().toRequestBody("application/json; charset=utf-8".toMediaType())
@@ -159,7 +240,23 @@ class CommentaryFusionService {
         try {
             client.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) {
-                    Log.e("CommentaryFusionService", "API call failed with code ${response.code}: ${response.body?.string()}")
+                    val errorBody = response.body?.string()
+                    val code = response.code
+                    Log.e("CommentaryFusionService", "API call failed with code $code: $errorBody")
+
+                    // 401/402/403 are permanent billing/auth issues — stop retrying
+                    if (code in listOf(401, 402, 403)) {
+                        markApiPermanentlyFailed(code, errorBody)
+                        return@withContext null
+                    }
+
+                    Sentry.addBreadcrumb(Breadcrumb().apply {
+                        category = "service.commentary"
+                        message = "OpenRouter API error"
+                        level = SentryLevel.ERROR
+                        setData("statusCode", code)
+                        setData("errorBody", errorBody?.take(200) ?: "null")
+                    })
                     return@withContext null
                 }
 
@@ -181,6 +278,14 @@ class CommentaryFusionService {
             }
         } catch (e: IOException) {
             Log.e("CommentaryFusionService", "API call failed", e)
+            // Only report network IOExceptions to Sentry (not cancellation)
+            if (e.message != "Canceled") {
+                Sentry.captureException(e)
+            }
+            return@withContext null
+        } catch (e: Exception) {
+            Log.e("CommentaryFusionService", "Unexpected error in API call", e)
+            Sentry.captureException(e)
             return@withContext null
         }
     }

@@ -1,6 +1,9 @@
 package com.tanush.bouncer.network
 
 import android.util.Log
+import io.sentry.Breadcrumb
+import io.sentry.Sentry
+import io.sentry.SentryLevel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.jsoup.Jsoup
@@ -28,10 +31,18 @@ object SquadScraper {
      * @return Pair of (team1Squad, team2Squad)
      */
     suspend fun fetchSquads(matchId: String, matchTitle: String): Pair<List<Player>, List<Player>> = withContext(Dispatchers.IO) {
+        val matchTitleSlug = matchTitle.replace(" ", "-")
+        val urlString = "https://www.cricbuzz.com/live-cricket-scores/$matchId/$matchTitleSlug"
+        
+        Sentry.addBreadcrumb(Breadcrumb().apply {
+            category = "network.cricbuzz"
+            message = "Fetching squads"
+            level = SentryLevel.INFO
+            setData("matchId", matchId)
+            setData("url", urlString)
+        })
+        
         try {
-            val matchTitleSlug = matchTitle.replace(" ", "-")
-            val urlString = "https://www.cricbuzz.com/live-cricket-scores/$matchId/$matchTitleSlug"
-            
             Log.d(TAG, "Fetching squads from: $urlString")
             
             val doc = Jsoup.connect(urlString)
@@ -98,13 +109,36 @@ object SquadScraper {
             
             if (team1.isEmpty() && team2.isEmpty()) {
                 Log.w(TAG, "No squad data found, squads might not be announced")
+                Sentry.addBreadcrumb(Breadcrumb().apply {
+                    category = "network.cricbuzz"
+                    message = "No squad data found"
+                    level = SentryLevel.WARNING
+                    setData("matchId", matchId)
+                })
             } else {
                 Log.d(TAG, "Successfully fetched squads: Team1=${team1.size} players, Team2=${team2.size} players")
+                Sentry.addBreadcrumb(Breadcrumb().apply {
+                    category = "network.cricbuzz"
+                    message = "Successfully fetched squads"
+                    level = SentryLevel.INFO
+                    setData("matchId", matchId)
+                    setData("team1Players", team1.size)
+                    setData("team2Players", team2.size)
+                })
             }
             
             Pair(team1, team2)
         } catch (e: Exception) {
             Log.e(TAG, "Error fetching squads", e)
+            Sentry.addBreadcrumb(Breadcrumb().apply {
+                category = "network.cricbuzz"
+                message = "Error fetching squads"
+                level = SentryLevel.ERROR
+                setData("matchId", matchId)
+                setData("url", urlString)
+                setData("error", e.message ?: "Unknown error")
+            })
+            Sentry.captureException(e)
             Pair(emptyList(), emptyList())
         }
     }

@@ -1,0 +1,91 @@
+package com.tanush.bouncer
+
+import android.util.Log
+import io.sentry.Sentry
+import io.sentry.SentryEvent
+import io.sentry.SentryOptions
+import io.sentry.android.core.SentryAndroidOptions
+
+/**
+ * Sentry options configuration applied during auto-init.
+ *
+ * Responsibilities:
+ * - Filters out noisy / non-actionable events before they consume quota
+ *   (e.g. OkHttp cancellations, 403 scraping errors, emulator IPv6 failures)
+ * - Sets reasonable connection / read timeouts so Sentry transport doesn't
+ *   block the thread pool on flaky emulator networks
+ */
+class SentryOptionsConfig : Sentry.OptionsConfiguration<SentryAndroidOptions> {
+
+    companion object {
+        private const val TAG = "SentryOptionsConfig"
+
+        /** Exception messages that indicate benign cancellations, not real errors. */
+        private val IGNORED_EXCEPTION_MESSAGES = setOf(
+            "Canceled",          // OkHttp / Coil lifecycle cancellation
+            "Socket closed",     // Connection closed by peer
+        )
+
+        /** Exception message substrings that indicate non-actionable scraping errors. */
+        private val IGNORED_MESSAGE_SUBSTRINGS = listOf(
+            "HTTP error fetching URL. Status=403",  // Cricinfo blocking scrapers
+            "HTTP error fetching URL. Status=429",  // Rate-limited
+            "Insufficient credits",                 // OpenRouter billing
+        )
+    }
+
+    override fun configure(options: SentryAndroidOptions) {
+        // ── Transport timeouts ───────────────────────────────────────────
+        // Shorter timeouts prevent Sentry transport threads from hanging on
+        // flaky emulator networks (the default 5s is too generous for IPv6
+        // failures that never resolve).
+        options.connectionTimeoutMillis = 5_000
+        options.readTimeoutMillis = 5_000
+
+        // ── Event filtering ──────────────────────────────────────────────
+        options.beforeSend = SentryOptions.BeforeSendCallback { event, _ ->
+            if (shouldDropEvent(event)) {
+                Log.d(TAG, "Dropping noise event: ${describeEvent(event)}")
+                null // returning null drops the event
+            } else {
+                event
+            }
+        }
+
+        Log.d(TAG, "Sentry options configured with beforeSend filter and transport timeouts")
+    }
+
+    /**
+     * Returns true for events that are non-actionable noise and should be
+     * silently dropped to preserve Sentry quota and keep the Issues feed clean.
+     */
+    private fun shouldDropEvent(event: SentryEvent): Boolean {
+        val exceptions = event.exceptions ?: return false
+
+        for (sentryException in exceptions) {
+            val type = sentryException.type ?: ""
+            val value = sentryException.value ?: ""
+
+            // 1. Benign cancellations (Coil image loads, OkHttp lifecycle)
+            if (type == "IOException" && value in IGNORED_EXCEPTION_MESSAGES) return true
+            if (type == "CancellationException") return true
+
+            // 2. Non-actionable scraping / API errors
+            for (substring in IGNORED_MESSAGE_SUBSTRINGS) {
+                if (value.contains(substring)) return true
+            }
+
+            // 3. Emulator IPv6 connection failures to Sentry itself
+            if (type == "ConnectException" && value.contains("ingest") && value.contains("sentry.io")) {
+                return true
+            }
+        }
+
+        return false
+    }
+
+    private fun describeEvent(event: SentryEvent): String {
+        val first = event.exceptions?.firstOrNull()
+        return "${first?.type}: ${first?.value?.take(80)}"
+    }
+}

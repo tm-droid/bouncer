@@ -5,10 +5,12 @@ import android.util.Log
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.tanush.bouncer.models.CricketMatch
+import io.sentry.Breadcrumb
+import io.sentry.Sentry
+import io.sentry.SentryLevel
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.util.Date
-import io.sentry.Sentry
 
 /**
  * Thread-safe cache service for cricket matches
@@ -69,6 +71,13 @@ object MatchCacheService {
      */
     suspend fun getMatches(status: String): List<CricketMatch>? = mutex.withLock {
         try {
+            Sentry.addBreadcrumb(Breadcrumb().apply {
+                category = "service.cache"
+                message = "Getting cached matches"
+                level = SentryLevel.INFO
+                setData("status", status)
+            })
+            
             // Try memory cache first
             val cached = cache[status]
             if (cached != null) {
@@ -93,6 +102,13 @@ object MatchCacheService {
      */
     suspend fun getOfflineMatches(status: String): List<CricketMatch>? = mutex.withLock {
         try {
+            Sentry.addBreadcrumb(Breadcrumb().apply {
+                category = "service.cache"
+                message = "Getting offline cached matches"
+                level = SentryLevel.INFO
+                setData("status", status)
+            })
+            
             // First try memory cache regardless of TTL
             val memoryCached = cache[status]
             if (memoryCached != null) {
@@ -113,6 +129,14 @@ object MatchCacheService {
      */
     suspend fun updateCache(matches: List<CricketMatch>, status: String) = mutex.withLock {
         try {
+            Sentry.addBreadcrumb(Breadcrumb().apply {
+                category = "service.cache"
+                message = "Updating match cache"
+                level = SentryLevel.INFO
+                setData("status", status)
+                setData("matchCount", matches.size)
+            })
+            
             Log.d(TAG, "Updating cache for $status with ${matches.size} matches")
             cache[status] = CacheEntry(matches, Date())
         
@@ -129,6 +153,13 @@ object MatchCacheService {
      */
     suspend fun clearCache() = mutex.withLock {
         try {
+            Sentry.addBreadcrumb(Breadcrumb().apply {
+                category = "service.cache"
+                message = "Clearing all match cache"
+                level = SentryLevel.INFO
+                setData("cacheSize", cache.size)
+            })
+            
             Log.d(TAG, "Clearing all cached data")
             cache.clear()
             diskPrefs?.edit()?.clear()?.apply()
@@ -164,6 +195,7 @@ object MatchCacheService {
                 .apply()
         } catch (e: Exception) {
             Log.w(TAG, "Failed to persist matches to disk for $status", e)
+            Sentry.captureException(e)
         }
     }
     
@@ -185,6 +217,7 @@ object MatchCacheService {
             return matches
         } catch (e: Exception) {
             Log.w(TAG, "Failed to load disk cache for $status", e)
+            Sentry.captureException(e)
             return null
         }
     }
