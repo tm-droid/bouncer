@@ -75,7 +75,7 @@
     <meta-data android:name="io.sentry.environment" android:value="${sentryEnvironment}" />
 
     <!-- Custom options configuration class for beforeSend / event filtering -->
-    <meta-data android:name="io.sentry.dsn.options-configuration"
+    <meta-data android:name="io.sentry.options-configuration"
               android:value="com.tanush.bouncer.SentryOptionsConfig" />
 
     <!-- enable automatic breadcrumbs for user interactions (clicks, swipes, scrolls) -->
