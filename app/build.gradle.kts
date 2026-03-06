@@ -184,12 +184,14 @@ sentry {
     // ── Performance & Tracing ────────────────────────────────────────────
     tracingInstrumentation {
         enabled.set(true)
+        // COMPOSE instrumentation is excluded: it causes androidx.activity.compose.R to be
+        // included in both Sentry ASM transform outputs, producing a duplicate-class DEX
+        // error at merge time (AGP 9 + activity-compose 1.12.x).
         features.set(
             setOf(
                 io.sentry.android.gradle.extensions.InstrumentationFeature.DATABASE,
                 io.sentry.android.gradle.extensions.InstrumentationFeature.FILE_IO,
-                io.sentry.android.gradle.extensions.InstrumentationFeature.OKHTTP,
-                io.sentry.android.gradle.extensions.InstrumentationFeature.COMPOSE
+                io.sentry.android.gradle.extensions.InstrumentationFeature.OKHTTP
             )
         )
     }
