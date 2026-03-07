@@ -153,7 +153,7 @@ fun DRSReviewCard(
 private fun DrsStatusRow(label: String, value: String, color: Color) {
     val colors = BouncerDesignSystem.colors
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(label, color = Color.White.copy(alpha = 0.6f), fontSize = 10.sp, fontWeight = FontWeight.Bold)
+        Text(label, color = colors.textPrimary.copy(alpha = 0.6f), fontSize = 10.sp, fontWeight = FontWeight.Bold)
         Text(value, color = color, fontSize = 10.sp, fontWeight = FontWeight.Black)
     }
 }
@@ -164,16 +164,16 @@ private fun MetricGlassCard(label: String, value: String, icon: androidx.compose
     Surface(
         modifier = modifier.height(100.dp),
         shape = RoundedCornerShape(16.dp),
-        color = Color.White.copy(alpha = 0.03f),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.05f))
+        color = colors.textPrimary.copy(alpha = 0.03f),
+        border = BorderStroke(1.dp, colors.textPrimary.copy(alpha = 0.05f))
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Box(modifier = Modifier.size(32.dp).background(Color.White.copy(alpha = 0.05f), CircleShape), contentAlignment = Alignment.Center) {
+            Box(modifier = Modifier.size(32.dp).background(colors.textPrimary.copy(alpha = 0.05f), CircleShape), contentAlignment = Alignment.Center) {
                 Icon(icon, null, tint = colors.goldPrimary, modifier = Modifier.size(16.dp))
             }
             Spacer(modifier = Modifier.weight(1f))
             Text(label, color = colors.textSecondary, fontSize = 9.sp, fontWeight = FontWeight.Bold)
-            Text(value, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Black)
+            Text(value, color = colors.textPrimary, fontSize = 16.sp, fontWeight = FontWeight.Black)
         }
     }
 }

@@ -43,7 +43,7 @@ fun GlassCard(
     modifier: Modifier = Modifier,
     shape: Shape = BouncerDesignSystem.shapes.glassCard,
     borderOpacity: Float = GlassOpacity.BORDER,
-    useGoldBorder: Boolean = false,
+    useGoldBorder: Boolean = true,
     showNoiseOverlay: Boolean = true,
     showPulse: Boolean = false,
     contentPadding: PaddingValues = PaddingValues(BouncerDesignSystem.dimens.spacing.md),
@@ -108,7 +108,7 @@ fun GlassCardLarge(
     modifier: Modifier = Modifier,
     shape: Shape = BouncerDesignSystem.shapes.glassCardHero,
     borderOpacity: Float = GlassOpacity.BORDER,
-    useGoldBorder: Boolean = false,
+    useGoldBorder: Boolean = true,
     showNoiseOverlay: Boolean = true,
     contentPadding: PaddingValues = PaddingValues(BouncerDesignSystem.dimens.spacing.lg),
     content: @Composable BoxScope.() -> Unit

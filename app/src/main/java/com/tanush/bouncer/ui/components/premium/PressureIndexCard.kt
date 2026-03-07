@@ -292,7 +292,7 @@ fun PressureIndexCard(
                     PressureStatRow(
                         label = "Required RR",
                         value = String.format("%.2f", data.requiredRate),
-                        color = if (data.requiredRate > 10) colors.statusLive else if (data.requiredRate > 7) colors.statusWarning else Color.White,
+                        color = if (data.requiredRate > 10) colors.statusLive else if (data.requiredRate > 7) colors.statusWarning else colors.textPrimary,
                     )
                     PressureStatRow(
                         label = "Current RR",
@@ -302,12 +302,12 @@ fun PressureIndexCard(
                     PressureStatRow(
                         label = "Wickets Left",
                         value = "${data.wicketsInHand}",
-                        color = if (data.wicketsInHand <= 3) colors.statusLive else Color.White,
+                        color = if (data.wicketsInHand <= 3) colors.statusLive else colors.textPrimary,
                     )
                     PressureStatRow(
                         label = "Balls Left",
                         value = "${data.ballsRemaining}",
-                        color = if (data.ballsRemaining <= 30) colors.statusWarning else Color.White,
+                        color = if (data.ballsRemaining <= 30) colors.statusWarning else colors.textPrimary,
                     )
                 }
             }
@@ -423,7 +423,7 @@ fun PressureIndexCard(
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
                                     text = factor.name,
-                                    color = Color.White,
+                                    color = colors.textPrimary,
                                     fontSize = 13.sp,
                                     fontWeight = FontWeight.Medium,
                                 )

@@ -151,7 +151,7 @@ fun SeriesStandingsCard(
                             )
                             Text(
                                 text = seriesName,
-                                color = Color.White,
+                                color = colors.textPrimary,
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Bold,
                             )
@@ -166,20 +166,20 @@ fun SeriesStandingsCard(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(8.dp))
-                        .background(Color.White.copy(alpha = 0.05f))
+                        .background(colors.glassSurface)
                         .padding(horizontal = 12.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
                         text = "#",
-                        color = Color.White.copy(alpha = 0.5f),
+                        color = colors.textTertiary,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.width(20.dp),
                     )
                     Text(
                         text = "TEAM",
-                        color = Color.White.copy(alpha = 0.5f),
+                        color = colors.textTertiary,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.weight(1f),
@@ -248,7 +248,7 @@ private fun TableHeaderText(
     val colors = BouncerDesignSystem.colors
     Text(
         text = text,
-        color = Color.White.copy(alpha = 0.5f),
+        color = colors.textTertiary,
         fontSize = 10.sp,
         fontWeight = FontWeight.Bold,
         textAlign = TextAlign.Center,
@@ -286,7 +286,7 @@ private fun StandingsTeamRow(
                 } else {
                     Brush.horizontalGradient(
                         colors = listOf(
-                            Color.White.copy(alpha = 0.03f),
+                            colors.glassSurface,
                             Color.Transparent,
                         ),
                     )
@@ -331,7 +331,7 @@ private fun StandingsTeamRow(
             Column {
                 Text(
                     text = team.shortName,
-                    color = if (isCurrentMatchTeam) colors.goldDark else Color.White,
+                    color = if (isCurrentMatchTeam) colors.goldDark else colors.textPrimary,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Bold,
                 )
@@ -406,13 +406,13 @@ private fun StandingsTeamRow(
 @Composable
 private fun TableDataText(
     text: String,
-    color: Color = Color.White.copy(alpha = 0.8f),
+    color: Color = Color.Unspecified,
     modifier: Modifier = Modifier,
 ) {
     val colors = BouncerDesignSystem.colors
     Text(
         text = text,
-        color = color,
+        color = if (color == Color.Unspecified) colors.textSecondary else color,
         fontSize = 11.sp,
         fontWeight = FontWeight.Medium,
         textAlign = TextAlign.Center,
@@ -436,7 +436,7 @@ private fun LegendItem(
         Spacer(modifier = Modifier.width(4.dp))
         Text(
             text = label,
-            color = Color.White.copy(alpha = 0.5f),
+            color = colors.textTertiary,
             fontSize = 9.sp,
         )
     }

@@ -132,7 +132,7 @@ fun BallSpeedTrackerCard(
                         )
                         Text(
                             text = currentBowler,
-                            color = Color.White,
+                            color = colors.textPrimary,
                             fontSize = 17.sp,
                             fontWeight = FontWeight.SemiBold,
                         )
@@ -219,7 +219,7 @@ fun BallSpeedTrackerCard(
                     ) {
                         Text(
                             text = "${(currentSpeed * animatedProgress.value).toInt()}",
-                            color = Color.White,
+                            color = colors.textPrimary,
                             fontSize = 28.sp,
                             fontWeight = FontWeight.Bold,
                             modifier = Modifier.graphicsLayer {

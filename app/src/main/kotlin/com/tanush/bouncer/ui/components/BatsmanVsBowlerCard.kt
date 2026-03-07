@@ -429,7 +429,7 @@ fun BatsmanVsBowlerCard(
                     BoundaryBox(
                         label = "Dots",
                         value = matchupInfo.dotBalls,
-                        color = Color.Gray
+                        color = TextSecondary
                     )
                 }
                 

@@ -157,8 +157,8 @@ fun PremiumSplashScreen(
                     .background(
                         Brush.radialGradient(
                             colors = listOf(
-                                Color.White.copy(alpha = 0.08f),
-                                Color.White.copy(alpha = 0.05f),
+                                GlassSurface,
+                                GlassSurface,
                                 colors.surface1
                             )
                         ),
@@ -219,7 +219,7 @@ fun PremiumSplashScreen(
                 fontSize = 32.sp,
                 fontWeight = FontWeight.Black,
                 letterSpacing = 8.sp,
-                color = Color.White
+                color = TextPrimary
             )
             
             Spacer(modifier = Modifier.height(8.dp))
@@ -345,7 +345,7 @@ private fun QuickFilterChip(
     )
     
     val backgroundColor by animateColorAsState(
-        targetValue = if (isSelected) colors.goldPrimary.copy(alpha = 0.15f) else Color.White.copy(alpha = 0.05f),
+        targetValue = if (isSelected) colors.goldPrimary.copy(alpha = 0.15f) else GlassSurface,
         animationSpec = tween(200),
         label = "chipBg"
     )
@@ -476,7 +476,7 @@ fun PremiumEmptyState(
                     )
                 }
                 .background(
-                    Color.White.copy(alpha = 0.05f),
+                    GlassSurface,
                     CircleShape
                 )
                 .border(
@@ -502,7 +502,7 @@ fun PremiumEmptyState(
                 text = title,
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color.White,
+                color = TextPrimary,
                 textAlign = TextAlign.Center
             )
             
@@ -639,7 +639,7 @@ private fun OnboardingQuickActionItem(
     ) {
         // Label
         Surface(
-            color = Color.White.copy(alpha = 0.05f),
+            color = GlassSurface,
             shape = RoundedCornerShape(8.dp),
             shadowElevation = 4.dp
         ) {

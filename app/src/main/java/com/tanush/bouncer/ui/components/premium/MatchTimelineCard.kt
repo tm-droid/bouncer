@@ -149,7 +149,7 @@ fun MatchTimelineCard(
                         )
                         Text(
                             text = matchPhase,
-                            color = Color.White.copy(alpha = 0.7f),
+                            color = colors.textPrimary.copy(alpha = 0.7f),
                             fontSize = 13.sp,
                         )
                     }
@@ -318,15 +318,15 @@ private fun TimelineEventRow(
         ImpactLevel.LOW -> Color.Gray
     }
 
-    val eventIcon = when (event.eventType) {
-        TimelineEventType.WICKET -> "❌"
-        TimelineEventType.MILESTONE -> "🏆"
-        TimelineEventType.BOUNDARY -> "🎯"
-        TimelineEventType.POWERPLAY -> "⚡"
-        TimelineEventType.REVIEW -> "📺"
-        TimelineEventType.INJURY -> "🏥"
-        TimelineEventType.STRATEGIC_TIMEOUT -> "⏸️"
-        TimelineEventType.DROPPED_CATCH -> "🧤"
+    val eventLabel = when (event.eventType) {
+        TimelineEventType.WICKET -> "W"
+        TimelineEventType.MILESTONE -> "★"
+        TimelineEventType.BOUNDARY -> "4/6"
+        TimelineEventType.POWERPLAY -> "PP"
+        TimelineEventType.REVIEW -> "DRS"
+        TimelineEventType.INJURY -> "INJ"
+        TimelineEventType.STRATEGIC_TIMEOUT -> "TO"
+        TimelineEventType.DROPPED_CATCH -> "DC"
     }
 
     Row(
@@ -352,8 +352,10 @@ private fun TimelineEventRow(
             contentAlignment = Alignment.Center,
         ) {
             Text(
-                text = eventIcon,
-                fontSize = 18.sp,
+                text = eventLabel,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                color = impactColor,
             )
         }
 
@@ -362,7 +364,7 @@ private fun TimelineEventRow(
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = event.title,
-                color = Color.White,
+                color = colors.textPrimary,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.SemiBold,
             )
@@ -376,7 +378,7 @@ private fun TimelineEventRow(
         Column(horizontalAlignment = Alignment.End) {
             Text(
                 text = "Over ${String.format("%.1f", event.over)}",
-                color = Color.White.copy(alpha = 0.7f),
+                color = colors.textPrimary.copy(alpha = 0.7f),
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Medium,
             )

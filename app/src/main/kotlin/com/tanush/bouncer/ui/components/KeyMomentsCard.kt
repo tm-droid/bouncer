@@ -55,7 +55,7 @@ enum class HighlightHighlightMomentType(val emoji: String, val color: Color) {
     CATCH("👏", ChartBlue),
     RUNOUT("⚡", WarningYellow),
     DRS_REVIEW("📺", Color.Magenta),
-    DROPPED_CATCH("😱", Color.Gray),
+    DROPPED_CATCH("😱", TextTertiary),
     MILESTONE("⭐", ShinyGoldLight),
     INJURY("🏥", Color.Red),
     RAIN_DELAY("🌧️", ChartBlue),
@@ -109,7 +109,7 @@ fun HighlightMomentsCard(
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = "Key Moments",
-                        color = Color.White,
+                        color = colors.textPrimary,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -143,7 +143,7 @@ fun HighlightMomentsCard(
                     
                     // Draw timeline
                     drawLine(
-                        color = Color.White.copy(alpha = 0.2f),
+                        color = GlassBorder,
                         start = Offset(0f, timelineY),
                         end = Offset(size.width, timelineY),
                         strokeWidth = 3f,
@@ -180,18 +180,18 @@ fun HighlightMomentsCard(
             ) {
                 Text(
                     text = "0",
-                    color = Color.White.copy(alpha = 0.4f),
+                    color = colors.textMuted,
                     fontSize = 10.sp
                 )
                 Text(
                     text = "overs",
-                    color = Color.White.copy(alpha = 0.4f),
+                    color = colors.textMuted,
                     fontSize = 10.sp
                 )
                 val maxOver = moments.maxOfOrNull { it.overNumber }?.toInt() ?: 20
                 Text(
                     text = "$maxOver",
-                    color = Color.White.copy(alpha = 0.4f),
+                    color = colors.textMuted,
                     fontSize = 10.sp
                 )
             }
@@ -270,7 +270,7 @@ private fun MomentRow(
                 ) {
                     Text(
                         text = moment.title,
-                        color = Color.White,
+                        color = TextPrimary,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
@@ -280,7 +280,7 @@ private fun MomentRow(
                     
                     Text(
                         text = "${moment.overNumber} ov",
-                        color = Color.White.copy(alpha = 0.5f),
+                        color = TextSecondary,
                         fontSize = 11.sp
                     )
                 }
@@ -289,7 +289,7 @@ private fun MomentRow(
                 
                 Text(
                     text = moment.description,
-                    color = Color.White.copy(alpha = 0.6f),
+                    color = TextSecondary,
                     fontSize = 12.sp,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
@@ -348,7 +348,7 @@ private fun ImpactIndicator(impact: Float) {
                 
                 // Background
                 drawCircle(
-                    color = Color.White.copy(alpha = 0.1f),
+                    color = GlassSurface,
                     radius = radius,
                     center = center,
                     style = Stroke(width = 3f)
@@ -359,7 +359,7 @@ private fun ImpactIndicator(impact: Float) {
                 val impactColor = when {
                     impact > 0.8f -> statusLiveColor
                     impact > 0.5f -> statusWarningColor
-                    else -> Color.Gray
+                    else -> TextTertiary
                 }
                 
                 drawArc(
@@ -375,7 +375,7 @@ private fun ImpactIndicator(impact: Float) {
             
             Text(
                 text = "${(impact * 10).toInt()}",
-                color = Color.White,
+                color = colors.textPrimary,
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Bold
             )
@@ -383,7 +383,7 @@ private fun ImpactIndicator(impact: Float) {
         
         Text(
             text = "IMPACT",
-            color = Color.White.copy(alpha = 0.4f),
+            color = colors.textMuted,
             fontSize = 7.sp,
             letterSpacing = 0.5.sp
         )
@@ -483,7 +483,7 @@ fun FeaturedMomentCard(
                     
                     Text(
                         text = "${moment.overNumber} ov",
-                        color = Color.White.copy(alpha = 0.5f),
+                        color = colors.textSecondary,
                         fontSize = 12.sp
                     )
                 }
@@ -506,7 +506,7 @@ fun FeaturedMomentCard(
                 // Title
                 Text(
                     text = moment.title,
-                    color = Color.White,
+                    color = colors.textPrimary,
                     fontSize = 22.sp,
                     fontWeight = FontWeight.Bold,
                     textAlign = TextAlign.Center,
@@ -518,7 +518,7 @@ fun FeaturedMomentCard(
                 // Description
                 Text(
                     text = moment.description,
-                    color = Color.White.copy(alpha = 0.7f),
+                    color = colors.textSecondary,
                     fontSize = 14.sp,
                     textAlign = TextAlign.Center,
                     lineHeight = 20.sp,

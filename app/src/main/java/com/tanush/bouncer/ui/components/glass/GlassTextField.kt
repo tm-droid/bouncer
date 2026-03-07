@@ -219,7 +219,7 @@ fun GlassSearchBarCompact(
         Icon(
             imageVector = Icons.Default.Search,
             contentDescription = "Search",
-            tint = colors.textMuted,
+            tint = colors.textTertiary,
             modifier = Modifier.size(16.dp)
         )
         
@@ -249,7 +249,7 @@ fun GlassSearchBarCompact(
                         Text(
                             text = placeholder,
                             style = typography.bodySmall,
-                            color = colors.textMuted
+                            color = colors.textTertiary
                         )
                     }
                     innerTextField()
@@ -316,7 +316,7 @@ fun GlassDropdown(
             Text(
                 text = label.uppercase(),
                 style = typography.labelSmall,
-                color = colors.textMuted,
+                color = colors.textTertiary,
                 modifier = Modifier.padding(bottom = 8.dp, start = 4.dp)
             )
         }
@@ -346,7 +346,7 @@ fun GlassDropdown(
                 Text(
                     text = selectedValue ?: placeholder,
                     style = typography.bodyMedium,
-                    color = if (selectedValue != null) colors.textPrimary else colors.textMuted,
+                    color = if (selectedValue != null) colors.textPrimary else colors.textTertiary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f)
@@ -462,7 +462,7 @@ fun GlassTextField(
             Text(
                 text = label.uppercase(),
                 style = typography.labelSmall,
-                color = if (isError) colors.statusLive else colors.textMuted,
+                color = if (isError) colors.statusLive else colors.textTertiary,
                 modifier = Modifier.padding(bottom = 8.dp, start = 4.dp)
             )
         }
@@ -513,7 +513,7 @@ fun GlassTextField(
                             Text(
                                 text = placeholder,
                                 style = typography.bodyMedium,
-                                color = colors.textMuted
+                                color = colors.textTertiary
                             )
                         }
                         innerTextField()
@@ -589,7 +589,7 @@ fun GlassNumberField(
             Text(
                 text = label.uppercase(),
                 style = typography.labelSmall,
-                color = colors.textMuted,
+                color = colors.textTertiary,
                 modifier = Modifier.padding(bottom = 8.dp, start = 4.dp)
             )
         }

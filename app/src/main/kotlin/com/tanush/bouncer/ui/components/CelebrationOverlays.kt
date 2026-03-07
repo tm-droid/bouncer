@@ -266,7 +266,7 @@ private fun EventCard(
                 ambientColor = eventInfo.color.copy(alpha = 0.2f)
             ),
         colors = CardDefaults.cardColors(
-            containerColor = Color.White.copy(alpha = 0.05f)
+            containerColor = GlassSurface
         ),
         shape = RoundedCornerShape(28.dp),
         border = BorderStroke(
@@ -312,7 +312,7 @@ private fun EventCard(
                             Brush.radialGradient(
                                 colors = listOf(
                                     eventInfo.color.copy(alpha = 0.25f),
-                                    Color.White.copy(alpha = 0.08f)
+                                    GlassSurface
                                 )
                             ),
                             CircleShape
@@ -602,7 +602,7 @@ fun AchievementToast(
                         shape = RoundedCornerShape(18.dp),
                         spotColor = StatusSuccess.copy(alpha = 0.4f)
                     ),
-                colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.05f)),
+                colors = CardDefaults.cardColors(containerColor = GlassSurface),
                 shape = RoundedCornerShape(18.dp),
                 border = BorderStroke(1.dp, StatusSuccess.copy(alpha = 0.4f))
             ) {

@@ -101,13 +101,13 @@ private fun MultiSelectChip(
 ) {
     val colors = BouncerDesignSystem.colors
     val backgroundColor by animateColorAsState(
-        targetValue = if (isSelected) colors.goldPrimary.copy(alpha = 0.15f) else Color.White.copy(alpha = 0.05f),
+        targetValue = if (isSelected) colors.goldPrimary.copy(alpha = 0.15f) else GlassSurface,
         animationSpec = tween(200),
         label = "chipBg"
     )
     
     val borderColor by animateColorAsState(
-        targetValue = if (isSelected) colors.goldPrimary.copy(alpha = 0.5f) else Color.White.copy(alpha = 0.08f),
+        targetValue = if (isSelected) colors.goldPrimary.copy(alpha = 0.5f) else GlassBorder,
         animationSpec = tween(200),
         label = "chipBorder"
     )
@@ -201,8 +201,8 @@ fun FilterDropdown(
     } else {
         Brush.linearGradient(
             colors = listOf(
-                Color.White.copy(alpha = 0.08f),
-                Color.White.copy(alpha = 0.05f)
+                GlassSurface,
+                GlassSurface
             )
         )
     }
@@ -262,7 +262,7 @@ fun FilterDropdown(
             modifier = Modifier
                 .background(
                     Brush.verticalGradient(
-                        colors = listOf(Color.White.copy(alpha = 0.08f), Color.White.copy(alpha = 0.05f))
+                        colors = listOf(GlassSurface, GlassSurface)
                     ),
                     RoundedCornerShape(16.dp)
                 )

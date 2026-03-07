@@ -279,7 +279,7 @@ fun AnimatedRunRate(
     Row(
         modifier = modifier
             .background(
-                Color.White.copy(alpha = 0.08f),
+                colors.glassSurface,
                 RoundedCornerShape(12.dp)
             )
             .padding(12.dp),
@@ -438,7 +438,7 @@ fun PartnershipDisplay(
     
     Card(
         modifier = modifier,
-        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.08f)),
+        colors = CardDefaults.cardColors(containerColor = colors.glassSurface),
         shape = RoundedCornerShape(16.dp)
     ) {
         Column(
@@ -540,7 +540,7 @@ fun BowlingFiguresDisplay(
 
     Card(
         modifier = modifier,
-        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.08f)),
+        colors = CardDefaults.cardColors(containerColor = colors.glassSurface),
         shape = RoundedCornerShape(16.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {

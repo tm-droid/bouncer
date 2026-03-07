@@ -169,7 +169,7 @@ fun HeadToHeadCard(
 
                     Text(
                         text = "${(stats.team1Wins * animatedProgress.value).toInt()}",
-                        color = Color.White,
+                        color = colors.textPrimary,
                         fontSize = 42.sp,
                         fontWeight = FontWeight.Bold,
                     )
@@ -213,7 +213,7 @@ fun HeadToHeadCard(
 
                     Text(
                         text = "${(stats.team2Wins * animatedProgress.value).toInt()}",
-                        color = Color.White,
+                        color = colors.textPrimary,
                         fontSize = 42.sp,
                         fontWeight = FontWeight.Bold,
                     )
@@ -347,7 +347,7 @@ fun HeadToHeadCard(
                                 ) {
                                     Text(
                                         text = match.venue,
-                                        color = Color.White,
+                                        color = colors.textPrimary,
                                         fontSize = 13.sp,
                                         fontWeight = FontWeight.Medium,
                                     )
@@ -424,7 +424,7 @@ fun HeadToHeadCard(
                         )
                         Text(
                             text = venue.venueName,
-                            color = Color.White,
+                            color = colors.textPrimary,
                             fontSize = 13.sp,
                         )
                     }

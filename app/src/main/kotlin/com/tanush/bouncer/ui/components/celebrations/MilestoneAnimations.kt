@@ -850,7 +850,7 @@ private fun AnimatedBallIcon(visible: Boolean, delay: Int) {
                     ),
                     CircleShape
                 )
-                .border(2.dp, Color.White.copy(alpha = 0.3f), CircleShape)
+                .border(2.dp, colors.glassBorder, CircleShape)
         ) {
             Text(
                 text = "W",

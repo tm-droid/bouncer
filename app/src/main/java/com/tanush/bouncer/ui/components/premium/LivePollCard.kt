@@ -165,7 +165,7 @@ fun LivePollCard(
                             Icon(
                                 imageVector = Icons.Default.HowToVote,
                                 contentDescription = null,
-                                tint = Color.White,
+                                tint = colors.textPrimary,
                                 modifier = Modifier.size(24.dp),
                             )
                         }
@@ -205,7 +205,7 @@ fun LivePollCard(
 
                             Text(
                                 text = "${pollData.totalVotes} votes",
-                                color = Color.White.copy(alpha = 0.5f),
+                                color = colors.textTertiary,
                                 fontSize = 11.sp,
                             )
                         }
@@ -233,7 +233,7 @@ fun LivePollCard(
                 // Question
                 Text(
                     text = pollData.question,
-                    color = Color.White,
+                    color = colors.textPrimary,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
                 )
@@ -263,7 +263,7 @@ fun LivePollCard(
 
                     Text(
                         text = "Tap to vote",
-                        color = Color.White.copy(alpha = 0.4f),
+                        color = colors.textTertiary,
                         fontSize = 11.sp,
                         modifier = Modifier.align(Alignment.CenterHorizontally),
                     )
@@ -315,8 +315,8 @@ private fun PollOptionItem(
                 } else {
                     Brush.horizontalGradient(
                         colors = listOf(
-                            Color.White.copy(alpha = 0.08f),
-                            Color.White.copy(alpha = 0.05f),
+                            colors.glassSurface,
+                            colors.glassSurface,
                         ),
                     )
                 },
@@ -365,7 +365,7 @@ private fun PollOptionItem(
 
             Text(
                 text = option.text,
-                color = if (option.isLeading && showResults) optionColor else Color.White,
+                color = if (option.isLeading && showResults) optionColor else colors.textPrimary,
                 fontSize = 14.sp,
                 fontWeight = if (option.isLeading) FontWeight.Bold else FontWeight.Medium,
                 modifier = Modifier.weight(1f),
@@ -385,7 +385,7 @@ private fun PollOptionItem(
 
                     Text(
                         text = "${(option.percentage * 100).toInt()}%",
-                        color = if (option.isLeading) optionColor else Color.White.copy(alpha = 0.7f),
+                        color = if (option.isLeading) optionColor else colors.textSecondary,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
                     )
@@ -396,7 +396,7 @@ private fun PollOptionItem(
                     modifier = Modifier
                         .size(24.dp)
                         .clip(CircleShape)
-                        .background(Color.White.copy(alpha = 0.1f)),
+                        .background(colors.glassBorder),
                     contentAlignment = Alignment.Center,
                 ) {
                     Box(

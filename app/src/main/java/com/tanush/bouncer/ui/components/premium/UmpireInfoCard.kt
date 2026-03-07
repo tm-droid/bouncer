@@ -151,7 +151,7 @@ fun UmpireInfoCard(
 
                     Text(
                         text = "DECISIONS TODAY",
-                        color = Color.White.copy(alpha = 0.5f),
+                        color = colors.textSecondary,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 1.sp,
@@ -179,7 +179,7 @@ private fun UmpireCard(
         modifier = modifier
             .width(120.dp)
             .clip(RoundedCornerShape(12.dp))
-            .background(Color.White.copy(alpha = 0.05f))
+            .background(colors.glassSurface)
             .padding(12.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
@@ -203,7 +203,7 @@ private fun UmpireCard(
 
         Text(
             text = umpire.name,
-            color = Color.White,
+            color = colors.textPrimary,
             fontSize = 12.sp,
             fontWeight = FontWeight.SemiBold,
             maxLines = 1,
@@ -263,7 +263,7 @@ private fun DecisionRow(
         ) {
             Text(
                 text = "${decision.overNumber.toInt()}",
-                color = Color.White,
+                color = colors.textPrimary,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
             )
@@ -274,13 +274,13 @@ private fun DecisionRow(
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = decision.playerDismissed,
-                color = Color.White,
+                color = colors.textPrimary,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Medium,
             )
             Text(
                 text = decision.type,
-                color = Color.White.copy(alpha = 0.5f),
+                color = colors.textSecondary,
                 fontSize = 10.sp,
             )
         }

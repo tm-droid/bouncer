@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.tanush.bouncer.models.NewsArticleData
+import com.tanush.bouncer.ui.components.bouncerShimmerBrush
 import com.tanush.bouncer.ui.components.glass.GlassBloomBackground
 import com.tanush.bouncer.ui.components.glass.GlassCard
 import com.tanush.bouncer.ui.components.glass.GlassIconButton
@@ -119,7 +120,7 @@ fun NewsDetailScreen(
                             contentScale = ContentScale.Crop
                         )
 
-                        // Subtle gradient overlay
+                        // Cinematic gradient overlay for text readability
                         Box(
                             modifier = Modifier
                                 .matchParentSize()
@@ -127,7 +128,8 @@ fun NewsDetailScreen(
                                     Brush.verticalGradient(
                                         colors = listOf(
                                             Color.Transparent,
-                                            Color.Black.copy(alpha = 0.4f)
+                                            Color.Black.copy(alpha = 0.15f),
+                                            Color.Black.copy(alpha = 0.6f)
                                         )
                                     )
                                 )
@@ -211,17 +213,30 @@ fun NewsDetailScreen(
                 // ── Article Body ────────────────────────────────────
                 when {
                     isLoadingArticle -> {
-                        Box(
+                        // Shimmer skeleton paragraph placeholders
+                        Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(vertical = 48.dp),
-                            contentAlignment = Alignment.Center
+                                .padding(
+                                    horizontal = dimens.screenHorizontalPadding,
+                                    vertical = dimens.lg
+                                ),
+                            verticalArrangement = Arrangement.spacedBy(dimens.md)
                         ) {
-                            Text(
-                                text = "Loading article...",
-                                style = typography.bodyMedium,
-                                color = colors.textMuted
-                            )
+                            repeat(6) { idx ->
+                                val fraction = when (idx % 3) {
+                                    0 -> 1f
+                                    1 -> 0.85f
+                                    else -> 0.7f
+                                }
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth(fraction)
+                                        .height(14.dp)
+                                        .clip(RoundedCornerShape(4.dp))
+                                        .background(bouncerShimmerBrush())
+                                )
+                            }
                         }
                     }
                     !articleBody.isNullOrEmpty() -> {

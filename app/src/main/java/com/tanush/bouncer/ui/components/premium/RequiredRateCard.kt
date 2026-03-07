@@ -129,7 +129,7 @@ fun RequiredRateCard(
                         Icon(
                             Icons.Default.Timer,
                             contentDescription = null,
-                            tint = Color.White,
+                            tint = colors.textPrimary,
                             modifier = Modifier.size(24.dp),
                         )
                     }
@@ -146,7 +146,7 @@ fun RequiredRateCard(
                         )
                         Text(
                             text = "Target: ${rateData.target}",
-                            color = Color.White.copy(alpha = 0.7f),
+                            color = colors.textSecondary,
                             fontSize = 12.sp,
                         )
                     }
@@ -269,7 +269,7 @@ fun RequiredRateCard(
                     RateStatItem(
                         label = "Current Rate",
                         value = String.format("%.2f", rateData.currentRate),
-                        color = if (rateData.currentRate >= rateData.requiredRate) colors.statusSuccess else Color.White,
+                        color = if (rateData.currentRate >= rateData.requiredRate) colors.statusSuccess else colors.textPrimary,
                     )
 
                     RateStatItem(
@@ -281,13 +281,13 @@ fun RequiredRateCard(
                     RateStatItem(
                         label = "Need",
                         value = "${rateData.target - rateData.currentScore}",
-                        color = Color.White,
+                        color = colors.textPrimary,
                     )
 
                     RateStatItem(
                         label = "From",
                         value = "${(rateData.totalOvers - rateData.currentOver.toInt())} overs",
-                        color = Color.White,
+                        color = colors.textPrimary,
                     )
                 }
             }
@@ -418,7 +418,7 @@ fun RequiredRateCard(
                     Column {
                         Text(
                             text = "Projected Score: ${rateData.projectedScore}",
-                            color = Color.White,
+                            color = colors.textPrimary,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
                         )

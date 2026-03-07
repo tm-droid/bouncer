@@ -200,12 +200,13 @@ private fun MediumLayout(
 ) {
     val battingTeam = match.teams.firstOrNull { it.isBatting }
     val bowlingTeam = match.teams.firstOrNull { !it.isBatting }
+    val dimens = BouncerDesignSystem.dimens
 
     Row(
         modifier = modifier
             .fillMaxSize()
-            .padding(BouncerDimens.screenHorizontal),
-        horizontalArrangement = Arrangement.spacedBy(BouncerDimens.cardSpacing),
+            .padding(dimens.screenHorizontalPadding),
+        horizontalArrangement = Arrangement.spacedBy(dimens.cardGap),
     ) {
         // Left column — hero + current players + status cards
         Column(
@@ -213,13 +214,13 @@ private fun MediumLayout(
                 .weight(0.55f)
                 .fillMaxHeight()
                 .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(BouncerDimens.cardSpacing),
+            verticalArrangement = Arrangement.spacedBy(dimens.cardGap),
         ) {
             HeroScorecardCard(
                 match = match,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(BouncerDimens.heroCardHeight),
+                    .height(dimens.heroCardHeight),
             )
 
             val currentBatsmen = match.score?.batsmen ?: emptyList()
@@ -232,7 +233,7 @@ private fun MediumLayout(
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(BouncerDimens.cardSpacing),
+                horizontalArrangement = Arrangement.spacedBy(dimens.cardGap),
             ) {
                 if (battingTeam != null) {
                     TeamScoreCard(
@@ -287,26 +288,27 @@ private fun ExpandedLayout(
 ) {
     val battingTeam = match.teams.firstOrNull { it.isBatting }
     val bowlingTeam = match.teams.firstOrNull { !it.isBatting }
+    val dimens = BouncerDesignSystem.dimens
 
     Column(
         modifier = modifier
             .fillMaxSize()
-            .padding(BouncerDimens.xl),
-        verticalArrangement = Arrangement.spacedBy(BouncerDimens.lg),
+            .padding(dimens.spacing.xl),
+        verticalArrangement = Arrangement.spacedBy(dimens.spacing.lg),
     ) {
         // Top row — Hero scorecard + Scoreboard side by side
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f),
-            horizontalArrangement = Arrangement.spacedBy(BouncerDimens.lg),
+            horizontalArrangement = Arrangement.spacedBy(dimens.spacing.lg),
         ) {
             // Left: Hero card + current players stacked
             Column(
                 modifier = Modifier
                     .weight(0.6f)
                     .fillMaxHeight(),
-                verticalArrangement = Arrangement.spacedBy(BouncerDimens.cardSpacing),
+                verticalArrangement = Arrangement.spacedBy(dimens.cardGap),
             ) {
                 HeroScorecardCard(
                     match = match,
@@ -340,7 +342,7 @@ private fun ExpandedLayout(
         // Bottom row — Status cards
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(BouncerDimens.lg),
+            horizontalArrangement = Arrangement.spacedBy(dimens.spacing.lg),
         ) {
             if (battingTeam != null) {
                 TeamScoreCard(

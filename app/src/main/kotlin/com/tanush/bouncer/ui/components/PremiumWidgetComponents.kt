@@ -73,8 +73,8 @@ fun StatSummaryWidget(
             .background(
                 brush = Brush.verticalGradient(
                     colors = listOf(
-                        Color.White.copy(alpha = 0.05f),
-                        Color.White.copy(alpha = 0.05f)
+                        GlassSurface,
+                        GlassSurface
                     )
                 )
             )
@@ -109,14 +109,14 @@ fun StatSummaryWidget(
                 ) {
                     Text(
                         text = title,
-                        color = Color.White.copy(alpha = 0.6f),
+                        color = TextSecondary,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Medium
                     )
                     
                     Text(
                         text = value,
-                        color = Color.White,
+                        color = TextPrimary,
                         fontSize = 28.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -161,7 +161,7 @@ fun StatSummaryWidget(
                         tint = when (trend) {
                             TrendDirection.UP -> Color(0xFF22C55E)
                             TrendDirection.DOWN -> Color(0xFFEF4444)
-                            else -> Color.White.copy(alpha = 0.5f)
+                            else -> TextSecondary
                         },
                         modifier = Modifier.size(16.dp)
                     )
@@ -171,7 +171,7 @@ fun StatSummaryWidget(
                         color = when (trend) {
                             TrendDirection.UP -> Color(0xFF22C55E)
                             TrendDirection.DOWN -> Color(0xFFEF4444)
-                            else -> Color.White.copy(alpha = 0.5f)
+                            else -> TextSecondary
                         },
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Medium
@@ -254,7 +254,7 @@ fun CircularStatWidget(
             ) {
                 Text(
                     text = centerText,
-                    color = Color.White,
+                    color = TextPrimary,
                     fontSize = 24.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -263,7 +263,7 @@ fun CircularStatWidget(
         
         Text(
             text = label,
-            color = Color.White.copy(alpha = 0.7f),
+            color = TextSecondary,
             fontSize = 13.sp
         )
     }
@@ -297,7 +297,7 @@ fun CompactMatchWidget(
         modifier = modifier
             .scale(if (isLive) livePulse else 1f)
             .clip(RoundedCornerShape(12.dp))
-            .background(Color.White.copy(alpha = 0.05f))
+            .background(GlassSurface)
             .border(
                 width = 1.dp,
                 color = if (isLive) Color(0xFFEF4444).copy(alpha = 0.5f) else colors.goldDark.copy(alpha = 0.2f),
@@ -335,7 +335,7 @@ fun CompactMatchWidget(
                 } else {
                     Text(
                         text = status,
-                        color = Color.White.copy(alpha = 0.5f),
+                        color = TextSecondary,
                         fontSize = 10.sp
                     )
                 }
@@ -349,7 +349,7 @@ fun CompactMatchWidget(
             ) {
                 Text(
                     text = team1,
-                    color = Color.White,
+                    color = TextPrimary,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Medium,
                     maxLines = 1,
@@ -358,7 +358,7 @@ fun CompactMatchWidget(
                 )
                 Text(
                     text = team1Score,
-                    color = Color.White,
+                    color = TextPrimary,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -371,7 +371,7 @@ fun CompactMatchWidget(
             ) {
                 Text(
                     text = team2,
-                    color = Color.White,
+                    color = TextPrimary,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Medium,
                     maxLines = 1,
@@ -380,7 +380,7 @@ fun CompactMatchWidget(
                 )
                 Text(
                     text = team2Score,
-                    color = Color.White,
+                    color = TextPrimary,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -399,7 +399,7 @@ fun QuickStatsRow(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .background(Color.White.copy(alpha = 0.05f))
+            .background(GlassSurface)
             .padding(12.dp),
         horizontalArrangement = Arrangement.SpaceEvenly
     ) {
@@ -410,13 +410,13 @@ fun QuickStatsRow(
             ) {
                 Text(
                     text = value,
-                    color = Color.White,
+                    color = TextPrimary,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
                     text = label,
-                    color = Color.White.copy(alpha = 0.6f),
+                    color = TextSecondary,
                     fontSize = 11.sp
                 )
             }
@@ -451,7 +451,7 @@ fun UpcomingMatchWidget(
                 brush = Brush.linearGradient(
                     colors = listOf(
                         colors.goldDark.copy(alpha = 0.1f),
-                        Color.White.copy(alpha = 0.05f)
+                        GlassSurface
                     )
                 )
             )
@@ -492,7 +492,7 @@ fun UpcomingMatchWidget(
                 
                 Text(
                     text = matchDate,
-                    color = Color.White.copy(alpha = 0.6f),
+                    color = TextSecondary,
                     fontSize = 12.sp
                 )
             }
@@ -505,7 +505,7 @@ fun UpcomingMatchWidget(
             ) {
                 Text(
                     text = team1,
-                    color = Color.White,
+                    color = TextPrimary,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.weight(1f),
@@ -521,7 +521,7 @@ fun UpcomingMatchWidget(
                 
                 Text(
                     text = team2,
-                    color = Color.White,
+                    color = TextPrimary,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.weight(1f),
@@ -537,12 +537,12 @@ fun UpcomingMatchWidget(
                 Icon(
                     imageVector = Icons.Default.LocationOn,
                     contentDescription = null,
-                    tint = Color.White.copy(alpha = 0.5f),
+                    tint = TextSecondary,
                     modifier = Modifier.size(14.dp)
                 )
                 Text(
                     text = venue,
-                    color = Color.White.copy(alpha = 0.5f),
+                    color = TextSecondary,
                     fontSize = 12.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -586,13 +586,13 @@ fun DashboardHeader(
         ) {
             Text(
                 text = greeting,
-                color = Color.White.copy(alpha = 0.6f),
+                color = TextSecondary,
                 fontSize = 14.sp
             )
             
             Text(
                 text = userName,
-                color = Color.White,
+                color = TextPrimary,
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold
             )
@@ -652,7 +652,7 @@ fun ActionTile(
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(16.dp))
-            .background(Color.White.copy(alpha = 0.05f))
+            .background(GlassSurface)
             .border(
                 width = 1.dp,
                 color = colors.goldDark.copy(alpha = 0.2f),
@@ -684,7 +684,7 @@ fun ActionTile(
             ) {
                 Text(
                     text = title,
-                    color = Color.White,
+                    color = TextPrimary,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -692,7 +692,7 @@ fun ActionTile(
                 if (subtitle.isNotEmpty()) {
                     Text(
                         text = subtitle,
-                        color = Color.White.copy(alpha = 0.5f),
+                        color = TextSecondary,
                         fontSize = 12.sp,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis
@@ -723,7 +723,7 @@ fun SummarySection(
         ) {
             Text(
                 text = title,
-                color = Color.White,
+                color = TextPrimary,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold
             )

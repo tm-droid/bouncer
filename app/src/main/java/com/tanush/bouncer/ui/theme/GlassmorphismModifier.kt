@@ -21,6 +21,7 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.graphicsLayer
@@ -33,7 +34,7 @@ import androidx.compose.ui.unit.dp
 fun Modifier.glassmorphism(
     shape: Shape = RoundedCornerShape(16.dp),
     backgroundColor: Color = Color.White.copy(alpha = 0.05f),
-    borderColor: Color = Color.White.copy(alpha = 0.1f),
+    borderColor: Color = Color(0xFFD4AF37).copy(alpha = 0.12f),
     borderWidth: Dp = 1.dp,
     blurRadius: Float = 35f,
     showNoise: Boolean = true
@@ -61,6 +62,24 @@ fun Modifier.glassmorphism(
         ),
         shape = shape,
     )
+    .then(
+        if (showNoise) {
+            Modifier.drawWithCache {
+                onDrawWithContent {
+                    drawContent()
+                    for (i in 0 until 15) {
+                        val x = (i * 73.0f) % size.width
+                        val y = (i * 137.0f) % size.height
+                        drawCircle(
+                            color = borderColor.copy(alpha = 0.03f),
+                            radius = 1f,
+                            center = Offset(x, y)
+                        )
+                    }
+                }
+            }
+        } else Modifier
+    )
 
 /**
  * Convenience bouncer-specific glass modifier.
@@ -74,7 +93,7 @@ fun Modifier.bouncerGlass(
     return this.glassmorphism(
         shape = shape,
         backgroundColor = colors.glassSurface,
-        borderColor = if (useGoldBorder) colors.goldPrimary else Color.White,
+        borderColor = if (useGoldBorder) colors.goldPrimary else colors.goldPrimary.copy(alpha = 0.15f),
         blurRadius = 35f
     )
 }

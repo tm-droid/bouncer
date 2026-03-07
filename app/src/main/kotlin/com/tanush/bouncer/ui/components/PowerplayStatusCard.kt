@@ -174,7 +174,7 @@ fun PowerplayStatusCard(
                             Icon(
                                 imageVector = Icons.Filled.Sports,
                                 contentDescription = null,
-                                tint = Color.Gray,
+                                tint = TextSecondary,
                                 modifier = Modifier.size(28.dp)
                             )
                         }
@@ -183,7 +183,7 @@ fun PowerplayStatusCard(
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text(
                                     text = powerplayInfo.powerplayType.displayName.uppercase(),
-                                    color = if (powerplayInfo.isActive) colors.statusWarning else Color.Gray,
+                                    color = if (powerplayInfo.isActive) colors.statusWarning else TextSecondary,
                                     fontSize = 14.sp,
                                     fontWeight = FontWeight.Black,
                                     letterSpacing = 2.sp
@@ -200,7 +200,7 @@ fun PowerplayStatusCard(
                             }
                             Text(
                                 text = "Overs ${powerplayInfo.powerplayType.overs}",
-                                color = Color.White.copy(alpha = 0.5f),
+                                color = TextSecondary,
                                 fontSize = 11.sp
                             )
                         }
@@ -242,7 +242,7 @@ fun PowerplayStatusCard(
                             
                             // Background ring
                             drawCircle(
-                                color = Color.White.copy(alpha = 0.1f),
+                                color = GlassBorder,
                                 radius = radius,
                                 center = center,
                                 style = Stroke(width = strokeWidth)
@@ -289,13 +289,13 @@ fun PowerplayStatusCard(
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
                                 text = String.format("%.1f", powerplayInfo.currentOver),
-                                color = Color.White,
+                                color = TextPrimary,
                                 fontSize = 28.sp,
                                 fontWeight = FontWeight.Bold
                             )
                             Text(
                                 text = "overs",
-                                color = Color.White.copy(alpha = 0.5f),
+                                color = TextSecondary,
                                 fontSize = 11.sp
                             )
                         }
@@ -389,7 +389,7 @@ fun PowerplayStatusCard(
                     PowerplayStatBox(
                         label = "DOT BALLS",
                         value = "${powerplayInfo.dotBalls}",
-                        color = Color.Gray
+                        color = TextSecondary
                     )
                     PowerplayStatBox(
                         label = "BALLS LEFT",
@@ -401,12 +401,12 @@ fun PowerplayStatusCard(
                 // Historical comparison
                 if (powerplayInfo.previousPowerplays.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(20.dp))
-                    HorizontalDivider(color = Color.White.copy(alpha = 0.1f))
+                    HorizontalDivider(color = GlassBorder)
                     Spacer(modifier = Modifier.height(16.dp))
                     
                     Text(
                         text = "COMPARISON",
-                        color = Color.White.copy(alpha = 0.5f),
+                        color = TextSecondary,
                         fontSize = 10.sp,
                         letterSpacing = 1.sp
                     )
@@ -441,7 +441,7 @@ private fun PowerplayStatBox(
         )
         Text(
             text = label,
-            color = Color.White.copy(alpha = 0.5f),
+            color = TextSecondary,
             fontSize = 9.sp,
             letterSpacing = 0.5.sp
         )
@@ -458,7 +458,7 @@ private fun PowerplayComparisonRow(
     val colors = BouncerDesignSystem.colors
     
     Surface(
-        color = Color.White.copy(alpha = 0.05f),
+        color = GlassSurface,
         shape = RoundedCornerShape(8.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
@@ -472,14 +472,14 @@ private fun PowerplayComparisonRow(
             Column {
                 Text(
                     text = comparison.teamName,
-                    color = Color.White,
+                    color = TextPrimary,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Medium
                 )
                 if (comparison.matchDate.isNotEmpty()) {
                     Text(
                         text = comparison.matchDate,
-                        color = Color.White.copy(alpha = 0.4f),
+                        color = TextMuted,
                         fontSize = 10.sp
                     )
                 }
@@ -488,7 +488,7 @@ private fun PowerplayComparisonRow(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = "${comparison.runs}/${comparison.wickets}",
-                    color = Color.White.copy(alpha = 0.7f),
+                    color = TextSecondary,
                     fontSize = 14.sp
                 )
                 

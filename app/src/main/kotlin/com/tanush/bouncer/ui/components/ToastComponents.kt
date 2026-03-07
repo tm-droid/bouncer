@@ -343,7 +343,7 @@ fun ScoreChangeNotification(
                     ),
                     CircleShape
                 )
-                .border(2.dp, Color.White.copy(alpha = 0.3f), CircleShape),
+                .border(2.dp, TextMuted, CircleShape),
             contentAlignment = Alignment.Center
         ) {
             Text(
@@ -411,7 +411,7 @@ fun WicketNotification(
                         ),
                         CircleShape
                     )
-                    .border(3.dp, Color.White.copy(alpha = 0.3f), CircleShape),
+                    .border(3.dp, TextMuted, CircleShape),
                 contentAlignment = Alignment.Center
             ) {
                 Text(

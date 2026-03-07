@@ -44,7 +44,7 @@ fun Material3Card(
     onClick: (() -> Unit)? = null,
     elevation: Dp = Elevation.medium,
     cornerRadius: Dp = CornerRadius.md,
-    containerColor: Color = Color.White.copy(alpha = 0.05f),
+    containerColor: Color = GlassSurface,
     contentDescription: String? = null,
     content: @Composable ColumnScope.() -> Unit
 ) {
@@ -103,8 +103,8 @@ fun Material3Card(
             width = BorderWidth.hairline,
             brush = Brush.linearGradient(
                 colors = listOf(
-                    Color.White.copy(alpha = 0.1f),
-                    Color.White.copy(alpha = 0.03f)
+                    GlassBorder,
+                    GlassSurface
                 )
             )
         ),
@@ -192,7 +192,7 @@ fun GlassSurface(
                         interactionSource = interactionSource,
                         indication = ripple(
                             bounded = true,
-                            color = Color.White.copy(alpha = 0.12f)
+                            color = GlassBorder
                         )
                     ) {
                         haptic.click()
@@ -218,7 +218,7 @@ fun ElevatedSurface(
     modifier: Modifier = Modifier,
     elevation: Dp = 4.dp,
     cornerRadius: Dp = 20.dp,
-    containerColor: Color = Color.White.copy(alpha = 0.05f),
+    containerColor: Color = GlassSurface,
     tonalElevation: Dp = elevation,
     shadowElevation: Dp = elevation,
     content: @Composable ColumnScope.() -> Unit
@@ -239,7 +239,7 @@ fun ElevatedSurface(
             width = BorderWidth.hairline,
             brush = Brush.linearGradient(
                 colors = listOf(
-                    Color.White.copy(alpha = 0.08f),
+                    GlassSurface,
                     Color.Transparent
                 )
             )
@@ -270,7 +270,7 @@ fun GradientCard(
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
     gradientColors: List<Color> = listOf(
-        Color.White.copy(alpha = 0.08f),
+        GlassSurface,
         Surface1.copy(alpha = 0.5f),
         BackgroundBase
     ),
@@ -312,8 +312,8 @@ fun GradientCard(
                 width = 1.dp,
                 brush = Brush.linearGradient(
                     colors = listOf(
-                        Color.White.copy(alpha = 0.12f),
-                        Color.White.copy(alpha = 0.04f),
+                        GlassBorder,
+                        GlassSurface,
                         Color.Transparent
                     )
                 ),
@@ -325,7 +325,7 @@ fun GradientCard(
                         interactionSource = interactionSource,
                         indication = ripple(
                             bounded = true,
-                            color = Color.White.copy(alpha = 0.1f)
+                            color = GlassBorder
                         )
                     ) {
                         haptic.click()
@@ -351,9 +351,9 @@ fun ShimmerPlaceholder(
     modifier: Modifier = Modifier,
     cornerRadius: Dp = 12.dp,
     shimmerColors: List<Color> = listOf(
-        Color.White.copy(alpha = 0.02f),
-        Color.White.copy(alpha = 0.08f),
-        Color.White.copy(alpha = 0.02f)
+        GlassSurface,
+        GlassSurface,
+        GlassSurface
     )
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "shimmer")
@@ -370,7 +370,7 @@ fun ShimmerPlaceholder(
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(cornerRadius))
-            .background(Color.White.copy(alpha = 0.05f))
+            .background(GlassSurface)
             .background(
                 Brush.linearGradient(
                     colors = shimmerColors,
@@ -398,7 +398,7 @@ private fun Material3CardPreview() {
                 androidx.compose.material3.Text(
                     text = "Material 3 Card Preview",
                     modifier = Modifier.padding(16.dp),
-                    color = Color.White
+                    color = TextPrimary
                 )
             }
         }

@@ -78,7 +78,7 @@ fun McpPredictiveForecastScreen(
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Black,
                             letterSpacing = 2.sp,
-                            color = Color.White
+                            color = colors.textPrimary
                         )
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             val pulse = rememberInfiniteTransition(label = "conn_pulse")
@@ -100,12 +100,12 @@ fun McpPredictiveForecastScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = Color.White)
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = colors.textPrimary)
                     }
                 },
                 actions = {
                     IconButton(onClick = {}) {
-                        Icon(Icons.Default.Settings, "Settings", tint = Color.White.copy(alpha = 0.6f))
+                        Icon(Icons.Default.Settings, "Settings", tint = colors.textSecondary)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
@@ -144,7 +144,7 @@ fun McpPredictiveForecastScreen(
                     ) {
                         Text(
                             "Next Over (${currentOver + 1}th) Forecast",
-                            color = Color.White,
+                            color = colors.textPrimary,
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Black
                         )
@@ -180,7 +180,7 @@ fun McpPredictiveForecastScreen(
                 // Legal Footer
                 Text(
                     text = "Predictions are for informational and entertainment purposes only. Bouncer does not facilitate gambling or betting. Calculations based on historical data and real-time telemetry.",
-                    color = Color.White.copy(alpha = 0.2f),
+                    color = colors.textMuted,
                     fontSize = 10.sp,
                     textAlign = TextAlign.Center,
                     lineHeight = 16.sp,
@@ -231,8 +231,8 @@ private fun EliteForecastHero(match: CricketMatch) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
-        color = Color.White.copy(alpha = 0.05f),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.05f))
+        color = GlassSurface,
+        border = BorderStroke(1.dp, GlassSurface)
     ) {
         Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -240,7 +240,7 @@ private fun EliteForecastHero(match: CricketMatch) {
                     Text("LIVE ${match.matchType.uppercase()} MATCH", color = colors.textTertiary, fontSize = 10.sp, fontWeight = FontWeight.Black, letterSpacing = 1.5.sp)
                     Text(
                         text = "${match.teams.getOrNull(0)?.acronym ?: "IND"} vs ${match.teams.getOrNull(1)?.acronym ?: "AUS"}",
-                        color = Color.White,
+                        color = colors.textPrimary,
                         fontSize = 22.sp,
                         fontWeight = FontWeight.Black
                     )
@@ -251,7 +251,7 @@ private fun EliteForecastHero(match: CricketMatch) {
                 }
             }
 
-            Box(modifier = Modifier.fillMaxWidth().height(2.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.05f))) {
+            Box(modifier = Modifier.fillMaxWidth().height(2.dp).clip(CircleShape).background(GlassSurface)) {
                 Box(modifier = Modifier.fillMaxWidth(0.52f).fillMaxHeight().background(colors.goldPrimary))
             }
 
@@ -259,16 +259,16 @@ private fun EliteForecastHero(match: CricketMatch) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text("ON STRIKE", color = colors.textTertiary, fontSize = 9.sp, fontWeight = FontWeight.Black)
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text(striker?.name ?: "V. Kohli", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                        Text(striker?.name ?: "V. Kohli", color = colors.textPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
                         Text("${striker?.runs ?: "56"}*", color = colors.goldPrimary, fontSize = 14.sp, fontWeight = FontWeight.Black)
                     }
                     Text("SR: ${striker?.strikeRate ?: "142.5"}", color = colors.textSecondary, fontSize = 10.sp)
                 }
-                Box(modifier = Modifier.width(1.dp).height(32.dp).background(Color.White.copy(alpha = 0.05f)).align(Alignment.CenterVertically))
+                Box(modifier = Modifier.width(1.dp).height(32.dp).background(GlassSurface).align(Alignment.CenterVertically))
                 Column(modifier = Modifier.weight(1f)) {
                     Text("BOWLER", color = colors.textTertiary, fontSize = 9.sp, fontWeight = FontWeight.Black)
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text(bowler?.name ?: "M. Starc", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                        Text(bowler?.name ?: "M. Starc", color = colors.textPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
                         Text("${bowler?.wickets ?: "1"}/${bowler?.runs ?: "24"}", color = colors.goldPrimary, fontSize = 14.sp, fontWeight = FontWeight.Black)
                     }
                     Text("ECON: ${bowler?.economy ?: "6.8"}", color = colors.textSecondary, fontSize = 10.sp)
@@ -284,8 +284,8 @@ private fun EliteEngineConfidenceCard(modifier: Modifier, confidence: Float, tre
     Surface(
         modifier = modifier.height(130.dp),
         shape = RoundedCornerShape(16.dp),
-        color = Color.White.copy(alpha = 0.05f),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.05f))
+        color = GlassSurface,
+        border = BorderStroke(1.dp, GlassSurface)
     ) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.SpaceBetween) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -294,11 +294,11 @@ private fun EliteEngineConfidenceCard(modifier: Modifier, confidence: Float, tre
             }
             Column {
                 Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text("${(confidence * 100).toInt()}%", color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Black)
+                    Text("${(confidence * 100).toInt()}%", color = colors.textPrimary, fontSize = 28.sp, fontWeight = FontWeight.Black)
                     Text(trend, color = colors.statusSuccess, fontSize = 10.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(bottom = 4.dp))
                 }
                 Spacer(modifier = Modifier.height(8.dp))
-                Box(modifier = Modifier.fillMaxWidth().height(2.dp).background(Color.White.copy(alpha = 0.05f))) {
+                Box(modifier = Modifier.fillMaxWidth().height(2.dp).background(GlassSurface)) {
                     Box(modifier = Modifier.fillMaxWidth(confidence).fillMaxHeight().background(colors.goldPrimary))
                 }
             }
@@ -312,8 +312,8 @@ private fun ElitePitchAnalysisCard(modifier: Modifier) {
     Surface(
         modifier = modifier.height(130.dp),
         shape = RoundedCornerShape(16.dp),
-        color = Color.White.copy(alpha = 0.05f),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.05f))
+        color = GlassSurface,
+        border = BorderStroke(1.dp, GlassSurface)
     ) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.SpaceBetween) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -321,7 +321,7 @@ private fun ElitePitchAnalysisCard(modifier: Modifier) {
                 Icon(Icons.Default.Landscape, null, tint = colors.textTertiary, modifier = Modifier.size(20.dp))
             }
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                PitchTelemetryItem("Humidity", "65%", Color.White)
+                PitchTelemetryItem("Humidity", "65%", colors.textPrimary)
                 PitchTelemetryItem("Fatigue", "Low", colors.statusSuccess)
                 PitchTelemetryItem("Dew", "High", colors.statusLive)
             }
@@ -344,8 +344,8 @@ private fun EliteActiveFieldMap() {
     Surface(
         modifier = Modifier.fillMaxWidth().height(140.dp),
         shape = RoundedCornerShape(16.dp),
-        color = Color.White.copy(alpha = 0.05f),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.05f))
+        color = GlassSurface,
+        border = BorderStroke(1.dp, GlassSurface)
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             Canvas(modifier = Modifier.fillMaxSize()) {
@@ -357,16 +357,16 @@ private fun EliteActiveFieldMap() {
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Column {
-                    Text("ACTIVE FIELD SETUP", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Black)
+                    Text("ACTIVE FIELD SETUP", color = colors.textPrimary, fontSize = 16.sp, fontWeight = FontWeight.Black)
                     Text("Powerplay Off side focused", color = colors.textSecondary, fontSize = 12.sp)
                 }
                 Surface(
-                    color = Color.White.copy(alpha = 0.05f),
+                    color = GlassSurface,
                     shape = RoundedCornerShape(8.dp),
-                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.1f)),
+                    border = BorderStroke(1.dp, GlassBorder),
                     onClick = {}
                 ) {
-                    Text("VIEW MAP", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp))
+                    Text("VIEW MAP", color = colors.textPrimary, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp))
                 }
             }
         }

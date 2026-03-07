@@ -21,6 +21,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import com.tanush.bouncer.ui.theme.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import io.sentry.Sentry
@@ -195,9 +196,9 @@ fun ItemPlaceholder(
     shimmerEnabled: Boolean = true
 ) {
     val shimmerColors = listOf(
-        Color.Gray.copy(alpha = 0.1f),
-        Color.Gray.copy(alpha = 0.2f),
-        Color.Gray.copy(alpha = 0.1f)
+        GlassSurface,
+        GlassSurface.copy(alpha = 0.15f),
+        GlassSurface
     )
     
     val transition = rememberInfiniteTransition(label = "shimmer")

@@ -135,7 +135,7 @@ fun StadiumAtmosphereCard(
                 spotColor = goldPrimary.copy(alpha = 0.2f)
             ),
         shape = RoundedCornerShape(24.dp),
-        color = Color.White.copy(alpha = 0.05f)
+        color = GlassSurface
     ) {
         Box(
             modifier = Modifier.fillMaxWidth()
@@ -162,9 +162,9 @@ fun StadiumAtmosphereCard(
                         .background(
                             Brush.verticalGradient(
                                 colors = listOf(
-                                    Color.White.copy(alpha = 0.02f),
-                                    Color.White.copy(alpha = 0.04f),
-                                    Color.White.copy(alpha = 0.05f)
+                                    GlassSurface,
+                                    GlassSurface,
+                                    GlassSurface
                                 )
                             )
                         )

@@ -258,8 +258,8 @@ fun GlassMorphicButton(
             .background(
                 Brush.linearGradient(
                     colors = listOf(
-                        Color.White.copy(alpha = 0.12f),
-                        Color.White.copy(alpha = 0.06f)
+                        GlassBorder,
+                        GlassSurface
                     )
                 )
             )
@@ -267,8 +267,8 @@ fun GlassMorphicButton(
                 width = 1.dp,
                 brush = Brush.linearGradient(
                     colors = listOf(
-                        Color.White.copy(alpha = 0.25f),
-                        Color.White.copy(alpha = 0.08f)
+                        TextMuted,
+                        GlassSurface
                     )
                 ),
                 shape = RoundedCornerShape(18.dp)

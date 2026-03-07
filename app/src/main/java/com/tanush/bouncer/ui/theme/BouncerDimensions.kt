@@ -70,8 +70,10 @@ data class BouncerRadius(
     val xxl: Dp = 24.dp,
     /** 100dp — Pill/capsule shape */
     val pill: Dp = 100.dp,
-    /** 16dp — Standard card corners */
-    val card: Dp = 16.dp,
+    /** 20dp — Standard card corners */
+    val card: Dp = 20.dp,
+    /** 28dp — Hero card corners */
+    val hero: Dp = 28.dp,
     /** 24dp — Bottom sheet corners */
     val sheet: Dp = 24.dp
 )
@@ -187,10 +189,10 @@ data class BouncerDimensions(
     val flagSizeHero: Dp = 64.dp,
     
     // Ball Indicators
-    /** 28dp — Ball indicator size in recent balls */
-    val ballIndicatorSize: Dp = 28.dp,
-    /** 24dp — Compact ball indicator size */
-    val ballIndicatorSizeCompact: Dp = 24.dp,
+    /** 30dp — Ball indicator size in recent balls */
+    val ballIndicatorSize: Dp = 30.dp,
+    /** 26dp — Compact ball indicator size */
+    val ballIndicatorSizeCompact: Dp = 26.dp,
     /** 36dp — Large ball indicator size */
     val ballIndicatorSizeLarge: Dp = 36.dp,
     

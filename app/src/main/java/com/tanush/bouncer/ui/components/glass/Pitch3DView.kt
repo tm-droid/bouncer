@@ -48,15 +48,15 @@ fun Pitch3DView(
                 .background(
                     brush = Brush.verticalGradient(
                         colors = listOf(
-                            Color(0xFF2D5A27).copy(alpha = 0.3f),
-                            Color(0xFF3B7D33).copy(alpha = 0.6f),
-                            Color(0xFF2D5A27).copy(alpha = 0.3f)
+                            colors.goldSubtle.copy(alpha = 0.4f),
+                            Color(0xFF2A3A20).copy(alpha = 0.6f),
+                            colors.goldSubtle.copy(alpha = 0.4f)
                         )
                     )
                 )
                 .border(
                     width = 2.dp,
-                    color = Color.White.copy(alpha = 0.15f),
+                    color = colors.glassBorder,
                     shape = RoundedCornerShape(100.dp)
                 )
         ) {
@@ -77,7 +77,7 @@ fun Pitch3DView(
 
                 // Pitch Strip (The central rectangle)
                 drawRect(
-                    color = Color(0xFFEAC786).copy(alpha = 0.15f),
+                    color = colors.goldPrimary.copy(alpha = 0.12f),
                     topLeft = Offset(pitchWidth * 0.4f, pitchHeight * 0.2f),
                     size = Size(pitchWidth * 0.2f, pitchHeight * 0.6f)
                 )

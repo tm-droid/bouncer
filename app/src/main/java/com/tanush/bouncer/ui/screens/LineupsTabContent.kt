@@ -7,7 +7,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -92,8 +95,8 @@ fun LineupsContent(
                         .fillMaxWidth()
                         .height(200.dp)
                         .clip(RoundedCornerShape(32.dp))
-                        .background(Color.White.copy(alpha = 0.02f))
-                        .border(1.dp, Color.White.copy(alpha = 0.05f), RoundedCornerShape(32.dp))
+                        .background(colors.glassSurface)
+                        .border(1.dp, colors.glassSurface, RoundedCornerShape(32.dp))
                 ) {
                     Pitch3DView(modifier = Modifier.fillMaxSize())
                 }
@@ -111,7 +114,7 @@ fun LineupsContent(
                 Text(
                     text = "VS",
                     style = BouncerDesignSystem.typography.headingSmall.copy(fontSize = 14.sp),
-                    color = Color.White.copy(alpha = 0.2f),
+                    color = colors.textTertiary,
                     fontWeight = FontWeight.Black
                 )
                 TeamHeaderMini(name = team2Name, code = team2Code, isRightAligned = true)
@@ -122,8 +125,11 @@ fun LineupsContent(
         val maxPlaying = maxOf(team1Playing.size, team2Playing.size)
         items(maxPlaying) { index ->
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(IntrinsicSize.Min),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 // Team 1 Player
                 Box(modifier = Modifier.weight(1f)) {
@@ -131,6 +137,23 @@ fun LineupsContent(
                         SplitPlayerTile(player = player, teamColor = team1Color, isLeft = true)
                     }
                 }
+
+                // Gold center divider
+                Box(
+                    modifier = Modifier
+                        .width(2.dp)
+                        .fillMaxHeight()
+                        .background(
+                            brush = Brush.verticalGradient(
+                                colors = listOf(
+                                    Color(0xFFD4AF37).copy(alpha = 0.0f),
+                                    Color(0xFFD4AF37).copy(alpha = 0.3f),
+                                    Color(0xFFD4AF37).copy(alpha = 0.3f),
+                                    Color(0xFFD4AF37).copy(alpha = 0.0f)
+                                )
+                            )
+                        )
+                )
 
                 // Team 2 Player
                 Box(modifier = Modifier.weight(1f)) {
@@ -151,7 +174,7 @@ fun LineupsContent(
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Box(modifier = Modifier.weight(1f).height(1.dp).background(Color.White.copy(alpha = 0.05f)))
+                    Box(modifier = Modifier.weight(1f).height(1.dp).background(colors.glassSurface))
                     Text(
                         text = "SUBSTITUTES & BENCH",
                         style = BouncerDesignSystem.typography.labelSmall.copy(fontSize = 9.sp),
@@ -159,21 +182,42 @@ fun LineupsContent(
                         modifier = Modifier.padding(horizontal = 16.dp),
                         letterSpacing = 2.sp
                     )
-                    Box(modifier = Modifier.weight(1f).height(1.dp).background(Color.White.copy(alpha = 0.05f)))
+                    Box(modifier = Modifier.weight(1f).height(1.dp).background(colors.glassSurface))
                 }
             }
 
             val maxBench = maxOf(team1Bench.size, team2Bench.size)
             items(maxBench) { index ->
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(IntrinsicSize.Min),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     Box(modifier = Modifier.weight(1f)) {
                         team1Bench.getOrNull(index)?.let { player ->
                             SplitPlayerTile(player = player, teamColor = team1Color, isLeft = true, isBench = true)
                         }
                     }
+
+                    // Gold center divider
+                    Box(
+                        modifier = Modifier
+                            .width(2.dp)
+                            .fillMaxHeight()
+                            .background(
+                                brush = Brush.verticalGradient(
+                                    colors = listOf(
+                                        Color(0xFFD4AF37).copy(alpha = 0.0f),
+                                        Color(0xFFD4AF37).copy(alpha = 0.3f),
+                                        Color(0xFFD4AF37).copy(alpha = 0.3f),
+                                        Color(0xFFD4AF37).copy(alpha = 0.0f)
+                                    )
+                                )
+                            )
+                    )
+
                     Box(modifier = Modifier.weight(1f)) {
                         team2Bench.getOrNull(index)?.let { player ->
                             SplitPlayerTile(player = player, teamColor = team2Color, isLeft = false, isBench = true)
@@ -208,7 +252,7 @@ private fun TeamHeaderMini(name: String, code: String, isRightAligned: Boolean =
         Text(
             text = name.take(12).uppercase(),
             style = BouncerDesignSystem.typography.labelSmall.copy(fontSize = 11.sp),
-            color = Color.White,
+            color = BouncerDesignSystem.colors.textPrimary,
             fontWeight = FontWeight.Black,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
@@ -239,6 +283,8 @@ private fun SplitPlayerTile(
     val colors = BouncerDesignSystem.colors
     val typography = BouncerDesignSystem.typography
 
+    val accentAlpha = if (isBench) 0.15f else 0.45f
+
     GlassCard(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
@@ -247,6 +293,23 @@ private fun SplitPlayerTile(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .drawBehind {
+                    // Team-colored accent border
+                    val barWidth = 2.dp.toPx()
+                    if (isLeft) {
+                        drawRect(
+                            color = teamColor.copy(alpha = accentAlpha),
+                            topLeft = Offset(0f, 0f),
+                            size = androidx.compose.ui.geometry.Size(barWidth, size.height)
+                        )
+                    } else {
+                        drawRect(
+                            color = teamColor.copy(alpha = accentAlpha),
+                            topLeft = Offset(size.width - barWidth, 0f),
+                            size = androidx.compose.ui.geometry.Size(barWidth, size.height)
+                        )
+                    }
+                }
                 .padding(horizontal = 8.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = if (isLeft) Arrangement.Start else Arrangement.End
@@ -257,10 +320,15 @@ private fun SplitPlayerTile(
                         .size(32.dp)
                         .clip(CircleShape)
                         .background(teamColor.copy(alpha = if (isBench) 0.05f else 0.15f))
-                        .border(1.dp, Color.White.copy(alpha = 0.05f), CircleShape),
+                        .border(1.dp, colors.glassSurface, CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(text = "👤", fontSize = 14.sp, color = Color.White.copy(alpha = 0.4f))
+                    Icon(
+                        imageVector = Icons.Filled.Person,
+                        contentDescription = null,
+                        tint = colors.textTertiary,
+                        modifier = Modifier.size(16.dp)
+                    )
                 }
                 
                 Spacer(modifier = Modifier.width(8.dp))
@@ -269,7 +337,7 @@ private fun SplitPlayerTile(
                     Text(
                         text = player.name,
                         style = typography.playerName.copy(fontSize = 11.sp),
-                        color = if (isBench) colors.textMuted else Color.White,
+                        color = if (isBench) colors.textMuted else colors.textPrimary,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -287,7 +355,7 @@ private fun SplitPlayerTile(
                     Text(
                         text = player.name,
                         style = typography.playerName.copy(fontSize = 11.sp),
-                        color = if (isBench) colors.textMuted else Color.White,
+                        color = if (isBench) colors.textMuted else colors.textPrimary,
                         textAlign = TextAlign.End,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -310,10 +378,15 @@ private fun SplitPlayerTile(
                         .size(32.dp)
                         .clip(CircleShape)
                         .background(teamColor.copy(alpha = if (isBench) 0.05f else 0.15f))
-                        .border(1.dp, Color.White.copy(alpha = 0.05f), CircleShape),
+                        .border(1.dp, colors.glassSurface, CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(text = "👤", fontSize = 14.sp, color = Color.White.copy(alpha = 0.4f))
+                    Icon(
+                        imageVector = Icons.Filled.Person,
+                        contentDescription = null,
+                        tint = colors.textTertiary,
+                        modifier = Modifier.size(16.dp)
+                    )
                 }
             }
         }
@@ -569,7 +642,7 @@ private fun BenchHeader() {
     Column(modifier = Modifier.padding(top = 12.dp, bottom = 4.dp)) {
         HorizontalDivider(
             thickness = 1.dp,
-            color = Color.White.copy(alpha = 0.06f)
+            color = colors.glassSurface
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(

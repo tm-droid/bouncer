@@ -113,7 +113,23 @@ fun BouncerBottomNav(
             .navigationBarsPadding(),
         contentAlignment = Alignment.BottomCenter
     ) {
-        // Floating glass pill container
+        // Floating glass pill container with subtle gold top border
+        Column {
+            // Subtle gold top border line
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(1.dp)
+                    .background(
+                        Brush.horizontalGradient(
+                            0.0f to Color.Transparent,
+                            0.2f to colors.goldPrimary.copy(alpha = 0.10f),
+                            0.5f to colors.goldPrimary.copy(alpha = 0.15f),
+                            0.8f to colors.goldPrimary.copy(alpha = 0.10f),
+                            1.0f to Color.Transparent
+                        )
+                    )
+            )
         GlassNavBarContainer {
             Row(
                 modifier = Modifier
@@ -145,6 +161,7 @@ fun BouncerBottomNav(
                 }
             }
         }
+        } // Close Column
 
         // Elevated center FAB
         CenterFab(

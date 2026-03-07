@@ -144,7 +144,7 @@ fun TeamFormCard(
                         )
                         Text(
                             text = teamName,
-                            color = Color.White,
+                            color = colors.textPrimary,
                             fontSize = 17.sp,
                             fontWeight = FontWeight.SemiBold,
                         )
@@ -333,7 +333,7 @@ fun TeamFormCard(
                             ) {
                                 Text(
                                     text = "vs ${match.opponent}",
-                                    color = Color.White,
+                                    color = colors.textPrimary,
                                     fontSize = 13.sp,
                                     fontWeight = FontWeight.Medium,
                                 )

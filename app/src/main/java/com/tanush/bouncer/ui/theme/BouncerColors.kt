@@ -139,8 +139,8 @@ object GlassOpacity {
     const val BACKGROUND = 0.08f  // Futuristic light tint
     const val BACKGROUND_HOVER = 0.10f
     const val BACKGROUND_PRESSED = 0.12f
-    const val BORDER = 0.08f
-    const val BORDER_HIGHLIGHT = 0.12f
+    const val BORDER = 0.12f
+    const val BORDER_HIGHLIGHT = 0.16f
     const val OVERLAY = 0.60f
     const val SCRIM = 0.80f
 }

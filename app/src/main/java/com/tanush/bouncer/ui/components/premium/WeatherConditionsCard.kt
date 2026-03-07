@@ -14,6 +14,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Air
 import androidx.compose.material.icons.filled.FilterDrama
 import androidx.compose.material.icons.filled.WaterDrop
+import androidx.compose.material.icons.filled.Sports
 import androidx.compose.material.icons.filled.WbSunny
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -134,7 +135,7 @@ fun WeatherConditionsCard(
                             WeatherCondition.DRIZZLE -> "Drizzle"
                             WeatherCondition.CLEAR_NIGHT -> "Clear Night"
                         },
-                        color = Color.White,
+                        color = colors.textPrimary,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.SemiBold,
                     )
@@ -155,7 +156,7 @@ fun WeatherConditionsCard(
                             Icon(
                                 Icons.Default.WbSunny,
                                 contentDescription = null,
-                                tint = Color.White,
+                                tint = colors.textPrimary,
                                 modifier = Modifier
                                     .size(40.dp)
                                     .graphicsLayer {
@@ -168,7 +169,7 @@ fun WeatherConditionsCard(
                             Icon(
                                 Icons.Default.FilterDrama,
                                 contentDescription = null,
-                                tint = Color.White,
+                                tint = colors.textPrimary,
                                 modifier = Modifier
                                     .size(40.dp)
                                     .offset(x = cloudOffset.dp * 0.1f),
@@ -178,7 +179,7 @@ fun WeatherConditionsCard(
                             Icon(
                                 Icons.Default.WaterDrop,
                                 contentDescription = null,
-                                tint = Color.White,
+                                tint = colors.textPrimary,
                                 modifier = Modifier.size(40.dp),
                             )
                         }
@@ -311,14 +312,16 @@ fun WeatherConditionsCard(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            text = "🏏",
-                            fontSize = 16.sp,
+                        Icon(
+                            imageVector = Icons.Default.Sports,
+                            contentDescription = "Batting",
+                            tint = colors.textPrimary,
+                            modifier = Modifier.size(16.dp),
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = "Batting",
-                            color = Color.White,
+                            color = colors.textPrimary,
                             fontSize = 14.sp,
                         )
                     }
@@ -350,7 +353,7 @@ fun WeatherConditionsCard(
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = "Bowling",
-                            color = Color.White,
+                            color = colors.textPrimary,
                             fontSize = 14.sp,
                         )
                     }
@@ -382,7 +385,7 @@ fun WeatherConditionsCard(
                 )
                 Text(
                     text = weather.visibility,
-                    color = Color.White,
+                    color = colors.textPrimary,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Medium,
                 )
@@ -421,7 +424,7 @@ private fun WeatherStatItem(
 
         Text(
             text = value,
-            color = Color.White,
+            color = colors.textPrimary,
             fontSize = 16.sp,
             fontWeight = FontWeight.Bold,
         )

@@ -130,7 +130,7 @@ fun MatchInsightsCard(
                         )
                         Text(
                             text = currentPhase,
-                            color = Color.White,
+                            color = colors.textPrimary,
                             fontSize = 15.sp,
                             fontWeight = FontWeight.SemiBold,
                         )
@@ -170,9 +170,11 @@ fun MatchInsightsCard(
                     .padding(14.dp),
             ) {
                 Row(verticalAlignment = Alignment.Top) {
-                    Text(
-                        text = "💡",
-                        fontSize = 24.sp,
+                    Icon(
+                        imageVector = Icons.Default.Lightbulb,
+                        contentDescription = "Insight",
+                        tint = colors.goldLight,
+                        modifier = Modifier.size(24.dp),
                     )
 
                     Spacer(modifier = Modifier.width(14.dp))
@@ -190,7 +192,7 @@ fun MatchInsightsCard(
 
                         Text(
                             text = keyHighlight,
-                            color = Color.White,
+                            color = colors.textPrimary,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Medium,
                             lineHeight = 20.sp,
@@ -244,23 +246,23 @@ private fun InsightGridItem(
     val trendColor = when (insight.trend) {
         InsightTrend.POSITIVE -> colors.statusSuccess
         InsightTrend.NEGATIVE -> colors.statusLive
-        InsightTrend.NEUTRAL -> Color.Gray
+        InsightTrend.NEUTRAL -> colors.textTertiary
     }
 
-    val typeEmoji = when (insight.insightType) {
-        InsightType.BATTING -> "🏏"
-        InsightType.BOWLING -> "⚾"
-        InsightType.PARTNERSHIP -> "🤝"
-        InsightType.POWERPLAY -> "⚡"
-        InsightType.DEATH_OVERS -> "🎯"
-        InsightType.FIELDING -> "🧤"
-        InsightType.MOMENTUM -> "📈"
+    val typeLabel = when (insight.insightType) {
+        InsightType.BATTING -> "BAT"
+        InsightType.BOWLING -> "BWL"
+        InsightType.PARTNERSHIP -> "PTR"
+        InsightType.POWERPLAY -> "PP"
+        InsightType.DEATH_OVERS -> "DO"
+        InsightType.FIELDING -> "FLD"
+        InsightType.MOMENTUM -> "MTM"
     }
 
     Column(
         modifier = modifier
             .clip(RoundedCornerShape(12.dp))
-            .background(Color.White.copy(alpha = 0.06f))
+            .background(colors.glassSurface)
             .padding(14.dp),
     ) {
         Row(
@@ -269,8 +271,11 @@ private fun InsightGridItem(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                text = typeEmoji,
-                fontSize = 18.sp,
+                text = typeLabel,
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Bold,
+                color = colors.goldPrimary,
+                letterSpacing = 1.sp,
             )
 
             Box(
@@ -285,7 +290,7 @@ private fun InsightGridItem(
 
         Text(
             text = insight.title,
-            color = Color.Gray,
+            color = colors.textSecondary,
             fontSize = 10.sp,
             fontWeight = FontWeight.Medium,
         )
@@ -294,7 +299,7 @@ private fun InsightGridItem(
 
         Text(
             text = insight.value,
-            color = Color.White,
+            color = colors.textPrimary,
             fontSize = 20.sp,
             fontWeight = FontWeight.Bold,
         )
@@ -320,12 +325,12 @@ private fun PhaseAnalysisRow(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .background(Color.White.copy(alpha = 0.06f))
+            .background(colors.glassSurface)
             .padding(14.dp),
     ) {
         Text(
             text = "MATCH PHASES",
-            color = Color.Gray,
+            color = colors.textSecondary,
             fontSize = 10.sp,
             fontWeight = FontWeight.Bold,
             letterSpacing = 1.sp,
@@ -356,7 +361,7 @@ private fun PhaseAnalysisRow(
                                     )
                                 } else {
                                     Brush.linearGradient(
-                                        colors = listOf(Color.White.copy(alpha = 0.10f), Color.White.copy(alpha = 0.05f)),
+                                        colors = listOf(colors.glassBorder, colors.glassSurface),
                                     )
                                 },
                             ),
@@ -369,7 +374,7 @@ private fun PhaseAnalysisRow(
                                 "Death" -> "DO"
                                 else -> "--"
                             },
-                            color = if (isActive) Color.Black else Color.Gray,
+                            color = if (isActive) Color.Black else colors.textTertiary,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
                         )
@@ -379,7 +384,7 @@ private fun PhaseAnalysisRow(
 
                     Text(
                         text = phase,
-                        color = if (isActive) colors.goldLight else Color.Gray,
+                        color = if (isActive) colors.goldLight else colors.textTertiary,
                         fontSize = 10.sp,
                         fontWeight = if (isActive) FontWeight.Bold else FontWeight.Normal,
                     )
@@ -407,7 +412,7 @@ private fun PhaseAnalysisRow(
                             } else if (progress > 0.3f) {
                                 colors.statusSuccess.copy(alpha = 0.5f)
                             } else {
-                                Color.White.copy(alpha = 0.08f)
+                                colors.glassSurface
                             },
                         ),
                 )
@@ -422,7 +427,7 @@ private fun PhaseAnalysisRow(
                             } else if (progress > 0.7f) {
                                 colors.statusSuccess.copy(alpha = 0.5f)
                             } else {
-                                Color.White.copy(alpha = 0.08f)
+                                colors.glassSurface
                             },
                         ),
                 )
@@ -435,7 +440,7 @@ private fun PhaseAnalysisRow(
                             if (currentPhase.contains("Death") || currentPhase.contains("Final")) {
                                 colors.goldDark
                             } else {
-                                Color.White.copy(alpha = 0.08f)
+                                colors.glassSurface
                             },
                         ),
                 )

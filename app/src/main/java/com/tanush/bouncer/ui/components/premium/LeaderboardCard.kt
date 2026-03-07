@@ -106,7 +106,7 @@ fun LeaderboardCard(
                         )
                         Text(
                             text = category,
-                            color = Color.White,
+                            color = colors.textPrimary,
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
                         )
@@ -146,7 +146,7 @@ private fun LeaderboardEntryRow(
         1 -> colors.goldDark
         2 -> Color(0xFFC0C0C0) // Silver
         3 -> Color(0xFFCD7F32) // Bronze
-        else -> Color.White.copy(alpha = 0.5f)
+        else -> colors.textTertiary
     }
 
     Row(
@@ -168,7 +168,7 @@ private fun LeaderboardEntryRow(
                 } else {
                     Brush.horizontalGradient(
                         colors = listOf(
-                            Color.White.copy(alpha = 0.03f),
+                            colors.glassSurface,
                             Color.Transparent,
                         ),
                     )
@@ -190,8 +190,8 @@ private fun LeaderboardEntryRow(
                     } else {
                         Brush.linearGradient(
                             colors = listOf(
-                                Color.White.copy(alpha = 0.1f),
-                                Color.White.copy(alpha = 0.05f),
+                                colors.glassBorder,
+                                colors.glassSurface,
                             ),
                         )
                     },
@@ -200,7 +200,7 @@ private fun LeaderboardEntryRow(
         ) {
             Text(
                 text = "${entry.rank}",
-                color = if (isTopThree) Color.Black else Color.White,
+                color = if (isTopThree) Color.Black else colors.textPrimary,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Bold,
             )
@@ -213,7 +213,7 @@ private fun LeaderboardEntryRow(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = entry.playerName,
-                    color = Color.White,
+                    color = colors.textPrimary,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
                 )
@@ -227,7 +227,7 @@ private fun LeaderboardEntryRow(
 
             Text(
                 text = entry.teamName,
-                color = Color.White.copy(alpha = 0.5f),
+                color = colors.textTertiary,
                 fontSize = 11.sp,
             )
         }
@@ -244,7 +244,7 @@ private fun LeaderboardEntryRow(
             entry.secondaryValue?.let { secondary ->
                 Text(
                     text = secondary,
-                    color = Color.White.copy(alpha = 0.5f),
+                    color = colors.textTertiary,
                     fontSize = 10.sp,
                 )
             }

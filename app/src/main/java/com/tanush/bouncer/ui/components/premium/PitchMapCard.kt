@@ -98,8 +98,8 @@ fun PitchMapCard(
                     Box(
                         modifier = Modifier
                             .size(32.dp)
-                            .background(Color.White.copy(alpha = 0.03f), CircleShape)
-                            .border(0.5.dp, Color.White.copy(alpha = 0.1f), CircleShape),
+                            .background(colors.glassSurface, CircleShape)
+                            .border(0.5.dp, colors.glassBorder, CircleShape),
                         contentAlignment = Alignment.Center,
                     ) {
                         Icon(
@@ -134,7 +134,7 @@ fun PitchMapCard(
                     modifier = Modifier
                         .clip(RoundedCornerShape(6.dp))
                         .background(Color.Black.copy(alpha = 0.2f))
-                        .border(0.5.dp, Color.White.copy(alpha = 0.05f), RoundedCornerShape(6.dp))
+                        .border(0.5.dp, colors.glassBorder, RoundedCornerShape(6.dp))
                         .padding(horizontal = 8.dp, vertical = 4.dp)
                 ) {
                     Text(
@@ -162,7 +162,7 @@ fun PitchMapCard(
                         .height(220.dp)
                         .clip(RoundedCornerShape(8.dp))
                         .background(Color.Black.copy(alpha = 0.4f))
-                        .border(0.5.dp, Color.White.copy(alpha = 0.03f), RoundedCornerShape(8.dp)),
+                        .border(0.5.dp, colors.glassBorder, RoundedCornerShape(8.dp)),
                 ) {
                     Canvas(modifier = Modifier.fillMaxSize().padding(12.dp)) {
                         val pitchWidth = size.width
@@ -235,8 +235,8 @@ fun PitchMapCard(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(6.dp))
-                                .background(Color.White.copy(alpha = 0.02f))
-                                .border(0.5.dp, Color.White.copy(alpha = 0.05f), RoundedCornerShape(6.dp))
+                                .background(colors.glassSurface)
+                                .border(0.5.dp, colors.glassBorder, RoundedCornerShape(6.dp))
                                 .padding(8.dp)
                         ) {
                             Text(text = name, color = TextTertiary, fontSize = 8.sp, fontWeight = FontWeight.Bold)

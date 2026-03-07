@@ -126,8 +126,8 @@ fun PremiumEmptyState(
                     .background(
                         Brush.linearGradient(
                             colors = listOf(
-                                Color.White.copy(alpha = 0.08f),
-                                Color.White.copy(alpha = 0.05f)
+                                GlassSurface,
+                                GlassSurface
                             )
                         ),
                         CircleShape
@@ -533,7 +533,7 @@ fun AnimatedStatCard(
                 spotColor = accentColor.copy(alpha = 0.2f)
             ),
         shape = RoundedCornerShape(20.dp),
-        color = Color.White.copy(alpha = 0.05f),
+        color = GlassSurface,
         border = BorderStroke(
             1.dp,
             Brush.linearGradient(

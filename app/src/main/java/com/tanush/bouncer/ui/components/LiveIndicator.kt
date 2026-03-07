@@ -19,51 +19,73 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextGeometricTransform
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.tanush.bouncer.ui.theme.BouncerColors
+import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 import com.tanush.bouncer.ui.theme.BouncerDimens
 import com.tanush.bouncer.ui.theme.BouncerTheme
 import com.tanush.bouncer.ui.theme.PillShape
-import com.tanush.bouncer.ui.theme.liveIndicatorColor
 
 /**
  * Pulsing red dot with "LIVE" label for live match indicators.
+ * Uses BouncerDesignSystem tokens for consistent styling.
  */
 @Composable
 fun LiveIndicator(modifier: Modifier = Modifier) {
+    val colors = BouncerDesignSystem.colors
+    val typography = BouncerDesignSystem.typography
+    val dimens = BouncerDesignSystem.dimens
     val infiniteTransition = rememberInfiniteTransition(label = "livePulse")
+
+    val scale by infiniteTransition.animateFloat(
+        initialValue = 0.8f,
+        targetValue = 1.2f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 800),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "liveDotScale"
+    )
+
     val alpha by infiniteTransition.animateFloat(
-        initialValue = 0.3f,
+        initialValue = 0.4f,
         targetValue = 1f,
         animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = BouncerDimens.animSlow),
+            animation = tween(durationMillis = 800),
             repeatMode = RepeatMode.Reverse
         ),
         label = "liveDotAlpha"
     )
 
-    val liveColor = liveIndicatorColor()
+    val liveColor = colors.statusLive
 
     Row(
         modifier = modifier,
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(BouncerDimens.xs)
+        horizontalArrangement = Arrangement.spacedBy(dimens.spacing.xs)
     ) {
         Box(
             modifier = Modifier
-                .size(BouncerDimens.liveDotSize)
-                .alpha(alpha)
+                .size(dimens.liveDotSize)
+                .scale(scale)
+                .drawBehind {
+                    // Red glow behind the dot
+                    drawCircle(
+                        color = liveColor.copy(alpha = alpha * 0.3f),
+                        radius = size.maxDimension * 0.8f
+                    )
+                }
                 .clip(CircleShape)
-                .background(liveColor)
+                .background(liveColor.copy(alpha = alpha))
         )
         Text(
             text = "LIVE",
-            style = MaterialTheme.typography.labelSmall,
-            fontWeight = FontWeight.Bold,
+            style = typography.matchStatus,
             color = liveColor
         )
     }

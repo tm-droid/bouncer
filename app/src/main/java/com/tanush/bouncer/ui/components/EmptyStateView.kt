@@ -43,11 +43,11 @@ fun EmptyStateView(
         Icon(
             imageVector = icon,
             contentDescription = null,
-            modifier = Modifier.size(64.dp),
-            tint = BouncerDesignSystem.colors.textMuted
+            modifier = Modifier.size(48.dp),
+            tint = BouncerDesignSystem.colors.goldPrimary
         )
 
-        Spacer(modifier = Modifier.height(BouncerDesignSystem.dimens.lg))
+        Spacer(modifier = Modifier.height(16.dp))
 
         Text(
             text = title,
@@ -56,7 +56,7 @@ fun EmptyStateView(
             textAlign = TextAlign.Center
         )
 
-        Spacer(modifier = Modifier.height(BouncerDesignSystem.dimens.sm))
+        Spacer(modifier = Modifier.height(8.dp))
 
         Text(
             text = message,

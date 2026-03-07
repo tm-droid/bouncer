@@ -122,7 +122,7 @@ fun MatchSummaryCard(
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF1A1A2E)),
+        colors = CardDefaults.cardColors(containerColor = colors.surface1),
         elevation = CardDefaults.cardElevation(defaultElevation = 16.dp),
     ) {
         Box {
@@ -180,13 +180,13 @@ fun MatchSummaryCard(
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             text = matchTitle,
-                            color = Color.White,
+                            color = colors.textPrimary,
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
                         )
                         Text(
                             text = venue,
-                            color = Color.White.copy(alpha = 0.5f),
+                            color = colors.textTertiary,
                             fontSize = 12.sp,
                         )
                     }
@@ -275,7 +275,7 @@ fun MatchSummaryCard(
                         if (winMargin.isNotEmpty()) {
                             Text(
                                 text = winMargin,
-                                color = Color.White.copy(alpha = 0.7f),
+                                color = colors.textSecondary,
                                 fontSize = 13.sp,
                             )
                         }
@@ -314,7 +314,7 @@ fun MatchSummaryCard(
                 // Match date
                 Text(
                     text = matchDate,
-                    color = Color.White.copy(alpha = 0.4f),
+                    color = colors.textMuted,
                     fontSize = 11.sp,
                     modifier = Modifier.align(Alignment.CenterHorizontally),
                 )
@@ -388,7 +388,7 @@ private fun TeamSummaryColumn(
                 } else {
                     Text(
                         text = team.shortName.take(3),
-                        color = if (isWinner) Color.Black else Color.White,
+                        color = if (isWinner) Color.Black else colors.textPrimary,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
                     )
@@ -400,21 +400,21 @@ private fun TeamSummaryColumn(
 
         Text(
             text = team.shortName,
-            color = if (isWinner) colors.goldDark else Color.White,
+            color = if (isWinner) colors.goldDark else colors.textPrimary,
             fontSize = 14.sp,
             fontWeight = FontWeight.Bold,
         )
 
         Text(
             text = team.score,
-            color = Color.White,
+            color = colors.textPrimary,
             fontSize = 22.sp,
             fontWeight = FontWeight.Bold,
         )
 
         Text(
             text = "(${team.overs})",
-            color = Color.White.copy(alpha = 0.5f),
+            color = colors.textTertiary,
             fontSize = 12.sp,
         )
 
@@ -446,7 +446,7 @@ private fun TopPerformerCard(
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(12.dp))
-            .background(Color.White.copy(alpha = 0.05f))
+            .background(colors.glassSurface)
             .padding(12.dp),
     ) {
         Column {
@@ -490,13 +490,13 @@ private fun TopPerformerCard(
                 Column {
                     Text(
                         text = performer.name.split(" ").lastOrNull() ?: performer.name,
-                        color = Color.White,
+                        color = colors.textPrimary,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Bold,
                     )
                     Text(
                         text = performer.category,
-                        color = Color.White.copy(alpha = 0.5f),
+                        color = colors.textTertiary,
                         fontSize = 10.sp,
                     )
                 }

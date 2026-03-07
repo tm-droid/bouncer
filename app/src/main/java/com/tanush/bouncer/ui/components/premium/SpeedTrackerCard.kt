@@ -198,7 +198,7 @@ fun SpeedTrackerCard(
                             )
                             Text(
                                 text = speedData.bowlerName,
-                                color = Color.White,
+                                color = colors.textPrimary,
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Bold,
                             )
@@ -321,7 +321,7 @@ fun SpeedTrackerCard(
                         )
                         Text(
                             text = "km/h",
-                            color = Color.White.copy(alpha = 0.5f),
+                            color = colors.textSecondary,
                             fontSize = 14.sp,
                         )
                     }
@@ -334,7 +334,7 @@ fun SpeedTrackerCard(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(12.dp))
-                        .background(Color.White.copy(alpha = 0.05f))
+                        .background(colors.textPrimary.copy(alpha = 0.05f))
                         .padding(16.dp),
                     horizontalArrangement = Arrangement.SpaceEvenly,
                 ) {
@@ -375,7 +375,7 @@ private fun SpeedStatItem(
     ) {
         Text(
             text = label,
-            color = Color.White.copy(alpha = 0.5f),
+            color = colors.textSecondary,
             fontSize = 10.sp,
         )
         Spacer(modifier = Modifier.height(4.dp))

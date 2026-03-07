@@ -4,8 +4,8 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="@android:color/background_light"
-    android:padding="12dp">
+    android:background="#0F1115"
+    android:padding="16dp">
 
     <TextView
         android:id="@+id/widget_match_title"
@@ -14,7 +14,8 @@
         android:text="Live Match"
         android:textStyle="bold"
         android:textSize="18sp"
-        android:textColor="@android:color/black" />
+        android:textColor="#FFD700"
+        android:letterSpacing="0.05" />
 
     <TextView
         android:id="@+id/widget_match_status"
@@ -22,22 +23,27 @@
         android:layout_height="wrap_content"
         android:text="Team A vs Team B"
         android:textSize="16sp"
-        android:textColor="@android:color/black" />
+        android:textStyle="bold"
+        android:textColor="#F9FAFB"
+        android:layout_marginTop="6dp" />
 
     <TextView
         android:id="@+id/widget_score"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="0/0 (0.0)"
-        android:textSize="16sp"
-        android:textColor="@android:color/black" />
+        android:textSize="22sp"
+        android:textStyle="bold"
+        android:textColor="#FFFFFF"
+        android:layout_marginTop="4dp" />
 
     <TextView
         android:id="@+id/widget_status"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Status"
-        android:textSize="14sp"
-        android:textColor="@android:color/darker_gray" />
+        android:textSize="12sp"
+        android:textColor="#94A3B8"
+        android:layout_marginTop="6dp" />
 
 </LinearLayout>

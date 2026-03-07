@@ -49,9 +49,9 @@ fun PredictiveBallCard(prediction: BallPrediction) {
             .clip(RoundedCornerShape(20.dp))
             .background(
                 if (isCritical) {
-                    Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.05f), colors.goldPrimary.copy(alpha = 0.15f)))
+                    Brush.verticalGradient(listOf(GlassSurface, colors.goldPrimary.copy(alpha = 0.15f)))
                 } else {
-                    Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.05f), Color.Transparent))
+                    Brush.verticalGradient(listOf(GlassSurface, Color.Transparent))
                 }
             )
             .border(
@@ -90,7 +90,7 @@ fun PredictiveBallCard(prediction: BallPrediction) {
 
                 androidx.compose.foundation.Canvas(modifier = Modifier.size(80.dp)) {
                     drawCircle(
-                        color = Color.White.copy(alpha = 0.05f),
+                        color = GlassSurface,
                         style = Stroke(width = 6.dp.toPx())
                     )
                     drawArc(

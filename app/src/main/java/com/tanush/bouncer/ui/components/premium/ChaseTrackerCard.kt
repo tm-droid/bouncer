@@ -145,7 +145,7 @@ fun ChaseTrackerCard(
                             Icon(
                                 imageVector = Icons.Default.Flag,
                                 contentDescription = null,
-                                tint = Color.White,
+                                tint = colors.textPrimary,
                                 modifier = Modifier.size(24.dp),
                             )
                         }
@@ -162,7 +162,7 @@ fun ChaseTrackerCard(
                             )
                             Text(
                                 text = battingTeam,
-                                color = Color.White,
+                                color = colors.textPrimary,
                                 fontSize = 16.sp,
                                 fontWeight = FontWeight.Bold,
                             )
@@ -210,13 +210,13 @@ fun ChaseTrackerCard(
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
                             text = "$runsNeeded",
-                            color = Color.White,
+                            color = colors.textPrimary,
                             fontSize = 36.sp,
                             fontWeight = FontWeight.Bold,
                         )
                         Text(
                             text = "runs needed",
-                            color = Color.White.copy(alpha = 0.6f),
+                            color = colors.textSecondary,
                             fontSize = 12.sp,
                         )
                     }
@@ -229,7 +229,7 @@ fun ChaseTrackerCard(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(12.dp))
-                        .background(Color.White.copy(alpha = 0.05f))
+                        .background(colors.glassSurface)
                         .padding(16.dp),
                     horizontalArrangement = Arrangement.SpaceEvenly,
                 ) {
@@ -354,7 +354,7 @@ private fun ChaseStatItem(
         )
         Text(
             text = label,
-            color = Color.White.copy(alpha = 0.5f),
+            color = colors.textSecondary,
             fontSize = 9.sp,
         )
     }
@@ -392,13 +392,13 @@ private fun MilestoneChip(
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
                 text = if (milestone.isAchieved) "✓" else "${milestone.runs}",
-                color = if (milestone.isAchieved) colors.statusSuccess else Color.White,
+                color = if (milestone.isAchieved) colors.statusSuccess else colors.textPrimary,
                 fontSize = if (milestone.isAchieved) 14.sp else 12.sp,
                 fontWeight = FontWeight.Bold,
             )
             Text(
                 text = milestone.description,
-                color = Color.White.copy(alpha = 0.5f),
+                color = colors.textSecondary,
                 fontSize = 8.sp,
             )
         }

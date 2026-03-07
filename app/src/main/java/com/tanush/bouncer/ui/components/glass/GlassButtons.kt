@@ -189,9 +189,9 @@ fun GlassSecondaryButton(
     
     val backgroundColor by animateColorAsState(
         targetValue = when {
-            !enabled || isLoading -> Color.White.copy(alpha = 0.02f)
+            !enabled || isLoading -> colors.glassSurface
             isPressed -> colors.goldPrimary.copy(alpha = 0.12f)
-            else -> Color.White.copy(alpha = 0.04f)
+            else -> colors.glassSurface
         },
         label = "bg_color"
     )
@@ -324,7 +324,7 @@ fun GlassIconButton(
     
     val backgroundColor by animateColorAsState(
         targetValue = when {
-            !enabled -> Color.White.copy(alpha = 0.02f)
+            !enabled -> colors.glassSurface
             isPressed -> colors.glassBackgroundPressed
             else -> colors.glassBackground
         },

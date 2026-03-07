@@ -174,7 +174,7 @@ fun SeriesAwardsCard(
                             )
                             Text(
                                 text = seriesName,
-                                color = Color.White.copy(alpha = 0.6f),
+                                color = colors.textSecondary,
                                 fontSize = 11.sp,
                             )
                         }
@@ -283,14 +283,14 @@ private fun AwardCard(
 
         Text(
             text = award.playerName,
-            color = Color.White,
+            color = colors.textPrimary,
             fontSize = 13.sp,
             fontWeight = FontWeight.Bold,
         )
 
         Text(
             text = award.teamName,
-            color = Color.White.copy(alpha = 0.5f),
+            color = colors.textSecondary,
             fontSize = 10.sp,
         )
 
@@ -305,7 +305,7 @@ private fun AwardCard(
 
         Text(
             text = award.statDetails,
-            color = Color.White.copy(alpha = 0.4f),
+            color = colors.textTertiary,
             fontSize = 9.sp,
         )
     }
@@ -326,14 +326,14 @@ private fun CategoryTab(
                 if (isSelected) {
                     colors.goldDark.copy(alpha = 0.2f)
                 } else {
-                    Color.White.copy(alpha = 0.05f)
+                    colors.glassSurface
                 },
             )
             .padding(horizontal = 16.dp, vertical = 8.dp),
     ) {
         Text(
             text = category,
-            color = if (isSelected) colors.goldDark else Color.White.copy(alpha = 0.6f),
+            color = if (isSelected) colors.goldDark else colors.textSecondary,
             fontSize = 11.sp,
             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
         )
@@ -399,20 +399,20 @@ private fun LeaderRow(
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = entry.playerName,
-                color = Color.White,
+                color = colors.textPrimary,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.SemiBold,
             )
             Text(
                 text = entry.teamShort,
-                color = Color.White.copy(alpha = 0.5f),
+                color = colors.textSecondary,
                 fontSize = 10.sp,
             )
         }
 
         Text(
             text = entry.statValue,
-            color = if (entry.rank == 1) colors.goldDark else Color.White,
+            color = if (entry.rank == 1) colors.goldDark else colors.textPrimary,
             fontSize = 16.sp,
             fontWeight = FontWeight.Bold,
         )

@@ -401,7 +401,7 @@ private fun EconomyGauge(
                 center = Offset(indicatorPosition.coerceIn(5.dp.toPx(), barWidth - 5.dp.toPx()), barHeight / 2)
             )
             drawCircle(
-                color = Color.White,
+                color = TextPrimary,
                 radius = 2.dp.toPx(),
                 center = Offset(indicatorPosition.coerceIn(5.dp.toPx(), barWidth - 5.dp.toPx()), barHeight / 2)
             )

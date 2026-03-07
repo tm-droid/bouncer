@@ -91,7 +91,7 @@ fun GlassSegmentedControl(
             .height(44.dp)
             .clip(containerShape)
             .background(Color.Black.copy(alpha = 0.3f)) // From _2/code.html .segmented-control
-            .border(1.dp, Color.White.copy(alpha = 0.1f), containerShape)
+            .border(1.dp, colors.glassBorder, containerShape)
             .padding(4.dp) // From _2/code.html padding: 4px
             .onSizeChanged { containerSize = it }
     ) {
@@ -129,7 +129,7 @@ fun GlassSegmentedControl(
             items.forEachIndexed { index, label ->
                 val isSelected = index == selectedIndex
                 val textColor by animateColorAsState(
-                    targetValue = if (isSelected) Color.Black else Color.White.copy(alpha = 0.6f), // From spec
+                    targetValue = if (isSelected) Color.Black else colors.textSecondary, // From spec
                     label = "text_color"
                 )
                 
@@ -201,7 +201,7 @@ fun GlassSegmentedControlWithIcons(
         modifier = modifier
             .clip(containerShape)
             .background(Color.Black.copy(alpha = 0.3f))
-            .border(1.dp, Color.White.copy(alpha = 0.1f), containerShape)
+            .border(1.dp, colors.glassBorder, containerShape)
             .padding(4.dp)
             .onSizeChanged { containerSize = it }
     ) {
@@ -225,7 +225,7 @@ fun GlassSegmentedControlWithIcons(
             items.forEachIndexed { index, item ->
                 val isSelected = index == selectedIndex
                 val textColor by animateColorAsState(
-                    targetValue = if (isSelected) Color.Black else Color.White.copy(alpha = 0.6f),
+                    targetValue = if (isSelected) Color.Black else colors.textSecondary,
                     label = "text_color"
                 )
                 
@@ -237,16 +237,16 @@ fun GlassSegmentedControlWithIcons(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = if (!isSelected) ripple(color = colors.goldPrimary) else null
                         ) { onSelect(index) }
-                        .padding(vertical = 8.dp),
+                        .padding(vertical = 4.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
                     item.icon?.invoke(textColor)
-                    Spacer(modifier = Modifier.height(2.dp))
+                    Spacer(modifier = Modifier.height(1.dp))
                     Text(
                         text = item.label.uppercase(),
                         style = typography.labelSmall.copy(
-                            fontSize = typography.labelSmall.fontSize * 0.8f
+                            fontSize = typography.labelSmall.fontSize * 0.7f
                         ),
                         color = textColor,
                         textAlign = TextAlign.Center,
@@ -289,7 +289,7 @@ fun GlassChip(
         targetValue = if (isSelected) {
             colors.goldPrimary.copy(alpha = 0.2f)
         } else {
-            Color.White.copy(alpha = 0.04f)
+            colors.glassSurface
         },
         label = "chip_bg"
     )
@@ -298,7 +298,7 @@ fun GlassChip(
         targetValue = if (isSelected) {
             colors.goldPrimary.copy(alpha = 0.4f)
         } else {
-            Color.White.copy(alpha = 0.08f)
+            colors.glassBorder
         },
         label = "chip_border"
     )
@@ -351,7 +351,7 @@ fun GlassChipCompact(
         targetValue = if (isSelected) {
             colors.goldPrimary.copy(alpha = 0.2f)
         } else {
-            Color.White.copy(alpha = 0.04f)
+            colors.glassSurface
         },
         label = "chip_bg"
     )
@@ -360,7 +360,7 @@ fun GlassChipCompact(
         targetValue = if (isSelected) {
             colors.goldPrimary.copy(alpha = 0.4f)
         } else {
-            Color.White.copy(alpha = 0.08f)
+            colors.glassBorder
         },
         label = "chip_border"
     )

@@ -124,7 +124,7 @@ fun FieldPlacementCard(
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = "Field Placement",
-                        color = Color.White,
+                        color = TextPrimary,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -283,7 +283,7 @@ fun FieldPlacementCard(
                 // Position labels overlay
                 Text(
                     text = "COVER",
-                    color = Color.White.copy(alpha = 0.4f),
+                    color = TextMuted,
                     fontSize = 8.sp,
                     modifier = Modifier
                         .align(Alignment.CenterEnd)
@@ -292,7 +292,7 @@ fun FieldPlacementCard(
                 
                 Text(
                     text = "SQUARE LEG",
-                    color = Color.White.copy(alpha = 0.4f),
+                    color = TextMuted,
                     fontSize = 8.sp,
                     modifier = Modifier
                         .align(Alignment.CenterStart)
@@ -301,7 +301,7 @@ fun FieldPlacementCard(
                 
                 Text(
                     text = "LONG ON",
-                    color = Color.White.copy(alpha = 0.4f),
+                    color = TextMuted,
                     fontSize = 8.sp,
                     modifier = Modifier
                         .align(Alignment.TopCenter)
@@ -310,7 +310,7 @@ fun FieldPlacementCard(
                 
                 Text(
                     text = "THIRD MAN",
-                    color = Color.White.copy(alpha = 0.4f),
+                    color = TextMuted,
                     fontSize = 8.sp,
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
@@ -387,7 +387,7 @@ private fun FieldStatBox(
         )
         Text(
             text = label,
-            color = Color.White.copy(alpha = 0.5f),
+            color = TextSecondary,
             fontSize = 10.sp
         )
     }
@@ -404,12 +404,12 @@ private fun StrategyIndicator(
             modifier = Modifier
                 .size(12.dp)
                 .clip(CircleShape)
-                .background(if (isActive) activeColor else Color.Gray.copy(alpha = 0.5f))
+                .background(if (isActive) activeColor else TextMuted)
         )
         Spacer(modifier = Modifier.width(6.dp))
         Text(
             text = label,
-            color = if (isActive) activeColor else Color.White.copy(alpha = 0.5f),
+            color = if (isActive) activeColor else TextSecondary,
             fontSize = 10.sp
         )
     }

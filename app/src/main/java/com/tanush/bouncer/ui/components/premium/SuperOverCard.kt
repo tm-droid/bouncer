@@ -22,6 +22,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bolt
+import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -150,7 +151,7 @@ fun SuperOverCard(
                         Icon(
                             Icons.Default.Bolt,
                             contentDescription = null,
-                            tint = Color.White,
+                            tint = colors.textPrimary,
                             modifier = Modifier.size(24.dp),
                         )
                     }
@@ -167,7 +168,7 @@ fun SuperOverCard(
                         )
                         Text(
                             text = if (superOverData.isComplete) "Complete" else "In Progress",
-                            color = Color.White.copy(alpha = 0.7f),
+                            color = colors.textSecondary,
                             fontSize = 12.sp,
                         )
                     }
@@ -283,9 +284,11 @@ fun SuperOverCard(
                     contentAlignment = Alignment.Center,
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(
-                            text = "🏆",
-                            fontSize = 32.sp,
+                        Icon(
+                            imageVector = Icons.Default.EmojiEvents,
+                            contentDescription = "Trophy",
+                            tint = GoldLight,
+                            modifier = Modifier.size(32.dp),
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
@@ -355,7 +358,7 @@ private fun SuperOverTeamScore(
     ) {
         Text(
             text = teamName,
-            color = if (isWinner) GoldLight else Color.White,
+            color = if (isWinner) GoldLight else colors.textPrimary,
             fontSize = 14.sp,
             fontWeight = FontWeight.Bold,
         )
@@ -365,7 +368,7 @@ private fun SuperOverTeamScore(
         Row(verticalAlignment = Alignment.Bottom) {
             Text(
                 text = "$score",
-                color = if (isWinner) GoldPrimary else Color.White,
+                color = if (isWinner) GoldPrimary else colors.textPrimary,
                 fontSize = 36.sp,
                 fontWeight = FontWeight.Black,
             )
@@ -419,7 +422,7 @@ private fun SuperOverDeliveryRow(
         ) {
             Text(
                 text = teamName,
-                color = Color.White,
+                color = colors.textPrimary,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.SemiBold,
             )

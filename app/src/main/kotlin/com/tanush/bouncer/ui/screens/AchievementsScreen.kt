@@ -220,11 +220,11 @@ private fun EliteTrophyProgressCard(unlocked: Int, total: Int) {
             
             // Elite Status based on progress
             val eliteStatus = when {
-                unlocked == total -> "🏆 Legend"
-                unlocked >= total * 0.75 -> "⭐️ Champion"
-                unlocked >= total * 0.5 -> "🔥 Rising Star"
-                unlocked >= total * 0.25 -> "💪 Contender"
-                else -> "🌱 Rookie"
+                unlocked == total -> "Legend"
+                unlocked >= total * 0.75 -> "Champion"
+                unlocked >= total * 0.5 -> "Rising Star"
+                unlocked >= total * 0.25 -> "Contender"
+                else -> "Rookie"
             }
             Text("Elite Status: $eliteStatus", color = colors.textSecondary, fontSize = 13.sp)
             

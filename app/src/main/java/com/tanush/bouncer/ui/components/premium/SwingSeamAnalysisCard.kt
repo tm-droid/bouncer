@@ -142,7 +142,7 @@ fun SwingSeamAnalysisCard(
                         )
                         Text(
                             text = bowlerName,
-                            color = Color.White,
+                            color = colors.textPrimary,
                             fontSize = 17.sp,
                             fontWeight = FontWeight.SemiBold,
                         )
@@ -341,7 +341,7 @@ fun SwingSeamAnalysisCard(
                         Row(verticalAlignment = Alignment.Bottom) {
                             Text(
                                 text = String.format("%.1f", abs(averageSwing)),
-                                color = Color.White,
+                                color = colors.textPrimary,
                                 fontSize = 20.sp,
                                 fontWeight = FontWeight.Bold,
                             )
@@ -368,7 +368,7 @@ fun SwingSeamAnalysisCard(
                         Row(verticalAlignment = Alignment.Bottom) {
                             Text(
                                 text = String.format("%.1f", averageSeam),
-                                color = Color.White,
+                                color = colors.textPrimary,
                                 fontSize = 20.sp,
                                 fontWeight = FontWeight.Bold,
                             )

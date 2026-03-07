@@ -82,13 +82,13 @@ fun EliteFloatingNavBar(
                     ambientColor = Color.Black.copy(alpha = 0.3f)
                 ),
             shape = RoundedCornerShape(34.dp),
-            color = Color.White.copy(alpha = 0.05f),
+            color = GlassSurface,
             border = BorderStroke(
                 1.dp,
                 Brush.linearGradient(
                     colors = listOf(
-                        Color.White.copy(alpha = 0.12f),
-                        Color.White.copy(alpha = 0.05f)
+                        GlassBorder,
+                        GlassSurface
                     )
                 )
             )
@@ -351,11 +351,11 @@ fun HeroLiveMatchCard(
                 Brush.linearGradient(
                     colors = if (isLive) listOf(
                         GoldPrimary.copy(alpha = borderGlow),
-                        Color.White.copy(alpha = 0.08f),
+                        GlassSurface,
                         GoldPrimary.copy(alpha = borderGlow * 0.6f)
                     ) else listOf(
-                        Color.White.copy(alpha = 0.1f),
-                        Color.White.copy(alpha = 0.04f)
+                        GlassBorder,
+                        GlassSurface
                     )
                 ),
                 RoundedCornerShape(28.dp)
@@ -461,9 +461,9 @@ fun HeroLiveMatchCard(
                         else -> match.matchType.uppercase().take(8)
                     }
                     Surface(
-                        color = Color.White.copy(alpha = 0.05f),
+                        color = GlassSurface,
                         shape = RoundedCornerShape(12.dp),
-                        border = BorderStroke(0.5.dp, Color.White.copy(alpha = 0.1f))
+                        border = BorderStroke(0.5.dp, GlassBorder)
                     ) {
                         Text(
                             text = statusText,
@@ -503,13 +503,13 @@ fun HeroLiveMatchCard(
                         .background(
                             Brush.radialGradient(
                                 colors = listOf(
-                                    Color.White.copy(alpha = 0.08f),
+                                    GlassSurface,
                                     Color.Transparent
                                 )
                             ),
                             CircleShape
                         )
-                        .border(0.5.dp, Color.White.copy(alpha = 0.1f), CircleShape),
+                        .border(0.5.dp, GlassBorder, CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
@@ -562,7 +562,7 @@ fun HeroLiveMatchCard(
                             .fillMaxWidth()
                             .height(5.dp)
                             .clip(RoundedCornerShape(3.dp))
-                            .background(Color.White.copy(alpha = 0.08f))
+                            .background(GlassSurface)
                     ) {
                         Box(
                             modifier = Modifier
@@ -611,7 +611,7 @@ fun HeroLiveMatchCard(
                             Brush.horizontalGradient(
                                 colors = listOf(
                                     Color.Transparent,
-                                    Color.White.copy(alpha = 0.08f),
+                                    GlassSurface,
                                     Color.Transparent
                                 )
                             )
@@ -671,12 +671,12 @@ private fun HeroTeamSection(
                     ) else Modifier
                 )
                 .background(
-                    if (isBatting) Color.White.copy(alpha = 0.1f) else Color.White.copy(alpha = 0.05f),
+                    if (isBatting) GlassBorder else GlassSurface,
                     CircleShape
                 )
                 .border(
                     if (isBatting) 2.dp else 1.dp,
-                    if (isBatting) GoldPrimary.copy(alpha = 0.6f) else Color.White.copy(alpha = 0.1f),
+                    if (isBatting) GoldPrimary.copy(alpha = 0.6f) else GlassBorder,
                     CircleShape
                 )
                 .padding(10.dp)
@@ -741,14 +741,14 @@ private fun HeroTeamDisplay(
         Box(
             modifier = Modifier
                 .size(48.dp)
-                .shadow(8.dp, CircleShape, spotColor = Color.White.copy(alpha = 0.1f))
-                .background(Color.White.copy(alpha = 0.08f), CircleShape)
+                .shadow(8.dp, CircleShape, spotColor = GlassBorder)
+                .background(GlassSurface, CircleShape)
                 .border(
                     1.dp,
                     Brush.linearGradient(
                         colors = listOf(
-                            Color.White.copy(alpha = 0.15f),
-                            Color.White.copy(alpha = 0.05f)
+                            GlassBorderHighlight,
+                            GlassSurface
                         )
                     ),
                     CircleShape
@@ -832,10 +832,10 @@ fun PremiumMatchListCard(
                 spotColor = if (isLive) GoldPrimary.copy(alpha = 0.25f) else Color.Black.copy(alpha = 0.3f)
             ),
         shape = RoundedCornerShape(20.dp),
-        color = Color.White.copy(alpha = 0.05f),
+        color = GlassSurface,
         border = BorderStroke(
             0.5.dp,
-            if (isLive) GoldPrimary.copy(alpha = 0.3f) else Color.White.copy(alpha = 0.06f)
+            if (isLive) GoldPrimary.copy(alpha = 0.3f) else GlassSurface
         ),
         onClick = { 
             haptic.click()
@@ -936,10 +936,10 @@ fun PremiumMatchListCard(
                     Box(
                         modifier = Modifier
                             .size(40.dp)
-                            .background(Color.White.copy(alpha = 0.08f), CircleShape)
+                            .background(GlassSurface, CircleShape)
                             .border(
                                 if (team1?.isBatting == true) 1.5.dp else 0.5.dp,
-                                if (team1?.isBatting == true) GoldPrimary.copy(alpha = 0.6f) else Color.White.copy(alpha = 0.08f),
+                                if (team1?.isBatting == true) GoldPrimary.copy(alpha = 0.6f) else GlassSurface,
                                 CircleShape
                             )
                             .padding(8.dp)
@@ -979,8 +979,8 @@ fun PremiumMatchListCard(
                     modifier = Modifier
                         .padding(horizontal = 8.dp)
                         .size(32.dp)
-                        .background(Color.White.copy(alpha = 0.04f), CircleShape)
-                        .border(0.5.dp, Color.White.copy(alpha = 0.08f), CircleShape),
+                        .background(GlassSurface, CircleShape)
+                        .border(0.5.dp, GlassSurface, CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
@@ -1022,10 +1022,10 @@ fun PremiumMatchListCard(
                     Box(
                         modifier = Modifier
                             .size(40.dp)
-                            .background(Color.White.copy(alpha = 0.08f), CircleShape)
+                            .background(GlassSurface, CircleShape)
                             .border(
                                 if (team2?.isBatting == true) 1.5.dp else 0.5.dp,
-                                if (team2?.isBatting == true) GoldPrimary.copy(alpha = 0.6f) else Color.White.copy(alpha = 0.08f),
+                                if (team2?.isBatting == true) GoldPrimary.copy(alpha = 0.6f) else GlassSurface,
                                 CircleShape
                             )
                             .padding(8.dp)
@@ -1054,7 +1054,7 @@ fun PremiumMatchListCard(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(10.dp))
-                        .background(Color.White.copy(alpha = 0.03f))
+                        .background(GlassSurface)
                         .padding(horizontal = 12.dp, vertical = 10.dp)
                 ) {
                     Text(
@@ -1353,8 +1353,8 @@ fun MarketInsightCard(
                 spotColor = Color.Black.copy(alpha = 0.3f)
             ),
         shape = RoundedCornerShape(16.dp),
-        color = Color.White.copy(alpha = 0.05f),
-        border = BorderStroke(0.5.dp, Color.White.copy(alpha = 0.08f)),
+        color = GlassSurface,
+        border = BorderStroke(0.5.dp, GlassBorder),
         onClick = { 
             haptic.click()
             onClick() 
@@ -1494,10 +1494,10 @@ fun EliteStatusChip(
                 spotColor = if (isSelected) GoldPrimary.copy(alpha = 0.3f) else Color.Transparent
             ),
         shape = RoundedCornerShape(12.dp),
-        color = if (isSelected) GoldPrimary else Color.White.copy(alpha = 0.05f),
+        color = if (isSelected) GoldPrimary else GlassSurface,
         border = BorderStroke(
             if (isSelected) 0.dp else 0.5.dp,
-            Color.White.copy(alpha = 0.1f)
+            GlassBorder
         ),
         onClick = { 
             haptic.click()

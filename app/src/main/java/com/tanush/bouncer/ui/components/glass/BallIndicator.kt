@@ -122,24 +122,38 @@ fun BallIndicator(
         )
         
         BallEvent.FOUR -> BallQuadruple(
-            colors.statusInfo.copy(alpha = 0.15f), // India Blue
-            colors.statusInfo.copy(alpha = 0.4f),
-            colors.statusInfo,
+            colors.ballBoundary.copy(alpha = 0.15f), // Green for boundaries
+            colors.ballBoundary.copy(alpha = 0.4f),
+            colors.ballBoundary,
             true
         )
         
         BallEvent.SIX -> BallQuadruple(
-            colors.statusSuccess.copy(alpha = 0.15f), // SA Green (Green/Maroon spec)
-            colors.statusSuccess.copy(alpha = 0.4f),
-            colors.statusSuccess,
+            colors.ballSix.copy(alpha = 0.15f), // Gold/purple for sixes
+            colors.ballSix.copy(alpha = 0.4f),
+            colors.ballSix,
             true
         )
         
         BallEvent.WICKET -> BallQuadruple(
-            colors.goldPrimary.copy(alpha = 0.2f), // Gold Pulse spec
-            colors.goldPrimary.copy(alpha = 0.8f),
-            colors.goldPrimary,
+            colors.ballWicket.copy(alpha = 0.2f), // Red for wickets
+            colors.ballWicket.copy(alpha = 0.8f),
+            colors.ballWicket,
             true
+        )
+        
+        BallEvent.WIDE -> BallQuadruple(
+            colors.ballWide.copy(alpha = 0.15f), // Yellow/amber for wides
+            colors.ballWide.copy(alpha = 0.4f),
+            colors.ballWide,
+            false
+        )
+        
+        BallEvent.NO_BALL -> BallQuadruple(
+            colors.ballNoBall.copy(alpha = 0.15f), // Yellow/orange for no balls
+            colors.ballNoBall.copy(alpha = 0.4f),
+            colors.ballNoBall,
+            false
         )
         
         else -> BallQuadruple(
@@ -182,7 +196,7 @@ fun BallIndicator(
                         scaleY = pulseScale + (1f - pulseAlpha)
                         alpha = pulseAlpha
                     }
-                    .border(2.dp, colors.goldPrimary, RoundedCornerShape(percent = 50))
+                    .border(2.dp, colors.ballWicket, RoundedCornerShape(percent = 50))
             )
         }
 

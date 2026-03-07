@@ -119,7 +119,7 @@ fun ExtrasSummaryCard(
                         )
                         Text(
                             text = "$bowlingTeam Bowling",
-                            color = Color.White,
+                            color = colors.textPrimary,
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
                         )
@@ -136,7 +136,7 @@ fun ExtrasSummaryCard(
                     )
                     Text(
                         text = "${String.format("%.1f", extrasPercentage)}% of total",
-                        color = Color.White.copy(alpha = 0.6f),
+                        color = colors.textSecondary,
                         fontSize = 11.sp,
                     )
                 }
@@ -212,12 +212,12 @@ fun ExtrasSummaryCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(12.dp))
-                    .background(Color.White.copy(alpha = 0.05f))
+                    .background(colors.glassSurface)
                     .padding(16.dp),
             ) {
                 Text(
                     text = "Breakdown by Type",
-                    color = Color.White.copy(alpha = 0.7f),
+                    color = colors.textSecondary,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Medium,
                 )
@@ -386,14 +386,14 @@ private fun ExtrasLegendItem(
 
         Text(
             text = label,
-            color = Color.White.copy(alpha = 0.8f),
+            color = colors.textPrimary,
             fontSize = 12.sp,
             modifier = Modifier.width(60.dp),
         )
 
         Text(
             text = "$value",
-            color = Color.White,
+            color = colors.textPrimary,
             fontSize = 14.sp,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.width(24.dp),
@@ -401,7 +401,7 @@ private fun ExtrasLegendItem(
 
         Text(
             text = "(${String.format("%.0f", percentage)}%)",
-            color = Color.White.copy(alpha = 0.5f),
+            color = colors.textSecondary,
             fontSize = 10.sp,
         )
     }
@@ -422,7 +422,7 @@ private fun ExtrasBarRow(
     ) {
         Text(
             text = label,
-            color = Color.White.copy(alpha = 0.7f),
+            color = colors.textSecondary,
             fontSize = 11.sp,
             modifier = Modifier.width(60.dp),
         )
@@ -432,7 +432,7 @@ private fun ExtrasBarRow(
                 .weight(1f)
                 .height(16.dp)
                 .clip(RoundedCornerShape(8.dp))
-                .background(Color.White.copy(alpha = 0.1f)),
+                .background(colors.glassBorder),
         ) {
             Box(
                 modifier = Modifier

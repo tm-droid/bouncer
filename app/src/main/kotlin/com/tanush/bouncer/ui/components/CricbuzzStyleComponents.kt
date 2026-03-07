@@ -51,7 +51,7 @@ fun LiveCommentaryFeedCard(
         isWicket -> colors.statusLive
         isBoundary && runs == "6" -> colors.goldPrimary
         isBoundary -> colors.statusInfo
-        else -> Color.White.copy(alpha = 0.6f)
+        else -> colors.textSecondary
     }
     
     val infiniteTransition = rememberInfiniteTransition(label = "commentaryPulse")
@@ -232,7 +232,7 @@ private fun QuickStatChip(
     val colors = BouncerDesignSystem.colors
     Surface(
         shape = RoundedCornerShape(12.dp),
-        color = Color.White.copy(alpha = 0.06f),
+        color = GlassSurface,
         border = BorderStroke(0.5.dp, accentColor.copy(alpha = 0.3f))
     ) {
         Row(
@@ -365,7 +365,7 @@ fun WinPredictionGauge(
                     .fillMaxWidth()
                     .height(12.dp)
                     .clip(RoundedCornerShape(6.dp))
-                    .background(Color.White.copy(alpha = 0.1f))
+                    .background(GlassBorder)
             ) {
                 Row(modifier = Modifier.fillMaxSize()) {
                     // Team 1 Fill
@@ -394,7 +394,7 @@ fun WinPredictionGauge(
             
             Text(
                 text = "Based on current match situation & historical data",
-                color = Color.White.copy(alpha = 0.4f),
+                color = TextMuted,
                 fontSize = 9.sp,
                 fontWeight = FontWeight.Medium,
                 textAlign = TextAlign.Center,
@@ -501,7 +501,7 @@ fun OverByOverMiniChart(
                     val color = when {
                         runs >= 12 -> colors.goldPrimary
                         runs >= 8 -> colors.statusInfo
-                        runs <= 4 -> Color.White.copy(alpha = 0.3f)
+                        runs <= 4 -> TextMuted
                         else -> colors.goldPrimary
                     }
                     
@@ -589,7 +589,7 @@ fun InningsSummaryCard(
                 if (extras.isNotEmpty()) {
                     Text(
                         text = "Extras: $extras",
-                        color = Color.White.copy(alpha = 0.4f),
+                        color = colors.textTertiary,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Medium
                     )
@@ -609,7 +609,7 @@ fun InningsSummaryCard(
                     )
                     Text(
                         text = "($overs)",
-                        color = Color.White.copy(alpha = 0.5f),
+                        color = TextSecondary,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Medium,
                         modifier = Modifier.padding(bottom = 4.dp)
@@ -619,7 +619,7 @@ fun InningsSummaryCard(
                 if (runRate.isNotEmpty()) {
                     Text(
                         text = "RR: $runRate",
-                        color = Color.White.copy(alpha = 0.5f),
+                        color = TextSecondary,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold
                     )

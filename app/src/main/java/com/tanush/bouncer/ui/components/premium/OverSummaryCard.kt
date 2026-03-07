@@ -7,8 +7,13 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.TrendingDown
+import androidx.compose.material.icons.filled.TrendingFlat
+import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -141,7 +146,7 @@ fun OverSummaryCard(
                         )
                         Text(
                             text = overData.bowlerName,
-                            color = Color.White,
+                            color = colors.textPrimary,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.SemiBold,
                         )
@@ -225,7 +230,7 @@ fun OverSummaryCard(
                         } else if (overData.runsInOver <= 4) {
                             colors.statusSuccess
                         } else {
-                            Color.White
+                            colors.textPrimary
                         },
                     )
 
@@ -276,9 +281,11 @@ fun OverSummaryCard(
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text(
-                        text = if (runDiff < 0) "📉" else if (runDiff > 0) "📈" else "➡️",
-                        fontSize = 14.sp,
+                    Icon(
+                        imageVector = if (runDiff < 0) Icons.Default.TrendingDown else if (runDiff > 0) Icons.Default.TrendingUp else Icons.Default.TrendingFlat,
+                        contentDescription = "Trend",
+                        tint = diffColor,
+                        modifier = Modifier.size(14.dp),
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(

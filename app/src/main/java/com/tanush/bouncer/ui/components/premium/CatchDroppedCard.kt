@@ -113,7 +113,7 @@ fun CatchDroppedCard(
                         Icon(
                             imageVector = Icons.Default.Sports,
                             contentDescription = null,
-                            tint = Color.White,
+                            tint = colors.textPrimary,
                             modifier = Modifier.size(24.dp),
                         )
                     }
@@ -130,7 +130,7 @@ fun CatchDroppedCard(
                         )
                         Text(
                             text = teamName,
-                            color = Color.White,
+                            color = colors.textPrimary,
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
                         )
@@ -151,7 +151,7 @@ fun CatchDroppedCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(12.dp))
-                    .background(Color.White.copy(alpha = 0.05f))
+                    .background(colors.glassSurface)
                     .padding(16.dp),
                 horizontalArrangement = Arrangement.SpaceEvenly,
             ) {
@@ -165,7 +165,7 @@ fun CatchDroppedCard(
                     modifier = Modifier
                         .width(1.dp)
                         .height(40.dp)
-                        .background(Color.White.copy(alpha = 0.2f)),
+                        .background(colors.textTertiary),
                 )
 
                 CatchStatColumn(
@@ -178,7 +178,7 @@ fun CatchDroppedCard(
                     modifier = Modifier
                         .width(1.dp)
                         .height(40.dp)
-                        .background(Color.White.copy(alpha = 0.2f)),
+                        .background(colors.textTertiary),
                 )
 
                 CatchStatColumn(
@@ -251,7 +251,7 @@ private fun CatchSuccessRing(
 
         Text(
             text = "${(progress * 100).toInt()}%",
-            color = Color.White,
+            color = colors.textPrimary,
             fontSize = 12.sp,
             fontWeight = FontWeight.Bold,
         )
@@ -274,7 +274,7 @@ private fun CatchStatColumn(
         )
         Text(
             text = label,
-            color = Color.White.copy(alpha = 0.6f),
+            color = colors.textSecondary,
             fontSize = 10.sp,
         )
     }
@@ -342,7 +342,7 @@ private fun CatchEventRow(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = catchEvent.fielderName,
-                    color = Color.White,
+                    color = colors.textPrimary,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
                 )
@@ -357,7 +357,7 @@ private fun CatchEventRow(
 
             Text(
                 text = "${catchEvent.batterName} off ${catchEvent.bowlerName}",
-                color = Color.White.copy(alpha = 0.6f),
+                color = colors.textSecondary,
                 fontSize = 12.sp,
             )
 
@@ -367,12 +367,12 @@ private fun CatchEventRow(
             ) {
                 Text(
                     text = "Over ${catchEvent.over}",
-                    color = Color.White.copy(alpha = 0.4f),
+                    color = colors.textTertiary,
                     fontSize = 10.sp,
                 )
                 Text(
                     text = "• ${catchEvent.fieldPosition}",
-                    color = Color.White.copy(alpha = 0.4f),
+                    color = colors.textTertiary,
                     fontSize = 10.sp,
                 )
             }
@@ -382,7 +382,7 @@ private fun CatchEventRow(
         Column(horizontalAlignment = Alignment.End) {
             Text(
                 text = "Difficulty",
-                color = Color.White.copy(alpha = 0.5f),
+                color = colors.textSecondary,
                 fontSize = 9.sp,
             )
 
@@ -403,7 +403,7 @@ private fun DifficultyBar(difficulty: Float) {
                     .clip(RoundedCornerShape(2.dp))
                     .background(
                         when {
-                            !isFilled -> Color.White.copy(alpha = 0.1f)
+                            !isFilled -> colors.glassBorder
                             difficulty > 0.8f -> colors.statusLive
                             difficulty > 0.5f -> colors.statusWarning
                             else -> colors.statusSuccess

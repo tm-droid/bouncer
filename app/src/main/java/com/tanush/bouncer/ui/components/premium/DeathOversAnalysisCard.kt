@@ -136,7 +136,7 @@ fun DeathOversAnalysisCard(
                             Icon(
                                 imageVector = Icons.Default.CrisisAlert,
                                 contentDescription = null,
-                                tint = Color.White,
+                                tint = colors.textPrimary,
                                 modifier = Modifier.size(24.dp),
                             )
                         }
@@ -153,7 +153,7 @@ fun DeathOversAnalysisCard(
                             )
                             Text(
                                 text = "Overs 16-20 Analysis",
-                                color = Color.White,
+                                color = colors.textPrimary,
                                 fontSize = 16.sp,
                                 fontWeight = FontWeight.Bold,
                             )
@@ -199,7 +199,7 @@ fun DeathOversAnalysisCard(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(12.dp))
-                        .background(Color.White.copy(alpha = 0.05f))
+                        .background(colors.glassSurface)
                         .padding(12.dp),
                     horizontalArrangement = Arrangement.SpaceEvenly,
                 ) {
@@ -255,13 +255,13 @@ private fun DeathOverRow(
             modifier = Modifier
                 .width(44.dp)
                 .clip(RoundedCornerShape(8.dp))
-                .background(Color.White.copy(alpha = 0.1f))
+                .background(colors.glassBorder)
                 .padding(vertical = 8.dp),
             contentAlignment = Alignment.Center,
         ) {
             Text(
                 text = "Over ${overData.over}",
-                color = Color.White,
+                color = colors.textPrimary,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Bold,
             )
@@ -350,7 +350,7 @@ private fun DeathStatItem(
         )
         Text(
             text = label,
-            color = Color.White.copy(alpha = 0.6f),
+            color = colors.textTertiary,
             fontSize = 10.sp,
         )
     }

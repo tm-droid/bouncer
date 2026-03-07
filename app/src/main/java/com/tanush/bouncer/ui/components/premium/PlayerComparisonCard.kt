@@ -134,7 +134,7 @@ fun PlayerComparisonCard(
                         )
                         Text(
                             text = format,
-                            color = Color.White.copy(alpha = 0.7f),
+                            color = colors.textSecondary,
                             fontSize = 13.sp,
                         )
                     }
@@ -227,7 +227,7 @@ fun PlayerComparisonCard(
                     ) {
                         Text(
                             text = "$player1Wins",
-                            color = if (player1Wins > player2Wins) colors.statusSuccess else Color.White,
+                            color = if (player1Wins > player2Wins) colors.statusSuccess else colors.textPrimary,
                             fontSize = 28.sp,
                             fontWeight = FontWeight.Black,
                         )
@@ -243,7 +243,7 @@ fun PlayerComparisonCard(
                         modifier = Modifier
                             .width(1.dp)
                             .height(40.dp)
-                            .background(Color.White.copy(alpha = 0.1f)),
+                            .background(colors.glassBorder),
                     )
 
                     // Player 2 wins
@@ -253,7 +253,7 @@ fun PlayerComparisonCard(
                     ) {
                         Text(
                             text = "$player2Wins",
-                            color = if (player2Wins > player1Wins) colors.statusSuccess else Color.White,
+                            color = if (player2Wins > player1Wins) colors.statusSuccess else colors.textPrimary,
                             fontSize = 28.sp,
                             fontWeight = FontWeight.Black,
                         )
@@ -311,7 +311,7 @@ private fun PlayerCompareHeader(
 
         Text(
             text = player.name,
-            color = Color.White,
+            color = colors.textPrimary,
             fontSize = 14.sp,
             fontWeight = FontWeight.Bold,
         )
@@ -355,7 +355,7 @@ private fun CompareStatRow(
         ) {
             Text(
                 text = stat.displayValue1,
-                color = if (player1IsWinner) colors.statusSuccess else Color.White,
+                color = if (player1IsWinner) colors.statusSuccess else colors.textPrimary,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
             )
@@ -369,7 +369,7 @@ private fun CompareStatRow(
 
             Text(
                 text = stat.displayValue2,
-                color = if (!player1IsWinner) colors.statusSuccess else Color.White,
+                color = if (!player1IsWinner) colors.statusSuccess else colors.textPrimary,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
             )

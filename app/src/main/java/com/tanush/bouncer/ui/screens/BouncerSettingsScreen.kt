@@ -1,5 +1,7 @@
 package com.tanush.bouncer.ui.screens
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -12,6 +14,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
@@ -41,13 +45,19 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 import com.tanush.bouncer.ui.theme.BouncerDimens
+import com.tanush.bouncer.ui.theme.etchedText
 import com.tanush.bouncer.utils.PreferencesHelper
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -97,23 +107,29 @@ fun BouncerSettingsScreen(
         modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             MediumTopAppBar(
-                title = { Text("Settings") },
+                title = {
+                    Text(
+                        "Settings",
+                        modifier = Modifier.etchedText()
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back"
+                            contentDescription = "Back",
+                            tint = BouncerDesignSystem.colors.goldPrimary
                         )
                     }
                 },
                 colors = TopAppBarDefaults.mediumTopAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    scrolledContainerColor = MaterialTheme.colorScheme.surface
+                    containerColor = BouncerDesignSystem.colors.backgroundBase,
+                    scrolledContainerColor = BouncerDesignSystem.colors.backgroundElevated
                 ),
                 scrollBehavior = scrollBehavior
             )
         },
-        containerColor = MaterialTheme.colorScheme.background
+        containerColor = BouncerDesignSystem.colors.backgroundBase
     ) { innerPadding ->
 
         LazyColumn(
@@ -269,14 +285,14 @@ fun BouncerSettingsScreen(
                 ) {
                     Text(
                         text = "Bouncer v1.0.0",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        style = BouncerDesignSystem.typography.bodySmall,
+                        color = BouncerDesignSystem.colors.textMuted
                     )
                     Spacer(modifier = Modifier.height(BouncerDimens.xs))
                     Text(
                         text = "Made with love for cricket fans",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        style = BouncerDesignSystem.typography.bodySmall,
+                        color = BouncerDesignSystem.colors.textMuted
                     )
                 }
             }
@@ -290,18 +306,38 @@ fun BouncerSettingsScreen(
 
 @Composable
 private fun SettingsSectionHeader(title: String) {
-    Text(
-        text = title,
-        style = MaterialTheme.typography.titleSmall,
-        fontWeight = FontWeight.Bold,
-        color = MaterialTheme.colorScheme.primary,
+    val colors = BouncerDesignSystem.colors
+    Row(
         modifier = Modifier.padding(
             start = BouncerDimens.screenHorizontal,
             end = BouncerDimens.screenHorizontal,
             top = BouncerDimens.xxl,
             bottom = BouncerDimens.sm
+        ),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Gold accent bar
+        Spacer(
+            modifier = Modifier
+                .width(3.dp)
+                .height(16.dp)
+                .clip(RoundedCornerShape(2.dp))
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(colors.goldLight, colors.goldPrimary, colors.goldDark)
+                    )
+                )
         )
-    )
+        Spacer(modifier = Modifier.width(10.dp))
+        Text(
+            text = title.uppercase(),
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 2.sp,
+            color = colors.goldPrimary,
+            modifier = Modifier.etchedText()
+        )
+    }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -316,9 +352,17 @@ private fun SettingsToggleRow(
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit
 ) {
+    val colors = BouncerDesignSystem.colors
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .padding(
+                horizontal = BouncerDimens.screenHorizontal,
+                vertical = 4.dp
+            )
+            .clip(RoundedCornerShape(12.dp))
+            .background(colors.glassSurface)
+            .border(1.dp, colors.glassBorder, RoundedCornerShape(12.dp))
             .clickable { onCheckedChange(!checked) }
             .padding(
                 horizontal = BouncerDimens.screenHorizontal,
@@ -328,8 +372,8 @@ private fun SettingsToggleRow(
     ) {
         Icon(
             imageVector = icon,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            contentDescription = title,
+            tint = colors.goldPrimary.copy(alpha = 0.8f),
             modifier = Modifier.size(24.dp)
         )
 
@@ -338,15 +382,15 @@ private fun SettingsToggleRow(
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = title,
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurface,
+                style = BouncerDesignSystem.typography.bodyMedium,
+                color = colors.textPrimary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
             Text(
                 text = description,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = BouncerDesignSystem.typography.bodySmall,
+                color = colors.textSecondary,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
@@ -358,10 +402,10 @@ private fun SettingsToggleRow(
             checked = checked,
             onCheckedChange = onCheckedChange,
             colors = SwitchDefaults.colors(
-                checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
-                checkedTrackColor = MaterialTheme.colorScheme.primary,
-                uncheckedThumbColor = MaterialTheme.colorScheme.outline,
-                uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant
+                checkedThumbColor = colors.backgroundBase,
+                checkedTrackColor = colors.goldPrimary,
+                uncheckedThumbColor = colors.textTertiary,
+                uncheckedTrackColor = colors.surface2
             )
         )
     }
@@ -378,9 +422,17 @@ private fun SettingsNavigationRow(
     description: String,
     onClick: () -> Unit
 ) {
+    val colors = BouncerDesignSystem.colors
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .padding(
+                horizontal = BouncerDimens.screenHorizontal,
+                vertical = 4.dp
+            )
+            .clip(RoundedCornerShape(12.dp))
+            .background(colors.glassSurface)
+            .border(1.dp, colors.glassBorder, RoundedCornerShape(12.dp))
             .clickable(onClick = onClick)
             .padding(
                 horizontal = BouncerDimens.screenHorizontal,
@@ -390,8 +442,8 @@ private fun SettingsNavigationRow(
     ) {
         Icon(
             imageVector = icon,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            contentDescription = title,
+            tint = colors.goldPrimary.copy(alpha = 0.8f),
             modifier = Modifier.size(24.dp)
         )
 
@@ -400,15 +452,15 @@ private fun SettingsNavigationRow(
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = title,
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurface,
+                style = BouncerDesignSystem.typography.bodyMedium,
+                color = colors.textPrimary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
             Text(
                 text = description,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = BouncerDesignSystem.typography.bodySmall,
+                color = colors.textSecondary,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
@@ -418,8 +470,8 @@ private fun SettingsNavigationRow(
 
         Icon(
             imageVector = Icons.AutoMirrored.Outlined.KeyboardArrowRight,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            contentDescription = "Navigate to $title",
+            tint = colors.goldPrimary.copy(alpha = 0.5f),
             modifier = Modifier.size(24.dp)
         )
     }
@@ -435,9 +487,17 @@ private fun SettingsInfoRow(
     title: String,
     value: String
 ) {
+    val colors = BouncerDesignSystem.colors
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .padding(
+                horizontal = BouncerDimens.screenHorizontal,
+                vertical = 4.dp
+            )
+            .clip(RoundedCornerShape(12.dp))
+            .background(colors.glassSurface)
+            .border(1.dp, colors.glassBorder, RoundedCornerShape(12.dp))
             .padding(
                 horizontal = BouncerDimens.screenHorizontal,
                 vertical = BouncerDimens.md
@@ -446,8 +506,8 @@ private fun SettingsInfoRow(
     ) {
         Icon(
             imageVector = icon,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            contentDescription = title,
+            tint = colors.goldPrimary.copy(alpha = 0.8f),
             modifier = Modifier.size(24.dp)
         )
 
@@ -455,15 +515,15 @@ private fun SettingsInfoRow(
 
         Text(
             text = title,
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurface,
+            style = BouncerDesignSystem.typography.bodyMedium,
+            color = colors.textPrimary,
             modifier = Modifier.weight(1f)
         )
 
         Text(
             text = value,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            style = BouncerDesignSystem.typography.bodySmall,
+            color = colors.goldPrimary
         )
     }
 }
@@ -474,12 +534,5 @@ private fun SettingsInfoRow(
 
 @Composable
 private fun SettingsItemDivider() {
-    HorizontalDivider(
-        thickness = BouncerDimens.dividerThickness,
-        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
-        modifier = Modifier.padding(
-            start = BouncerDimens.screenHorizontal + 24.dp + BouncerDimens.lg,
-            end = BouncerDimens.screenHorizontal
-        )
-    )
+    Spacer(modifier = Modifier.height(2.dp))
 }

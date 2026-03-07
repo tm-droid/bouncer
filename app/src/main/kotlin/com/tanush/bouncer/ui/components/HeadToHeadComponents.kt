@@ -365,7 +365,7 @@ private fun WinComparisonBar(
                         modifier = Modifier
                             .fillMaxHeight()
                             .fillMaxWidth(drawFraction / (1 - animatedTeam1).coerceAtLeast(0.01f))
-                            .background(Color.White.copy(alpha = 0.3f))
+                            .background(TextMuted)
                     )
                 }
                 

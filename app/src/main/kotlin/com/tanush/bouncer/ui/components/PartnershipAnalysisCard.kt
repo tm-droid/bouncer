@@ -255,7 +255,7 @@ fun PartnershipAnalysisCard(
                             modifier = Modifier
                                 .fillMaxHeight()
                                 .weight((partnership.extras.toFloat() / partnership.totalRuns).coerceAtLeast(0.01f))
-                                .background(Color.Gray)
+                                .background(TextSecondary)
                         )
                     }
                     Box(
@@ -334,7 +334,7 @@ fun PartnershipAnalysisCard(
                 PartnershipStatBox(
                     label = "EXTRAS",
                     value = "${partnership.extras}",
-                    color = Color.Gray
+                    color = TextSecondary
                 )
             }
         }

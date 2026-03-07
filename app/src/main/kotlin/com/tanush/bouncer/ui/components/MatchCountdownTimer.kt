@@ -82,7 +82,7 @@ fun MatchCountdownTimer(
                 spotColor = colors.goldPrimary.copy(alpha = 0.2f),
                 ambientColor = Color.Black.copy(alpha = 0.4f)
             ),
-        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.05f)),
+        colors = CardDefaults.cardColors(containerColor = GlassSurface),
         shape = RoundedCornerShape(28.dp),
         border = androidx.compose.foundation.BorderStroke(
             1.dp,
@@ -256,8 +256,8 @@ private fun CountdownUnit(
                 .background(
                     Brush.verticalGradient(
                         colors = listOf(
-                            Color.White.copy(alpha = 0.08f),
-                            Color.White.copy(alpha = 0.05f)
+                            GlassSurface,
+                            GlassSurface
                         )
                     )
                 )
@@ -579,7 +579,7 @@ fun AnimatedClockDisplay(
                     modifier = Modifier
                         .size(width = 28.dp, height = 40.dp)
                         .clip(RoundedCornerShape(6.dp))
-                        .background(Color.White.copy(alpha = 0.08f))
+                        .background(GlassSurface)
                         .border(
                             0.5.dp,
                             colors.goldPrimary.copy(alpha = 0.2f),

@@ -94,7 +94,7 @@ fun PremiumTextField(
         if (label.isNotEmpty()) {
             Text(
                 text = label,
-                color = if (isError) Color(0xFFEF4444) else Color.White.copy(alpha = 0.7f),
+                color = if (isError) Color(0xFFEF4444) else TextSecondary,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Medium
             )
@@ -131,7 +131,7 @@ fun PremiumTextField(
                 enabled = enabled,
                 singleLine = singleLine,
                 textStyle = TextStyle(
-                    color = if (enabled) Color.White else Color.White.copy(alpha = 0.5f),
+                    color = if (enabled) TextPrimary else TextMuted,
                     fontSize = 16.sp
                 ),
                 cursorBrush = SolidColor(GoldPrimary),
@@ -148,7 +148,7 @@ fun PremiumTextField(
                             Icon(
                                 imageVector = leadingIcon,
                                 contentDescription = null,
-                                tint = if (isFocused) GoldPrimary else Color.White.copy(alpha = 0.5f),
+                                tint = if (isFocused) GoldPrimary else TextSecondary,
                                 modifier = Modifier.size(20.dp)
                             )
                         }
@@ -157,7 +157,7 @@ fun PremiumTextField(
                             if (value.isEmpty() && placeholder.isNotEmpty()) {
                                 Text(
                                     text = placeholder,
-                                    color = Color.White.copy(alpha = 0.4f),
+                                    color = TextMuted,
                                     fontSize = 16.sp
                                 )
                             }
@@ -172,7 +172,7 @@ fun PremiumTextField(
                                 Icon(
                                     imageVector = trailingIcon,
                                     contentDescription = null,
-                                    tint = Color.White.copy(alpha = 0.5f),
+                                    tint = TextSecondary,
                                     modifier = Modifier.size(20.dp)
                                 )
                             }
@@ -184,7 +184,7 @@ fun PremiumTextField(
                                 Icon(
                                     imageVector = Icons.Default.Clear,
                                     contentDescription = "Clear",
-                                    tint = Color.White.copy(alpha = 0.5f),
+                                    tint = TextSecondary,
                                     modifier = Modifier.size(16.dp)
                                 )
                             }
@@ -238,7 +238,7 @@ fun PremiumPasswordField(
         if (label.isNotEmpty()) {
             Text(
                 text = label,
-                color = if (isError) Color(0xFFEF4444) else Color.White.copy(alpha = 0.7f),
+                color = if (isError) Color(0xFFEF4444) else TextSecondary,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Medium
             )
@@ -259,7 +259,7 @@ fun PremiumPasswordField(
                 .padding(horizontal = 16.dp, vertical = 14.dp),
             singleLine = true,
             textStyle = TextStyle(
-                color = Color.White,
+                color = TextPrimary,
                 fontSize = 16.sp
             ),
             cursorBrush = SolidColor(GoldPrimary),
@@ -275,7 +275,7 @@ fun PremiumPasswordField(
                         if (value.isEmpty()) {
                             Text(
                                 text = placeholder,
-                                color = Color.White.copy(alpha = 0.4f),
+                                color = TextMuted,
                                 fontSize = 16.sp
                             )
                         }
@@ -289,7 +289,7 @@ fun PremiumPasswordField(
                         Icon(
                             imageVector = if (passwordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
                             contentDescription = if (passwordVisible) "Hide password" else "Show password",
-                            tint = Color.White.copy(alpha = 0.5f),
+                            tint = TextSecondary,
                             modifier = Modifier.size(20.dp)
                         )
                     }
@@ -325,7 +325,7 @@ fun PremiumSwitch(
     )
     
     val trackColor by animateColorAsState(
-        targetValue = if (checked) GoldPrimary else Color.White.copy(alpha = 0.3f),
+        targetValue = if (checked) GoldPrimary else TextMuted,
         animationSpec = tween(200),
         label = "track"
     )
@@ -359,7 +359,7 @@ fun PremiumSwitch(
                         )
                     } else {
                         Brush.linearGradient(
-                            colors = listOf(Color.White.copy(alpha = 0.8f), Color.White.copy(alpha = 0.6f))
+                            colors = listOf(TextPrimary, TextSecondary)
                         )
                     }
                 ),
@@ -395,7 +395,7 @@ fun PremiumCheckbox(
     )
     
     val borderColor by animateColorAsState(
-        targetValue = if (checked) GoldPrimary else Color.White.copy(alpha = 0.4f),
+        targetValue = if (checked) GoldPrimary else TextMuted,
         animationSpec = tween(200),
         label = "border"
     )
@@ -433,7 +433,7 @@ fun PremiumCheckbox(
         if (label.isNotEmpty()) {
             Text(
                 text = label,
-                color = if (enabled) Color.White else Color.White.copy(alpha = 0.5f),
+                color = if (enabled) TextPrimary else TextMuted,
                 fontSize = 14.sp
             )
         }
@@ -458,7 +458,7 @@ fun PremiumRadioButton(
     )
     
     val borderColor by animateColorAsState(
-        targetValue = if (selected) GoldPrimary else Color.White.copy(alpha = 0.4f),
+        targetValue = if (selected) GoldPrimary else TextMuted,
         animationSpec = tween(200),
         label = "border"
     )
@@ -496,7 +496,7 @@ fun PremiumRadioButton(
         if (label.isNotEmpty()) {
             Text(
                 text = label,
-                color = if (enabled) Color.White else Color.White.copy(alpha = 0.5f),
+                color = if (enabled) TextPrimary else TextMuted,
                 fontSize = 14.sp
             )
         }
@@ -621,7 +621,7 @@ fun <T> PremiumDropdown(
         if (label.isNotEmpty()) {
             Text(
                 text = label,
-                color = Color.White.copy(alpha = 0.7f),
+                color = TextSecondary,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Medium
             )
@@ -645,7 +645,7 @@ fun <T> PremiumDropdown(
             ) {
                 Text(
                     text = itemLabel(selectedItem),
-                    color = if (enabled) Color.White else Color.White.copy(alpha = 0.5f),
+                    color = if (enabled) TextPrimary else TextMuted,
                     fontSize = 16.sp
                 )
                 
@@ -673,7 +673,7 @@ fun <T> PremiumDropdown(
                         text = {
                             Text(
                                 text = itemLabel(item),
-                                color = if (item == selectedItem) GoldPrimary else Color.White
+                                color = if (item == selectedItem) GoldPrimary else TextPrimary
                             )
                         },
                         onClick = {
@@ -729,7 +729,7 @@ fun InputSegmentedControl(
             ) {
                 Text(
                     text = option,
-                    color = if (isSelected) GoldPrimary else Color.White.copy(alpha = 0.7f),
+                    color = if (isSelected) GoldPrimary else TextSecondary,
                     fontSize = 14.sp,
                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
                 )

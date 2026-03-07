@@ -134,7 +134,7 @@ fun WinProbabilityImpactCard(
                         Icon(
                             imageVector = Icons.Default.Bolt,
                             contentDescription = null,
-                            tint = Color.White,
+                            tint = colors.textPrimary,
                             modifier = Modifier.size(24.dp),
                         )
                     }
@@ -151,7 +151,7 @@ fun WinProbabilityImpactCard(
                         )
                         Text(
                             text = "Key Moments",
-                            color = Color.White,
+                            color = colors.textPrimary,
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
                         )
@@ -213,13 +213,13 @@ fun WinProbabilityImpactCard(
                     ) {
                         Text(
                             text = "${(currentTeam1WinProb * 100).toInt()}%",
-                            color = Color.White,
+                            color = colors.textPrimary,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
                         )
                         Text(
                             text = "${((1 - currentTeam1WinProb) * 100).toInt()}%",
-                            color = Color.White,
+                            color = colors.textPrimary,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
                         )
@@ -333,7 +333,7 @@ private fun ImpactMomentRow(
 
             Text(
                 text = moment.description,
-                color = Color.White,
+                color = colors.textPrimary,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Medium,
             )
@@ -344,13 +344,13 @@ private fun ImpactMomentRow(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = "${(moment.team1WinProbBefore * 100).toInt()}%",
-                    color = Color.White.copy(alpha = 0.5f),
+                    color = colors.textSecondary,
                     fontSize = 11.sp,
                 )
 
                 Text(
                     text = " → ",
-                    color = Color.White.copy(alpha = 0.3f),
+                    color = colors.textTertiary,
                     fontSize = 11.sp,
                 )
 

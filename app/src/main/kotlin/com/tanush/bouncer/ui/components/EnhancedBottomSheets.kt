@@ -213,7 +213,7 @@ fun DraggableBottomSheet(
                         }
                     ),
                 shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
-                color = Color.White.copy(alpha = 0.05f),
+                color = GlassSurface,
                 shadowElevation = 24.dp
             ) {
                 Column(
@@ -387,7 +387,7 @@ fun MultiStageSheet(
                         )
                     },
                 shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
-                color = Color.White.copy(alpha = 0.05f),
+                color = GlassSurface,
                 shadowElevation = 24.dp
             ) {
                 Column(modifier = Modifier.fillMaxSize()) {
@@ -586,7 +586,7 @@ fun SheetHeader(
                     onClick = onClose,
                     modifier = Modifier
                         .size(40.dp)
-                        .background(Color.White.copy(alpha = 0.08f), CircleShape)
+                        .background(GlassSurface, CircleShape)
                 ) {
                     Icon(
                         imageVector = Icons.Default.Close,
@@ -724,7 +724,7 @@ fun NestedScrollSheet(
                     .align(Alignment.BottomCenter)
                     .nestedScroll(nestedScrollConnection),
                 shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
-                color = Color.White.copy(alpha = 0.05f),
+                color = GlassSurface,
                 shadowElevation = 24.dp
             ) {
                 Column(modifier = Modifier.fillMaxSize()) {
@@ -832,7 +832,7 @@ fun QuickActionSheet(
                     .fillMaxWidth()
                     .align(Alignment.BottomCenter),
                 shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
-                color = Color.White.copy(alpha = 0.05f),
+                color = GlassSurface,
                 shadowElevation = 24.dp
             ) {
                 Column(
@@ -911,7 +911,7 @@ private fun QuickActionItem(
             .clickable(onClick = onClick)
             .semantics { contentDescription = "${action.title}. ${action.subtitle}" },
         shape = RoundedCornerShape(16.dp),
-        color = Color.White.copy(alpha = 0.08f)
+        color = GlassSurface
     ) {
         Row(
             modifier = Modifier
@@ -1020,7 +1020,7 @@ fun ConfirmationSheet(
                     .fillMaxWidth()
                     .align(Alignment.BottomCenter),
                 shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
-                color = Color.White.copy(alpha = 0.05f),
+                color = GlassSurface,
                 shadowElevation = 24.dp
             ) {
                 Column(
@@ -1162,7 +1162,7 @@ fun InfoSheet(
                     .fillMaxWidth()
                     .align(Alignment.BottomCenter),
                 shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
-                color = Color.White.copy(alpha = 0.05f),
+                color = GlassSurface,
                 shadowElevation = 24.dp
             ) {
                 Column(

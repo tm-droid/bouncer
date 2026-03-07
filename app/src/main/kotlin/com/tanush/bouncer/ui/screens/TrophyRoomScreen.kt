@@ -247,7 +247,7 @@ private fun TrophyItemCard(
     description: String,
     tier: String,
     icon: ImageVector,
-    tierColor: Color = Color.White,
+    tierColor: Color = TextPrimary,
     isLocked: Boolean = false
 ) {
     val colors = BouncerDesignSystem.colors

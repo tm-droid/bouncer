@@ -49,7 +49,7 @@ fun SearchBar(
     var isFocused by remember { mutableStateOf(false) }
     
     val borderColor by animateColorAsState(
-        targetValue = if (isFocused) GoldPrimary else Color.Gray.copy(alpha = 0.3f),
+        targetValue = if (isFocused) GoldPrimary else GlassBorder,
         animationSpec = tween(300),
         label = "searchBorder"
     )
@@ -90,7 +90,7 @@ fun SearchBar(
         Icon(
             imageVector = Icons.Default.Search,
             contentDescription = "Search",
-            tint = if (isFocused) GoldPrimary.copy(alpha = shimmer) else Color.Gray,
+            tint = if (isFocused) GoldPrimary.copy(alpha = shimmer) else TextSecondary,
             modifier = Modifier.size(22.dp)
         )
         
@@ -100,7 +100,7 @@ fun SearchBar(
             if (query.isEmpty()) {
                 Text(
                     text = placeholder,
-                    color = Color.Gray.copy(alpha = 0.5f),
+                    color = TextMuted,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Normal
                 )
@@ -147,7 +147,7 @@ fun SearchBar(
                 Icon(
                     imageVector = Icons.Default.Clear,
                     contentDescription = "Clear",
-                    tint = Color.Gray,
+                    tint = TextSecondary,
                     modifier = Modifier.size(18.dp)
                 )
             }
@@ -220,8 +220,8 @@ private fun FilterChip(
                 } else {
                     Brush.linearGradient(
                         colors = listOf(
-                            Color.Gray.copy(alpha = 0.15f),
-                            Color.Gray.copy(alpha = 0.15f)
+                            GlassSurface,
+                            GlassSurface
                         )
                     )
                 },

@@ -523,7 +523,7 @@ private fun EliteMatchDetailHeader(
                         model = team1Logo,
                         contentDescription = null,
                         modifier = Modifier
-                            .size(48.dp)
+                            .size(56.dp)
                             .clip(CircleShape)
                             .border(
                                 if (team1IsBatting) 2.dp else BorderWidth.hairline,
@@ -531,18 +531,19 @@ private fun EliteMatchDetailHeader(
                                 CircleShape
                             )
                     )
-                    Spacer(modifier = Modifier.height(4.dp))
+                    Spacer(modifier = Modifier.height(Spacing.xs))
                     Text(
                         text = team1?.acronym ?: "",
-                        color = Color.White,
+                        color = TextPrimary,
                         fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = LetterSpacing.relaxed
                     )
                     if (score1.isNotBlank()) {
                         Text(
                             text = score1,
                             style = androidx.compose.ui.text.TextStyle(
-                                fontSize = 28.sp,
+                                fontSize = 34.sp,
                                 fontWeight = FontWeight.ExtraBold,
                                 letterSpacing = (-1).sp,
                                 brush = if (team1IsBatting) Brush.verticalGradient(
@@ -557,14 +558,15 @@ private fun EliteMatchDetailHeader(
                                 text = "($overs1 Ov)",
                                 color = TextSecondary,
                                 fontSize = 10.sp,
-                                fontWeight = FontWeight.Medium
+                                fontWeight = FontWeight.Medium,
+                                letterSpacing = LetterSpacing.relaxed
                             )
                         }
                     } else {
                         Text(
                             text = "-",
                             color = TextMuted,
-                            fontSize = 28.sp,
+                            fontSize = 34.sp,
                             fontWeight = FontWeight.ExtraBold
                         )
                     }
@@ -592,7 +594,7 @@ private fun EliteMatchDetailHeader(
                         model = team2Logo,
                         contentDescription = null,
                         modifier = Modifier
-                            .size(48.dp)
+                            .size(56.dp)
                             .clip(CircleShape)
                             .border(
                                 if (team2IsBatting) 2.dp else BorderWidth.hairline,
@@ -600,18 +602,19 @@ private fun EliteMatchDetailHeader(
                                 CircleShape
                             )
                     )
-                    Spacer(modifier = Modifier.height(4.dp))
+                    Spacer(modifier = Modifier.height(Spacing.xs))
                     Text(
                         text = team2?.acronym ?: "",
-                        color = Color.White,
+                        color = TextPrimary,
                         fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = LetterSpacing.relaxed
                     )
                     if (score2.isNotBlank()) {
                         Text(
                             text = score2,
                             style = androidx.compose.ui.text.TextStyle(
-                                fontSize = 28.sp,
+                                fontSize = 34.sp,
                                 fontWeight = FontWeight.ExtraBold,
                                 letterSpacing = (-1).sp,
                                 brush = if (team2IsBatting) Brush.verticalGradient(
@@ -626,14 +629,15 @@ private fun EliteMatchDetailHeader(
                                 text = "($overs2 Ov)",
                                 color = TextSecondary,
                                 fontSize = 10.sp,
-                                fontWeight = FontWeight.Medium
+                                fontWeight = FontWeight.Medium,
+                                letterSpacing = LetterSpacing.relaxed
                             )
                         }
                     } else {
                         Text(
                             text = "-",
                             color = TextMuted,
-                            fontSize = 28.sp,
+                            fontSize = 34.sp,
                             fontWeight = FontWeight.ExtraBold
                         )
                     }
@@ -704,10 +708,11 @@ private fun EliteMatchDetailHeader(
                 Text(
                     text = match.status,
                     style = androidx.compose.ui.text.TextStyle(
-                        fontSize = 11.sp,
+                        fontSize = 12.sp,
                         fontWeight = FontWeight.SemiBold,
+                        letterSpacing = LetterSpacing.relaxed,
                         brush = Brush.verticalGradient(
-                            colors = listOf(Color.White.copy(alpha = 0.9f), Gold400.copy(alpha = 0.7f))
+                            colors = listOf(TextPrimary.copy(alpha = 0.9f), Gold400.copy(alpha = 0.7f))
                         )
                     ),
                     textAlign = TextAlign.Center,
@@ -740,8 +745,8 @@ private fun StatPill(label: String, value: String) {
                 Gold400.copy(alpha = 0.15f),
                 RoundedCornerShape(CornerRadius.pill)
             )
-            .padding(horizontal = 10.dp, vertical = 6.dp),
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
+            .padding(horizontal = Spacing.sm, vertical = Spacing.xs),
+        horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
@@ -749,13 +754,14 @@ private fun StatPill(label: String, value: String) {
             color = Gold400.copy(alpha = 0.6f),
             fontSize = 9.sp,
             fontWeight = FontWeight.SemiBold,
-            letterSpacing = 0.5.sp
+            letterSpacing = LetterSpacing.relaxed
         )
         Text(
             text = value,
             color = TextPrimary,
             fontSize = 11.sp,
-            fontWeight = FontWeight.Bold
+            fontWeight = FontWeight.Bold,
+            letterSpacing = LetterSpacing.none
         )
     }
 }
@@ -768,7 +774,8 @@ private fun EliteTabRow(selectedTab: Int, onTabSelected: (Int) -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = Spacing.screenHorizontal, vertical = Spacing.sm)
+            .height(40.dp)
+            .padding(horizontal = Spacing.screenHorizontal, vertical = Spacing.xs)
             .clip(RoundedCornerShape(CornerRadius.pill))
             .background(Color.Black.copy(alpha = 0.3f))
             .border(
@@ -776,7 +783,7 @@ private fun EliteTabRow(selectedTab: Int, onTabSelected: (Int) -> Unit) {
                 Color.White.copy(alpha = 0.1f),
                 RoundedCornerShape(CornerRadius.pill)
             )
-            .padding(4.dp),
+            .padding(3.dp),
         horizontalArrangement = Arrangement.spacedBy(2.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -791,6 +798,7 @@ private fun EliteTabRow(selectedTab: Int, onTabSelected: (Int) -> Unit) {
             Box(
                 modifier = Modifier
                     .weight(1f)
+                    .fillMaxHeight()
                     .clip(RoundedCornerShape(CornerRadius.pill))
                     .then(
                         if (isSelected) {
@@ -809,8 +817,7 @@ private fun EliteTabRow(selectedTab: Int, onTabSelected: (Int) -> Unit) {
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null
-                    ) { onTabSelected(index) }
-                    .padding(vertical = Spacing.sm),
+                    ) { onTabSelected(index) },
                 contentAlignment = Alignment.Center
             ) {
                 Text(
@@ -984,8 +991,8 @@ fun TechnicalQuickAction(
 ) {
     Box(
         modifier = modifier
-            .clip(RoundedCornerShape(12.dp))
-            .background(Color.White.copy(alpha = 0.05f))
+            .clip(RoundedCornerShape(CornerRadius.md))
+            .background(GlassSurface)
             .border(
                 BorderWidth.hairline,
                 Brush.verticalGradient(
@@ -994,15 +1001,15 @@ fun TechnicalQuickAction(
                         accentColor.copy(alpha = 0.05f)
                     )
                 ),
-                RoundedCornerShape(12.dp)
+                RoundedCornerShape(CornerRadius.md)
             )
             .clickable { }
-            .padding(12.dp),
+            .padding(Spacing.sm),
         contentAlignment = Alignment.Center
     ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Icon(icon, null, tint = accentColor, modifier = Modifier.size(18.dp))
-            Text(label, color = TextMuted, fontSize = 9.sp, fontWeight = FontWeight.Medium)
+        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+            Icon(icon, null, tint = accentColor, modifier = Modifier.size(IconSize.xs))
+            Text(label, color = TextMuted, fontSize = 9.sp, fontWeight = FontWeight.SemiBold, letterSpacing = LetterSpacing.relaxed)
         }
     }
 }
@@ -1019,8 +1026,8 @@ fun MicroStatCard(
 ) {
     Box(
         modifier = modifier
-            .clip(RoundedCornerShape(16.dp))
-            .background(Color.White.copy(alpha = 0.05f))
+            .clip(RoundedCornerShape(CornerRadius.lg))
+            .background(GlassSurface)
             .border(
                 BorderWidth.hairline,
                 Brush.verticalGradient(
@@ -1029,9 +1036,9 @@ fun MicroStatCard(
                         accentColor.copy(alpha = 0.05f)
                     )
                 ),
-                RoundedCornerShape(16.dp)
+                RoundedCornerShape(CornerRadius.lg)
             )
-            .padding(14.dp)
+            .padding(Spacing.md)
     ) {
         Column {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
@@ -1039,9 +1046,9 @@ fun MicroStatCard(
                 Icon(icon, null, tint = accentColor.copy(alpha = 0.5f), modifier = Modifier.size(14.dp))
             }
             Spacer(modifier = Modifier.height(8.dp))
-            Text(name, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(value, color = accentColor, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+            Text(name, color = TextPrimary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+                Text(value, color = accentColor, fontSize = 22.sp, fontWeight = FontWeight.Black, letterSpacing = (-0.5).sp)
                 Text(subValue, color = TextSecondary, fontSize = 11.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(bottom = 3.dp))
             }
         }
@@ -2418,14 +2425,14 @@ fun EliteAiInsightBanner(text: String?) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(Color.White.copy(alpha = 0.05f))
-            .border(BorderWidth.hairline, Gold400.copy(alpha = 0.15f), RoundedCornerShape(16.dp))
-            .padding(16.dp)
+            .clip(RoundedCornerShape(CornerRadius.lg))
+            .background(GlassSurface)
+            .border(BorderWidth.hairline, Gold400.copy(alpha = 0.15f), RoundedCornerShape(CornerRadius.lg))
+            .padding(Spacing.md)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            horizontalArrangement = Arrangement.spacedBy(Spacing.md),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
@@ -2439,7 +2446,7 @@ fun EliteAiInsightBanner(text: String?) {
                     Icons.Default.AutoAwesome,
                     null,
                     tint = Gold400,
-                    modifier = Modifier.size(22.dp)
+                    modifier = Modifier.size(IconSize.md)
                 )
             }
             
@@ -2448,7 +2455,8 @@ fun EliteAiInsightBanner(text: String?) {
                     text = "Match Insight",
                     color = Gold400,
                     fontSize = 11.sp,
-                    fontWeight = FontWeight.SemiBold
+                    fontWeight = FontWeight.SemiBold,
+                    letterSpacing = LetterSpacing.relaxed
                 )
                 Text(
                     text = text ?: "Loading match insights...",
@@ -2466,33 +2474,34 @@ fun EliteAiInsightBanner(text: String?) {
 
 @Composable
 fun EliteRecentTelemetry(balls: List<String>) {
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
         Text(
-            text = "Recent Balls",
-            color = TextSecondary,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.SemiBold
+            text = "RECENT BALLS",
+            color = Gold400.copy(alpha = 0.7f),
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Black,
+            letterSpacing = LetterSpacing.ultraWide
         )
         LazyRow(
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             items(balls) { ball ->
                 val bgColor = when {
-                    ball == "W" -> Color(0xFFDC2626) // Red for wickets
-                    ball == "4" -> Color(0xFF3B82F6) // Blue for fours
-                    ball == "6" -> Color(0xFF10B981) // Emerald for sixes
-                    ball == "0" || ball == "." -> Color.White.copy(alpha = 0.06f) // Muted for dots
-                    else -> Color.White.copy(alpha = 0.10f) // Dark bg for other runs
+                    ball == "W" -> WicketRed
+                    ball == "4" -> ChartBlue
+                    ball == "6" -> StatusSuccess
+                    ball == "0" || ball == "." -> GlassSurface
+                    else -> GlassSurface
                 }
                 val textColor = when {
-                    ball == "W" || ball == "4" || ball == "6" -> Color.White
+                    ball == "W" || ball == "4" || ball == "6" -> TextPrimary
                     ball == "0" || ball == "." -> TextMuted
-                    else -> Color.White
+                    else -> TextPrimary
                 }
                 val borderColor = when {
-                    ball == "W" -> Gold400.copy(alpha = 0.40f) // Gold border pulse for wickets
-                    ball == "4" -> Color(0xFF3B82F6).copy(alpha = 0.30f)
-                    ball == "6" -> Color(0xFF10B981).copy(alpha = 0.30f)
+                    ball == "W" -> Gold400.copy(alpha = 0.40f)
+                    ball == "4" -> ChartBlue.copy(alpha = 0.30f)
+                    ball == "6" -> StatusSuccess.copy(alpha = 0.30f)
                     else -> Color.White.copy(alpha = 0.06f)
                 }
                 Box(
@@ -2549,9 +2558,9 @@ fun EliteFloatingMatchNav(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(Color(0xFF0F1115).copy(alpha = 0.97f))
+                .background(BgBase.copy(alpha = 0.97f))
                 .navigationBarsPadding()
-                .padding(horizontal = 16.dp, vertical = 8.dp)
+                .padding(horizontal = Spacing.md, vertical = Spacing.sm)
                 .height(56.dp),
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically

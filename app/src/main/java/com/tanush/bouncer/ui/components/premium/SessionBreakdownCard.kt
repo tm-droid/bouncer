@@ -144,7 +144,7 @@ fun SessionBreakdownCard(
                         )
                         Text(
                             text = matchFormat,
-                            color = Color.White,
+                            color = colors.textPrimary,
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
                         )
@@ -160,7 +160,7 @@ fun SessionBreakdownCard(
                     )
                     Text(
                         text = "Total",
-                        color = Color.White.copy(alpha = 0.5f),
+                        color = colors.textSecondary,
                         fontSize = 10.sp,
                     )
                 }
@@ -289,7 +289,7 @@ private fun SessionRow(
                 } else {
                     Brush.horizontalGradient(
                         colors = listOf(
-                            Color.White.copy(alpha = 0.05f),
+                            colors.glassSurface,
                             Color.Transparent,
                         ),
                     )
@@ -304,13 +304,13 @@ private fun SessionRow(
                 .size(36.dp)
                 .clip(CircleShape)
                 .background(
-                    if (session.isCurrentSession) colors.goldDark else Color.White.copy(alpha = 0.1f),
+                    if (session.isCurrentSession) colors.goldDark else colors.glassBorder,
                 ),
             contentAlignment = Alignment.Center,
         ) {
             Text(
                 text = "S${session.sessionNumber}",
-                color = if (session.isCurrentSession) Color.Black else Color.White,
+                color = if (session.isCurrentSession) Color.Black else colors.textPrimary,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
             )
@@ -323,7 +323,7 @@ private fun SessionRow(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = session.sessionName,
-                    color = if (session.isCurrentSession) colors.goldDark else Color.White,
+                    color = if (session.isCurrentSession) colors.goldDark else colors.textPrimary,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
                 )
@@ -341,7 +341,7 @@ private fun SessionRow(
 
             Text(
                 text = "${session.startTime} - ${if (session.isCurrentSession) "now" else session.endTime}",
-                color = Color.White.copy(alpha = 0.5f),
+                color = colors.textSecondary,
                 fontSize = 11.sp,
             )
         }
@@ -350,7 +350,7 @@ private fun SessionRow(
         Column(horizontalAlignment = Alignment.End) {
             Text(
                 text = "${session.runs}/${session.wickets}",
-                color = if (session.isCurrentSession) colors.goldDark else Color.White,
+                color = if (session.isCurrentSession) colors.goldDark else colors.textPrimary,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
             )
@@ -358,7 +358,7 @@ private fun SessionRow(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = "${session.overs}ov",
-                    color = Color.White.copy(alpha = 0.5f),
+                    color = colors.textSecondary,
                     fontSize = 10.sp,
                 )
                 Spacer(modifier = Modifier.width(6.dp))

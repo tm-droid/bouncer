@@ -105,7 +105,7 @@ fun ExpandableMatchCardV2(
             }
             .semantics { contentDescription = cardDescription },
         shape = RoundedCornerShape(24.dp),
-        color = Color.White.copy(alpha = 0.05f)
+        color = GlassSurface
     ) {
         Column(
             modifier = Modifier
@@ -174,7 +174,7 @@ fun ExpandableMatchCardV2(
                 Box(
                     modifier = Modifier
                         .size(32.dp)
-                        .background(Color.White.copy(alpha = 0.08f), CircleShape),
+                        .background(GlassSurface, CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
@@ -531,7 +531,7 @@ fun TeamMomentumIndicator(
             .fillMaxWidth()
             .semantics { contentDescription = momentumDescription },
         shape = RoundedCornerShape(16.dp),
-        color = Color.White.copy(alpha = 0.05f)
+        color = GlassSurface
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
@@ -581,7 +581,7 @@ fun TeamMomentumIndicator(
                         .height(8.dp)
                         .align(Alignment.Center)
                         .clip(RoundedCornerShape(4.dp))
-                        .background(Color.White.copy(alpha = 0.08f))
+                        .background(GlassSurface)
                 )
                 
                 // Center marker
@@ -855,7 +855,7 @@ fun MatchCountdown(
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
-        color = Color.White.copy(alpha = 0.05f),
+        color = GlassSurface,
         border = androidx.compose.foundation.BorderStroke(
             1.dp,
             Brush.linearGradient(
@@ -962,7 +962,7 @@ private fun CountdownUnit(
                     scaleY = pulse
                 }
                 .background(
-                    if (highlight) colors.goldPrimary.copy(alpha = 0.2f) else Color.White.copy(alpha = 0.08f),
+                    if (highlight) colors.goldPrimary.copy(alpha = 0.2f) else GlassSurface,
                     RoundedCornerShape(12.dp)
                 )
                 .border(
@@ -1037,7 +1037,7 @@ fun QuickStatsRowEnhanced(
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
-        color = Color.White.copy(alpha = 0.05f)
+        color = GlassSurface
     ) {
         Row(
             modifier = Modifier
@@ -1145,7 +1145,7 @@ private fun TimelineBall(
         ball == "4" -> colors.statusInfo to colors.backgroundBase
         ball == "0" || ball == "." -> DotBall to colors.textMuted
         ball.contains("WD") || ball.contains("NB") -> colors.statusWarning to colors.backgroundBase
-        else -> Color.White.copy(alpha = 0.08f) to colors.textPrimary
+        else -> GlassSurface to colors.textPrimary
     }
     
     val infiniteTransition = rememberInfiniteTransition(label = "latestBall")
@@ -1176,7 +1176,7 @@ private fun TimelineBall(
             .background(bgColor, CircleShape)
             .border(
                 if (isLatest) 2.dp else 0.5.dp,
-                if (isLatest) colors.goldPrimary else Color.White.copy(alpha = 0.1f),
+                if (isLatest) colors.goldPrimary else GlassBorder,
                 CircleShape
             ),
         contentAlignment = Alignment.Center

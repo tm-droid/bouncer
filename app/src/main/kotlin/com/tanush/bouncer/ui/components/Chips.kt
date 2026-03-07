@@ -90,8 +90,8 @@ fun StatusChip(
     } else {
         Brush.linearGradient(
             colors = listOf(
-                Color.White.copy(alpha = 0.08f).copy(alpha = 0.6f),
-                Color.White.copy(alpha = 0.05f).copy(alpha = 0.6f)
+                GlassSurface,
+                GlassSurface
             )
         )
     }
@@ -120,7 +120,7 @@ fun StatusChip(
                     1.5.dp, 
                     Brush.linearGradient(
                         colors = listOf(
-                            Color.White.copy(alpha = 0.7f),
+                            TextSecondary,
                             colors.goldLight.copy(alpha = 0.5f),
                             colors.goldPrimary.copy(alpha = 0.2f)
                         )
@@ -179,11 +179,11 @@ fun AnimatedCheckmark(
             .clip(CircleShape)
             .background(
                 if (isChecked) colors.statusSuccess.copy(alpha = 0.8f) 
-                else Color.Gray.copy(alpha = 0.2f)
+                else GlassSurface
             )
             .border(
                 width = 1.5.dp,
-                color = if (isChecked) colors.statusSuccess else Color.Gray.copy(alpha = 0.3f),
+                color = if (isChecked) colors.statusSuccess else GlassBorder,
                 shape = CircleShape
             ),
         contentAlignment = Alignment.Center
@@ -241,8 +241,8 @@ fun CategoryChip(
     } else {
         Brush.linearGradient(
             colors = listOf(
-                Color.Gray.copy(alpha = 0.18f),
-                Color.Gray.copy(alpha = 0.12f)
+                GlassSurface,
+                GlassSurface
             )
         )
     }
@@ -259,14 +259,14 @@ fun CategoryChip(
             .background(backgroundBrush)
             .border(
                 width = if (isSelected) 0.8.dp else 0.5.dp,
-                color = if (isSelected) Color.White.copy(alpha = 0.35f) else colors.glassBorder.copy(alpha = 0.25f),
+                color = if (isSelected) TextMuted else colors.glassBorder.copy(alpha = 0.25f),
                 shape = CircleShape
             )
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = ripple(
                     bounded = true,
-                    color = if (isSelected) Color.White.copy(alpha = 0.3f) else Color(0xFF3B82F6).copy(alpha = 0.3f)
+                    color = if (isSelected) TextMuted else Color(0xFF3B82F6).copy(alpha = 0.3f)
                 )
             ) {
                 haptic.click()
@@ -288,7 +288,7 @@ fun CategoryChip(
             text = text,
             fontSize = 13.sp,
             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-            color = if (isSelected) Color.White else Color.Gray.copy(alpha = 0.8f),
+            color = if (isSelected) Color.White else TextSecondary,
             letterSpacing = 0.3.sp
         )
     }

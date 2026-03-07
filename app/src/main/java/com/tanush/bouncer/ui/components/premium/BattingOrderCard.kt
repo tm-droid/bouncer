@@ -119,7 +119,7 @@ fun BattingOrderCard(
                         )
                         Text(
                             text = teamName,
-                            color = Color.White,
+                            color = colors.textPrimary,
                             fontSize = 17.sp,
                             fontWeight = FontWeight.SemiBold,
                         )
@@ -254,7 +254,7 @@ private fun BattingOrderRow(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = entry.name,
-                    color = if (entry.status == BattingStatus.OUT) Color.Gray else Color.White,
+                    color = if (entry.status == BattingStatus.OUT) Color.Gray else colors.textPrimary,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Medium,
                 )
@@ -288,7 +288,7 @@ private fun BattingOrderRow(
                     Text(
                         text = "${entry.runs}",
                         color = when (entry.status) {
-                            BattingStatus.ON_STRIKE, BattingStatus.NON_STRIKER -> Color.White
+                            BattingStatus.ON_STRIKE, BattingStatus.NON_STRIKER -> colors.textPrimary
                             else -> Color.Gray
                         },
                         fontSize = 18.sp,
@@ -308,7 +308,7 @@ private fun BattingOrderRow(
                         text = "SR: ${String.format("%.1f", sr)}",
                         color = when {
                             sr >= 150 -> colors.statusSuccess
-                            sr >= 100 -> Color.White
+                            sr >= 100 -> colors.textPrimary
                             else -> colors.statusWarning
                         },
                         fontSize = 10.sp,

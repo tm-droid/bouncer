@@ -485,7 +485,7 @@ private fun WinProbabilityShareBar(
                 .fillMaxWidth()
                 .height(10.dp)
                 .clip(RoundedCornerShape(5.dp))
-                .background(Color.White.copy(alpha = 0.05f))
+                .background(GlassSurface)
         ) {
             Row(modifier = Modifier.fillMaxSize()) {
                 // Team 1 bar

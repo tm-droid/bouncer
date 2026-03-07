@@ -236,7 +236,7 @@ fun RequiredRunRateCard(
                         center = Offset(indicatorX, indicatorY)
                     )
                     drawCircle(
-                        color = Color.White,
+                        color = TextPrimary,
                         radius = 4.dp.toPx(),
                         center = Offset(indicatorX, indicatorY)
                     )

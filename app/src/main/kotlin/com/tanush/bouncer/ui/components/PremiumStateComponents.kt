@@ -103,7 +103,7 @@ fun PremiumEmptyState(
                         brush = Brush.radialGradient(
                             colors = listOf(
                                 colors.goldDark.copy(alpha = 0.2f),
-                                Color.White.copy(alpha = 0.05f)
+                                GlassSurface
                             )
                         )
                     )
@@ -132,7 +132,7 @@ fun PremiumEmptyState(
         ) {
             Text(
                 text = title,
-                color = Color.White,
+                color = TextPrimary,
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center
@@ -140,7 +140,7 @@ fun PremiumEmptyState(
             
             Text(
                 text = message,
-                color = Color.White.copy(alpha = 0.6f),
+                color = TextSecondary,
                 fontSize = 14.sp,
                 textAlign = TextAlign.Center,
                 lineHeight = 22.sp
@@ -238,7 +238,7 @@ fun PremiumErrorState(
                         brush = Brush.radialGradient(
                             colors = listOf(
                                 Color(0xFFEF4444).copy(alpha = 0.2f),
-                                Color.White.copy(alpha = 0.05f)
+                                GlassSurface
                             )
                         )
                     )
@@ -265,7 +265,7 @@ fun PremiumErrorState(
         ) {
             Text(
                 text = title,
-                color = Color.White,
+                color = TextPrimary,
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center
@@ -273,7 +273,7 @@ fun PremiumErrorState(
             
             Text(
                 text = message,
-                color = Color.White.copy(alpha = 0.6f),
+                color = TextSecondary,
                 fontSize = 14.sp,
                 textAlign = TextAlign.Center
             )
@@ -371,7 +371,7 @@ fun NoInternetState(
                 modifier = Modifier
                     .size(56.dp)
                     .clip(CircleShape)
-                    .background(Color.White.copy(alpha = 0.05f))
+                    .background(GlassSurface)
                     .border(
                         width = 2.dp,
                         color = Color(0xFFEF4444).copy(alpha = 0.5f),
@@ -394,14 +394,14 @@ fun NoInternetState(
         ) {
             Text(
                 text = "No Internet Connection",
-                color = Color.White,
+                color = TextPrimary,
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold
             )
             
             Text(
                 text = "Check your connection and try again",
-                color = Color.White.copy(alpha = 0.6f),
+                color = TextSecondary,
                 fontSize = 14.sp,
                 textAlign = TextAlign.Center
             )
@@ -529,14 +529,14 @@ fun NoMatchesState(
         ) {
             Text(
                 text = "All Quiet on the Pitch",
-                color = Color.White,
+                color = TextPrimary,
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold
             )
             
             Text(
                 text = message,
-                color = Color.White.copy(alpha = 0.6f),
+                color = TextSecondary,
                 fontSize = 14.sp,
                 textAlign = TextAlign.Center
             )
@@ -562,7 +562,7 @@ fun NoSearchResultsState(
             modifier = Modifier
                 .size(80.dp)
                 .clip(CircleShape)
-                .background(Color.White.copy(alpha = 0.05f))
+                .background(GlassSurface)
                 .border(
                     width = 1.dp,
                     color = colors.goldDark.copy(alpha = 0.3f),
@@ -584,7 +584,7 @@ fun NoSearchResultsState(
         ) {
             Text(
                 text = "No results for \"$query\"",
-                color = Color.White,
+                color = TextPrimary,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center
@@ -592,7 +592,7 @@ fun NoSearchResultsState(
             
             Text(
                 text = "Try adjusting your search or filters",
-                color = Color.White.copy(alpha = 0.6f),
+                color = TextSecondary,
                 fontSize = 14.sp,
                 textAlign = TextAlign.Center
             )
@@ -694,7 +694,7 @@ fun ComingSoonState(
                         brush = Brush.radialGradient(
                             colors = listOf(
                                 colors.goldDark.copy(alpha = 0.2f),
-                                Color.White.copy(alpha = 0.05f)
+                                GlassSurface
                             )
                         )
                     )
@@ -729,14 +729,14 @@ fun ComingSoonState(
             
             Text(
                 text = feature,
-                color = Color.White,
+                color = TextPrimary,
                 fontSize = 16.sp,
                 textAlign = TextAlign.Center
             )
             
             Text(
                 text = "We're working hard to bring you this feature",
-                color = Color.White.copy(alpha = 0.6f),
+                color = TextSecondary,
                 fontSize = 13.sp,
                 textAlign = TextAlign.Center
             )

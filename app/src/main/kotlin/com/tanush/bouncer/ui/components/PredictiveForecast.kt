@@ -51,7 +51,7 @@ fun PredictiveForecastSection(
         ) {
             Text(
                 text = "Next Over (${overNumber}th) Forecast",
-                color = Color.White,
+                color = TextPrimary,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = (-0.5).sp
@@ -103,7 +103,7 @@ fun PredictiveBallCard(prediction: BallPrediction) {
     val borderColor = if (prediction.isCritical) {
         goldPrimary.copy(alpha = 0.4f)
     } else {
-        Color.White.copy(alpha = 0.1f)
+        GlassBorder
     }
 
     Surface(
@@ -122,7 +122,7 @@ fun PredictiveBallCard(prediction: BallPrediction) {
         ) {
             Text(
                 text = prediction.ballNumber,
-                color = if (prediction.isCritical) goldPrimary else Color.White.copy(alpha = 0.4f),
+                color = if (prediction.isCritical) goldPrimary else TextMuted,
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.align(Alignment.TopStart)
@@ -159,7 +159,7 @@ fun PredictiveBallCard(prediction: BallPrediction) {
                 
                 Surface(
                     shape = RoundedCornerShape(4.dp),
-                    color = if (prediction.isCritical) goldPrimary else Color.White.copy(alpha = 0.05f),
+                    color = if (prediction.isCritical) goldPrimary else GlassSurface,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
@@ -176,7 +176,7 @@ fun PredictiveBallCard(prediction: BallPrediction) {
                 
                 Text(
                     text = if (prediction.isCritical) "CRITICAL ALERT" else "STRONG SIGNAL",
-                    color = if (prediction.isCritical) goldPrimary else Color.White.copy(alpha = 0.4f),
+                    color = if (prediction.isCritical) goldPrimary else TextMuted,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Medium
                 )

@@ -145,11 +145,11 @@ private fun FantasyPlayerRow(player: FantasyPlayer) {
                     .background(Color.White.copy(alpha = 0.05f)),
                 contentAlignment = Alignment.Center
             ) {
-                Text(player.name.take(1), color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Black)
+                Text(player.name.take(1), color = colors.textPrimary, fontSize = 12.sp, fontWeight = FontWeight.Black)
             }
             Column {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(player.name, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                    Text(player.name, color = colors.textPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                     if (player.isCaptaincyPick) {
                         Box(
                             modifier = Modifier

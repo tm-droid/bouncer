@@ -1,6 +1,7 @@
 package com.tanush.bouncer.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
@@ -14,26 +15,28 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.tanush.bouncer.ui.theme.BouncerColors
-import com.tanush.bouncer.ui.theme.BouncerDimens
+import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 import com.tanush.bouncer.ui.theme.BouncerTheme
 
 /**
  * Displays recent deliveries as small colour-coded circles.
  *
- * Colour mapping:
- * - W  → [BouncerColors.WicketRed] with white "W"
- * - 6  → [BouncerColors.SixGold] with white "6"
- * - 4  → [BouncerColors.BoundaryGreen] with white "4"
- * - 0  → [BouncerColors.DotBallGray] with faded "0"
- * - Wd → [BouncerColors.WideBallAmber] with "Wd"
- * - Nb → [BouncerColors.NoBallOrange] with "Nb"
+ * Colour mapping (using BouncerDesignSystem.colors.ball* tokens):
+ * - W  → ballWicket (red) with subtle red glow + white "W"
+ * - 6  → ballSix (gold) with subtle purple glow + white "6"
+ * - 4  → ballBoundary (green) with subtle green glow + white "4"
+ * - 0  → ballDot (gray) + faded "0"
+ * - Wd → ballWide (yellow) + white "Wd"
+ * - Nb → ballNoBall (orange) + white "Nb"
  * - Others → surfaceVariant with the value
  */
 @Composable
@@ -41,10 +44,11 @@ fun RecentBallsRow(
     balls: List<String>,
     modifier: Modifier = Modifier
 ) {
+    val dimens = BouncerDesignSystem.dimens
     LazyRow(
         modifier = modifier,
-        contentPadding = PaddingValues(horizontal = BouncerDimens.xs),
-        horizontalArrangement = Arrangement.spacedBy(BouncerDimens.xs)
+        contentPadding = PaddingValues(horizontal = dimens.spacing.xs),
+        horizontalArrangement = Arrangement.spacedBy(dimens.spacing.xs)
     ) {
         items(balls, key = { "${it}_${balls.indexOf(it)}" }) { ball ->
             BallCircle(ball = ball)
@@ -54,13 +58,37 @@ fun RecentBallsRow(
 
 @Composable
 private fun BallCircle(ball: String) {
-    val (bgColor, textColor, displayText) = resolveBallStyle(ball)
+    val colors = BouncerDesignSystem.colors
+    val dimens = BouncerDesignSystem.dimens
+    val (bgColor, textColor, displayText, glowColor) = resolveBallStyle(ball)
+    val ballSize = dimens.ballIndicatorSize
 
     Box(
         modifier = Modifier
-            .size(BouncerDimens.recentBallSize)
+            .size(ballSize)
+            .then(
+                if (glowColor != null) {
+                    Modifier.drawBehind {
+                        drawCircle(
+                            brush = Brush.radialGradient(
+                                colors = listOf(
+                                    glowColor.copy(alpha = 0.35f),
+                                    Color.Transparent
+                                ),
+                                center = Offset(size.width / 2, size.height / 2),
+                                radius = size.width * 0.9f
+                            )
+                        )
+                    }
+                } else Modifier
+            )
             .clip(CircleShape)
-            .background(bgColor),
+            .background(bgColor)
+            .then(
+                if (glowColor != null) {
+                    Modifier.border(1.dp, glowColor.copy(alpha = 0.5f), CircleShape)
+                } else Modifier
+            ),
         contentAlignment = Alignment.Center
     ) {
         Text(
@@ -75,38 +103,51 @@ private fun BallCircle(ball: String) {
 }
 
 /**
- * Returns a Triple of (background, text colour, display text) for a given ball string.
+ * Returns a BallStyle of (background, text colour, display text, glow color) for a given ball string.
+ * Uses BouncerDesignSystem.colors.ball* tokens for consistent color coding.
  */
 @Composable
-private fun resolveBallStyle(ball: String): Triple<Color, Color, String> {
+private fun resolveBallStyle(ball: String): BallStyle {
+    val colors = BouncerDesignSystem.colors
     val trimmed = ball.trim()
     return when {
         trimmed.equals("W", ignoreCase = true) ->
-            Triple(BouncerColors.WicketRed, Color.White, "W")
+            BallStyle(colors.ballWicket, Color.White, "W", colors.ballWicket)
 
         trimmed == "6" ->
-            Triple(BouncerColors.SixGold, Color.White, "6")
+            BallStyle(colors.ballSix, Color.White, "6", colors.ballSix)
 
         trimmed == "4" ->
-            Triple(BouncerColors.BoundaryGreen, Color.White, "4")
+            BallStyle(colors.ballBoundary, Color.White, "4", colors.ballBoundary)
 
         trimmed == "0" ->
-            Triple(BouncerColors.DotBallGray, Color.White.copy(alpha = 0.7f), "0")
+            BallStyle(colors.ballDot, Color.White.copy(alpha = 0.7f), "0", null)
 
         trimmed.equals("Wd", ignoreCase = true) || trimmed.equals("WD", ignoreCase = true) ->
-            Triple(BouncerColors.WideBallAmber, Color.White, "Wd")
+            BallStyle(colors.ballWide, Color.White, "Wd", null)
 
         trimmed.equals("Nb", ignoreCase = true) || trimmed.equals("NB", ignoreCase = true) ->
-            Triple(BouncerColors.NoBallOrange, Color.White, "Nb")
+            BallStyle(colors.ballNoBall, Color.White, "Nb", null)
 
         else ->
-            Triple(
+            BallStyle(
                 MaterialTheme.colorScheme.surfaceVariant,
                 MaterialTheme.colorScheme.onSurfaceVariant,
-                trimmed
+                trimmed,
+                null
             )
     }
 }
+
+/**
+ * Data holder for ball circle styling
+ */
+private data class BallStyle(
+    val bgColor: Color,
+    val textColor: Color,
+    val displayText: String,
+    val glowColor: Color?
+)
 
 // ── Preview ─────────────────────────────────────────────────────────────────
 

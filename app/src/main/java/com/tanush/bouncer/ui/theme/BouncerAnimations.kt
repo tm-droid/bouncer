@@ -82,3 +82,96 @@ fun Modifier.goldPulse(
 
     return this.graphicsLayer { this.alpha = alpha }
 }
+
+// ── Animation Specs ─────────────────────────────────────────────────────────
+
+/**
+ * Standard animation specs for consistent motion across the app.
+ */
+object BouncerAnimationSpecs {
+
+    /**
+     * Staggered content appearance spec for sequential list item reveals.
+     * Each item fades in + slides up with a 50ms stagger between items.
+     *
+     * Usage: `Modifier.staggeredContentAppearance(index)`
+     */
+    const val staggerDelayMillis: Int = 50
+    const val staggerDurationMillis: Int = 350
+    val staggerEasing: Easing = FastOutSlowInEasing
+
+    /**
+     * Screen enter transition spec: fade-in + slight slide-up.
+     * 300ms with FastOutSlowInEasing for a premium feel.
+     */
+    const val screenEnterDurationMillis: Int = 300
+    val screenEnterEasing: Easing = FastOutSlowInEasing
+    const val screenEnterSlideOffset: Float = 24f
+
+    /**
+     * Shimmer animation spec for loading placeholders.
+     * 1200ms sweep with linear easing, infinite restart.
+     */
+    const val shimmerDurationMillis: Int = 1200
+    val shimmerEasing: Easing = LinearEasing
+    val shimmerRepeatMode: RepeatMode = RepeatMode.Restart
+}
+
+/**
+ * Staggered content appearance animation for list items.
+ * Each item fades in and slides up sequentially with a 50ms delay per index.
+ *
+ * @param index The position of the item in the list.
+ * @param visible Whether the item should be visible (triggers animation).
+ */
+@Composable
+fun Modifier.staggeredContentAppearance(
+    index: Int,
+    visible: Boolean = true
+): Modifier {
+    val animatedProgress = remember { Animatable(0f) }
+
+    LaunchedEffect(visible) {
+        if (visible) {
+            delay((index * BouncerAnimationSpecs.staggerDelayMillis).toLong())
+            animatedProgress.animateTo(
+                targetValue = 1f,
+                animationSpec = tween(
+                    durationMillis = BouncerAnimationSpecs.staggerDurationMillis,
+                    easing = BouncerAnimationSpecs.staggerEasing
+                )
+            )
+        } else {
+            animatedProgress.snapTo(0f)
+        }
+    }
+
+    return this.graphicsLayer {
+        alpha = animatedProgress.value
+        translationY = (1f - animatedProgress.value) * BouncerAnimationSpecs.screenEnterSlideOffset
+    }
+}
+
+/**
+ * Screen enter transition: fade-in with a slight slide-up.
+ * Use on root screen content for smooth page reveals.
+ */
+@Composable
+fun Modifier.screenEnterTransition(): Modifier {
+    val animatedProgress = remember { Animatable(0f) }
+
+    LaunchedEffect(Unit) {
+        animatedProgress.animateTo(
+            targetValue = 1f,
+            animationSpec = tween(
+                durationMillis = BouncerAnimationSpecs.screenEnterDurationMillis,
+                easing = BouncerAnimationSpecs.screenEnterEasing
+            )
+        )
+    }
+
+    return this.graphicsLayer {
+        alpha = animatedProgress.value
+        translationY = (1f - animatedProgress.value) * BouncerAnimationSpecs.screenEnterSlideOffset
+    }
+}

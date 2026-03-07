@@ -148,7 +148,7 @@ fun FieldingPositionsCard(
                         )
                         Text(
                             text = "${fieldingData.bowlerName} to ${fieldingData.batsmanName}",
-                            color = Color.White.copy(alpha = 0.7f),
+                            color = colors.textPrimary.copy(alpha = 0.7f),
                             fontSize = 12.sp,
                         )
                     }
@@ -311,7 +311,7 @@ fun FieldingPositionsCard(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly,
             ) {
-                LegendItem(color = Color.White, label = "Boundary")
+                LegendItem(color = colors.textPrimary, label = "Boundary")
                 LegendItem(color = colors.statusInfo, label = "Inner")
                 LegendItem(color = colors.statusWarning, label = "Slips")
                 LegendItem(color = colors.statusLive, label = "Close")
@@ -353,7 +353,7 @@ fun FieldingPositionsCard(
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text(
                                     text = fielder.positionName,
-                                    color = Color.White,
+                                    color = colors.textPrimary,
                                     fontSize = 10.sp,
                                     fontWeight = FontWeight.Bold,
                                 )

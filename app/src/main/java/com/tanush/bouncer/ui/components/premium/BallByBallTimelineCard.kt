@@ -104,8 +104,8 @@ fun BallByBallTimelineCard(
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(8.dp))
-                        .background(Color.White.copy(alpha = 0.05f))
-                        .border(0.5.dp, Color.White.copy(alpha = 0.05f), RoundedCornerShape(8.dp))
+                        .background(colors.textPrimary.copy(alpha = 0.05f))
+                        .border(0.5.dp, colors.textPrimary.copy(alpha = 0.05f), RoundedCornerShape(8.dp))
                         .padding(horizontal = 10.dp, vertical = 6.dp),
                     contentAlignment = Alignment.Center
                 ) {
@@ -204,8 +204,8 @@ private fun OverBlock(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(10.dp))
-            .background(Color.White.copy(alpha = 0.05f))
-            .border(0.5.dp, Color.White.copy(alpha = 0.03f), RoundedCornerShape(10.dp))
+            .background(colors.textPrimary.copy(alpha = 0.05f))
+            .border(0.5.dp, colors.textPrimary.copy(alpha = 0.03f), RoundedCornerShape(10.dp))
             .padding(12.dp),
     ) {
         Row(
@@ -237,7 +237,7 @@ private fun OverBlock(
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(4.dp))
-                        .background(Color.White.copy(alpha = 0.05f))
+                        .background(colors.textPrimary.copy(alpha = 0.05f))
                         .padding(horizontal = 6.dp, vertical = 2.dp)
                 ) {
                     Text(text = "$overRuns RUNS", color = TextPrimary, fontSize = 10.sp, fontWeight = FontWeight.Black)
@@ -268,7 +268,7 @@ private fun OverBlock(
                         .weight(1f)
                         .aspectRatio(1.2f)
                         .clip(RoundedCornerShape(4.dp))
-                        .background(Color.White.copy(alpha = 0.02f)),
+                        .background(colors.textPrimary.copy(alpha = 0.02f)),
                 )
             }
         }
@@ -306,14 +306,14 @@ private fun BallTile(
             .clip(RoundedCornerShape(4.dp))
             .background(bgColor.copy(alpha = if (ball.runs == 0 && !ball.isWicket) 0.3f else 1f))
             .then(
-                if (ball.isSix || ball.isWicket) Modifier.border(0.5.dp, Color.White.copy(alpha = 0.5f), RoundedCornerShape(4.dp))
+                if (ball.isSix || ball.isWicket) Modifier.border(0.5.dp, colors.textPrimary.copy(alpha = 0.5f), RoundedCornerShape(4.dp))
                 else Modifier
             ),
         contentAlignment = Alignment.Center,
     ) {
         Text(
             text = displayText,
-            color = if (ball.isSix) Color.Black else if (ball.runs == 0 && !ball.isWicket) TextTertiary else Color.White,
+            color = if (ball.isSix) Color.Black else if (ball.runs == 0 && !ball.isWicket) TextTertiary else colors.textPrimary,
             fontSize = 12.sp,
             fontWeight = FontWeight.Black,
         )

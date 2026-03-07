@@ -214,6 +214,9 @@ fun BouncerHomeScreen(
                                 }
                             }
 
+                            // Section transition divider
+                            item { SectionDivider() }
+
                             // Trending News Section
                             item {
                                 TrendingNewsSection(
@@ -443,7 +446,7 @@ private fun LiveMatchCarousel(
                     val isSelected = pagerState.currentPage == index
                     PageIndicatorDot(
                         isSelected = isSelected,
-                        modifier = Modifier.padding(horizontal = dimens.spacing.xs)
+                        modifier = Modifier.padding(horizontal = 3.dp)
                     )
                 }
             }
@@ -458,7 +461,7 @@ private fun PageIndicatorDot(
 ) {
     val colors = BouncerDesignSystem.colors
     val width = if (isSelected) 16.dp else 6.dp
-    val color = if (isSelected) colors.goldPrimary else colors.textTertiary.copy(alpha = 0.3f)
+    val color = if (isSelected) colors.goldPrimary else colors.textTertiary
 
     Box(
         modifier = modifier
@@ -499,8 +502,8 @@ private fun LiveMatchCarouselCard(
                 width = 1.dp,
                 brush = Brush.verticalGradient(
                     colors = listOf(
-                        Color.White.copy(alpha = 0.25f),
-                        Color.White.copy(alpha = 0.05f)
+                        colors.glassBorder,
+                        colors.glassSurface
                     )
                 ),
                 shape = RoundedCornerShape(32.dp)
@@ -531,23 +534,44 @@ private fun LiveMatchCarouselCard(
                 )
         )
 
+        // Team-colored split gradient
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .background(
+                    Brush.horizontalGradient(
+                        colors = listOf(
+                            TeamPrimaryColors.getTeamColor(team1?.acronym ?: team1?.name ?: "").copy(alpha = 0.12f),
+                            Color.Transparent,
+                            TeamPrimaryColors.getTeamColor(team2?.acronym ?: team2?.name ?: "").copy(alpha = 0.12f)
+                        )
+                    )
+                )
+        )
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(dimens.spacing.lg),
             verticalArrangement = Arrangement.SpaceBetween
         ) {
-            // Top row: Live badge + Series name
+            // Top row: Live badge + Format badge + Series name
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                LiveBadge()
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(dimens.spacing.sm),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    LiveBadge()
+                    MatchFormatBadge(matchType = match.matchType)
+                }
                 Text(
                     text = match.matchTitle.take(20).uppercase(),
                     style = typography.labelSmall,
-                    color = Color.White.copy(alpha = 0.4f),
+                    color = colors.textTertiary,
                     letterSpacing = 1.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -593,7 +617,7 @@ private fun LiveMatchCarouselCard(
                     Text(
                         text = battingTeam?.overs?.let { "$it Overs" } ?: "",
                         style = typography.labelSmall,
-                        color = Color.White.copy(alpha = 0.6f)
+                        color = colors.textSecondary
                     )
                 }
 
@@ -613,7 +637,7 @@ private fun LiveMatchCarouselCard(
                         .fillMaxWidth()
                         .height(2.dp)
                         .clip(CircleShape)
-                        .background(Color.White.copy(alpha = 0.1f))
+                        .background(colors.glassBorder)
                 ) {
                     Box(
                         modifier = Modifier
@@ -638,7 +662,7 @@ private fun LiveMatchCarouselCard(
                     Text(
                         text = match.currentStatus.take(35),
                         style = typography.labelSmall,
-                        color = Color.White.copy(alpha = 0.5f),
+                        color = colors.textTertiary,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f)
@@ -741,6 +765,71 @@ private fun LiveBadge(modifier: Modifier = Modifier) {
     }
 }
 
+@Composable
+private fun MatchFormatBadge(
+    matchType: String,
+    modifier: Modifier = Modifier
+) {
+    val colors = BouncerDesignSystem.colors
+    val formatText = when (matchType.uppercase()) {
+        "T20", "T20I" -> "T20"
+        "ODI", "ODIS" -> "ODI"
+        "TEST", "TESTS" -> "TEST"
+        else -> matchType.take(4).uppercase()
+    }
+
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(BouncerDesignSystem.dimens.radius.pill))
+            .background(colors.goldPrimary.copy(alpha = 0.15f))
+            .border(
+                width = 1.dp,
+                color = colors.goldPrimary.copy(alpha = 0.3f),
+                shape = RoundedCornerShape(BouncerDesignSystem.dimens.radius.pill)
+            )
+            .padding(
+                horizontal = BouncerDesignSystem.dimens.spacing.sm,
+                vertical = BouncerDesignSystem.dimens.spacing.xs
+            )
+    ) {
+        Text(
+            text = formatText,
+            fontSize = 9.sp,
+            fontWeight = FontWeight.Bold,
+            color = colors.goldPrimary,
+            letterSpacing = 1.sp
+        )
+    }
+}
+
+@Composable
+private fun SectionDivider(modifier: Modifier = Modifier) {
+    val colors = BouncerDesignSystem.colors
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(
+                horizontal = BouncerDesignSystem.dimens.screenHorizontalPadding * 2,
+                vertical = BouncerDesignSystem.dimens.spacing.sm
+            )
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(1.dp)
+                .background(
+                    Brush.horizontalGradient(
+                        colors = listOf(
+                            Color.Transparent,
+                            colors.goldPrimary.copy(alpha = 0.15f),
+                            Color.Transparent
+                        )
+                    )
+                )
+        )
+    }
+}
+
 // =============================================================================
 // TrendingNewsSection
 // =============================================================================
@@ -783,7 +872,7 @@ private fun TrendingNewsSection(
                     AsyncImage(
                         model = heroArticle?.imageUrl
                             ?: "https://images.unsplash.com/photo-1531415074968-036ba1b575da?q=80&w=640",
-                        contentDescription = null,
+                        contentDescription = heroArticle?.headline ?: "Featured article",
                         contentScale = ContentScale.Crop,
                         modifier = Modifier.fillMaxSize().graphicsLayer { alpha = 0.6f }
                     )
@@ -809,24 +898,20 @@ private fun TrendingNewsSection(
                             .padding(dimens.spacing.md),
                         verticalArrangement = Arrangement.SpaceBetween
                     ) {
-                        // Top Story badge
+                        // Top Story badge — solid gold pill at top-left
                         Box(
                             modifier = Modifier
-                                .clip(RoundedCornerShape(4.dp))
-                                .background(colors.goldPrimary.copy(alpha = 0.2f))
-                                .border(
-                                    width = 1.dp,
-                                    color = colors.goldPrimary.copy(alpha = 0.4f),
-                                    shape = RoundedCornerShape(4.dp)
-                                )
+                                .padding(start = 12.dp, top = 12.dp)
+                                .clip(RoundedCornerShape(percent = 50))
+                                .background(colors.goldPrimary)
                                 .padding(horizontal = 8.dp, vertical = 4.dp)
-                                .align(Alignment.End)
+                                .align(Alignment.Start)
                         ) {
                             Text(
                                 text = (heroArticle?.storyType?.uppercase() ?: "TOP STORY"),
-                                fontSize = 9.sp,
+                                fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = colors.goldPrimary,
+                                color = Color.Black,
                                 letterSpacing = 1.sp
                             )
                         }
@@ -848,11 +933,11 @@ private fun TrendingNewsSection(
                             ) {
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                    horizontalArrangement = Arrangement.spacedBy(dimens.spacing.xs)
                                 ) {
                                     Icon(
                                         imageVector = Icons.Outlined.Schedule,
-                                        contentDescription = null,
+                                        contentDescription = "Published time",
                                         tint = colors.textTertiary,
                                         modifier = Modifier.size(12.dp)
                                     )
@@ -921,7 +1006,7 @@ private fun TrendingNewsSection(
                                 text = secondaryArticle.headline,
                                 style = typography.bodyMedium,
                                 fontWeight = FontWeight.Bold,
-                                color = Color.White,
+                                color = colors.textPrimary,
                                 maxLines = 2,
                                 overflow = TextOverflow.Ellipsis
                             )
@@ -939,7 +1024,7 @@ private fun TrendingNewsSection(
                             AsyncImage(
                                 model = secondaryArticle.imageUrl
                                     ?: "https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?q=80&w=300",
-                                contentDescription = null,
+                                contentDescription = secondaryArticle.headline ?: "Article image",
                                 contentScale = ContentScale.Crop,
                                 modifier = Modifier.fillMaxSize().graphicsLayer { alpha = 0.5f }
                             )
@@ -966,47 +1051,59 @@ private fun SectionHeader(
     val colors = BouncerDesignSystem.colors
     val typography = BouncerDesignSystem.typography
 
-    Row(
-        modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
+    Column(modifier = modifier) {
         Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(BouncerDesignSystem.dimens.spacing.sm)
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            // Gold accent bar
-            Box(
-                modifier = Modifier
-                    .width(BouncerDesignSystem.dimens.xxs)
-                    .height(BouncerDesignSystem.dimens.spacing.md)
-                    .clip(RoundedCornerShape(BouncerDesignSystem.dimens.xxs))
-                    .background(colors.goldPrimary)
-                    .drawBehind {
-                        drawRect(
-                            color = colors.goldPrimary.copy(alpha = 0.5f),
-                            size = size
-                        )
-                    }
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(BouncerDesignSystem.dimens.spacing.sm)
+            ) {
+                // Gold accent bar
+                Box(
+                    modifier = Modifier
+                        .width(BouncerDesignSystem.dimens.xxs)
+                        .height(BouncerDesignSystem.dimens.spacing.md)
+                        .clip(RoundedCornerShape(BouncerDesignSystem.dimens.xxs))
+                        .background(colors.goldPrimary)
+                        .drawBehind {
+                            drawRect(
+                                color = colors.goldPrimary.copy(alpha = 0.5f),
+                                size = size
+                            )
+                        }
+                )
 
-            Text(
-                text = title.uppercase(),
-                style = typography.labelLarge,
-                color = colors.textPrimary,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 2.sp
-            )
+                Text(
+                    text = title.uppercase(),
+                    style = typography.labelLarge,
+                    color = colors.textPrimary,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 2.sp
+                )
+            }
+
+            if (actionText != null && onActionClick != null) {
+                Text(
+                    text = actionText,
+                    style = typography.labelSmall,
+                    color = colors.goldPrimary.copy(alpha = 0.7f),
+                    modifier = Modifier.clickable(onClick = onActionClick)
+                )
+            }
         }
 
-        if (actionText != null && onActionClick != null) {
-            Text(
-                text = actionText,
-                style = typography.labelSmall,
-                color = colors.goldPrimary.copy(alpha = 0.7f),
-                modifier = Modifier.clickable(onClick = onActionClick)
-            )
-        }
+        // Subtle gold underline accent
+        Spacer(modifier = Modifier.height(BouncerDesignSystem.dimens.spacing.xs))
+        Box(
+            modifier = Modifier
+                .width(40.dp)
+                .height(2.dp)
+                .clip(RoundedCornerShape(1.dp))
+                .background(colors.goldPrimary.copy(alpha = 0.5f))
+        )
     }
 }
 
@@ -1078,12 +1175,12 @@ private fun UpcomingMatchCard(
                         text = "${team1?.acronym?.ifEmpty { team1.name.take(3) } ?: "TM1"} vs ${team2?.acronym?.ifEmpty { team2.name.take(3) } ?: "TM2"}",
                         style = typography.bodyMedium,
                         fontWeight = FontWeight.Bold,
-                        color = Color.White
+                        color = colors.textPrimary
                     )
                     Text(
                         text = "${match.matchType} • ${match.venue.take(20)}",
                         style = typography.labelSmall.copy(fontSize = 9.sp),
-                        color = Color.White.copy(alpha = 0.4f),
+                        color = colors.textTertiary,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -1122,7 +1219,7 @@ private fun CarouselSkeleton(modifier: Modifier = Modifier) {
             .fillMaxWidth()
             .height(BouncerDesignSystem.dimens.heroCardHeight)
             .clip(RoundedCornerShape(BouncerDesignSystem.dimens.xxxl))
-            .background(Color.White.copy(alpha = 0.05f))
+            .background(BouncerDesignSystem.colors.glassSurface)
             .shimmerEffect()
     )
 }
@@ -1134,7 +1231,7 @@ private fun MatchCardSkeleton(modifier: Modifier = Modifier) {
             .fillMaxWidth()
             .height(BouncerDesignSystem.dimens.spacing.xxxl)
             .clip(RoundedCornerShape(BouncerDesignSystem.dimens.radius.md))
-            .background(Color.White.copy(alpha = 0.05f))
+            .background(BouncerDesignSystem.colors.glassSurface)
             .shimmerEffect()
     )
 }

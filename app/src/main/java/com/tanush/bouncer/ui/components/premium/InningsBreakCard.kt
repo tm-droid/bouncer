@@ -123,7 +123,7 @@ fun InningsBreakCard(
                         )
                         Text(
                             text = "HALF-TIME STRATEGY REPORT",
-                            color = Color.White,
+                            color = colors.textPrimary,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Black,
                             letterSpacing = 2.sp
@@ -160,7 +160,7 @@ fun InningsBreakCard(
                         )
                         Text(
                             String.format("%02d:%02d", minutes, seconds),
-                            color = Color.White,
+                            color = colors.textPrimary,
                             fontSize = 48.sp,
                             fontWeight = FontWeight.Black,
                             modifier = Modifier.shadow(12.dp * timerGlow, CircleShape, spotColor = colors.goldPrimary)
@@ -232,7 +232,7 @@ private fun EliteKpiBox(label: String, value: String, modifier: Modifier, isHigh
         Spacer(modifier = Modifier.height(6.dp))
         Text(
             value, 
-            color = if (isHighlight) colors.goldPrimary else Color.White, 
+            color = if (isHighlight) colors.goldPrimary else colors.textPrimary, 
             fontSize = 20.sp, 
             fontWeight = FontWeight.Black
         )

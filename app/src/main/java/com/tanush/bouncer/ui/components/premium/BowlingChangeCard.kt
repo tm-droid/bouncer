@@ -123,7 +123,7 @@ fun BowlingChangeCard(
                             Icon(
                                 imageVector = Icons.Default.SwapHoriz,
                                 contentDescription = null,
-                                tint = Color.White,
+                                tint = colors.textPrimary,
                                 modifier = Modifier.size(24.dp),
                             )
                         }
@@ -140,7 +140,7 @@ fun BowlingChangeCard(
                             )
                             Text(
                                 text = "${changes.size} changes this innings",
-                                color = Color.White.copy(alpha = 0.5f),
+                                color = colors.textTertiary,
                                 fontSize = 11.sp,
                             )
                         }
@@ -178,7 +178,7 @@ fun BowlingChangeCard(
                             )
                             Text(
                                 text = currentBowler,
-                                color = Color.White,
+                                color = colors.textPrimary,
                                 fontSize = 16.sp,
                                 fontWeight = FontWeight.Bold,
                             )
@@ -198,7 +198,7 @@ fun BowlingChangeCard(
 
                     Text(
                         text = "RECENT CHANGES",
-                        color = Color.White.copy(alpha = 0.5f),
+                        color = colors.textTertiary,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 1.sp,
@@ -237,7 +237,7 @@ private fun BowlingChangeRow(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(10.dp))
-            .background(Color.White.copy(alpha = 0.05f))
+            .background(colors.glassSurface)
             .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -246,12 +246,12 @@ private fun BowlingChangeRow(
             modifier = Modifier
                 .size(36.dp)
                 .clip(CircleShape)
-                .background(Color.White.copy(alpha = 0.1f)),
+                .background(colors.glassBorder),
             contentAlignment = Alignment.Center,
         ) {
             Text(
                 text = "${change.overNumber.toInt()}",
-                color = Color.White,
+                color = colors.textPrimary,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
             )
@@ -267,12 +267,12 @@ private fun BowlingChangeRow(
             Column {
                 Text(
                     text = change.previousBowler,
-                    color = Color.White.copy(alpha = 0.6f),
+                    color = colors.textSecondary,
                     fontSize = 12.sp,
                 )
                 Text(
                     text = change.previousBowlerFigures,
-                    color = Color.White.copy(alpha = 0.4f),
+                    color = colors.textTertiary,
                     fontSize = 10.sp,
                 )
             }
@@ -290,7 +290,7 @@ private fun BowlingChangeRow(
 
             Text(
                 text = change.newBowler,
-                color = Color.White,
+                color = colors.textPrimary,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
             )

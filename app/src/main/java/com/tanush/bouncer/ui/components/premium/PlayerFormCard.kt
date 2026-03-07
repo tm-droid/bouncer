@@ -191,7 +191,7 @@ private fun FormTabButton(
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(6.dp))
-            .background(if (isSelected) Color.White.copy(alpha = 0.05f) else Color.Transparent)
+            .background(if (isSelected) colors.glassSurface else Color.Transparent)
             .clickable(onClick = onClick)
             .padding(vertical = 8.dp),
         contentAlignment = Alignment.Center,
@@ -264,7 +264,7 @@ private fun BatterFormRow(
                                     when {
                                         score >= 50 -> colors.statusSuccess.copy(alpha = 0.15f)
                                         score >= 30 -> colors.goldPrimary.copy(alpha = 0.15f)
-                                        else -> Color.White.copy(alpha = 0.03f)
+                                        else -> colors.glassSurface
                                     },
                                 )
                                 .border(
@@ -272,7 +272,7 @@ private fun BatterFormRow(
                                     when {
                                         score >= 50 -> colors.statusSuccess.copy(alpha = 0.3f)
                                         score >= 30 -> colors.goldPrimary.copy(alpha = 0.3f)
-                                        else -> Color.White.copy(alpha = 0.05f)
+                                        else -> colors.glassSurface
                                     },
                                     RoundedCornerShape(4.dp)
                                 )
@@ -367,7 +367,7 @@ private fun BowlerFormRow(
                                     when {
                                         wickets >= 3 -> colors.statusSuccess.copy(alpha = 0.15f)
                                         wickets >= 2 -> colors.statusInfo.copy(alpha = 0.15f)
-                                        else -> Color.White.copy(alpha = 0.03f)
+                                        else -> colors.glassSurface
                                     },
                                 )
                                 .border(
@@ -375,7 +375,7 @@ private fun BowlerFormRow(
                                     when {
                                         wickets >= 3 -> colors.statusSuccess.copy(alpha = 0.3f)
                                         wickets >= 2 -> colors.statusInfo.copy(alpha = 0.3f)
-                                        else -> Color.White.copy(alpha = 0.05f)
+                                        else -> colors.glassSurface
                                     },
                                     RoundedCornerShape(4.dp)
                                 )

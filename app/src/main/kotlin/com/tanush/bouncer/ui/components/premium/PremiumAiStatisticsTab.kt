@@ -113,7 +113,7 @@ private fun AiImpactHero() {
             }
             
             drawCircle(
-                color = Color.White.copy(alpha = 0.05f),
+                color = GlassSurface,
                 style = Stroke(width = 1.dp.toPx()),
                 radius = 85.dp.toPx()
             )
@@ -129,7 +129,7 @@ private fun AiImpactHero() {
             )
             Text(
                 "94.8",
-                color = Color.White,
+                color = TextPrimary,
                 fontSize = 80.sp,
                 fontWeight = FontWeight.Black,
                 letterSpacing = (-3).sp
@@ -143,7 +143,7 @@ private fun AiImpactHero() {
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Icon(Icons.AutoMirrored.Filled.TrendingUp, null, tint = StatusSuccess, modifier = Modifier.size(16.dp))
-                    Text("ELITE STATUS", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
+                    Text("ELITE STATUS", color = TextPrimary, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
                 }
             }
         }
@@ -172,7 +172,7 @@ private fun InsightPill(text: String) {
             Icon(Icons.Default.AutoAwesome, null, tint = GoldPrimary, modifier = Modifier.size(20.dp))
             Text(
                 text = text.uppercase(), 
-                color = Color.White, 
+                color = TextPrimary, 
                 fontSize = 11.sp, 
                 fontWeight = FontWeight.Bold, 
                 textAlign = TextAlign.Center,
@@ -202,7 +202,7 @@ private fun ValueAddedChart() {
                 )
             }
             Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text("+42", color = Color.White, fontSize = 32.sp, fontWeight = FontWeight.Black)
+                Text("+42", color = TextPrimary, fontSize = 32.sp, fontWeight = FontWeight.Black)
                 Text("PTS", color = GoldPrimary, fontSize = 12.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(bottom = 6.dp))
             }
         }
@@ -222,7 +222,7 @@ private fun ValueAddedChart() {
                 for (i in 0..lines) {
                     val y = i * spacing
                     drawLine(
-                        color = Color.White.copy(alpha = 0.03f),
+                        color = GlassSurface.copy(alpha = 0.5f),
                         start = Offset(0f, y),
                         end = Offset(size.width, y),
                         strokeWidth = 1.dp.toPx()
@@ -256,7 +256,7 @@ private fun ValueAddedChart() {
                                 .fillMaxHeight(animatedHeight.value)
                                 .clip(RoundedCornerShape(6.dp))
                                 .background(
-                                    if (isProjected) Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.2f), Color.Transparent))
+                                    if (isProjected) Brush.verticalGradient(listOf(TextMuted, Color.Transparent))
                                     else Brush.verticalGradient(listOf(GoldPrimary, GoldPrimary.copy(alpha = 0.2f)))
                                 )
                                 .then(
@@ -310,11 +310,11 @@ private fun DuelCard(modifier: Modifier, label: String, name: String, value: Str
         Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
             Column {
                 Text(label, color = color.copy(alpha = 0.8f), fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 1.5.sp)
-                Text(name, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(name, color = TextPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             
             Column {
-                Text(value, color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Black, letterSpacing = (-0.5).sp)
+                Text(value, color = TextPrimary, fontSize = 24.sp, fontWeight = FontWeight.Black, letterSpacing = (-0.5).sp)
                 Text(subLabel, color = TextMuted, fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
             }
             
@@ -355,7 +355,7 @@ private fun PredictiveInsightCard() {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Icon(Icons.Default.Psychology, null, tint = GoldPrimary, modifier = Modifier.size(22.dp))
-                    Text("BOUNCER PREDICTIVE ENGINE", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.5.sp)
+                    Text("BOUNCER PREDICTIVE ENGINE", color = TextPrimary, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.5.sp)
                 }
                 Box(
                     modifier = Modifier
@@ -371,7 +371,7 @@ private fun PredictiveInsightCard() {
                 Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(
                         "Strategic shift detected: Anticipating high-frequency short-pitch deliveries in the next 12 balls.", 
-                        color = Color.White, 
+                        color = TextPrimary, 
                         fontSize = 15.sp, 
                         fontWeight = FontWeight.Bold, 
                         lineHeight = 24.sp
@@ -389,12 +389,12 @@ private fun PredictiveInsightCard() {
                         .size(80.dp)
                         .clip(RoundedCornerShape(20.dp))
                         .background(Color.Black.copy(alpha = 0.5f))
-                        .border(0.5.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(20.dp)),
+                        .border(0.5.dp, GlassBorder, RoundedCornerShape(20.dp)),
                     contentAlignment = Alignment.Center
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text("RISK", color = StatusLive, fontSize = 10.sp, fontWeight = FontWeight.Black)
-                        Text("HIGH", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Black)
+                        Text("HIGH", color = TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Black)
                     }
                 }
             }

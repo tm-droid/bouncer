@@ -110,7 +110,7 @@ fun LiveScoringGraphCard(
                         Icon(
                             Icons.Default.Timeline,
                             contentDescription = null,
-                            tint = Color.White,
+                            tint = colors.textPrimary,
                             modifier = Modifier.size(24.dp),
                         )
                     }
@@ -127,7 +127,7 @@ fun LiveScoringGraphCard(
                         )
                         Text(
                             text = "Run progression by over",
-                            color = Color.White.copy(alpha = 0.7f),
+                            color = colors.textSecondary,
                             fontSize = 13.sp,
                         )
                     }
@@ -442,7 +442,7 @@ private fun LegendItem(
 
         Text(
             text = label,
-            color = Color.White,
+            color = colors.textPrimary,
             fontSize = 12.sp,
             fontWeight = FontWeight.Medium,
         )
@@ -473,7 +473,7 @@ private fun ScoringStatItem(
         )
         Text(
             text = value,
-            color = Color.White,
+            color = colors.textPrimary,
             fontSize = 18.sp,
             fontWeight = FontWeight.Bold,
         )

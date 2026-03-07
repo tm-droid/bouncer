@@ -16,6 +16,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.tanush.bouncer.ui.components.glass.GlassCard
 import com.tanush.bouncer.ui.theme.*
 
 /**
@@ -30,14 +31,18 @@ fun InsightGridCard(
     subValue: String,
     icon: ImageVector,
     progress: Float? = null,
-    accentColor: Color = GoldPrimary
+    accentColor: Color = GoldPrimary,
+    isHighPriority: Boolean = false
 ) {
-    Box(
-        modifier = modifier
-            .clip(RoundedCornerShape(20.dp))
-            .background(Color.White.copy(alpha = 0.05f))
-            .border(0.5.dp, Color.White.copy(alpha = 0.05f), RoundedCornerShape(20.dp))
-            .padding(16.dp)
+    val colors = BouncerDesignSystem.colors
+    val typography = BouncerDesignSystem.typography
+    val dimens = BouncerDesignSystem.dimens
+
+    GlassCard(
+        modifier = modifier,
+        useGoldBorder = true,
+        borderOpacity = if (isHighPriority) GlassOpacity.BORDER_HIGHLIGHT else GlassOpacity.BORDER,
+        contentPadding = PaddingValues(dimens.spacing.md)
     ) {
         Column {
             Row(
@@ -47,45 +52,41 @@ fun InsightGridCard(
             ) {
                 Text(
                     text = label.uppercase(),
-                    color = TextMuted,
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Black,
-                    letterSpacing = 1.5.sp
+                    style = typography.labelSmall,
+                    color = colors.textMuted
                 )
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
-                    tint = accentColor.copy(alpha = 0.4f),
-                    modifier = Modifier.size(14.dp)
+                    tint = accentColor.copy(alpha = 0.6f),
+                    modifier = Modifier.size(dimens.iconSize.sm)
                 )
             }
             
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(dimens.spacing.sm))
             
             Text(
                 text = value,
-                color = Color.White,
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Black
+                style = typography.scoreCompact,
+                color = colors.textPrimary
             )
             
             Text(
                 text = subValue,
-                color = TextSecondary,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Medium
+                style = typography.bodySmall,
+                color = colors.textSecondary
             )
             
             progress?.let {
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(dimens.spacing.sm))
                 LinearProgressIndicator(
                     progress = { it },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(2.dp)
-                        .clip(RoundedCornerShape(1.dp)),
+                        .height(3.dp)
+                        .clip(RoundedCornerShape(dimens.radius.xs)),
                     color = accentColor,
-                    trackColor = Color.White.copy(alpha = 0.05f)
+                    trackColor = colors.goldSubtle
                 )
             }
         }

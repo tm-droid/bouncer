@@ -74,7 +74,9 @@ import coil.request.ImageRequest
 import com.tanush.bouncer.managers.FavouriteTeamsManager
 import com.tanush.bouncer.managers.TeamAcronymManager
 import com.tanush.bouncer.managers.TeamLogoManager
+import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 import com.tanush.bouncer.ui.theme.BouncerDimens
+import com.tanush.bouncer.ui.theme.etchedText
 import kotlinx.coroutines.launch
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -128,23 +130,29 @@ fun BouncerFavouritesScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             MediumTopAppBar(
-                title = { Text("Favourite Teams") },
+                title = {
+                    Text(
+                        "Favourite Teams",
+                        modifier = Modifier.etchedText()
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back"
+                            contentDescription = "Back",
+                            tint = BouncerDesignSystem.colors.goldPrimary
                         )
                     }
                 },
                 colors = TopAppBarDefaults.mediumTopAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    scrolledContainerColor = MaterialTheme.colorScheme.surface
+                    containerColor = BouncerDesignSystem.colors.backgroundBase,
+                    scrolledContainerColor = BouncerDesignSystem.colors.backgroundElevated
                 ),
                 scrollBehavior = scrollBehavior
             )
         },
-        containerColor = MaterialTheme.colorScheme.background
+        containerColor = BouncerDesignSystem.colors.backgroundBase
     ) { innerPadding ->
 
         if (favourites.isEmpty()) {
@@ -177,8 +185,8 @@ fun BouncerFavouritesScreen(
                     ) {
                         Text(
                             text = "${favourites.size}/10 teams",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            style = BouncerDesignSystem.typography.bodyMedium,
+                            color = BouncerDesignSystem.colors.textSecondary
                         )
                         OutlinedButton(
                             onClick = { showBottomSheet = true },
@@ -251,23 +259,23 @@ private fun EmptyFavouritesView(
             imageVector = Icons.Outlined.FavoriteBorder,
             contentDescription = null,
             modifier = Modifier.size(72.dp),
-            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+            tint = BouncerDesignSystem.colors.goldPrimary.copy(alpha = 0.4f)
         )
 
         Spacer(modifier = Modifier.height(BouncerDimens.lg))
 
         Text(
             text = "No favourite teams",
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onSurface
+            style = BouncerDesignSystem.typography.headingSmall,
+            color = BouncerDesignSystem.colors.textPrimary
         )
 
         Spacer(modifier = Modifier.height(BouncerDimens.sm))
 
         Text(
             text = "Add teams you follow to see their matches first",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = BouncerDesignSystem.typography.bodyMedium,
+            color = BouncerDesignSystem.colors.textSecondary,
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(horizontal = BouncerDimens.xxxl)
         )
@@ -277,7 +285,7 @@ private fun EmptyFavouritesView(
         Button(
             onClick = onAddTeamsClick,
             colors = ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.primary
+                containerColor = BouncerDesignSystem.colors.goldPrimary
             )
         ) {
             Icon(

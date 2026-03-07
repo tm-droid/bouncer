@@ -239,7 +239,7 @@ fun MilestoneCelebrationCard(
                             )
                             Text(
                                 text = milestone.milestoneType.name.replace("_", " "),
-                                color = Color.White,
+                                color = colors.textPrimary,
                                 fontSize = 13.sp,
                             )
                         }
@@ -253,7 +253,7 @@ fun MilestoneCelebrationCard(
                                 .padding(horizontal = 10.dp, vertical = 4.dp),
                         ) {
                             Text(
-                                text = "🏆 RECORD",
+                                text = "RECORD",
                                 color = colors.statusLive,
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold,
@@ -333,7 +333,7 @@ fun MilestoneCelebrationCard(
 
                     Text(
                         text = milestone.playerName,
-                        color = Color.White,
+                        color = colors.textPrimary,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
                     )
@@ -361,7 +361,7 @@ fun MilestoneCelebrationCard(
                     ) {
                         Text(
                             text = milestone.context,
-                            color = Color.White.copy(alpha = 0.8f),
+                            color = colors.textPrimary.copy(alpha = 0.8f),
                             fontSize = 13.sp,
                         )
 

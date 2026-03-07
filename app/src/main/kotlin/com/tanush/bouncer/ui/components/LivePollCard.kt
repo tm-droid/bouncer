@@ -145,7 +145,7 @@ fun LivePollCard(
                         Icon(
                             imageVector = Icons.Filled.HowToVote,
                             contentDescription = null,
-                            tint = if (pollInfo.isActive) LiveBlue.copy(alpha = pulseAlpha) else Color.Gray,
+                            tint = if (pollInfo.isActive) LiveBlue.copy(alpha = pulseAlpha) else TextSecondary,
                             modifier = Modifier.size(24.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
@@ -153,7 +153,7 @@ fun LivePollCard(
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text(
                                     text = "LIVE POLL",
-                                    color = if (pollInfo.isActive) LiveBlue else Color.Gray,
+                                    color = if (pollInfo.isActive) LiveBlue else TextSecondary,
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.Bold,
                                     letterSpacing = 1.sp
@@ -177,13 +177,13 @@ fun LivePollCard(
                             Icon(
                                 imageVector = Icons.Filled.People,
                                 contentDescription = null,
-                                tint = Color.White.copy(alpha = 0.5f),
+                                tint = TextSecondary,
                                 modifier = Modifier.size(14.dp)
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
                                 text = formatVoteCount(pollInfo.totalVotes),
-                                color = Color.White.copy(alpha = 0.7f),
+                                color = TextSecondary,
                                 fontSize = 12.sp
                             )
                         }
@@ -202,7 +202,7 @@ fun LivePollCard(
                 // Question
                 Text(
                     text = pollInfo.question,
-                    color = Color.White,
+                    color = TextPrimary,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
                     lineHeight = 24.sp
@@ -277,7 +277,7 @@ private fun PollOptionBar(
     val containerColor = if (isUserVote) {
         option.color.copy(alpha = 0.3f)
     } else {
-        Color.White.copy(alpha = 0.05f)
+        GlassSurface
     }
     
     Surface(
@@ -327,7 +327,7 @@ private fun PollOptionBar(
                     }
                     Text(
                         text = option.text,
-                        color = Color.White,
+                        color = TextPrimary,
                         fontSize = 14.sp,
                         fontWeight = if (isUserVote) FontWeight.Bold else FontWeight.Medium
                     )
@@ -349,13 +349,13 @@ private fun PollOptionBar(
                         .padding(end = 8.dp)
                         .size(24.dp)
                         .clip(CircleShape)
-                        .background(Color.White.copy(alpha = 0.1f)),
+                        .background(GlassBorder),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = Icons.Filled.ThumbUp,
                         contentDescription = "Vote",
-                        tint = Color.White.copy(alpha = 0.5f),
+                        tint = TextSecondary,
                         modifier = Modifier.size(12.dp)
                     )
                 }

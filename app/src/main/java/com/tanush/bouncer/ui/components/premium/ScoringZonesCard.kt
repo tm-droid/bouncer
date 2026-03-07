@@ -150,7 +150,7 @@ fun ScoringZonesCard(
                         )
                         Text(
                             text = batsmanName,
-                            color = Color.White,
+                            color = colors.textPrimary,
                             fontSize = 17.sp,
                             fontWeight = FontWeight.SemiBold,
                         )
@@ -292,7 +292,7 @@ fun ScoringZonesCard(
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(
                                         text = zone.zoneName,
-                                        color = Color.White,
+                                        color = colors.textPrimary,
                                         fontSize = 12.sp,
                                         fontWeight = FontWeight.Medium,
                                     )
@@ -353,7 +353,7 @@ fun ScoringZonesCard(
                         )
                         Text(
                             text = zone.zoneName,
-                            color = Color.White,
+                            color = colors.textPrimary,
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
                         )

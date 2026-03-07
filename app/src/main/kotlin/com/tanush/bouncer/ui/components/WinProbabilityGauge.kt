@@ -153,7 +153,7 @@ fun WinProbabilityGauge(
                     )
                     
                     drawLine(
-                        color = Color.White,
+                        color = TextPrimary,
                         start = center,
                         end = needleEnd,
                         strokeWidth = 3.dp.toPx(),

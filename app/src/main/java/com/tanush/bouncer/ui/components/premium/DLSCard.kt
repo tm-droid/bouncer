@@ -163,7 +163,7 @@ fun DLSCard(
                             Icon(
                                 imageVector = Icons.Default.WaterDrop,
                                 contentDescription = null,
-                                tint = Color.White,
+                                tint = colors.textPrimary,
                                 modifier = Modifier.size(24.dp),
                             )
                         }
@@ -180,7 +180,7 @@ fun DLSCard(
                             )
                             Text(
                                 text = "Revised Target",
-                                color = Color.White,
+                                color = colors.textPrimary,
                                 fontSize = 16.sp,
                                 fontWeight = FontWeight.Bold,
                             )
@@ -197,7 +197,7 @@ fun DLSCard(
                         )
                         Text(
                             text = "from ${dlsInfo.originalTarget}",
-                            color = Color.White.copy(alpha = 0.5f),
+                            color = colors.textSecondary,
                             fontSize = 10.sp,
                         )
                     }
@@ -242,13 +242,13 @@ fun DLSCard(
                         Row(verticalAlignment = Alignment.Bottom) {
                             Text(
                                 text = "${dlsInfo.par1Score}",
-                                color = Color.White,
+                                color = colors.textPrimary,
                                 fontSize = 24.sp,
                                 fontWeight = FontWeight.Bold,
                             )
                             Text(
                                 text = " / ${dlsInfo.par2Score}",
-                                color = Color.White.copy(alpha = 0.5f),
+                                color = colors.textSecondary,
                                 fontSize = 14.sp,
                             )
                         }
@@ -264,7 +264,7 @@ fun DLSCard(
                         )
                         Text(
                             text = "by ${kotlin.math.abs(currentScore - dlsInfo.par1Score)} runs",
-                            color = Color.White.copy(alpha = 0.7f),
+                            color = colors.textSecondary,
                             fontSize = 11.sp,
                         )
                     }
@@ -279,7 +279,7 @@ fun DLSCard(
                         )
                         Text(
                             text = "$currentOvers overs",
-                            color = Color.White.copy(alpha = 0.5f),
+                            color = colors.textSecondary,
                             fontSize = 11.sp,
                         )
                     }
@@ -290,7 +290,7 @@ fun DLSCard(
                 // Resources remaining
                 Text(
                     text = "RESOURCES",
-                    color = Color.White.copy(alpha = 0.5f),
+                    color = colors.textSecondary,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 1.sp,
@@ -303,7 +303,7 @@ fun DLSCard(
                         .fillMaxWidth()
                         .height(20.dp)
                         .clip(RoundedCornerShape(10.dp))
-                        .background(Color.White.copy(alpha = 0.1f)),
+                        .background(colors.glassBorder),
                 ) {
                     Box(
                         modifier = Modifier
@@ -327,14 +327,14 @@ fun DLSCard(
                     ) {
                         Text(
                             text = "${(dlsInfo.resourcesRemaining * 100).toInt()}% remaining",
-                            color = Color.White,
+                            color = colors.textPrimary,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
                         )
 
                         Text(
                             text = "${((1 - dlsInfo.resourcesRemaining) * 100).toInt()}% used",
-                            color = Color.White.copy(alpha = 0.6f),
+                            color = colors.textSecondary,
                             fontSize = 10.sp,
                         )
                     }
@@ -347,7 +347,7 @@ fun DLSCard(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(12.dp))
-                        .background(Color.White.copy(alpha = 0.05f))
+                        .background(colors.glassSurface)
                         .padding(12.dp),
                     horizontalArrangement = Arrangement.SpaceEvenly,
                 ) {
@@ -388,7 +388,7 @@ fun DLSCard(
                     )
                     Text(
                         text = "$chaseTeam need $runsNeeded runs from ${dlsInfo.originalOvers - dlsInfo.oversReduced - currentOvers} overs",
-                        color = Color.White,
+                        color = colors.textPrimary,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Medium,
                     )
@@ -414,7 +414,7 @@ private fun DLSStatItem(
         )
         Text(
             text = label,
-            color = Color.White.copy(alpha = 0.5f),
+            color = colors.textSecondary,
             fontSize = 10.sp,
         )
     }

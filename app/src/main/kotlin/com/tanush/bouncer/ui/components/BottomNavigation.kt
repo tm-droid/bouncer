@@ -77,8 +77,8 @@ fun PremiumBottomNavigation(
                 .background(
                     Brush.verticalGradient(
                         colors = listOf(
-                            Color.White.copy(alpha = 0.08f).copy(alpha = 0.95f),
-                            Color.White.copy(alpha = 0.05f).copy(alpha = 0.98f)
+                            GlassSurface.copy(alpha = 0.95f),
+                            GlassSurface.copy(alpha = 0.98f)
                         )
                     )
                 )
@@ -337,7 +337,7 @@ fun SpeedDialFAB(
                 ) {
                     // Label
                     Surface(
-                        color = Color.White.copy(alpha = 0.05f),
+                        color = GlassSurface,
                         shape = RoundedCornerShape(8.dp),
                         shadowElevation = 4.dp
                     ) {

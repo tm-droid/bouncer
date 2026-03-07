@@ -199,7 +199,7 @@ fun RunChaseComparisonCard(
                 ChaseStatColumn(
                     value = String.format("%.1f", oversRemaining),
                     label = "Overs Left",
-                    color = Color.White,
+                    color = colors.textPrimary,
                 )
 
                 Box(
@@ -384,7 +384,7 @@ fun RunChaseComparisonCard(
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
                         text = "${chaseData.team1Name} (${chaseData.team1Final})",
-                        color = Color.White,
+                        color = colors.textPrimary,
                         fontSize = 12.sp,
                     )
                 }
@@ -399,7 +399,7 @@ fun RunChaseComparisonCard(
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
                         text = "${chaseData.team2Name} ($currentTeam2Runs*)",
-                        color = Color.White,
+                        color = colors.textPrimary,
                         fontSize = 12.sp,
                     )
                 }

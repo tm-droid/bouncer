@@ -201,6 +201,7 @@ fun AnalystFeedScreen(
 
 @Composable
 private fun AnalystFeedSkeleton() {
+    val colors = BouncerDesignSystem.colors
     val dimens = BouncerDesignSystem.dimens
     Column(
         modifier = Modifier
@@ -210,30 +211,30 @@ private fun AnalystFeedSkeleton() {
     ) {
         // Header skeleton
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(modifier = Modifier.size(40.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.05f)).shimmerEffect())
+            Box(modifier = Modifier.size(40.dp).clip(CircleShape).background(colors.glassSurface).shimmerEffect())
             Spacer(modifier = Modifier.width(dimens.md))
-            Box(modifier = Modifier.weight(1f).height(24.dp).clip(RoundedCornerShape(dimens.radius.xs)).background(Color.White.copy(alpha = 0.05f)).shimmerEffect())
+            Box(modifier = Modifier.weight(1f).height(24.dp).clip(RoundedCornerShape(dimens.radius.xs)).background(colors.glassSurface).shimmerEffect())
         }
         
         // Chips skeleton
         Row(horizontalArrangement = Arrangement.spacedBy(dimens.sm)) {
             repeat(4) {
-                Box(modifier = Modifier.width(60.dp).height(32.dp).clip(RoundedCornerShape(16.dp)).background(Color.White.copy(alpha = 0.05f)).shimmerEffect())
+                Box(modifier = Modifier.width(60.dp).height(32.dp).clip(RoundedCornerShape(16.dp)).background(colors.glassSurface).shimmerEffect())
             }
         }
 
         // Section header
-        Box(modifier = Modifier.width(180.dp).height(20.dp).clip(RoundedCornerShape(dimens.radius.xs)).background(Color.White.copy(alpha = 0.05f)).shimmerEffect())
+        Box(modifier = Modifier.width(180.dp).height(20.dp).clip(RoundedCornerShape(dimens.radius.xs)).background(colors.glassSurface).shimmerEffect())
         
         // Large card skeleton
-        Box(modifier = Modifier.fillMaxWidth().height(260.dp).clip(RoundedCornerShape(dimens.radius.xl)).background(Color.White.copy(alpha = 0.05f)).shimmerEffect())
+        Box(modifier = Modifier.fillMaxWidth().height(260.dp).clip(RoundedCornerShape(dimens.radius.xl)).background(colors.glassSurface).shimmerEffect())
         
         // Another section header
-        Box(modifier = Modifier.width(150.dp).height(20.dp).clip(RoundedCornerShape(dimens.radius.xs)).background(Color.White.copy(alpha = 0.05f)).shimmerEffect())
+        Box(modifier = Modifier.width(150.dp).height(20.dp).clip(RoundedCornerShape(dimens.radius.xs)).background(colors.glassSurface).shimmerEffect())
         
         // Small cards
         repeat(2) {
-            Box(modifier = Modifier.fillMaxWidth().height(100.dp).clip(RoundedCornerShape(dimens.radius.lg)).background(Color.White.copy(alpha = 0.05f)).shimmerEffect())
+            Box(modifier = Modifier.fillMaxWidth().height(100.dp).clip(RoundedCornerShape(dimens.radius.lg)).background(colors.glassSurface).shimmerEffect())
         }
     }
 }

@@ -66,7 +66,7 @@ fun PremiumWinProbabilityHero(
             .border(
                 0.5.dp,
                 Brush.linearGradient(
-                    colors = listOf(GoldHairline, Color.White.copy(alpha = 0.05f), GoldHairline.copy(alpha = 0.2f))
+                    colors = listOf(GoldHairline, GlassSurface, GoldHairline.copy(alpha = 0.2f))
                 ),
                 RoundedCornerShape(28.dp)
             )
@@ -172,7 +172,7 @@ fun PremiumWinProbabilityHero(
                 ) {
                     Text(
                         text = "${(animatedProb * 100).toInt()}%",
-                        color = Color.White,
+                        color = TextPrimary,
                         fontSize = 48.sp,
                         fontWeight = FontWeight.Black,
                         letterSpacing = (-1).sp

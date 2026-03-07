@@ -5,8 +5,10 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -17,6 +19,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
@@ -32,6 +35,10 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.text.font.FontWeight
@@ -61,6 +68,10 @@ private data class OverData(
 ) {
     val totalRuns: Int get() = balls.sumOf { it.runs() }
     val wickets: Int get() = balls.count { it == BallEvent.WICKET }
+    val boundaries: Int get() = balls.count { it == BallEvent.FOUR || it == BallEvent.SIX }
+    val legalBalls: Int get() = balls.count { it != BallEvent.WIDE && it != BallEvent.NO_BALL }
+    val runRate: Float get() = if (legalBalls > 0) (totalRuns.toFloat() / legalBalls) * 6f else 0f
+    val isKeyOver: Boolean get() = wickets > 0 || boundaries >= 2
 }
 
 /**
@@ -103,13 +114,34 @@ fun OversTimelineTab(
             horizontal = BouncerDesignSystem.dimens.screenHorizontal,
             vertical = BouncerDesignSystem.dimens.md
         ),
-        verticalArrangement = Arrangement.spacedBy(BouncerDesignSystem.dimens.cardSpacing)
+        verticalArrangement = Arrangement.spacedBy(0.dp)
     ) {
         itemsIndexed(
             items = overs,
             key = { _, over -> over.overNumber }
         ) { index, over ->
             val isLatest = index == 0
+            val isLast = index == overs.lastIndex
+
+            // Timeline connector line above this card (except first)
+            if (index > 0) {
+                Box(
+                    modifier = Modifier
+                        .padding(start = 12.dp)
+                        .width(2.dp)
+                        .height(BouncerDesignSystem.dimens.cardSpacing)
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(
+                                    BouncerDesignSystem.colors.goldPrimary.copy(alpha = 0.25f),
+                                    BouncerDesignSystem.colors.goldPrimary.copy(alpha = 0.10f)
+                                )
+                            ),
+                            shape = RoundedCornerShape(1.dp)
+                        )
+                )
+            }
+
             OverCard(
                 over = over,
                 initiallyExpanded = isLatest
@@ -133,11 +165,30 @@ private fun OverCard(
     val dimens = BouncerDesignSystem.dimens
 
     val hasWicket = over.wickets > 0
+    val hasBoundaries = over.boundaries >= 2
 
     GlassCard(
-        modifier = Modifier.fillMaxWidth(),
-        useGoldBorder = hasWicket,
-        borderOpacity = if (hasWicket) 0.18f else 0.08f
+        modifier = Modifier
+            .fillMaxWidth()
+            .drawBehind {
+                // Left accent border — gold for wickets, blue for boundary-heavy
+                val accentColor = when {
+                    hasWicket -> colors.ballWicket.copy(alpha = 0.5f)
+                    hasBoundaries -> colors.ballBoundary.copy(alpha = 0.4f)
+                    else -> colors.goldPrimary.copy(alpha = 0.3f)
+                }
+                drawRect(
+                    color = accentColor,
+                    topLeft = Offset.Zero,
+                    size = Size(2.dp.toPx(), size.height)
+                )
+            },
+        useGoldBorder = hasWicket || hasBoundaries,
+        borderOpacity = when {
+            hasWicket -> 0.22f
+            hasBoundaries -> 0.14f
+            else -> 0.08f
+        }
     ) {
         Column {
             // ── Header row (always visible, toggles expansion) ──────────
@@ -151,7 +202,11 @@ private fun OverCard(
                 Text(
                     text = "Over ${over.overNumber}",
                     style = typography.labelMedium,
-                    color = if (hasWicket) colors.goldPrimary else colors.textPrimary,
+                    color = when {
+                        hasWicket -> colors.ballWicket
+                        hasBoundaries -> colors.ballBoundary
+                        else -> colors.textPrimary
+                    },
                     fontWeight = FontWeight.Bold
                 )
 
@@ -297,6 +352,19 @@ private fun OverRunsSummary(over: OverData) {
                     fontWeight = FontWeight.Bold
                 )
             }
+            // Run rate indicator
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(
+                text = "·",
+                style = typography.labelSmall,
+                color = colors.textMuted
+            )
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(
+                text = "RR %.1f".format(over.runRate),
+                style = typography.labelSmall,
+                color = if (over.runRate >= 10f) colors.goldPrimary else colors.textSecondary
+            )
         }
     }
 }

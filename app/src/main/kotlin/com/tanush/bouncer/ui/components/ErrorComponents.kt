@@ -223,7 +223,7 @@ fun RetryingOverlay(
                         onCancel()
                     },
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.Gray.copy(alpha = 0.3f)
+                        containerColor = GlassSurface
                     ),
                     shape = RoundedCornerShape(10.dp)
                 ) {

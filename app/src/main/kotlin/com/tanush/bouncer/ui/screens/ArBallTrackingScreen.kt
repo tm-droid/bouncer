@@ -35,7 +35,7 @@ fun ArBallTrackingScreen(
         label = "pulse"
     )
 
-    Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
+    Box(modifier = Modifier.fillMaxSize().background(BackgroundBase)) {
         // 1. Simulated Camera Feed
         CoilImage(
             model = "https://images.unsplash.com/photo-1531415074968-036ba1b575da?q=80&w=1200",
@@ -173,7 +173,7 @@ private fun EliteArHeader(onBackClick: () -> Unit) {
             .height(56.dp),
         shape = RoundedCornerShape(28.dp),
         color = Color.Black.copy(alpha = 0.6f),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.1f))
+        border = BorderStroke(1.dp, GlassBorder)
     ) {
         Row(
             modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
@@ -185,8 +185,8 @@ private fun EliteArHeader(onBackClick: () -> Unit) {
                     Icon(Icons.Default.EmergencyRecording, null, tint = colors.goldPrimary, modifier = Modifier.size(18.dp))
                 }
                 Column {
-                    Text("IND vs AUS", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                    Text("LIVE FEED • 4K", color = Color.White.copy(alpha = 0.6f), fontSize = 9.sp, fontWeight = FontWeight.Black)
+                    Text("IND vs AUS", color = colors.textPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                    Text("LIVE FEED • 4K", color = colors.textSecondary, fontSize = 9.sp, fontWeight = FontWeight.Black)
                 }
             }
             
@@ -204,7 +204,7 @@ private fun ArSpeedHeadline() {
         Box(contentAlignment = Alignment.Center) {
             Text(
                 "145.2", 
-                color = Color.White.copy(alpha = 0.2f), 
+                color = colors.textMuted, 
                 fontSize = 72.sp, 
                 fontWeight = FontWeight.Black,
                 modifier = Modifier.offset(x = 4.dp, y = 4.dp)
@@ -217,7 +217,7 @@ private fun ArSpeedHeadline() {
                 modifier = Modifier.shadow(20.dp, spotColor = colors.goldPrimary)
             )
         }
-        Text("KPH", color = Color.White.copy(alpha = 0.8f), fontSize = 24.sp, fontWeight = FontWeight.Bold)
+        Text("KPH", color = colors.textPrimary, fontSize = 24.sp, fontWeight = FontWeight.Bold)
         
         Spacer(modifier = Modifier.height(12.dp))
         Surface(color = Color.Black.copy(alpha = 0.4f), border = BorderStroke(1.dp, ChartCyan.copy(alpha = 0.2f)), shape = RoundedCornerShape(4.dp)) {
@@ -245,7 +245,7 @@ private fun ArBottomSection() {
             modifier = Modifier.fillMaxWidth().height(80.dp),
             shape = RoundedCornerShape(24.dp),
             color = Color.Black.copy(alpha = 0.6f),
-            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.1f))
+            border = BorderStroke(1.dp, GlassBorder)
         ) {
             Row(
                 modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp),
@@ -253,7 +253,7 @@ private fun ArBottomSection() {
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 IconButton(onClick = {}) {
-                    Icon(Icons.Default.PhotoLibrary, null, tint = Color.White.copy(alpha = 0.6f))
+                    Icon(Icons.Default.PhotoLibrary, null, tint = colors.textSecondary)
                 }
                 
                 // Record FAB
@@ -284,16 +284,16 @@ private fun ArWidget(label: String, value: String, icon: androidx.compose.ui.gra
         modifier = Modifier.width(130.dp).height(100.dp),
         shape = RoundedCornerShape(16.dp),
         color = Color.Black.copy(alpha = 0.6f),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.05f))
+        border = BorderStroke(1.dp, GlassSurface)
     ) {
         Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.SpaceBetween) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(label.uppercase(), color = Color.White.copy(alpha = 0.6f), fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                Text(label.uppercase(), color = TextSecondary, fontSize = 9.sp, fontWeight = FontWeight.Bold)
                 Icon(icon, null, tint = color, modifier = Modifier.size(14.dp))
             }
             Column {
-                Text(value, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Black)
-                Text(if (label.contains("Spin")) "RPM" else "Length", color = Color.White.copy(alpha = 0.4f), fontSize = 9.sp)
+                Text(value, color = TextPrimary, fontSize = 16.sp, fontWeight = FontWeight.Black)
+                Text(if (label.contains("Spin")) "RPM" else "Length", color = TextTertiary, fontSize = 9.sp)
             }
         }
     }

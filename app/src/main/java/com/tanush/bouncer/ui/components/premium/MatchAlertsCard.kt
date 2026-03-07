@@ -263,7 +263,7 @@ private fun AlertItem(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = alert.title,
-                        color = Color.White,
+                        color = colors.textPrimary,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Medium,
                     )

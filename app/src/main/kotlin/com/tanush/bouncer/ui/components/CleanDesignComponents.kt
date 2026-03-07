@@ -81,7 +81,7 @@ fun HeroLiveMatchCard(
                 spotColor = colors.goldPrimary.copy(alpha = 0.15f)
             ),
         shape = RoundedCornerShape(24.dp),
-        color = Color.White.copy(alpha = 0.05f),
+        color = GlassSurface,
         border = BorderStroke(0.5.dp, colors.goldPrimary.copy(alpha = 0.12f)),
         onClick = onClick
     ) {
@@ -186,7 +186,7 @@ fun HeroLiveMatchCard(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(12.dp))
-                        .background(Color.White.copy(alpha = 0.03f))
+                        .background(GlassSurface)
                         .padding(12.dp)
                 ) {
                     Text(
@@ -218,10 +218,10 @@ private fun TeamScoreDisplay(
             modifier = Modifier
                 .size(56.dp)
                 .clip(CircleShape)
-                .background(Color.White.copy(alpha = 0.08f))
+                .background(GlassSurface)
                 .border(
                     width = if (team?.isBatting == true) 2.dp else 0.5.dp,
-                    color = if (team?.isBatting == true) colors.goldPrimary else Color.White.copy(alpha = 0.1f),
+                    color = if (team?.isBatting == true) colors.goldPrimary else GlassBorder,
                     shape = CircleShape
                 ),
             contentAlignment = Alignment.Center
@@ -238,7 +238,7 @@ private fun TeamScoreDisplay(
         // Team Name
         Text(
             text = team?.acronym ?: "TBD",
-            color = Color.White,
+            color = TextPrimary,
             fontSize = 16.sp,
             fontWeight = FontWeight.Bold
         )
@@ -296,7 +296,7 @@ fun MatchCarouselCard(
                 spotColor = Color.Black
             ),
         shape = RoundedCornerShape(20.dp),
-        color = Color.White.copy(alpha = 0.05f),
+        color = GlassSurface,
         border = BorderStroke(0.5.dp, colors.goldPrimary.copy(alpha = 0.12f)),
         onClick = onClick
     ) {
@@ -346,10 +346,10 @@ fun MatchCarouselCard(
                                 modifier = Modifier
                                     .size(32.dp)
                                     .clip(CircleShape)
-                                    .background(Color.White.copy(alpha = 0.08f))
+                                    .background(GlassSurface)
                                     .border(
                                         if (team.isBatting) 1.5.dp else 0.5.dp,
-                                        if (team.isBatting) colors.goldPrimary else Color.White.copy(alpha = 0.08f),
+                                        if (team.isBatting) colors.goldPrimary else GlassSurface,
                                         CircleShape
                                     ),
                                 contentAlignment = Alignment.Center
@@ -363,7 +363,7 @@ fun MatchCarouselCard(
                             
                             Text(
                                 text = team.acronym,
-                                color = Color.White,
+                                color = TextPrimary,
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.SemiBold
                             )
@@ -403,7 +403,7 @@ fun PremiumMatchListCard(
             .fillMaxWidth()
             .padding(horizontal = Spacing.screenHorizontal, vertical = 6.dp),
         shape = RoundedCornerShape(CornerRadius.lg),
-        color = Color.White.copy(alpha = 0.05f),
+        color = GlassSurface,
         onClick = onClick
     ) {
         Row(modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
@@ -685,15 +685,15 @@ fun StatusFilterChip(
                 } else {
                     Brush.linearGradient(
                         colors = listOf(
-                            Color.Gray.copy(alpha = 0.18f),
-                            Color.Gray.copy(alpha = 0.18f)
+                            GlassSurface,
+                            GlassSurface
                         )
                     )
                 }
             )
             .border(
                 1.dp,
-                if (isSelected) Color.White.copy(alpha = 0.3f) else Color.White.copy(alpha = 0.08f),
+                if (isSelected) TextMuted else GlassSurface,
                 RoundedCornerShape(20.dp)
             )
             .clickable {
@@ -705,7 +705,7 @@ fun StatusFilterChip(
     ) {
         Text(
             text = text,
-            color = if (isSelected) Color.White else Color.Gray,
+            color = if (isSelected) TextPrimary else TextSecondary,
             fontSize = 14.sp,
             fontWeight = FontWeight.Bold
         )
@@ -733,7 +733,7 @@ fun MarketInsightCard(
     Surface(
         modifier = modifier.height(100.dp),
         shape = RoundedCornerShape(16.dp),
-        color = Color.White.copy(alpha = 0.05f),
+        color = GlassSurface,
         border = BorderStroke(0.5.dp, colors.goldPrimary.copy(alpha = 0.12f))
     ) {
         Column(
@@ -777,7 +777,7 @@ fun MarketInsightCard(
                 )
                 Text(
                     text = value,
-                    color = Color.White,
+                    color = TextPrimary,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold
                 )

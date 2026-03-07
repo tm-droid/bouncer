@@ -33,11 +33,11 @@ fun PitchEnvironmentCard(
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(20.dp))
-            .background(Color.White.copy(alpha = 0.05f))
-            .border(0.5.dp, Color.White.copy(alpha = 0.05f), RoundedCornerShape(20.dp))
-            .padding(16.dp)
+            .background(GlassSurface)
+            .border(0.5.dp, GlassBorder, RoundedCornerShape(20.dp))
+            .padding(Spacing.md)
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(Spacing.md)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -53,13 +53,13 @@ fun PitchEnvironmentCard(
                 Icon(
                     Icons.Default.Landscape,
                     null,
-                    tint = Color.White.copy(alpha = 0.2f),
-                    modifier = Modifier.size(16.dp)
+                    tint = TextMuted,
+                    modifier = Modifier.size(IconSize.xs)
                 )
             }
 
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                EnvRow("Humidity", humidity, Color.White)
+                EnvRow("Humidity", humidity, TextPrimary)
                 EnvRow("Fatigue", fatigue, StatusSuccess)
                 EnvRow("Dew Factor", dew, StatusLive)
             }

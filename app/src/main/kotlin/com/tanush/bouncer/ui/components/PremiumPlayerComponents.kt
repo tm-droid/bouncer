@@ -209,7 +209,7 @@ fun PlayerAvatar(
                 .clip(CircleShape)
                 .background(
                     if (isOut) 
-                        Color.Gray.copy(alpha = 0.3f) 
+                        GlassSurface 
                     else 
                         colors.glassSurface
                 )

@@ -266,14 +266,14 @@ private fun AchievementRow(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = achievement.playerName,
-                    color = Color.White,
+                    color = colors.textPrimary,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
                 )
 
                 Text(
                     text = achievement.teamName,
-                    color = Color.White.copy(alpha = 0.5f),
+                    color = colors.textPrimary.copy(alpha = 0.5f),
                     fontSize = 11.sp,
                 )
 

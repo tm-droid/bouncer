@@ -44,6 +44,10 @@ import com.tanush.bouncer.ui.components.MatchCard
 import com.tanush.bouncer.ui.components.MatchListSkeleton
 import com.tanush.bouncer.ui.components.glass.*
 import com.tanush.bouncer.ui.theme.BouncerDesignSystem
+import com.tanush.bouncer.ui.theme.GlassSurface
+import com.tanush.bouncer.ui.theme.NeonError
+import com.tanush.bouncer.ui.theme.StatusLive
+import com.tanush.bouncer.ui.theme.TextPrimary
 import com.tanush.bouncer.ui.theme.staggeredFadeIn
 import com.tanush.bouncer.viewmodels.LiveActivityViewModel
 import com.tanush.bouncer.viewmodels.LoadingState
@@ -594,7 +598,7 @@ private fun CarouselTeamRow(team: CricketMatch.Team?) {
                 modifier = Modifier
                     .size(28.dp)
                     .clip(CircleShape)
-                    .background(Color.White.copy(alpha = 0.08f))
+                    .background(GlassSurface)
                     .border(
                         if (team?.isBatting == true) 1.5.dp else 0.5.dp,
                         if (team?.isBatting == true) colors.goldPrimary else colors.glassBorder,
@@ -736,7 +740,7 @@ private fun MatchSectionHeader(
                     letterSpacing = (-0.3).sp,
                     brush = Brush.linearGradient(
                         listOf(
-                            Color.White,
+                            TextPrimary,
                             colors.goldPrimary,
                             colors.goldDark
                         )
@@ -747,7 +751,7 @@ private fun MatchSectionHeader(
             if (count > 0) {
                 Surface(
                     shape = RoundedCornerShape(50.dp),
-                    color = if (showLiveDot) colors.statusLive.copy(alpha = 0.10f) else Color.White.copy(alpha = 0.08f)
+                    color = if (showLiveDot) colors.statusLive.copy(alpha = 0.10f) else GlassSurface
                 ) {
                     Text(
                         text = "$count",
@@ -868,16 +872,16 @@ private fun ErrorMatchState(
             modifier = Modifier
                 .size(80.dp)
                 .background(
-                    Color(0x1AFF4444),
+                    StatusLive.copy(alpha = 0.10f),
                     CircleShape
                 )
-                .border(1.dp, Color(0x33FF4444), CircleShape),
+                .border(1.dp, StatusLive.copy(alpha = 0.20f), CircleShape),
             contentAlignment = Alignment.Center
         ) {
             Icon(
                 imageVector = Icons.Outlined.WifiOff,
                 contentDescription = "Error",
-                tint = Color(0xFFFF6B6B).copy(alpha = iconAlpha),
+                tint = NeonError.copy(alpha = iconAlpha),
                 modifier = Modifier.size(40.dp)
             )
         }

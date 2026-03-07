@@ -106,7 +106,7 @@ fun OverByOverComparisonCard(
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = "Over-by-Over Comparison",
-                        color = Color.White,
+                        color = TextPrimary,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -116,7 +116,7 @@ fun OverByOverComparisonCard(
                 val advantageColor = when {
                     advantage > 0 -> comparisonInfo.team1Color
                     advantage < 0 -> comparisonInfo.team2Color
-                    else -> Color.Gray
+                    else -> TextSecondary
                 }
                 
                 Surface(
@@ -176,7 +176,7 @@ fun OverByOverComparisonCard(
                     for (i in 0..gridLines) {
                         val y = padding + (graphHeight - 2 * padding) * i / gridLines
                         drawLine(
-                            color = Color.White.copy(alpha = 0.1f),
+                            color = GlassBorder,
                             start = Offset(padding, y),
                             end = Offset(graphWidth - padding, y),
                             strokeWidth = 1f
@@ -306,17 +306,17 @@ fun OverByOverComparisonCard(
             ) {
                 Text(
                     text = "0",
-                    color = Color.White.copy(alpha = 0.5f),
+                    color = TextSecondary,
                     fontSize = 10.sp
                 )
                 Text(
                     text = "${comparisonInfo.maxOvers / 2}",
-                    color = Color.White.copy(alpha = 0.5f),
+                    color = TextSecondary,
                     fontSize = 10.sp
                 )
                 Text(
                     text = "${comparisonInfo.maxOvers} overs",
-                    color = Color.White.copy(alpha = 0.5f),
+                    color = TextSecondary,
                     fontSize = 10.sp
                 )
             }
@@ -349,7 +349,7 @@ private fun TeamLegend(
             Spacer(modifier = Modifier.width(6.dp))
             Text(
                 text = teamName,
-                color = Color.White,
+                color = TextPrimary,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Medium
             )
@@ -383,7 +383,7 @@ private fun PhaseComparisonRow(comparisonInfo: OverByOverComparisonInfo) {
     Column {
         Text(
             text = "PHASE COMPARISON",
-            color = Color.White.copy(alpha = 0.5f),
+            color = TextSecondary,
             fontSize = 10.sp,
             letterSpacing = 1.sp
         )
@@ -433,7 +433,7 @@ private fun PhaseBox(
     val winner = when {
         team1Score > team2Score -> team1Color
         team2Score > team1Score -> team2Color
-        else -> Color.Gray
+        else -> TextSecondary
     }
     
     Surface(
@@ -446,13 +446,13 @@ private fun PhaseBox(
         ) {
             Text(
                 text = phase,
-                color = Color.White,
+                color = TextPrimary,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Medium
             )
             Text(
                 text = "($overs)",
-                color = Color.White.copy(alpha = 0.5f),
+                color = TextSecondary,
                 fontSize = 9.sp
             )
             Spacer(modifier = Modifier.height(8.dp))
@@ -465,7 +465,7 @@ private fun PhaseBox(
                 )
                 Text(
                     text = " - ",
-                    color = Color.White.copy(alpha = 0.5f),
+                    color = TextSecondary,
                     fontSize = 14.sp
                 )
                 Text(

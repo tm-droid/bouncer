@@ -36,12 +36,12 @@ data class BouncerShapes(
     val xxl: Shape = RoundedCornerShape(24.dp),
     
     // Glass Card Shapes
-    /** 16dp corners — Standard glass card */
-    val glassCard: Shape = RoundedCornerShape(16.dp),
-    /** 20dp corners — Hero glass card */
-    val glassCardHero: Shape = RoundedCornerShape(20.dp),
-    /** 12dp corners — Compact glass card */
-    val glassCardCompact: Shape = RoundedCornerShape(12.dp),
+    /** 20dp corners — Standard glass card */
+    val glassCard: Shape = RoundedCornerShape(20.dp),
+    /** 28dp corners — Hero glass card */
+    val glassCardHero: Shape = RoundedCornerShape(28.dp),
+    /** 14dp corners — Compact glass card */
+    val glassCardCompact: Shape = RoundedCornerShape(14.dp),
     
     // Chip Shapes
     /** 20dp corners — Standard chip (pill-like) */
@@ -214,7 +214,7 @@ val TabIndicatorShape = RoundedCornerShape(3.dp)
 val HeroCardShape = RoundedCornerShape(20.dp)
 
 /** Glassmorphic card surfaces. */
-val GlassCardShape = RoundedCornerShape(16.dp)
+val GlassCardShape = RoundedCornerShape(20.dp)
 
 /** Current player strip / small info cards. */
 val StatusCardShape = RoundedCornerShape(14.dp)

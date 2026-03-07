@@ -67,10 +67,10 @@ fun WagonWheelCard(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(24.dp))
-            .background(Color.White.copy(alpha = 0.08f).copy(alpha = 0.8f))
+            .background(GlassSurface)
             .border(
                 0.5.dp,
-                Brush.linearGradient(listOf(GoldHairline, Color.White.copy(alpha = 0.05f))),
+                Brush.linearGradient(listOf(GoldHairline, GlassSurface)),
                 RoundedCornerShape(24.dp)
             )
     ) {
@@ -94,7 +94,7 @@ fun WagonWheelCard(
                     )
                     Text(
                         text = playerName.uppercase(),
-                        color = Color.White,
+                        color = TextPrimary,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Black,
                         letterSpacing = (-0.5).sp
@@ -104,7 +104,7 @@ fun WagonWheelCard(
                 Column(horizontalAlignment = Alignment.End) {
                     Text(
                         text = "$totalRuns",
-                        color = Color.White,
+                        color = TextPrimary,
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Black
                     )
@@ -226,12 +226,12 @@ fun WagonWheelCard(
                     modifier = Modifier
                         .size(64.dp)
                         .clip(CircleShape)
-                        .background(Color.White.copy(alpha = 0.05f))
-                        .border(0.5.dp, Color.White.copy(alpha = 0.1f), CircleShape),
+                        .background(GlassSurface)
+                        .border(0.5.dp, GlassBorder, CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(text = shots.size.toString(), color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Black)
+                        Text(text = shots.size.toString(), color = TextPrimary, fontSize = 22.sp, fontWeight = FontWeight.Black)
                         Text(text = "SHOTS", color = TextMuted, fontSize = 8.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
                     }
                 }
@@ -247,7 +247,7 @@ fun WagonWheelCard(
                 TechLegendItem(SixerPurple, "SIXES")
                 TechLegendItem(BoundaryFour, "FOURS")
                 TechLegendItem(SuccessGreen, "RUNS")
-                TechLegendItem(Color.White.copy(alpha = 0.3f), "DOTS")
+                TechLegendItem(TextMuted, "DOTS")
             }
             
             Spacer(modifier = Modifier.height(24.dp))
@@ -277,9 +277,9 @@ private fun RegionalSummaryRow(runsByRegion: Map<ShotRegion, Int>) {
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         RegionalStat("OFF SIDE", listOf(ShotRegion.POINT, ShotRegion.COVER, ShotRegion.MID_OFF), runsByRegion)
-        VerticalDivider(modifier = Modifier.height(24.dp).alpha(0.1f), color = Color.White)
+        VerticalDivider(modifier = Modifier.height(24.dp).alpha(0.1f), color = GlassBorder)
         RegionalStat("LEG SIDE", listOf(ShotRegion.MID_ON, ShotRegion.MID_WICKET, ShotRegion.SQUARE_LEG), runsByRegion)
-        VerticalDivider(modifier = Modifier.height(24.dp).alpha(0.1f), color = Color.White)
+        VerticalDivider(modifier = Modifier.height(24.dp).alpha(0.1f), color = GlassBorder)
         RegionalStat("BEHIND", listOf(ShotRegion.FINE_LEG, ShotRegion.BACKWARD_SQUARE_LEG), runsByRegion)
     }
 }
@@ -289,6 +289,6 @@ private fun RegionalStat(label: String, regions: List<ShotRegion>, runsByRegion:
     val total = regions.sumOf { runsByRegion[it] ?: 0 }
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(label, color = TextMuted, fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 1.5.sp)
-        Text(total.toString(), color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Black)
+        Text(total.toString(), color = TextPrimary, fontSize = 18.sp, fontWeight = FontWeight.Black)
     }
 }

@@ -109,7 +109,9 @@ fun PlayerAvatar(
                 }
             )
             .clip(CircleShape)
-            .background(Color.Black.copy(alpha = 0.2f))
+            .background(
+                teamColor?.copy(alpha = 0.15f) ?: Color.White.copy(alpha = 0.06f)
+            )
             .then(
                 if (showBorder) {
                     Modifier.border(borderWidth, borderColor, CircleShape)
@@ -153,7 +155,8 @@ fun PlayerAvatar(
             Text(
                 text = initials,
                 style = BouncerDesignSystem.typography.labelMedium,
-                color = if (isDismissed) colors.textMuted else colors.textSecondary,
+                color = if (isDismissed) colors.textMuted 
+                       else teamColor?.copy(alpha = 0.9f) ?: colors.textSecondary,
                 fontWeight = FontWeight.Bold
             )
         }

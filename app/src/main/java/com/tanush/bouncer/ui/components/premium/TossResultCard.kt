@@ -7,6 +7,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Autorenew
+import androidx.compose.material.icons.filled.GpsFixed
+import androidx.compose.material.icons.filled.Sports
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -102,9 +104,11 @@ fun TossResultCard(
                         .background(winnerColor.copy(alpha = 0.1f)),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = if (tossDetails.decision == "bat") "🏏" else "🎯",
-                        fontSize = 20.sp,
+                    Icon(
+                        imageVector = if (tossDetails.decision == "bat") Icons.Default.Sports else Icons.Default.GpsFixed,
+                        contentDescription = if (tossDetails.decision == "bat") "Batting" else "Bowling",
+                        tint = winnerColor,
+                        modifier = Modifier.size(20.dp),
                     )
                 }
 

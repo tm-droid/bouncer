@@ -149,7 +149,7 @@ fun PowerPlayAnalysisCard(
                         )
                         Text(
                             text = teamName,
-                            color = Color.White,
+                            color = colors.textPrimary,
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
                         )
@@ -243,13 +243,13 @@ fun PowerPlayAnalysisCard(
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
                             text = phase.name,
-                            color = if (phase.isActive) colors.goldDark else Color.White.copy(alpha = 0.7f),
+                            color = if (phase.isActive) colors.goldDark else colors.textSecondary,
                             fontSize = 12.sp,
                             fontWeight = if (phase.isActive) FontWeight.Bold else FontWeight.Medium,
                         )
                         Text(
                             text = phase.overs,
-                            color = Color.White.copy(alpha = 0.5f),
+                            color = colors.textSecondary,
                             fontSize = 10.sp,
                         )
                     }
@@ -282,7 +282,7 @@ private fun PowerPlayPhaseRow(
                 } else {
                     Brush.horizontalGradient(
                         colors = listOf(
-                            Color.White.copy(alpha = 0.05f),
+                            colors.glassSurface,
                             Color.Transparent,
                         ),
                     )
@@ -310,7 +310,7 @@ private fun PowerPlayPhaseRow(
 
                     Text(
                         text = phase.name,
-                        color = if (phase.isActive) colors.goldDark else Color.White,
+                        color = if (phase.isActive) colors.goldDark else colors.textPrimary,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,
                     )
@@ -318,7 +318,7 @@ private fun PowerPlayPhaseRow(
 
                 Text(
                     text = phase.overs,
-                    color = Color.White.copy(alpha = 0.5f),
+                    color = colors.textSecondary,
                     fontSize = 11.sp,
                 )
             }
@@ -357,13 +357,13 @@ private fun StatBubble(
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
             text = value,
-            color = if (isHighlighted) colors.goldDark else Color.White,
+            color = if (isHighlighted) colors.goldDark else colors.textPrimary,
             fontSize = 14.sp,
             fontWeight = FontWeight.Bold,
         )
         Text(
             text = label,
-            color = Color.White.copy(alpha = 0.5f),
+            color = colors.textSecondary,
             fontSize = 10.sp,
         )
     }

@@ -98,8 +98,8 @@ fun SquadInfoCard(
                         modifier = Modifier
                             .size(40.dp)
                             .clip(CircleShape)
-                            .background(Color.White.copy(alpha = 0.02f))
-                            .border(0.5.dp, Color.White.copy(alpha = 0.05f), CircleShape),
+                            .background(colors.glassSurface)
+                            .border(0.5.dp, colors.glassBorder, CircleShape),
                         contentAlignment = Alignment.Center,
                     ) {
                         if (squadData.teamLogoUrl != null) {
@@ -186,8 +186,8 @@ fun SquadInfoCard(
                     .fillMaxWidth()
                     .height(48.dp)
                     .clip(RoundedCornerShape(8.dp))
-                    .background(Color.White.copy(alpha = 0.02f))
-                    .border(0.5.dp, Color.White.copy(alpha = 0.05f), RoundedCornerShape(8.dp))
+                    .background(colors.glassSurface)
+                    .border(0.5.dp, colors.glassBorder, RoundedCornerShape(8.dp))
                     .padding(8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -297,8 +297,8 @@ private fun PlayerChip(
     Row(
         modifier = modifier
             .clip(RoundedCornerShape(8.dp))
-            .background(Color.White.copy(alpha = 0.03f))
-            .border(0.5.dp, Color.White.copy(alpha = 0.05f), RoundedCornerShape(8.dp))
+            .background(colors.glassSurface)
+            .border(0.5.dp, colors.glassBorder, RoundedCornerShape(8.dp))
             .padding(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

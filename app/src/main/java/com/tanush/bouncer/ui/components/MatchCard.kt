@@ -36,7 +36,6 @@ import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.ui.components.glass.BallEvent
 import com.tanush.bouncer.ui.components.glass.BallsRow
 import com.tanush.bouncer.ui.components.glass.GlassCard
-import com.tanush.bouncer.ui.components.glass.GlassCardSmall
 import com.tanush.bouncer.ui.components.glass.LiveIndicator
 import com.tanush.bouncer.ui.components.glass.TeamLogoCircle
 import com.tanush.bouncer.ui.theme.BouncerDesignSystem
@@ -69,6 +68,14 @@ fun MatchCard(
     val dimens = BouncerDesignSystem.dimens
     val shapes = BouncerDesignSystem.shapes
 
+    // Resolve the batting team's color for the accent border
+    val battingTeam = match.teams.find { it.isBatting }
+    val battingTeamColor = if (battingTeam != null) {
+        TeamPrimaryColors.getTeamColor(battingTeam.acronym.ifBlank { battingTeam.name })
+    } else {
+        colors.goldPrimary
+    }
+
     GlassCard(
         modifier = modifier
             .fillMaxWidth()
@@ -78,6 +85,13 @@ fun MatchCard(
             )
             .graphicsLayer {
                 alpha = if (isRefreshing) 0.6f else 1f
+            }
+            .drawBehind {
+                // Subtle team color accent — thin 2dp top border at 20% alpha
+                drawRect(
+                    color = battingTeamColor.copy(alpha = 0.20f),
+                    size = Size(size.width, 2.dp.toPx())
+                )
             },
         useGoldBorder = match.isLive,
         shape = shapes.matchCard,
@@ -160,7 +174,6 @@ private fun HeaderRow(match: CricketMatch) {
     val colors = BouncerDesignSystem.colors
     val typography = BouncerDesignSystem.typography
     val dimens = BouncerDesignSystem.dimens
-    val shapes = BouncerDesignSystem.shapes
 
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -172,16 +185,24 @@ private fun HeaderRow(match: CricketMatch) {
             horizontalArrangement = Arrangement.spacedBy(dimens.spacing.sm),
             modifier = Modifier.weight(1f)
         ) {
-            // Match type chip — glass pill with etched gold text
-            GlassCardSmall(
-                shape = shapes.chipPill,
-                showNoiseOverlay = false,
-                contentPadding = PaddingValues(horizontal = dimens.spacing.sm, vertical = 2.dp)
+            // Match type chip — colored badge per format
+            val matchTypeColor = when (match.matchType.uppercase()) {
+                "T20", "T20I" -> colors.statusInfo   // Blue
+                "ODI" -> colors.statusSuccess          // Green
+                "TEST" -> colors.statusLive             // Red
+                else -> colors.etchedGold
+            }
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(percent = 50))
+                    .background(matchTypeColor.copy(alpha = 0.15f))
+                    .padding(horizontal = dimens.spacing.sm, vertical = 2.dp)
             ) {
                 Text(
-                    text = match.matchType,
+                    text = match.matchType.uppercase(),
                     style = typography.labelSmall,
-                    color = colors.etchedGold  // Use the new handcrafted gold
+                    color = matchTypeColor,
+                    fontWeight = FontWeight.Bold
                 )
             }
 
@@ -344,9 +365,9 @@ private fun TeamRow(
         if (hasScore && team.score.isNotBlank()) {
             Text(
                 text = team.score,
-                style = typography.scoreCompact,
-                fontWeight = FontWeight.Bold,
-                color = if (isBatting) colors.textPrimary else colors.textSecondary
+                style = if (isBatting) typography.scoreCompact.copy(fontSize = 20.sp) else typography.scoreCompact,
+                fontWeight = if (isBatting) FontWeight.Black else FontWeight.Bold,
+                color = if (isBatting) colors.textPrimary else colors.textSecondary.copy(alpha = 0.7f)
             )
             if (team.overs.isNotBlank() && team.overs != "0.0") {
                 Spacer(modifier = Modifier.width(dimens.spacing.xs))

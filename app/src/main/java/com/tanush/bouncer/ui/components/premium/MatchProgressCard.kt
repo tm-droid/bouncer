@@ -130,7 +130,7 @@ fun MatchProgressCard(
                         Icon(
                             imageVector = Icons.Default.AccessTime,
                             contentDescription = null,
-                            tint = Color.White,
+                            tint = colors.textPrimary,
                             modifier = Modifier
                                 .size(24.dp)
                                 .graphicsLayer {
@@ -152,7 +152,7 @@ fun MatchProgressCard(
                         )
                         Text(
                             text = progressInfo.totalMatchTime,
-                            color = Color.White,
+                            color = colors.textPrimary,
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
                         )
@@ -169,7 +169,7 @@ fun MatchProgressCard(
                     )
                     Text(
                         text = "Est. remaining",
-                        color = Color.White.copy(alpha = 0.5f),
+                        color = colors.textSecondary,
                         fontSize = 10.sp,
                     )
                 }
@@ -196,7 +196,7 @@ fun MatchProgressCard(
             ) {
                 Text(
                     text = "Overs: ${oversBowled.toInt()} / ${totalOvers.toInt()}",
-                    color = Color.White.copy(alpha = 0.7f),
+                    color = colors.textSecondary,
                     fontSize = 12.sp,
                 )
                 Text(
@@ -214,7 +214,7 @@ fun MatchProgressCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(12.dp))
-                    .background(Color.White.copy(alpha = 0.05f))
+                    .background(colors.glassSurface)
                     .padding(16.dp),
                 horizontalArrangement = Arrangement.SpaceEvenly,
             ) {
@@ -228,7 +228,7 @@ fun MatchProgressCard(
                     modifier = Modifier
                         .width(1.dp)
                         .height(40.dp)
-                        .background(Color.White.copy(alpha = 0.2f)),
+                        .background(colors.textTertiary),
                 )
 
                 TimeStatColumn(
@@ -241,7 +241,7 @@ fun MatchProgressCard(
                     modifier = Modifier
                         .width(1.dp)
                         .height(40.dp)
-                        .background(Color.White.copy(alpha = 0.2f)),
+                        .background(colors.textTertiary),
                 )
 
                 TimeStatColumn(
@@ -257,7 +257,7 @@ fun MatchProgressCard(
 
                 Text(
                     text = "BREAKS",
-                    color = Color.White.copy(alpha = 0.5f),
+                    color = colors.textSecondary,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 1.sp,
@@ -363,7 +363,7 @@ private fun TimeStatColumn(
         )
         Text(
             text = label,
-            color = Color.White.copy(alpha = 0.5f),
+            color = colors.textSecondary,
             fontSize = 10.sp,
         )
     }
@@ -385,7 +385,7 @@ private fun BreakChip(
                     )
                 } else {
                     Brush.horizontalGradient(
-                        colors = listOf(Color.White.copy(alpha = 0.05f), Color.Transparent),
+                        colors = listOf(colors.glassSurface, Color.Transparent),
                     )
                 },
             )
@@ -395,13 +395,13 @@ private fun BreakChip(
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
                 text = breakInfo.breakType,
-                color = if (breakInfo.breakActive) colors.goldDark else Color.White.copy(alpha = 0.7f),
+                color = if (breakInfo.breakActive) colors.goldDark else colors.textSecondary,
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Medium,
             )
             Text(
                 text = breakInfo.breakDuration,
-                color = Color.White.copy(alpha = 0.5f),
+                color = colors.textSecondary,
                 fontSize = 9.sp,
             )
         }

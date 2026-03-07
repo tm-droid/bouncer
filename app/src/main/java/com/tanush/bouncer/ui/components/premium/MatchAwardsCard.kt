@@ -273,14 +273,14 @@ fun MatchAwardsCard(
 
                         Text(
                             text = playerOfMatch.playerName,
-                            color = Color.White,
+                            color = colors.textPrimary,
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Bold,
                         )
 
                         Text(
                             text = playerOfMatch.playerTeam,
-                            color = Color.White.copy(alpha = 0.6f),
+                            color = colors.textSecondary,
                             fontSize = 13.sp,
                         )
 
@@ -312,7 +312,7 @@ fun MatchAwardsCard(
 
                         Text(
                             text = playerOfMatch.achievement,
-                            color = Color.White.copy(alpha = 0.7f),
+                            color = colors.textSecondary,
                             fontSize = 12.sp,
                         )
                     }
@@ -324,7 +324,7 @@ fun MatchAwardsCard(
 
                     Text(
                         text = "OTHER AWARDS",
-                        color = Color.White.copy(alpha = 0.5f),
+                        color = colors.textSecondary,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 1.sp,
@@ -352,7 +352,7 @@ private fun OtherAwardRow(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .background(Color.White.copy(alpha = 0.05f))
+            .background(colors.glassSurface)
             .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -360,7 +360,7 @@ private fun OtherAwardRow(
             modifier = Modifier
                 .size(50.dp)
                 .clip(CircleShape)
-                .background(Color.White.copy(alpha = 0.1f)),
+                .background(colors.glassBorder),
             contentAlignment = Alignment.Center,
         ) {
             CoilImage(
@@ -383,13 +383,13 @@ private fun OtherAwardRow(
             )
             Text(
                 text = award.playerName,
-                color = Color.White,
+                color = colors.textPrimary,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.SemiBold,
             )
             Text(
                 text = award.playerTeam,
-                color = Color.White.copy(alpha = 0.5f),
+                color = colors.textSecondary,
                 fontSize = 11.sp,
             )
         }
@@ -403,7 +403,7 @@ private fun OtherAwardRow(
             )
             Text(
                 text = award.achievement,
-                color = Color.White.copy(alpha = 0.5f),
+                color = colors.textSecondary,
                 fontSize = 10.sp,
             )
         }

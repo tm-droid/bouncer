@@ -67,7 +67,7 @@ fun MatchPhasesCard(
                 shape = RoundedCornerShape(28.dp),
                 spotColor = colors.goldPrimary.copy(alpha = 0.15f)
             ),
-        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.05f)),
+        colors = CardDefaults.cardColors(containerColor = GlassSurface),
         shape = RoundedCornerShape(28.dp),
         border = BorderStroke(0.5.dp, colors.glassBorder.copy(alpha = 0.3f))
     ) {

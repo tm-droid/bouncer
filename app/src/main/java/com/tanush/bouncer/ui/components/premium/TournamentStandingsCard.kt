@@ -135,7 +135,7 @@ fun TournamentStandingsCard(
                         )
                         Text(
                             text = tournamentName,
-                            color = Color.White,
+                            color = colors.textPrimary,
                             fontSize = 17.sp,
                             fontWeight = FontWeight.SemiBold,
                         )
@@ -250,7 +250,7 @@ fun TournamentStandingsCard(
                         ) {
                             Text(
                                 text = "${team.position}",
-                                color = if (team.position <= 3) Color.Black else Color.White,
+                                color = if (team.position <= 3) Color.Black else colors.textPrimary,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
                             )
@@ -262,7 +262,7 @@ fun TournamentStandingsCard(
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = team.teamCode,
-                                color = if (isHighlighted) colors.goldDark else Color.White,
+                                color = if (isHighlighted) colors.goldDark else colors.textPrimary,
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Bold,
                             )
@@ -290,7 +290,7 @@ fun TournamentStandingsCard(
 
                         Text(
                             text = "${team.played}",
-                            color = Color.White,
+                            color = colors.textPrimary,
                             fontSize = 13.sp,
                             modifier = Modifier.width(28.dp),
                         )

@@ -91,10 +91,10 @@ fun PitchMapCard(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(28.dp))
-            .background(Color.White.copy(alpha = 0.08f).copy(alpha = 0.8f))
+            .background(GlassSurface)
             .border(
                 0.5.dp,
-                Brush.linearGradient(listOf(GoldHairline, Color.White.copy(alpha = 0.05f))),
+                Brush.linearGradient(listOf(GoldHairline, GlassSurface)),
                 RoundedCornerShape(28.dp)
             )
     ) {
@@ -118,7 +118,7 @@ fun PitchMapCard(
                     )
                     Text(
                         text = bowlerName.uppercase(),
-                        color = Color.White,
+                        color = TextPrimary,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Black,
                         letterSpacing = (-0.5).sp
@@ -242,7 +242,7 @@ fun PitchMapCard(
                 PitchLegendItem(ErrorRed, "WICKET")
                 PitchLegendItem(BoundaryFour, "BOUNDARY")
                 PitchLegendItem(SuccessGreen, "DOT")
-                PitchLegendItem(Color.White.copy(alpha = 0.2f), "OTHER")
+                PitchLegendItem(TextMuted, "OTHER")
             }
             
             Spacer(modifier = Modifier.height(24.dp))
@@ -271,19 +271,19 @@ private fun PitchTechnicalStats(deliveries: List<Delivery>) {
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(Color.White.copy(alpha = 0.02f))
+            .background(GlassSurface)
             .padding(16.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
-            PitchStatBlock("TOTAL", deliveries.size.toString(), Color.White)
-            VerticalDivider(modifier = Modifier.height(24.dp).alpha(0.1f), color = Color.White)
+            PitchStatBlock("TOTAL", deliveries.size.toString(), TextPrimary)
+            VerticalDivider(modifier = Modifier.height(24.dp).alpha(0.1f), color = GlassBorder)
             PitchStatBlock("WICKETS", wickets.toString(), ErrorRed)
-            VerticalDivider(modifier = Modifier.height(24.dp).alpha(0.1f), color = Color.White)
+            VerticalDivider(modifier = Modifier.height(24.dp).alpha(0.1f), color = GlassBorder)
             PitchStatBlock("DOTS", dots.toString(), SuccessGreen)
-            VerticalDivider(modifier = Modifier.height(24.dp).alpha(0.1f), color = Color.White)
+            VerticalDivider(modifier = Modifier.height(24.dp).alpha(0.1f), color = GlassBorder)
             PitchStatBlock("LIMITS", boundaries.toString(), BoundaryFour)
         }
     }

@@ -138,7 +138,7 @@ fun SpellAnalysisCard(
                         )
                         Text(
                             text = bowlerName,
-                            color = Color.White,
+                            color = colors.textPrimary,
                             fontSize = 17.sp,
                             fontWeight = FontWeight.SemiBold,
                         )
@@ -333,32 +333,32 @@ fun SpellAnalysisCard(
                         )
                         Text(
                             text = spell.overs,
-                            color = Color.White,
+                            color = colors.textPrimary,
                             fontSize = 12.sp,
                             modifier = Modifier.width(50.dp),
                         )
                         Text(
                             text = "${spell.maidens}",
-                            color = if (spell.maidens > 0) colors.statusSuccess else Color.White,
+                            color = if (spell.maidens > 0) colors.statusSuccess else colors.textPrimary,
                             fontSize = 12.sp,
                             modifier = Modifier.width(30.dp),
                         )
                         Text(
                             text = "${spell.runs}",
-                            color = Color.White,
+                            color = colors.textPrimary,
                             fontSize = 12.sp,
                             modifier = Modifier.width(30.dp),
                         )
                         Text(
                             text = "${spell.wickets}",
-                            color = if (spell.wickets > 0) colors.statusLive else Color.White,
+                            color = if (spell.wickets > 0) colors.statusLive else colors.textPrimary,
                             fontSize = 12.sp,
                             fontWeight = if (spell.wickets > 0) FontWeight.Bold else FontWeight.Normal,
                             modifier = Modifier.width(30.dp),
                         )
                         Text(
                             text = "${spell.dots}",
-                            color = Color.White,
+                            color = colors.textPrimary,
                             fontSize = 12.sp,
                             modifier = Modifier.width(40.dp),
                         )
@@ -404,7 +404,7 @@ fun SpellAnalysisCard(
                         )
                         Text(
                             text = "Spell #${spell.spellNumber} (Overs ${spell.startOver}-${spell.endOver})",
-                            color = Color.White,
+                            color = colors.textPrimary,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Medium,
                         )

@@ -94,7 +94,7 @@ fun MatchMomentumGraph(
             .background(GlassBackground)
             .border(
                 0.5.dp,
-                Brush.linearGradient(colors = listOf(GoldHairline, Color.White.copy(alpha = 0.05f))),
+                Brush.linearGradient(colors = listOf(GoldHairline, GlassSurface)),
                 RoundedCornerShape(28.dp)
             )
             .padding(24.dp)

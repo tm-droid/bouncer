@@ -46,7 +46,7 @@ fun EliteMomentumTracker(
         MomentumEvent("17.6", "TIGHT OVER", "Only 3 runs conceded", "3", Icons.Default.Security, StatusInfo)
     )
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(Spacing.md)) {
         Text(
             text = "MATCH MOMENTUM STREAM",
             color = TextMuted,
@@ -67,19 +67,19 @@ private fun MomentumItem(event: MomentumEvent) {
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(20.dp))
-            .background(Color.White.copy(alpha = 0.05f))
-            .border(0.5.dp, Color.White.copy(alpha = 0.05f), RoundedCornerShape(20.dp))
-            .padding(16.dp)
+            .background(GlassSurface)
+            .border(0.5.dp, GlassBorder, RoundedCornerShape(20.dp))
+            .padding(Spacing.md)
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
+            horizontalArrangement = Arrangement.spacedBy(Spacing.md)
         ) {
             // Visual Value Badge
             Box(
                 modifier = Modifier
                     .size(44.dp)
-                    .clip(RoundedCornerShape(12.dp))
+                    .clip(RoundedCornerShape(CornerRadius.md))
                     .background(event.color.copy(alpha = 0.1f)),
                 contentAlignment = Alignment.Center
             ) {
@@ -95,7 +95,7 @@ private fun MomentumItem(event: MomentumEvent) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
                         text = event.title,
-                        color = Color.White,
+                        color = TextPrimary,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Black,
                         letterSpacing = 0.5.sp

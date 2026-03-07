@@ -190,7 +190,7 @@ private fun HeroTeamTechnicalDisplay(team: CricketMatch.Team?, isLeft: Boolean) 
                 .border(
                     width = 2.dp, 
                     brush = Brush.verticalGradient(
-                        colors = listOf(if (team?.isBatting == true) colors.goldPrimary else Color.White.copy(alpha = 0.1f), Color.Transparent)
+                        colors = listOf(if (team?.isBatting == true) colors.goldPrimary else GlassBorder, Color.Transparent)
                     ), 
                     shape = CircleShape
                 ),
@@ -286,8 +286,8 @@ fun VipBoxRail(
                 Surface(
                     modifier = Modifier.width(300.dp).height(140.dp),
                     shape = RoundedCornerShape(28.dp),
-                    color = Color.White.copy(alpha = 0.05f),
-                    border = BorderStroke(0.5.dp, Color.White.copy(alpha = 0.05f)),
+                    color = GlassSurface,
+                    border = BorderStroke(0.5.dp, GlassSurface),
                     onClick = { onMatchClick(match) }
                 ) {
                     Box(modifier = Modifier.fillMaxSize()) {
@@ -310,7 +310,7 @@ fun VipBoxRail(
                                             modifier = Modifier
                                                 .size(28.dp)
                                                 .clip(CircleShape)
-                                                .background(Color.White.copy(alpha = 0.05f))
+                                                .background(GlassSurface)
                                                 .border(0.5.dp, if (team.isBatting) colors.goldPrimary else Color.Transparent, CircleShape)
                                         ) {
                                             CoilImage(
@@ -378,7 +378,7 @@ fun PlayerOfTheMomentCard(liveMatch: CricketMatch?) {
     Surface(
         modifier = Modifier.padding(horizontal = 20.dp).fillMaxWidth().height(180.dp),
         shape = RoundedCornerShape(28.dp),
-        color = Color.White.copy(alpha = 0.05f),
+        color = GlassSurface,
         border = BorderStroke(0.5.dp, colors.goldPrimary.copy(alpha = 0.3f))
     ) {
         Box(modifier = Modifier.fillMaxSize()) {

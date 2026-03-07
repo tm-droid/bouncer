@@ -61,21 +61,21 @@ private fun generateAiInsight(match: CricketMatch): String? {
             // Chase situation - RRR analysis
             rrr != null && crr != null -> {
                 when {
-                    rrr > crr + 3 -> "🔥 Run rate pressure building"
-                    rrr < crr -> "✨ Cruising towards target"
-                    else -> "⚖️ Match evenly poised"
+                    rrr > crr + 3 -> "Run rate pressure building"
+                    rrr < crr -> "Cruising towards target"
+                    else -> "Match evenly poised"
                 }
             }
             // Momentum based on recent balls
-            recentBoundaries >= 3 -> "🚀 Batting momentum high"
-            recentWickets >= 2 -> "⚡ Bowling on fire"
+            recentBoundaries >= 3 -> "Batting momentum high"
+            recentWickets >= 2 -> "Bowling on fire"
             // First innings CRR analysis
             crr != null -> {
                 when {
-                    crr > 10 -> "💥 Explosive scoring pace"
-                    crr > 8 -> "🔥 Strong run rate"
-                    crr < 5 -> "🎯 Bowlers dominating"
-                    else -> "📊 Steady progression"
+                    crr > 10 -> "Explosive scoring pace"
+                    crr > 8 -> "Strong run rate"
+                    crr < 5 -> "Bowlers dominating"
+                    else -> "Steady progression"
                 }
             }
             // Default for live matches

@@ -18,6 +18,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 import com.tanush.bouncer.ui.theme.BouncerDimens
 import com.tanush.bouncer.ui.theme.BouncerTheme
 import com.tanush.bouncer.ui.theme.ChipShape
@@ -36,11 +37,12 @@ fun BouncerFilterChip(
     modifier: Modifier = Modifier,
     leadingIcon: @Composable (() -> Unit)? = null
 ) {
+    val ds = BouncerDesignSystem.colors
     val containerColor by animateColorAsState(
         targetValue = if (selected) {
-            MaterialTheme.colorScheme.primary
+            ds.goldPrimary
         } else {
-            MaterialTheme.colorScheme.surfaceVariant
+            ds.glassSurface
         },
         animationSpec = tween(durationMillis = BouncerDimens.animFast),
         label = "chipContainerColor"
@@ -48,9 +50,9 @@ fun BouncerFilterChip(
 
     val contentColor by animateColorAsState(
         targetValue = if (selected) {
-            MaterialTheme.colorScheme.onPrimary
+            ds.backgroundBase
         } else {
-            MaterialTheme.colorScheme.onSurfaceVariant
+            ds.textSecondary
         },
         animationSpec = tween(durationMillis = BouncerDimens.animFast),
         label = "chipContentColor"
@@ -70,12 +72,12 @@ fun BouncerFilterChip(
         shape = ChipShape,
         leadingIcon = leadingIcon,
         colors = FilterChipDefaults.filterChipColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant,
-            selectedContainerColor = MaterialTheme.colorScheme.primary,
-            labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
-            selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
-            iconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-            selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimary
+            containerColor = ds.glassSurface,
+            selectedContainerColor = ds.goldPrimary,
+            labelColor = ds.textSecondary,
+            selectedLabelColor = ds.backgroundBase,
+            iconColor = ds.textSecondary,
+            selectedLeadingIconColor = ds.backgroundBase
         ),
         border = null
     )

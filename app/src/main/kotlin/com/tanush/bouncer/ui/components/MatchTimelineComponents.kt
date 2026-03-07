@@ -219,7 +219,7 @@ private fun TimelineItem(
                         text = event.title,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color.White
+                        color = TextPrimary
                     )
                     
                     if (event.playerName != null) {
@@ -310,7 +310,7 @@ fun PlayerSpotlightCard(
             )
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(24.dp),
-        color = Color.White.copy(alpha = 0.05f)
+        color = GlassSurface
     ) {
         Box {
             // Background effect
@@ -406,7 +406,7 @@ fun PlayerSpotlightCard(
                             text = playerName,
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color.White
+                            color = TextPrimary
                         )
                         Text(
                             text = playerRole,
@@ -448,7 +448,7 @@ private fun StatMiniCard(
             text = stat.value,
             fontSize = 18.sp,
             fontWeight = FontWeight.Black,
-            color = Color.White
+            color = TextPrimary
         )
         Text(
             text = stat.label,
@@ -499,7 +499,7 @@ fun HeadToHeadCard(
             spotColor = colors.goldPrimary.copy(alpha = 0.15f)
         ),
         shape = RoundedCornerShape(20.dp),
-        color = Color.White.copy(alpha = 0.05f)
+        color = GlassSurface
     ) {
         Column(
             modifier = Modifier.padding(20.dp),
@@ -549,7 +549,7 @@ fun HeadToHeadCard(
                         text = totalMatches.toString(),
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color.White
+                        color = TextPrimary
                     )
                     Text(
                         text = "Matches",

@@ -302,7 +302,7 @@ fun SplashScreen(
                             fontFamily = InterFontFamily,
                             brush = Brush.linearGradient(
                                 colors = listOf(
-                                    Color.White,
+                                    TextPrimary,
                                     colors.goldLight,
                                     colors.goldPrimary,
                                     colors.etchedGold,

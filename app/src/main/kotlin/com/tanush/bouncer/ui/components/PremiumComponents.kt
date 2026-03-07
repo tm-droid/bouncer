@@ -274,7 +274,7 @@ fun GoldProgressBar(
     progress: Float,
     modifier: Modifier = Modifier,
     height: Dp = 10.dp,
-    backgroundColor: Color = Color.White.copy(alpha = 0.06f),
+    backgroundColor: Color = GlassSurface,
     showLabel: Boolean = true
 ) {
     val colors = BouncerDesignSystem.colors
@@ -329,7 +329,7 @@ fun GlowingIconButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     glowColor: Color = GoldPrimary,
-    backgroundColor: Color = Color.White.copy(alpha = 0.06f),
+    backgroundColor: Color = GlassSurface,
     content: @Composable () -> Unit
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "iconGlow")

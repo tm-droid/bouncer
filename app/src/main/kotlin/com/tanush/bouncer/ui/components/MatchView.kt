@@ -75,7 +75,7 @@ fun GlassyMatchView(
                 Brush.linearGradient(
                     colors = listOf(
                         GoldHairline,
-                        Color.White.copy(alpha = 0.05f),
+                        GlassSurface,
                         team1Color.copy(alpha = 0.2f)
                     )
                 ),
@@ -131,7 +131,7 @@ fun GlassyMatchView(
                         modifier = Modifier
                             .width(1.dp)
                             .height(20.dp)
-                            .background(Color.White.copy(alpha = 0.1f))
+                            .background(GlassBorder)
                     )
                     Text(
                         text = "VS",
@@ -144,7 +144,7 @@ fun GlassyMatchView(
                         modifier = Modifier
                             .width(1.dp)
                             .height(20.dp)
-                            .background(Color.White.copy(alpha = 0.1f))
+                            .background(GlassBorder)
                     )
                 }
                 
@@ -266,7 +266,7 @@ private fun LogoContainer(team: CricketMatch.Team?, color: Color) {
             .border(
                 0.5.dp,
                 Brush.verticalGradient(
-                    colors = listOf(Color.White.copy(alpha = 0.15f), Color.Transparent)
+                    colors = listOf(GlassBorder, Color.Transparent)
                 ),
                 RoundedCornerShape(12.dp)
             )

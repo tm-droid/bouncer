@@ -59,7 +59,7 @@ fun PremiumTabBar(
             .fillMaxWidth()
             .padding(horizontal = 16.dp),
         shape = RoundedCornerShape(20.dp),
-        color = Color.White.copy(alpha = 0.05f)
+        color = GlassSurface
     ) {
         Row(
             modifier = Modifier
@@ -237,7 +237,7 @@ private fun SelectableChip(
     )
     
     val backgroundColor by animateColorAsState(
-        targetValue = if (isSelected) colors.goldPrimary.copy(alpha = 0.15f) else Color.White.copy(alpha = 0.05f),
+        targetValue = if (isSelected) colors.goldPrimary.copy(alpha = 0.15f) else GlassSurface,
         animationSpec = tween(200),
         label = "chipBg"
     )
@@ -325,7 +325,7 @@ fun ToggleButtonGroup(
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(14.dp),
-        color = Color.White.copy(alpha = 0.05f)
+        color = GlassSurface
     ) {
         Row(
             modifier = Modifier.padding(4.dp),
@@ -402,7 +402,7 @@ fun InfoTooltip(
             spotColor = accentColor.copy(alpha = 0.15f)
         ),
         shape = RoundedCornerShape(16.dp),
-        color = Color.White.copy(alpha = 0.05f)
+        color = GlassSurface
     ) {
         Row(
             modifier = Modifier
@@ -436,7 +436,7 @@ fun InfoTooltip(
                     text = title,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = Color.White
+                    color = TextPrimary
                 )
                 Text(
                     text = message,
@@ -526,7 +526,7 @@ fun NotificationBanner(
                     text = title,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = Color.White
+                    color = TextPrimary
                 )
                 Text(
                     text = message,

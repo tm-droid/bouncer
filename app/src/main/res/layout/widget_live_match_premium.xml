@@ -5,7 +5,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="#050505"
+    android:background="#0F1115"
     android:padding="16dp">
 
     <!-- Header: Match Type & Actions -->

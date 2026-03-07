@@ -359,7 +359,7 @@ private fun WinProbabilityBar(
                 .fillMaxWidth()
                 .height(12.dp)
                 .clip(RoundedCornerShape(6.dp))
-                .background(Color.White.copy(alpha = 0.1f))
+                .background(GlassBorder)
         ) {
             // Team 1 probability fill
             Box(
@@ -384,7 +384,7 @@ private fun WinProbabilityBar(
                     .align(Alignment.Center)
                     .width(2.dp)
                     .fillMaxHeight()
-                    .background(Color.White.copy(alpha = 0.3f))
+                    .background(TextMuted)
             )
         }
     }
@@ -400,7 +400,7 @@ private fun KeyStatsComparison(match: CricketMatch) {
         modifier = Modifier
             .fillMaxWidth()
             .background(
-                Color.White.copy(alpha = 0.03f),
+                GlassSurface,
                 RoundedCornerShape(16.dp)
             )
             .padding(16.dp),
@@ -481,7 +481,7 @@ private fun StatComparisonRow(
                 .fillMaxWidth()
                 .height(6.dp)
                 .clip(RoundedCornerShape(3.dp))
-                .background(Color.White.copy(alpha = 0.1f))
+                .background(GlassBorder)
         ) {
             val team1Fraction = (team1Value / maxValue).coerceIn(0f, 1f)
             val team2Fraction = (team2Value / maxValue).coerceIn(0f, 1f)
@@ -494,7 +494,7 @@ private fun StatComparisonRow(
                         .fillMaxHeight()
                         .background(
                             if (!inverse && team1Value > team2Value) colors.goldPrimary 
-                            else Color.Gray.copy(alpha = 0.3f)
+                            else GlassSurface
                         )
                 )
                 
@@ -507,7 +507,7 @@ private fun StatComparisonRow(
                         .fillMaxHeight()
                         .background(
                             if (!inverse && team2Value > team1Value) colors.goldPrimary
-                            else Color.Gray.copy(alpha = 0.3f)
+                            else GlassSurface
                         )
                 )
             }

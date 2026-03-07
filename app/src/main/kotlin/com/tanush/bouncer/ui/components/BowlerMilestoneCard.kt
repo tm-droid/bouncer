@@ -359,7 +359,7 @@ fun BowlerMilestoneCard(
                 // Wicket breakdown
                 if (milestoneInfo.wicketBreakdown.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(20.dp))
-                    HorizontalDivider(color = Color.White.copy(alpha = 0.1f))
+                    HorizontalDivider(color = GlassBorder)
                     Spacer(modifier = Modifier.height(16.dp))
                     
                     Text(
@@ -385,7 +385,7 @@ fun BowlerMilestoneCard(
                 // Career context
                 if (milestoneInfo.bestBowling != null || milestoneInfo.careerWickets != null) {
                     Spacer(modifier = Modifier.height(16.dp))
-                    HorizontalDivider(color = Color.White.copy(alpha = 0.1f))
+                    HorizontalDivider(color = GlassBorder)
                     Spacer(modifier = Modifier.height(16.dp))
                     
                     Row(

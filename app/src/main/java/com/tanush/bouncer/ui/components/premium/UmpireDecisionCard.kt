@@ -171,7 +171,7 @@ fun UmpireDecisionCard(
                         )
                         Text(
                             text = decision.decisionType.name.replace("_", " "),
-                            color = Color.White,
+                            color = colors.textPrimary,
                             fontSize = 15.sp,
                             fontWeight = FontWeight.SemiBold,
                         )
@@ -215,7 +215,7 @@ fun UmpireDecisionCard(
 
                     Text(
                         text = decision.description,
-                        color = Color.White.copy(alpha = 0.8f),
+                        color = colors.textPrimary.copy(alpha = 0.8f),
                         fontSize = 13.sp,
                     )
                 }
@@ -258,7 +258,7 @@ fun UmpireDecisionCard(
                                 "OVERTURNED" -> colors.statusWarning
                                 "UPHELD" -> colors.statusSuccess
                                 "UMPIRE'S CALL" -> colors.statusWarning
-                                else -> Color.White
+                                else -> colors.textPrimary
                             },
                         )
                     }

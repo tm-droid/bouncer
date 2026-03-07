@@ -209,7 +209,7 @@ private fun PlayerStaminaRow(
             ) {
                 Text(
                     text = player.playerName,
-                    color = Color.White,
+                    color = colors.textPrimary,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
                 )
@@ -226,7 +226,7 @@ private fun PlayerStaminaRow(
 
             Text(
                 text = player.playerRole,
-                color = Color.White.copy(alpha = 0.5f),
+                color = colors.textPrimary.copy(alpha = 0.5f),
                 fontSize = 11.sp,
             )
 
@@ -275,7 +275,7 @@ private fun PlayerStaminaRow(
                     } else {
                         "${player.oversOrBallsFaced.toInt()} balls"
                     },
-                    color = Color.White.copy(alpha = 0.4f),
+                    color = colors.textPrimary.copy(alpha = 0.4f),
                     fontSize = 10.sp,
                 )
 

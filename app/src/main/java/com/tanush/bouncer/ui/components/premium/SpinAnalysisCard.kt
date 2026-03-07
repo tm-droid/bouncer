@@ -175,7 +175,7 @@ fun SpinAnalysisCard(
                         )
                         Text(
                             text = spinData.bowlerName,
-                            color = Color.White,
+                            color = colors.textPrimary,
                             fontSize = 15.sp,
                             fontWeight = FontWeight.SemiBold,
                         )
@@ -377,7 +377,7 @@ private fun SpinMetricItem(
     ) {
         Text(
             text = value,
-            color = Color.White,
+            color = colors.textPrimary,
             fontSize = 22.sp,
             fontWeight = FontWeight.Bold,
         )
@@ -415,7 +415,7 @@ private fun SpinDeliveryRow(
             Spacer(modifier = Modifier.width(10.dp))
             Text(
                 text = delivery.name,
-                color = Color.White,
+                color = colors.textPrimary,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Medium,
             )
@@ -425,7 +425,7 @@ private fun SpinDeliveryRow(
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
                     text = "${delivery.count}",
-                    color = Color.White,
+                    color = colors.textPrimary,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
                 )
@@ -458,7 +458,7 @@ private fun SpinDeliveryRow(
                     } else if (delivery.economy > 8f) {
                         colors.statusLive
                     } else {
-                        Color.White
+                        colors.textPrimary
                     },
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,

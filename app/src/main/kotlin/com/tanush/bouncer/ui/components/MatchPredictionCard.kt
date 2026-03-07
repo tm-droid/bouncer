@@ -250,7 +250,7 @@ fun MatchPredictionCard(
                         
                         // Background circle
                         drawCircle(
-                            color = Color.White.copy(alpha = 0.1f),
+                            color = colors.glassSurface,
                             radius = radius,
                             center = center,
                             style = Stroke(width = strokeWidth)
@@ -371,7 +371,7 @@ fun MatchPredictionCard(
                         .fillMaxWidth()
                         .height(12.dp)
                         .clip(RoundedCornerShape(6.dp))
-                        .background(Color.White.copy(alpha = 0.1f))
+                        .background(colors.glassSurface)
                 ) {
                     if (team1Progress > 0) {
                         Box(
@@ -390,7 +390,7 @@ fun MatchPredictionCard(
                             modifier = Modifier
                                 .fillMaxHeight()
                                 .weight(predictionInfo.tieDrawProbability / 100f)
-                                .background(Color.White.copy(alpha = 0.3f))
+                                .background(colors.glassBorder)
                         )
                     }
                     if (team2Progress > 0) {
@@ -410,7 +410,7 @@ fun MatchPredictionCard(
                 // Prediction factors
                 if (predictionInfo.predictionFactors.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(20.dp))
-                    HorizontalDivider(color = Color.White.copy(alpha = 0.1f))
+                    HorizontalDivider(color = colors.glassSurface)
                     Spacer(modifier = Modifier.height(16.dp))
                     
                     Text(
@@ -436,8 +436,8 @@ fun MatchPredictionCard(
                     Spacer(modifier = Modifier.height(12.dp))
                     
                     val trendText = when (predictionInfo.predictionTrend) {
-                        PredictionTrend.TEAM1_RISING -> "📈 ${predictionInfo.team1Name}'s chances improving"
-                        PredictionTrend.TEAM2_RISING -> "📈 ${predictionInfo.team2Name}'s chances improving"
+                        PredictionTrend.TEAM1_RISING -> "${predictionInfo.team1Name}'s chances improving"
+                        PredictionTrend.TEAM2_RISING -> "${predictionInfo.team2Name}'s chances improving"
                         PredictionTrend.STABLE -> ""
                     }
                     val trendColor = when (predictionInfo.predictionTrend) {
@@ -493,7 +493,7 @@ private fun PredictionFactorRow(
                 .width(80.dp)
                 .height(8.dp)
                 .clip(RoundedCornerShape(4.dp))
-                .background(Color.White.copy(alpha = 0.1f))
+                .background(colors.glassSurface)
         ) {
             if (factor.impact < 0) {
                 Box(

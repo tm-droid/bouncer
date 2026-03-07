@@ -153,8 +153,8 @@ fun BowlerDetailCard(
                                 .background(
                                     Brush.linearGradient(
                                         colors = listOf(
-                                            Color.White.copy(alpha = 0.2f),
-                                            Color.White.copy(alpha = 0.1f),
+                                            colors.textTertiary,
+                                            colors.glassBorder,
                                         ),
                                     ),
                                 ),
@@ -173,7 +173,7 @@ fun BowlerDetailCard(
                                 Icon(
                                     imageVector = Icons.Default.Person,
                                     contentDescription = null,
-                                    tint = Color.White.copy(alpha = 0.6f),
+                                    tint = colors.textSecondary,
                                     modifier = Modifier.size(32.dp),
                                 )
                             }
@@ -187,7 +187,7 @@ fun BowlerDetailCard(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
                                 text = bowlerName,
-                                color = Color.White,
+                                color = colors.textPrimary,
                                 fontSize = 18.sp,
                                 fontWeight = FontWeight.Bold,
                             )
@@ -212,7 +212,7 @@ fun BowlerDetailCard(
 
                         Text(
                             text = bowlingType,
-                            color = Color.White.copy(alpha = 0.5f),
+                            color = colors.textSecondary,
                             fontSize = 12.sp,
                         )
                     }
@@ -224,14 +224,14 @@ fun BowlerDetailCard(
                             color = when {
                                 stats.wickets >= 5 -> colors.goldDark
                                 stats.wickets >= 3 -> colors.statusSuccess
-                                else -> Color.White
+                                else -> colors.textPrimary
                             },
                             fontSize = 32.sp,
                             fontWeight = FontWeight.Bold,
                         )
                         Text(
                             text = "(${stats.overs})",
-                            color = Color.White.copy(alpha = 0.6f),
+                            color = colors.textSecondary,
                             fontSize = 14.sp,
                         )
                     }
@@ -243,7 +243,7 @@ fun BowlerDetailCard(
                 if (currentOver.isNotEmpty()) {
                     Text(
                         text = "THIS OVER",
-                        color = Color.White.copy(alpha = 0.5f),
+                        color = colors.textSecondary,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 1.sp,
@@ -262,7 +262,7 @@ fun BowlerDetailCard(
                                 modifier = Modifier
                                     .size(28.dp)
                                     .clip(CircleShape)
-                                    .background(Color.White.copy(alpha = 0.05f)),
+                                    .background(colors.glassSurface),
                             )
                         }
                     }
@@ -275,7 +275,7 @@ fun BowlerDetailCard(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(12.dp))
-                        .background(Color.White.copy(alpha = 0.05f))
+                        .background(colors.glassSurface)
                         .padding(16.dp),
                     horizontalArrangement = Arrangement.SpaceEvenly,
                 ) {
@@ -314,7 +314,7 @@ fun BowlerDetailCard(
 
                     Text(
                         text = "SPELLS",
-                        color = Color.White.copy(alpha = 0.5f),
+                        color = colors.textSecondary,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 1.sp,
@@ -383,7 +383,7 @@ private fun BowlerStatItem(
         )
         Text(
             text = label,
-            color = Color.White.copy(alpha = 0.5f),
+            color = colors.textSecondary,
             fontSize = 10.sp,
         )
     }
@@ -409,7 +409,7 @@ private fun SpellChip(
                 } else {
                     Brush.horizontalGradient(
                         colors = listOf(
-                            Color.White.copy(alpha = 0.05f),
+                            colors.glassSurface,
                             Color.Transparent,
                         ),
                     )
@@ -420,13 +420,13 @@ private fun SpellChip(
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
                 text = spell.figures,
-                color = if (spell.isCurrentSpell) colors.statusInfo else Color.White,
+                color = if (spell.isCurrentSpell) colors.statusInfo else colors.textPrimary,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
             )
             Text(
                 text = "${spell.overStart}-${spell.overEnd}",
-                color = Color.White.copy(alpha = 0.5f),
+                color = colors.textSecondary,
                 fontSize = 10.sp,
             )
         }

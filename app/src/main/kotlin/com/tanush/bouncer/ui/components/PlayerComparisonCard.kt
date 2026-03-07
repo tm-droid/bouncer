@@ -75,7 +75,7 @@ fun PlayerComparisonCard(
                 shape = RoundedCornerShape(28.dp),
                 spotColor = colors.goldPrimary.copy(alpha = 0.15f)
             ),
-        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.05f)),
+        colors = CardDefaults.cardColors(containerColor = GlassSurface),
         shape = RoundedCornerShape(28.dp),
         border = BorderStroke(0.5.dp, colors.glassBorder.copy(alpha = 0.3f))
     ) {
@@ -134,7 +134,7 @@ fun PlayerComparisonCard(
                 ) {
                     Surface(
                         shape = CircleShape,
-                        color = Color.White.copy(alpha = 0.08f),
+                        color = GlassSurface,
                         border = BorderStroke(1.dp, colors.goldPrimary.copy(alpha = vsGlow)),
                         modifier = Modifier.size(36.dp)
                     ) {
@@ -308,7 +308,7 @@ private fun ComparisonStatRow(
     
     Surface(
         shape = RoundedCornerShape(10.dp),
-        color = Color.White.copy(alpha = 0.08f).copy(alpha = 0.3f),
+        color = GlassSurface.copy(alpha = 0.3f),
         border = BorderStroke(0.5.dp, colors.glassBorder.copy(alpha = 0.2f)),
         modifier = Modifier.fillMaxWidth()
     ) {

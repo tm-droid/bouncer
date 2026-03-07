@@ -159,13 +159,13 @@ fun GlassCard(
         )
         BouncerImportance.STANDARD -> Brush.linearGradient(
             colors = listOf(
-                Color.White.copy(alpha = 0.12f),
-                Color.White.copy(alpha = 0.05f)
+                GlassBorder,
+                GlassBackground
             )
         )
         BouncerImportance.MINIMAL -> Brush.linearGradient(
             colors = listOf(
-                Color.White.copy(alpha = 0.05f),
+                GlassBackground,
                 Color.Transparent
             )
         )
@@ -193,9 +193,9 @@ fun GlassCard(
             ),
         colors = CardDefaults.cardColors(
             containerColor = when (importance) {
-                BouncerImportance.CRITICAL -> Color.White.copy(alpha = 0.07f)
-                BouncerImportance.STANDARD -> Color.White.copy(alpha = 0.05f)
-                BouncerImportance.MINIMAL -> Color.White.copy(alpha = 0.03f)
+                BouncerImportance.CRITICAL -> GlassBackground
+                BouncerImportance.STANDARD -> GlassBackground
+                BouncerImportance.MINIMAL -> GlassBackground
             }
         ),
         shape = RoundedCornerShape(cornerRadius),
@@ -250,14 +250,14 @@ fun GlassSurface(
                 ambientColor = Color.Black.copy(alpha = 0.1f)
             )
             .clip(RoundedCornerShape(cornerRadius))
-            .background(if (importance == BouncerImportance.MINIMAL) Color.Transparent else Color.White.copy(alpha = 0.05f))
+            .background(if (importance == BouncerImportance.MINIMAL) Color.Transparent else GlassBackground)
             .border(
                 width = if (importance == BouncerImportance.CRITICAL) 1.dp else 0.5.dp,
                 brush = Brush.verticalGradient(
                     colors = when (importance) {
-                        BouncerImportance.CRITICAL -> listOf(Color.White.copy(alpha = 0.15f), Color.Transparent)
-                        BouncerImportance.STANDARD -> listOf(Color.White.copy(alpha = 0.08f), Color.Transparent)
-                        BouncerImportance.MINIMAL -> listOf(Color.White.copy(alpha = 0.03f), Color.Transparent)
+                        BouncerImportance.CRITICAL -> listOf(GlassBorderHighlight, Color.Transparent)
+                        BouncerImportance.STANDARD -> listOf(GlassBackground, Color.Transparent)
+                        BouncerImportance.MINIMAL -> listOf(GlassBackground, Color.Transparent)
                     }
                 ),
                 shape = RoundedCornerShape(cornerRadius)
@@ -288,7 +288,7 @@ fun AnimatedScoreDisplay(
         Box(
             modifier = Modifier
                 .background(
-                    Color.White.copy(alpha = 0.03f),
+                    GlassSurface,
                     RoundedCornerShape(8.dp)
                 )
                 .border(
@@ -471,7 +471,7 @@ fun ShimmerBox(
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(cornerRadius))
-            .background(Color.White.copy(alpha = 0.05f))
+            .background(GlassSurface)
             .drawWithContent {
                 drawContent()
                 drawRect(
@@ -556,7 +556,7 @@ fun GlassHero(
                 ambientColor = Color.Black.copy(alpha = 0.4f)
             ),
         colors = CardDefaults.cardColors(
-            containerColor = Color.White.copy(alpha = 0.07f)
+            containerColor = GlassSurface
         ),
         shape = shape,
         border = BorderStroke(
@@ -564,7 +564,7 @@ fun GlassHero(
             brush = Brush.linearGradient(
                 colors = listOf(
                     glowColor.copy(alpha = 0.25f),
-                    Color.White.copy(alpha = 0.12f),
+                    GlassBorder,
                     glowColor.copy(alpha = 0.18f)
                 )
             )
@@ -591,9 +591,9 @@ fun GlassHero(
                 .background(
                     Brush.verticalGradient(
                         colors = listOf(
-                            Color.White.copy(alpha = 0.06f),
+                            GlassBackground,
                             Color(0xFF0D0D0D).copy(alpha = 0.15f),
-                            Color.White.copy(alpha = 0.03f)
+                            GlassBackground
                         )
                     )
                 )
@@ -628,15 +628,15 @@ fun GlassContainerLarge(
                 ambientColor = Color.Black.copy(alpha = 0.3f)
             ),
         colors = CardDefaults.cardColors(
-            containerColor = Color.White.copy(alpha = 0.04f) // Slightly darker glass
+            containerColor = GlassSurface // Slightly darker glass
         ),
         shape = shape,
         border = BorderStroke(
             width = 0.5.dp,
             brush = Brush.linearGradient(
                 colors = listOf(
-                    Color.White.copy(alpha = 0.08f),
-                    Color.White.copy(alpha = 0.03f)
+                    GlassSurface,
+                    GlassBackground
                 )
             )
         )
@@ -712,7 +712,7 @@ fun Modifier.glassBlur(
         }
     }
 } else {
-    background(Color.White.copy(alpha = 0.05f))
+    background(GlassBackground)
 }
 
 /**
@@ -766,9 +766,9 @@ fun FrostedGlassCard(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(
                 containerColor = when (importance) {
-                    BouncerImportance.CRITICAL -> Color.White.copy(alpha = 0.07f)
-                    BouncerImportance.STANDARD -> Color.White.copy(alpha = 0.05f)
-                    BouncerImportance.MINIMAL -> Color.White.copy(alpha = 0.03f)
+                    BouncerImportance.CRITICAL -> GlassBackground
+                    BouncerImportance.STANDARD -> GlassBackground
+                    BouncerImportance.MINIMAL -> GlassBackground
                 }
             ),
             shape = RoundedCornerShape(cornerRadius),
@@ -924,7 +924,7 @@ fun NeonGlowBox(
                 ambientColor = glowColor.copy(alpha = glowAlpha * 0.5f)
             )
             .clip(RoundedCornerShape(cornerRadius))
-            .background(Color.White.copy(alpha = 0.05f))
+            .background(GlassSurface)
             .border(
                 width = 1.5.dp,
                 brush = Brush.linearGradient(

@@ -256,7 +256,7 @@ fun ScoringSummaryCard(
                     ) {
                         Text(
                             text = "Total: $totalExtras runs",
-                            color = Color.White,
+                            color = colors.textPrimary,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
                         )
@@ -305,7 +305,7 @@ private fun TeamScoreColumn(
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
             text = teamName,
-            color = Color.White,
+            color = colors.textPrimary,
             fontSize = 14.sp,
             fontWeight = FontWeight.Bold,
         )
@@ -314,7 +314,7 @@ private fun TeamScoreColumn(
 
         Text(
             text = score,
-            color = if (isLeading) colors.goldDark else Color.White,
+            color = if (isLeading) colors.goldDark else colors.textPrimary,
             fontSize = 28.sp,
             fontWeight = FontWeight.Black,
         )
@@ -433,7 +433,7 @@ private fun TopPerformerChip(
             )
             Text(
                 text = name,
-                color = Color.White,
+                color = colors.textPrimary,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
             )

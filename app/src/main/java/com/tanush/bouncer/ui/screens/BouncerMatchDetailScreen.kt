@@ -1,6 +1,11 @@
 package com.tanush.bouncer.ui.screens
 
 import android.content.Intent
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
@@ -49,8 +54,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -99,11 +109,11 @@ private enum class DetailTab { LIVE, SCORECARD, LINEUPS, OVERS, INFO }
 
 @Composable
 private fun getTabSegmentItems() = listOf(
-    SegmentItem(stringResource(R.string.tab_live))      { tint -> Icon(Icons.Outlined.LiveTv, null, Modifier.size(16.dp), tint) },
-    SegmentItem(stringResource(R.string.tab_scorecard)) { tint -> Icon(Icons.AutoMirrored.Outlined.Assignment, null, Modifier.size(16.dp), tint) },
-    SegmentItem(stringResource(R.string.tab_lineups))  { tint -> Icon(Icons.Outlined.Groups, null, Modifier.size(16.dp), tint) },
-    SegmentItem(stringResource(R.string.tab_overs))    { tint -> Icon(Icons.Outlined.SportsCricket, null, Modifier.size(16.dp), tint) },
-    SegmentItem(stringResource(R.string.tab_info))     { tint -> Icon(Icons.Outlined.Info, null, Modifier.size(16.dp), tint) }
+    SegmentItem(stringResource(R.string.tab_live))      { tint -> Icon(Icons.Outlined.LiveTv, null, Modifier.size(14.dp), tint) },
+    SegmentItem(stringResource(R.string.tab_scorecard)) { tint -> Icon(Icons.AutoMirrored.Outlined.Assignment, null, Modifier.size(14.dp), tint) },
+    SegmentItem(stringResource(R.string.tab_lineups))  { tint -> Icon(Icons.Outlined.Groups, null, Modifier.size(14.dp), tint) },
+    SegmentItem(stringResource(R.string.tab_overs))    { tint -> Icon(Icons.Outlined.SportsCricket, null, Modifier.size(14.dp), tint) },
+    SegmentItem(stringResource(R.string.tab_info))     { tint -> Icon(Icons.Outlined.Info, null, Modifier.size(14.dp), tint) }
 )
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -234,7 +244,7 @@ fun BouncerMatchDetailScreen(
             // Score hero card
             MatchScoreHero(match = match)
 
-            Spacer(modifier = Modifier.height(dimens.spacing.md))
+            Spacer(modifier = Modifier.height(dimens.spacing.sm))
 
             // Tab bar
             GlassSegmentedControlWithIcons(
@@ -243,10 +253,11 @@ fun BouncerMatchDetailScreen(
                 onSelect = { selectedTabIndex = it },
                 modifier = Modifier
                     .fillMaxWidth()
+                    .height(dimens.tabBarHeight)
                     .padding(horizontal = dimens.screenHorizontal)
             )
 
-            Spacer(modifier = Modifier.height(dimens.spacing.md))
+            Spacer(modifier = Modifier.height(dimens.spacing.sm))
 
             // Pager content
             HorizontalPager(
@@ -254,7 +265,19 @@ fun BouncerMatchDetailScreen(
                 modifier = Modifier.fillMaxSize(),
                 beyondViewportPageCount = 1
             ) { page ->
-                when (DetailTab.entries[page]) {
+                // Fade content in/out based on page offset for smooth tab transitions
+                val pageOffset = (
+                    (pagerState.currentPage - page) +
+                    pagerState.currentPageOffsetFraction
+                )
+                val contentAlpha = 1f - kotlin.math.abs(pageOffset).coerceIn(0f, 1f) * 0.4f
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer { alpha = contentAlpha }
+                ) {
+                    when (DetailTab.entries[page]) {
                     DetailTab.LIVE -> LiveTab(
                         match = match,
                         ballByBall = ballByBall,
@@ -298,6 +321,7 @@ fun BouncerMatchDetailScreen(
                         match = match,
                         modifier = Modifier.fillMaxSize()
                     )
+                    }
                 }
             }
         }
@@ -324,7 +348,7 @@ private fun InsightStatCard(
             .height(72.dp)
             .background(
                 if (isGold) colors.goldPrimary.copy(alpha = 0.08f)
-                else Color.White.copy(alpha = 0.05f)
+                else colors.glassSurface
             ),
         shape = RoundedCornerShape(12.dp),
         borderOpacity = if (isGold) 0.4f else 0.15f
@@ -332,7 +356,7 @@ private fun InsightStatCard(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(10.dp),
+                .padding(dimens.spacing.sm),
             verticalArrangement = Arrangement.SpaceBetween
         ) {
             // Header: Title + Icon
@@ -340,7 +364,7 @@ private fun InsightStatCard(
                 if (icon != null) {
                     Icon(
                         imageVector = icon,
-                        contentDescription = null,
+                        contentDescription = title,
                         tint = colors.goldPrimary,
                         modifier = Modifier.size(14.dp)
                     )
@@ -349,7 +373,7 @@ private fun InsightStatCard(
                 Text(
                     text = title.uppercase(),
                     style = typography.labelSmall,
-                    color = if (isGold) colors.goldPrimary else Color.White.copy(alpha = 0.5f),
+                    color = if (isGold) colors.goldPrimary else colors.textSecondary,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 1.sp,
                     fontSize = 9.sp
@@ -366,7 +390,7 @@ private fun InsightStatCard(
                     Text(
                         text = value,
                         style = if (isGold) typography.bodyMedium else typography.bodyLarge,
-                        color = Color.White,
+                        color = colors.textPrimary,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -376,7 +400,7 @@ private fun InsightStatCard(
                         Text(
                             text = subtitle,
                             style = typography.labelSmall,
-                            color = Color.White.copy(alpha = 0.4f),
+                            color = colors.textTertiary,
                             fontSize = 9.sp
                         )
                     }
@@ -413,54 +437,199 @@ private fun MatchScoreHero(match: CricketMatch) {
     val team1 = match.teams.getOrNull(0)
     val team2 = match.teams.getOrNull(1)
 
+    // Team colors for split-flag background
+    val team1Color = remember(team1?.acronym) {
+        TeamPrimaryColors.getTeamColor(team1?.acronym ?: "")
+    }
+    val team2Color = remember(team2?.acronym) {
+        TeamPrimaryColors.getTeamColor(team2?.acronym ?: "")
+    }
+
+    // Breathing animation for live matches
+    val pulseAlpha = if (match.isLive) {
+        val infiniteTransition = rememberInfiniteTransition(label = "heroBreathing")
+        infiniteTransition.animateFloat(
+            initialValue = 0.06f,
+            targetValue = 0.16f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(durationMillis = 2200),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "pulseAlpha"
+        ).value
+    } else {
+        0.10f
+    }
+
+    // Extract target from status (e.g. "need 156 runs")
+    val targetRuns = remember(match.currentStatus) {
+        val regex = Regex("""need\s+(\d+)\s+run""", RegexOption.IGNORE_CASE)
+        regex.find(match.currentStatus)?.groupValues?.getOrNull(1)
+    }
+
     GlassCard(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = dimens.screenHorizontal),
-        contentPadding = PaddingValues(dimens.spacing.md),
-        borderOpacity = 0.15f
+        contentPadding = PaddingValues(0.dp),
+        borderOpacity = 0.20f
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            if (team1 != null) {
-                TeamScoreColumn(team = team1, modifier = Modifier.weight(1f))
-            }
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.padding(horizontal = dimens.spacing.xs)
-            ) {
-                Text(text = "vs", style = typography.labelMedium, color = colors.textMuted)
-                if (match.isLive) {
-                    LiveIndicator(modifier = Modifier.padding(top = dimens.spacing.xs))
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .drawBehind {
+                    val halfWidth = size.width / 2f
+                    // Left half: team1 color gradient
+                    drawRect(
+                        brush = Brush.horizontalGradient(
+                            colors = listOf(
+                                team1Color.copy(alpha = pulseAlpha),
+                                Color.Transparent
+                            ),
+                            startX = 0f,
+                            endX = halfWidth
+                        ),
+                        topLeft = Offset.Zero,
+                        size = Size(halfWidth, size.height)
+                    )
+                    // Right half: team2 color gradient
+                    drawRect(
+                        brush = Brush.horizontalGradient(
+                            colors = listOf(
+                                Color.Transparent,
+                                team2Color.copy(alpha = pulseAlpha)
+                            ),
+                            startX = halfWidth,
+                            endX = size.width
+                        ),
+                        topLeft = Offset(halfWidth, 0f),
+                        size = Size(halfWidth, size.height)
+                    )
                 }
-            }
-            if (team2 != null) {
-                TeamScoreColumn(team = team2, modifier = Modifier.weight(1f))
+                .padding(dimens.spacing.md)
+        ) {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (team1 != null) {
+                        TeamScoreColumn(
+                            team = team1,
+                            modifier = Modifier.weight(1f),
+                            isLive = match.isLive
+                        )
+                    }
+
+                    // Gold accent divider + live indicator
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(dimens.spacing.sm),
+                        modifier = Modifier.padding(horizontal = dimens.spacing.sm)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .width(1.5.dp)
+                                .height(52.dp)
+                                .background(
+                                    brush = Brush.verticalGradient(
+                                        colors = listOf(
+                                            Color.Transparent,
+                                            colors.goldPrimary.copy(alpha = 0.5f),
+                                            colors.goldPrimary.copy(alpha = 0.8f),
+                                            colors.goldPrimary.copy(alpha = 0.5f),
+                                            Color.Transparent
+                                        )
+                                    )
+                                )
+                        )
+                        if (match.isLive) {
+                            LiveIndicator()
+                        }
+                    }
+
+                    if (team2 != null) {
+                        TeamScoreColumn(
+                            team = team2,
+                            modifier = Modifier.weight(1f),
+                            isLive = match.isLive
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(dimens.spacing.sm))
+
+                // Target / RRR pill badge
+                if (targetRuns != null || match.score?.requiredRunRate != null) {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(colors.goldPrimary.copy(alpha = 0.12f))
+                            .border(
+                                width = 1.dp,
+                                color = colors.goldPrimary.copy(alpha = 0.3f),
+                                shape = RoundedCornerShape(12.dp)
+                            )
+                            .padding(horizontal = 14.dp, vertical = 4.dp)
+                    ) {
+                        val pillText = when {
+                            targetRuns != null -> "Target: $targetRuns"
+                            match.score?.requiredRunRate != null -> "RRR: ${match.score.requiredRunRate}"
+                            else -> ""
+                        }
+                        Text(
+                            text = pillText,
+                            style = typography.matchStatus,
+                            color = colors.goldPrimary,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(dimens.spacing.xs))
+                }
+
+                // Match status
+                Text(
+                    text = match.currentStatus,
+                    style = typography.labelSmall,
+                    color = colors.goldPrimary,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
         }
-        Spacer(modifier = Modifier.height(dimens.spacing.sm))
-        Text(
-            text = match.currentStatus,
-            style = typography.labelSmall,
-            color = colors.goldPrimary,
-            fontWeight = FontWeight.Bold,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth()
-        )
     }
 }
 
 @Composable
 private fun TeamScoreColumn(
     team: CricketMatch.Team,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isLive: Boolean = false
 ) {
     val colors = BouncerDesignSystem.colors
     val typography = BouncerDesignSystem.typography
     val dimens = BouncerDesignSystem.dimens
+
+    // Subtle breathing for the batting team's score when live
+    val scoreAlpha = if (isLive && team.isBatting) {
+        val infiniteTransition = rememberInfiniteTransition(label = "scoreBreathing")
+        infiniteTransition.animateFloat(
+            initialValue = 0.88f,
+            targetValue = 1.0f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(durationMillis = 1500),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "scoreAlpha"
+        ).value
+    } else {
+        1f
+    }
 
     Column(
         modifier = modifier,
@@ -470,11 +639,11 @@ private fun TeamScoreColumn(
         TeamLogoCircle(
             teamCode = team.acronym,
             logoUrl = team.logoUrl,
-            size = 48.dp
+            size = 52.dp
         )
         Text(
             text = team.acronym.ifBlank { team.name.take(3).uppercase() },
-            style = typography.labelMedium,
+            style = typography.labelLarge,
             color = colors.textPrimary,
             fontWeight = FontWeight.Bold
         )
@@ -482,9 +651,11 @@ private fun TeamScoreColumn(
             Text(
                 text = team.score,
                 style = typography.scoreDisplay,
-                color = colors.textPrimary,
+                color = if (team.isBatting) colors.textPrimary else colors.textSecondary,
                 fontWeight = FontWeight.ExtraBold,
-                modifier = Modifier.etchedText()
+                modifier = Modifier
+                    .graphicsLayer(alpha = scoreAlpha)
+                    .etchedText()
             )
             Text(
                 text = "(${team.overs} ov)",
@@ -684,14 +855,22 @@ private fun FeaturedBatterCard(
     val dimens = BouncerDesignSystem.dimens
 
     GlassCard(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .drawBehind {
+                drawRect(
+                    color = Color(0xFF800000),
+                    topLeft = Offset.Zero,
+                    size = Size(4.dp.toPx(), size.height)
+                )
+            },
         shape = RoundedCornerShape(24.dp),
         borderOpacity = 0.2f
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(dimens.spacing.md),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
@@ -705,13 +884,13 @@ private fun FeaturedBatterCard(
                         modifier = Modifier
                             .fillMaxSize()
                             .clip(CircleShape)
-                            .background(Color.Black.copy(alpha = 0.2f))
-                            .border(1.dp, Color(0xFF800000).copy(alpha = 0.5f), CircleShape)
+                            .background(Color(0xFF800000).copy(alpha = 0.15f)),
+                        contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "👤", // Placeholder for actual photo
-                            fontSize = 32.sp,
-                            modifier = Modifier.align(Alignment.Center)
+                            text = batter.name.take(1).uppercase(),
+                            style = typography.headingSmall,
+                            color = BouncerDesignSystem.colors.textSecondary
                         )
                     }
                     if (batter.isStriker) {
@@ -741,13 +920,13 @@ private fun FeaturedBatterCard(
                         Text(
                             text = batter.name,
                             style = typography.headingSmall.copy(fontSize = 18.sp),
-                            color = Color.White,
+                            color = colors.textPrimary,
                             fontWeight = FontWeight.Bold
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Icon(
                             imageVector = Icons.Default.Star,
-                            contentDescription = null,
+                            contentDescription = "Top scorer",
                             tint = colors.goldPrimary,
                             modifier = Modifier.size(16.dp)
                         )
@@ -755,7 +934,7 @@ private fun FeaturedBatterCard(
                     Text(
                         text = "SR ${batter.strikeRate}",
                         style = typography.labelSmall,
-                        color = Color.White.copy(alpha = 0.4f),
+                        color = colors.textTertiary,
                         fontWeight = FontWeight.Normal
                     )
                 }
@@ -773,7 +952,7 @@ private fun FeaturedBatterCard(
                 Text(
                     text = "(${batter.balls})",
                     style = typography.bodySmall,
-                    color = Color.White.copy(alpha = 0.4f)
+                    color = colors.textTertiary
                 )
             }
         }

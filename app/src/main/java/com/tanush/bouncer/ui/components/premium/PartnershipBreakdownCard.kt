@@ -144,7 +144,7 @@ fun PartnershipBreakdownCard(
                         )
                         Text(
                             text = teamName,
-                            color = Color.White,
+                            color = colors.textPrimary,
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
                         )
@@ -160,7 +160,7 @@ fun PartnershipBreakdownCard(
                     )
                     Text(
                         text = "Total from ${partnerships.size} partnerships",
-                        color = Color.White.copy(alpha = 0.5f),
+                        color = colors.textSecondary,
                         fontSize = 10.sp,
                     )
                 }
@@ -206,7 +206,7 @@ fun PartnershipBreakdownCard(
                         )
                         Text(
                             text = "${best.batter1Name} & ${best.batter2Name}",
-                            color = Color.White,
+                            color = colors.textPrimary,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Medium,
                         )
@@ -221,7 +221,7 @@ fun PartnershipBreakdownCard(
                         )
                         Text(
                             text = "RR: ${String.format("%.2f", best.runRate)}",
-                            color = Color.White.copy(alpha = 0.6f),
+                            color = colors.textSecondary,
                             fontSize = 11.sp,
                         )
                     }
@@ -271,13 +271,13 @@ private fun PartnershipRow(
                         .size(24.dp)
                         .clip(CircleShape)
                         .background(
-                            if (partnership.isActive) colors.goldDark else Color.White.copy(alpha = 0.1f),
+                            if (partnership.isActive) colors.goldDark else colors.glassBorder,
                         ),
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(
                         text = "${partnership.wicketNumber}",
-                        color = if (partnership.isActive) Color.Black else Color.White,
+                        color = if (partnership.isActive) Color.Black else colors.textPrimary,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
                     )
@@ -294,7 +294,7 @@ private fun PartnershipRow(
 
                 Text(
                     text = " & ",
-                    color = Color.White.copy(alpha = 0.5f),
+                    color = colors.textSecondary,
                     fontSize = 12.sp,
                 )
 
@@ -308,7 +308,7 @@ private fun PartnershipRow(
 
             Text(
                 text = "${partnership.totalRuns} (${partnership.totalBalls})",
-                color = if (partnership.isActive) colors.goldDark else Color.White,
+                color = if (partnership.isActive) colors.goldDark else colors.textPrimary,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
             )
@@ -322,7 +322,7 @@ private fun PartnershipRow(
                 .fillMaxWidth()
                 .height(12.dp)
                 .clip(RoundedCornerShape(6.dp))
-                .background(Color.White.copy(alpha = 0.05f)),
+                .background(colors.glassSurface),
         ) {
             // Active glow
             if (partnership.isActive) {

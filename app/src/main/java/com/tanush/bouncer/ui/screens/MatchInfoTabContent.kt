@@ -1,6 +1,8 @@
 package com.tanush.bouncer.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -11,12 +13,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material.icons.filled.Gavel
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.SportsCricket
 import androidx.compose.material.icons.filled.Stadium
@@ -28,6 +33,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -80,13 +86,23 @@ fun MatchInfoContent(
             ?.trim()
     }
 
+    // Parse umpire info from match.info
+    val umpires = remember(match.info) {
+        match.info.lines()
+            .filter { line ->
+                val lower = line.lowercase()
+                lower.contains("umpire") || lower.contains("referee") || lower.contains("tv umpire")
+            }
+            .map { it.trim() }
+    }
+
     LazyColumn(
         modifier = modifier,
         contentPadding = PaddingValues(
             horizontal = dimens.screenHorizontal,
             vertical = dimens.md
         ),
-        verticalArrangement = Arrangement.spacedBy(dimens.cardSpacing)
+        verticalArrangement = Arrangement.spacedBy(dimens.sectionGap)
     ) {
         // ─────────────────────────────────────────────────────────────────
         //  Section 1: Venue Hero Card
@@ -100,87 +116,126 @@ fun MatchInfoContent(
             GlassCardLarge(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(24.dp),
-                useGoldBorder = true
+                useGoldBorder = true,
+                contentPadding = PaddingValues(0.dp)
             ) {
-                Column {
-                    // Venue name
-                    Text(
-                        text = venueParts.first,
-                        style = typography.headingLarge,
-                        color = colors.textPrimary,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
-                    )
-
-                    // Location
-                    if (venueParts.second.isNotEmpty()) {
-                        Spacer(modifier = Modifier.height(dimens.xs))
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(dimens.xs)
+                // Gradient overlay container for hero feel
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(
+                                    colors.goldPrimary.copy(alpha = 0.08f),
+                                    Color.Transparent,
+                                    colors.backgroundBase.copy(alpha = 0.6f)
+                                ),
+                                startY = 0f,
+                                endY = 600f
+                            )
+                        )
+                        .padding(dimens.lg)
+                ) {
+                    Column {
+                        // Stadium icon as hero element
+                        Box(
+                            modifier = Modifier
+                                .size(48.dp)
+                                .clip(CircleShape)
+                                .background(colors.goldPrimary.copy(alpha = 0.12f)),
+                            contentAlignment = Alignment.Center
                         ) {
                             Icon(
-                                imageVector = Icons.Default.LocationOn,
+                                imageVector = Icons.Default.Stadium,
                                 contentDescription = null,
                                 tint = colors.goldPrimary,
-                                modifier = Modifier.size(14.dp)
-                            )
-                            Text(
-                                text = venueParts.second,
-                                style = typography.bodySmall,
-                                color = colors.textMuted
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(dimens.lg))
-                    HorizontalDivider(
-                        color = Color.White.copy(alpha = 0.06f),
-                        thickness = dimens.dividerThickness
-                    )
-                    Spacer(modifier = Modifier.height(dimens.md))
-
-                    // Format chip + Date
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        // Format chip
-                        GlassCard(
-                            contentPadding = PaddingValues(
-                                horizontal = dimens.md,
-                                vertical = dimens.xs
-                            ),
-                            useGoldBorder = true,
-                            shape = RoundedCornerShape(dimens.sm)
-                        ) {
-                            Text(
-                                text = match.matchType.uppercase(),
-                                style = typography.labelSmall,
-                                color = colors.goldPrimary,
-                                fontWeight = FontWeight.Bold,
-                                letterSpacing = 1.sp
+                                modifier = Modifier.size(24.dp)
                             )
                         }
 
-                        // Date
+                        Spacer(modifier = Modifier.height(dimens.md))
+
+                        // Venue name — large and bold
+                        Text(
+                            text = venueParts.first,
+                            style = typography.headingLarge,
+                            color = colors.textPrimary,
+                            fontWeight = FontWeight.ExtraBold,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                            letterSpacing = (-0.5).sp
+                        )
+
+                        // Location — city/country secondary text
+                        if (venueParts.second.isNotEmpty()) {
+                            Spacer(modifier = Modifier.height(dimens.xs))
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(dimens.xs)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.LocationOn,
+                                    contentDescription = null,
+                                    tint = colors.goldPrimary,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Text(
+                                    text = venueParts.second,
+                                    style = typography.bodyMedium,
+                                    color = colors.textSecondary,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(dimens.lg))
+                        HorizontalDivider(
+                            color = Color.White.copy(alpha = 0.05f),
+                            thickness = dimens.dividerThickness
+                        )
+                        Spacer(modifier = Modifier.height(dimens.md))
+
+                        // Format chip + Date row
                         Row(
+                            modifier = Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(dimens.xs)
+                            horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.CalendarToday,
-                                contentDescription = null,
-                                tint = colors.textMuted,
-                                modifier = Modifier.size(14.dp)
-                            )
-                            Text(
-                                text = match.date.ifBlank { match.matchTime },
-                                style = typography.bodySmall,
-                                color = colors.textSecondary
-                            )
+                            // Format chip
+                            GlassCard(
+                                contentPadding = PaddingValues(
+                                    horizontal = dimens.md,
+                                    vertical = dimens.xs
+                                ),
+                                useGoldBorder = true,
+                                shape = RoundedCornerShape(dimens.sm)
+                            ) {
+                                Text(
+                                    text = match.matchType.uppercase(),
+                                    style = typography.labelSmall,
+                                    color = colors.goldPrimary,
+                                    fontWeight = FontWeight.Bold,
+                                    letterSpacing = 1.sp
+                                )
+                            }
+
+                            // Date
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(dimens.xs)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.CalendarToday,
+                                    contentDescription = null,
+                                    tint = colors.textMuted,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                                Text(
+                                    text = match.date.ifBlank { match.matchTime },
+                                    style = typography.bodySmall,
+                                    color = colors.textSecondary
+                                )
+                            }
                         }
                     }
                 }
@@ -265,26 +320,26 @@ fun MatchInfoContent(
             GlassCard(
                 modifier = Modifier.fillMaxWidth(),
                 useGoldBorder = true,
-                contentPadding = PaddingValues(
-                    horizontal = dimens.xl,
-                    vertical = dimens.lg
-                )
+                contentPadding = PaddingValues(dimens.cardPadding)
             ) {
                 Column(
-                    verticalArrangement = Arrangement.spacedBy(dimens.md)
+                    verticalArrangement = Arrangement.spacedBy(0.dp)
                 ) {
                     // Series
                     InfoRow(
-                        label = "Series",
+                        label = "SERIES",
                         value = match.matchTitle
                     )
-                    HorizontalDivider(
-                        color = Color.White.copy(alpha = 0.06f),
-                        thickness = dimens.dividerThickness
+                    InfoDivider()
+                    // Format
+                    InfoRow(
+                        label = "FORMAT",
+                        value = match.matchType
                     )
+                    InfoDivider()
                     // Date/Time
                     InfoRow(
-                        label = "Date / Time",
+                        label = "DATE / TIME",
                         value = buildString {
                             append(match.date)
                             if (match.matchTime.isNotBlank()) {
@@ -293,13 +348,10 @@ fun MatchInfoContent(
                             }
                         }
                     )
-                    HorizontalDivider(
-                        color = Color.White.copy(alpha = 0.06f),
-                        thickness = dimens.dividerThickness
-                    )
+                    InfoDivider()
                     // Status/Result
                     InfoRow(
-                        label = "Status",
+                        label = "STATUS",
                         value = match.currentStatus.ifBlank { match.status },
                         valueColor = if (match.isLive) colors.statusLive else colors.textPrimary
                     )
@@ -365,45 +417,121 @@ fun MatchInfoContent(
         // ─────────────────────────────────────────────────────────────────
         //  Section 4: Toss & Officials
         // ─────────────────────────────────────────────────────────────────
-        item(key = "toss_officials") {
+        // ─────────────────────────────────────────────────────────────────
+        //  Section 4a: Toss Card
+        // ─────────────────────────────────────────────────────────────────
+        if (tossInfo != null) {
+            item(key = "toss_card") {
+                SectionHeader(
+                    icon = Icons.Default.SportsCricket,
+                    title = "TOSS"
+                )
+                Spacer(modifier = Modifier.height(dimens.sm))
+                GlassCard(
+                    modifier = Modifier.fillMaxWidth(),
+                    useGoldBorder = true,
+                    contentPadding = PaddingValues(dimens.cardPadding)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(dimens.md)
+                    ) {
+                        // Coin toss icon
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(CircleShape)
+                                .background(colors.goldPrimary.copy(alpha = 0.15f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "🪙",
+                                fontSize = 18.sp
+                            )
+                        }
+                        Column(
+                            modifier = Modifier.weight(1f),
+                            verticalArrangement = Arrangement.spacedBy(dimens.xs)
+                        ) {
+                            Text(
+                                text = "TOSS",
+                                style = typography.labelMedium,
+                                color = colors.textTertiary,
+                                fontWeight = FontWeight.SemiBold,
+                                letterSpacing = 1.sp
+                            )
+                            Text(
+                                text = tossInfo,
+                                style = typography.bodyMedium,
+                                color = colors.textPrimary,
+                                maxLines = 3,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        // ─────────────────────────────────────────────────────────────────
+        //  Section 4b: Officials Card
+        // ─────────────────────────────────────────────────────────────────
+        item(key = "officials_card") {
             SectionHeader(
-                icon = Icons.Default.Shield,
-                title = "MATCH OFFICIALS"
+                icon = Icons.Default.Gavel,
+                title = "OFFICIALS"
             )
             Spacer(modifier = Modifier.height(dimens.sm))
             GlassCard(
                 modifier = Modifier.fillMaxWidth(),
                 useGoldBorder = true,
-                contentPadding = PaddingValues(
-                    horizontal = dimens.xl,
-                    vertical = dimens.lg
-                )
+                contentPadding = PaddingValues(dimens.cardPadding)
             ) {
                 Column(
-                    verticalArrangement = Arrangement.spacedBy(dimens.md)
+                    verticalArrangement = Arrangement.spacedBy(0.dp)
                 ) {
-                    if (tossInfo != null) {
+                    if (umpires.isNotEmpty()) {
+                        umpires.forEachIndexed { index, umpireLine ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = dimens.sm),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(dimens.sm)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(32.dp)
+                                        .clip(CircleShape)
+                                        .background(colors.goldPrimary.copy(alpha = 0.10f)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Person,
+                                        contentDescription = null,
+                                        tint = colors.goldPrimary,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                                Text(
+                                    text = umpireLine,
+                                    style = typography.bodyMedium,
+                                    color = colors.textPrimary,
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+                            if (index < umpires.lastIndex) {
+                                InfoDivider()
+                            }
+                        }
+                    } else {
+                        // Fallback: show venue in officials card
                         InfoRow(
-                            label = "Toss",
-                            value = tossInfo
-                        )
-                        HorizontalDivider(
-                            color = Color.White.copy(alpha = 0.06f),
-                            thickness = dimens.dividerThickness
+                            label = "VENUE",
+                            value = match.venue
                         )
                     }
-                    InfoRow(
-                        label = "Format",
-                        value = match.matchType
-                    )
-                    HorizontalDivider(
-                        color = Color.White.copy(alpha = 0.06f),
-                        thickness = dimens.dividerThickness
-                    )
-                    InfoRow(
-                        label = "Venue",
-                        value = match.venue
-                    )
                 }
             }
         }
@@ -477,7 +605,20 @@ private fun SectionHeader(
 }
 
 // =============================================================================
-// Info row: muted label left, value right
+// Subtle divider between info rows (1dp at 5% white alpha)
+// =============================================================================
+
+@Composable
+private fun InfoDivider() {
+    HorizontalDivider(
+        modifier = Modifier.padding(vertical = BouncerDesignSystem.dimens.sm),
+        color = Color.White.copy(alpha = 0.05f),
+        thickness = 1.dp
+    )
+}
+
+// =============================================================================
+// Info row: styled label left, value right
 // =============================================================================
 
 @Composable
@@ -491,14 +632,18 @@ private fun InfoRow(
     val typography = BouncerDesignSystem.typography
 
     Row(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(vertical = BouncerDesignSystem.dimens.xs),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.Top
     ) {
         Text(
-            text = label,
-            style = typography.bodySmall,
-            color = colors.textMuted,
+            text = label.uppercase(),
+            style = typography.labelMedium,
+            color = colors.textTertiary,
+            fontWeight = FontWeight.SemiBold,
+            letterSpacing = 0.8.sp,
             modifier = Modifier.weight(0.35f)
         )
         Spacer(modifier = Modifier.width(BouncerDesignSystem.dimens.sm))
@@ -506,6 +651,7 @@ private fun InfoRow(
             text = value,
             style = typography.bodyMedium,
             color = valueColor ?: colors.textPrimary,
+            fontWeight = FontWeight.Medium,
             modifier = Modifier.weight(0.65f),
             textAlign = TextAlign.End,
             maxLines = 3,

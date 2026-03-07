@@ -32,20 +32,23 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.ui.components.CoilImage
-import com.tanush.bouncer.ui.theme.GoldPrimary
-import com.tanush.bouncer.ui.theme.BackgroundBase
+import com.tanush.bouncer.ui.components.glass.GlassCard
+import com.tanush.bouncer.ui.theme.*
 
 @Composable
 fun PremiumAiInsightsTab(match: CricketMatch) {
     val scrollState = rememberScrollState()
+    val colors = BouncerDesignSystem.colors
+    val dimens = BouncerDesignSystem.dimens
+    val typography = BouncerDesignSystem.typography
     
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(scrollState)
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(32.dp)
+                .padding(dimens.screenHorizontalPadding),
+            verticalArrangement = Arrangement.spacedBy(dimens.spacing.xl)
         ) {
             // AI Neural Banner with subtle animation
             AiNeuralBanner()
@@ -72,31 +75,31 @@ fun PremiumAiInsightsTab(match: CricketMatch) {
                 .fillMaxWidth()
                 .background(
                     Brush.verticalGradient(
-                        listOf(Color.Transparent, BackgroundBase.copy(alpha = 0.95f), BackgroundBase)
+                        listOf(Color.Transparent, colors.backgroundBase.copy(alpha = 0.95f), colors.backgroundBase)
                     )
                 )
-                .padding(20.dp)
+                .padding(dimens.spacing.lg)
         ) {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(dimens.spacing.md)) {
                 OutlinedButton(
                     onClick = {},
                     modifier = Modifier.weight(1f).height(56.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.15f)),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White)
+                    shape = BouncerDesignSystem.shapes.glassCard,
+                    border = BorderStroke(1.dp, colors.glassBorderHighlight),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textPrimary)
                 ) {
-                    Text("FULL ANALYSIS", fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.2.sp)
+                    Text("FULL ANALYSIS", style = typography.labelLarge)
                 }
                 Button(
                     onClick = {},
                     modifier = Modifier.weight(2f).height(56.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = GoldPrimary, contentColor = Color.Black),
+                    shape = BouncerDesignSystem.shapes.glassCard,
+                    colors = ButtonDefaults.buttonColors(containerColor = colors.goldPrimary, contentColor = Color.Black),
                     elevation = ButtonDefaults.buttonElevation(defaultElevation = 8.dp)
                 ) {
-                    Icon(Icons.Default.Gavel, null, modifier = Modifier.size(20.dp))
-                    Spacer(modifier = Modifier.width(10.dp))
-                    Text("REQUEST REVIEW", fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.2.sp)
+                    Icon(Icons.Default.Gavel, null, modifier = Modifier.size(dimens.iconSize.md))
+                    Spacer(modifier = Modifier.width(dimens.spacing.sm))
+                    Text("REQUEST REVIEW", style = typography.labelLarge)
                 }
             }
         }
@@ -105,6 +108,9 @@ fun PremiumAiInsightsTab(match: CricketMatch) {
 
 @Composable
 private fun AiNeuralBanner() {
+    val colors = BouncerDesignSystem.colors
+    val typography = BouncerDesignSystem.typography
+    val dimens = BouncerDesignSystem.dimens
     val infiniteTransition = rememberInfiniteTransition(label = "banner")
     val pulse by infiniteTransition.animateFloat(
         initialValue = 0.4f,
@@ -113,49 +119,51 @@ private fun AiNeuralBanner() {
         label = "pulse"
     )
 
-    Box(
+    GlassCard(
         modifier = Modifier
             .fillMaxWidth()
-            .height(160.dp)
-            .clip(RoundedCornerShape(24.dp))
-            .background(Color.Black)
-            .border(1.dp, GoldPrimary.copy(alpha = 0.15f), RoundedCornerShape(24.dp))
+            .height(160.dp),
+        useGoldBorder = true,
+        contentPadding = PaddingValues(0.dp)
     ) {
-        CoilImage(
-            model = "https://lh3.googleusercontent.com/aida-public/AB6AXuDsb8zoInOAQHjBtC0v9FTTkw8IqC3dtvi8A4nCNTV53qtEobfL9te1_VjsKiDXphFOC2kUQNmQaULYU2ELAjNUSkGWIrB0iFo8GSHMKZwYVtOO2DXQKTboZfjRW7ty2xB2HztlFdmonHfWXtnzUYMD89sYx9plVY8yDtGuFsn9rgHY2D7Qu4pTNQHEUrwrs84Wzl9jZMtReEvqZvnLM7uBgOfycETUXv-bxW21XZspH8qHPoz-2xO-M9e9XsZDwzncF2fh_LWv2bU",
-            contentDescription = null,
-            modifier = Modifier.fillMaxSize().alpha(pulse),
-            contentScale = ContentScale.Crop
-        )
-        Box(modifier = Modifier.fillMaxSize().background(Brush.horizontalGradient(listOf(Color.Black, Color.Black.copy(alpha = 0.7f), Color.Transparent))))
-        
-        Column(modifier = Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Icon(Icons.Default.AutoAwesome, null, tint = GoldPrimary, modifier = Modifier.size(18.dp))
-                Text("AI ANALYSIS", color = GoldPrimary, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 2.5.sp)
-            }
-            Text("Match Critical Analysis", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Black, letterSpacing = (-0.5).sp)
-            Text(
-                text = "Spin rate on last delivery increased by 15%. High probability of LBW on current trajectory.",
-                color = Color.White.copy(alpha = 0.8f),
-                fontSize = 14.sp,
-                lineHeight = 20.sp,
-                fontWeight = FontWeight.Medium
+        Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
+            CoilImage(
+                model = "https://lh3.googleusercontent.com/aida-public/AB6AXuDsb8zoInOAQHjBtC0v9FTTkw8IqC3dtvi8A4nCNTV53qtEobfL9te1_VjsKiDXphFOC2kUQNmQaULYU2ELAjNUSkGWIrB0iFo8GSHMKZwYVtOO2DXQKTboZfjRW7ty2xB2HztlFdmonHfWXtnzUYMD89sYx9plVY8yDtGuFsn9rgHY2D7Qu4pTNQHEUrwrs84Wzl9jZMtReEvqZvnLM7uBgOfycETUXv-bxW21XZspH8qHPoz-2xO-M9e9XsZDwzncF2fh_LWv2bU",
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize().alpha(pulse),
+                contentScale = ContentScale.Crop
             )
+            Box(modifier = Modifier.fillMaxSize().background(Brush.horizontalGradient(listOf(Color.Black, Color.Black.copy(alpha = 0.7f), Color.Transparent))))
+            
+            Column(modifier = Modifier.padding(dimens.spacing.lg), verticalArrangement = Arrangement.spacedBy(dimens.spacing.sm)) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(dimens.spacing.sm)) {
+                    Icon(Icons.Default.AutoAwesome, null, tint = colors.goldPrimary, modifier = Modifier.size(dimens.iconSize.sm))
+                    Text("AI ANALYSIS", style = typography.labelLarge, color = colors.goldPrimary)
+                }
+                Text("Match Critical Analysis", style = typography.headingLarge, color = colors.textPrimary)
+                Text(
+                    text = "Spin rate on last delivery increased by 15%. High probability of LBW on current trajectory.",
+                    style = typography.bodyMedium,
+                    color = colors.textPrimary.copy(alpha = 0.8f)
+                )
+            }
+            
+            Box(modifier = Modifier.align(Alignment.BottomStart).fillMaxWidth().height(3.dp).background(Brush.horizontalGradient(listOf(colors.goldPrimary, Color.Transparent))))
         }
-        
-        Box(modifier = Modifier.align(Alignment.BottomStart).fillMaxWidth().height(3.dp).background(Brush.horizontalGradient(listOf(GoldPrimary, Color.Transparent))))
     }
 }
 
 @Composable
 private fun DrsVisualizationCard() {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(28.dp))
-            .background(Color(0xFF141414))
-            .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(28.dp))
+    val colors = BouncerDesignSystem.colors
+    val typography = BouncerDesignSystem.typography
+    val dimens = BouncerDesignSystem.dimens
+    val drsAccentColor = colors.statusInfo // Cyan-blue for DRS visuals
+
+    GlassCard(
+        modifier = Modifier.fillMaxWidth(),
+        useGoldBorder = true,
+        contentPadding = PaddingValues(0.dp)
     ) {
         Column {
             Box(modifier = Modifier.fillMaxWidth().height(260.dp).background(Color.Black)) {
@@ -168,28 +176,28 @@ private fun DrsVisualizationCard() {
                 
                 Surface(
                     color = Color.Black.copy(alpha = 0.7f),
-                    shape = RoundedCornerShape(8.dp),
-                    border = BorderStroke(1.dp, Color(0xFF00F0FF).copy(alpha = 0.4f)),
-                    modifier = Modifier.padding(20.dp).align(Alignment.TopStart)
+                    shape = RoundedCornerShape(dimens.radius.sm),
+                    border = BorderStroke(1.dp, drsAccentColor.copy(alpha = 0.4f)),
+                    modifier = Modifier.padding(dimens.spacing.lg).align(Alignment.TopStart)
                 ) {
-                    Row(modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(modifier = Modifier.padding(horizontal = dimens.spacing.sm, vertical = dimens.spacing.xs), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(dimens.spacing.sm)) {
                         val pulseAnim = rememberInfiniteTransition(label = "drs_pulse")
                         val dotAlpha by pulseAnim.animateFloat(initialValue = 1f, targetValue = 0.3f, animationSpec = infiniteRepeatable(tween(800), RepeatMode.Reverse), label = "alpha")
-                        Box(modifier = Modifier.size(8.dp).alpha(dotAlpha).background(Color(0xFF00F0FF), CircleShape).shadow(4.dp, CircleShape, spotColor = Color(0xFF00F0FF)))
-                        Text("REVIEW IN PROGRESS", color = Color(0xFF00F0FF), fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.2.sp)
+                        Box(modifier = Modifier.size(dimens.liveDotSize).alpha(dotAlpha).background(drsAccentColor, CircleShape).shadow(4.dp, CircleShape, spotColor = drsAccentColor))
+                        Text("REVIEW IN PROGRESS", style = typography.labelMedium, color = drsAccentColor)
                     }
                 }
                 
-                Column(modifier = Modifier.padding(20.dp).align(Alignment.BottomEnd), horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    DrsIndicator("PITCHING", "IN LINE", Color(0xFF00F0FF))
-                    DrsIndicator("IMPACT", "IN LINE", Color(0xFF00F0FF))
-                    DrsIndicator("WICKETS", "HITTING", GoldPrimary)
+                Column(modifier = Modifier.padding(dimens.spacing.lg).align(Alignment.BottomEnd), horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(dimens.spacing.xs)) {
+                    DrsIndicator("PITCHING", "IN LINE", drsAccentColor)
+                    DrsIndicator("IMPACT", "IN LINE", drsAccentColor)
+                    DrsIndicator("WICKETS", "HITTING", colors.goldPrimary)
                 }
             }
             
-            Column(modifier = Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text("DRS Visualization", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Black)
-                Text("Projected path indicates ball hitting top of leg stump.", color = Color.White.copy(alpha = 0.6f), fontSize = 14.sp, fontWeight = FontWeight.Medium)
+            Column(modifier = Modifier.padding(dimens.spacing.lg), verticalArrangement = Arrangement.spacedBy(dimens.spacing.xs)) {
+                Text("DRS Visualization", style = typography.headingMedium, color = colors.textPrimary)
+                Text("Projected path indicates ball hitting top of leg stump.", style = typography.bodyMedium, color = colors.textSecondary)
             }
         }
     }
@@ -197,20 +205,25 @@ private fun DrsVisualizationCard() {
 
 @Composable
 private fun DrsIndicator(label: String, value: String, color: Color) {
+    val typography = BouncerDesignSystem.typography
+    val dimens = BouncerDesignSystem.dimens
     Surface(
         color = Color.Black.copy(alpha = 0.5f),
-        shape = RoundedCornerShape(4.dp),
-        border = BorderStroke(0.5.dp, Color.White.copy(alpha = 0.1f))
+        shape = RoundedCornerShape(dimens.radius.xs),
+        border = BorderStroke(0.5.dp, GlassBorder)
     ) {
-        Row(modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text(label, color = Color.White.copy(alpha = 0.6f), fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp)
-            Text(value, color = color, fontSize = 11.sp, fontWeight = FontWeight.Black)
+        Row(modifier = Modifier.padding(horizontal = dimens.spacing.sm, vertical = dimens.spacing.xs), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(dimens.spacing.sm)) {
+            Text(label, style = typography.labelSmall, color = TextSecondary)
+            Text(value, style = typography.labelMedium, color = color, fontWeight = FontWeight.Black)
         }
     }
 }
 
 @Composable
 private fun VerdictModule() {
+    val colors = BouncerDesignSystem.colors
+    val typography = BouncerDesignSystem.typography
+    val dimens = BouncerDesignSystem.dimens
     val infiniteTransition = rememberInfiniteTransition(label = "verdict")
     val glowIntensity by infiniteTransition.animateFloat(
         initialValue = 10.dp.value,
@@ -219,12 +232,12 @@ private fun VerdictModule() {
         label = "glow"
     )
 
-    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+    Column(modifier = Modifier.fillMaxWidth().padding(vertical = dimens.spacing.lg), horizontalAlignment = Alignment.CenterHorizontally) {
         Box(contentAlignment = Alignment.Center) {
-            Box(modifier = Modifier.size(120.dp, 60.dp).background(GoldPrimary.copy(alpha = 0.1f), CircleShape).blur(glowIntensity.dp))
+            Box(modifier = Modifier.size(120.dp, 60.dp).background(colors.goldPrimary.copy(alpha = 0.1f), CircleShape).blur(glowIntensity.dp))
             Text(
                 "OUT",
-                color = GoldPrimary,
+                color = colors.goldPrimary,
                 fontSize = 64.sp,
                 fontWeight = FontWeight.Black,
                 fontStyle = FontStyle.Italic,
@@ -234,23 +247,27 @@ private fun VerdictModule() {
                 }
             )
         }
-        Spacer(modifier = Modifier.height(8.dp))
-        Text("Umpire's Decision Overturned".uppercase(), color = Color.White.copy(alpha = 0.4f), fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp)
+        Spacer(modifier = Modifier.height(dimens.spacing.sm))
+        Text("Umpire's Decision Overturned".uppercase(), style = typography.labelMedium, color = colors.textMuted)
     }
 }
 
 @Composable
 private fun DeliveryMetricsSection() {
-    Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
+    val colors = BouncerDesignSystem.colors
+    val typography = BouncerDesignSystem.typography
+    val dimens = BouncerDesignSystem.dimens
+
+    Column(verticalArrangement = Arrangement.spacedBy(dimens.spacing.lg)) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Box(modifier = Modifier.size(4.dp, 18.dp).background(GoldPrimary, RoundedCornerShape(2.dp)))
-                Text("DELIVERY METRICS", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Black, letterSpacing = 1.2.sp)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(dimens.spacing.sm)) {
+                Box(modifier = Modifier.size(4.dp, 18.dp).background(colors.goldPrimary, RoundedCornerShape(2.dp)))
+                Text("DELIVERY METRICS", style = typography.labelLarge, color = colors.textPrimary)
             }
-            Icon(Icons.Default.BarChart, null, tint = Color.White.copy(alpha = 0.3f), modifier = Modifier.size(20.dp))
+            Icon(Icons.Default.BarChart, null, tint = colors.textMuted, modifier = Modifier.size(dimens.iconSize.md))
         }
         
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(dimens.cardGap)) {
             MetricCard(modifier = Modifier.weight(1f), label = "Impact Speed", value = "142", unit = "kph", icon = Icons.Default.Speed)
             MetricCard(modifier = Modifier.weight(1f), label = "Turn Degree", value = "2.1°", icon = Icons.AutoMirrored.Filled.RotateRight)
             MetricCard(modifier = Modifier.weight(1f), label = "Confidence", value = "98%", icon = Icons.Default.AutoAwesome)
@@ -260,23 +277,25 @@ private fun DeliveryMetricsSection() {
 
 @Composable
 private fun MetricCard(modifier: Modifier, label: String, value: String, unit: String = "", icon: ImageVector) {
-    Box(
-        modifier = modifier
-            .clip(RoundedCornerShape(20.dp))
-            .background(Color.White.copy(alpha = 0.04f))
-            .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(20.dp))
-            .padding(16.dp)
+    val colors = BouncerDesignSystem.colors
+    val typography = BouncerDesignSystem.typography
+    val dimens = BouncerDesignSystem.dimens
+
+    GlassCard(
+        modifier = modifier,
+        useGoldBorder = true,
+        contentPadding = PaddingValues(dimens.spacing.md)
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Box(modifier = Modifier.size(36.dp).background(Color.White.copy(alpha = 0.06f), CircleShape), contentAlignment = Alignment.Center) {
-                Icon(icon, null, tint = GoldPrimary, modifier = Modifier.size(18.dp))
+        Column(verticalArrangement = Arrangement.spacedBy(dimens.spacing.sm)) {
+            Box(modifier = Modifier.size(36.dp).background(colors.goldSubtle, CircleShape), contentAlignment = Alignment.Center) {
+                Icon(icon, null, tint = colors.goldPrimary, modifier = Modifier.size(dimens.iconSize.sm))
             }
             Column {
-                Text(label.uppercase(), color = Color.White.copy(alpha = 0.5f), fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 0.5.sp)
+                Text(label.uppercase(), style = typography.labelSmall, color = colors.textMuted)
                 Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text(value, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Black)
+                    Text(value, style = typography.statValue, color = colors.textPrimary)
                     if (unit.isNotEmpty()) {
-                        Text(unit, color = Color.White.copy(alpha = 0.4f), fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 2.dp))
+                        Text(unit, style = typography.bodySmall, color = colors.textTertiary, modifier = Modifier.padding(bottom = 2.dp))
                     }
                 }
             }
@@ -286,26 +305,28 @@ private fun MetricCard(modifier: Modifier, label: String, value: String, unit: S
 
 @Composable
 private fun PitchMapMiniCard() {
-    Box(
+    val colors = BouncerDesignSystem.colors
+    val typography = BouncerDesignSystem.typography
+    val dimens = BouncerDesignSystem.dimens
+
+    GlassCard(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
-            .background(Color.White.copy(alpha = 0.04f))
-            .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(20.dp))
-            .clickable { /* Detail View */ }
-            .padding(20.dp)
+            .clickable { /* Detail View */ },
+        useGoldBorder = true,
+        contentPadding = PaddingValues(dimens.spacing.lg)
     ) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                Box(modifier = Modifier.size(48.dp).background(Color.White.copy(alpha = 0.06f), RoundedCornerShape(12.dp)), contentAlignment = Alignment.Center) {
-                    Icon(Icons.Default.Map, null, tint = Color.White.copy(alpha = 0.5f), modifier = Modifier.size(24.dp))
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(dimens.spacing.md)) {
+                Box(modifier = Modifier.size(48.dp).background(colors.goldSubtle, RoundedCornerShape(dimens.radius.md)), contentAlignment = Alignment.Center) {
+                    Icon(Icons.Default.Map, null, tint = colors.goldPrimary, modifier = Modifier.size(dimens.iconSize.lg))
                 }
                 Column {
-                    Text("Pitch Map", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Black)
-                    Text("Good Length", color = GoldPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                    Text("Pitch Map", style = typography.headingSmall, color = colors.textPrimary)
+                    Text("Good Length", style = typography.bodySmall, color = colors.goldPrimary, fontWeight = FontWeight.Bold)
                 }
             }
-            Icon(Icons.Default.ChevronRight, null, tint = Color.White.copy(alpha = 0.3f))
+            Icon(Icons.Default.ChevronRight, null, tint = colors.textMuted)
         }
     }
 }

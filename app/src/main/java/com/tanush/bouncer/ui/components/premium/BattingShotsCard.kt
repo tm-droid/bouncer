@@ -131,7 +131,7 @@ fun BattingShotsCard(
                         )
                         Text(
                             text = shotsData.batsmanName,
-                            color = Color.White,
+                            color = colors.textPrimary,
                             fontSize = 15.sp,
                             fontWeight = FontWeight.SemiBold,
                         )
@@ -328,7 +328,7 @@ private fun ShotBreakdownRow(
     ) {
         Text(
             text = shot.region,
-            color = Color.White,
+            color = colors.textPrimary,
             fontSize = 12.sp,
             fontWeight = FontWeight.Medium,
             modifier = Modifier.width(80.dp),
@@ -355,7 +355,7 @@ private fun ShotBreakdownRow(
         Column(horizontalAlignment = Alignment.End) {
             Text(
                 text = "${shot.runs}",
-                color = Color.White,
+                color = colors.textPrimary,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
             )

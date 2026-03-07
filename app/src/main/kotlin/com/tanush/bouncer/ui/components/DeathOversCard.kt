@@ -372,7 +372,7 @@ fun DeathOversCard(
                     DeathStatBox(
                         label = "DOTS",
                         value = "${deathInfo.dots}",
-                        color = Color.Gray
+                        color = TextSecondary
                     )
                 }
                 

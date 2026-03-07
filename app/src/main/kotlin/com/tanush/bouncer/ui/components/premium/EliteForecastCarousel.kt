@@ -12,8 +12,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.ui.components.BallPrediction
 import com.tanush.bouncer.ui.components.PredictiveBallCard
-import com.tanush.bouncer.ui.theme.GoldPrimary
-import com.tanush.bouncer.ui.theme.TextMuted
+import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 
 /**
  * Elite Forecast Carousel (v1.0).
@@ -26,6 +25,10 @@ fun EliteForecastCarousel(
     modifier: Modifier = Modifier,
     predictions: List<BallPrediction> = emptyList() // Default mock data if empty
 ) {
+    val colors = BouncerDesignSystem.colors
+    val typography = BouncerDesignSystem.typography
+    val dimens = BouncerDesignSystem.dimens
+
     val displayPredictions = if (predictions.isEmpty()) {
         listOf(
             BallPrediction("15.1", 72, "Dot Ball"),
@@ -39,7 +42,7 @@ fun EliteForecastCarousel(
 
     Column(
         modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        verticalArrangement = Arrangement.spacedBy(dimens.spacing.sm)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -48,23 +51,20 @@ fun EliteForecastCarousel(
         ) {
             Text(
                 text = "MCP PREDICTIVE STREAM",
-                color = TextMuted,
-                fontSize = 10.sp,
-                fontWeight = FontWeight.Black,
-                letterSpacing = 1.5.sp
+                style = typography.labelSmall,
+                color = colors.textMuted
             )
             Text(
                 text = "NEXT OVER",
-                color = GoldPrimary,
-                fontSize = 9.sp,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 1.sp
+                style = typography.labelSmall,
+                color = colors.goldPrimary,
+                fontWeight = FontWeight.Bold
             )
         }
 
         LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            contentPadding = PaddingValues(end = 20.dp)
+            horizontalArrangement = Arrangement.spacedBy(dimens.cardGap),
+            contentPadding = PaddingValues(end = dimens.spacing.lg)
         ) {
             items(displayPredictions) { prediction ->
                 PredictiveBallCard(prediction = prediction)

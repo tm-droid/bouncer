@@ -85,14 +85,14 @@ fun PressureIndexHeatmapCard(modifier: Modifier = Modifier) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(24.dp),
+                .padding(Spacing.lg),
             verticalArrangement = Arrangement.Bottom
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
                 Box(modifier = Modifier.size(8.dp).background(GoldPrimary, RoundedCornerShape(2.dp)))
                 Text(
                     "PRESSURE INDICES",
-                    color = Color.White,
+                    color = TextPrimary,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Black,
                     letterSpacing = 1.sp
@@ -114,12 +114,12 @@ fun PressureIndexHeatmapCard(modifier: Modifier = Modifier) {
                 .padding(16.dp)
                 .clip(RoundedCornerShape(8.dp))
                 .background(GlassSurface)
-                .border(0.5.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(8.dp))
+                .border(0.5.dp, GlassBorder, RoundedCornerShape(8.dp))
                 .padding(horizontal = 10.dp, vertical = 4.dp)
         ) {
             Text(
                 "LIVE SYNC",
-                color = Color.White.copy(alpha = 0.6f),
+                color = TextSecondary,
                 fontSize = 9.sp,
                 fontWeight = FontWeight.Black,
                 letterSpacing = 1.sp

@@ -53,7 +53,7 @@ fun PremiumScorecardTab(
         ) {
             Text(
                 text = "${innings?.teamName ?: ""} ${innings?.score ?: ""} (${innings?.overs ?: ""})",
-                color = Color.White,
+                color = TextPrimary,
                 fontSize = 28.sp,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = (-0.5).sp
@@ -81,7 +81,7 @@ fun PremiumScorecardTab(
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(12.dp))
                 .background(Color(0xFF121212))
-                .border(0.5.dp, Color.White.copy(alpha = 0.05f), RoundedCornerShape(12.dp))
+                .border(0.5.dp, GlassSurface, RoundedCornerShape(12.dp))
                 .padding(4.dp),
             horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
@@ -92,7 +92,7 @@ fun PremiumScorecardTab(
                     modifier = Modifier.weight(1f),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = if (isSelected) GoldPrimary else Color.Transparent,
-                        contentColor = if (isSelected) Color.Black else Color.White.copy(alpha = 0.5f)
+                        contentColor = if (isSelected) Color.Black else TextSecondary
                     ),
                     shape = RoundedCornerShape(8.dp),
                     contentPadding = PaddingValues(vertical = 8.dp)
@@ -118,10 +118,10 @@ fun PremiumScorecardTab(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(modifier = Modifier.width(2.dp).height(16.dp).background(GoldPrimary))
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Batting", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                        Text("Batting", color = TextPrimary, fontSize = 18.sp, fontWeight = FontWeight.Bold)
                     }
-                    Surface(color = Color(0xFF121212), shape = RoundedCornerShape(4.dp), border = BorderStroke(1.dp, Color.White.copy(alpha = 0.05f))) {
-                        Text("Live", color = Color.White.copy(alpha = 0.5f), fontSize = 10.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
+                    Surface(color = Color(0xFF121212), shape = RoundedCornerShape(4.dp), border = BorderStroke(1.dp, GlassSurface)) {
+                        Text("Live", color = TextSecondary, fontSize = 10.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
                     }
                 }
             }
@@ -165,7 +165,7 @@ private fun SectionHeader(title: String) {
     ) {
         Box(modifier = Modifier.width(2.dp).height(16.dp).background(GoldPrimary))
         Spacer(modifier = Modifier.width(8.dp))
-        Text(title, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+        Text(title, color = TextPrimary, fontSize = 18.sp, fontWeight = FontWeight.Bold)
     }
 }
 
@@ -176,15 +176,15 @@ private fun BattingTableHeader() {
             .padding(horizontal = 16.dp)
             .fillMaxWidth()
             .clip(RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp))
-            .background(Color.White.copy(alpha = 0.03f))
+            .background(GlassSurface)
             .padding(horizontal = 12.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Text("BATTER", modifier = Modifier.weight(3f), color = Color.White.copy(alpha = 0.4f), fontSize = 10.sp, fontWeight = FontWeight.Bold)
-        Text("R", modifier = Modifier.weight(1f), textAlign = TextAlign.Center, color = Color.White.copy(alpha = 0.4f), fontSize = 10.sp, fontWeight = FontWeight.Bold)
-        Text("B", modifier = Modifier.weight(1f), textAlign = TextAlign.Center, color = Color.White.copy(alpha = 0.4f), fontSize = 10.sp, fontWeight = FontWeight.Bold)
-        Text("4s", modifier = Modifier.weight(1f), textAlign = TextAlign.Center, color = Color.White.copy(alpha = 0.4f), fontSize = 10.sp, fontWeight = FontWeight.Bold)
-        Text("6s", modifier = Modifier.weight(1f), textAlign = TextAlign.Center, color = Color.White.copy(alpha = 0.4f), fontSize = 10.sp, fontWeight = FontWeight.Bold)
+        Text("BATTER", modifier = Modifier.weight(3f), color = TextMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+        Text("R", modifier = Modifier.weight(1f), textAlign = TextAlign.Center, color = TextMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+        Text("B", modifier = Modifier.weight(1f), textAlign = TextAlign.Center, color = TextMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+        Text("4s", modifier = Modifier.weight(1f), textAlign = TextAlign.Center, color = TextMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+        Text("6s", modifier = Modifier.weight(1f), textAlign = TextAlign.Center, color = TextMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
         Text("SR", modifier = Modifier.weight(1.2f), textAlign = TextAlign.End, color = GoldPrimary, fontSize = 10.sp, fontWeight = FontWeight.Bold)
     }
 }
@@ -198,7 +198,7 @@ private fun BattingRow(batsman: BatsmanStats) {
             .padding(horizontal = 16.dp)
             .fillMaxWidth()
             .background(if (isNotOut) GlassSurface else Color(0xFF121212))
-            .border(0.5.dp, Color.White.copy(alpha = 0.05f))
+            .border(0.5.dp, GlassSurface)
             .padding(horizontal = 12.dp, vertical = 12.dp)
     ) {
         if (isNotOut) {
@@ -211,7 +211,7 @@ private fun BattingRow(batsman: BatsmanStats) {
             Column(modifier = Modifier.weight(3f)) {
                 Text(
                     text = batsman.name + if (isNotOut) " *" else "",
-                    color = Color.White,
+                    color = TextPrimary,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
@@ -219,15 +219,15 @@ private fun BattingRow(batsman: BatsmanStats) {
                 )
                 Text(
                     text = if (isNotOut) "Batting" else batsman.dismissal,
-                    color = if (isNotOut) Color(0xFF4ADE80) else Color.White.copy(alpha = 0.4f),
+                    color = if (isNotOut) Color(0xFF4ADE80) else TextMuted,
                     fontSize = 10.sp,
                     fontStyle = if (!isNotOut) FontStyle.Italic else FontStyle.Normal
                 )
             }
-            Text(batsman.runs, modifier = Modifier.weight(1f), textAlign = TextAlign.Center, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-            Text(batsman.balls, modifier = Modifier.weight(1f), textAlign = TextAlign.Center, color = Color.White.copy(alpha = 0.4f), fontSize = 12.sp)
-            Text(batsman.fours, modifier = Modifier.weight(1f), textAlign = TextAlign.Center, color = Color.White.copy(alpha = 0.4f), fontSize = 12.sp)
-            Text(batsman.sixes, modifier = Modifier.weight(1f), textAlign = TextAlign.Center, color = Color.White.copy(alpha = 0.4f), fontSize = 12.sp)
+            Text(batsman.runs, modifier = Modifier.weight(1f), textAlign = TextAlign.Center, color = TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+            Text(batsman.balls, modifier = Modifier.weight(1f), textAlign = TextAlign.Center, color = TextMuted, fontSize = 12.sp)
+            Text(batsman.fours, modifier = Modifier.weight(1f), textAlign = TextAlign.Center, color = TextMuted, fontSize = 12.sp)
+            Text(batsman.sixes, modifier = Modifier.weight(1f), textAlign = TextAlign.Center, color = TextMuted, fontSize = 12.sp)
             Text(batsman.strikeRate, modifier = Modifier.weight(1.2f), textAlign = TextAlign.End, color = GoldPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
         }
     }
@@ -241,11 +241,11 @@ private fun ExtrasRow(extras: String, innings: Innings?) {
             .padding(16.dp)
             .fillMaxWidth()
             .clip(RoundedCornerShape(8.dp))
-            .background(Color.White.copy(alpha = 0.03f))
+            .background(GlassSurface)
             .padding(12.dp),
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Text("Extras: $extras", color = Color.White.copy(alpha = 0.4f), fontSize = 12.sp)
+        Text("Extras: $extras", color = TextMuted, fontSize = 12.sp)
         Text("CRR $crr", color = GoldPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
     }
 }
@@ -337,13 +337,13 @@ private fun FallOfWicketsCarousel(fow: List<String>) {
                     .width(140.dp)
                     .clip(RoundedCornerShape(12.dp))
                     .background(Color(0xFF121212))
-                    .border(0.5.dp, Color.White.copy(alpha = 0.05f), RoundedCornerShape(12.dp))
+                    .border(0.5.dp, GlassSurface, RoundedCornerShape(12.dp))
                     .padding(12.dp)
             ) {
                 Column {
-                    Text("Wicket", color = Color.White.copy(alpha = 0.4f), fontSize = 10.sp)
+                    Text("Wicket", color = TextMuted, fontSize = 10.sp)
                     Text(score, color = GoldPrimary, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                    Text(detail, color = Color.White.copy(alpha = 0.6f), fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(detail, color = TextSecondary, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
         }
@@ -357,16 +357,16 @@ private fun BowlingTableHeader() {
             .padding(horizontal = 16.dp)
             .fillMaxWidth()
             .clip(RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp))
-            .background(Color.White.copy(alpha = 0.03f))
+            .background(GlassSurface)
             .padding(horizontal = 12.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Text("BOWLER", modifier = Modifier.weight(3.5f), color = Color.White.copy(alpha = 0.4f), fontSize = 10.sp, fontWeight = FontWeight.Bold)
-        Text("O", modifier = Modifier.weight(1f), textAlign = TextAlign.Center, color = Color.White.copy(alpha = 0.4f), fontSize = 10.sp, fontWeight = FontWeight.Bold)
-        Text("M", modifier = Modifier.weight(1f), textAlign = TextAlign.Center, color = Color.White.copy(alpha = 0.4f), fontSize = 10.sp, fontWeight = FontWeight.Bold)
-        Text("R", modifier = Modifier.weight(1f), textAlign = TextAlign.Center, color = Color.White.copy(alpha = 0.4f), fontSize = 10.sp, fontWeight = FontWeight.Bold)
-        Text("W", modifier = Modifier.weight(1f), textAlign = TextAlign.Center, color = Color.White.copy(alpha = 0.4f), fontSize = 10.sp, fontWeight = FontWeight.Bold)
-        Text("ECON", modifier = Modifier.weight(1.2f), textAlign = TextAlign.End, color = Color.White.copy(alpha = 0.4f), fontSize = 10.sp, fontWeight = FontWeight.Bold)
+        Text("BOWLER", modifier = Modifier.weight(3.5f), color = TextMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+        Text("O", modifier = Modifier.weight(1f), textAlign = TextAlign.Center, color = TextMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+        Text("M", modifier = Modifier.weight(1f), textAlign = TextAlign.Center, color = TextMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+        Text("R", modifier = Modifier.weight(1f), textAlign = TextAlign.Center, color = TextMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+        Text("W", modifier = Modifier.weight(1f), textAlign = TextAlign.Center, color = TextMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+        Text("ECON", modifier = Modifier.weight(1.2f), textAlign = TextAlign.End, color = TextMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
     }
 }
 
@@ -377,13 +377,13 @@ private fun BowlingRow(bowler: BowlerStats) {
             .padding(horizontal = 16.dp)
             .fillMaxWidth()
             .background(Color(0xFF121212))
-            .border(0.5.dp, Color.White.copy(alpha = 0.05f))
+            .border(0.5.dp, GlassSurface)
             .padding(horizontal = 12.dp, vertical = 12.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(modifier = Modifier.weight(3.5f)) {
-            Text(bowler.name, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+            Text(bowler.name, color = TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
             // Sparkline
             Canvas(modifier = Modifier.size(64.dp, 16.dp).padding(top = 4.dp)) {
                 val path = Path().apply {
@@ -402,10 +402,10 @@ private fun BowlingRow(bowler: BowlerStats) {
                 drawPath(path, GoldPrimary, style = Stroke(width = 1.5.dp.toPx()))
             }
         }
-        Text(bowler.overs, modifier = Modifier.weight(1f), textAlign = TextAlign.Center, color = Color.White, fontSize = 13.sp)
-        Text(bowler.maidens, modifier = Modifier.weight(1f), textAlign = TextAlign.Center, color = Color.White.copy(alpha = 0.4f), fontSize = 12.sp)
-        Text(bowler.runs, modifier = Modifier.weight(1f), textAlign = TextAlign.Center, color = Color.White.copy(alpha = 0.4f), fontSize = 12.sp)
-        Text(bowler.wickets, modifier = Modifier.weight(1f), textAlign = TextAlign.Center, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+        Text(bowler.overs, modifier = Modifier.weight(1f), textAlign = TextAlign.Center, color = TextPrimary, fontSize = 13.sp)
+        Text(bowler.maidens, modifier = Modifier.weight(1f), textAlign = TextAlign.Center, color = TextMuted, fontSize = 12.sp)
+        Text(bowler.runs, modifier = Modifier.weight(1f), textAlign = TextAlign.Center, color = TextMuted, fontSize = 12.sp)
+        Text(bowler.wickets, modifier = Modifier.weight(1f), textAlign = TextAlign.Center, color = TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
         Text(bowler.economy, modifier = Modifier.weight(1.2f), textAlign = TextAlign.End, color = GoldPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
     }
 }

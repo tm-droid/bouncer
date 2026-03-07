@@ -21,7 +21,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -34,7 +36,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -42,6 +46,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.contentDescription
@@ -88,28 +93,47 @@ fun ScorecardTab(
             )
         }
         else -> {
+            val innings = scorecard.innings
+            val expandedStates = remember {
+                mutableStateMapOf<Int, Boolean>().apply {
+                    innings.forEachIndexed { index, _ ->
+                        put(index, index == innings.lastIndex)
+                    }
+                }
+            }
+
             LazyColumn(
                 modifier = modifier.fillMaxSize(),
                 contentPadding = PaddingValues(
                     horizontal = BouncerDesignSystem.dimens.screenHorizontal,
                     vertical = BouncerDesignSystem.dimens.md
                 ),
-                verticalArrangement = Arrangement.spacedBy(24.dp) // More spacing between sections as per _22
+                verticalArrangement = Arrangement.spacedBy(0.dp)
             ) {
-                // Score Summary Hero (Mini version from _22 top section)
-                item {
+                item(key = "score_summary") {
                     ScoreSummaryHero(scorecard = scorecard)
                 }
 
-                val innings = scorecard.innings
-                itemsIndexed(innings, key = { idx, inn -> "innings_${idx}_${inn.teamName}" }) { index, inn ->
-                    InningsSection(
+                innings.forEachIndexed { index, inn ->
+                    val isExpanded = expandedStates[index] ?: (index == innings.lastIndex)
+
+                    item(key = "spacer_before_innings_$index") {
+                        Spacer(modifier = Modifier.height(24.dp))
+                    }
+
+                    inningsSection(
                         innings = inn,
-                        initiallyExpanded = index == innings.lastIndex,
+                        inningsIndex = index,
+                        isExpanded = isExpanded,
+                        onToggle = {
+                            expandedStates[index] = !isExpanded
+                        }
                     )
                 }
 
-                item { Spacer(modifier = Modifier.height(BouncerDesignSystem.dimens.xxl)) }
+                item(key = "bottom_spacer") {
+                    Spacer(modifier = Modifier.height(BouncerDesignSystem.dimens.xxl))
+                }
             }
         }
     }
@@ -146,7 +170,7 @@ private fun ScoreSummaryHero(scorecard: Scorecard?, modifier: Modifier = Modifie
                         .size(32.dp)
                         .clip(CircleShape)
                         .background(TeamPrimaryColors.getTeamColor(team1?.teamName ?: "").copy(alpha = 0.2f))
-                        .border(1.dp, Color.White.copy(alpha = 0.1f), CircleShape),
+                        .border(1.dp, colors.glassBorder, CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(text = TeamPrimaryColors.getTeamEmoji(team1?.teamName ?: ""), fontSize = 18.sp)
@@ -165,13 +189,13 @@ private fun ScoreSummaryHero(scorecard: Scorecard?, modifier: Modifier = Modifie
                     Text(
                         text = lastInnings?.score?.split("/")?.getOrNull(0) ?: "0",
                         style = typography.headingMedium.copy(fontSize = 32.sp),
-                        color = Color.White,
+                        color = colors.textPrimary,
                         fontWeight = FontWeight.Black
                     )
                     Text(
                         text = "-${lastInnings?.score?.split("/")?.getOrNull(1) ?: "0"}",
                         style = typography.headingSmall.copy(fontSize = 18.sp),
-                        color = Color.White.copy(alpha = 0.6f),
+                        color = colors.textSecondary,
                         modifier = Modifier.padding(bottom = 4.dp)
                     )
                 }
@@ -200,7 +224,7 @@ private fun ScoreSummaryHero(scorecard: Scorecard?, modifier: Modifier = Modifie
                         .size(32.dp)
                         .clip(CircleShape)
                         .background(TeamPrimaryColors.getTeamColor(team2?.teamName ?: "").copy(alpha = 0.2f))
-                        .border(1.dp, Color.White.copy(alpha = 0.1f), CircleShape),
+                        .border(1.dp, colors.glassBorder, CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(text = TeamPrimaryColors.getTeamEmoji(team2?.teamName ?: ""), fontSize = 18.sp)
@@ -211,116 +235,181 @@ private fun ScoreSummaryHero(scorecard: Scorecard?, modifier: Modifier = Modifie
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  Single Innings Section (expandable glass card)
+//  Innings Header Card (team name, score, expand/collapse toggle)
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
-fun InningsSection(
+private fun InningsHeaderCard(
     innings: Innings,
-    initiallyExpanded: Boolean = false,
+    isExpanded: Boolean,
+    onToggle: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val typography = BouncerDesignSystem.typography
     val dimens = BouncerDesignSystem.dimens
     val colors = BouncerDesignSystem.colors
-    var isExpanded by rememberSaveable { mutableStateOf(initiallyExpanded) }
 
-    Column(
+    val shape = RoundedCornerShape(
+        topStart = 24.dp, topEnd = 24.dp,
+        bottomStart = if (isExpanded) 0.dp else 24.dp,
+        bottomEnd = if (isExpanded) 0.dp else 24.dp
+    )
+
+    Row(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(24.dp))
-            .background(Color.White.copy(alpha = 0.03f))
+            .clip(shape)
+            .background(colors.glassSurface)
             .border(
                 1.dp,
                 Brush.verticalGradient(
-                    0f to Color.White.copy(alpha = 0.12f),
-                    1f to Color.White.copy(alpha = 0.04f)
+                    0f to colors.glassBorder,
+                    1f to colors.glassSurface
                 ),
-                RoundedCornerShape(24.dp)
+                shape
             )
+            .clickable { onToggle() }
+            .background(
+                if (isExpanded)
+                    TeamPrimaryColors.getTeamColor(innings.teamName).copy(alpha = 0.08f)
+                else Color.Transparent
+            )
+            .padding(dimens.md),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        // Sticky Header from _22
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable { isExpanded = !isExpanded }
-                .background(
-                    if (isExpanded) 
-                        TeamPrimaryColors.getTeamColor(innings.teamName).copy(alpha = 0.08f) 
-                    else Color.Transparent
-                )
-                .padding(dimens.md),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Box(
-                    modifier = Modifier
-                        .size(28.dp)
-                        .clip(CircleShape)
-                        .background(TeamPrimaryColors.getTeamColor(innings.teamName).copy(alpha = 0.2f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(text = TeamPrimaryColors.getTeamEmoji(innings.teamName), fontSize = 14.sp)
-                }
-                
-                Text(
-                    text = innings.teamName.uppercase(),
-                    style = typography.labelMedium,
-                    color = Color.White,
-                    letterSpacing = 1.sp
-                )
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Box(
+                modifier = Modifier
+                    .size(28.dp)
+                    .clip(CircleShape)
+                    .background(TeamPrimaryColors.getTeamColor(innings.teamName).copy(alpha = 0.2f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(text = TeamPrimaryColors.getTeamEmoji(innings.teamName), fontSize = 14.sp)
             }
-            
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+
+            Text(
+                text = innings.teamName.uppercase(),
+                style = typography.labelMedium,
+                color = colors.textPrimary,
+                letterSpacing = 1.sp
+            )
+        }
+
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text(
+                text = innings.score,
+                style = typography.headingSmall.copy(fontSize = 18.sp),
+                color = colors.textPrimary,
+                fontWeight = FontWeight.Bold
+            )
+            Icon(
+                imageVector = if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                contentDescription = null,
+                tint = colors.goldPrimary.copy(alpha = 0.7f),
+                modifier = Modifier.size(20.dp)
+            )
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Innings Section — LazyColumn items with sticky headers
+// ─────────────────────────────────────────────────────────────────────────────
+
+@OptIn(ExperimentalFoundationApi::class)
+private fun LazyListScope.inningsSection(
+    innings: Innings,
+    inningsIndex: Int,
+    isExpanded: Boolean,
+    onToggle: () -> Unit
+) {
+    // Innings Header (team name, score, expand/collapse)
+    item(key = "innings_header_${inningsIndex}_${innings.teamName}") {
+        InningsHeaderCard(
+            innings = innings,
+            isExpanded = isExpanded,
+            onToggle = onToggle
+        )
+    }
+
+    if (isExpanded) {
+        // ── Batting sticky header ──
+        stickyHeader(key = "batting_sticky_$inningsIndex") {
+            BattingStickyHeaderRow()
+        }
+
+        // Batting rows
+        val batsmen = innings.batsmen
+        itemsIndexed(
+            items = batsmen,
+            key = { idx, _ -> "bat_${inningsIndex}_$idx" }
+        ) { idx, batsman ->
+            BatsmanStatsRow(
+                batsman = batsman,
+                isLast = idx == batsmen.lastIndex,
+                teamName = innings.teamName
+            )
+        }
+
+        // Extras & Total Row
+        item(key = "extras_$inningsIndex") {
+            val typography = BouncerDesignSystem.typography
+            val colors = BouncerDesignSystem.colors
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(colors.glassSurface)
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
                 Text(
-                    text = innings.score,
-                    style = typography.headingSmall.copy(fontSize = 18.sp),
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold
+                    text = "EXTRAS: ${innings.extras}",
+                    style = typography.labelSmall.copy(fontSize = 11.sp),
+                    color = colors.textSecondary
                 )
-                Icon(
-                    imageVector = if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                    contentDescription = null,
-                    tint = colors.goldPrimary.copy(alpha = 0.7f),
-                    modifier = Modifier.size(20.dp)
+                Text(
+                    text = "TOTAL: ${innings.score} (${innings.overs} Ov)",
+                    style = typography.labelSmall.copy(fontSize = 11.sp),
+                    color = colors.goldPrimary.copy(alpha = 0.8f),
+                    fontWeight = FontWeight.Bold
                 )
             }
         }
 
-        if (isExpanded) {
-            Column {
-                BattingTable(innings.batsmen, innings.teamName)
-                
-                // Extras & Total Row
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(Color.White.copy(alpha = 0.02f))
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        text = "EXTRAS: ${innings.extras}",
-                        style = typography.labelSmall.copy(fontSize = 11.sp),
-                        color = Color.White.copy(alpha = 0.5f)
-                    )
-                    Text(
-                        text = "TOTAL: ${innings.score} (${innings.overs} Ov)",
-                        style = typography.labelSmall.copy(fontSize = 11.sp),
-                        color = colors.goldPrimary.copy(alpha = 0.8f),
-                        fontWeight = FontWeight.Bold
-                    )
-                }
+        item(key = "bowling_spacer_$inningsIndex") {
+            Spacer(modifier = Modifier.height(16.dp))
+        }
 
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                BowlingTable(innings.bowlers)
-                
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                // Fall of Wickets section stylized
-                if (innings.fallOfWickets.isNotEmpty()) {
+        // ── Bowling sticky header ──
+        stickyHeader(key = "bowling_sticky_$inningsIndex") {
+            BowlingStickyHeaderRow()
+        }
+
+        // Bowling rows
+        val bowlers = innings.bowlers
+        itemsIndexed(
+            items = bowlers,
+            key = { idx, _ -> "bowl_${inningsIndex}_$idx" }
+        ) { idx, bowler ->
+            BowlerStatsRow(
+                bowler = bowler,
+                isLast = idx == bowlers.lastIndex
+            )
+        }
+
+        item(key = "fow_spacer_$inningsIndex") {
+            Spacer(modifier = Modifier.height(16.dp))
+        }
+
+        // Fall of Wickets
+        if (innings.fallOfWickets.isNotEmpty()) {
+            item(key = "fow_$inningsIndex") {
+                val typography = BouncerDesignSystem.typography
+                val colors = BouncerDesignSystem.colors
+                val dimens = BouncerDesignSystem.dimens
+                Column {
                     Text(
                         text = "FALL OF WICKETS",
                         style = typography.labelSmall.copy(fontSize = 9.sp),
@@ -328,7 +417,7 @@ fun InningsSection(
                         modifier = Modifier.padding(horizontal = 16.dp),
                         letterSpacing = 0.8.sp
                     )
-                    
+
                     val fowText = innings.fallOfWickets.joinToString(separator = "  •  ") { fow ->
                         "${fow.score} (${fow.batsman}, ${fow.overs} ov)"
                     }
@@ -336,10 +425,10 @@ fun InningsSection(
                     Text(
                         text = fowText,
                         style = typography.bodySmall.copy(fontSize = 11.sp),
-                        color = Color.White.copy(alpha = 0.6f),
+                        color = colors.textSecondary,
                         modifier = Modifier
-                            .padding(16.dp)
-                            .padding(bottom = 8.dp),
+                            .padding(dimens.spacing.md)
+                            .padding(bottom = dimens.spacing.sm),
                         lineHeight = 16.sp
                     )
                 }
@@ -348,39 +437,79 @@ fun InningsSection(
     }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+//  Sticky Header Rows
+// ─────────────────────────────────────────────────────────────────────────────
+
 @Composable
-private fun BattingTable(batsmen: List<BatsmanStats>, teamName: String) {
-    Column(modifier = Modifier.fillMaxWidth()) {
-        // Table Header
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp)
-                .background(Color.White.copy(alpha = 0.02f), RoundedCornerShape(4.dp)),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "BATSMEN",
-                style = BouncerDesignSystem.typography.labelSmall.copy(fontSize = 10.sp),
-                color = Color.White.copy(alpha = 0.4f),
-                modifier = Modifier.weight(1f)
-            )
-            listOf("R", "B", "4s", "6s", "SR").forEachIndexed { idx, label ->
-                Text(
-                    text = label,
-                    style = BouncerDesignSystem.typography.labelSmall.copy(fontSize = 10.sp),
-                    color = Color.White.copy(alpha = 0.4f),
-                    modifier = Modifier.width(if (idx == 4) 50.dp else 30.dp),
-                    textAlign = if (idx == 4) TextAlign.End else TextAlign.Center
+private fun BattingStickyHeaderRow() {
+    val dimens = BouncerDesignSystem.dimens
+    val colors = BouncerDesignSystem.colors
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color(0xFF1A1C20).copy(alpha = 0.95f))
+            .drawBehind {
+                drawLine(
+                    color = colors.goldPrimary.copy(alpha = 0.10f),
+                    start = Offset(0f, size.height),
+                    end = Offset(size.width, size.height),
+                    strokeWidth = 1.dp.toPx()
                 )
             }
+            .padding(horizontal = dimens.spacing.md, vertical = dimens.spacing.sm),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = "BATSMEN",
+            style = BouncerDesignSystem.typography.labelSmall.copy(fontSize = 10.sp),
+            color = colors.textTertiary,
+            modifier = Modifier.weight(1f)
+        )
+        listOf("R", "B", "4s", "6s", "SR").forEachIndexed { idx, label ->
+            Text(
+                text = label,
+                style = BouncerDesignSystem.typography.labelSmall.copy(fontSize = 10.sp),
+                color = colors.textTertiary,
+                modifier = Modifier.width(if (idx == 4) 50.dp else 30.dp),
+                textAlign = if (idx == 4) TextAlign.End else TextAlign.Center
+            )
         }
+    }
+}
 
-        batsmen.forEachIndexed { index, batsman ->
-            BatsmanStatsRow(
-                batsman = batsman,
-                isLast = index == batsmen.lastIndex,
-                teamName = teamName
+@Composable
+private fun BowlingStickyHeaderRow() {
+    val dimens = BouncerDesignSystem.dimens
+    val colors = BouncerDesignSystem.colors
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color(0xFF1A1C20).copy(alpha = 0.95f))
+            .drawBehind {
+                drawLine(
+                    color = colors.goldPrimary.copy(alpha = 0.10f),
+                    start = Offset(0f, size.height),
+                    end = Offset(size.width, size.height),
+                    strokeWidth = 1.dp.toPx()
+                )
+            }
+            .padding(horizontal = dimens.spacing.md, vertical = dimens.spacing.sm),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = "BOWLERS",
+            style = BouncerDesignSystem.typography.labelSmall.copy(fontSize = 9.sp),
+            color = colors.textTertiary,
+            modifier = Modifier.weight(1f)
+        )
+        listOf("O", "M", "R", "W", "ECO").forEachIndexed { idx, label ->
+            Text(
+                text = label,
+                style = BouncerDesignSystem.typography.labelSmall.copy(fontSize = 9.sp),
+                color = colors.textTertiary,
+                modifier = Modifier.width(if (idx == 4) 45.dp else 28.dp),
+                textAlign = if (idx == 4) TextAlign.End else TextAlign.Center
             )
         }
     }
@@ -407,7 +536,16 @@ private fun BatsmanStatsRow(
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
             .then(
-                if (isNotOut) Modifier.background(teamColor.copy(alpha = 0.05f)) else Modifier
+                if (isNotOut) Modifier
+                    .background(teamColor.copy(alpha = 0.08f))
+                    .drawBehind {
+                        drawRect(
+                            color = colors.goldPrimary,
+                            topLeft = Offset.Zero,
+                            size = Size(3.dp.toPx(), size.height)
+                        )
+                    }
+                else Modifier
             )
     ) {
         Row(
@@ -425,15 +563,16 @@ private fun BatsmanStatsRow(
                 Box(
                     modifier = Modifier
                         .size(28.dp)
-                        .clip(CircleShape)
-                        .background(Color.White.copy(alpha = 0.05f))
-                        .border(1.dp, Color.White.copy(alpha = 0.1f), CircleShape),
+                        .background(
+                            color = teamColor.copy(alpha = 0.15f),
+                            shape = CircleShape
+                        ),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "👤",
-                        fontSize = 12.sp,
-                        color = Color.White.copy(alpha = 0.5f)
+                        text = batsman.name.take(1).uppercase(),
+                        style = BouncerDesignSystem.typography.labelSmall,
+                        color = BouncerDesignSystem.colors.textSecondary
                     )
                 }
                 
@@ -441,13 +580,13 @@ private fun BatsmanStatsRow(
                     Text(
                         text = batsman.name,
                         style = typography.playerName.copy(fontSize = 13.sp),
-                        color = if (isNotable) colors.goldPrimary else Color.White,
+                        color = if (isNotable) colors.goldPrimary else colors.textPrimary,
                         fontWeight = if (isNotable || isNotOut) FontWeight.Bold else FontWeight.Medium
                     )
                     Text(
                         text = if (batsman.dismissal.isNotBlank()) batsman.dismissal else "not out",
                         style = typography.bodySmall.copy(fontSize = 10.sp),
-                        color = Color.White.copy(alpha = 0.4f),
+                        color = colors.textTertiary,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -461,7 +600,7 @@ private fun BatsmanStatsRow(
                 Text(
                     text = batsman.runs,
                     style = typography.labelSmall.copy(fontSize = 13.sp),
-                    color = if (isNotable) colors.goldPrimary else Color.White,
+                    color = if (isNotable) colors.goldPrimary else colors.textPrimary,
                     modifier = Modifier.width(30.dp),
                     textAlign = TextAlign.Center,
                     fontWeight = FontWeight.Black
@@ -469,21 +608,21 @@ private fun BatsmanStatsRow(
                 Text(
                     text = batsman.balls,
                     style = typography.bodySmall.copy(fontSize = 11.sp),
-                    color = Color.White.copy(alpha = 0.4f),
+                    color = colors.textTertiary,
                     modifier = Modifier.width(30.dp),
                     textAlign = TextAlign.Center
                 )
                 Text(
                     text = batsman.fours,
                     style = typography.bodySmall.copy(fontSize = 11.sp),
-                    color = Color.White.copy(alpha = 0.4f),
+                    color = colors.textTertiary,
                     modifier = Modifier.width(30.dp),
                     textAlign = TextAlign.Center
                 )
                 Text(
                     text = batsman.sixes,
                     style = typography.bodySmall.copy(fontSize = 11.sp),
-                    color = Color.White.copy(alpha = 0.4f),
+                    color = colors.textTertiary,
                     modifier = Modifier.width(30.dp),
                     textAlign = TextAlign.Center
                 )
@@ -499,45 +638,8 @@ private fun BatsmanStatsRow(
 
         if (!isLast) {
             HorizontalDivider(
-                color = Color.White.copy(alpha = 0.05f),
+                color = colors.glassSurface,
                 thickness = 0.5.dp
-            )
-        }
-    }
-}
-
-@Composable
-private fun BowlingTable(bowlers: List<BowlerStats>) {
-    Column(modifier = Modifier.fillMaxWidth()) {
-        // Bowling Header
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 6.dp)
-                .background(Color.White.copy(alpha = 0.02f), RoundedCornerShape(4.dp)),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "BOWLERS",
-                style = BouncerDesignSystem.typography.labelSmall.copy(fontSize = 9.sp),
-                color = Color.White.copy(alpha = 0.4f),
-                modifier = Modifier.weight(1f)
-            )
-            listOf("O", "M", "R", "W", "ECO").forEachIndexed { idx, label ->
-                Text(
-                    text = label,
-                    style = BouncerDesignSystem.typography.labelSmall.copy(fontSize = 9.sp),
-                    color = Color.White.copy(alpha = 0.4f),
-                    modifier = Modifier.width(if (idx == 4) 45.dp else 28.dp),
-                    textAlign = if (idx == 4) TextAlign.End else TextAlign.Center
-                )
-            }
-        }
-
-        bowlers.forEachIndexed { index, bowler ->
-            BowlerStatsRow(
-                bowler = bowler,
-                isLast = index == bowlers.lastIndex
             )
         }
     }
@@ -566,7 +668,7 @@ private fun BowlerStatsRow(
             Text(
                 text = bowler.name,
                 style = typography.playerName.copy(fontSize = 12.sp),
-                color = if (isNotable) colors.goldPrimary else Color.White,
+                color = if (isNotable) colors.goldPrimary else colors.textPrimary,
                 fontWeight = if (isNotable) FontWeight.Bold else FontWeight.Medium,
                 modifier = Modifier.weight(1f)
             )
@@ -575,21 +677,21 @@ private fun BowlerStatsRow(
                 Text(
                     text = bowler.overs,
                     style = typography.bodySmall.copy(fontSize = 11.sp),
-                    color = Color.White.copy(alpha = 0.4f),
+                    color = colors.textTertiary,
                     modifier = Modifier.width(28.dp),
                     textAlign = TextAlign.Center
                 )
                 Text(
                     text = bowler.maidens,
                     style = typography.bodySmall.copy(fontSize = 11.sp),
-                    color = Color.White.copy(alpha = 0.4f),
+                    color = colors.textTertiary,
                     modifier = Modifier.width(28.dp),
                     textAlign = TextAlign.Center
                 )
                 Text(
                     text = bowler.runs,
                     style = typography.statValue.copy(fontSize = 11.sp),
-                    color = Color.White,
+                    color = colors.textPrimary,
                     modifier = Modifier.width(28.dp),
                     textAlign = TextAlign.Center
                 )
@@ -604,7 +706,7 @@ private fun BowlerStatsRow(
                 Text(
                     text = bowler.economy,
                     style = typography.bodySmall.copy(fontSize = 11.sp, fontFamily = FontFamily.Monospace),
-                    color = Color.White.copy(alpha = 0.4f),
+                    color = colors.textTertiary,
                     modifier = Modifier.width(45.dp),
                     textAlign = TextAlign.End
                 )
@@ -613,7 +715,7 @@ private fun BowlerStatsRow(
 
         if (!isLast) {
             HorizontalDivider(
-                color = Color.White.copy(alpha = 0.05f),
+                color = colors.glassSurface,
                 thickness = 0.5.dp
             )
         }
@@ -627,7 +729,7 @@ private fun BowlerStatsRow(
 @Composable
 private fun ScorecardSkeleton(modifier: Modifier = Modifier) {
     val dimens = BouncerDesignSystem.dimens
-    val shimmerColor = Color.White.copy(alpha = 0.06f)
+    val shimmerColor = BouncerDesignSystem.colors.glassSurface
 
     Column(
         modifier = modifier.padding(dimens.screenHorizontal),
@@ -667,7 +769,7 @@ private fun ScorecardSkeleton(modifier: Modifier = Modifier) {
 
                     HorizontalDivider(
                         thickness = 1.dp,
-                        color = Color.White.copy(alpha = 0.08f)
+                        color = BouncerDesignSystem.colors.glassSurface
                     )
 
                     // Table header placeholder

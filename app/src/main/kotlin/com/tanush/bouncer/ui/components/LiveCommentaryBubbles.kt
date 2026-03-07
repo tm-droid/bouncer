@@ -358,7 +358,7 @@ private fun CommentaryBubble(
                         ) {
                             entry.batsmanName?.let { name ->
                                 Text(
-                                    text = "🏏 $name",
+                                    text = name,
                                     color = TextTertiary,
                                     fontSize = 11.sp,
                                     fontStyle = FontStyle.Italic
@@ -366,7 +366,7 @@ private fun CommentaryBubble(
                             }
                             entry.bowlerName?.let { name ->
                                 Text(
-                                    text = "⚾ $name",
+                                    text = name,
                                     color = TextTertiary,
                                     fontSize = 11.sp,
                                     fontStyle = FontStyle.Italic

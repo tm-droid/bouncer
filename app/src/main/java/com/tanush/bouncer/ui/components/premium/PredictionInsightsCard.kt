@@ -183,7 +183,7 @@ fun PredictionInsightsCard(
                             )
                             Text(
                                 text = prediction.predictionSource,
-                                color = Color.White.copy(alpha = 0.5f),
+                                color = colors.textSecondary,
                                 fontSize = 11.sp,
                             )
                         }
@@ -197,7 +197,7 @@ fun PredictionInsightsCard(
                                 when {
                                     prediction.confidence >= 0.8f -> colors.statusSuccess.copy(alpha = 0.2f)
                                     prediction.confidence >= 0.6f -> colors.statusWarning.copy(alpha = 0.2f)
-                                    else -> Color.White.copy(alpha = 0.1f)
+                                    else -> colors.glassBorder
                                 },
                             )
                             .padding(horizontal = 12.dp, vertical = 6.dp),
@@ -207,7 +207,7 @@ fun PredictionInsightsCard(
                             color = when {
                                 prediction.confidence >= 0.8f -> colors.statusSuccess
                                 prediction.confidence >= 0.6f -> colors.statusWarning
-                                else -> Color.White.copy(alpha = 0.7f)
+                                else -> colors.textSecondary
                             },
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
@@ -252,7 +252,7 @@ fun PredictionInsightsCard(
                                     } else {
                                         Brush.radialGradient(
                                             colors = listOf(
-                                                Color.White.copy(alpha = 0.1f),
+                                                colors.glassBorder,
                                                 Color.Transparent,
                                             ),
                                         )
@@ -263,7 +263,7 @@ fun PredictionInsightsCard(
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text(
                                     text = "${(prediction.team1WinProbability * 100).toInt()}%",
-                                    color = if (favoriteTeam == 1) colors.statusInfo else Color.White.copy(alpha = 0.7f),
+                                    color = if (favoriteTeam == 1) colors.statusInfo else colors.textSecondary,
                                     fontSize = 24.sp,
                                     fontWeight = FontWeight.Bold,
                                 )
@@ -286,12 +286,12 @@ fun PredictionInsightsCard(
                         ) {
                             Text(
                                 text = "DRAW",
-                                color = Color.White.copy(alpha = 0.4f),
+                                color = colors.textTertiary,
                                 fontSize = 10.sp,
                             )
                             Text(
                                 text = "${(prediction.drawProbability * 100).toInt()}%",
-                                color = Color.White.copy(alpha = 0.6f),
+                                color = colors.textSecondary,
                                 fontSize = 16.sp,
                                 fontWeight = FontWeight.Bold,
                             )
@@ -327,7 +327,7 @@ fun PredictionInsightsCard(
                                     } else {
                                         Brush.radialGradient(
                                             colors = listOf(
-                                                Color.White.copy(alpha = 0.1f),
+                                                colors.glassBorder,
                                                 Color.Transparent,
                                             ),
                                         )
@@ -338,7 +338,7 @@ fun PredictionInsightsCard(
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text(
                                     text = "${(prediction.team2WinProbability * 100).toInt()}%",
-                                    color = if (favoriteTeam == 2) colors.statusLive else Color.White.copy(alpha = 0.7f),
+                                    color = if (favoriteTeam == 2) colors.statusLive else colors.textSecondary,
                                     fontSize = 24.sp,
                                     fontWeight = FontWeight.Bold,
                                 )
@@ -360,7 +360,7 @@ fun PredictionInsightsCard(
                 // Key factors
                 Text(
                     text = "KEY FACTORS",
-                    color = Color.White.copy(alpha = 0.5f),
+                    color = colors.textSecondary,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 1.sp,
@@ -388,7 +388,7 @@ private fun PredictionFactorRow(
         factor.impact > 0 -> colors.statusInfo
         factor.impact < -0.3f -> colors.statusLive
         factor.impact < 0 -> colors.statusWarning
-        else -> Color.White.copy(alpha = 0.5f)
+        else -> colors.textSecondary
     }
 
     val impactText = when {
@@ -405,7 +405,7 @@ private fun PredictionFactorRow(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(10.dp))
-            .background(Color.White.copy(alpha = 0.05f))
+            .background(colors.glassSurface)
             .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -421,13 +421,13 @@ private fun PredictionFactorRow(
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = factor.factor,
-                color = Color.White,
+                color = colors.textPrimary,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.SemiBold,
             )
             Text(
                 text = factor.description,
-                color = Color.White.copy(alpha = 0.5f),
+                color = colors.textSecondary,
                 fontSize = 11.sp,
             )
         }

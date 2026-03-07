@@ -27,6 +27,11 @@ import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.ui.components.CoilImage
 import com.tanush.bouncer.ui.theme.GoldPrimary
 import com.tanush.bouncer.ui.theme.StatusLive
+import com.tanush.bouncer.ui.theme.TextPrimary
+import com.tanush.bouncer.ui.theme.TextSecondary
+import com.tanush.bouncer.ui.theme.TextMuted
+import com.tanush.bouncer.ui.theme.GlassBorder
+import com.tanush.bouncer.ui.theme.GlassSurface
 
 @Composable
 fun PremiumVenueInfoTab(match: CricketMatch) {
@@ -72,7 +77,7 @@ private fun VenueHeaderCard(match: CricketMatch) {
             .height(260.dp)
             .clip(RoundedCornerShape(28.dp))
             .background(Color(0xFF141414))
-            .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(28.dp))
+            .border(1.dp, GlassSurface, RoundedCornerShape(28.dp))
     ) {
         CoilImage(
             model = "https://lh3.googleusercontent.com/aida-public/AB6AXuD8JtNjK_OctwRthKVq0CGylWOPerY5NTb_miGHk-UfKcpJ05JCRm0gcWed2Ofs5Y16bPGizwi-1JXU0azvOsbbPUcRRPeRFC2hboRMTejxsaw_mIUxG1LlSEUby_tbS4Ad960gwGH53AMBF9d-w3yNTzKj6niM1sRKRYdaBt-klK1WhXMKi7TjyoMFRNwuQNhjrUJ1jPp43lP3SiioUsn1IzQBIX5ugeazmWAcxB3qohLDwaKJ_FXx4p0RaOp2zhX2c7gIg53V5cc",
@@ -95,8 +100,8 @@ private fun VenueHeaderCard(match: CricketMatch) {
                 Icon(Icons.Default.LocationOn, null, tint = GoldPrimary, modifier = Modifier.size(18.dp))
                 Text("VENUE", color = GoldPrimary, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp)
             }
-            Text(match.venue, color = Color.White, fontSize = 32.sp, fontWeight = FontWeight.Black, lineHeight = 36.sp, letterSpacing = (-1).sp)
-            Text("London, UK • Capacity: 30,000", color = Color.White.copy(alpha = 0.6f), fontSize = 15.sp, fontWeight = FontWeight.Bold)
+            Text(match.venue, color = TextPrimary, fontSize = 32.sp, fontWeight = FontWeight.Black, lineHeight = 36.sp, letterSpacing = (-1).sp)
+            Text("London, UK • Capacity: 30,000", color = TextSecondary, fontSize = 15.sp, fontWeight = FontWeight.Bold)
         }
     }
 }
@@ -110,19 +115,19 @@ private fun LiveConditionsCard() {
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(20.dp))
                 .background(Color(0xFF141414).copy(alpha = 0.7f))
-                .border(1.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(20.dp))
+                .border(1.dp, GlassBorder, RoundedCornerShape(20.dp))
                 .padding(24.dp)
         ) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                     Icon(Icons.Default.Cloud, null, tint = GoldPrimary, modifier = Modifier.size(40.dp))
                     Column {
-                        Text("22°", color = Color.White, fontSize = 42.sp, fontWeight = FontWeight.Black)
-                        Text("Sunny Intervals", color = Color.White.copy(alpha = 0.6f), fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                        Text("22°", color = TextPrimary, fontSize = 42.sp, fontWeight = FontWeight.Black)
+                        Text("Sunny Intervals", color = TextSecondary, fontSize = 15.sp, fontWeight = FontWeight.Bold)
                     }
                 }
                 
-                Box(modifier = Modifier.width(1.dp).height(48.dp).background(Color.White.copy(alpha = 0.1f)))
+                Box(modifier = Modifier.width(1.dp).height(48.dp).background(GlassBorder))
                 
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     ConditionItem(Icons.Default.WaterDrop, "45%")
@@ -136,8 +141,8 @@ private fun LiveConditionsCard() {
 @Composable
 private fun ConditionItem(icon: ImageVector, text: String) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        Icon(icon, null, tint = Color.White.copy(alpha = 0.4f), modifier = Modifier.size(20.dp))
-        Text(text, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.ExtraBold)
+        Icon(icon, null, tint = TextMuted, modifier = Modifier.size(20.dp))
+        Text(text, color = TextPrimary, fontSize = 15.sp, fontWeight = FontWeight.ExtraBold)
     }
 }
 
@@ -156,7 +161,7 @@ private fun PitchReportCard() {
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(24.dp))
                 .background(Color(0xFF141414).copy(alpha = 0.7f))
-                .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(24.dp))
+                .border(1.dp, GlassSurface, RoundedCornerShape(24.dp))
                 .padding(24.dp)
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
@@ -165,14 +170,14 @@ private fun PitchReportCard() {
                         Icon(Icons.Default.SportsCricket, null, tint = GoldPrimary, modifier = Modifier.size(28.dp))
                     }
                     Column {
-                        Text("Surface: Dry", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Black)
-                        Text("Updated 15 mins ago by Simon Doull", color = Color.White.copy(alpha = 0.4f), fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                        Text("Surface: Dry", color = TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Black)
+                        Text("Updated 15 mins ago by Simon Doull", color = TextMuted, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                     }
                 }
                 
                 Text(
                     text = "The pitch is notably dry with visible cracks developing around the good length area. Spinners are expected to dominate the middle overs as the ball grips. However, it remains a good batting surface initially.",
-                    color = Color.White.copy(alpha = 0.85f),
+                    color = TextPrimary,
                     fontSize = 15.sp,
                     lineHeight = 24.sp,
                     fontWeight = FontWeight.Medium
@@ -192,13 +197,13 @@ private fun PitchStatBox(label: String, value: String, modifier: Modifier) {
     Box(
         modifier = modifier
             .background(Color.Black.copy(alpha = 0.25f), RoundedCornerShape(12.dp))
-            .border(1.dp, Color.White.copy(alpha = 0.06f), RoundedCornerShape(12.dp))
+            .border(1.dp, GlassSurface, RoundedCornerShape(12.dp))
             .padding(16.dp),
         contentAlignment = Alignment.Center
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(label, color = Color.White.copy(alpha = 0.4f), fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.2.sp)
-            Text(value, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.ExtraBold)
+            Text(label, color = TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.2.sp)
+            Text(value, color = TextPrimary, fontSize = 15.sp, fontWeight = FontWeight.ExtraBold)
         }
     }
 }
@@ -220,7 +225,7 @@ private fun VenueStatCard(label: String, value: String, modifier: Modifier, isGo
         modifier = modifier
             .clip(RoundedCornerShape(20.dp))
             .background(Color(0xFF141414).copy(alpha = 0.7f))
-            .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(20.dp))
+            .border(1.dp, GlassSurface, RoundedCornerShape(20.dp))
             .then(if (isGold) Modifier.drawBehind {
                 drawLine(GoldPrimary, Offset(0f, 0f), Offset(size.width, 0f), strokeWidth = 3.dp.toPx())
             } else Modifier)
@@ -228,8 +233,8 @@ private fun VenueStatCard(label: String, value: String, modifier: Modifier, isGo
         contentAlignment = Alignment.Center
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text(label.uppercase(), color = Color.White.copy(alpha = 0.5f), fontSize = 11.sp, fontWeight = FontWeight.Black, textAlign = TextAlign.Center, letterSpacing = 1.sp)
-            Text(value, color = if (isGold) Color.White else Color.White.copy(alpha = 0.6f), fontSize = 36.sp, fontWeight = FontWeight.Black)
+            Text(label.uppercase(), color = TextSecondary, fontSize = 11.sp, fontWeight = FontWeight.Black, textAlign = TextAlign.Center, letterSpacing = 1.sp)
+            Text(value, color = if (isGold) TextPrimary else TextSecondary, fontSize = 36.sp, fontWeight = FontWeight.Black)
         }
     }
 }
@@ -251,13 +256,13 @@ private fun TossImpactCard() {
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("Win Probability by Toss", color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.ExtraBold)
+                    Text("Win Probability by Toss", color = TextPrimary, fontSize = 15.sp, fontWeight = FontWeight.ExtraBold)
                     Icon(Icons.Default.Info, null, tint = GoldPrimary, modifier = Modifier.size(18.dp))
                 }
                 
                 Row(modifier = Modifier.padding(20.dp), horizontalArrangement = Arrangement.spacedBy(28.dp)) {
                     TossProgressBar("Bat 1st Win", 0.6f, GoldPrimary, Modifier.weight(1f))
-                    TossProgressBar("Bowl 1st Win", 0.4f, Color.White.copy(alpha = 0.35f), Modifier.weight(1f))
+                    TossProgressBar("Bowl 1st Win", 0.4f, TextMuted, Modifier.weight(1f))
                 }
                 
                 Column(modifier = Modifier.fillMaxWidth()) {
@@ -281,14 +286,14 @@ private fun TossImpactCard() {
 private fun TossProgressBar(label: String, progress: Float, color: Color, modifier: Modifier) {
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text(label, color = Color.White.copy(alpha = 0.5f), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+            Text(label, color = TextSecondary, fontSize = 11.sp, fontWeight = FontWeight.Bold)
             Text("${(progress * 100).toInt()}%", color = color, fontSize = 13.sp, fontWeight = FontWeight.Black)
         }
         LinearProgressIndicator(
             progress = { progress },
             modifier = Modifier.fillMaxWidth().height(8.dp).clip(CircleShape),
             color = color,
-            trackColor = Color.White.copy(alpha = 0.1f)
+            trackColor = GlassBorder
         )
     }
 }
@@ -300,8 +305,8 @@ private fun TossHistoryRow(team: String, decision: String, result: String, isWin
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(team, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-        Text(decision, color = Color.White.copy(alpha = 0.5f), fontSize = 14.sp, fontWeight = FontWeight.Medium)
+        Text(team, color = TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+        Text(decision, color = TextSecondary, fontSize = 14.sp, fontWeight = FontWeight.Medium)
         Text(result, color = if (isWin) GoldPrimary else StatusLive, fontSize = 14.sp, fontWeight = FontWeight.Black)
     }
 }
@@ -310,6 +315,6 @@ private fun TossHistoryRow(team: String, decision: String, result: String, isWin
 private fun SectionTitle(title: String) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         Box(modifier = Modifier.size(4.dp, 18.dp).background(GoldPrimary, RoundedCornerShape(2.dp)))
-        Text(title.uppercase(), color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Black, letterSpacing = 1.2.sp)
+        Text(title.uppercase(), color = TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.Black, letterSpacing = 1.2.sp)
     }
 }

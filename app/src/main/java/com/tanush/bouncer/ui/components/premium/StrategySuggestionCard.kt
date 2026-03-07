@@ -22,7 +22,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Psychology
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -185,7 +187,7 @@ fun StrategySuggestionCard(
 
                         Text(
                             text = teamName,
-                            color = Color.White,
+                            color = colors.textPrimary,
                             fontSize = 17.sp,
                             fontWeight = FontWeight.SemiBold,
                         )
@@ -204,9 +206,11 @@ fun StrategySuggestionCard(
                     .padding(12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(
-                    text = "📊",
-                    fontSize = 20.sp,
+                Icon(
+                    imageVector = Icons.Default.BarChart,
+                    contentDescription = "Analysis",
+                    tint = Color.White,
+                    modifier = Modifier.size(20.dp),
                 )
 
                 Spacer(modifier = Modifier.width(10.dp))
@@ -221,7 +225,7 @@ fun StrategySuggestionCard(
                     )
                     Text(
                         text = situation,
-                        color = Color.White,
+                        color = colors.textPrimary,
                         fontSize = 13.sp,
                     )
                 }
@@ -256,12 +260,23 @@ fun StrategySuggestionCard(
             Spacer(modifier = Modifier.height(16.dp))
 
             // Disclaimer
-            Text(
-                text = "⚠️ AI suggestions are based on statistical analysis and may not account for all match conditions.",
-                color = Color.Gray,
-                fontSize = 10.sp,
-                lineHeight = 14.sp,
-            )
+            Row(
+                verticalAlignment = Alignment.Top,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Warning,
+                    contentDescription = "Warning",
+                    tint = Color.Gray,
+                    modifier = Modifier.size(14.dp),
+                )
+                Text(
+                    text = "AI suggestions are based on statistical analysis and may not account for all match conditions.",
+                    color = Color.Gray,
+                    fontSize = 10.sp,
+                    lineHeight = 14.sp,
+                )
+            }
         }
     }
 }
@@ -312,7 +327,7 @@ private fun SuggestionItem(
                 Column {
                     Text(
                         text = suggestion.title,
-                        color = Color.White,
+                        color = colors.textPrimary,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Medium,
                     )

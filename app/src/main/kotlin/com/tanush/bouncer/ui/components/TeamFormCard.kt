@@ -105,7 +105,7 @@ fun TeamFormCard(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(28.dp))
-            .background(Color.White.copy(alpha = 0.08f).copy(alpha = 0.8f))
+            .background(GlassSurface)
             .border(
                 0.5.dp,
                 Brush.linearGradient(listOf(colors.goldPrimary.copy(alpha = 0.3f), colors.glassSurface)),
@@ -125,7 +125,7 @@ fun TeamFormCard(
                         modifier = Modifier
                             .size(52.dp)
                             .clip(CircleShape)
-                            .background(Color.White.copy(alpha = 0.05f))
+                            .background(GlassSurface)
                             .border(0.5.dp, teamColor.copy(alpha = 0.3f), CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
@@ -193,7 +193,7 @@ fun TeamFormCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(16.dp))
-                    .background(Color.White.copy(alpha = 0.02f))
+                    .background(GlassSurface)
                     .padding(16.dp)
             ) {
                 Row(
@@ -201,9 +201,9 @@ fun TeamFormCard(
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
                     FormStatMini("WON", recentMatches.count { it.result == FormResult.WIN }.toString(), colors.statusSuccess)
-                    VerticalDivider(modifier = Modifier.height(24.dp).alpha(0.1f), color = Color.White)
+                    VerticalDivider(modifier = Modifier.height(24.dp), color = GlassBorder)
                     FormStatMini("LOST", recentMatches.count { it.result == FormResult.LOSS }.toString(), colors.statusLive)
-                    VerticalDivider(modifier = Modifier.height(24.dp).alpha(0.1f), color = Color.White)
+                    VerticalDivider(modifier = Modifier.height(24.dp), color = GlassBorder)
                     FormStatMini("N/R", recentMatches.count { it.result == FormResult.NO_RESULT }.toString(), colors.textMuted)
                 }
             }

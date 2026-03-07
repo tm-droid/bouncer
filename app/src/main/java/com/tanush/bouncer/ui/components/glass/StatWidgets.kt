@@ -59,7 +59,7 @@ fun StatPill(
         Text(
             text = label,
             style = typography.labelSmall,
-            color = colors.textMuted
+            color = colors.textTertiary
         )
         Text(
             text = value,
@@ -100,7 +100,7 @@ fun StatCard(
             Text(
                 text = label.uppercase(),
                 style = typography.labelSmall,
-                color = colors.textMuted
+                color = colors.textTertiary
             )
             
             Row(
@@ -257,7 +257,7 @@ fun PartnershipCard(
             Text(
                 text = "PARTNERSHIP",
                 style = typography.labelSmall,
-                color = colors.goldPrimary.copy(alpha = 0.6f)
+                color = colors.goldPrimary.copy(alpha = 0.8f)
             )
             
             Spacer(modifier = Modifier.height(8.dp))
@@ -376,7 +376,7 @@ fun LastWicketCard(
             Text(
                 text = "LAST WICKET",
                 style = typography.labelSmall,
-                color = colors.textMuted
+                color = colors.textTertiary
             )
             
             Spacer(modifier = Modifier.height(8.dp))
@@ -552,7 +552,7 @@ fun WinProbabilityCard(
             Text(
                 text = "WIN PROBABILITY",
                 style = typography.labelSmall,
-                color = colors.textMuted
+                color = colors.textTertiary
             )
             
             Spacer(modifier = Modifier.height(12.dp))
@@ -647,7 +647,7 @@ fun RunRateCard(
                     Text(
                         text = "CRR",
                         style = typography.labelSmall,
-                        color = colors.textMuted
+                        color = colors.textTertiary
                     )
                     Text(
                         text = String.format("%.2f", currentRunRate),
@@ -661,7 +661,7 @@ fun RunRateCard(
                     Text(
                         text = "RRR",
                         style = typography.labelSmall,
-                        color = colors.textMuted
+                        color = colors.textTertiary
                     )
                     Text(
                         text = String.format("%.2f", requiredRunRate),

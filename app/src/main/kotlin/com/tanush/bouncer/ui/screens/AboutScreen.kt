@@ -119,8 +119,8 @@ fun AboutScreen(
                             .background(
                                 Brush.linearGradient(
                                     colors = listOf(
-                                        Color.White.copy(alpha = 0.08f),
-                                        Color.White.copy(alpha = 0.05f)
+                                        GlassSurface,
+                                        GlassSurface
                                     )
                                 ),
                                 CircleShape

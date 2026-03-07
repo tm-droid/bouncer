@@ -119,7 +119,7 @@ object BouncerTypographyTokens {
         fontWeight = FontWeight.SemiBold,
         fontSize = 13.sp,
         lineHeight = 16.sp,
-        letterSpacing = 0.8.sp
+        letterSpacing = 1.5.sp
     )
     
     /** 11sp Regular Uppercase — Medium labels */
@@ -128,7 +128,7 @@ object BouncerTypographyTokens {
         fontWeight = FontWeight.Normal,
         fontSize = 11.sp,
         lineHeight = 14.sp,
-        letterSpacing = 0.6.sp
+        letterSpacing = 1.5.sp
     )
     
     /** 10sp Regular — Small labels */
@@ -137,7 +137,7 @@ object BouncerTypographyTokens {
         fontWeight = FontWeight.Normal,
         fontSize = 10.sp,
         lineHeight = 12.sp,
-        letterSpacing = 0.4.sp
+        letterSpacing = 1.2.sp
     )
 
     /** 20sp SemiBold — Stat values (runs, wickets, averages) */
@@ -156,7 +156,7 @@ object BouncerTypographyTokens {
         fontWeight = FontWeight.Bold,
         fontSize = 11.sp,
         lineHeight = 14.sp,
-        letterSpacing = 1.sp
+        letterSpacing = 1.5.sp
     )
 }
 

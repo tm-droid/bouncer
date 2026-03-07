@@ -4,11 +4,13 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.outlined.SportsCricket
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -29,6 +31,8 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.tanush.bouncer.models.NewsArticleData
+import com.tanush.bouncer.ui.components.BouncerNewsSkeleton
+import com.tanush.bouncer.ui.components.EmptyStateView
 import com.tanush.bouncer.ui.components.glass.GlassBloomBackground
 import com.tanush.bouncer.ui.components.glass.GlassCard
 import com.tanush.bouncer.ui.components.glass.GlassCardSmall
@@ -132,16 +136,67 @@ fun NewsScreen(
             ) {
                 when {
                     isLoading && articles.isEmpty() -> {
-                        // Loading shimmer state
-                        Box(
+                        // Loading shimmer skeletons
+                        LazyColumn(
                             modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
+                            contentPadding = PaddingValues(
+                                start = dimens.screenHorizontalPadding,
+                                end = dimens.screenHorizontalPadding,
+                                top = dimens.sm,
+                                bottom = dimens.bottomNavHeight + dimens.lg
+                            ),
+                            verticalArrangement = Arrangement.spacedBy(dimens.cardGap)
                         ) {
-                            Text(
-                                text = "Loading latest cricket news...",
-                                style = typography.bodyMedium,
-                                color = colors.textMuted
-                            )
+                            // Hero skeleton
+                            item {
+                                GlassCard(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(280.dp),
+                                    shape = RoundedCornerShape(24.dp),
+                                    useGoldBorder = true,
+                                    contentPadding = PaddingValues(dimens.md)
+                                ) {
+                                    Column(
+                                        modifier = Modifier.fillMaxSize(),
+                                        verticalArrangement = Arrangement.Bottom
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxWidth(0.3f)
+                                                .height(16.dp)
+                                                .clip(RoundedCornerShape(4.dp))
+                                                .background(
+                                                    colors.goldPrimary.copy(alpha = 0.12f)
+                                                )
+                                        )
+                                        Spacer(modifier = Modifier.height(dimens.sm))
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxWidth(0.9f)
+                                                .height(20.dp)
+                                                .clip(RoundedCornerShape(4.dp))
+                                                .background(
+                                                    colors.surface2
+                                                )
+                                        )
+                                        Spacer(modifier = Modifier.height(dimens.xs))
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxWidth(0.6f)
+                                                .height(14.dp)
+                                                .clip(RoundedCornerShape(4.dp))
+                                                .background(
+                                                    colors.surface2
+                                                )
+                                        )
+                                    }
+                                }
+                            }
+                            // Regular article skeletons
+                            items(5) {
+                                BouncerNewsSkeleton()
+                            }
                         }
                     }
                     error != null && articles.isEmpty() -> {
@@ -169,6 +224,18 @@ fun NewsScreen(
                                 )
                             }
                         }
+                    }
+                    filteredArticles.isEmpty() -> {
+                        // Empty state for no matching articles
+                        EmptyStateView(
+                            icon = Icons.Outlined.SportsCricket,
+                            title = "No news articles",
+                            message = if (selectedCategoryIndex == 0)
+                                "Cricket news will appear here. Pull to refresh."
+                            else
+                                "No articles match \"${categoryChips[selectedCategoryIndex]}\". Try a different category.",
+                            modifier = Modifier.padding(dimens.xxl)
+                        )
                     }
                     else -> {
                         LazyColumn(
@@ -369,6 +436,8 @@ private fun RegularArticleCard(
         modifier = modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
+        useGoldBorder = true,
+        borderOpacity = 0.06f,
         contentPadding = PaddingValues(dimens.md)
     ) {
         Row(
@@ -393,9 +462,11 @@ private fun RegularArticleCard(
                         contentScale = ContentScale.Crop
                     )
                 } else {
-                    Text(
-                        text = "🏏",
-                        fontSize = 28.sp
+                    Icon(
+                        imageVector = Icons.Outlined.SportsCricket,
+                        contentDescription = null,
+                        tint = BouncerDesignSystem.colors.goldPrimary,
+                        modifier = Modifier.size(28.dp)
                     )
                 }
             }

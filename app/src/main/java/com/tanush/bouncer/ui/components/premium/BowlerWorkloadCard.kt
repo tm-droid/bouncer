@@ -325,7 +325,7 @@ private fun BowlerWorkloadRow(
 
                 Text(
                     text = bowler.bowlerName,
-                    color = Color.White,
+                    color = colors.textPrimary,
                     fontSize = 14.sp,
                     fontWeight = if (bowler.isCurrentBowler) FontWeight.Bold else FontWeight.Medium,
                 )
@@ -347,7 +347,7 @@ private fun BowlerWorkloadRow(
             ) {
                 Text(
                     text = "${bowler.wickets}/${bowler.runsConceded}",
-                    color = Color.White,
+                    color = colors.textPrimary,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
                 )

@@ -1,6 +1,5 @@
 package com.tanush.bouncer.ui.components
 
-import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -41,25 +40,27 @@ import com.tanush.bouncer.ui.theme.BouncerDesignSystem
  */
 @Composable
 fun bouncerShimmerBrush(): Brush {
-    val colors = BouncerDesignSystem.colors
     val transition = rememberInfiniteTransition(label = "shimmer")
     val translateX by transition.animateFloat(
         initialValue = -500f,
         targetValue = 1500f,
         animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 1800, easing = FastOutSlowInEasing),
+            animation = tween(durationMillis = 1200, easing = LinearEasing),
             repeatMode = RepeatMode.Restart
         ),
         label = "shimmerTranslateX"
     )
 
+    val dark = Color(0xFF1A1A1A)
+    val goldHighlight = Color(0xFFD4AF37).copy(alpha = 0.12f)
+
     return Brush.linearGradient(
         colors = listOf(
-            Color.White.copy(alpha = 0.03f),
-            Color.White.copy(alpha = 0.08f),
-            colors.goldPrimary.copy(alpha = 0.12f), // Premium gold-tinted highlight
-            Color.White.copy(alpha = 0.08f),
-            Color.White.copy(alpha = 0.03f)
+            dark,
+            dark.copy(alpha = 0.9f),
+            goldHighlight, // Premium gold-tinted highlight
+            dark.copy(alpha = 0.9f),
+            dark
         ),
         start = Offset(translateX, 0f),
         end = Offset(translateX + 400f, 400f) // Angled shimmer

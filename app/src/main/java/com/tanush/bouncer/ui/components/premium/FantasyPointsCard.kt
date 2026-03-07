@@ -139,7 +139,7 @@ fun FantasyPointsCard(
                         Icon(
                             Icons.Default.Star,
                             contentDescription = null,
-                            tint = Color.White,
+                            tint = colors.textPrimary,
                             modifier = Modifier.size(24.dp),
                         )
                     }
@@ -156,7 +156,7 @@ fun FantasyPointsCard(
                         )
                         Text(
                             text = pointsData.playerName,
-                            color = Color.White,
+                            color = colors.textPrimary,
                             fontSize = 15.sp,
                             fontWeight = FontWeight.SemiBold,
                         )
@@ -183,12 +183,12 @@ fun FantasyPointsCard(
                         modifier = Modifier
                             .size(32.dp)
                             .clip(CircleShape)
-                            .background(Color.White.copy(alpha = 0.2f)),
+                            .background(colors.glassSurface),
                         contentAlignment = Alignment.Center,
                     ) {
                         Text(
                             text = "VC",
-                            color = Color.White,
+                            color = colors.textPrimary,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
                         )
@@ -217,7 +217,7 @@ fun FantasyPointsCard(
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
                         text = animatedPoints.value.toInt().toString(),
-                        color = Color.White,
+                        color = colors.textPrimary,
                         fontSize = 56.sp,
                         fontWeight = FontWeight.Black,
                     )
@@ -269,7 +269,7 @@ fun FantasyPointsCard(
                     ) {
                         Text(
                             text = "Rank #${pointsData.rank}",
-                            color = if (pointsData.rank <= 3) colors.goldLight else Color.White,
+                            color = if (pointsData.rank <= 3) colors.goldLight else colors.textPrimary,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
                         )

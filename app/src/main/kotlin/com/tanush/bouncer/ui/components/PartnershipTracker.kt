@@ -496,7 +496,7 @@ private fun PartnershipBarsChart(
                                     Brush.horizontalGradient(
                                         colors = listOf(
                                             Color.Transparent,
-                                            Color.White.copy(alpha = 0.2f),
+                                            GlassBorderHighlight,
                                             Color.Transparent
                                         ),
                                         startX = (shimmerOffset - 0.3f) * 1000f,

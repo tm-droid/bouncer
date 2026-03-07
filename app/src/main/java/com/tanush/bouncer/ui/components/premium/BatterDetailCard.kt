@@ -144,8 +144,8 @@ fun BatterDetailCard(
                                 .background(
                                     Brush.linearGradient(
                                         colors = listOf(
-                                            Color.White.copy(alpha = 0.2f),
-                                            Color.White.copy(alpha = 0.1f),
+                                            colors.textTertiary,
+                                            colors.glassBorder,
                                         ),
                                     ),
                                 ),
@@ -164,7 +164,7 @@ fun BatterDetailCard(
                                 Icon(
                                     imageVector = Icons.Default.Person,
                                     contentDescription = null,
-                                    tint = Color.White.copy(alpha = 0.6f),
+                                    tint = colors.textSecondary,
                                     modifier = Modifier.size(32.dp),
                                 )
                             }
@@ -178,7 +178,7 @@ fun BatterDetailCard(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
                                 text = playerName,
-                                color = Color.White,
+                                color = colors.textPrimary,
                                 fontSize = 18.sp,
                                 fontWeight = FontWeight.Bold,
                             )
@@ -196,7 +196,7 @@ fun BatterDetailCard(
 
                         Text(
                             text = teamName,
-                            color = Color.White.copy(alpha = 0.5f),
+                            color = colors.textSecondary,
                             fontSize = 12.sp,
                         )
                     }
@@ -208,14 +208,14 @@ fun BatterDetailCard(
                             color = when {
                                 stats.runs >= 100 -> colors.goldDark
                                 stats.runs >= 50 -> colors.statusSuccess
-                                else -> Color.White
+                                else -> colors.textPrimary
                             },
                             fontSize = 36.sp,
                             fontWeight = FontWeight.Bold,
                         )
                         Text(
                             text = "(${stats.balls})",
-                            color = Color.White.copy(alpha = 0.6f),
+                            color = colors.textSecondary,
                             fontSize = 14.sp,
                         )
                     }
@@ -227,7 +227,7 @@ fun BatterDetailCard(
                 if (recentBalls.isNotEmpty()) {
                     Text(
                         text = "RECENT",
-                        color = Color.White.copy(alpha = 0.5f),
+                        color = colors.textSecondary,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 1.sp,
@@ -249,7 +249,7 @@ fun BatterDetailCard(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(12.dp))
-                        .background(Color.White.copy(alpha = 0.05f))
+                        .background(colors.glassSurface)
                         .padding(16.dp),
                     horizontalArrangement = Arrangement.SpaceEvenly,
                 ) {
@@ -289,7 +289,7 @@ fun BatterDetailCard(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
                             text = "Control: ",
-                            color = Color.White.copy(alpha = 0.5f),
+                            color = colors.textSecondary,
                             fontSize = 12.sp,
                         )
 
@@ -298,7 +298,7 @@ fun BatterDetailCard(
                                 .width(80.dp)
                                 .height(6.dp)
                                 .clip(RoundedCornerShape(3.dp))
-                                .background(Color.White.copy(alpha = 0.1f)),
+                                .background(colors.glassBorder),
                         ) {
                             Box(
                                 modifier = Modifier
@@ -319,7 +319,7 @@ fun BatterDetailCard(
 
                         Text(
                             text = "${(stats.controlPercentage * 100).toInt()}%",
-                            color = Color.White,
+                            color = colors.textPrimary,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Medium,
                         )
@@ -328,7 +328,7 @@ fun BatterDetailCard(
                     // Time at crease
                     Text(
                         text = "${stats.minutes} mins",
-                        color = Color.White.copy(alpha = 0.5f),
+                        color = colors.textSecondary,
                         fontSize = 12.sp,
                     )
                 }
@@ -381,7 +381,7 @@ private fun BatterStatItem(
         )
         Text(
             text = label,
-            color = Color.White.copy(alpha = 0.5f),
+            color = colors.textSecondary,
             fontSize = 10.sp,
         )
     }

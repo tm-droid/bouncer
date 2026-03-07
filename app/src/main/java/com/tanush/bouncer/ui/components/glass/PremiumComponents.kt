@@ -20,6 +20,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.ui.theme.BouncerDesignSystem
+import com.tanush.bouncer.ui.theme.GoldPrimary
 import com.tanush.bouncer.ui.theme.TeamPrimaryColors
 import com.tanush.bouncer.ui.theme.bouncerClickable
 
@@ -38,7 +39,7 @@ fun GlassHeroCard(
     Box(
         modifier = modifier
             .clip(shapes.glassCardHero)
-            .background(Color.White.copy(alpha = 0.08f))
+            .background(colors.glassSurface)
             .drawBehind {
                 // Inset gold shadow effect
                 drawRect(
@@ -85,6 +86,7 @@ fun GlassFilterChip(
 ) {
     val colors = BouncerDesignSystem.colors
     val typography = BouncerDesignSystem.typography
+    val dimens = BouncerDesignSystem.dimens
     
     val shape = RoundedCornerShape(percent = 50)
     
@@ -93,16 +95,16 @@ fun GlassFilterChip(
             .clip(shape)
             .background(
                 if (selected) colors.goldPrimary.copy(alpha = 0.2f) 
-                else Color.White.copy(alpha = 0.04f)
+                else colors.glassSurface
             )
             .border(
                 width = 1.dp,
                 color = if (selected) colors.goldPrimary.copy(alpha = 0.5f) 
-                        else Color.White.copy(alpha = 0.1f),
+                        else colors.glassBorder,
                 shape = shape
             )
             .bouncerClickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+            .padding(horizontal = dimens.spacing.md, vertical = dimens.spacing.sm),
         contentAlignment = Alignment.Center
     ) {
         Text(
@@ -133,7 +135,7 @@ fun Modifier.strikeRow(
     
     // Gold left border (inset effect)
     drawRect(
-        color = Color(0xFFD4AF37),
+        color = GoldPrimary,
         topLeft = Offset(0f, 0f),
         size = androidx.compose.ui.geometry.Size(3.dp.toPx(), size.height)
     )
@@ -189,7 +191,7 @@ fun TeamFlagBackground(
             modifier = Modifier
                 .width(1.dp)
                 .fillMaxHeight()
-                .background(Color.White.copy(alpha = 0.05f))
+                .background(BouncerDesignSystem.colors.glassSurface)
         )
 
         // Right Team Background

@@ -185,7 +185,7 @@ fun PlayerDetailScreen(
                         style = androidx.compose.ui.text.TextStyle(
                             brush = Brush.verticalGradient(
                                 colors = listOf(
-                                    Color.White,
+                                    TextPrimary,
                                     colors.goldPrimary,
                                     colors.goldDark
                                 )
@@ -536,7 +536,7 @@ private fun PlayerHeaderCard(
                     style = androidx.compose.ui.text.TextStyle(
                         brush = Brush.verticalGradient(
                             colors = listOf(
-                                Color.White,
+                                TextPrimary,
                                 colors.goldPrimary,
                                 colors.goldDark
                             )

@@ -299,7 +299,7 @@ fun BatsmanMilestoneCard(
                 // Career context
                 if (milestoneInfo.careerHighScore != null || milestoneInfo.matchesWithMilestone > 0) {
                     Spacer(modifier = Modifier.height(16.dp))
-                    HorizontalDivider(color = Color.White.copy(alpha = 0.1f))
+                    HorizontalDivider(color = GlassBorder)
                     Spacer(modifier = Modifier.height(16.dp))
                     
                     Row(
@@ -397,7 +397,7 @@ private fun RunCompositionBar(
                 .fillMaxWidth()
                 .height(12.dp)
                 .clip(RoundedCornerShape(6.dp))
-                .background(Color.White.copy(alpha = 0.1f))
+                .background(GlassBorder)
         ) {
             if (runningPercentage > 0) {
                 Box(

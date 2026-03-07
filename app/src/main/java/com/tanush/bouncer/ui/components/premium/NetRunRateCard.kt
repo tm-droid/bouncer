@@ -166,7 +166,7 @@ fun NetRunRateCard(
                         )
                         Text(
                             text = nrrData.teamName,
-                            color = Color.White,
+                            color = colors.textPrimary,
                             fontSize = 15.sp,
                             fontWeight = FontWeight.SemiBold,
                         )
@@ -393,7 +393,7 @@ private fun NRRBreakdownItem(
 
         Text(
             text = "$runs runs",
-            color = Color.White,
+            color = colors.textPrimary,
             fontSize = 14.sp,
             fontWeight = FontWeight.SemiBold,
         )

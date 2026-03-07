@@ -61,7 +61,7 @@ fun ExecutiveBoxScreen(
             TopAppBar(
                 title = {
                     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth().padding(end = 48.dp)) {
-                        Text("MATCH ANALYTICS", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                        Text("MATCH ANALYTICS", color = colors.textPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             Box(modifier = Modifier.size(6.dp).background(if (isSimulating) WarningOrange else colors.statusSuccess, CircleShape).shadow(4.dp, CircleShape, spotColor = if (isSimulating) WarningOrange else colors.statusSuccess))
                             Text(if (isSimulating) "Simulation Active" else "Live Data", color = if (isSimulating) WarningOrange else colors.statusSuccess, fontSize = 10.sp, fontWeight = FontWeight.Medium)
@@ -70,7 +70,7 @@ fun ExecutiveBoxScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = Color.White)
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = colors.textPrimary)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
@@ -189,7 +189,7 @@ private fun SimButton(modifier: Modifier, label: String, icon: ImageVector, colo
         modifier = modifier
             .height(60.dp)
             .clip(RoundedCornerShape(10.dp))
-            .background(Color.White.copy(alpha = 0.05f))
+            .background(GlassSurface)
             .border(0.5.dp, color.copy(alpha = 0.2f), RoundedCornerShape(10.dp))
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
@@ -296,7 +296,7 @@ private fun TelemetryEventItem(time: String, title: String, body: String, type: 
                         .width(1.dp)
                         .weight(1f) // FIX OVERLAP: Dynamic height divider
                         .padding(vertical = 4.dp)
-                        .background(Color.White.copy(alpha = 0.1f))
+                        .background(GlassBorder)
                 )
             }
             

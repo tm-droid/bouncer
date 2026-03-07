@@ -67,7 +67,7 @@ fun PremiumCollapsingHeader(
             .background(
                 Brush.verticalGradient(
                     colors = listOf(
-                        Color.White.copy(alpha = 0.05f),
+                        GlassSurface,
                         colors.backgroundBase.copy(alpha = 0.9f)
                     )
                 )
@@ -136,7 +136,7 @@ fun PremiumCollapsingHeader(
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back",
-                            tint = Color.White
+                            tint = TextPrimary
                         )
                     }
                 }
@@ -227,7 +227,7 @@ fun GlassHeader(
 
     Surface(
         modifier = modifier.fillMaxWidth(),
-        color = Color.White.copy(alpha = 0.05f)
+        color = GlassSurface
     ) {
         Box {
             // Glass effect overlay
@@ -238,7 +238,7 @@ fun GlassHeader(
                     .background(
                         Brush.verticalGradient(
                             colors = listOf(
-                                Color.White.copy(alpha = 0.05f),
+                                GlassSurface,
                                 Color.Transparent
                             )
                         )
@@ -253,13 +253,21 @@ fun GlassHeader(
                     .padding(horizontal = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Back button
+                // Back button with glass pill style
                 if (onBackClick != null) {
-                    IconButton(onClick = onBackClick) {
+                    IconButton(
+                        onClick = onBackClick,
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .background(colors.glassSurface)
+                            .border(1.dp, colors.goldPrimary.copy(alpha = 0.2f), CircleShape)
+                    ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back",
-                            tint = Color.White
+                            tint = colors.goldPrimary,
+                            modifier = Modifier.size(20.dp)
                         )
                     }
                 }
@@ -275,7 +283,8 @@ fun GlassHeader(
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier
                         .weight(1f)
-                        .padding(horizontal = if (onBackClick != null) 0.dp else 16.dp)
+                        .padding(horizontal = if (onBackClick != null) 8.dp else 16.dp)
+                        .etchedText()
                 )
                 
                 // Actions
@@ -316,7 +325,7 @@ fun PremiumIconButton(
     onClick: () -> Unit,
     contentDescription: String = "",
     badge: Int = 0,
-    tint: Color = Color.White,
+    tint: Color = TextPrimary,
     size: Dp = 40.dp,
     modifier: Modifier = Modifier
 ) {
@@ -375,7 +384,7 @@ fun PremiumIconButton(
                     .offset(x = 4.dp, y = (-4).dp)
                     .size(18.dp)
                     .background(colors.statusWarning, CircleShape)
-                    .border(1.5.dp, Color.White.copy(alpha = 0.05f), CircleShape),
+                    .border(1.5.dp, GlassSurface, CircleShape),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
@@ -500,7 +509,7 @@ fun PremiumTabRow(
 
     Surface(
         modifier = modifier.fillMaxWidth(),
-        color = Color.White.copy(alpha = 0.03f),
+        color = GlassSurface,
         shape = RoundedCornerShape(16.dp)
     ) {
         Row(
@@ -564,7 +573,7 @@ fun NavigationSegmentedControl(
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(12.dp),
-        color = Color.White.copy(alpha = 0.05f),
+        color = GlassSurface,
         border = androidx.compose.foundation.BorderStroke(
             1.dp,
             colors.glassBorder.copy(alpha = 0.3f)
@@ -654,7 +663,7 @@ fun PremiumDropdown(
     Box(modifier = modifier) {
         Surface(
             shape = RoundedCornerShape(12.dp),
-            color = Color.White.copy(alpha = 0.05f),
+            color = GlassSurface,
             border = androidx.compose.foundation.BorderStroke(
                 1.dp,
                 if (expanded) colors.goldPrimary.copy(alpha = 0.5f) else colors.glassBorder.copy(alpha = 0.3f)
@@ -697,7 +706,7 @@ fun PremiumDropdown(
             expanded = expanded,
             onDismissRequest = { expanded = false },
             modifier = Modifier
-                .background(Color.White.copy(alpha = 0.05f))
+                .background(GlassSurface)
         ) {
             options.forEach { option ->
                 DropdownMenuItem(

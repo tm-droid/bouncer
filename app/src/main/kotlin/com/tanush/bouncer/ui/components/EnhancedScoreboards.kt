@@ -121,7 +121,7 @@ private fun FlipDigit(
                 cameraDistance = 12f * density
             }
             .background(
-                Color.White.copy(alpha = 0.08f),
+                GlassSurface,
                 RoundedCornerShape(8.dp)
             )
             .border(
@@ -175,7 +175,7 @@ fun AnimatedScoreDisplay(
             .fillMaxWidth()
             .semantics { contentDescription = scoreDescription },
         shape = RoundedCornerShape(20.dp),
-        color = Color.White.copy(alpha = 0.05f)
+        color = GlassSurface
     ) {
         Box {
             // Shimmer overlay
@@ -283,7 +283,7 @@ fun AutoScrollingPartnership(
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        color = Color.White.copy(alpha = 0.05f)
+        color = GlassSurface
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(
@@ -349,7 +349,7 @@ private fun PartnershipItem(
     Surface(
         modifier = Modifier.width(180.dp),
         shape = RoundedCornerShape(12.dp),
-        color = if (isHighlight) colors.goldPrimary.copy(alpha = 0.1f) else Color.White.copy(alpha = 0.08f),
+        color = if (isHighlight) colors.goldPrimary.copy(alpha = 0.1f) else GlassSurface,
         border = if (isHighlight) 
             androidx.compose.foundation.BorderStroke(1.dp, colors.goldPrimary.copy(alpha = 0.3f))
         else null
@@ -599,7 +599,7 @@ fun BatsmanMiniCard(
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        color = if (isOut) Color.White.copy(alpha = 0.04f) else Color.White.copy(alpha = 0.05f),
+        color = if (isOut) GlassSurface else GlassSurface,
         border = if (isOnStrike) 
             androidx.compose.foundation.BorderStroke(
                 2.dp, 
@@ -620,7 +620,7 @@ fun BatsmanMiniCard(
                     modifier = Modifier
                         .size(48.dp)
                         .clip(CircleShape)
-                        .background(Color.White.copy(alpha = 0.08f))
+                        .background(GlassSurface)
                         .then(
                             if (isOnStrike) Modifier.shadow(8.dp, CircleShape, spotColor = colors.goldPrimary.copy(alpha = strikeGlow))
                             else Modifier
@@ -651,7 +651,7 @@ fun BatsmanMiniCard(
                             .size(12.dp)
                             .align(Alignment.BottomEnd)
                             .background(colors.goldPrimary, CircleShape)
-                            .border(1.5.dp, Color.White.copy(alpha = 0.05f), CircleShape)
+                            .border(1.5.dp, GlassSurface, CircleShape)
                     )
                 }
             }
@@ -820,7 +820,7 @@ fun BowlerMiniCard(
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        color = Color.White.copy(alpha = 0.05f),
+        color = GlassSurface,
         border = if (isCurrentBowler) 
             androidx.compose.foundation.BorderStroke(2.dp, ChartCyan.copy(alpha = bowlerGlow)) 
         else null
@@ -837,7 +837,7 @@ fun BowlerMiniCard(
                 modifier = Modifier
                     .size(48.dp)
                     .clip(CircleShape)
-                    .background(Color.White.copy(alpha = 0.08f))
+                    .background(GlassSurface)
                     .then(
                         if (isCurrentBowler) Modifier.shadow(8.dp, CircleShape, spotColor = ChartCyan.copy(alpha = bowlerGlow))
                         else Modifier
@@ -1000,7 +1000,7 @@ fun OverSummaryRow(
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
-        color = Color.White.copy(alpha = 0.05f)
+        color = GlassSurface
     ) {
         Row(
             modifier = Modifier
@@ -1013,7 +1013,7 @@ fun OverSummaryRow(
             Box(
                 modifier = Modifier
                     .size(36.dp)
-                    .background(Color.White.copy(alpha = 0.05f), CircleShape),
+                    .background(GlassSurface, CircleShape),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
@@ -1073,7 +1073,7 @@ private fun MicroBallChip(ball: String) {
         ball == "6" -> colors.goldPrimary to colors.backgroundBase
         ball == "4" -> colors.statusInfo to colors.backgroundBase
         ball == "0" || ball == "." -> DotBall to colors.textMuted
-        else -> Color.White.copy(alpha = 0.05f) to colors.textPrimary
+        else -> GlassSurface to colors.textPrimary
     }
     
     Box(
@@ -1108,7 +1108,7 @@ fun WicketFallTimeline(
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        color = Color.White.copy(alpha = 0.05f)
+        color = GlassSurface
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(

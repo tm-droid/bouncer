@@ -158,7 +158,7 @@ fun ImpactPlayerCard(
                         )
                         Text(
                             text = "$playerName • $team",
-                            color = Color.White,
+                            color = colors.textPrimary,
                             fontSize = 15.sp,
                             fontWeight = FontWeight.SemiBold,
                         )
@@ -252,7 +252,7 @@ fun ImpactPlayerCard(
                     ) {
                         Text(
                             text = "Net",
-                            color = Color.White,
+                            color = colors.textPrimary,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
                         )
@@ -381,7 +381,7 @@ fun ImpactPlayerCard(
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
                                     text = event.event,
-                                    color = Color.White,
+                                    color = colors.textPrimary,
                                     fontSize = 13.sp,
                                     fontWeight = FontWeight.Medium,
                                 )

@@ -85,8 +85,8 @@ fun CommentaryCard(
                         modifier = Modifier
                             .size(32.dp)
                             .clip(RoundedCornerShape(8.dp))
-                            .background(Color.White.copy(alpha = 0.02f))
-                            .border(0.5.dp, Color.White.copy(alpha = 0.05f), RoundedCornerShape(8.dp)),
+                            .background(colors.glassSurface)
+                            .border(0.5.dp, colors.glassBorder, RoundedCornerShape(8.dp)),
                         contentAlignment = Alignment.Center,
                     ) {
                         Icon(
@@ -121,8 +121,8 @@ fun CommentaryCard(
                     Row(
                         modifier = Modifier
                             .clip(RoundedCornerShape(6.dp))
-                            .background(Color.White.copy(alpha = 0.03f))
-                            .border(0.5.dp, Color.White.copy(alpha = 0.05f), RoundedCornerShape(6.dp))
+                            .background(colors.glassSurface)
+                            .border(0.5.dp, colors.glassBorder, RoundedCornerShape(6.dp))
                             .padding(horizontal = 8.dp, vertical = 4.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
@@ -201,12 +201,12 @@ private fun CommentaryEntryRow(
                     .clip(RoundedCornerShape(4.dp))
                     .background(
                         if (eventColor != null) eventColor.copy(alpha = 0.15f)
-                        else Color.White.copy(alpha = 0.03f)
+                        else colors.glassSurface
                     )
                     .border(
                         0.5.dp,
                         if (eventColor != null) eventColor.copy(alpha = 0.3f)
-                        else Color.White.copy(alpha = 0.05f),
+                        else colors.glassBorder,
                         RoundedCornerShape(4.dp)
                     )
                     .padding(horizontal = 6.dp, vertical = 3.dp),
@@ -228,7 +228,7 @@ private fun CommentaryEntryRow(
                         .padding(vertical = 4.dp)
                         .background(
                             Brush.verticalGradient(
-                                colors = listOf(Color.White.copy(alpha = 0.1f), Color.Transparent)
+                                colors = listOf(colors.glassBorder, Color.Transparent)
                             )
                         ),
                 )

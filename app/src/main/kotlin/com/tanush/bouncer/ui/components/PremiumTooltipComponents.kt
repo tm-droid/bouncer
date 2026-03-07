@@ -133,7 +133,7 @@ fun PremiumTooltip(
             ) {
                 Text(
                     text = text,
-                    color = Color.White.copy(alpha = 0.9f),
+                    color = TextPrimary,
                     fontSize = 13.sp,
                     textAlign = TextAlign.Center
                 )
@@ -170,8 +170,8 @@ fun InfoPopup(
                 .background(
                     brush = Brush.verticalGradient(
                         colors = listOf(
-                            Color.White.copy(alpha = 0.05f),
-                            Color.White.copy(alpha = 0.05f)
+                            GlassSurface,
+                            GlassSurface
                         )
                     )
                 )
@@ -213,7 +213,7 @@ fun InfoPopup(
                         
                         Text(
                             text = title,
-                            color = Color.White,
+                            color = TextPrimary,
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -222,7 +222,8 @@ fun InfoPopup(
                     Icon(
                         imageVector = Icons.Default.Close,
                         contentDescription = "Close",
-                        tint = Color.White.copy(alpha = 0.5f),
+                        tint = TextSecondary,
+
                         modifier = Modifier
                             .size(20.dp)
                             .clickable { onDismiss() }
@@ -231,7 +232,7 @@ fun InfoPopup(
                 
                 Text(
                     text = description,
-                    color = Color.White.copy(alpha = 0.7f),
+                    color = TextSecondary,
                     fontSize = 14.sp,
                     lineHeight = 20.sp
                 )
@@ -274,7 +275,7 @@ fun HelpBubble(
         
         Text(
             text = message,
-            color = Color.White.copy(alpha = 0.8f),
+            color = TextPrimary,
             fontSize = 13.sp,
             lineHeight = 18.sp
         )
@@ -318,7 +319,7 @@ fun WarningBanner(
         
         Text(
             text = message,
-            color = Color.White.copy(alpha = 0.9f),
+            color = TextPrimary,
             fontSize = 14.sp,
             modifier = Modifier.weight(1f)
         )
@@ -401,7 +402,7 @@ fun SuccessBanner(
         
         Text(
             text = message,
-            color = Color.White.copy(alpha = 0.9f),
+            color = TextPrimary,
             fontSize = 14.sp,
             fontWeight = FontWeight.Medium
         )
@@ -418,7 +419,7 @@ fun ContextualHelp(
     Column(
         modifier = modifier
             .clip(RoundedCornerShape(16.dp))
-            .background(Color.White.copy(alpha = 0.05f))
+            .background(GlassSurface)
             .border(
                 width = 1.dp,
                 color = colors.goldDark.copy(alpha = 0.2f),
@@ -440,7 +441,7 @@ fun ContextualHelp(
             
             Text(
                 text = title,
-                color = Color.White,
+                color = TextPrimary,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold
             )
@@ -464,7 +465,7 @@ fun ContextualHelp(
                     
                     Text(
                         text = tip,
-                        color = Color.White.copy(alpha = 0.7f),
+                        color = TextSecondary,
                         fontSize = 13.sp,
                         lineHeight = 18.sp
                     )
@@ -525,7 +526,7 @@ fun QuickTip(
             
             Text(
                 text = tip,
-                color = Color.White.copy(alpha = 0.9f),
+                color = TextPrimary,
                 fontSize = 13.sp,
                 modifier = Modifier.weight(1f)
             )
@@ -533,7 +534,7 @@ fun QuickTip(
             Icon(
                 imageVector = Icons.Default.Close,
                 contentDescription = "Dismiss",
-                tint = Color.White.copy(alpha = 0.5f),
+                tint = TextSecondary,
                 modifier = Modifier
                     .size(16.dp)
                     .clickable { onDismiss() }
@@ -553,7 +554,7 @@ fun GlossaryItem(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .background(Color.White.copy(alpha = 0.05f))
+            .background(GlassSurface)
             .padding(12.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
@@ -566,7 +567,7 @@ fun GlossaryItem(
         
         Text(
             text = definition,
-            color = Color.White.copy(alpha = 0.7f),
+            color = TextSecondary,
             fontSize = 13.sp,
             lineHeight = 18.sp
         )
@@ -602,7 +603,7 @@ fun FeatureSpotlight(
                 brush = Brush.verticalGradient(
                     colors = listOf(
                         colors.goldDark.copy(alpha = 0.15f),
-                        Color.White.copy(alpha = 0.05f)
+                        GlassSurface
                     )
                 )
             )
@@ -662,7 +663,7 @@ fun FeatureSpotlight(
                 
                 Text(
                     text = title,
-                    color = Color.White,
+                    color = TextPrimary,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -670,7 +671,7 @@ fun FeatureSpotlight(
             
             Text(
                 text = description,
-                color = Color.White.copy(alpha = 0.7f),
+                color = TextSecondary,
                 fontSize = 14.sp,
                 lineHeight = 20.sp
             )
@@ -689,7 +690,7 @@ fun InteractiveGuide(
     Column(
         modifier = modifier
             .clip(RoundedCornerShape(16.dp))
-            .background(Color.White.copy(alpha = 0.05f))
+            .background(GlassSurface)
             .border(
                 width = 1.dp,
                 color = colors.goldDark.copy(alpha = 0.2f),
@@ -706,7 +707,7 @@ fun InteractiveGuide(
         ) {
             Text(
                 text = "Quick Guide",
-                color = Color.White,
+                color = TextPrimary,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold
             )
@@ -729,7 +730,7 @@ fun InteractiveGuide(
         ) {
             Text(
                 text = steps[currentStep],
-                color = Color.White.copy(alpha = 0.9f),
+                color = TextPrimary,
                 fontSize = 14.sp,
                 lineHeight = 20.sp
             )
@@ -773,12 +774,12 @@ fun InteractiveGuide(
                     Icon(
                         imageVector = Icons.Default.ChevronLeft,
                         contentDescription = "Previous",
-                        tint = Color.White.copy(alpha = 0.7f),
+                        tint = TextSecondary,
                         modifier = Modifier.size(18.dp)
                     )
                     Text(
                         text = "Previous",
-                        color = Color.White.copy(alpha = 0.7f),
+                        color = TextSecondary,
                         fontSize = 13.sp
                     )
                 }

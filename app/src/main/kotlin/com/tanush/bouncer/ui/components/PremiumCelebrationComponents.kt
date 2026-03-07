@@ -131,8 +131,8 @@ fun TrophyDisplay(
                         } else {
                             Brush.linearGradient(
                                 colors = listOf(
-                                    Color.Gray.copy(alpha = 0.2f),
-                                    Color.Gray.copy(alpha = 0.1f)
+                                    GlassSurface,
+                                    GlassSurface
                                 )
                             )
                         }
@@ -143,7 +143,7 @@ fun TrophyDisplay(
                             colors = if (isUnlocked) {
                                 listOf(trophyColor, trophyColor.copy(alpha = 0.5f))
                             } else {
-                                listOf(Color.Gray.copy(alpha = 0.5f), Color.Gray.copy(alpha = 0.2f))
+                                listOf(TextMuted, GlassBorder)
                             }
                         ),
                         shape = CircleShape
@@ -153,7 +153,7 @@ fun TrophyDisplay(
                 Icon(
                     imageVector = Icons.Default.EmojiEvents,
                     contentDescription = title,
-                    tint = if (isUnlocked) trophyColor else Color.Gray.copy(alpha = 0.5f),
+                    tint = if (isUnlocked) trophyColor else TextMuted,
                     modifier = Modifier.size(40.dp)
                 )
             }
@@ -165,7 +165,7 @@ fun TrophyDisplay(
         ) {
             Text(
                 text = title,
-                color = if (isUnlocked) Color.White else Color.White.copy(alpha = 0.5f),
+                color = if (isUnlocked) TextPrimary else TextSecondary,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center
@@ -174,7 +174,7 @@ fun TrophyDisplay(
             if (subtitle.isNotEmpty()) {
                 Text(
                     text = subtitle,
-                    color = if (isUnlocked) trophyColor else Color.Gray.copy(alpha = 0.5f),
+                    color = if (isUnlocked) trophyColor else TextMuted,
                     fontSize = 12.sp,
                     textAlign = TextAlign.Center
                 )
@@ -279,7 +279,7 @@ fun CelebrationOverlay(
             
             Text(
                 text = message,
-                color = Color.White,
+                color = TextPrimary,
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center
@@ -342,7 +342,7 @@ fun MilestoneCard(
                     )
                 } else {
                     Brush.linearGradient(
-                        colors = listOf(Color.White.copy(alpha = 0.05f), Color.White.copy(alpha = 0.05f))
+                        colors = listOf(GlassSurface, GlassSurface)
                     )
                 }
             )
@@ -389,7 +389,7 @@ fun MilestoneCard(
                         .size(48.dp)
                         .clip(CircleShape)
                         .background(
-                            if (isCompleted) colors.goldDark.copy(alpha = 0.2f) else Color.White.copy(alpha = 0.05f)
+                            if (isCompleted) colors.goldDark.copy(alpha = 0.2f) else GlassSurface
                         )
                         .border(
                             width = 2.dp,
@@ -401,7 +401,7 @@ fun MilestoneCard(
                     Icon(
                         imageVector = if (isCompleted) Icons.Default.Verified else icon,
                         contentDescription = null,
-                        tint = if (isCompleted) colors.goldDark else Color.White.copy(alpha = 0.6f),
+                        tint = if (isCompleted) colors.goldDark else TextSecondary,
                         modifier = Modifier.size(24.dp)
                     )
                 }
@@ -414,14 +414,14 @@ fun MilestoneCard(
             ) {
                 Text(
                     text = milestone,
-                    color = if (isCompleted) colors.goldDark else Color.White,
+                    color = if (isCompleted) colors.goldDark else TextPrimary,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold
                 )
                 
                 Text(
                     text = description,
-                    color = Color.White.copy(alpha = 0.6f),
+                    color = TextSecondary,
                     fontSize = 12.sp
                 )
                 
@@ -569,13 +569,13 @@ fun StreakCounter(
         ) {
             Text(
                 text = "$currentStreak $unit",
-                color = Color.White,
+                color = TextPrimary,
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold
             )
             Text(
                 text = "Current Streak",
-                color = Color.White.copy(alpha = 0.6f),
+                color = TextSecondary,
                 fontSize = 12.sp
             )
         }
@@ -594,7 +594,7 @@ fun StreakCounter(
             )
             Text(
                 text = "Best Streak",
-                color = Color.White.copy(alpha = 0.6f),
+                color = TextSecondary,
                 fontSize = 12.sp
             )
         }
@@ -687,14 +687,14 @@ fun BadgeDisplay(
             Icon(
                 imageVector = icon,
                 contentDescription = name,
-                tint = if (isEarned) tierColor else Color.Gray.copy(alpha = 0.5f),
+                tint = if (isEarned) tierColor else TextMuted,
                 modifier = Modifier.size(24.dp)
             )
         }
         
         Text(
             text = name,
-            color = if (isEarned) Color.White else Color.White.copy(alpha = 0.5f),
+            color = if (isEarned) TextPrimary else TextSecondary,
             fontSize = 11.sp,
             fontWeight = FontWeight.Medium,
             textAlign = TextAlign.Center,
@@ -790,7 +790,7 @@ fun XPProgressBar(
             ) {
                 Text(
                     text = "Experience",
-                    color = Color.White.copy(alpha = 0.7f),
+                    color = TextSecondary,
                     fontSize = 12.sp
                 )
                 Text(

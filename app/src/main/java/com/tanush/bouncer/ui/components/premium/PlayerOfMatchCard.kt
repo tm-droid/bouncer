@@ -205,7 +205,7 @@ fun PlayerOfMatchCard(
 
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "⭐ LIKELY WINNER",
+                                text = "LIKELY WINNER",
                                 color = colors.goldDark,
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold,
@@ -216,7 +216,7 @@ fun PlayerOfMatchCard(
 
                             Text(
                                 text = player.name,
-                                color = Color.White,
+                                color = colors.textPrimary,
                                 fontSize = 20.sp,
                                 fontWeight = FontWeight.Bold,
                             )
@@ -237,7 +237,7 @@ fun PlayerOfMatchCard(
                                     Column {
                                         Text(
                                             text = "$runs",
-                                            color = Color.White,
+                                            color = colors.textPrimary,
                                             fontSize = 18.sp,
                                             fontWeight = FontWeight.Bold,
                                         )
@@ -254,7 +254,7 @@ fun PlayerOfMatchCard(
                                         Column {
                                             Text(
                                                 text = "$wickets/${player.runsConceded ?: 0}",
-                                                color = Color.White,
+                                                color = colors.textPrimary,
                                                 fontSize = 18.sp,
                                                 fontWeight = FontWeight.Bold,
                                             )
@@ -271,7 +271,7 @@ fun PlayerOfMatchCard(
                                     Column {
                                         Text(
                                             text = "${player.catches + player.runOuts}",
-                                            color = Color.White,
+                                            color = colors.textPrimary,
                                             fontSize = 18.sp,
                                             fontWeight = FontWeight.Bold,
                                         )
@@ -376,7 +376,7 @@ fun PlayerOfMatchCard(
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
                                     text = contribution,
-                                    color = Color.White,
+                                    color = colors.textPrimary,
                                     fontSize = 12.sp,
                                 )
                             }
@@ -425,7 +425,7 @@ fun PlayerOfMatchCard(
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
                                     text = player.name,
-                                    color = Color.White,
+                                    color = colors.textPrimary,
                                     fontSize = 14.sp,
                                     fontWeight = FontWeight.Medium,
                                 )

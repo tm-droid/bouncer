@@ -191,7 +191,7 @@ fun FanEngagementCard(
                             )
                             Text(
                                 text = "${formatNumber(engagement.totalFans)} fans watching",
-                                color = Color.White.copy(alpha = 0.6f),
+                                color = colors.textPrimary.copy(alpha = 0.6f),
                                 fontSize = 11.sp,
                             )
                         }
@@ -237,7 +237,7 @@ fun FanEngagementCard(
                         )
                         Text(
                             text = "${(engagement.team1Support * 100).toInt()}%",
-                            color = Color.White,
+                            color = colors.textPrimary,
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Bold,
                         )
@@ -261,7 +261,7 @@ fun FanEngagementCard(
                         )
                         Text(
                             text = "${(engagement.team2Support * 100).toInt()}%",
-                            color = Color.White,
+                            color = colors.textPrimary,
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Bold,
                         )
@@ -307,7 +307,7 @@ fun FanEngagementCard(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(12.dp))
-                        .background(Color.White.copy(alpha = 0.05f))
+                        .background(colors.textPrimary.copy(alpha = 0.05f))
                         .padding(16.dp),
                     horizontalArrangement = Arrangement.SpaceEvenly,
                 ) {
@@ -370,7 +370,7 @@ fun FanEngagementCard(
                             )
                             Text(
                                 text = engagement.trendingMoment,
-                                color = Color.White,
+                                color = colors.textPrimary,
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Medium,
                             )
@@ -414,14 +414,14 @@ private fun EngagementStatItem(
 
         Text(
             text = value,
-            color = Color.White,
+            color = colors.textPrimary,
             fontSize = 16.sp,
             fontWeight = FontWeight.Bold,
         )
 
         Text(
             text = label,
-            color = Color.White.copy(alpha = 0.5f),
+            color = colors.textSecondary,
             fontSize = 10.sp,
         )
     }
