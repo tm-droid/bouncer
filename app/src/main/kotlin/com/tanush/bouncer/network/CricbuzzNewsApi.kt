@@ -12,6 +12,6 @@ interface CricbuzzNewsApi {
     @GET("news/v1/index")
     suspend fun getNewsIndex(
         @Header("x-rapidapi-host") host: String = "cricbuzz-cricket.p.rapidapi.com",
-        @Header("x-rapidapi-key") key: String = "fe2efb208fmshb18e935ea93e3c4p10c19ejsn28178ccd66fc"
+        @Header("x-rapidapi-key") key: String = com.tanush.bouncer.BuildConfig.RAPIDAPI_KEY
     ): CricbuzzNewsResponse
 }

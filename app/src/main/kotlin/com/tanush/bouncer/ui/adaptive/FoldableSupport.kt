@@ -555,7 +555,7 @@ fun <T> DragAndDropBetweenPanes(
                         )
                     }
             ) {
-                dragOverlay(dragDropState.draggedItem!!)
+                dragDropState.draggedItem?.let { dragOverlay(it) }
             }
         }
     }

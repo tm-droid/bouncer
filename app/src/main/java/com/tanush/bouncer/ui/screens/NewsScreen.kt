@@ -1,11 +1,15 @@
 package com.tanush.bouncer.ui.screens
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
@@ -23,6 +27,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -307,19 +312,43 @@ private fun HeroArticleCard(
     val typography = BouncerDesignSystem.typography
     val dimens = BouncerDesignSystem.dimens
 
+    // Press feedback animation
+    var isPressed by remember { mutableStateOf(false) }
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.98f else 1f,
+        animationSpec = spring(stiffness = 400f),
+        label = "heroCardScale"
+    )
+
     GlassCard(
         modifier = modifier
             .fillMaxWidth()
             .height(280.dp)
-            .clickable(onClick = onClick),
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+            .pointerInput(Unit) {
+                detectTapGestures(
+                    onPress = {
+                        isPressed = true
+                        tryAwaitRelease()
+                        isPressed = false
+                    },
+                    onTap = { onClick() }
+                )
+            },
         shape = RoundedCornerShape(24.dp),
         useGoldBorder = true,
         contentPadding = PaddingValues(0.dp)
     ) {
-        // Background image from Cricbuzz
+        // Background image with crossfade and shimmer placeholder
         if (article.imageUrl != null) {
             AsyncImage(
-                model = article.imageUrl,
+                model = coil.request.ImageRequest.Builder(androidx.compose.ui.platform.LocalContext.current)
+                    .data(article.imageUrl)
+                    .crossfade(400)
+                    .build(),
                 contentDescription = article.headline,
                 modifier = Modifier
                     .matchParentSize()
@@ -344,35 +373,62 @@ private fun HeroArticleCard(
                 )
         )
 
-        // "TOP STORY" badge — top end
+        // "BREAKING" or "TOP STORY" badge — top end with gold accent for breaking
+        val isBreaking = article.storyType.contains("breaking", ignoreCase = true) ||
+                        article.headline.contains("breaking", ignoreCase = true)
+        
         GlassCardSmall(
             modifier = Modifier
                 .align(Alignment.TopEnd)
                 .padding(dimens.md),
-            useGoldBorder = true
+            useGoldBorder = true,
+            borderOpacity = if (isBreaking) 0.8f else 0.3f
         ) {
-            Text(
-                text = "TOP STORY",
-                style = typography.labelSmall,
-                color = colors.goldPrimary
-            )
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (isBreaking) {
+                    Box(
+                        modifier = Modifier
+                            .size(6.dp)
+                            .clip(CircleShape)
+                            .background(colors.statusLive)
+                    )
+                }
+                Text(
+                    text = if (isBreaking) "BREAKING" else "TOP STORY",
+                    style = typography.labelSmall.copy(
+                        fontWeight = if (isBreaking) FontWeight.Bold else FontWeight.Medium
+                    ),
+                    color = if (isBreaking) colors.goldPrimary else colors.goldPrimary.copy(alpha = 0.8f)
+                )
+            }
         }
 
-        // Bottom text content
+        // Bottom text content with enhanced typography
         Column(
             modifier = Modifier
                 .align(Alignment.BottomStart)
                 .padding(dimens.lg)
         ) {
+            // Category with better styling
             Text(
                 text = (article.storyType.ifBlank { "NEWS" }).uppercase(),
-                style = typography.labelMedium,
+                style = typography.labelMedium.copy(
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.2.sp
+                ),
                 color = colors.goldPrimary
             )
             Spacer(modifier = Modifier.height(dimens.xs))
+            
+            // Headline with bold weight
             Text(
                 text = article.headline,
-                style = typography.headingMedium,
+                style = typography.headingMedium.copy(
+                    fontWeight = FontWeight.Bold
+                ),
                 color = colors.textPrimary,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
@@ -432,10 +488,31 @@ private fun RegularArticleCard(
     val typography = BouncerDesignSystem.typography
     val dimens = BouncerDesignSystem.dimens
 
+    // Press feedback animation
+    var isPressed by remember { mutableStateOf(false) }
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.98f else 1f,
+        animationSpec = spring(stiffness = 400f),
+        label = "regularCardScale"
+    )
+
     GlassCard(
         modifier = modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+            .pointerInput(Unit) {
+                detectTapGestures(
+                    onPress = {
+                        isPressed = true
+                        tryAwaitRelease()
+                        isPressed = false
+                    },
+                    onTap = { onClick() }
+                )
+            },
         useGoldBorder = true,
         borderOpacity = 0.06f,
         contentPadding = PaddingValues(dimens.md)
@@ -444,7 +521,7 @@ private fun RegularArticleCard(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(dimens.md)
         ) {
-            // Thumbnail from Cricbuzz
+            // Thumbnail with crossfade
             Box(
                 modifier = Modifier
                     .size(96.dp)
@@ -454,7 +531,10 @@ private fun RegularArticleCard(
             ) {
                 if (article.imageUrl != null) {
                     AsyncImage(
-                        model = article.imageUrl,
+                        model = coil.request.ImageRequest.Builder(androidx.compose.ui.platform.LocalContext.current)
+                            .data(article.imageUrl)
+                            .crossfade(300)
+                            .build(),
                         contentDescription = article.headline,
                         modifier = Modifier
                             .matchParentSize()
@@ -471,12 +551,12 @@ private fun RegularArticleCard(
                 }
             }
 
-            // Text content
+            // Text content with enhanced typography
             Column(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.SpaceBetween
             ) {
-                // Category + time row
+                // Category + time row with better formatting
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     CategoryTag(
                         text = article.storyType.ifBlank { "News" },
@@ -484,24 +564,38 @@ private fun RegularArticleCard(
                     )
                     Spacer(modifier = Modifier.width(dimens.sm))
                     Text(
-                        text = article.timeAgo,
+                        text = "·",
+                        style = typography.labelSmall,
+                        color = colors.textMuted
+                    )
+                    Spacer(modifier = Modifier.width(dimens.sm))
+                    Text(
+                        text = formatTimeAgo(article.timeAgo),
                         style = typography.labelSmall,
                         color = colors.textMuted
                     )
                 }
                 Spacer(modifier = Modifier.height(dimens.xs))
+                
+                // Headline with bold weight for emphasis
                 Text(
                     text = article.headline,
-                    style = typography.headingSmall,
+                    style = typography.headingSmall.copy(
+                        fontWeight = FontWeight.Bold
+                    ),
                     color = colors.textPrimary,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
                 Spacer(modifier = Modifier.height(dimens.xs))
+                
+                // Source with subtle gold accent
                 if (article.source.isNotBlank()) {
                     Text(
                         text = article.source,
-                        style = typography.labelSmall,
+                        style = typography.labelSmall.copy(
+                            fontWeight = FontWeight.Medium
+                        ),
                         color = colors.goldSubtle
                     )
                 }
@@ -565,5 +659,21 @@ private fun LiveBadge(modifier: Modifier = Modifier) {
                 color = colors.statusLive
             )
         }
+    }
+}
+
+// =============================================================================
+// Helper Functions
+// =============================================================================
+
+/**
+ * Formats time ago string for better readability
+ */
+private fun formatTimeAgo(timeAgo: String): String {
+    return when {
+        timeAgo.contains("min", ignoreCase = true) -> timeAgo.replace("minutes", "m").replace("minute", "m")
+        timeAgo.contains("hour", ignoreCase = true) -> timeAgo.replace("hours", "h").replace("hour", "h")
+        timeAgo.contains("day", ignoreCase = true) -> timeAgo.replace("days", "d").replace("day", "d")
+        else -> timeAgo
     }
 }

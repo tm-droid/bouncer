@@ -47,35 +47,23 @@ class MainActivity : ComponentActivity() {
         
         setContent {
             BouncerTheme {
-                var showOnboarding by remember { mutableStateOf(!hasCompletedOnboarding) }
-                
-                Crossfade(
-                    targetState = showOnboarding, 
-                    animationSpec = tween(1200, easing = FastOutSlowInEasing), 
-                    label = "onboarding_master_fade"
-                ) { onboarding ->
-                    if (onboarding) {
-                        OnboardingScreen(onComplete = {
-                            prefs.edit().putBoolean("onboarding_complete", true).apply()
-                            showOnboarding = false
-                        })
-                    } else {
-                        MainAppContent()
-                    }
-                }
+                MainAppContent(hasCompletedOnboarding = hasCompletedOnboarding, prefs = prefs)
             }
         }
     }
 }
 
 @Composable
-private fun MainAppContent() {
+private fun MainAppContent(hasCompletedOnboarding: Boolean = true, prefs: android.content.SharedPreferences? = null) {
     val navController = rememberNavController()
     val viewModel: LiveActivityViewModel = viewModel()
     val keyEvent by viewModel.keyEvent.collectAsState()
     var bannerMessageLocal by remember { mutableStateOf<String?>(null) }
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route ?: "home"
+    
+    // Determine start destination: splash -> onboarding (if first time) -> home
+    val startDestination = if (!hasCompletedOnboarding) "splash" else "home"
     
     // Wire LiveNotificationManager so enriched notifications work
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -91,7 +79,7 @@ private fun MainAppContent() {
         currentMatches.any { it.isLive }
     }
     
-    // Show bottom bar on all 5 primary tabs and their sub-routes
+    // Show bottom bar on all 5 primary tabs and their sub-routes (but not on splash/onboarding)
     val showBottomBar = currentRoute in listOf(
         "home", "all_matches", "favourites", "stats", "more",
         "achievements", "settings", "about", "activity"
@@ -145,9 +133,33 @@ private fun MainAppContent() {
 
         NavHost(
             navController = navController, 
-            startDestination = "home",
+            startDestination = startDestination,
             modifier = Modifier.fillMaxSize()
         ) {
+            composable(
+                "splash",
+                enterTransition = { fadeIn(tween(AnimationDuration.moderate)) },
+                exitTransition = { fadeOut(tween(AnimationDuration.normal)) }
+            ) { 
+                SplashScreen(onSplashComplete = { 
+                    val destination = if (!hasCompletedOnboarding) "onboarding" else "home"
+                    navController.navigate(destination) { 
+                        popUpTo("splash") { inclusive = true } 
+                    } 
+                }) 
+            }
+            composable(
+                "onboarding",
+                enterTransition = { fadeIn(tween(AnimationDuration.moderate)) + slideInVertically(initialOffsetY = { it / 6 }, animationSpec = tween(AnimationDuration.moderate, easing = FastOutSlowInEasing)) },
+                exitTransition = { fadeOut(tween(AnimationDuration.normal)) + slideOutVertically(targetOffsetY = { -it / 6 }, animationSpec = tween(AnimationDuration.normal, easing = FastOutSlowInEasing)) }
+            ) {
+                OnboardingScreen(onComplete = {
+                    prefs?.edit()?.putBoolean("onboarding_complete", true)?.apply()
+                    navController.navigate("home") {
+                        popUpTo("onboarding") { inclusive = true }
+                    }
+                })
+            }
             composable(
                 "home",
                 enterTransition = { fadeIn(tween(AnimationDuration.moderate)) + slideInHorizontally(initialOffsetX = { -it / 8 }, animationSpec = tween(AnimationDuration.moderate, easing = FastOutSlowInEasing)) },
@@ -233,7 +245,8 @@ private fun MainAppContent() {
                     onBackClick = { navController.popBackStack() }, 
                     onFavoritesClick = { navController.navigate("favourites") }, 
                     onAchievementsClick = { navController.navigate("achievements") }, 
-                    onAboutClick = { navController.navigate("about") }, 
+                    onAboutClick = { navController.navigate("about") },
+                    onNotificationSettingsClick = { navController.navigate("notification_settings") },
                     onAIInsightsChanged = { enabled -> viewModel.setAIInsightsEnabled(enabled) }
                 ) 
             }
@@ -261,6 +274,11 @@ private fun MainAppContent() {
                 enterTransition = { fadeIn(tween(AnimationDuration.moderate)) + slideInVertically(initialOffsetY = { it / 6 }, animationSpec = tween(AnimationDuration.moderate, easing = FastOutSlowInEasing)) },
                 exitTransition = { fadeOut(tween(AnimationDuration.normal)) + slideOutVertically(targetOffsetY = { it / 6 }) }
             ) { com.tanush.bouncer.ui.devtools.DevToolsScreen(onBackClick = { navController.popBackStack() }) }
+            composable(
+                "notification_settings",
+                enterTransition = { fadeIn(tween(AnimationDuration.moderate)) + slideInHorizontally(initialOffsetX = { it / 6 }, animationSpec = tween(AnimationDuration.moderate, easing = FastOutSlowInEasing)) },
+                exitTransition = { fadeOut(tween(AnimationDuration.normal)) + slideOutHorizontally(targetOffsetX = { it / 6 }, animationSpec = tween(AnimationDuration.normal, easing = FastOutSlowInEasing)) }
+            ) { NotificationSettingsScreen(onBack = { navController.popBackStack() }) }
         }
 
         // Bottom Navigation — visibility is handled internally via the `visible` param

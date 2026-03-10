@@ -46,12 +46,12 @@ fun SentryErrorBoundary(
                     error = null
                     retryTrigger++
                 },
-                error!!
+                error ?: return
             )
         } else {
             DefaultErrorFallback(
                 screenName = screenName,
-                error = error!!,
+                error = error ?: return,
                 onRetry = {
                     error = null
                     retryTrigger++

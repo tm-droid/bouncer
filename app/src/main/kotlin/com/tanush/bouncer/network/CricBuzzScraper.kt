@@ -188,10 +188,14 @@ class CricBuzzScraper {
                             try {
                                 val data = JsonParser.parseString(innerJsonStr)
                                 matches.addAll(findMatchesInJson(data))
-                            } catch (_: Exception) {}
+                            } catch (e: Exception) {
+                                Log.d(TAG, "Failed to parse inner JSON segment", e)
+                            }
                         }
                     }
-                } catch (_: Exception) {}
+                } catch (e: Exception) {
+                    Log.d(TAG, "Failed to parse NextJS data segment", e)
+                }
                 startIndex = endIdx + 1
             } else {
                 startIndex = idx + 1
@@ -314,7 +318,10 @@ class CricBuzzScraper {
                 gender = "Men",
                 competitionType = "Other"
             )
-        } catch (_: Exception) { return null }
+        } catch (e: Exception) {
+            Log.d(TAG, "Failed to parse match from element", e)
+            return null
+        }
     }
 
     data class MatchDetails(

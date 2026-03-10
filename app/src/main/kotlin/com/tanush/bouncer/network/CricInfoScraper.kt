@@ -125,7 +125,7 @@ class CricInfoScraper {
         })
         
         if (commentaryAvailabilityCache.containsKey(matchId)) {
-            return@withContext commentaryAvailabilityCache[matchId]!!
+            return@withContext commentaryAvailabilityCache[matchId] ?: false
         }
         
         try {

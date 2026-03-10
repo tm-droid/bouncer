@@ -1,10 +1,20 @@
 package com.tanush.bouncer.ui.components
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateIntAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,13 +32,20 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -68,6 +85,25 @@ fun MatchCard(
     val dimens = BouncerDesignSystem.dimens
     val shapes = BouncerDesignSystem.shapes
 
+    // Staggered fade-in animation
+    val alpha = remember { Animatable(0f) }
+    LaunchedEffect(Unit) {
+        alpha.animateTo(
+            targetValue = 1f,
+            animationSpec = tween(durationMillis = 400)
+        )
+    }
+
+    // Press feedback animation
+    var isPressed by remember { mutableStateOf(false) }
+    val scale = remember { Animatable(1f) }
+    LaunchedEffect(isPressed) {
+        scale.animateTo(
+            targetValue = if (isPressed) 0.98f else 1f,
+            animationSpec = spring(stiffness = 400f)
+        )
+    }
+
     // Resolve the batting team's color for the accent border
     val battingTeam = match.teams.find { it.isBatting }
     val battingTeamColor = if (battingTeam != null) {
@@ -79,14 +115,30 @@ fun MatchCard(
     GlassCard(
         modifier = modifier
             .fillMaxWidth()
-            .bouncerClickable(
-                enabled = !isRefreshing,
-                onClick = onClick
-            )
             .graphicsLayer {
-                alpha = if (isRefreshing) 0.6f else 1f
+                this.alpha = if (isRefreshing) 0.6f else this@graphicsLayer.alpha * alpha.value
+                scaleX = scale.value
+                scaleY = scale.value
+            }
+            .pointerInput(Unit) {
+                detectTapGestures(
+                    onPress = {
+                        isPressed = true
+                        tryAwaitRelease()
+                        isPressed = false
+                    },
+                    onTap = { if (!isRefreshing) onClick() }
+                )
             }
             .drawBehind {
+                // Gold accent line on left for live matches
+                if (match.isLive) {
+                    drawRect(
+                        color = colors.goldPrimary,
+                        topLeft = Offset.Zero,
+                        size = Size(4.dp.toPx(), size.height)
+                    )
+                }
                 // Subtle team color accent — thin 2dp top border at 20% alpha
                 drawRect(
                     color = battingTeamColor.copy(alpha = 0.20f),
@@ -108,7 +160,25 @@ fun MatchCard(
                 match.teams.forEachIndexed { index, team ->
                     TeamRow(team = team, hasScore = true, matchTime = match.matchTime)
                     if (index == 0 && match.teams.size > 1) {
-                        Spacer(modifier = Modifier.height(dimens.spacing.sm))
+                        // Gold gradient divider between teams
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(1.dp)
+                                .background(
+                                    Brush.horizontalGradient(
+                                        colors = listOf(
+                                            Color.Transparent,
+                                            colors.goldPrimary.copy(alpha = 0.3f),
+                                            colors.goldPrimary.copy(alpha = 0.5f),
+                                            colors.goldPrimary.copy(alpha = 0.3f),
+                                            Color.Transparent
+                                        )
+                                    )
+                                )
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
                     }
                 }
             } else {
@@ -136,15 +206,34 @@ fun MatchCard(
             val statusText = match.currentStatus.ifBlank { match.info }
             if (statusText.isNotBlank()) {
                 Spacer(modifier = Modifier.height(dimens.spacing.md))
-                Text(
-                    text = statusText,
-                    style = typography.bodySmall,
-                    color = if (match.isLive) colors.etchedGold else colors.textMuted,
-                    fontWeight = if (match.isLive) FontWeight.Medium else FontWeight.Normal,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.fillMaxWidth()
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // Colored indicator dot for match state
+                    Box(
+                        modifier = Modifier
+                            .size(8.dp)
+                            .clip(CircleShape)
+                            .background(
+                                when {
+                                    match.isLive -> colors.statusLive
+                                    statusText.contains("won", ignoreCase = true) -> colors.statusSuccess
+                                    statusText.contains("upcoming", ignoreCase = true) -> colors.statusInfo
+                                    else -> colors.etchedGold
+                                }
+                            )
+                    )
+                    Text(
+                        text = statusText,
+                        style = typography.bodySmall,
+                        color = if (match.isLive) colors.etchedGold else colors.textMuted,
+                        fontWeight = if (match.isLive) FontWeight.Medium else FontWeight.Normal,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
             }
 
             // ── 4. Footer — recent balls (live only) ────────────────────
@@ -363,11 +452,55 @@ private fun TeamRow(
 
         // Score & overs OR match time (Countdown refined)
         if (hasScore && team.score.isNotBlank()) {
+            // Extract numeric score for animation
+            val numericScore = remember(team.score) {
+                team.score.split("/").firstOrNull()?.toIntOrNull() ?: 0
+            }
+            
+            // Animated score transition
+            val animatedScore by animateIntAsState(
+                targetValue = numericScore,
+                animationSpec = spring(stiffness = 100f),
+                label = "scoreAnimation"
+            )
+            
+            // Shimmer effect on score text when updating (for live matches)
+            val shimmerAlpha = if (isBatting) {
+                val transition = rememberInfiniteTransition(label = "scoreShimmer")
+                transition.animateFloat(
+                    initialValue = 0.7f,
+                    targetValue = 1f,
+                    animationSpec = infiniteRepeatable(
+                        animation = tween(1200),
+                        repeatMode = RepeatMode.Reverse
+                    ),
+                    label = "shimmer"
+                ).value
+            } else {
+                1f
+            }
+            
+            // Reconstruct score text with animated number
+            val scoreText = remember(animatedScore, team.score) {
+                if (team.score.contains("/")) {
+                    val parts = team.score.split("/")
+                    "$animatedScore/${parts.getOrNull(1) ?: ""}"
+                } else {
+                    animatedScore.toString()
+                }
+            }
+            
             Text(
-                text = team.score,
+                text = scoreText,
                 style = if (isBatting) typography.scoreCompact.copy(fontSize = 20.sp) else typography.scoreCompact,
                 fontWeight = if (isBatting) FontWeight.Black else FontWeight.Bold,
-                color = if (isBatting) colors.textPrimary else colors.textSecondary.copy(alpha = 0.7f)
+                color = if (isBatting) 
+                    colors.textPrimary.copy(alpha = shimmerAlpha) 
+                else 
+                    colors.textSecondary.copy(alpha = 0.7f),
+                modifier = Modifier.graphicsLayer {
+                    alpha = shimmerAlpha
+                }
             )
             if (team.overs.isNotBlank() && team.overs != "0.0") {
                 Spacer(modifier = Modifier.width(dimens.spacing.xs))

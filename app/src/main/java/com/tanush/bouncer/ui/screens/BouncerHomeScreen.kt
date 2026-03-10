@@ -1,5 +1,6 @@
 package com.tanush.bouncer.ui.screens
 
+import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
@@ -9,6 +10,7 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
+import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -49,10 +51,13 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -78,6 +83,7 @@ import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.ui.animations.staggeredFadeIn
 import com.tanush.bouncer.ui.components.MatchCard
 import com.tanush.bouncer.ui.components.NavItem
+import com.tanush.bouncer.ui.components.ProgressiveContent
 import com.tanush.bouncer.ui.components.glass.GlassBloomBackground
 import com.tanush.bouncer.ui.components.glass.GlassCard
 import com.tanush.bouncer.ui.components.glass.GlassCardSmall
@@ -152,7 +158,31 @@ fun BouncerHomeScreen(
 ) {
     val colors = BouncerDesignSystem.colors
     val dimens = BouncerDesignSystem.dimens
+    val context = androidx.compose.ui.platform.LocalContext.current
     val pullToRefreshState = rememberPullToRefreshState()
+
+    // Screen enter animation (fade + slide up on first load)
+    var hasLoaded by remember { mutableStateOf(false) }
+    
+    // Sentry performance tracking
+    DisposableEffect(Unit) {
+        val transaction = io.sentry.Sentry.startTransaction("home_screen_load", "ui.load")
+        transaction.setTag("screen", "home")
+        
+        onDispose {
+            if (hasLoaded) {
+                transaction.finish()
+            } else {
+                transaction.finish(io.sentry.SpanStatus.CANCELLED)
+            }
+        }
+    }
+    
+    LaunchedEffect(matches.isNotEmpty()) {
+        if (matches.isNotEmpty() && !hasLoaded) {
+            hasLoaded = true
+        }
+    }
 
     // Adjust grid/padding based on window size
     val horizontalPadding = if (windowSize == WindowSizeClass.EXPANDED) dimens.spacing.xxl else dimens.screenHorizontalPadding
@@ -162,7 +192,7 @@ fun BouncerHomeScreen(
         Modifier.fillMaxSize()
     }
 
-    // Split matches into live and upcoming
+    // Split matches into live and upcoming - wrapped in remember for performance
     val liveMatches by remember(matches) {
         derivedStateOf { matches.filter { it.isLive } }
     }
@@ -180,86 +210,103 @@ fun BouncerHomeScreen(
                 state = pullToRefreshState,
                 modifier = Modifier.fillMaxSize()
             ) {
-                androidx.compose.animation.Crossfade(
-                    targetState = isLoading && matches.isEmpty(),
-                    animationSpec = tween(500, easing = FastOutSlowInEasing),
-                    label = "homeContentCrossfade"
-                ) { isInitialLoading ->
-                    if (isInitialLoading) {
-                        HomeScreenSkeleton()
-                    } else {
-                        LazyColumn(
-                            modifier = listModifier,
-                            contentPadding = PaddingValues(bottom = BouncerDesignSystem.dimens.bottomNavHeight + BouncerDesignSystem.dimens.spacing.md)
+                // Use ProgressiveContent for better loading state transitions
+                ProgressiveContent(
+                    isLoading = isLoading && matches.isEmpty(),
+                    skeleton = { HomeScreenSkeleton() },
+                    content = {
+                        androidx.compose.animation.AnimatedVisibility(
+                            visible = hasLoaded,
+                            enter = fadeIn(animationSpec = tween(400)) + slideInVertically(
+                                initialOffsetY = { it / 4 },
+                                animationSpec = tween(500, easing = FastOutSlowInEasing)
+                            ),
+                            modifier = Modifier.fillMaxSize()
                         ) {
-                            // Header
-                            item {
-                                HomeHeader(
-                                    onNotificationClick = { /* TODO */ },
-                                    modifier = Modifier.padding(
-                                        horizontal = horizontalPadding,
-                                        vertical = dimens.spacing.md
-                                    )
-                                )
-                            }
-
-                            // Live Match Carousel
-                            if (liveMatches.isNotEmpty()) {
+                            LazyColumn(
+                                modifier = listModifier,
+                                contentPadding = PaddingValues(bottom = BouncerDesignSystem.dimens.bottomNavHeight + BouncerDesignSystem.dimens.spacing.md)
+                            ) {
+                                // Header - stagger animation
                                 item {
-                                    LiveMatchCarousel(
-                                        matches = liveMatches,
-                                        onMatchClick = onMatchClick,
-                                        isExpanded = windowSize != WindowSizeClass.COMPACT
-                                    )
-                                }
-                            }
-
-                            // Section transition divider
-                            item { SectionDivider() }
-
-                            // Trending News Section
-                            item {
-                                TrendingNewsSection(
-                                    modifier = Modifier.padding(
-                                        horizontal = horizontalPadding,
-                                        vertical = dimens.spacing.md
-                                    )
-                                )
-                            }
-
-                            // Upcoming Matches Header
-                            if (upcomingMatches.isNotEmpty()) {
-                                item {
-                                    SectionHeader(
-                                        title = stringResource(R.string.section_more_matches),
-                                        modifier = Modifier.padding(
-                                            horizontal = horizontalPadding,
-                                            vertical = dimens.spacing.sm
-                                        )
-                                    )
-                                }
-
-                                // Upcoming Matches List
-                                itemsIndexed(
-                                    items = upcomingMatches,
-                                    key = { _, match -> match.id }
-                                ) { index, match ->
-                                    MatchCard(
-                                        match = match,
-                                        onClick = { onMatchClick(match) },
-                                        isRefreshing = isLoading && matches.isNotEmpty(),
+                                    HomeHeader(
+                                        onNotificationClick = { Toast.makeText(context, "Notifications coming soon", Toast.LENGTH_SHORT).show() },
                                         modifier = Modifier
-                                            .staggeredFadeIn(index = index + 5) // Offset for items above
+                                            .staggeredFadeIn(0)
                                             .padding(
                                                 horizontal = horizontalPadding,
-                                                vertical = dimens.spacing.xs
+                                                vertical = dimens.spacing.md
                                             )
                                     )
+                                }
+
+                                // Live Match Carousel - stagger animation
+                                if (liveMatches.isNotEmpty()) {
+                                    item {
+                                        LiveMatchCarousel(
+                                            matches = liveMatches,
+                                            onMatchClick = onMatchClick,
+                                            isExpanded = windowSize != WindowSizeClass.COMPACT,
+                                            modifier = Modifier.staggeredFadeIn(1)
+                                        )
+                                    }
+                                }
+
+                                // Section transition divider
+                                item { 
+                                    SectionDivider(
+                                        modifier = Modifier.staggeredFadeIn(2)
+                                    )
+                                }
+
+                                // Trending News Section - stagger animation
+                                item {
+                                    TrendingNewsSection(
+                                        modifier = Modifier
+                                            .staggeredFadeIn(3)
+                                            .padding(
+                                                horizontal = horizontalPadding,
+                                                vertical = dimens.spacing.md
+                                            )
+                                    )
+                                }
+
+                                // Upcoming Matches Header
+                                if (upcomingMatches.isNotEmpty()) {
+                                    item {
+                                        SectionHeader(
+                                            title = stringResource(R.string.section_more_matches),
+                                            modifier = Modifier
+                                                .staggeredFadeIn(4)
+                                                .padding(
+                                                    horizontal = horizontalPadding,
+                                                    vertical = dimens.spacing.sm
+                                                )
+                                        )
+                                    }
+
+                                    // Upcoming Matches List
+                                    itemsIndexed(
+                                        items = upcomingMatches,
+                                        key = { _, match -> match.id }
+                                    ) { index, match ->
+                                        MatchCard(
+                                            match = match,
+                                            onClick = { onMatchClick(match) },
+                                            isRefreshing = isLoading && matches.isNotEmpty(),
+                                            modifier = Modifier
+                                                .staggeredFadeIn(index = index + 5) // Offset for items above
+                                                .padding(
+                                                    horizontal = horizontalPadding,
+                                                    vertical = dimens.spacing.xs
+                                                )
+                                        )
+                                    }
                                 }
                             }
                         }
                     }
-                }
+                )
             }
 // ... remainder of file unchanged
 
@@ -841,6 +888,7 @@ private fun TrendingNewsSection(
     val colors = BouncerDesignSystem.colors
     val typography = BouncerDesignSystem.typography
     val dimens = BouncerDesignSystem.dimens
+    val context = androidx.compose.ui.platform.LocalContext.current
 
     val newsViewModel: NewsViewModel = viewModel()
     val articles by newsViewModel.articles.collectAsStateWithLifecycle()
@@ -863,7 +911,12 @@ private fun TrendingNewsSection(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(200.dp)
-                    .clickable { /* TODO: navigate to article */ },
+                    .clickable {
+                        heroArticle?.articleUrl?.let { url ->
+                            val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url))
+                            context.startActivity(intent)
+                        }
+                    },
                 shape = RoundedCornerShape(24.dp),
                 contentPadding = PaddingValues(0.dp),
                 borderOpacity = 0.1f
@@ -972,7 +1025,12 @@ private fun TrendingNewsSection(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(110.dp)
-                        .clickable { /* TODO: navigate to article */ },
+                        .clickable {
+                            secondaryArticle.articleUrl?.let { url ->
+                                val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url))
+                                context.startActivity(intent)
+                            }
+                        },
                     shape = RoundedCornerShape(24.dp),
                     contentPadding = PaddingValues(0.dp),
                     borderOpacity = 0.08f

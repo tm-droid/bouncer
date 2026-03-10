@@ -44,10 +44,12 @@ object SimulatedMatchManager {
         }
     }
 
-    @OptIn(DelicateCoroutinesApi::class)
-    fun runLifecycle() {
+    private var lifecycleJob: Job? = null
+
+    fun runLifecycle(scope: CoroutineScope) {
         try {
-            GlobalScope.launch(Dispatchers.Default) {
+            lifecycleJob?.cancel()
+            lifecycleJob = scope.launch(Dispatchers.Default) {
                 for (i in _matches.indices) {
                     LogCollector.log("Match ${_matches[i]} -> started")
                     delay(500)

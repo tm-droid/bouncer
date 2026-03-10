@@ -65,6 +65,7 @@ fun SettingsScreen(
     onFavoritesClick: () -> Unit,
     onAchievementsClick: () -> Unit,
     onAboutClick: () -> Unit,
+    onNotificationSettingsClick: (() -> Unit)? = null,
     onAIInsightsChanged: (Boolean) -> Unit = {}
 ) {
     val colors = BouncerDesignSystem.colors
@@ -121,7 +122,18 @@ fun SettingsScreen(
                     isEnabled = aiInsights,
                     onToggle = { aiInsights = it; com.tanush.bouncer.utils.PreferencesHelper.setBoolean(ctx, com.tanush.bouncer.utils.PreferencesHelper.KEY_AI_INSIGHTS, it); onAIInsightsChanged(it) }
                 )
-            )
+            ).let { items ->
+                if (onNotificationSettingsClick != null) {
+                    items + SettingsItem.Navigation(
+                        title = "Notification Settings",
+                        description = "Advanced notification preferences",
+                        icon = Icons.Default.Settings,
+                        onClick = onNotificationSettingsClick
+                    )
+                } else {
+                    items
+                }
+            }
         ),
         SettingsSection(
             title = "Preferences",

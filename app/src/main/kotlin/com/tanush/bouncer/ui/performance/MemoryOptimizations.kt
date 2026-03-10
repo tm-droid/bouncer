@@ -162,7 +162,7 @@ object BitmapPool {
     fun getStats(): PoolStats {
         try {
             val totalPooled = pool.values.sumOf { list ->
-                list.count { it.get() != null && !it.get()!!.isRecycled }
+                list.count { it.get()?.isRecycled == false }
             }
         
             return PoolStats(

@@ -27,12 +27,14 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.widget.Toast
 import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.ui.components.AiAnalysisCard
 import com.tanush.bouncer.ui.components.AnalysisType
 import com.tanush.bouncer.ui.components.GlassCard
 import com.tanush.bouncer.ui.components.BouncerImportance
 import com.tanush.bouncer.ui.theme.*
+import androidx.compose.ui.platform.LocalContext
 
 /**
  * Premium AI Insights & DRS Review Screen
@@ -45,6 +47,7 @@ fun AiInsightsDrsScreen(
 ) {
     val scrollState = rememberScrollState()
     val colors = BouncerDesignSystem.colors
+    val context = LocalContext.current
     
     Scaffold(
         containerColor = colors.backgroundBase,
@@ -63,7 +66,7 @@ fun AiInsightsDrsScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = {}) {
+                    IconButton(onClick = { Toast.makeText(context, "Notifications coming soon", Toast.LENGTH_SHORT).show() }) {
                         Icon(Icons.Default.Notifications, null, tint = colors.textPrimary)
                     }
                 },
@@ -85,8 +88,7 @@ fun AiInsightsDrsScreen(
             // DRS Visualization Card
             DrsVisualizationCard(match)
 
-            // Verdict Module
-            // TODO: Get real DRS decision outcome from match event stream when available in models
+            // Verdict Module — placeholder until DRS event stream integration
             VerdictModule(isOut = true)
 
             // Delivery Metrics
@@ -110,7 +112,7 @@ fun AiInsightsDrsScreen(
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Button(
-                onClick = {},
+                onClick = { Toast.makeText(context, "Full analysis coming soon", Toast.LENGTH_SHORT).show() },
                 modifier = Modifier.weight(1f).height(56.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = colors.glassSurface),
                 shape = RoundedCornerShape(12.dp),
@@ -119,7 +121,7 @@ fun AiInsightsDrsScreen(
                 Text("FULL ANALYSIS", color = colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
             }
             Button(
-                onClick = {},
+                onClick = { Toast.makeText(context, "DRS review requested", Toast.LENGTH_SHORT).show() },
                 modifier = Modifier.weight(2f).height(56.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = colors.goldPrimary),
                 shape = RoundedCornerShape(12.dp)
@@ -155,7 +157,7 @@ private fun DrsVisualizationCard(match: CricketMatch) {
         importance = BouncerImportance.CRITICAL
     ) {
         Box(modifier = Modifier.height(260.dp).fillMaxWidth()) {
-            // TODO: Implement actual 3D rendering or high-fidelity path drawing based on ball tracking data from telemetry
+            // Placeholder trajectory path — replace with ball tracking telemetry when available
             Canvas(modifier = Modifier.fillMaxSize()) {
                 val path = androidx.compose.ui.graphics.Path().apply {
                     moveTo(0f, size.height * 0.8f)
@@ -190,7 +192,7 @@ private fun DrsVisualizationCard(match: CricketMatch) {
                 horizontalAlignment = Alignment.End,
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                // TODO: Link these to actual ball tracking results from match stream telemetry
+                // Placeholder DRS metrics — replace with live ball tracking results
                 DrsMetricsRow("PITCHING", "IN LINE", colors.statusInfo)
                 DrsMetricsRow("IMPACT", "IN LINE", colors.statusInfo)
                 DrsMetricsRow("WICKETS", "HITTING", colors.goldPrimary)
@@ -199,7 +201,7 @@ private fun DrsVisualizationCard(match: CricketMatch) {
         
         Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text("DRS Visualization", color = colors.textPrimary, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-            // TODO: Generate descriptive summary from real trajectory analysis from telemetry
+            // Placeholder summary — replace with real trajectory analysis output
             Text("Projected path indicates ball hitting top of leg stump.", color = colors.textSecondary, fontSize = 14.sp)
         }
     }
@@ -251,7 +253,7 @@ private fun DeliveryMetricsSection(match: CricketMatch) {
         }
         
         LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            // TODO: Replace with real per-ball telemetry data (Impact speed, turn, engine confidence) from match telemetry
+            // Placeholder metrics — replace with real per-ball telemetry data when available
             item { MetricCard(Icons.Default.Speed, "Impact Speed", "142", "kph") }
             item { MetricCard(Icons.AutoMirrored.Filled.RotateRight, "Turn Degree", "2.1°", "") }
             item { MetricCard(Icons.Default.Psychology, "Confidence", "98%", "") }
@@ -300,7 +302,7 @@ private fun PitchMapMiniCard(match: CricketMatch) {
                 }
                 Column {
                     Text("Pitch Map", color = colors.textPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                    // TODO: Map ball impact coordinates to pitch length classifications (e.g., Good Length, Full, Short) from telemetry
+                    // Placeholder classification — replace with ball impact coordinate mapping
                     Text("Good Length", color = colors.goldPrimary, fontSize = 11.sp, fontWeight = FontWeight.Medium)
                 }
             }

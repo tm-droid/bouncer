@@ -86,7 +86,7 @@ class SGD(
 
             for (layerIdx in gradients.indices) {
                 val grad = gradients[layerIdx]
-                val (weightVel, biasVel) = velocities!![layerIdx]
+                val (weightVel, biasVel) = velocities?.get(layerIdx) ?: continue
 
                 // Update weight velocities and apply
                 for (j in grad.weightGradients.indices) {
@@ -210,8 +210,8 @@ class Adam(
 
             for (layerIdx in gradients.indices) {
                 val grad = gradients[layerIdx]
-                val (mw, mb) = m!![layerIdx]
-                val (vw, vb) = v!![layerIdx]
+                val (mw, mb) = m?.get(layerIdx) ?: continue
+                val (vw, vb) = v?.get(layerIdx) ?: continue
 
                 // Update weight moments and compute adaptive updates
                 for (j in grad.weightGradients.indices) {

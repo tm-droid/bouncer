@@ -264,9 +264,9 @@ fun ExpandableMatchCardV2(
                     }
                     
                     // Recent balls
-                    if (!match.recentBalls.isNullOrEmpty()) {
+                    match.recentBalls?.takeIf { it.isNotEmpty() }?.let { balls ->
                         RecentBallsTimeline(
-                            balls = match.recentBalls!!.takeLast(12),
+                            balls = balls.takeLast(12),
                             modifier = Modifier.fillMaxWidth()
                         )
                     }

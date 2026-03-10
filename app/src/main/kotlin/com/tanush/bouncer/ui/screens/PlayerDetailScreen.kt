@@ -241,6 +241,7 @@ fun PlayerDetailScreen(
                     }
                 }
             } else if (player != null) {
+                val p = player ?: return@GlassBloomBackground
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxSize()
@@ -251,7 +252,7 @@ fun PlayerDetailScreen(
                     // Player header card
                     item {
                         PlayerHeaderCard(
-                            player = player!!,
+                            player = p,
                             shimmerOffset = shimmerOffset,
                             pulseScale = pulseScale,
                             context = context
@@ -260,16 +261,16 @@ fun PlayerDetailScreen(
                     
                     // Quick info
                     item {
-                        PlayerQuickInfo(player = player!!)
+                        PlayerQuickInfo(player = p)
                     }
                     
                     // Batting stats
-                    if (player!!.battingStats != null) {
+                    if (p.battingStats != null) {
                         item {
                             SectionTitle(title = "BATTING STATISTICS", icon = Icons.Default.SportsCricket)
                         }
                         item {
-                            BattingStatsCard(stats = player!!.battingStats!!)
+                            BattingStatsCard(stats = p.battingStats)
                         }
                     }
 
@@ -285,12 +286,12 @@ fun PlayerDetailScreen(
                     }
                     
                     // Bowling stats
-                    if (player!!.bowlingStats != null) {
+                    if (p.bowlingStats != null) {
                         item {
                             SectionTitle(title = "BOWLING STATISTICS", icon = Icons.Default.Album)
                         }
                         item {
-                            BowlingStatsCard(stats = player!!.bowlingStats!!)
+                            BowlingStatsCard(stats = p.bowlingStats)
                         }
                     }
                     
@@ -299,9 +300,9 @@ fun PlayerDetailScreen(
                         SectionTitle(title = "PERFORMANCE OVERVIEW", icon = Icons.Default.Radar)
                     }
                     item {
-                        val battingAvg = player!!.battingStats?.average?.toFloat() ?: 0f
-                        val matches = player!!.battingStats?.matches ?: 0
-                        val bowlingAvg = player!!.bowlingStats?.average?.toFloat()
+                        val battingAvg = p.battingStats?.average?.toFloat() ?: 0f
+                        val matches = p.battingStats?.matches ?: 0
+                        val bowlingAvg = p.bowlingStats?.average?.toFloat()
                         GlassCard(
                             useGoldBorder = true
                         ) {
@@ -311,7 +312,7 @@ fun PlayerDetailScreen(
                                 fieldingSkill = 65f,
                                 fitnessSkill = 70f,
                                 experienceSkill = (matches / 100f * 100f).coerceIn(0f, 100f),
-                                playerName = player!!.name,
+                                playerName = p.name,
                                 primaryColor = colors.goldPrimary
                             )
                         }

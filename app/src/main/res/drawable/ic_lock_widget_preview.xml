@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Background -->
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="#FF0A0C10" />
+            <corners android:radius="12dp" />
+        </shape>
+    </item>
+    
+    <!-- Cricket icon -->
+    <item android:gravity="center">
+        <shape android:shape="oval">
+            <size android:width="24dp" android:height="24dp" />
+            <solid android:color="#FFD4AF37" />
+        </shape>
+    </item>
+</layer-list>

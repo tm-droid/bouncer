@@ -463,14 +463,15 @@ fun SwipeActionContainer(
         
         // Confirmation overlay
         if (showConfirmation && confirmedAction != null) {
+            val action = confirmedAction ?: return@Box
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
                 ActionConfirmation(
                     isVisible = showConfirmation,
-                    icon = confirmedAction!!.icon,
-                    backgroundColor = confirmedAction!!.backgroundColor,
+                    icon = action.icon,
+                    backgroundColor = action.backgroundColor,
                     onDismiss = {
                         showConfirmation = false
                         confirmedAction = null

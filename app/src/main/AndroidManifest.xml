@@ -5,6 +5,8 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
 
     <application
         android:name=".BouncerApp"
@@ -53,7 +55,35 @@
                 android:resource="@xml/live_match_widget_info" />
         </receiver>
 
+        <!-- Glance-based Home Screen Widget -->
+        <receiver android:name=".ui.widgets.BouncerGlanceWidgetReceiver"
+                  android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider"
+                android:resource="@xml/bouncer_glance_widget_info" />
+        </receiver>
+
+        <!-- Glance-based Lock Screen Widget -->
+        <receiver android:name=".ui.widgets.BouncerLockScreenWidgetReceiver"
+                  android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider"
+                android:resource="@xml/bouncer_lock_widget_info" />
+        </receiver>
+
         <receiver android:name=".utils.ReminderReceiver" android:exported="false" />
+        
+        <receiver android:name=".ui.widgets.WidgetUpdateReceiver" android:exported="false" />
+
+        <service
+            android:name=".services.LiveActivityService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
 
         <provider
             android:name="androidx.core.content.FileProvider"

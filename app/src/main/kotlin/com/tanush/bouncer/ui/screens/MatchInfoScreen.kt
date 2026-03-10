@@ -23,6 +23,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.content.Intent
+import android.widget.Toast
+import androidx.compose.ui.platform.LocalContext
 import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.ui.components.CoilImage
 import com.tanush.bouncer.ui.components.glass.GlassBloomBackground
@@ -41,6 +44,7 @@ fun MatchInfoScreen(
     val colors = BouncerDesignSystem.colors
     val dimens = BouncerDesignSystem.dimens
     val scrollState = rememberScrollState()
+    val context = LocalContext.current
 
     Scaffold(
         containerColor = Color.Transparent,
@@ -53,7 +57,13 @@ fun MatchInfoScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = {}) {
+                    IconButton(onClick = {
+                        val shareIntent = Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
+                            type = "text/plain"
+                            putExtra(Intent.EXTRA_TEXT, "Check out ${match.teams.joinToString(" vs ")} on Bouncer! \uD83C\uDFCF")
+                        }, "Share Match")
+                        context.startActivity(shareIntent)
+                    }) {
                         Icon(Icons.Default.MoreHoriz, null, tint = colors.textPrimary)
                     }
                 },

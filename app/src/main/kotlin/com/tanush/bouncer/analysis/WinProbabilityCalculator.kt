@@ -374,7 +374,7 @@ class WinProbabilityCalculator(
 
             // Update venue statistics
             match.innings.firstOrNull()?.let { firstInnings ->
-                val currentStats = venueStats[venue]!!
+                val currentStats = venueStats[venue] ?: return@let
                 val newMatchesPlayed = currentStats.matchesPlayed + 1
 
                 venueStats[venue] = VenueStatistics(
@@ -408,7 +408,14 @@ class WinProbabilityCalculator(
                 )
             }
             if (!teamStats.containsKey(bowlingTeam)) {
-                teamStats[bowlingTeam] = teamStats[battingTeam]!!
+                teamStats[bowlingTeam] = teamStats[battingTeam] ?: TeamStatistics(
+                    battingAverage = 0.0,
+                    bowlingAverage = 0.0,
+                    winRate = 0.0,
+                    powerPlayRunRate = 0.0,
+                    deathOversRunRate = 0.0,
+                    matchesPlayed = 0
+                )
             }
 
             // Update team statistics

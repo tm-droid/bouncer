@@ -16,8 +16,10 @@ import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.ui.components.PremiumBottomNavBar
 import com.tanush.bouncer.ui.components.navDestinations
 import com.tanush.bouncer.ui.screens.*
+import com.tanush.bouncer.ui.devtools.DevToolsScreen
 import com.tanush.bouncer.ui.theme.*
 import com.tanush.bouncer.viewmodels.LiveActivityViewModel
+import com.tanush.bouncer.viewmodels.NewsViewModel
 
 /**
  * App entry point with navigation handling.
@@ -80,10 +82,12 @@ fun BouncerAppContent() {
 @Composable
 fun MainAppContainer(
     viewModel: LiveActivityViewModel = viewModel(),
+    newsViewModel: NewsViewModel = viewModel(),
     onMatchClick: (CricketMatch) -> Unit
 ) {
     // Route-based navigation matching PremiumBottomNavBar destinations
     var currentRoute by remember { mutableStateOf("home") }
+    var selectedArticle by remember { mutableStateOf<com.tanush.bouncer.models.NewsArticleData?>(null) }
 
     // Track previous route index for slide direction
     val routeIndex = remember(currentRoute) {
@@ -163,7 +167,9 @@ fun MainAppContainer(
                             previousIndex = routeIndex
                             currentRoute = "home"
                         },
-                        onTeamClick = { /* Handle team click */ }
+                        onTeamClick = { teamName ->
+                            // Team details not yet available - stays on favourites
+                        }
                     )
                 }
                 "stats" -> {
@@ -176,16 +182,101 @@ fun MainAppContainer(
                 }
                 "more" -> {
                     MoreScreen(
-                        onSettingsClick = { /* push settings sub-screen */ },
+                        onSettingsClick = {
+                            previousIndex = routeIndex
+                            currentRoute = "settings"
+                        },
                         onAchievementsClick = {
                             previousIndex = routeIndex
                             currentRoute = "stats"
                         },
-                        onActivityClick = { /* push activity sub-screen */ },
-                        onArTrackingClick = { /* push AR tracking */ },
-                        onAboutClick = { /* push about sub-screen */ },
-                        onDevToolsClick = { /* push dev tools */ }
+                        onActivityClick = {
+                            previousIndex = routeIndex
+                            currentRoute = "stats"
+                        },
+                        onArTrackingClick = {
+                            previousIndex = routeIndex
+                            currentRoute = "home"
+                        },
+                        onAboutClick = {
+                            previousIndex = routeIndex
+                            currentRoute = "about"
+                        },
+                        onDevToolsClick = {
+                            previousIndex = routeIndex
+                            currentRoute = "devtools"
+                        },
+                        onNewsClick = {
+                            previousIndex = routeIndex
+                            currentRoute = "news"
+                        }
                     )
+                }
+                "settings" -> {
+                    SettingsScreen(
+                        onBackClick = {
+                            previousIndex = routeIndex
+                            currentRoute = "more"
+                        },
+                        onFavoritesClick = {
+                            previousIndex = routeIndex
+                            currentRoute = "favourites"
+                        },
+                        onAchievementsClick = {
+                            previousIndex = routeIndex
+                            currentRoute = "stats"
+                        },
+                        onAboutClick = {
+                            previousIndex = routeIndex
+                            currentRoute = "about"
+                        }
+                    )
+                }
+                "about" -> {
+                    AboutScreen(
+                        onBackClick = {
+                            previousIndex = routeIndex
+                            currentRoute = "more"
+                        }
+                    )
+                }
+                "devtools" -> {
+                    DevToolsScreen(
+                        onBackClick = {
+                            previousIndex = routeIndex
+                            currentRoute = "more"
+                        }
+                    )
+                }
+                "news" -> {
+                    NewsScreen(
+                        onBackClick = {
+                            previousIndex = routeIndex
+                            currentRoute = "more"
+                        },
+                        newsViewModel = newsViewModel,
+                        onArticleClick = { article ->
+                            selectedArticle = article
+                            newsViewModel.selectArticle(article)
+                            previousIndex = routeIndex
+                            currentRoute = "news_detail"
+                        }
+                    )
+                }
+                "news_detail" -> {
+                    val article = selectedArticle
+                    if (article != null) {
+                        NewsDetailScreen(
+                            article = article,
+                            newsViewModel = newsViewModel,
+                            onBackClick = {
+                                newsViewModel.clearSelectedArticle()
+                                selectedArticle = null
+                                previousIndex = routeIndex
+                                currentRoute = "news"
+                            }
+                        )
+                    }
                 }
             }
         }

@@ -73,9 +73,10 @@ fun DevToolsScreen(
             singleLine = true
         )
 
+        val coroutineScope = rememberCoroutineScope()
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             FilledTonalButton(onClick = { com.tanush.bouncer.ui.devtools.LogCollector.log("Simulate: create sample matches"); com.tanush.bouncer.ui.devtools.SimulatedMatchManager.createSampleMatches() }) { Text("Create Matches") }
-            OutlinedButton(onClick = { com.tanush.bouncer.ui.devtools.LogCollector.log("Simulate: run lifecycle"); com.tanush.bouncer.ui.devtools.SimulatedMatchManager.runLifecycle() }) { Text("Run Lifecycle") }
+            OutlinedButton(onClick = { com.tanush.bouncer.ui.devtools.LogCollector.log("Simulate: run lifecycle"); com.tanush.bouncer.ui.devtools.SimulatedMatchManager.runLifecycle(coroutineScope) }) { Text("Run Lifecycle") }
         }
         Text("Simulated Matches: ${com.tanush.bouncer.ui.devtools.SimulatedMatchManager.matchesCount}")
 

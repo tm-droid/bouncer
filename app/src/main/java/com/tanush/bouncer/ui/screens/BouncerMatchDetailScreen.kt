@@ -1,6 +1,7 @@
 package com.tanush.bouncer.ui.screens
 
 import android.content.Intent
+import android.util.Log
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -169,7 +170,8 @@ fun BouncerMatchDetailScreen(
         launch {
             try {
                 squads = SquadScraper.fetchSquads(matchId, match?.matchTitle ?: "")
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                Log.d("MatchDetail", "Failed to fetch squads", e)
                 squadsError = true
             }
             squadsLoading = false
@@ -178,7 +180,7 @@ fun BouncerMatchDetailScreen(
         launch {
             try {
                 ballByBall = scraper.fetchBallByBallAndBatsmen(matchId)
-            } catch (_: Exception) { }
+            } catch (e: Exception) { Log.d("MatchDetail", "Failed to fetch ball-by-ball", e) }
         }
     }
 
@@ -189,10 +191,10 @@ fun BouncerMatchDetailScreen(
             delay(8_000L)
             try {
                 ballByBall = scraper.fetchBallByBallAndBatsmen(matchId)
-            } catch (_: Exception) { }
+            } catch (e: Exception) { Log.d("MatchDetail", "Live refresh: ball-by-ball failed", e) }
             try {
                 scorecard = scraper.fetchScorecard(matchId)
-            } catch (_: Exception) { }
+            } catch (e: Exception) { Log.d("MatchDetail", "Live refresh: scorecard failed", e) }
         }
     }
 

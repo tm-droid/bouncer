@@ -22,6 +22,9 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.content.Intent
+import android.widget.Toast
+import androidx.compose.ui.platform.LocalContext
 import com.tanush.bouncer.models.Achievement
 import com.tanush.bouncer.models.AchievementKind
 import com.tanush.bouncer.ui.components.BouncerImportance
@@ -74,6 +77,7 @@ fun AchievementsScreen(
     onBackClick: () -> Unit
 ) {
     val colors = BouncerDesignSystem.colors
+    val context = LocalContext.current
     val achievements = remember { 
         Achievement.all.map { it.copy(unlocked = unlockedAchievements.contains(it.id)) }
     }
@@ -110,7 +114,15 @@ fun AchievementsScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = {}) {
+                    IconButton(onClick = {
+                        val unlocked = achievements.count { it.unlocked }
+                        val total = achievements.size
+                        val shareIntent = Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
+                            type = "text/plain"
+                            putExtra(Intent.EXTRA_TEXT, "I've unlocked $unlocked/$total achievements in Bouncer! \uD83C\uDFCF")
+                        }, "Share Achievements")
+                        context.startActivity(shareIntent)
+                    }) {
                         Icon(Icons.Default.IosShare, "Share", tint = colors.goldPrimary)
                     }
                 },
@@ -188,7 +200,7 @@ fun AchievementsScreen(
             
             // Insights FAB
             FloatingActionButton(
-                onClick = {},
+                onClick = { Toast.makeText(context, "Insights coming soon", Toast.LENGTH_SHORT).show() },
                 modifier = Modifier.align(Alignment.BottomEnd).padding(24.dp),
                 containerColor = colors.goldPrimary,
                 contentColor = Color.Black,

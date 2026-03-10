@@ -42,13 +42,15 @@ fun MoreScreen(
     onActivityClick: () -> Unit,
     onArTrackingClick: () -> Unit,
     onAboutClick: () -> Unit,
-    onDevToolsClick: () -> Unit
+    onDevToolsClick: () -> Unit,
+    onNewsClick: () -> Unit = {}
 ) {
     val colors = BouncerDesignSystem.colors
     val typography = BouncerDesignSystem.typography
     val dimens = BouncerDesignSystem.dimens
 
     val exploreItems = listOf(
+        MoreItemData(Icons.Default.Newspaper, "Cricket News", "Latest stories & updates", onNewsClick),
         MoreItemData(Icons.Default.Settings, "Settings", "Preferences, notifications, data", onSettingsClick),
         MoreItemData(Icons.Default.EmojiEvents, "Achievements", "Trophy room & milestones", onAchievementsClick),
         MoreItemData(Icons.Default.Insights, "Activity Feed", "Intelligence & AI insights", onActivityClick),

@@ -120,7 +120,7 @@ fun WormGraphCard(
                 label = "selectedPoint"
             ) { point ->
                 if (point != null) {
-                    val team = if (point.first == 0) innings1 else innings2!!
+                    val team = if (point.first == 0) innings1 else innings2 ?: return@AnimatedContent
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()

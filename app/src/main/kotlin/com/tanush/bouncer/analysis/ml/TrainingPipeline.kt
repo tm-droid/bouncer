@@ -202,7 +202,7 @@ class TrainingPipeline(private val config: TrainingConfig) {
 
             // Average gradients over batch
             val batchSize = batch.size.toDouble()
-            val averagedGradients = accumulatedGradients!!.map { grad ->
+            val averagedGradients = (accumulatedGradients ?: continue).map { grad ->
                 LayerGradients(
                     weightGradients = Array(grad.weightGradients.size) { j ->
                         DoubleArray(grad.weightGradients[j].size) { i ->

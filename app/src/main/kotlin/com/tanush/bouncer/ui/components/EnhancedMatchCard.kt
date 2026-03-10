@@ -582,9 +582,9 @@ private fun MatchCardLiveDetails(
             }
         }
         
-        if (!match.recentBalls.isNullOrEmpty()) {
+        match.recentBalls?.takeIf { it.isNotEmpty() }?.let { balls ->
             Spacer(modifier = Modifier.height(16.dp))
-            EnhancedBallsSequence(balls = match.recentBalls!!.takeLast(6))
+            EnhancedBallsSequence(balls = balls.takeLast(6))
         }
     }
 }
