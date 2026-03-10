@@ -41,7 +41,7 @@ import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.SportsCricket
 import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material.icons.outlined.Vibration
-import androidx.compose.material.icons.outlined.VolumeUp
+import androidx.compose.material.icons.automirrored.outlined.VolumeUp
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -661,7 +661,7 @@ fun NotificationSettingsScreen(
                                 SectionDivider()
 
                                 ToggleRow(
-                                    icon = Icons.Outlined.VolumeUp,
+                                    icon = Icons.AutoMirrored.Outlined.VolumeUp,
                                     title = "Sound",
                                     description = "Play sound on notifications",
                                     checked = sound,

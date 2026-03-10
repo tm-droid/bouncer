@@ -168,13 +168,13 @@ class LiveActivityService : Service() {
                         level = SentryLevel.INFO
                     })
                     
-                    stopForeground(true)
+                    stopForeground(STOP_FOREGROUND_REMOVE)
                     stopSelf()
                 }
             }
         } catch (e: Exception) {
             Sentry.captureException(e)
-            stopForeground(true)
+            stopForeground(STOP_FOREGROUND_REMOVE)
             stopSelf()
         }
         

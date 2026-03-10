@@ -14,6 +14,14 @@ if (localPropertiesFile.exists()) {
     localPropertiesFile.inputStream().use { localProperties.load(it) }
 }
 
+// Redirect build outputs to ~/Library/Caches so they live outside the iCloud-synced
+// Documents folder.  iCloud modifies file metadata on every sync, which invalidates
+// Gradle's incremental task outputs and forces mergeResources / dex / etc. to re-run
+// from scratch on every single build.
+layout.buildDirectory.set(
+    file("${System.getProperty("user.home")}/Library/Caches/bouncer-android/app")
+)
+
 android {
     namespace = "com.tanush.bouncer"
     compileSdk = 36
@@ -96,9 +104,7 @@ android {
 }
 
 composeCompiler {
-    // Strong skipping avoids recomposing composables whose parameters haven't changed,
-    // even when those parameters are unstable types (e.g. data classes without @Stable).
-    enableStrongSkippingMode = true
+    // Strong skipping is enabled by default since Kotlin 2.1+ — no explicit flag needed.
 
     // Write Compose compiler metrics to build/compose_metrics/ on every debug build.
     // Inspect them with the Compose Compiler Metrics Viewer to spot unstable/restartable
@@ -172,6 +178,17 @@ dependencies {
 }
 
 sentry {
+    // Disable telemetry: the Sentry plugin's TelemetryService invokes sentry-cli at
+    // Gradle configuration time (even during `./gradlew tasks`) to gather version info,
+    // but resource extraction fails silently in the Gradle classloader, leaving a
+    // non-existent sentry-cli-*.exe path which crashes every Gradle invocation.
+    telemetry.set(false)
+
+    // Skip ALL Sentry tasks (mapDebugSourceSetPaths, collectSources, bytecode transforms)
+    // for debug builds.  Source context and proguard uploads are only useful in release;
+    // running them in debug causes a 30+ minute hang when source files are on iCloud Drive.
+    ignoredVariants.set(setOf("debug"))
+
     org.set("tanush-4w")
     projectName.set("android")
     authToken.set(

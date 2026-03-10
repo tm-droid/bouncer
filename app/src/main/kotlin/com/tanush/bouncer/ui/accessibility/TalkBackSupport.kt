@@ -193,6 +193,7 @@ fun Modifier.liveScoreAnnouncement(
     LaunchedEffect(currentScore) {
         if (currentScore != previousScore) {
             val announcement = CricketSemantics.scoreDescription(runs, wickets, overs, team)
+            @Suppress("DEPRECATION")
             view.announceForAccessibility(announcement)
             previousScore = currentScore
         }
@@ -290,7 +291,7 @@ object TraversalOrder {
     @OptIn(ExperimentalComposeUiApi::class)
     fun Modifier.invisibleToAccessibility(): Modifier = this.semantics {
         try {
-            invisibleToUser()
+            hideFromAccessibility()
         } catch (e: Exception) {
             Sentry.captureException(e)
             throw e
@@ -347,6 +348,7 @@ fun AccessibilityAnnouncement(
     
     LaunchedEffect(message) {
         if (message.isNotEmpty()) {
+            @Suppress("DEPRECATION")
             view.announceForAccessibility(message)
         }
     }
@@ -368,6 +370,7 @@ fun Modifier.wicketAnnouncement(
     LaunchedEffect(hasWicket, dismissedBatter) {
         if (hasWicket && !announcedWicket) {
             val announcement = "WICKET! $dismissedBatter dismissed, $dismissalType by $bowler"
+            @Suppress("DEPRECATION")
             view.announceForAccessibility(announcement)
             announcedWicket = true
         }
@@ -397,6 +400,7 @@ fun Modifier.boundaryAnnouncement(
         if (hasBoundary && !announcedBoundary) {
             val boundaryType = if (isSix) "SIX" else "FOUR"
             val announcement = "$boundaryType! Hit by $batter"
+            @Suppress("DEPRECATION")
             view.announceForAccessibility(announcement)
             announcedBoundary = true
         }

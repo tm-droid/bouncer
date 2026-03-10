@@ -827,6 +827,7 @@ class MemoryWarningHandler(
         }
     }
     
+    @Suppress("OVERRIDE_DEPRECATION")
     override fun onLowMemory() {
         try {
             listeners.forEach { it.onLowMemory() }

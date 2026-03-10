@@ -63,6 +63,7 @@ object BouncerHaptics {
      * Error - for errors (triple quick pattern)
      */
     fun error(view: View) {
+        @Suppress("DEPRECATION")
         val vibrator = view.context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
         if (vibrator != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val timings = longArrayOf(0, 50, 50, 50, 50, 50)
@@ -85,6 +86,7 @@ object BouncerHaptics {
      * Boundary - medium burst for 4s
      */
     fun boundary(view: View) {
+        @Suppress("DEPRECATION")
         val vibrator = view.context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
         if (vibrator != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val timings = longArrayOf(0, 30, 40, 50)
@@ -104,6 +106,7 @@ object BouncerHaptics {
      * Six - strong celebratory pattern for 6s
      */
     fun six(view: View) {
+        @Suppress("DEPRECATION")
         val vibrator = view.context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
         if (vibrator != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val timings = longArrayOf(0, 50, 30, 70, 30, 100)
@@ -123,6 +126,7 @@ object BouncerHaptics {
      * Wicket - dramatic pattern for wickets
      */
     fun wicket(view: View) {
+        @Suppress("DEPRECATION")
         val vibrator = view.context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
         if (vibrator != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val timings = longArrayOf(0, 80, 50, 120)

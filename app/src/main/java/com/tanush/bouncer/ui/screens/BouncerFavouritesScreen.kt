@@ -145,7 +145,7 @@ fun BouncerFavouritesScreen(
                         )
                     }
                 },
-                colors = TopAppBarDefaults.mediumTopAppBarColors(
+                colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = BouncerDesignSystem.colors.backgroundBase,
                     scrolledContainerColor = BouncerDesignSystem.colors.backgroundElevated
                 ),
@@ -309,6 +309,7 @@ private fun SwipeToDismissFavouriteCard(
     teamName: String,
     onRemove: () -> Unit
 ) {
+    @Suppress("DEPRECATION")
     val dismissState = rememberSwipeToDismissBoxState(
         confirmValueChange = { value ->
             if (value == SwipeToDismissBoxValue.EndToStart) {

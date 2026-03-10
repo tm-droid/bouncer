@@ -122,7 +122,7 @@ fun BouncerSettingsScreen(
                         )
                     }
                 },
-                colors = TopAppBarDefaults.mediumTopAppBarColors(
+                colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = BouncerDesignSystem.colors.backgroundBase,
                     scrolledContainerColor = BouncerDesignSystem.colors.backgroundElevated
                 ),
