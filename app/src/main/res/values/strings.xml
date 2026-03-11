@@ -60,4 +60,136 @@
     <string name="cd_profile">View user profile</string>
     <string name="cd_back_button">Navigate back</string>
     <string name="cd_share_button">Share match details</string>
+
+    <!-- App Update -->
+    <string name="update_available_title">Update Available</string>
+    <string name="update_subtitle">Bouncer %1$s is ready</string>
+    <string name="update_whats_new">What\'s New</string>
+    <string name="update_current_version">Current: v%1$s</string>
+    <string name="update_new_version">New: v%1$s</string>
+    <string name="update_version_arrow">→</string>
+    <string name="update_size_and_time">(%1$.1f MB, ~%2$d minutes on WiFi)</string>
+    <string name="update_downloading">Downloading Update</string>
+    <string name="update_download_in_progress">Optimizing package for secure install...</string>
+    <string name="update_ready_to_install">Ready to Install</string>
+    <string name="update_progress_percent">%1$d%%</string>
+    <string name="update_action_now">Update Now</string>
+    <string name="update_action_later">Later</string>
+    <string name="update_action_install">Install</string>
+    <string name="update_action_retry">Try Again</string>
+
+    <string name="update_notification_title">Bouncer update available</string>
+    <string name="update_notification_body">Version %1$s is ready to download</string>
+    <string name="update_notification_channel_name">App Updates</string>
+    <string name="update_notification_channel_desc">Silent background checks and update readiness badges</string>
+
+    <string name="update_mock_feature_one">Faster live score rendering with smoother transitions</string>
+    <string name="update_mock_feature_two">Fixes for match feed refresh and edge-case crashes</string>
+    <string name="update_mock_feature_three">Security hardening for network payload validation</string>
+    <string name="update_mock_feature_four">Premium glass visuals tuned for better contrast</string>
+
+    <string name="cd_update_dialog">Bouncer app update dialog</string>
+    <string name="cd_update_bouncer_logo">Bouncer update icon</string>
+    <string name="cd_update_feature_icon">Update feature item icon</string>
+    <string name="cd_update_download_estimate">Download size and time estimate</string>
+    <string name="cd_update_badge">Update available badge</string>
+
+    <!-- Notification Settings -->
+    <string name="notification_title">Notifications</string>
+    <string name="notification_overview_title">At a glance</string>
+    <string name="notification_section_live_match_alerts">LIVE MATCH ALERTS</string>
+    <string name="notification_section_team_preferences">TEAM PREFERENCES</string>
+    <string name="notification_section_sound_haptics">SOUND &amp; HAPTICS</string>
+    <string name="notification_section_do_not_disturb">DO NOT DISTURB</string>
+    <string name="notification_section_advanced">ADVANCED</string>
+
+    <string name="notification_live_match_subtext">Choose exactly what happens during live games, from starts to milestones.</string>
+    <string name="notification_match_start_alerts">Match Start Alerts</string>
+    <string name="notification_match_start_alerts_help">Get a heads-up right when your tracked match begins.</string>
+    <string name="notification_wicket_alerts">Wicket Alerts</string>
+    <string name="notification_wicket_alerts_help">Instant wicket pings. Disabled by default if you prefer less noise.</string>
+    <string name="notification_milestone_alerts">Milestone Alerts</string>
+    <string name="notification_milestone_alerts_help">50s, centuries, key partnerships, and landmark moments.</string>
+    <string name="notification_score_updates">Score Updates</string>
+    <string name="notification_score_updates_help">Select how often score updates should arrive.</string>
+    <string name="notification_frequency_every_run">Every run</string>
+    <string name="notification_frequency_every_over">Every over</string>
+    <string name="notification_frequency_every_wicket">Every wicket</string>
+
+    <string name="notification_count_teams_selected">%1$d out of %2$d teams</string>
+    <string name="team_india">India</string>
+    <string name="team_australia">Australia</string>
+    <string name="team_england">England</string>
+    <string name="team_pakistan">Pakistan</string>
+    <string name="team_south_africa">South Africa</string>
+
+    <string name="notification_sound_enabled">Sound Enabled</string>
+    <string name="notification_sound_enabled_help">Play a sound for priority alerts.</string>
+    <string name="notification_sound_wicket_chime">Wicket Chime</string>
+    <string name="notification_sound_goal_horn">Goal Horn</string>
+    <string name="notification_sound_stadium_roar">Stadium Roar</string>
+    <string name="notification_sound_soft_pulse">Soft Pulse</string>
+    <string name="notification_sound_classic_bell">Classic Bell</string>
+    <string name="notification_preview_sound">Preview sound</string>
+    <string name="notification_haptic_feedback">Haptic Feedback</string>
+    <string name="notification_haptic_feedback_help">Add tactile feedback to key alert interactions.</string>
+    <string name="notification_vibration_intensity">Vibration Intensity</string>
+    <string name="notification_vibration_low">Low</string>
+    <string name="notification_vibration_medium">Medium</string>
+    <string name="notification_vibration_high">High</string>
+
+    <string name="notification_dnd_subtext">Control when alerts should pause and how live matches behave overnight.</string>
+    <string name="notification_enable_quiet_hours">Enable Quiet Hours</string>
+    <string name="notification_enable_quiet_hours_help">Silence non-urgent notifications during selected hours.</string>
+    <string name="notification_quiet_hours_from">From</string>
+    <string name="notification_quiet_hours_to">To</string>
+    <string name="notification_allow_live_during_quiet_hours">Allow live match alerts during quiet hours</string>
+    <string name="notification_quiet_hours_queue_help">Notifications will queue until quiet hours end.</string>
+    <string name="notification_quiet_hours_summary">Quiet: %1$s - %2$s</string>
+    <string name="notification_quiet_hours_off">Quiet hours off</string>
+
+    <string name="notification_battery_optimization">Battery Optimization</string>
+    <string name="notification_battery_optimization_help">Delay non-critical alerts when battery is low.</string>
+    <string name="notification_group_similar">Group Similar Notifications</string>
+    <string name="notification_group_similar_help">Bundle repeated updates into cleaner stacks.</string>
+    <string name="notification_show_previews">Show Previews on Lock Screen</string>
+    <string name="notification_show_previews_help">Display alert content on lock screen cards.</string>
+    <string name="notification_clear_history">Clear All Notification History</string>
+    <string name="notification_clear_history_title">Clear notification history?</string>
+    <string name="notification_clear_history_message">This removes Bouncer notification history for this device.</string>
+    <string name="notification_action_cancel">Cancel</string>
+
+    <string name="notification_preset_balanced">Balanced</string>
+    <string name="notification_preset_minimal">Minimal</string>
+    <string name="notification_preset_maximum">All-In</string>
+
+    <string name="notification_cd_expand_section">Expand or collapse section</string>
+
+    <string name="live_activity_title">Bouncer Live Update</string>
+    <string name="live_activity_channel_name">Live Match Updates</string>
+    <string name="live_activity_channel_description">Persistent live score updates pinned at the top of notifications.</string>
+    <string name="live_activity_action_view_full_score">View Full Score</string>
+    <string name="live_activity_action_open_app">Open App</string>
+
+    <string name="live_activity_last_update_just_now">Just now</string>
+    <string name="live_activity_last_update_less_than_min">&lt; 1m ago</string>
+    <string name="live_activity_last_update_minutes">%1$dm ago</string>
+    <string name="live_activity_last_update_hours">%1$dh ago</string>
+
+    <string name="live_activity_style_section_title">LIVE ACTIVITIES</string>
+    <string name="live_activity_style_section_subtitle">Persistent Android Live Update notifications for real-time cricket.</string>
+    <string name="live_activity_style_battery">Battery: %1$d/5</string>
+    <string name="live_activity_style_visibility">Visibility: %1$d/5</string>
+    <string name="live_activity_style_live_indicator">Live • low-latency updates</string>
+
+    <string name="live_activity_style_compact_title">Compact</string>
+    <string name="live_activity_style_compact_subtitle">Balanced scoreline optimized for status-chip visibility.</string>
+    <string name="live_activity_style_detailed_title">Detailed</string>
+    <string name="live_activity_style_detailed_subtitle">Full context with batters, bowler, last ball, and chase info.</string>
+    <string name="live_activity_style_minimal_title">Minimal</string>
+    <string name="live_activity_style_minimal_subtitle">Only numbers, tiny footprint, best battery profile.</string>
+    <string name="live_activity_style_animated_title">Animated</string>
+    <string name="live_activity_style_animated_subtitle">Most expressive live look with pulse-forward emphasis.</string>
+    <string name="live_activity_style_statistics_title">Statistics</string>
+    <string name="live_activity_style_statistics_subtitle">Run rates, win probability, and wickets remaining at a glance.</string>
 </resources>

@@ -67,6 +67,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -114,6 +116,8 @@ private val CarouselCardWidth = 320.dp
 fun BouncerHomeScreen(
     viewModel: LiveActivityViewModel,
     onMatchClick: (String) -> Unit,
+    showUpdateBadge: Boolean = false,
+    onUpdateBadgeClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val matches by viewModel.allMatchesForHome.collectAsStateWithLifecycle()
@@ -127,6 +131,8 @@ fun BouncerHomeScreen(
         onNavigate = { /* Navigation handled by parent */ },
         isLoading = isLoading || isRefreshing,
         onRefresh = { viewModel.refreshMatches() },
+        showUpdateBadge = showUpdateBadge,
+        onUpdateBadgeClick = onUpdateBadgeClick,
         modifier = modifier,
         windowSize = windowSizeClass,
         showBottomNav = false // Parent handles bottom nav
@@ -151,6 +157,8 @@ fun BouncerHomeScreen(
     onNavigate: (NavItem) -> Unit,
     isLoading: Boolean,
     onRefresh: () -> Unit,
+    showUpdateBadge: Boolean = false,
+    onUpdateBadgeClick: () -> Unit = {},
     modifier: Modifier = Modifier,
     windowSize: WindowSizeClass = WindowSizeClass.COMPACT,
     selectedNavItem: NavItem = NavItem.HOME,
@@ -230,7 +238,14 @@ fun BouncerHomeScreen(
                                 // Header - stagger animation
                                 item {
                                     HomeHeader(
-                                        onNotificationClick = { Toast.makeText(context, "Notifications coming soon", Toast.LENGTH_SHORT).show() },
+                                        onNotificationClick = {
+                                            if (showUpdateBadge) {
+                                                onUpdateBadgeClick()
+                                            } else {
+                                                Toast.makeText(context, "Notifications coming soon", Toast.LENGTH_SHORT).show()
+                                            }
+                                        },
+                                        showUpdateBadge = showUpdateBadge,
                                         modifier = Modifier
                                             .staggeredFadeIn(0)
                                             .padding(
@@ -371,11 +386,13 @@ private fun HomeScreenSkeleton() {
 @Composable
 private fun HomeHeader(
     onNotificationClick: () -> Unit,
+    showUpdateBadge: Boolean,
     modifier: Modifier = Modifier
 ) {
     val colors = BouncerDesignSystem.colors
     val typography = BouncerDesignSystem.typography
     val dimens = BouncerDesignSystem.dimens
+    val updateBadgeDescription = stringResource(R.string.cd_update_badge)
 
     Row(
         modifier = modifier.fillMaxWidth(),
@@ -410,12 +427,28 @@ private fun HomeHeader(
                 onClick = onNotificationClick,
                 modifier = Modifier.fillMaxSize()
             ) {
-                Icon(
-                    imageVector = Icons.Outlined.Notifications,
-                    contentDescription = "Notifications",
-                    tint = colors.goldPrimary.copy(alpha = 0.8f),
-                    modifier = Modifier.size(BouncerDesignSystem.dimens.iconSize.md)
-                )
+                Box(contentAlignment = Alignment.TopEnd) {
+                    Icon(
+                        imageVector = Icons.Outlined.Notifications,
+                        contentDescription = stringResource(R.string.cd_notifications),
+                        tint = colors.goldPrimary.copy(alpha = 0.8f),
+                        modifier = Modifier.size(BouncerDesignSystem.dimens.iconSize.md)
+                    )
+
+                    if (showUpdateBadge) {
+                        Box(
+                            modifier = Modifier
+                                .size(10.dp)
+                                .clip(CircleShape)
+                                .background(colors.statusInfo)
+                                .border(1.dp, colors.backgroundBase, CircleShape)
+                                .align(Alignment.TopEnd)
+                                .semantics {
+                                    contentDescription = updateBadgeDescription
+                                }
+                        )
+                    }
+                }
             }
         }
     }

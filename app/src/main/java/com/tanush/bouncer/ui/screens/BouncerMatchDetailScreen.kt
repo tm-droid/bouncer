@@ -96,6 +96,7 @@ import com.tanush.bouncer.ui.components.glass.SegmentItem
 import com.tanush.bouncer.ui.components.glass.StatPill
 import com.tanush.bouncer.ui.components.glass.TeamFlagBackground
 import com.tanush.bouncer.ui.components.glass.TeamLogoCircle
+import com.tanush.bouncer.services.LiveActivityService
 import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 import com.tanush.bouncer.ui.theme.TeamPrimaryColors
 import com.tanush.bouncer.ui.theme.etchedText
@@ -198,6 +199,27 @@ fun BouncerMatchDetailScreen(
         }
     }
 
+    // Keep Live Activity service aligned with match liveness and user preferences.
+    LaunchedEffect(match?.id, match?.isLive) {
+        val current = match ?: return@LaunchedEffect
+        val prefs = NotificationPrefsManager.getInstance(context).settings.value
+        if (!prefs.liveActivityEnabled) {
+            LiveActivityService.stop(context)
+            return@LaunchedEffect
+        }
+
+        if (current.isLive) {
+            LiveActivityService.start(
+                context = context,
+                matchId = current.id,
+                style = prefs.liveActivityStyle,
+                frequency = prefs.liveActivityUpdateFrequency.toUpdateFrequency()
+            )
+        } else {
+            LiveActivityService.stop(context)
+        }
+    }
+
     // ── Share callback ─────────────────────────────────────────────────────
     val onShare: () -> Unit = {
         match?.let { m ->
@@ -261,10 +283,10 @@ fun BouncerMatchDetailScreen(
 
             Spacer(modifier = Modifier.height(dimens.spacing.sm))
 
-            // Pager content
+            // Pager content — weight(1f) ensures it takes remaining space in the Column
             HorizontalPager(
                 state = pagerState,
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.weight(1f).fillMaxWidth(),
                 beyondViewportPageCount = 1
             ) { page ->
                 // Fade content in/out based on page offset for smooth tab transitions
@@ -692,6 +714,36 @@ private fun LiveTab(
         ?: score?.recentBalls?.split(",")?.map { it.trim() }?.filter { it.isNotBlank() }
         ?: emptyList()
 
+    // Derive dynamic insight data from match state
+    val approachingInfo = remember(batsmen) {
+        batsmen
+            .mapNotNull { batter ->
+                val runs = batter.runs.toIntOrNull() ?: return@mapNotNull null
+                if (runs <= 0) return@mapNotNull null
+                val nextMilestone = ((runs / 50) + 1) * 50
+                val remaining = nextMilestone - runs
+                val progress = runs.toFloat() / nextMilestone
+                val shortName = batter.name.split(" ").lastOrNull() ?: batter.name
+                Triple("$shortName $nextMilestone", "$remaining to go", progress)
+            }
+            .maxByOrNull { it.third } // closest to milestone (highest progress)
+    }
+
+    val partnershipRuns = remember(batsmen) { batsmen.sumOf { it.runs.toIntOrNull() ?: 0 } }
+    val partnershipBalls = remember(batsmen) { batsmen.sumOf { it.balls.toIntOrNull() ?: 0 } }
+
+    val lastWicketScoreRegex = remember { Regex("""(\d+)\s*\((\d+)\)""") }
+    val lastWicketValue = remember(score?.lastWicket) {
+        score?.lastWicket?.let { lw ->
+            val m = lastWicketScoreRegex.find(lw)
+            if (m != null) lw.substring(0, m.range.first).trim().take(15)
+            else lw.take(15)
+        } ?: "—"
+    }
+    val lastWicketSubtitle = remember(score?.lastWicket) {
+        score?.lastWicket?.let { lastWicketScoreRegex.find(it)?.value } ?: ""
+    }
+
     LazyColumn(
         modifier = modifier,
         contentPadding = PaddingValues(
@@ -712,26 +764,26 @@ private fun LiveTab(
                 // Approaching Card
                 InsightStatCard(
                     title = "APPROACHING",
-                    value = "Pooran 50",
-                    subtitle = "8 to go",
-                    progress = 0.84f,
+                    value = approachingInfo?.first ?: "—",
+                    subtitle = approachingInfo?.second ?: "No data",
+                    progress = approachingInfo?.third ?: 0f,
                     icon = Icons.Outlined.LiveTv,
-                    isGold = true
+                    isGold = approachingInfo != null
                 )
 
                 // Partnership Card
                 InsightStatCard(
                     title = "PARTNERSHIP",
-                    value = "54",
-                    subtitle = "(42 balls)",
+                    value = if (batsmen.isNotEmpty()) "$partnershipRuns" else "N/A",
+                    subtitle = if (batsmen.isNotEmpty()) "($partnershipBalls balls)" else "",
                     isGold = false
                 )
 
                 // Last Wicket Card
                 InsightStatCard(
                     title = "LAST WICKET",
-                    value = score?.lastWicket?.take(15) ?: "Hope b Bumrah",
-                    subtitle = "12 (18)",
+                    value = lastWicketValue,
+                    subtitle = lastWicketSubtitle,
                     isGold = false
                 )
             }
@@ -1253,4 +1305,10 @@ private fun buildShareText(match: CricketMatch): String {
     sb.appendLine()
     sb.appendLine("Shared from Bouncer \uD83C\uDFCF")
     return sb.toString()
+}
+
+private fun NotificationFrequency.toUpdateFrequency(): com.tanush.bouncer.liveactivity.UpdateFrequency = when (this) {
+    NotificationFrequency.EVERY_RUN -> com.tanush.bouncer.liveactivity.UpdateFrequency.EVERY_RUN
+    NotificationFrequency.EVERY_OVER -> com.tanush.bouncer.liveactivity.UpdateFrequency.EVERY_OVER
+    NotificationFrequency.EVERY_WICKET -> com.tanush.bouncer.liveactivity.UpdateFrequency.EVERY_WICKET
 }

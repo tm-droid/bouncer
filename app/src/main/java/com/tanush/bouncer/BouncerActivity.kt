@@ -1,5 +1,8 @@
 package com.tanush.bouncer
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -11,6 +14,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -35,6 +39,9 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -43,8 +50,11 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -54,7 +64,9 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.tanush.bouncer.liveactivity.LiveActivityNotificationBuilder
 import com.tanush.bouncer.managers.FavouriteTeamsManager
+import com.tanush.bouncer.ui.components.AppUpdateDialog
 import com.tanush.bouncer.ui.components.BouncerBottomNavBar
 import com.tanush.bouncer.ui.screens.AnalystFeedScreen
 import com.tanush.bouncer.ui.screens.BouncerFavouritesScreen
@@ -64,9 +76,13 @@ import com.tanush.bouncer.ui.screens.BouncerSettingsScreen
 import com.tanush.bouncer.ui.screens.NewsScreen
 import com.tanush.bouncer.ui.screens.NewsDetailScreen
 import com.tanush.bouncer.ui.theme.BouncerTheme
+import com.tanush.bouncer.ui.updates.AppUpdateManager
+import com.tanush.bouncer.ui.updates.AppUpdateUiState
+import com.tanush.bouncer.ui.updates.UpdateCheckService
 import com.tanush.bouncer.viewmodels.LiveActivityViewModel
 import com.tanush.bouncer.viewmodels.NewsViewModel
 import io.sentry.Sentry
+import kotlinx.coroutines.launch
 
 /**
  * Main entry point for the Bouncer cricket app.
@@ -94,11 +110,33 @@ class BouncerActivity : ComponentActivity() {
         // Initialize singleton managers
         FavouriteTeamsManager.initialize(this)
 
+        LiveActivityNotificationBuilder(applicationContext).createNotificationChannel()
+        requestNotificationPermissionIfNeeded()
+
         setContent {
             BouncerTheme {
                 BouncerAppRoot()
             }
         }
+    }
+
+    private fun requestNotificationPermissionIfNeeded() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+        val granted = ContextCompat.checkSelfPermission(
+            this,
+            Manifest.permission.POST_NOTIFICATIONS
+        ) == PackageManager.PERMISSION_GRANTED
+        if (!granted) {
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(Manifest.permission.POST_NOTIFICATIONS),
+                REQUEST_POST_NOTIFICATIONS
+            )
+        }
+    }
+
+    companion object {
+        private const val REQUEST_POST_NOTIFICATIONS = 4112
     }
 }
 
@@ -127,9 +165,22 @@ private object Routes {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BouncerAppRoot() {
+    val context = androidx.compose.ui.platform.LocalContext.current
     val navController = rememberNavController()
     val viewModel: LiveActivityViewModel = viewModel()
     val newsViewModel: NewsViewModel = viewModel()
+    val coroutineScope = rememberCoroutineScope()
+    val appUpdateManager = remember(context) { AppUpdateManager(context.applicationContext) }
+    val updateState by appUpdateManager.uiState.collectAsStateWithLifecycle()
+    val showUpdateBadge by appUpdateManager.showUpdateBadge.collectAsStateWithLifecycle()
+
+    LaunchedEffect(Unit) {
+        UpdateCheckService.schedule(
+            context = context.applicationContext,
+            allowMetered = appUpdateManager.shouldAllowMeteredChecks()
+        )
+        appUpdateManager.checkForUpdates()
+    }
 
     // Track current route for bottom nav visibility
     val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -146,35 +197,36 @@ fun BouncerAppRoot() {
     )
     val showBottomNav = currentRoute in bottomNavRoutes
 
-    Scaffold(
-        bottomBar = {
-            AnimatedVisibility(
-                visible = showBottomNav,
-                enter = slideInVertically(initialOffsetY = { it }),
-                exit = slideOutVertically(targetOffsetY = { it })
-            ) {
-                BouncerBottomNavBar(
-                    currentRoute = currentRoute,
-                    onNavigate = { route ->
-                        navController.navigate(route) {
-                            // Pop up to the start destination to avoid building up
-                            // a large back-stack of top-level destinations.
-                            popUpTo(navController.graph.findStartDestination().id) {
-                                saveState = true
+    Box(modifier = Modifier.fillMaxSize()) {
+        Scaffold(
+            bottomBar = {
+                AnimatedVisibility(
+                    visible = showBottomNav,
+                    enter = slideInVertically(initialOffsetY = { it }),
+                    exit = slideOutVertically(targetOffsetY = { it })
+                ) {
+                    BouncerBottomNavBar(
+                        currentRoute = currentRoute,
+                        onNavigate = { route ->
+                            navController.navigate(route) {
+                                // Pop up to the start destination to avoid building up
+                                // a large back-stack of top-level destinations.
+                                popUpTo(navController.graph.findStartDestination().id) {
+                                    saveState = true
+                                }
+                                launchSingleTop = true
+                                restoreState = true
                             }
-                            launchSingleTop = true
-                            restoreState = true
                         }
-                    }
-                )
+                    )
+                }
             }
-        }
-    ) { innerPadding ->
-        NavHost(
-            navController = navController,
-            startDestination = Routes.HOME,
-            modifier = Modifier.padding(innerPadding)
-        ) {
+        ) { innerPadding ->
+            NavHost(
+                navController = navController,
+                startDestination = Routes.HOME,
+                modifier = Modifier.padding(innerPadding)
+            ) {
             // ── Home ─────────────────────────────────────────────────────
             composable(
                 route = Routes.HOME,
@@ -185,6 +237,12 @@ fun BouncerAppRoot() {
                     viewModel = viewModel,
                     onMatchClick = { matchId ->
                         navController.navigate(Routes.matchDetail(matchId))
+                    },
+                    showUpdateBadge = showUpdateBadge,
+                    onUpdateBadgeClick = {
+                        coroutineScope.launch {
+                            appUpdateManager.checkForUpdates(forcePrompt = true)
+                        }
                     }
                 )
             }
@@ -317,6 +375,28 @@ fun BouncerAppRoot() {
                     onBackClick = { navController.popBackStack() }
                 )
             }
+            }
+        }
+
+        if (updateState !is AppUpdateUiState.Idle && updateState !is AppUpdateUiState.CheckingForUpdates) {
+            AppUpdateDialog(
+                state = updateState,
+                onUpdateNow = {
+                    coroutineScope.launch { appUpdateManager.downloadUpdate() }
+                },
+                onInstall = {
+                    appUpdateManager.installUpdate()
+                },
+                onLater = {
+                    appUpdateManager.dismissUpdate()
+                },
+                onDismiss = {
+                    appUpdateManager.dismissUpdate()
+                },
+                onRetry = {
+                    coroutineScope.launch { appUpdateManager.checkForUpdates(forcePrompt = true) }
+                }
+            )
         }
     }
 

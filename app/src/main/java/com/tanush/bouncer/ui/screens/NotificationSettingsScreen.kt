@@ -72,6 +72,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.tanush.bouncer.liveactivity.LiveActivityStyle
+import com.tanush.bouncer.liveactivity.UpdateFrequency
+import com.tanush.bouncer.services.LiveActivityService
 import io.sentry.Breadcrumb
 import io.sentry.Sentry
 import io.sentry.SentryLevel
@@ -95,7 +98,7 @@ private val BorderColor = Color(0xFF1E2128)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun NotificationSettingsScreen(
+fun LegacyNotificationSettingsScreen(
     onBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -1154,4 +1157,358 @@ private fun logSettingChange(key: String, value: Any) {
     } catch (e: Exception) {
         Sentry.captureException(e)
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun NotificationSettingsScreen(
+    onBack: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+    val manager = remember(context) { NotificationPrefsManager.getInstance(context) }
+    var settings by remember { mutableStateOf(manager.settings.value) }
+    var liveExpanded by remember { mutableStateOf(true) }
+    var previewLoading by remember { mutableStateOf(false) }
+
+    fun update(transform: (NotificationSettings) -> NotificationSettings) {
+        val updated = transform(settings)
+        settings = updated
+        manager.updateSettings { updated }
+    }
+
+    Scaffold(
+        modifier = modifier,
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        text = "Notifications",
+                        color = TextPrimary,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back",
+                            tint = ShinyGoldDeep
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = BlackBackground)
+            )
+        },
+        containerColor = BlackBackground
+    ) { innerPadding ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding),
+            contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            item {
+                SettingSectionCard(
+                    title = "LIVE MATCH ALERTS",
+                    subtitle = "Control what gets pushed during live games.",
+                    isExpandable = true,
+                    isExpanded = liveExpanded,
+                    onExpandToggle = { liveExpanded = !liveExpanded }
+                ) {
+                    NotificationToggleItem(
+                        title = "Match Start Alerts",
+                        subtitle = "Alert when selected matches begin",
+                        icon = Icons.Outlined.NotificationsActive,
+                        checked = settings.matchStartAlerts,
+                        onCheckedChange = { update { it.copy(matchStartAlerts = it.matchStartAlerts.not()) } }
+                    )
+                    SectionDivider()
+                    NotificationToggleItem(
+                        title = "Wicket Alerts",
+                        subtitle = "Dismiss noisy wicket pings if needed",
+                        icon = Icons.Outlined.SportsCricket,
+                        checked = settings.wicketAlerts,
+                        onCheckedChange = { enabled -> update { it.copy(wicketAlerts = enabled) } }
+                    )
+                    SectionDivider()
+                    NotificationToggleItem(
+                        title = "Milestone Alerts",
+                        subtitle = "50s, hundreds, and partnerships",
+                        icon = Icons.Outlined.Star,
+                        checked = settings.milestoneAlerts,
+                        onCheckedChange = { enabled -> update { it.copy(milestoneAlerts = enabled) } }
+                    )
+                    SectionDivider()
+                    FrequencySelector(
+                        selected = settings.scoreUpdateFrequency,
+                        onSelect = { frequency -> update { it.copy(scoreUpdateFrequency = frequency) } }
+                    )
+                }
+            }
+
+            item {
+                SettingSectionCard(
+                    title = "LIVE ACTIVITIES",
+                    subtitle = "Persistent Android 16 style score chips with richer in-drawer updates."
+                ) {
+                    NotificationToggleItem(
+                        title = "Enable Live Activities",
+                        subtitle = "Keep the score pinned with continuous updates",
+                        icon = Icons.Outlined.NotificationsActive,
+                        checked = settings.liveActivityEnabled,
+                        onCheckedChange = { enabled ->
+                            update { it.copy(liveActivityEnabled = enabled) }
+                            if (!enabled) {
+                                LiveActivityService.stop(context)
+                            }
+                        }
+                    )
+
+                    if (settings.liveActivityEnabled) {
+                        SectionDivider()
+                        SelectorRow(
+                            icon = Icons.Outlined.Refresh,
+                            title = "Live activity cadence",
+                            description = settings.liveActivityUpdateFrequency.name.replace('_', ' '),
+                            onClick = {
+                                val next = NotificationFrequency.entries[
+                                    (settings.liveActivityUpdateFrequency.ordinal + 1) % NotificationFrequency.entries.size
+                                ]
+                                update { it.copy(liveActivityUpdateFrequency = next) }
+                                LiveActivityService.updateFrequency(context, next.toUpdateFrequency())
+                            }
+                        )
+
+                        Spacer(Modifier.height(8.dp))
+
+                        LiveActivityStyle.entries.forEach { style ->
+                            LiveActivityStyleOptionRow(
+                                style = style,
+                                selected = settings.liveActivityStyle == style,
+                                onSelected = {
+                                    update { it.copy(liveActivityStyle = style) }
+                                    LiveActivityService.updateStyle(context, style)
+                                }
+                            )
+                            Spacer(Modifier.height(8.dp))
+                        }
+                    }
+                }
+            }
+
+            item {
+                SettingSectionCard(
+                    title = "TEAM PREFERENCES",
+                    subtitle = "${settings.selectedTeamIds.size} out of ${NotificationTeams.catalog.size} teams"
+                ) {
+                    NotificationTeams.catalog.forEach { team ->
+                        TeamPreferenceCard(
+                            team = team,
+                            selected = settings.selectedTeamIds.contains(team.id),
+                            onSelectedChange = { enabled ->
+                                manager.updateTeamPreference(team.id, enabled)
+                                settings = manager.settings.value
+                            }
+                        )
+                        Spacer(Modifier.height(8.dp))
+                    }
+                }
+            }
+
+            item {
+                SettingSectionCard(title = "SOUND & HAPTICS") {
+                    NotificationToggleItem(
+                        title = "Sound Enabled",
+                        subtitle = "Enable alert sounds",
+                        icon = Icons.AutoMirrored.Outlined.VolumeUp,
+                        checked = settings.soundEnabled,
+                        onCheckedChange = { enabled -> update { it.copy(soundEnabled = enabled) } }
+                    )
+                    SectionDivider()
+                    SelectorRow(
+                        icon = Icons.Outlined.Settings,
+                        title = "Notification Sound",
+                        description = settings.soundProfile.name.replace('_', ' '),
+                        onClick = {
+                            val next = SoundProfile.entries[(settings.soundProfile.ordinal + 1) % SoundProfile.entries.size]
+                            update { it.copy(soundProfile = next) }
+                        }
+                    )
+                    SectionDivider()
+                    SoundPreview(
+                        isLoading = previewLoading,
+                        onPreviewClick = {
+                            previewLoading = true
+                        }
+                    )
+                    SectionDivider()
+                    NotificationToggleItem(
+                        title = "Haptic Feedback",
+                        subtitle = "Vibration response for interactions",
+                        icon = Icons.Outlined.Vibration,
+                        checked = settings.hapticFeedback,
+                        onCheckedChange = { enabled -> update { it.copy(hapticFeedback = enabled) } }
+                    )
+                }
+            }
+
+            item {
+                SettingSectionCard(
+                    title = "DO NOT DISTURB",
+                    subtitle = "Notifications will queue until quiet hours end"
+                ) {
+                    NotificationToggleItem(
+                        title = "Enable Quiet Hours",
+                        subtitle = "Silence notifications by schedule",
+                        icon = Icons.Outlined.Schedule,
+                        checked = settings.quietHoursEnabled,
+                        onCheckedChange = { enabled -> update { it.copy(quietHoursEnabled = enabled) } }
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        TimePickerField(
+                            label = "From",
+                            minuteOfDay = settings.quietHours.startMinuteOfDay,
+                            onMinuteSelected = { minute ->
+                                update { it.copy(quietHours = it.quietHours.copy(startMinuteOfDay = minute)) }
+                            },
+                            modifier = Modifier.weight(1f)
+                        )
+                        TimePickerField(
+                            label = "To",
+                            minuteOfDay = settings.quietHours.endMinuteOfDay,
+                            onMinuteSelected = { minute ->
+                                update { it.copy(quietHours = it.quietHours.copy(endMinuteOfDay = minute)) }
+                            },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                    SectionDivider()
+                    NotificationToggleItem(
+                        title = "Allow Live Match Alerts During Quiet Hours",
+                        subtitle = "Live match alerts can bypass quiet hours",
+                        icon = Icons.Outlined.Campaign,
+                        checked = settings.allowLiveMatchAlertsDuringQuietHours,
+                        onCheckedChange = { enabled ->
+                            update { it.copy(allowLiveMatchAlertsDuringQuietHours = enabled) }
+                        }
+                    )
+                }
+            }
+
+            item {
+                SettingSectionCard(title = "ADVANCED") {
+                    NotificationToggleItem(
+                        title = "Battery Optimization",
+                        subtitle = "Delay non-critical alerts on low battery",
+                        icon = Icons.Outlined.Settings,
+                        checked = settings.batteryOptimization,
+                        onCheckedChange = { enabled -> update { it.copy(batteryOptimization = enabled) } }
+                    )
+                    SectionDivider()
+                    NotificationToggleItem(
+                        title = "Group Similar Notifications",
+                        subtitle = "Bundle repeated updates",
+                        icon = Icons.Outlined.Refresh,
+                        checked = settings.groupSimilarNotifications,
+                        onCheckedChange = { enabled -> update { it.copy(groupSimilarNotifications = enabled) } }
+                    )
+                    SectionDivider()
+                    NotificationToggleItem(
+                        title = "Show Previews on Lock Screen",
+                        subtitle = "Display alert content on lock screen",
+                        icon = Icons.Outlined.AccessTime,
+                        checked = settings.showPreviewsOnLockScreen,
+                        onCheckedChange = { enabled -> update { it.copy(showPreviewsOnLockScreen = enabled) } }
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Button(
+                        onClick = { manager.clearNotificationHistory() },
+                        colors = ButtonDefaults.buttonColors(containerColor = CardSurface)
+                    ) {
+                        Text("Clear All Notification History", color = ShinyGoldDeep)
+                    }
+                }
+            }
+        }
+    }
+
+    LaunchedEffect(previewLoading) {
+        if (previewLoading) {
+            delay(650)
+            previewLoading = false
+        }
+    }
+}
+
+@Composable
+private fun LiveActivityStyleOptionRow(
+    style: LiveActivityStyle,
+    selected: Boolean,
+    onSelected: () -> Unit
+) {
+    val context = LocalContext.current
+    val alpha by animateFloatAsState(
+        targetValue = if (selected) 1f else 0.6f,
+        animationSpec = tween(220),
+        label = "live_activity_style_alpha"
+    )
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(CardSurface.copy(alpha = alpha))
+            .border(
+                width = if (selected) 1.3.dp else 1.dp,
+                color = if (selected) ShinyGoldDeep else BorderColor,
+                shape = RoundedCornerShape(12.dp)
+            )
+            .clickable(onClick = onSelected)
+            .padding(horizontal = 12.dp, vertical = 10.dp)
+    ) {
+        Column {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = context.getString(style.titleRes),
+                    color = TextPrimary,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+                if (selected) {
+                    Icon(
+                        imageVector = Icons.Default.Check,
+                        contentDescription = null,
+                        tint = ShinyGoldDeep,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            }
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = context.getString(style.subtitleRes),
+                color = TextSecondary,
+                fontSize = 11.sp
+            )
+            Spacer(Modifier.height(6.dp))
+            Text(
+                text = "Battery ${style.batteryScore}/5 • Visibility ${style.visibilityScore}/5",
+                color = ShinyGoldDeep,
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Medium
+            )
+        }
+    }
+}
+
+private fun NotificationFrequency.toUpdateFrequency(): UpdateFrequency = when (this) {
+    NotificationFrequency.EVERY_RUN -> UpdateFrequency.EVERY_RUN
+    NotificationFrequency.EVERY_OVER -> UpdateFrequency.EVERY_OVER
+    NotificationFrequency.EVERY_WICKET -> UpdateFrequency.EVERY_WICKET
 }
