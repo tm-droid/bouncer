@@ -76,6 +76,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import androidx.activity.ComponentActivity
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.res.stringResource
@@ -923,7 +924,10 @@ private fun TrendingNewsSection(
     val dimens = BouncerDesignSystem.dimens
     val context = androidx.compose.ui.platform.LocalContext.current
 
-    val newsViewModel: NewsViewModel = viewModel()
+    // Scope to the Activity's ViewModelStore so we share the same instance as
+    // BouncerAppRoot, preventing a duplicate RapidAPI call on every home-screen load.
+    val activity = context as ComponentActivity
+    val newsViewModel: NewsViewModel = viewModel(viewModelStoreOwner = activity)
     val articles by newsViewModel.articles.collectAsStateWithLifecycle()
 
     val heroArticle = articles.firstOrNull()

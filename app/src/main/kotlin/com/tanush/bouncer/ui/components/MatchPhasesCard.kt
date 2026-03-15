@@ -26,7 +26,7 @@ import com.tanush.bouncer.ui.theme.*
 /**
  * Match phase data
  */
-data class MatchPhase(
+data class MatchPhaseData(
     val phaseName: String,
     val description: String,
     val overs: String,
@@ -51,7 +51,7 @@ enum class MomentumShift {
  */
 @Composable
 fun MatchPhasesCard(
-    phases: List<MatchPhase>,
+    phases: List<MatchPhaseData>,
     team1Name: String,
     team2Name: String,
     team1Color: Color = BouncerDesignSystem.colors.goldPrimary,
@@ -161,7 +161,7 @@ private fun TeamIndicator(name: String, color: Color) {
  */
 @Composable
 private fun PhaseRow(
-    phase: MatchPhase,
+    phase: MatchPhaseData,
     phaseNumber: Int,
     team1Name: String,
     team2Name: String,
@@ -429,7 +429,7 @@ private fun MomentumIndicator(
  */
 @Composable
 private fun MomentumSummary(
-    phases: List<MatchPhase>,
+    phases: List<MatchPhaseData>,
     team1Name: String,
     team2Name: String,
     team1Color: Color,

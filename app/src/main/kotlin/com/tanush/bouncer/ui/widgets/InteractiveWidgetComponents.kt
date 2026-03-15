@@ -36,7 +36,7 @@ import androidx.glance.text.Text
 import androidx.glance.text.TextAlign
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
-import com.tanush.bouncer.MainActivity
+import com.tanush.bouncer.BouncerActivity
 import com.tanush.bouncer.R
 import io.sentry.Sentry
 
@@ -174,7 +174,7 @@ fun TappableScoreArea(
     team1Score: String,
     team2Score: String?,
     matchId: String,
-    onTap: Action = actionStartActivity<MainActivity>()
+    onTap: Action = actionStartActivity<BouncerActivity>()
 ) {
     Box(
         modifier = modifier
@@ -306,7 +306,7 @@ fun QuickActionButtons(
             QuickActionButton(
                 icon = "↗",
                 contentDescription = "Share",
-                onClick = actionStartActivity<MainActivity>()
+                onClick = actionStartActivity<BouncerActivity>()
             )
         }
         
@@ -1591,7 +1591,7 @@ fun ExpandedMatchDetails(
     recentBalls: List<String> = emptyList(),
     winProbability: Float? = null,
     matchId: String,
-    onTap: Action = actionStartActivity<MainActivity>()
+    onTap: Action = actionStartActivity<BouncerActivity>()
 ) {
     Column(
         modifier = modifier

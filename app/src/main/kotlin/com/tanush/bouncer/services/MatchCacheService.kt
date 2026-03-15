@@ -37,7 +37,7 @@ object MatchCacheService {
     
     /**
      * Initialize disk persistence for offline support.
-     * Call this once during Application.onCreate or MainActivity.onCreate.
+     * Call this once during Application.onCreate or BouncerActivity.onCreate.
      */
     fun initDiskCache(context: Context) {
         try {

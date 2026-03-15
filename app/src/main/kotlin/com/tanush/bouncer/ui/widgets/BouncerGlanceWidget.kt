@@ -25,7 +25,7 @@ import androidx.glance.text.TextAlign
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 import androidx.glance.appwidget.cornerRadius
-import com.tanush.bouncer.MainActivity
+import com.tanush.bouncer.BouncerActivity
 import com.tanush.bouncer.R
 import io.sentry.Breadcrumb
 import io.sentry.Sentry
@@ -113,7 +113,7 @@ class BouncerGlanceWidget : GlanceAppWidget() {
                 .fillMaxSize()
                 .background(BlackBackground)
                 .cornerRadius(16.dp)
-                .clickable(actionStartActivity<MainActivity>())
+                .clickable(actionStartActivity<BouncerActivity>())
         ) {
             if (team1Name != null && team2Name != null) {
                 LiveMatchLayout(

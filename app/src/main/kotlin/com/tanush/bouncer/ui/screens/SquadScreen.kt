@@ -115,7 +115,7 @@ fun SquadScreen(
             isLoading = true
             errorMessage = null
             try {
-                val (scraped1, scraped2) = SquadScraper.fetchSquads(match.id, match.matchTitle)
+                val (scraped1, scraped2) = SquadScraper.fetchSquads(match.id)
                 if (scraped1.isEmpty() && scraped2.isEmpty()) {
                     // Fallback to placeholder squads if no data found
                     team1Squad = generatePlaceholderSquad(team1?.name ?: "Team 1")

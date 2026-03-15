@@ -30,9 +30,8 @@ object SquadScraper {
      * @param matchTitle The match title (used to construct URL slug)
      * @return Pair of (team1Squad, team2Squad)
      */
-    suspend fun fetchSquads(matchId: String, matchTitle: String): Pair<List<Player>, List<Player>> = withContext(Dispatchers.IO) {
-        val matchTitleSlug = matchTitle.replace(" ", "-")
-        val urlString = "https://www.cricbuzz.com/live-cricket-scores/$matchId/$matchTitleSlug"
+    suspend fun fetchSquads(matchId: String): Pair<List<Player>, List<Player>> = withContext(Dispatchers.IO) {
+        val urlString = "https://www.cricbuzz.com/live-cricket-scores/$matchId"
         
         Sentry.addBreadcrumb(Breadcrumb().apply {
             category = "network.cricbuzz"

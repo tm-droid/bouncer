@@ -32,11 +32,6 @@
         </activity>
 
         <activity
-            android:name=".MainActivity"
-            android:exported="false"
-            android:theme="@style/Theme.Bouncer" />
-
-        <activity
             android:name=".ui.screens.StatsDetailActivity"
             android:exported="false"
             android:label="@string/title_stats_detail" />

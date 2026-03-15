@@ -1,12 +1,16 @@
 package com.tanush.bouncer.ui.theme
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Indication
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
@@ -15,10 +19,12 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Fill
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.sentry.Sentry
+import com.tanush.bouncer.ui.accessibility.rememberReducedMotionEnabled
 
 /**
  * Material 3 Extensions for Native Android Feel
@@ -196,4 +202,77 @@ object MotionTokens {
     const val EasingStandardDecelerate = 0f
     const val EasingEmphasizedAccelerate = 0.05f
     const val EasingEmphasizedDecelerate = 0.15f
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Press Depth Modifiers – tactile press-down feedback with scale animation
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Predefined press interaction styles
+ */
+enum class PressStyle(val scale: Float, val elevationDrop: Dp) {
+    Subtle(0.985f, 1.dp),
+    Standard(0.98f, 2.dp),
+    Pronounced(0.95f, 3.dp)
+}
+
+/**
+ * Applies a press-depth scale animation on touch for tactile feedback.
+ * Respects reduced-motion accessibility settings.
+ */
+fun Modifier.pressDepth(
+    style: PressStyle = PressStyle.Standard,
+    onClick: () -> Unit
+): Modifier = composed {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val reduceMotion = rememberReducedMotionEnabled()
+
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed && !reduceMotion) style.scale else 1f,
+        animationSpec = spring(dampingRatio = 0.8f, stiffness = 800f),
+        label = "pressDepthScale"
+    )
+
+    this
+        .graphicsLayer {
+            scaleX = scale
+            scaleY = scale
+        }
+        .clickable(
+            interactionSource = interactionSource,
+            indication = ripple(color = GoldDark),
+            onClick = onClick
+        )
+}
+
+/**
+ * Simplified press-scale modifier accepting a raw scale value.
+ * For cases where the full [PressStyle] enum is overkill.
+ */
+fun Modifier.pressScale(
+    targetScale: Float = 0.98f,
+    onClick: () -> Unit
+): Modifier = composed {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val reduceMotion = rememberReducedMotionEnabled()
+
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed && !reduceMotion) targetScale else 1f,
+        animationSpec = spring(dampingRatio = 0.8f, stiffness = 800f),
+        label = "pressScale"
+    )
+
+    this
+        .graphicsLayer {
+            scaleX = scale
+            scaleY = scale
+        }
+        .clickable(
+            interactionSource = interactionSource,
+            indication = ripple(color = GoldDark),
+            onClick = onClick
+        )
 }

@@ -22,7 +22,7 @@ import androidx.glance.text.Text
 import androidx.glance.text.TextAlign
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
-import com.tanush.bouncer.MainActivity
+import com.tanush.bouncer.BouncerActivity
 import io.sentry.Breadcrumb
 import io.sentry.Sentry
 import io.sentry.SentryLevel
@@ -101,7 +101,7 @@ class BouncerLockScreenWidget : GlanceAppWidget() {
                 .fillMaxSize()
                 .background(BlackBackground)
                 .cornerRadius(12.dp)
-                .clickable(actionStartActivity<MainActivity>())
+                .clickable(actionStartActivity<BouncerActivity>())
         ) {
             if (team1Abbr != null && team2Abbr != null) {
                 CompactMatchView(

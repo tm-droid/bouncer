@@ -81,6 +81,14 @@ import com.tanush.bouncer.ui.updates.AppUpdateUiState
 import com.tanush.bouncer.ui.updates.UpdateCheckService
 import com.tanush.bouncer.viewmodels.LiveActivityViewModel
 import com.tanush.bouncer.viewmodels.NewsViewModel
+import com.tanush.bouncer.ui.screens.ArBallTrackingScreen
+import com.tanush.bouncer.ui.screens.IntelligenceFeedScreen
+import com.tanush.bouncer.ui.screens.McpPredictiveForecastScreen
+import com.tanush.bouncer.ui.screens.MoreScreen
+import com.tanush.bouncer.ui.screens.NotificationSettingsScreen
+import com.tanush.bouncer.ui.screens.StatsOverviewScreen
+import com.tanush.bouncer.ui.screens.TrophyRoomScreen
+import com.tanush.bouncer.services.LiveNotificationManager
 import io.sentry.Sentry
 import kotlinx.coroutines.launch
 
@@ -154,8 +162,17 @@ private object Routes {
     const val MATCH_DETAIL = "match/{matchId}"
     const val NEWS_DETAIL = "news_detail"
     const val ABOUT = "about"
+    const val FORECAST = "forecast/{matchId}"
+    const val ACHIEVEMENTS = "achievements"
+    const val AR_TRACKING = "ar_tracking"
+    const val STATS = "stats"
+    const val ACTIVITY = "activity"
+    const val MORE = "more"
+    const val DEVTOOLS = "devtools"
+    const val NOTIFICATION_SETTINGS = "notification_settings"
 
     fun matchDetail(matchId: String) = "match/$matchId"
+    fun forecast(matchId: String) = "forecast/$matchId"
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -180,6 +197,10 @@ fun BouncerAppRoot() {
             allowMetered = appUpdateManager.shouldAllowMeteredChecks()
         )
         appUpdateManager.checkForUpdates()
+        // Wire LiveNotificationManager for enriched notifications
+        viewModel.setNotificationManager(
+            LiveNotificationManager(context.applicationContext)
+        )
     }
 
     // Track current route for bottom nav visibility
@@ -373,6 +394,121 @@ fun BouncerAppRoot() {
             ) {
                 BouncerAboutScreen(
                     onBackClick = { navController.popBackStack() }
+                )
+            }
+
+            // ── Forecast ─────────────────────────────────────────────────
+            composable(
+                route = Routes.FORECAST,
+                arguments = listOf(
+                    navArgument("matchId") { type = NavType.StringType }
+                ),
+                enterTransition = {
+                    slideInVertically(initialOffsetY = { it }) + fadeIn()
+                },
+                exitTransition = {
+                    slideOutVertically(targetOffsetY = { it }) + fadeOut()
+                }
+            ) { backStackEntry ->
+                val matchId = backStackEntry.arguments?.getString("matchId")
+                    ?: return@composable
+                val matches by viewModel.currentMatches.collectAsStateWithLifecycle()
+                val match = matches.find { it.id == matchId }
+                if (match != null) {
+                    McpPredictiveForecastScreen(
+                        match = match,
+                        onBackClick = { navController.popBackStack() }
+                    )
+                }
+            }
+
+            // ── Achievements / Trophy Room ───────────────────────────────
+            composable(
+                route = Routes.ACHIEVEMENTS,
+                enterTransition = { fadeIn(animationSpec = tween(300)) },
+                exitTransition = { fadeOut(animationSpec = tween(300)) }
+            ) {
+                TrophyRoomScreen(
+                    onBackClick = { navController.popBackStack() }
+                )
+            }
+
+            // ── AR Ball Tracking ─────────────────────────────────────────
+            composable(
+                route = Routes.AR_TRACKING,
+                enterTransition = {
+                    slideInVertically(initialOffsetY = { it }) + fadeIn()
+                },
+                exitTransition = {
+                    slideOutVertically(targetOffsetY = { it }) + fadeOut()
+                }
+            ) {
+                ArBallTrackingScreen(
+                    onBackClick = { navController.popBackStack() }
+                )
+            }
+
+            // ── Stats Overview ───────────────────────────────────────────
+            composable(
+                route = Routes.STATS,
+                enterTransition = { fadeIn(animationSpec = tween(300)) },
+                exitTransition = { fadeOut(animationSpec = tween(300)) }
+            ) {
+                StatsOverviewScreen(
+                    onBackClick = { navController.popBackStack() }
+                )
+            }
+
+            // ── Intelligence Feed ────────────────────────────────────────
+            composable(
+                route = Routes.ACTIVITY,
+                enterTransition = { fadeIn(animationSpec = tween(300)) },
+                exitTransition = { fadeOut(animationSpec = tween(300)) }
+            ) {
+                IntelligenceFeedScreen(
+                    onBackClick = { navController.popBackStack() }
+                )
+            }
+
+            // ── More ─────────────────────────────────────────────────────
+            composable(
+                route = Routes.MORE,
+                enterTransition = { fadeIn(animationSpec = tween(300)) },
+                exitTransition = { fadeOut(animationSpec = tween(300)) }
+            ) {
+                MoreScreen(
+                    onSettingsClick = { navController.navigate(Routes.SETTINGS) },
+                    onAchievementsClick = { navController.navigate(Routes.ACHIEVEMENTS) },
+                    onActivityClick = { navController.navigate(Routes.ACTIVITY) },
+                    onArTrackingClick = { navController.navigate(Routes.AR_TRACKING) },
+                    onAboutClick = { navController.navigate(Routes.ABOUT) },
+                    onDevToolsClick = { navController.navigate(Routes.DEVTOOLS) }
+                )
+            }
+
+            // ── Dev Tools ────────────────────────────────────────────────
+            composable(
+                route = Routes.DEVTOOLS,
+                enterTransition = {
+                    slideInVertically(initialOffsetY = { it }) + fadeIn()
+                },
+                exitTransition = {
+                    slideOutVertically(targetOffsetY = { it }) + fadeOut()
+                }
+            ) {
+                com.tanush.bouncer.ui.devtools.DevToolsScreen(
+                    onBackClick = { navController.popBackStack() }
+                )
+            }
+
+            // ── Notification Settings ────────────────────────────────────
+            composable(
+                route = Routes.NOTIFICATION_SETTINGS,
+                enterTransition = { fadeIn(animationSpec = tween(300)) },
+                exitTransition = { fadeOut(animationSpec = tween(300)) }
+            ) {
+                NotificationSettingsScreen(
+                    onBack = { navController.popBackStack() }
                 )
             }
             }

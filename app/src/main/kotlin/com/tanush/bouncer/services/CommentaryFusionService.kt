@@ -19,8 +19,8 @@ import java.util.concurrent.atomic.AtomicLong
 class CommentaryFusionService {
     // OpenRouter.ai settings
     private val apiUrl = "https://openrouter.ai/api/v1/chat/completions"
-    // Using verified OpenRouter model: Claude 3.5 Sonnet
-    private val model = "anthropic/claude-3.5-sonnet"
+    // Using free Gemma 3 12B via OpenRouter
+    private val model = "google/gemma-3-12b-it:free"
     // API key loaded from BuildConfig (set in local.properties)
     private val openRouterApiKey = BuildConfig.OPENROUTER_API_KEY
 
@@ -87,6 +87,7 @@ class CommentaryFusionService {
     
     Recent match context (last 3 overs summary):
     {overs_summary}
+    {previous_balls_context}
     
     Instructions:
     - Start your commentary line with the ball number (e.g., 18.5: ...).
@@ -98,6 +99,46 @@ class CommentaryFusionService {
     - Otherwise, focus on clear, vivid, and accurate description of the current ball.
     - Avoid repetition and keep it concise.
     - Do not simply merge the two sources; pick the best or rephrase for freshness.
+    """
+
+        const val VERIFICATION_PROMPT_TEMPLATE = """
+    You are a cricket commentary fact-checker. Your job is to verify that an AI-generated commentary line is accurate and does not hallucinate.
+    
+    Original source commentary 1: {snippet1}
+    Original source commentary 2: {snippet2}
+    
+    AI-generated commentary: {ai_output}
+    
+    Ball number: {ball_number}
+    Bowler: {bowler}
+    Batsman: {batsman}
+    
+    Check the AI-generated commentary against the original sources and answer ONLY with one of these two words:
+    - "PASS" if the AI commentary is accurate, uses only correct player names from the sources, and does not invent any details not present in the original sources.
+    - "FAIL" if the AI commentary contains hallucinated player names, invented match details, incorrect ball descriptions, or information not supported by the original sources.
+    
+    Your response must be exactly one word: PASS or FAIL.
+    """
+
+        const val SINGLE_SOURCE_PROMPT_TEMPLATE = """
+    You are a professional cricket commentator. Given the following ball-by-ball input and recent match context, write a vivid, engaging, and concise commentary line for this specific ball, as if you are commentating live.
+    
+    Ball commentary: {snippet}
+    Ball number: {ball_number}
+    Bowler: {bowler}
+    Batsman: {batsman}
+    Current score/context: {score_context}
+    {previous_balls_context}
+    
+    Instructions:
+    - Start your commentary line with the ball number (e.g., 18.5: ...).
+    - Use only the player names provided above or in the input/context. Do not invent or substitute player names.
+    - Do not invent details about the play, score, or situation if not present in the input/context.
+    - Paraphrase the input into a natural, commentator-style sentence.
+    - If the recent context suggests a shift in momentum, pressure, or a notable trend, you may add a brief, context-aware narrative or emotional remark (e.g., "It's not looking good for the Indian team here").
+    - Only add such narrative remarks if they fit naturally and are supported by the recent context—do not force them.
+    - Otherwise, focus on clear, vivid, and accurate description of the current ball.
+    - Avoid repetition and keep it concise.
     """
     }
 
@@ -115,6 +156,41 @@ class CommentaryFusionService {
 
     fun getPreviousBalls(matchId: String): List<String> {
         return previousBallsBuffer[matchId] ?: emptyList()
+    }
+
+    /**
+     * Verifies AI-generated commentary against original sources using a second
+     * Gemma call.  Returns true if the output passes the hallucination check.
+     */
+    private suspend fun verifyCommentary(
+        aiOutput: String,
+        snippet1: String,
+        snippet2: String,
+        ballNumber: String,
+        bowler: String,
+        batsman: String
+    ): Boolean {
+        val verificationPrompt = VERIFICATION_PROMPT_TEMPLATE
+            .replace("{snippet1}", snippet1)
+            .replace("{snippet2}", snippet2)
+            .replace("{ai_output}", aiOutput)
+            .replace("{ball_number}", ballNumber)
+            .replace("{bowler}", bowler)
+            .replace("{batsman}", batsman)
+
+        val verdict = callOpenRouter(model, verificationPrompt)
+        val passed = verdict?.trim()?.uppercase()?.startsWith("PASS") == true
+        if (!passed) {
+            Log.w("CommentaryFusionService", "Hallucination check FAILED — verdict: $verdict")
+            Sentry.addBreadcrumb(Breadcrumb().apply {
+                category = "service.commentary"
+                message = "Hallucination verification failed"
+                level = SentryLevel.WARNING
+                setData("verdict", verdict ?: "null")
+                setData("aiOutput", aiOutput.take(200))
+            })
+        }
+        return passed
     }
 
     suspend fun fuse(
@@ -146,19 +222,47 @@ class CommentaryFusionService {
         if (cached != null) {
             return cached
         }
-        
-        val prompt = FUSION_PROMPT_TEMPLATE
-            .replace("{snippet1}", snippet1)
-            .replace("{snippet2}", snippet2)
-            .replace("{ball_number}", ballNumber)
-            .replace("{bowler}", bowler)
-            .replace("{batsman}", batsman)
-            .replace("{score_context}", scoreContext)
-            .replace("{overs_summary}", oversSummary)
 
-        val result = callOpenRouter(model, prompt) ?: snippet1 // Fallback to snippet1
+        // Build previous balls context from rolling buffer
+        val previousBalls = getPreviousBalls(matchId)
+        val previousContext = if (previousBalls.isEmpty()) ""
+            else "\nPrevious balls: ${previousBalls.joinToString(", ")}"
+
+        // Use single-source prompt when only one snippet is available
+        val prompt = if (snippet1.isEmpty() || snippet2.isEmpty()) {
+            SINGLE_SOURCE_PROMPT_TEMPLATE
+                .replace("{snippet}", snippet1.ifEmpty { snippet2 })
+                .replace("{ball_number}", ballNumber)
+                .replace("{bowler}", bowler)
+                .replace("{batsman}", batsman)
+                .replace("{score_context}", scoreContext)
+                .replace("{previous_balls_context}", previousContext)
+        } else {
+            FUSION_PROMPT_TEMPLATE
+                .replace("{snippet1}", snippet1)
+                .replace("{snippet2}", snippet2)
+                .replace("{ball_number}", ballNumber)
+                .replace("{bowler}", bowler)
+                .replace("{batsman}", batsman)
+                .replace("{score_context}", scoreContext)
+                .replace("{overs_summary}", oversSummary)
+                .replace("{previous_balls_context}", previousContext)
+        }
+
+        val result = callOpenRouter(model, prompt)
+            ?: return "[AI Fused] $snippet1 / $snippet2" // Fallback if API fails
+
+        // Hallucination self-check: verify output against original sources
+        val verified = verifyCommentary(result, snippet1, snippet2, ballNumber, bowler, batsman)
+        if (!verified) {
+            // Verification failed — fall back to best raw snippet
+            val fallback = snippet1.ifEmpty { snippet2 }
+            Log.w("CommentaryFusionService", "Using raw snippet fallback after failed verification")
+            AICacheService.setCommentary(fallback, cacheKey)
+            return fallback
+        }
         
-        // Cache the result
+        // Cache the verified result
         AICacheService.setCommentary(result, cacheKey)
         
         return result
@@ -175,9 +279,12 @@ class CommentaryFusionService {
             setData("over", over)
             setData("lineCount", commentaryLines.size)
         })
+
+        // Cap at 18 balls (3 overs) for focused summaries
+        val lines = commentaryLines.take(18)
+        val context = lines.joinToString(" ")
         
         // Generate cache key based on context hash
-        val context = commentaryLines.joinToString(" ")
         val contextHash = context.hashCode().toString()
         val cacheKey = "ai_summary:$matchId:$over:$contextHash"
         
@@ -186,15 +293,17 @@ class CommentaryFusionService {
         if (cached != null) {
             return cached
         }
+
+        // Number lines for clearer AI comprehension
+        val numbered = lines.mapIndexed { idx, line -> "${idx + 1}. $line" }.joinToString("\n")
         
         val prompt = """
-        Summarize the following cricket commentary lines (representing the last few overs) into a concise paragraph describing the flow of the match, key events, and current momentum.
+        You are a professional cricket commentator. Summarize the following ${lines.size} ball-by-ball commentary lines into a single, engaging paragraph, highlighting key events and players.
         
-        Commentary lines:
-        ${commentaryLines.joinToString("\n")}
+        $numbered
         """
         
-        val result = callOpenRouter(model, prompt) ?: "Summary unavailable."
+        val result = callOpenRouter(model, prompt) ?: "[Summary unavailable]"
         
         // Cache the result
         AICacheService.setCommentary(result, cacheKey)

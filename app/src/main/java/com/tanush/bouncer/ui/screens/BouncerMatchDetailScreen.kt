@@ -97,6 +97,7 @@ import com.tanush.bouncer.ui.components.glass.StatPill
 import com.tanush.bouncer.ui.components.glass.TeamFlagBackground
 import com.tanush.bouncer.ui.components.glass.TeamLogoCircle
 import com.tanush.bouncer.services.LiveActivityService
+import com.tanush.bouncer.ui.components.bouncerShimmerBrush
 import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 import com.tanush.bouncer.ui.theme.TeamPrimaryColors
 import com.tanush.bouncer.ui.theme.etchedText
@@ -141,6 +142,7 @@ fun BouncerMatchDetailScreen(
     var scorecard by remember { mutableStateOf<Scorecard?>(null) }
     var squads by remember { mutableStateOf<Pair<List<SquadScraper.Player>, List<SquadScraper.Player>>?>(null) }
     var ballByBall by remember { mutableStateOf<CricBuzzScraper.MatchDetails?>(null) }
+    var ballByBallLoading by remember { mutableStateOf(true) }
     var isLoading by remember { mutableStateOf(true) }
     var squadsLoading by remember { mutableStateOf(true) }
     var squadsError by remember { mutableStateOf(false) }
@@ -170,7 +172,7 @@ fun BouncerMatchDetailScreen(
         // Fetch squads
         launch {
             try {
-                squads = SquadScraper.fetchSquads(matchId, match?.matchTitle ?: "")
+                squads = SquadScraper.fetchSquads(matchId)
             } catch (e: Exception) {
                 Log.d("MatchDetail", "Failed to fetch squads", e)
                 squadsError = true
@@ -182,6 +184,7 @@ fun BouncerMatchDetailScreen(
             try {
                 ballByBall = scraper.fetchBallByBallAndBatsmen(matchId)
             } catch (e: Exception) { Log.d("MatchDetail", "Failed to fetch ball-by-ball", e) }
+            ballByBallLoading = false
         }
     }
 
@@ -305,6 +308,7 @@ fun BouncerMatchDetailScreen(
                     DetailTab.LIVE -> LiveTab(
                         match = match,
                         ballByBall = ballByBall,
+                        isLoading = ballByBallLoading,
                         modifier = Modifier.fillMaxSize()
                     )
                     DetailTab.SCORECARD -> ScorecardTabWrapper(
@@ -322,7 +326,7 @@ fun BouncerMatchDetailScreen(
                             squadsError = false
                             scope.launch {
                                 try {
-                                    squads = SquadScraper.fetchSquads(matchId, match.matchTitle)
+                                    squads = SquadScraper.fetchSquads(matchId)
                                 } catch (_: Exception) {
                                     squadsError = true
                                 }
@@ -698,6 +702,7 @@ private fun TeamScoreColumn(
 private fun LiveTab(
     match: CricketMatch,
     ballByBall: CricBuzzScraper.MatchDetails?,
+    isLoading: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val colors = BouncerDesignSystem.colors
@@ -781,10 +786,36 @@ private fun LiveTab(
 
                 // Last Wicket Card
                 InsightStatCard(
-                    title = "LAST WICKET",
+                    title = "LAST WKT",
                     value = lastWicketValue,
                     subtitle = lastWicketSubtitle,
                     isGold = false
+                )
+            }
+        }
+
+        // Loading shimmer placeholders when data hasn't arrived yet
+        val hasNoLiveData = batsmen.isEmpty() && bowler == null && recentBalls.isEmpty()
+        if (hasNoLiveData && isLoading) {
+            item(key = "shimmer_recent") {
+                LiveShimmerCard(height = 64.dp, label = "RECENT")
+            }
+            item(key = "shimmer_batting") {
+                LiveShimmerCard(height = 88.dp, label = "BATTING")
+            }
+            item(key = "shimmer_batter") {
+                LiveShimmerBatterCard()
+            }
+            item(key = "shimmer_bowling") {
+                LiveShimmerCard(height = 88.dp, label = "BOWLING")
+            }
+        } else if (hasNoLiveData && !isLoading) {
+            item(key = "empty_live") {
+                EmptyStateView(
+                    icon = Icons.Outlined.SportsCricket,
+                    title = "No live data",
+                    message = "Ball-by-ball data is not available for this match yet.",
+                    modifier = Modifier.padding(vertical = dimens.xxl)
                 )
             }
         }
@@ -1099,6 +1130,102 @@ private fun GlassBowlerCard(
                 StatColumn("Runs", bowler.runs)
                 StatColumn("Wkts", bowler.wickets)
                 StatColumn("Econ", bowler.economy)
+            }
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Live Tab Shimmer Placeholders
+// ─────────────────────────────────────────────────────────────────────────────
+
+@Composable
+private fun LiveShimmerCard(
+    height: Dp,
+    label: String,
+    modifier: Modifier = Modifier
+) {
+    val colors = BouncerDesignSystem.colors
+    val typography = BouncerDesignSystem.typography
+    val shimmer = bouncerShimmerBrush()
+
+    GlassCard(modifier = modifier.fillMaxWidth()) {
+        Column {
+            Text(
+                text = label,
+                style = typography.labelSmall,
+                color = colors.textMuted,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(height - 32.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(shimmer)
+            )
+        }
+    }
+}
+
+@Composable
+private fun LiveShimmerBatterCard(modifier: Modifier = Modifier) {
+    val shimmer = bouncerShimmerBrush()
+
+    GlassCard(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        borderOpacity = 0.2f
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(64.dp)
+                        .clip(CircleShape)
+                        .background(shimmer)
+                )
+                Spacer(modifier = Modifier.width(16.dp))
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Box(
+                        modifier = Modifier
+                            .width(120.dp)
+                            .height(16.dp)
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(shimmer)
+                    )
+                    Box(
+                        modifier = Modifier
+                            .width(60.dp)
+                            .height(12.dp)
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(shimmer)
+                    )
+                }
+            }
+            Column(horizontalAlignment = Alignment.End) {
+                Box(
+                    modifier = Modifier
+                        .width(48.dp)
+                        .height(32.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(shimmer)
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Box(
+                    modifier = Modifier
+                        .width(32.dp)
+                        .height(12.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(shimmer)
+                )
             }
         }
     }

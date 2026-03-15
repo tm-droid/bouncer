@@ -16,7 +16,7 @@ import android.os.Build
 import android.widget.RemoteViews
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
-import com.tanush.bouncer.MainActivity
+import com.tanush.bouncer.BouncerActivity
 import com.tanush.bouncer.R
 import com.tanush.bouncer.models.CricketMatch
 import io.sentry.Breadcrumb
@@ -118,7 +118,7 @@ class LiveNotificationManager(private val context: Context) {
             setData("hasLastEvent", lastEvent != null)
         })
         
-        val intent = Intent(context, MainActivity::class.java).apply {
+        val intent = Intent(context, BouncerActivity::class.java).apply {
             try {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
                 putExtra("match_id", match.id)
@@ -397,7 +397,7 @@ class LiveNotificationManager(private val context: Context) {
         color: Int,
         match: CricketMatch
     ) {
-        val intent = Intent(context, MainActivity::class.java).apply {
+        val intent = Intent(context, BouncerActivity::class.java).apply {
             try {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
                 putExtra("match_id", match.id)

@@ -16,7 +16,7 @@ import android.os.Build
 import android.view.View
 import android.widget.RemoteViews
 import com.tanush.bouncer.R
-import com.tanush.bouncer.MainActivity
+import com.tanush.bouncer.BouncerActivity
 import com.tanush.bouncer.models.CricketMatch
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -130,7 +130,7 @@ class LiveMatchWidgetProvider : AppWidgetProvider() {
     private fun updateWidget(context: Context, appWidgetManager: AppWidgetManager, appWidgetId: Int) {
         try {
             // Main click intent
-            val mainIntent = Intent(context, MainActivity::class.java).apply {
+            val mainIntent = Intent(context, BouncerActivity::class.java).apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
             }
             val mainPendingIntent = PendingIntent.getActivity(

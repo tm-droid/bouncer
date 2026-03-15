@@ -20,7 +20,7 @@ import android.widget.RemoteViews
 import androidx.annotation.DrawableRes
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
-import com.tanush.bouncer.MainActivity
+import com.tanush.bouncer.BouncerActivity
 import com.tanush.bouncer.R
 import com.tanush.bouncer.models.CricketMatch
 import io.sentry.Sentry
@@ -83,7 +83,7 @@ object RichNotificationBuilder {
         
         /**
          * Creates all notification channels for the cricket app
-         * Call this in Application.onCreate() or MainActivity
+         * Call this in Application.onCreate() or BouncerActivity
          */
         fun createNotificationChannels(context: Context) {
             try {
@@ -346,7 +346,7 @@ object RichNotificationBuilder {
         
         // Add action buttons
         actions.forEach { action ->
-            val actionIntent = Intent(context, MainActivity::class.java).apply {
+            val actionIntent = Intent(context, BouncerActivity::class.java).apply {
                 putExtra("match_id", match.id)
                 putExtra("action", action.actionId)
             }
@@ -782,7 +782,7 @@ object RichNotificationBuilder {
      */
     private fun createMatchPendingIntent(context: Context, matchId: String): PendingIntent {
         try {
-            val intent = Intent(context, MainActivity::class.java).apply {
+            val intent = Intent(context, BouncerActivity::class.java).apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
                 putExtra("match_id", matchId)
             }
@@ -1242,7 +1242,7 @@ object NotificationTemplates {
     
     private fun createPendingIntent(context: Context, matchId: String): PendingIntent {
         try {
-            val intent = Intent(context, MainActivity::class.java).apply {
+            val intent = Intent(context, BouncerActivity::class.java).apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
                 putExtra("match_id", matchId)
             }
@@ -1657,7 +1657,7 @@ object RichMediaNotifications {
     
     private fun createPendingIntent(context: Context, matchId: String): PendingIntent {
         try {
-            val intent = Intent(context, MainActivity::class.java).apply {
+            val intent = Intent(context, BouncerActivity::class.java).apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
                 putExtra("match_id", matchId)
             }
@@ -1727,7 +1727,7 @@ object CommentaryNotifications {
     
     private fun createPendingIntent(context: Context, matchId: String): PendingIntent {
         try {
-            val intent = Intent(context, MainActivity::class.java).apply {
+            val intent = Intent(context, BouncerActivity::class.java).apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
                 putExtra("match_id", matchId)
             }

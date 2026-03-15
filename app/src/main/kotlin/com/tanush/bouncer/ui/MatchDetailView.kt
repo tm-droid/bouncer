@@ -51,6 +51,8 @@ import com.tanush.bouncer.ui.theme.*
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import io.sentry.Sentry
+import io.sentry.Breadcrumb
+import io.sentry.SentryLevel
 
 /**
  * Match Detail View
@@ -222,6 +224,14 @@ fun MatchDetailView(
                 )
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
+                Sentry.addBreadcrumb(Breadcrumb().apply {
+                    category = "match_detail_view.refresh"
+                    message = "Live data refresh failed"
+                    level = SentryLevel.WARNING
+                    setData("matchId", match.id)
+                    setData("error", e.message ?: "Unknown")
+                })
+                Sentry.captureException(e)
             } finally {
                 isRefreshing = false
             }

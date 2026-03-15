@@ -3,6 +3,10 @@ package com.tanush.bouncer.ui.theme
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.Easing
 import androidx.compose.animation.core.Spring
+import androidx.compose.runtime.*
+import androidx.compose.ui.platform.LocalContext
+import com.tanush.bouncer.ui.accessibility.ReducedMotionDetector
+import com.tanush.bouncer.ui.accessibility.LocalAccessibilityPreferences
 
 // ==========================================
 // BOUNCER – Design Token System v2.0: Motion
@@ -178,4 +182,101 @@ object SpringConfig {
     @Deprecated("Use SpringConfig.medium") const val stiffnessMedium = medium
     @Deprecated("Use SpringConfig.high") const val stiffnessHigh = high
     @Deprecated("Use SpringConfig.high") const val stiffnessVeryHigh = high
+}
+
+// ==========================================
+// Motion Accessibility Integration
+// Bridges animation tokens with system reduced-motion preferences
+// and the accessibility layer in InteractionAccessibility.kt.
+// ==========================================
+
+/**
+ * Motion scale provider — reads system + accessibility animation scale
+ * and exposes it via [LocalMotionScale] for the entire subtree.
+ */
+object BouncerMotionScale {
+    /** CompositionLocal carrying the effective motion scale (0f–1f+). */
+    val LocalMotionScale = compositionLocalOf { 1.0f }
+
+    /**
+     * Returns [baseDuration] multiplied by the current motion scale.
+     * When the scale is 0 the result is 0 (instant).
+     */
+    @Composable
+    fun scaledDuration(baseDuration: Int): Int {
+        val scale = LocalMotionScale.current
+        return (baseDuration * scale).toInt()
+    }
+
+    /**
+     * True when motion should be skipped entirely — either because the
+     * scale is 0 **or** the accessibility layer reports reduced motion.
+     */
+    @Composable
+    fun isReducedMotion(): Boolean {
+        val scale = LocalMotionScale.current
+        val prefs = LocalAccessibilityPreferences.current
+        return scale == 0f || prefs.reducedMotionEnabled
+    }
+}
+
+/**
+ * Provides [BouncerMotionScale.LocalMotionScale] to [content] by combining
+ * the system animator-duration scale with the accessibility-layer
+ * [LocalAccessibilityPreferences.animationScale].
+ *
+ * If the system animation scale is 0 the value is hard-locked to 0f.
+ */
+@Composable
+fun MotionScaleProvider(content: @Composable () -> Unit) {
+    val context = LocalContext.current
+    val systemScale = remember { ReducedMotionDetector.getAnimationScale(context) }
+    val accessibilityScale = LocalAccessibilityPreferences.current.animationScale
+
+    val finalScale = if (systemScale == 0f) 0f else systemScale * accessibilityScale
+
+    CompositionLocalProvider(
+        BouncerMotionScale.LocalMotionScale provides finalScale,
+        content = content
+    )
+}
+
+/**
+ * Reduced-motion duration tokens — mirrors [AnimationDuration] but with
+ * instant (0 ms) values. Used as the fallback when reduced motion is on.
+ */
+object ReducedMotionDuration {
+    const val instant  = 50    // Minimum tactile feedback preserved
+    const val micro    = 0
+    const val fast     = 0
+    const val normal   = 0
+    const val moderate = 0
+    const val slow     = 0
+    const val emphasis = 0
+
+    const val cardTap       = 0
+    const val screenEnter   = 0
+    const val screenExit    = 0
+    const val tabSwitch     = 0
+    const val sheetEnter    = 0
+    const val scoreUpdate   = 0
+    const val confetti      = 0
+    const val achieveUnlock = 0
+    const val progressFill  = 0
+
+    const val shimmer = 0
+    const val pulse   = 0
+    const val ambient = 0
+}
+
+/**
+ * Returns an accessibility-aware duration for the given [base] value.
+ *
+ * - Reduced motion → 0 (skip animation).
+ * - Otherwise → [base] × current motion scale.
+ */
+@Composable
+fun animationDuration(base: Int): Int {
+    if (BouncerMotionScale.isReducedMotion()) return 0
+    return (base * BouncerMotionScale.LocalMotionScale.current).toInt()
 }

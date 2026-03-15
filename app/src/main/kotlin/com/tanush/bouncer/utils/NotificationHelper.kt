@@ -8,7 +8,7 @@ import android.content.Intent
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
-import com.tanush.bouncer.MainActivity
+import com.tanush.bouncer.BouncerActivity
 import io.sentry.Breadcrumb
 import io.sentry.Sentry
 import io.sentry.SentryLevel
@@ -55,7 +55,7 @@ object NotificationHelper {
             
             createNotificationChannel(context)
 
-            val intent = Intent(context, MainActivity::class.java).apply {
+            val intent = Intent(context, BouncerActivity::class.java).apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
             }
             val pendingIntent = PendingIntent.getActivity(
