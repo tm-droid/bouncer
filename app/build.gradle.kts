@@ -157,6 +157,7 @@ dependencies {
     implementation(libs.window)
     implementation(libs.material3.windowsizeclass)
     implementation(libs.work.runtime.ktx)
+    implementation(libs.play.app.update.ktx)
 
     // Glance Widgets
     implementation(libs.glance)

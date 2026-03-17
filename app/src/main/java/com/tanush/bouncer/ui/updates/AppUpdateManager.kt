@@ -4,15 +4,20 @@ import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
 import android.net.Uri
-import android.os.Build
 import androidx.core.content.edit
 import com.tanush.bouncer.BuildConfig
 import com.tanush.bouncer.R
+import com.google.android.gms.tasks.Task
+import com.google.android.play.core.appupdate.AppUpdateManagerFactory
+import com.google.android.play.core.install.model.UpdateAvailability
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.math.max
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 
 sealed interface AppUpdateUiState {
     data object Idle : AppUpdateUiState
@@ -67,30 +72,31 @@ class AppUpdateManager(private val context: Context) {
             delay(450)
         }
 
-        val simulatedUpdate = buildSimulatedUpdate() ?: run {
+        val availableUpdate = fetchAvailableUpdateInfo() ?: run {
             _uiState.value = AppUpdateUiState.Idle
             _showUpdateBadge.value = false
             saveState(StateValue.IDLE)
+            clearUpdateMeta()
             return null
         }
 
-        latestKnownUpdate = simulatedUpdate
+        latestKnownUpdate = availableUpdate
 
-        if (!shouldPromptFor(simulatedUpdate.newVersion, forcePrompt)) {
+        if (!shouldPromptFor(availableUpdate.newVersion, forcePrompt)) {
             if (!silent) {
                 _uiState.value = AppUpdateUiState.Idle
             }
             return null
         }
 
-        _uiState.value = AppUpdateUiState.UpdateAvailable(simulatedUpdate)
+        _uiState.value = AppUpdateUiState.UpdateAvailable(availableUpdate)
         _showUpdateBadge.value = true
 
-        saveUpdateMeta(simulatedUpdate)
+        saveUpdateMeta(availableUpdate)
         saveLastCheckTime(System.currentTimeMillis())
         saveState(StateValue.AVAILABLE)
 
-        return simulatedUpdate
+        return availableUpdate
     }
 
     suspend fun downloadUpdate() {
@@ -192,15 +198,21 @@ class AppUpdateManager(private val context: Context) {
         return BuildConfig.VERSION_NAME
     }
 
-    private fun buildSimulatedUpdate(): UpdateInfo? {
-        val currentVersion = getCurrentVersion()
-        val simulatedNewVersion = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            "1.1.0"
-        } else {
-            "1.0.9"
+    private suspend fun fetchAvailableUpdateInfo(): UpdateInfo? {
+        val appUpdateManager = AppUpdateManagerFactory.create(context)
+        val appUpdateInfo = appUpdateManager.appUpdateInfo.await()
+
+        if (appUpdateInfo.updateAvailability() != UpdateAvailability.UPDATE_AVAILABLE) {
+            return null
         }
 
-        if (compareVersions(simulatedNewVersion, currentVersion) <= 0) {
+        val currentVersion = getCurrentVersion()
+        val availableVersionCode = appUpdateInfo.availableVersionCode()
+        val storeVersionLabel = "build $availableVersionCode"
+
+        // In case this build already carries the available version metadata, do not prompt.
+        val installedVersion = prefs.getString(KEY_INSTALLED_VERSION, null)
+        if (installedVersion == storeVersionLabel || installedVersion == currentVersion) {
             return null
         }
 
@@ -213,7 +225,7 @@ class AppUpdateManager(private val context: Context) {
 
         return UpdateInfo(
             currentVersion = currentVersion,
-            newVersion = simulatedNewVersion,
+            newVersion = storeVersionLabel,
             features = features,
             sizeMb = 12.5,
             estimatedMinutes = 2,
@@ -257,32 +269,46 @@ class AppUpdateManager(private val context: Context) {
             else -> null
         }
 
-        latestKnownUpdate = restoredInfo
+        val validRestoredInfo = restoredInfo?.takeIf {
+            isStillPotentiallyNewer(it.newVersion, currentVersion)
+        }
+
+        latestKnownUpdate = validRestoredInfo
 
         when (persistedState) {
             StateValue.AVAILABLE.name -> {
-                if (restoredInfo != null && shouldPromptFor(restoredInfo.newVersion, forcePrompt = false)) {
-                    _uiState.value = AppUpdateUiState.UpdateAvailable(restoredInfo)
+                if (validRestoredInfo != null && shouldPromptFor(validRestoredInfo.newVersion, forcePrompt = false)) {
+                    _uiState.value = AppUpdateUiState.UpdateAvailable(validRestoredInfo)
                     _showUpdateBadge.value = true
                 } else {
                     _uiState.value = AppUpdateUiState.Idle
+                    _showUpdateBadge.value = false
+                    clearUpdateMeta()
                 }
             }
 
             StateValue.DOWNLOADING.name -> {
-                if (restoredInfo != null) {
+                if (validRestoredInfo != null) {
                     _uiState.value = AppUpdateUiState.Downloading(
-                        info = restoredInfo,
+                        info = validRestoredInfo,
                         progress = prefs.getInt(KEY_PROGRESS, 0)
                     )
                     _showUpdateBadge.value = true
+                } else {
+                    _uiState.value = AppUpdateUiState.Idle
+                    _showUpdateBadge.value = false
+                    clearUpdateMeta()
                 }
             }
 
             StateValue.READY.name -> {
-                if (restoredInfo != null) {
-                    _uiState.value = AppUpdateUiState.ReadyToInstall(restoredInfo)
+                if (validRestoredInfo != null) {
+                    _uiState.value = AppUpdateUiState.ReadyToInstall(validRestoredInfo)
                     _showUpdateBadge.value = true
+                } else {
+                    _uiState.value = AppUpdateUiState.Idle
+                    _showUpdateBadge.value = false
+                    clearUpdateMeta()
                 }
             }
 
@@ -319,9 +345,27 @@ class AppUpdateManager(private val context: Context) {
         return 0
     }
 
+    private fun isStillPotentiallyNewer(candidateVersion: String, currentVersion: String): Boolean {
+        val normalizedCandidate = candidateVersion.trim().lowercase()
+        // "build 123" comes from Play Core and cannot be semver-compared to VERSION_NAME.
+        if (normalizedCandidate.startsWith("build ")) {
+            return normalizedCandidate != currentVersion.trim().lowercase()
+        }
+        return compareVersions(candidateVersion, currentVersion) > 0
+    }
+
     private fun saveUpdateMeta(info: UpdateInfo) {
         prefs.edit {
             putString(KEY_AVAILABLE_VERSION, info.newVersion)
+        }
+    }
+
+    private fun clearUpdateMeta() {
+        prefs.edit {
+            remove(KEY_AVAILABLE_VERSION)
+            remove(KEY_READY_VERSION)
+            putInt(KEY_PROGRESS, 0)
+            putString(KEY_STATE, StateValue.IDLE.name)
         }
     }
 
@@ -354,5 +398,14 @@ class AppUpdateManager(private val context: Context) {
 
         private const val REPROMPT_DAYS = 2L
         private const val DAY_IN_MILLIS = 24 * 60 * 60 * 1000L
+    }
+}
+
+private suspend fun <T> Task<T>.await(): T = suspendCancellableCoroutine { cont ->
+    addOnSuccessListener { result ->
+        if (cont.isActive) cont.resume(result)
+    }
+    addOnFailureListener { exception ->
+        if (cont.isActive) cont.resumeWithException(exception)
     }
 }
