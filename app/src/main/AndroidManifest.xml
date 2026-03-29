@@ -99,6 +99,9 @@
     <!-- Tag events by environment so they appear in the right section on sentry.io -->
     <meta-data android:name="io.sentry.environment" android:value="${sentryEnvironment}" />
 
+    <!-- Enable Sentry Logs ingestion -->
+    <meta-data android:name="io.sentry.logs.enabled" android:value="true" />
+
     <!-- Custom options configuration class for beforeSend / event filtering -->
     <meta-data android:name="io.sentry.options-configuration"
               android:value="com.tanush.bouncer.SentryOptionsConfig" />

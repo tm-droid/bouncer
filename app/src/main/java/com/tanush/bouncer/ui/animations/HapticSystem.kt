@@ -11,6 +11,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.platform.LocalView
+import com.tanush.bouncer.utils.sentryTryUnit
 import kotlinx.coroutines.*
 
 /**
@@ -19,21 +20,27 @@ import kotlinx.coroutines.*
  */
 object BouncerHaptics {
 
+    private inline fun safe(scope: String, block: () -> Unit) {
+        sentryTryUnit("BouncerHaptics.$scope", block)
+    }
+
     /**
      * Light tap - for button presses, tab switches
      */
     fun lightTap(view: View) {
-        view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+        safe("lightTap") { view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK) }
     }
 
     /**
      * Medium impact - for card selections, toggles
      */
     fun mediumImpact(view: View) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-        } else {
-            view.performHapticFeedback(HapticFeedbackConstants.CONTEXT_CLICK)
+        safe("mediumImpact") {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+            } else {
+                view.performHapticFeedback(HapticFeedbackConstants.CONTEXT_CLICK)
+            }
         }
     }
 
@@ -41,10 +48,12 @@ object BouncerHaptics {
      * Heavy impact - for important actions, milestones
      */
     fun heavyImpact(view: View) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            view.performHapticFeedback(HapticFeedbackConstants.REJECT)
-        } else {
-            view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+        safe("heavyImpact") {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                view.performHapticFeedback(HapticFeedbackConstants.REJECT)
+            } else {
+                view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+            }
         }
     }
 
@@ -52,10 +61,12 @@ object BouncerHaptics {
      * Success - for completed actions (double tap pattern)
      */
     fun success(view: View) {
-        view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-        CoroutineScope(Dispatchers.Main).launch {
-            delay(80)
+        safe("success") {
             view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+            CoroutineScope(Dispatchers.Main).launch {
+                delay(80)
+                view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+            }
         }
     }
 
@@ -63,15 +74,17 @@ object BouncerHaptics {
      * Error - for errors (triple quick pattern)
      */
     fun error(view: View) {
-        @Suppress("DEPRECATION")
-        val vibrator = view.context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
-        if (vibrator != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val timings = longArrayOf(0, 50, 50, 50, 50, 50)
-            val amplitudes = intArrayOf(0, 100, 0, 100, 0, 100)
-            val effect = VibrationEffect.createWaveform(timings, amplitudes, -1)
-            vibrator.vibrate(effect)
-        } else {
-            view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+        safe("error") {
+            @Suppress("DEPRECATION")
+            val vibrator = view.context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
+            if (vibrator != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val timings = longArrayOf(0, 50, 50, 50, 50, 50)
+                val amplitudes = intArrayOf(0, 100, 0, 100, 0, 100)
+                val effect = VibrationEffect.createWaveform(timings, amplitudes, -1)
+                vibrator.vibrate(effect)
+            } else {
+                view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+            }
         }
     }
 
@@ -79,25 +92,27 @@ object BouncerHaptics {
      * Score update - subtle tick for score changes
      */
     fun scoreTick(view: View) {
-        view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+        safe("scoreTick") { view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK) }
     }
 
     /**
      * Boundary - medium burst for 4s
      */
     fun boundary(view: View) {
-        @Suppress("DEPRECATION")
-        val vibrator = view.context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
-        if (vibrator != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val timings = longArrayOf(0, 30, 40, 50)
-            val amplitudes = intArrayOf(0, 150, 0, 200)
-            val effect = VibrationEffect.createWaveform(timings, amplitudes, -1)
-            vibrator.vibrate(effect)
-        } else {
-            view.performHapticFeedback(HapticFeedbackConstants.CONTEXT_CLICK)
-            CoroutineScope(Dispatchers.Main).launch {
-                delay(70)
+        safe("boundary") {
+            @Suppress("DEPRECATION")
+            val vibrator = view.context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
+            if (vibrator != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val timings = longArrayOf(0, 30, 40, 50)
+                val amplitudes = intArrayOf(0, 150, 0, 200)
+                val effect = VibrationEffect.createWaveform(timings, amplitudes, -1)
+                vibrator.vibrate(effect)
+            } else {
                 view.performHapticFeedback(HapticFeedbackConstants.CONTEXT_CLICK)
+                CoroutineScope(Dispatchers.Main).launch {
+                    delay(70)
+                    view.performHapticFeedback(HapticFeedbackConstants.CONTEXT_CLICK)
+                }
             }
         }
     }
@@ -106,18 +121,20 @@ object BouncerHaptics {
      * Six - strong celebratory pattern for 6s
      */
     fun six(view: View) {
-        @Suppress("DEPRECATION")
-        val vibrator = view.context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
-        if (vibrator != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val timings = longArrayOf(0, 50, 30, 70, 30, 100)
-            val amplitudes = intArrayOf(0, 180, 0, 200, 0, 255)
-            val effect = VibrationEffect.createWaveform(timings, amplitudes, -1)
-            vibrator.vibrate(effect)
-        } else {
-            view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
-            CoroutineScope(Dispatchers.Main).launch {
-                delay(80)
+        safe("six") {
+            @Suppress("DEPRECATION")
+            val vibrator = view.context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
+            if (vibrator != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val timings = longArrayOf(0, 50, 30, 70, 30, 100)
+                val amplitudes = intArrayOf(0, 180, 0, 200, 0, 255)
+                val effect = VibrationEffect.createWaveform(timings, amplitudes, -1)
+                vibrator.vibrate(effect)
+            } else {
                 view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                CoroutineScope(Dispatchers.Main).launch {
+                    delay(80)
+                    view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                }
             }
         }
     }
@@ -126,18 +143,20 @@ object BouncerHaptics {
      * Wicket - dramatic pattern for wickets
      */
     fun wicket(view: View) {
-        @Suppress("DEPRECATION")
-        val vibrator = view.context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
-        if (vibrator != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val timings = longArrayOf(0, 80, 50, 120)
-            val amplitudes = intArrayOf(0, 255, 0, 255)
-            val effect = VibrationEffect.createWaveform(timings, amplitudes, -1)
-            vibrator.vibrate(effect)
-        } else {
-            view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
-            CoroutineScope(Dispatchers.Main).launch {
-                delay(130)
+        safe("wicket") {
+            @Suppress("DEPRECATION")
+            val vibrator = view.context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
+            if (vibrator != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val timings = longArrayOf(0, 80, 50, 120)
+                val amplitudes = intArrayOf(0, 255, 0, 255)
+                val effect = VibrationEffect.createWaveform(timings, amplitudes, -1)
+                vibrator.vibrate(effect)
+            } else {
                 view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                CoroutineScope(Dispatchers.Main).launch {
+                    delay(130)
+                    view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                }
             }
         }
     }
@@ -146,10 +165,12 @@ object BouncerHaptics {
      * Swipe - light feedback during swipe gesture
      */
     fun swipe(view: View) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            view.performHapticFeedback(HapticFeedbackConstants.GESTURE_START)
-        } else {
-            view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+        safe("swipe") {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                view.performHapticFeedback(HapticFeedbackConstants.GESTURE_START)
+            } else {
+                view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+            }
         }
     }
 
@@ -157,7 +178,7 @@ object BouncerHaptics {
      * Selection change - very light tick
      */
     fun selectionTick(view: View) {
-        view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+        safe("selectionTick") { view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK) }
     }
 
     /**
@@ -259,8 +280,10 @@ fun Modifier.hapticClickable(
     
     this.clickable(enabled = enabled) {
         if (enabled) {
-            BouncerHaptics.perform(view, hapticType)
-            onClick()
+            sentryTryUnit("hapticClickable.onClick") {
+                BouncerHaptics.perform(view, hapticType)
+                onClick()
+            }
         }
     }
 }
@@ -278,7 +301,9 @@ fun Modifier.clickableWithHaptic(
     
     this.clickable(enabled = enabled) {
         if (enabled) {
-            onClickWithHaptic(hapticController)
+            sentryTryUnit("clickableWithHaptic.onClick") {
+                onClickWithHaptic(hapticController)
+            }
         }
     }
 }

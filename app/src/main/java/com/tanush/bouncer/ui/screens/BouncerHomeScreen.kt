@@ -1291,7 +1291,7 @@ private fun UpcomingMatchCard(
                     .padding(horizontal = 10.dp, vertical = 6.dp)
             ) {
                 Text(
-                    text = match.matchTime.ifEmpty { "04h : 30m" },
+                    text = match.matchTime.ifEmpty { "TBD" },
                     style = typography.labelSmall,
                     color = colors.goldPrimary,
                     fontWeight = FontWeight.Bold,
