@@ -77,11 +77,11 @@ fun GlassPrimaryButton(
     Box(
         modifier = modifier
             .scale(scale)
-            .height(48.dp)
+            .height(dimens.buttonHeight)
             .clip(shape)
             .background(
                 brush = if (enabled && !isLoading) {
-                    colors.goldGradient
+                    colors.goldGradientHorizontal
                 } else {
                     Brush.linearGradient(
                         colors = listOf(
@@ -130,7 +130,7 @@ fun GlassPrimaryButton(
                     Modifier
                 }
             )
-            .padding(horizontal = dimens.spacing.lg),
+            .padding(horizontal = dimens.buttonHorizontalPadding),
         contentAlignment = Alignment.Center
     ) {
         if (isLoading) {
@@ -210,7 +210,7 @@ fun GlassSecondaryButton(
     Box(
         modifier = modifier
             .scale(scale)
-            .height(48.dp)
+            .height(dimens.buttonHeight)
             .clip(shape)
             .background(backgroundColor)
             .border(1.dp, borderColor, shape)
@@ -224,7 +224,7 @@ fun GlassSecondaryButton(
                     Modifier
                 }
             )
-            .padding(horizontal = dimens.spacing.lg),
+            .padding(horizontal = dimens.buttonHorizontalPadding),
         contentAlignment = Alignment.Center
     ) {
         if (isLoading) {
@@ -307,7 +307,7 @@ fun GlassIconButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     contentDescription: String? = null,
-    size: Dp = 40.dp,
+    size: Dp = BouncerDesignSystem.dimens.minTouchTarget,
     enabled: Boolean = true,
     useGoldTint: Boolean = true
 ) {
@@ -385,7 +385,7 @@ fun GlassIconButtonSmall(
         onClick = onClick,
         modifier = modifier,
         contentDescription = contentDescription,
-        size = 32.dp,
+        size = BouncerDesignSystem.dimens.buttonHeightCompact,
         enabled = enabled,
         useGoldTint = useGoldTint
     )
@@ -434,6 +434,7 @@ fun GlassTextButton(
 ) {
     val colors = BouncerDesignSystem.colors
     val typography = BouncerDesignSystem.typography
+    val dimens = BouncerDesignSystem.dimens
     
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
@@ -455,7 +456,7 @@ fun GlassTextButton(
     
     Text(
         text = if (uppercase) text.uppercase() else text,
-        style = typography.button,
+        style = typography.buttonCompact,
         color = textColor,
         modifier = modifier
             .scale(scale)
@@ -470,7 +471,7 @@ fun GlassTextButton(
                     Modifier
                 }
             )
-            .padding(horizontal = 12.dp, vertical = 8.dp)
+            .padding(horizontal = dimens.spacing.md, vertical = dimens.spacing.sm)
     )
 }
 

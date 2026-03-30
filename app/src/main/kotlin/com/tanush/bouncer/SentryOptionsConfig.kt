@@ -35,12 +35,31 @@ class SentryOptionsConfig : Sentry.OptionsConfiguration<SentryAndroidOptions> {
     }
 
     override fun configure(options: SentryAndroidOptions) {
+        val isDebugBuild = BuildConfig.DEBUG
+
         // ── Transport timeouts ───────────────────────────────────────────
         // Shorter timeouts prevent Sentry transport threads from hanging on
         // flaky emulator networks (the default 5s is too generous for IPv6
         // failures that never resolve).
         options.connectionTimeoutMillis = 5_000
         options.readTimeoutMillis = 5_000
+        options.setEnableBackpressureHandling(true)
+
+        // ── Core telemetry behavior ──────────────────────────────────────
+        options.isDebug = isDebugBuild
+        options.setSendDefaultPii(true)
+        options.logs.setEnabled(true)
+        options.metrics.setEnabled(true)
+
+        // Keep traces enabled so AI/LLM and performance spans are retained.
+        options.setTracesSampleRate(if (isDebugBuild) 1.0 else 0.2)
+
+        // Session Replay: capture all debug sessions, sample production sessions.
+        options.sessionReplay.setOnErrorSampleRate(1.0)
+        options.sessionReplay.setSessionSampleRate(if (isDebugBuild) 1.0 else 0.1)
+        options.sessionReplay.setMaskAllText(true)
+        options.sessionReplay.setMaskAllImages(true)
+        options.sessionReplay.setDebug(isDebugBuild)
 
         // ── Event filtering ──────────────────────────────────────────────
         options.beforeSend = SentryOptions.BeforeSendCallback { event, _ ->
@@ -52,7 +71,10 @@ class SentryOptionsConfig : Sentry.OptionsConfiguration<SentryAndroidOptions> {
             }
         }
 
-        Log.d(TAG, "Sentry options configured with beforeSend filter and transport timeouts")
+        Log.d(
+            TAG,
+            "Sentry configured: replay(session=${if (isDebugBuild) 1.0 else 0.1}, error=1.0), logs/metrics enabled"
+        )
     }
 
     /**

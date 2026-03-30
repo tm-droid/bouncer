@@ -11,6 +11,7 @@ import com.tanush.bouncer.managers.TeamAcronymManager
 import com.tanush.bouncer.services.MatchCacheService
 import io.sentry.Breadcrumb
 import io.sentry.Sentry
+import io.sentry.SentryLogLevel
 import io.sentry.SentryLevel
 import java.io.File
 
@@ -41,6 +42,8 @@ class BouncerApp : Application() {
                 level = SentryLevel.INFO
             }
         )
+        Sentry.logger().info("BouncerApp startup begun")
+        Sentry.metrics().count("app_start", 1.0)
 
         // ── Initialize managers ──────────────────────────────────────────
         initializeSafely("TeamLogoManager") { TeamLogoManager.initialize(this) }
@@ -78,6 +81,8 @@ class BouncerApp : Application() {
                 level = SentryLevel.INFO
             }
         )
+        Sentry.logger().log(SentryLogLevel.INFO, "BouncerApp startup completed")
+        Sentry.metrics().gauge("app_init_components", 4.0)
         Log.i(TAG, "Application initialized successfully")
     }
 
@@ -105,4 +110,3 @@ class BouncerApp : Application() {
         }
     }
 }
-

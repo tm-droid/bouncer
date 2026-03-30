@@ -109,14 +109,14 @@ fun NewsDetailScreen(
                             .fillMaxWidth()
                             .height(240.dp)
                             .padding(horizontal = dimens.screenHorizontalPadding)
-                            .clip(RoundedCornerShape(20.dp))
+                            .clip(RoundedCornerShape(dimens.radius.xl))
                     ) {
                         AsyncImage(
                             model = article.imageUrl,
                             contentDescription = article.headline,
                             modifier = Modifier
                                 .matchParentSize()
-                                .clip(RoundedCornerShape(20.dp)),
+                                .clip(RoundedCornerShape(dimens.radius.xl)),
                             contentScale = ContentScale.Crop
                         )
 
@@ -142,10 +142,7 @@ fun NewsDetailScreen(
                 // ── Headline ────────────────────────────────────────
                 Text(
                     text = article.headline,
-                    style = typography.headingLarge.copy(
-                        fontSize = 22.sp,
-                        lineHeight = 28.sp
-                    ),
+                    style = typography.headingLarge,
                     color = colors.textPrimary,
                     modifier = Modifier.padding(horizontal = dimens.screenHorizontalPadding)
                 )
@@ -178,7 +175,7 @@ fun NewsDetailScreen(
                         tint = colors.textMuted,
                         modifier = Modifier.size(14.dp)
                     )
-                    Spacer(modifier = Modifier.width(4.dp))
+                    Spacer(modifier = Modifier.width(dimens.xs))
                     Text(
                         text = article.timeAgo,
                         style = typography.labelMedium,
@@ -262,7 +259,7 @@ fun NewsDetailScreen(
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(vertical = 32.dp),
+                                .padding(vertical = dimens.xl),
                             contentAlignment = Alignment.Center
                         ) {
                             Text(

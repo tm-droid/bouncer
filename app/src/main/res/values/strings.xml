@@ -4,6 +4,8 @@
     <string name="bouncer_glance_widget_description">Live cricket scores at a glance</string>
     <string name="bouncer_lock_widget_description">Quick cricket score updates on your lock screen</string>
     <string name="widget_app_name">Bouncer</string>
+    <string name="widget_configuration_title">Configure Widget</string>
+    <string name="countdown_widget_description">Upcoming match countdown and schedule highlights.</string>
     <string name="title_stats_detail">Statistics Details</string>
     <string name="title_reminders">Match Reminders</string>
     <string name="onboarding_title">Welcome to Bouncer</string>

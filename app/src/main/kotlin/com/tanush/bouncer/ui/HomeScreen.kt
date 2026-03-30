@@ -181,7 +181,7 @@ fun HomeScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(top = dimens.sm)
-                            .height(1.dp)
+                            .height(dimens.borderWidth)
                             .background(
                                 Brush.horizontalGradient(
                                     colors = listOf(
@@ -197,7 +197,7 @@ fun HomeScreen(
                     LazyColumn(
                         state = listState,
                         modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(bottom = 96.dp),
+                        contentPadding = PaddingValues(bottom = dimens.bottomNavHeight + dimens.spacing.xl),
                         verticalArrangement = Arrangement.spacedBy(dimens.sm)
                     ) {
                         // ── Live Matches Carousel ──

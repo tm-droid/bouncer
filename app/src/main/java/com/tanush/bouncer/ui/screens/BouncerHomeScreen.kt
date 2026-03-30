@@ -351,7 +351,7 @@ private fun HomeScreenSkeleton() {
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = dimens.screenHorizontalPadding, vertical = dimens.spacing.md)
-                    .height(40.dp)
+                    .height(dimens.iconSize.hero)
                     .clip(RoundedCornerShape(dimens.radius.md))
                     .shimmerEffect()
             )
@@ -364,7 +364,7 @@ private fun HomeScreenSkeleton() {
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = dimens.screenHorizontalPadding, vertical = dimens.spacing.md)
-                    .height(200.dp)
+                    .height(dimens.heroCardHeight)
                     .clip(RoundedCornerShape(dimens.radius.xl))
                     .shimmerEffect()
             )
@@ -439,10 +439,10 @@ private fun HomeHeader(
                     if (showUpdateBadge) {
                         Box(
                             modifier = Modifier
-                                .size(10.dp)
+                                .size(dimens.statusDotLarge)
                                 .clip(CircleShape)
                                 .background(colors.statusInfo)
-                                .border(1.dp, colors.backgroundBase, CircleShape)
+                                .border(dimens.borderWidth, colors.backgroundBase, CircleShape)
                                 .align(Alignment.TopEnd)
                                 .semantics {
                                     contentDescription = updateBadgeDescription
@@ -469,7 +469,7 @@ private fun LiveMatchCarousel(
 ) {
     val pagerState = rememberPagerState(pageCount = { matches.size })
     val dimens = BouncerDesignSystem.dimens
-    val cardWidth = if (isExpanded) 480.dp else CarouselCardWidth
+    val cardWidth = if (isExpanded) dimens.matchCardMinHeight * 3 else CarouselCardWidth
     val horizontalPadding = if (isExpanded) dimens.spacing.xxl else dimens.spacing.lg
 
     // Auto-scroll for live matches
@@ -527,7 +527,7 @@ private fun LiveMatchCarousel(
                     val isSelected = pagerState.currentPage == index
                     PageIndicatorDot(
                         isSelected = isSelected,
-                        modifier = Modifier.padding(horizontal = 3.dp)
+                        modifier = Modifier.padding(horizontal = dimens.xs - dimens.xxs)
                     )
                 }
             }
@@ -541,12 +541,13 @@ private fun PageIndicatorDot(
     modifier: Modifier = Modifier
 ) {
     val colors = BouncerDesignSystem.colors
-    val width = if (isSelected) 16.dp else 6.dp
+    val dimens = BouncerDesignSystem.dimens
+    val width = if (isSelected) dimens.md else dimens.statusDotSmall
     val color = if (isSelected) colors.goldPrimary else colors.textTertiary
 
     Box(
         modifier = modifier
-            .height(6.dp)
+            .height(dimens.statusDotSmall)
             .width(width)
             .clip(CircleShape)
             .background(color)
@@ -577,17 +578,17 @@ private fun LiveMatchCarouselCard(
     // Glass panel with stadium background as per _14/code.html
     Box(
         modifier = modifier
-            .clip(RoundedCornerShape(32.dp)) // Matching rounded-[2rem]
+            .clip(RoundedCornerShape(dimens.radius.xl)) // Matching rounded-[2rem]
             .clickable(onClick = onClick)
             .border(
-                width = 1.dp,
+                width = dimens.borderWidth,
                 brush = Brush.verticalGradient(
                     colors = listOf(
                         colors.glassBorder,
                         colors.glassSurface
                     )
                 ),
-                shape = RoundedCornerShape(32.dp)
+                shape = RoundedCornerShape(dimens.radius.xl)
             )
             .background(colors.glassSurface)
     ) {
@@ -653,7 +654,7 @@ private fun LiveMatchCarouselCard(
                     text = match.matchTitle.take(20).uppercase(),
                     style = typography.labelSmall,
                     color = colors.textTertiary,
-                    letterSpacing = 1.sp,
+                    letterSpacing = typography.labelMedium.letterSpacing,
                     fontWeight = FontWeight.Bold
                 )
             }
@@ -681,7 +682,7 @@ private fun LiveMatchCarouselCard(
                     Row(verticalAlignment = Alignment.Bottom) {
                         Text(
                             text = battingTeam?.score?.split("/")?.getOrNull(0) ?: "-",
-                            style = typography.scoreDisplay.copy(fontSize = 32.sp),
+                            style = typography.scoreSecondary,
                             color = colors.goldPrimary,
                             fontWeight = FontWeight.Black
                         )
@@ -690,7 +691,7 @@ private fun LiveMatchCarouselCard(
                                 text = "/" + battingTeam.score.split("/").getOrNull(1),
                                 style = typography.headingSmall,
                                 color = colors.goldPrimary.copy(alpha = 0.5f),
-                                modifier = Modifier.padding(bottom = 6.dp)
+                                modifier = Modifier.padding(bottom = dimens.statusDotSmall)
                             )
                         }
                     }
@@ -716,7 +717,7 @@ private fun LiveMatchCarouselCard(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(2.dp)
+                        .height(dimens.focusBorderWidth)
                         .clip(CircleShape)
                         .background(colors.glassBorder)
                 ) {
@@ -777,7 +778,7 @@ private fun TeamColumnCompact(
         TeamLogoCircle(
             teamCode = teamCode,
             logoUrl = logoUrl,
-            size = 48.dp,
+            size = dimens.playerAvatarLarge,
             showBorder = true,
             showGlow = true
         )
@@ -794,6 +795,7 @@ private fun TeamColumnCompact(
 @Composable
 private fun LiveBadge(modifier: Modifier = Modifier) {
     val colors = BouncerDesignSystem.colors
+    val dimens = BouncerDesignSystem.dimens
     val infiniteTransition = rememberInfiniteTransition(label = "livePulse")
     val pulseAlpha by infiniteTransition.animateFloat(
         initialValue = 0.4f,
@@ -810,7 +812,7 @@ private fun LiveBadge(modifier: Modifier = Modifier) {
             .clip(RoundedCornerShape(BouncerDesignSystem.dimens.radius.pill))
             .background(colors.statusLive.copy(alpha = 0.2f))
             .border(
-                width = 1.dp,
+                width = dimens.borderWidth,
                 color = colors.statusLive.copy(alpha = 0.3f),
                 shape = RoundedCornerShape(BouncerDesignSystem.dimens.radius.pill)
             )
@@ -838,10 +840,9 @@ private fun LiveBadge(modifier: Modifier = Modifier) {
 
         Text(
             text = "LIVE",
-            fontSize = 9.sp,
+            style = BouncerDesignSystem.typography.labelSmall.copy(letterSpacing = BouncerDesignSystem.typography.labelLarge.letterSpacing),
             fontWeight = FontWeight.Bold,
-            color = colors.statusLive,
-            letterSpacing = 2.sp
+            color = colors.statusLive
         )
     }
 }
@@ -852,6 +853,7 @@ private fun MatchFormatBadge(
     modifier: Modifier = Modifier
 ) {
     val colors = BouncerDesignSystem.colors
+    val dimens = BouncerDesignSystem.dimens
     val formatText = when (matchType.uppercase()) {
         "T20", "T20I" -> "T20"
         "ODI", "ODIS" -> "ODI"
@@ -864,7 +866,7 @@ private fun MatchFormatBadge(
             .clip(RoundedCornerShape(BouncerDesignSystem.dimens.radius.pill))
             .background(colors.goldPrimary.copy(alpha = 0.15f))
             .border(
-                width = 1.dp,
+                width = dimens.borderWidth,
                 color = colors.goldPrimary.copy(alpha = 0.3f),
                 shape = RoundedCornerShape(BouncerDesignSystem.dimens.radius.pill)
             )
@@ -875,10 +877,9 @@ private fun MatchFormatBadge(
     ) {
         Text(
             text = formatText,
-            fontSize = 9.sp,
+            style = BouncerDesignSystem.typography.labelSmall.copy(letterSpacing = BouncerDesignSystem.typography.labelMedium.letterSpacing),
             fontWeight = FontWeight.Bold,
-            color = colors.goldPrimary,
-            letterSpacing = 1.sp
+            color = colors.goldPrimary
         )
     }
 }
@@ -897,7 +898,7 @@ private fun SectionDivider(modifier: Modifier = Modifier) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(1.dp)
+                .height(BouncerDesignSystem.dimens.borderWidth)
                 .background(
                     Brush.horizontalGradient(
                         colors = listOf(
@@ -947,14 +948,14 @@ private fun TrendingNewsSection(
             GlassCard(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(200.dp)
+                    .height(dimens.heroCardHeight)
                     .clickable {
                         heroArticle?.articleUrl?.let { url ->
                             val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url))
                             context.startActivity(intent)
                         }
                     },
-                shape = RoundedCornerShape(24.dp),
+                shape = RoundedCornerShape(dimens.radius.xxl),
                 contentPadding = PaddingValues(0.dp),
                 borderOpacity = 0.1f
             ) {
@@ -991,18 +992,17 @@ private fun TrendingNewsSection(
                         // Top Story badge — solid gold pill at top-left
                         Box(
                             modifier = Modifier
-                                .padding(start = 12.dp, top = 12.dp)
+                                .padding(start = dimens.cardPaddingCompact, top = dimens.cardPaddingCompact)
                                 .clip(RoundedCornerShape(percent = 50))
                                 .background(colors.goldPrimary)
-                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                                .padding(horizontal = dimens.sm, vertical = dimens.xs)
                                 .align(Alignment.Start)
                         ) {
                             Text(
                                 text = (heroArticle?.storyType?.uppercase() ?: "TOP STORY"),
-                                fontSize = 10.sp,
+                                style = typography.labelSmall.copy(letterSpacing = typography.labelMedium.letterSpacing),
                                 fontWeight = FontWeight.Bold,
-                                color = Color.Black,
-                                letterSpacing = 1.sp
+                                color = colors.backgroundBase
                             )
                         }
 
@@ -1029,7 +1029,7 @@ private fun TrendingNewsSection(
                                         imageVector = Icons.Outlined.Schedule,
                                         contentDescription = "Published time",
                                         tint = colors.textTertiary,
-                                        modifier = Modifier.size(12.dp)
+                                        modifier = Modifier.size(dimens.iconSize.sm)
                                     )
                                     Text(
                                         text = heroArticle?.timeAgo ?: "",
@@ -1040,7 +1040,7 @@ private fun TrendingNewsSection(
                                 if (heroArticle?.source?.isNotBlank() == true) {
                                     Box(
                                         modifier = Modifier
-                                            .size(3.dp)
+                                            .size(dimens.xxs + dimens.xs/2)
                                             .clip(CircleShape)
                                             .background(colors.textTertiary.copy(alpha = 0.4f))
                                     )
@@ -1061,14 +1061,14 @@ private fun TrendingNewsSection(
                 GlassCard(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(110.dp)
+                        .height(dimens.statusCardHeight - dimens.sm - dimens.xs)
                         .clickable {
                             secondaryArticle.articleUrl?.let { url ->
                                 val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url))
                                 context.startActivity(intent)
                             }
                         },
-                    shape = RoundedCornerShape(24.dp),
+                    shape = RoundedCornerShape(dimens.radius.xxl),
                     contentPadding = PaddingValues(0.dp),
                     borderOpacity = 0.08f
                 ) {
@@ -1082,18 +1082,17 @@ private fun TrendingNewsSection(
                         ) {
                             Box(
                                 modifier = Modifier
-                                    .padding(bottom = 6.dp)
-                                    .clip(RoundedCornerShape(4.dp))
-                                    .background(Color.Black.copy(alpha = 0.3f))
-                                    .border(0.5.dp, colors.goldPrimary.copy(alpha = 0.3f), RoundedCornerShape(4.dp))
-                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                                    .padding(bottom = dimens.statusDotSmall)
+                                    .clip(RoundedCornerShape(dimens.radius.xs))
+                                    .background(colors.glassOverlay.copy(alpha = 0.5f))
+                                    .border(dimens.dividerThickness, colors.goldPrimary.copy(alpha = 0.3f), RoundedCornerShape(dimens.radius.xs))
+                                    .padding(horizontal = dimens.statusDotSmall, vertical = dimens.xxs)
                             ) {
                                 Text(
                                     text = secondaryArticle.storyType.uppercase().ifBlank { "NEWS" },
-                                    fontSize = 8.sp,
+                                    style = typography.labelSmall.copy(letterSpacing = typography.labelSmall.letterSpacing / 2),
                                     fontWeight = FontWeight.Bold,
-                                    color = colors.goldPrimary,
-                                    letterSpacing = 0.5.sp
+                                    color = colors.goldPrimary
                                 )
                             }
 
@@ -1108,9 +1107,9 @@ private fun TrendingNewsSection(
 
                             Text(
                                 text = secondaryArticle.timeAgo,
-                                style = typography.labelSmall.copy(fontSize = 10.sp),
+                                style = typography.labelSmall,
                                 color = colors.goldPrimary.copy(alpha = 0.8f),
-                                modifier = Modifier.padding(top = 4.dp)
+                                modifier = Modifier.padding(top = dimens.xs)
                             )
                         }
 
@@ -1145,6 +1144,7 @@ private fun SectionHeader(
 ) {
     val colors = BouncerDesignSystem.colors
     val typography = BouncerDesignSystem.typography
+    val dimens = BouncerDesignSystem.dimens
 
     Column(modifier = modifier) {
         Row(
@@ -1195,7 +1195,7 @@ private fun SectionHeader(
         Box(
             modifier = Modifier
                 .width(40.dp)
-                .height(2.dp)
+                .height(dimens.focusBorderWidth)
                 .clip(RoundedCornerShape(1.dp))
                 .background(colors.goldPrimary.copy(alpha = 0.5f))
         )

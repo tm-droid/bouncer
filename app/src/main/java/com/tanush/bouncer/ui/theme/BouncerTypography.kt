@@ -193,6 +193,10 @@ data class BouncerTypography(
     val button: TextStyle = BouncerTypographyTokens.BodyMedium.copy(
         fontWeight = FontWeight.SemiBold
     ),
+    val buttonCompact: TextStyle = BouncerTypographyTokens.BodySmall.copy(
+        fontWeight = FontWeight.SemiBold,
+        letterSpacing = 0.2.sp
+    ),
     val tabularNumbers: TextStyle = BouncerTypographyTokens.BodyMedium.copy(
         fontFeatureSettings = "tnum"
     )

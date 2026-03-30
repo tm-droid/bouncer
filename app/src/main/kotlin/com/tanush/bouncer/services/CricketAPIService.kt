@@ -7,6 +7,7 @@ import com.tanush.bouncer.network.RetrofitClient
 import com.tanush.bouncer.network.models.SanwebMatchSummary
 import io.sentry.Breadcrumb
 import io.sentry.Sentry
+import io.sentry.SentryLogLevel
 import io.sentry.SentryLevel
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -61,6 +62,7 @@ class CricketAPIService(private val apiKey: String = "") {
             })
             
             val listResponse = vercelApi.getMatches(type)
+            Sentry.metrics().gauge("cricket_api.list.matches", listResponse.matches.size.toDouble())
             
             if (type == "live") {
                 // For live matches, we need details (scores)
@@ -84,6 +86,8 @@ class CricketAPIService(private val apiKey: String = "") {
             }
         } catch (e: Exception) {
             Sentry.captureException(e)
+            Sentry.metrics().count("cricket_api.fetch.error", 1.0)
+            Sentry.logger().log(SentryLogLevel.ERROR, "CricketAPIService fetchSanwebMatches failed: %s", e.message ?: "unknown")
             emptyList()
         }
     }

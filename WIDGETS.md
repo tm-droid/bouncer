@@ -117,7 +117,7 @@ Call `WidgetManager.updateAllWidgets()` from:
 - Live badge (red) when match is live
 - Win probability display
 - Multiple sizes: 2x1, 3x2, 4x2
-- Tap to open MainActivity
+- Tap to open BouncerActivity
 
 ### Lock Screen Widget
 

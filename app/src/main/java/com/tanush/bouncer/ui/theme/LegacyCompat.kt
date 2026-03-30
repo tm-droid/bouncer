@@ -19,46 +19,48 @@ import androidx.compose.ui.unit.sp
 // ─── Spacing ────────────────────────────────────────────────────────────────
 
 object Spacing {
-    val micro: Dp = 2.dp
-    val xs: Dp = 4.dp
-    val sm: Dp = 8.dp
-    val md: Dp = 16.dp
-    val lg: Dp = 24.dp
-    val xl: Dp = 32.dp
-    val xxl: Dp = 48.dp
+    private val d = BouncerDimens
+    val micro: Dp = d.xxs
+    val xs: Dp = d.xs
+    val sm: Dp = d.sm
+    val md: Dp = d.md
+    val lg: Dp = d.lg
+    val xl: Dp = d.xl
+    val xxl: Dp = d.xxl
 
     // Numbered aliases used by legacy code
-    val space1: Dp = 4.dp
-    val space2: Dp = 8.dp
+    val space1: Dp = d.xs
+    val space2: Dp = d.sm
     val space3: Dp = 12.dp
-    val space4: Dp = 16.dp
+    val space4: Dp = d.md
     val space5: Dp = 20.dp
-    val space6: Dp = 24.dp
-    val space8: Dp = 32.dp
+    val space6: Dp = d.lg
+    val space8: Dp = d.xl
 
-    val screenHorizontal: Dp = 16.dp
-    val cardPadding: Dp = 16.dp
-    val sectionGap: Dp = 24.dp
+    val screenHorizontal: Dp = d.screenHorizontal
+    val cardPadding: Dp = d.cardPadding
+    val sectionGap: Dp = d.xl
 }
 
 // ─── CornerRadius ───────────────────────────────────────────────────────────
 
 object CornerRadius {
+    private val d = BouncerDimens
     val Zero: Dp = 0.dp
-    val xs: Dp = 4.dp
-    val sm: Dp = 8.dp
+    val xs: Dp = d.xs
+    val sm: Dp = d.sm
     val md: Dp = 12.dp
-    val lg: Dp = 16.dp
-    val xl: Dp = 24.dp
-    val pill: Dp = 50.dp
-    val circular: Dp = 50.dp
+    val lg: Dp = d.md
+    val xl: Dp = d.cardPadding
+    val pill: Dp = d.heroTeamLogoSizeLarge
+    val circular: Dp = d.heroTeamLogoSizeLarge
 }
 
 // ─── BorderWidth ────────────────────────────────────────────────────────────
 
 object BorderWidth {
-    val hairline: Dp = 0.5.dp
-    val medium: Dp = 1.dp
+    val hairline: Dp = BouncerDimens.dividerThickness
+    val medium: Dp = BouncerDimens.borderWidth
 }
 
 // ─── Elevation ──────────────────────────────────────────────────────────────

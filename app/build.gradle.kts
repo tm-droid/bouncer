@@ -218,5 +218,7 @@ sentry {
     // ── Auto-install Sentry SDK + integrations ──────────────────────────
     autoInstallation {
         enabled.set(true)
+        // Keep runtime SDK current for Session Replay / Logs / Metrics feature parity.
+        sentryVersion.set("8.35.0")
     }
 }

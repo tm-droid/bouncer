@@ -12,6 +12,7 @@ import com.tanush.bouncer.services.MatchCacheService
 import com.tanush.bouncer.services.LiveCommentaryManager
 import io.sentry.Breadcrumb
 import io.sentry.Sentry
+import io.sentry.SentryLogLevel
 import io.sentry.SentryLevel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -120,6 +121,8 @@ class LiveActivityViewModel : ViewModel() {
     private val cachedMatches = mutableMapOf<String, List<CricketMatch>>()
     private val pollingTasks = mutableMapOf<String, Job>()
     private var isPollingActive = false
+    private var hasCompletedInitialFetch = false
+    private var initialFetchJob: Job? = null
     // Track consecutive failures per status for adaptive backoff
     private val consecutiveFailures = mutableMapOf<String, Int>()
 
@@ -172,7 +175,7 @@ class LiveActivityViewModel : ViewModel() {
                 }
             }
         }
-        startPolling()
+        startPolling(forceInitialFetch = true)
     }
 
     // Allow UI to enable/disable AI insight generation at runtime
@@ -225,11 +228,18 @@ class LiveActivityViewModel : ViewModel() {
             filterAndEmitMatches(it)
         }
 
+        if (!cachedMatches.containsKey(status)) {
+            viewModelScope.launch {
+                runCatching { updateMatches(status) }
+            }
+        }
+
         // Restart polling with new status focus
         startPolling()
     }
 
     fun setCompetitionType(type: String) {
+        if (_selectedCompetitionType.value == type) return
         Sentry.addBreadcrumb(Breadcrumb().apply {
             category = "user.action"
             message = "Competition type changed to: $type"
@@ -240,6 +250,7 @@ class LiveActivityViewModel : ViewModel() {
     }
 
     fun setGender(gender: String) {
+        if (_selectedGender.value == gender) return
         Sentry.addBreadcrumb(Breadcrumb().apply {
             category = "user.action"
             message = "Gender filter changed to: $gender"
@@ -258,11 +269,14 @@ class LiveActivityViewModel : ViewModel() {
             val genderMatch = gender == "All" || match.gender == gender
             typeMatch && genderMatch
         }
-        _currentMatches.value = filtered
+        if (_currentMatches.value != filtered) {
+            _currentMatches.value = filtered
+        }
     }
 
-    fun startPolling() {
+    fun startPolling(forceInitialFetch: Boolean = false) {
         Log.d(TAG, "Starting poll for updates")
+        val wasPollingActive = isPollingActive
         isPollingActive = true
         
         // Cancel only non-live polling tasks safely
@@ -287,34 +301,49 @@ class LiveActivityViewModel : ViewModel() {
             startPollingForStatus(selectedStatus)
         }
         
-        // Initial data fetch for all statuses
-        viewModelScope.launch {
-            if (_currentMatches.value.isEmpty()) {
-                _isLoading.value = true
+        val shouldRunInitialFetch = forceInitialFetch || !hasCompletedInitialFetch
+        if (shouldRunInitialFetch && initialFetchJob?.isActive != true) {
+            // Initial data fetch for all statuses
+            initialFetchJob = viewModelScope.launch {
+                if (_currentMatches.value.isEmpty()) {
+                    _isLoading.value = true
+                }
+                for (status in listOf("Live", "Upcoming", "Recent")) {
+                    try {
+                        updateMatches(status)
+                    } catch (e: Exception) {
+                        if (e is CancellationException) throw e
+                        Log.e(TAG, "Initial fetch error for $status", e)
+                        Sentry.addBreadcrumb(Breadcrumb().apply {
+                            category = "data.error"
+                            message = "Initial fetch failed for status: $status"
+                            level = SentryLevel.ERROR
+                            setData("status", status)
+                        })
+                        Sentry.captureException(e)
+                        _loadingState.value = LoadingState.Error(e.message ?: "Unknown error")
+                    }
+                }
+                _isLoading.value = false
+                hasCompletedInitialFetch = true
             }
-            for (status in listOf("Live", "Upcoming", "Recent")) {
-                try {
-                    updateMatches(status)
-                } catch (e: Exception) {
-                    if (e is CancellationException) throw e
-                    Log.e(TAG, "Initial fetch error for $status", e)
-                    Sentry.addBreadcrumb(Breadcrumb().apply {
-                        category = "data.error"
-                        message = "Initial fetch failed for status: $status"
-                        level = SentryLevel.ERROR
-                        setData("status", status)
-                    })
-                    Sentry.captureException(e)
-                    _loadingState.value = LoadingState.Error(e.message ?: "Unknown error")
+        } else if (!wasPollingActive) {
+            // Fast resume path to avoid waiting for the next polling tick.
+            viewModelScope.launch {
+                runCatching { updateMatches("Live") }
+                val selectedStatus = _selectedStatus.value
+                if (selectedStatus != "Live") {
+                    runCatching { updateMatches(selectedStatus) }
                 }
             }
-            _isLoading.value = false
         }
     }
     
     fun stopPolling() {
         Log.d(TAG, "Stopping all polling tasks")
         isPollingActive = false
+        initialFetchJob?.cancel()
+        initialFetchJob = null
         pollingTasks.forEach { (status, job) ->
             Log.d(TAG, "Cancelling polling task for $status")
             job.cancel()
@@ -372,6 +401,8 @@ class LiveActivityViewModel : ViewModel() {
                         setData("status", status)
                         setData("failure_count", failures)
                     })
+                    Sentry.metrics().count("live.poll.error", 1.0)
+                    Sentry.logger().log(SentryLogLevel.WARN, "Polling failure #%s for %s", failures.toString(), status)
                     
                     // Only report to Sentry after 3 consecutive failures to reduce noise
                     if (failures >= 3) {
@@ -656,6 +687,8 @@ class LiveActivityViewModel : ViewModel() {
         
         val matches = scraper.fetchLiveMatches(url, status)
         val distinctMatches = matches.distinctBy { it.id }
+        Sentry.metrics().gauge("live.matches.count", distinctMatches.size.toDouble())
+        Sentry.metrics().count("live.poll.success", 1.0)
         
         // Calculate heuristic win probability for each match (immutable copy)
         val matchesWithProbability = distinctMatches.map { match ->
@@ -687,7 +720,9 @@ class LiveActivityViewModel : ViewModel() {
         val liveMatches = cachedMatches["Live"] ?: emptyList()
         val upcomingMatches = cachedMatches["Upcoming"] ?: emptyList()
         val combined = (liveMatches + upcomingMatches).distinctBy { it.id }
-        _allMatchesForHome.value = combined
+        if (_allMatchesForHome.value != combined) {
+            _allMatchesForHome.value = combined
+        }
     }
 
     private suspend fun fetchMatchesInternal() {

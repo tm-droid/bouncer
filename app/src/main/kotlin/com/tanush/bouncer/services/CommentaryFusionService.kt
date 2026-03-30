@@ -2,6 +2,7 @@ package com.tanush.bouncer.services
 
 import android.util.Log
 import com.tanush.bouncer.BuildConfig
+import com.tanush.bouncer.monitoring.SentryAiSpans
 import io.sentry.Breadcrumb
 import io.sentry.Sentry
 import io.sentry.SentryLevel
@@ -318,84 +319,94 @@ class CommentaryFusionService {
             return@withContext null
         }
 
-        Log.d("CommentaryFusionService", "Using model: $model")
-        
-        Sentry.addBreadcrumb(Breadcrumb().apply {
-            category = "service.commentary"
-            message = "Calling OpenRouter API"
-            level = SentryLevel.INFO
-            setData("model", model)
-        })
-        
-        val jsonBody = JSONObject()
-        jsonBody.put("model", model)
-        val messagesArray = JSONArray()
-        val messageObj = JSONObject()
-        messageObj.put("role", "user")
-        messageObj.put("content", prompt)
-        messagesArray.put(messageObj)
-        jsonBody.put("messages", messagesArray)
-        jsonBody.put("max_tokens", 512)
+        SentryAiSpans.withAgentInvocation(agentName = "openrouter_commentary_fusion", model = model) { tx ->
+            Log.d("CommentaryFusionService", "Using model: $model")
+            tx.setData("gen_ai.request.model", model)
+            tx.setData("gen_ai.request.provider", "openrouter")
+            tx.setData("gen_ai.request.prompt_length", prompt.length)
 
-        val requestBody = jsonBody.toString().toRequestBody("application/json; charset=utf-8".toMediaType())
+            Sentry.addBreadcrumb(Breadcrumb().apply {
+                category = "service.commentary"
+                message = "Calling OpenRouter API"
+                level = SentryLevel.INFO
+                setData("model", model)
+            })
 
-        val request = Request.Builder()
-            .url(apiUrl)
-            .post(requestBody)
-            .addHeader("Authorization", "Bearer $openRouterApiKey")
-            .addHeader("HTTP-Referer", "bouncer-app") // Optional
-            .build()
+            val jsonBody = JSONObject()
+            jsonBody.put("model", model)
+            val messagesArray = JSONArray()
+            val messageObj = JSONObject()
+            messageObj.put("role", "user")
+            messageObj.put("content", prompt)
+            messagesArray.put(messageObj)
+            jsonBody.put("messages", messagesArray)
+            jsonBody.put("max_tokens", 512)
 
-        try {
-            client.newCall(request).execute().use { response ->
-                if (!response.isSuccessful) {
-                    val errorBody = response.body?.string()
-                    val code = response.code
-                    Log.e("CommentaryFusionService", "API call failed with code $code: $errorBody")
+            val requestBody = jsonBody.toString().toRequestBody("application/json; charset=utf-8".toMediaType())
 
-                    // 401/402/403 are permanent billing/auth issues — stop retrying
-                    if (code in listOf(401, 402, 403)) {
-                        markApiPermanentlyFailed(code, errorBody)
-                        return@withContext null
+            val request = Request.Builder()
+                .url(apiUrl)
+                .post(requestBody)
+                .addHeader("Authorization", "Bearer $openRouterApiKey")
+                .addHeader("HTTP-Referer", "bouncer-app")
+                .build()
+
+            try {
+                client.newCall(request).execute().use { response ->
+                    tx.setData("gen_ai.response.http_status", response.code)
+                    if (!response.isSuccessful) {
+                        val errorBody = response.body?.string()
+                        val code = response.code
+                        Log.e("CommentaryFusionService", "API call failed with code $code: $errorBody")
+                        Sentry.metrics().count("ai.request.error", 1.0)
+                        Sentry.logger().warn("OpenRouter request failed: status=%s", code.toString())
+
+                        if (code in listOf(401, 402, 403)) {
+                            markApiPermanentlyFailed(code, errorBody)
+                            return@withAgentInvocation null
+                        }
+
+                        Sentry.addBreadcrumb(Breadcrumb().apply {
+                            category = "service.commentary"
+                            message = "OpenRouter API error"
+                            level = SentryLevel.ERROR
+                            setData("statusCode", code)
+                            setData("errorBody", errorBody?.take(200) ?: "null")
+                        })
+                        return@withAgentInvocation null
                     }
 
-                    Sentry.addBreadcrumb(Breadcrumb().apply {
-                        category = "service.commentary"
-                        message = "OpenRouter API error"
-                        level = SentryLevel.ERROR
-                        setData("statusCode", code)
-                        setData("errorBody", errorBody?.take(200) ?: "null")
-                    })
-                    return@withContext null
-                }
-
-                val responseBody = response.body?.string()
-                if (responseBody != null) {
-                    val jsonResponse = JSONObject(responseBody)
-                    val choices = jsonResponse.optJSONArray("choices")
-                    if (choices != null && choices.length() > 0) {
-                        val firstChoice = choices.getJSONObject(0)
-                        val messageObj = firstChoice.optJSONObject("message")
-                        val content = messageObj?.optString("content")
-                        if (content != null) {
-                            Log.d("CommentaryFusionService", "AI response received.")
-                            return@withContext content.trim()
+                    val responseBody = response.body?.string()
+                    if (responseBody != null) {
+                        val jsonResponse = JSONObject(responseBody)
+                        val choices = jsonResponse.optJSONArray("choices")
+                        if (choices != null && choices.length() > 0) {
+                            val firstChoice = choices.getJSONObject(0)
+                            val messageObj = firstChoice.optJSONObject("message")
+                            val content = messageObj?.optString("content")
+                            if (content != null) {
+                                tx.setData("gen_ai.usage.output_chars", content.length)
+                                Sentry.metrics().count("ai.request.success", 1.0)
+                                Log.d("CommentaryFusionService", "AI response received.")
+                                return@withAgentInvocation content.trim()
+                            }
                         }
                     }
+                    null
                 }
-                return@withContext null
-            }
-        } catch (e: IOException) {
-            Log.e("CommentaryFusionService", "API call failed", e)
-            // Only report network IOExceptions to Sentry (not cancellation)
-            if (e.message != "Canceled") {
+            } catch (e: IOException) {
+                Log.e("CommentaryFusionService", "API call failed", e)
+                if (e.message != "Canceled") {
+                    Sentry.captureException(e)
+                }
+                Sentry.metrics().count("ai.request.io_error", 1.0)
+                null
+            } catch (e: Exception) {
+                Log.e("CommentaryFusionService", "Unexpected error in API call", e)
                 Sentry.captureException(e)
+                Sentry.metrics().count("ai.request.unexpected_error", 1.0)
+                null
             }
-            return@withContext null
-        } catch (e: Exception) {
-            Log.e("CommentaryFusionService", "Unexpected error in API call", e)
-            Sentry.captureException(e)
-            return@withContext null
         }
     }
 }

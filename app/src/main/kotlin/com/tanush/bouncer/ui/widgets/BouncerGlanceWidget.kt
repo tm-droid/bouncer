@@ -2,6 +2,7 @@ package com.tanush.bouncer.ui.widgets
 
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
@@ -11,6 +12,9 @@ import androidx.glance.GlanceModifier
 import androidx.glance.GlanceTheme
 import androidx.glance.Image
 import androidx.glance.ImageProvider
+import androidx.glance.action.Action
+import androidx.glance.action.ActionParameters
+import androidx.glance.action.actionParametersOf
 import androidx.glance.action.actionStartActivity
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
@@ -45,7 +49,8 @@ import io.sentry.SentryLevel
 class BouncerGlanceWidget : GlanceAppWidget() {
 
     companion object {
-        private const val PREF_NAME = "bouncer_glance_widget"
+        internal const val PREF_NAME = "bouncer_glance_widget"
+        private const val SELECTED_MATCH_KEY_PREFIX = "selected_match_id_"
         
         // Premium Bouncer Colors
         private val BlackBackground = Color(0xFF0F1115)
@@ -85,6 +90,28 @@ class BouncerGlanceWidget : GlanceAppWidget() {
                 message = "Glance widget data updated: $team1Name vs $team2Name"
                 level = SentryLevel.INFO
             })
+        }
+
+        fun setSelectedMatchId(context: Context, appWidgetId: Int, matchId: String) {
+            context
+                .getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
+                .edit()
+                .putString("$SELECTED_MATCH_KEY_PREFIX$appWidgetId", matchId)
+                .apply()
+        }
+
+        fun getSelectedMatchId(context: Context, appWidgetId: Int): String? {
+            return context
+                .getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
+                .getString("$SELECTED_MATCH_KEY_PREFIX$appWidgetId", null)
+        }
+
+        fun createMatchDeepLinkAction(context: Context, matchId: String): Action {
+            return actionStartActivity<BouncerActivity>(
+                actionParametersOf(
+                    ActionParameters.Key<String>(LiveMatchWidgetProvider.EXTRA_MATCH_ID) to matchId
+                )
+            )
         }
     }
 

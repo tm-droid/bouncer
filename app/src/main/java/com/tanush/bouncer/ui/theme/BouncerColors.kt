@@ -42,6 +42,9 @@ val GoldGradient = Brush.verticalGradient(
     0.6f to Color(0xFFD4AF37),
     1.0f to Color(0xFFB08D26)
 )
+val GoldGradientHorizontal = Brush.horizontalGradient(
+    colors = listOf(Color(0xFFFCD34D), GoldPrimary, GoldDark)
+)
 
 // =============================================================================
 // Text Colors — High contrast hierarchy
@@ -389,6 +392,7 @@ data class BouncerColors(
     val goldSubtle: Color = GoldSubtle,
     val etchedGold: Color = EtchedGold,
     val goldGradient: Brush = GoldGradient,
+    val goldGradientHorizontal: Brush = GoldGradientHorizontal,
     
     // Text
     val textPrimary: Color = TextPrimary,

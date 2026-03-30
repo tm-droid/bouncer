@@ -158,7 +158,7 @@ fun NewsScreen(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .height(280.dp),
-                                    shape = RoundedCornerShape(24.dp),
+                                    shape = RoundedCornerShape(dimens.radius.xxl),
                                     useGoldBorder = true,
                                     contentPadding = PaddingValues(dimens.md)
                                 ) {
@@ -170,7 +170,7 @@ fun NewsScreen(
                                             modifier = Modifier
                                                 .fillMaxWidth(0.3f)
                                                 .height(16.dp)
-                                                .clip(RoundedCornerShape(4.dp))
+                                                .clip(RoundedCornerShape(dimens.radius.xs))
                                                 .background(
                                                     colors.goldPrimary.copy(alpha = 0.12f)
                                                 )
@@ -180,7 +180,7 @@ fun NewsScreen(
                                             modifier = Modifier
                                                 .fillMaxWidth(0.9f)
                                                 .height(20.dp)
-                                                .clip(RoundedCornerShape(4.dp))
+                                                .clip(RoundedCornerShape(dimens.radius.xs))
                                                 .background(
                                                     colors.surface2
                                                 )
@@ -190,7 +190,7 @@ fun NewsScreen(
                                             modifier = Modifier
                                                 .fillMaxWidth(0.6f)
                                                 .height(14.dp)
-                                                .clip(RoundedCornerShape(4.dp))
+                                                .clip(RoundedCornerShape(dimens.radius.xs))
                                                 .background(
                                                     colors.surface2
                                                 )
@@ -338,7 +338,7 @@ private fun HeroArticleCard(
                     onTap = { onClick() }
                 )
             },
-        shape = RoundedCornerShape(24.dp),
+        shape = RoundedCornerShape(dimens.radius.xxl),
         useGoldBorder = true,
         contentPadding = PaddingValues(0.dp)
     ) {
@@ -352,7 +352,7 @@ private fun HeroArticleCard(
                 contentDescription = article.headline,
                 modifier = Modifier
                     .matchParentSize()
-                    .clip(RoundedCornerShape(24.dp))
+                    .clip(RoundedCornerShape(dimens.radius.xxl))
                     .graphicsLayer { alpha = 0.45f },
                 contentScale = ContentScale.Crop
             )
@@ -385,13 +385,13 @@ private fun HeroArticleCard(
             borderOpacity = if (isBreaking) 0.8f else 0.3f
         ) {
             Row(
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                horizontalArrangement = Arrangement.spacedBy(dimens.xs),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 if (isBreaking) {
                     Box(
                         modifier = Modifier
-                            .size(6.dp)
+                            .size(dimens.statusDotSmall)
                             .clip(CircleShape)
                             .background(colors.statusLive)
                     )
@@ -417,7 +417,7 @@ private fun HeroArticleCard(
                 text = (article.storyType.ifBlank { "NEWS" }).uppercase(),
                 style = typography.labelMedium.copy(
                     fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.2.sp
+                    letterSpacing = typography.labelMedium.letterSpacing
                 ),
                 color = colors.goldPrimary
             )
@@ -638,6 +638,7 @@ private fun CategoryTag(
 private fun LiveBadge(modifier: Modifier = Modifier) {
     val colors = BouncerDesignSystem.colors
     val typography = BouncerDesignSystem.typography
+    val statusDotSize = BouncerDesignSystem.dimens.statusDotSmall
 
     Box(
         modifier = modifier
@@ -648,7 +649,7 @@ private fun LiveBadge(modifier: Modifier = Modifier) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(
                 modifier = Modifier
-                    .size(6.dp)
+                    .size(statusDotSize)
                     .clip(RoundedCornerShape(3.dp))
                     .background(colors.statusLive)
             )

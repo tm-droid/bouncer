@@ -12,4 +12,5 @@
     android:description="@string/bouncer_glance_widget_description"
     android:previewImage="@drawable/ic_widget_preview"
     android:initialLayout="@layout/widget_glance_loading"
+    android:configure="com.tanush.bouncer.ui.widgets.WidgetConfigurationActivity"
     android:widgetFeatures="reconfigurable|configuration_optional" />

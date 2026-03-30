@@ -70,6 +70,27 @@
                 android:resource="@xml/bouncer_lock_widget_info" />
         </receiver>
 
+        <!-- Countdown Widget for next match -->
+        <receiver android:name=".ui.widgets.CountdownWidgetReceiver"
+                  android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider"
+                android:resource="@xml/countdown_widget_info" />
+        </receiver>
+
+        <!-- Widget Configuration Activity -->
+        <activity
+            android:name=".ui.widgets.WidgetConfigurationActivity"
+            android:exported="true"
+            android:theme="@style/Theme.Bouncer"
+            android:label="@string/widget_configuration_title">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
+            </intent-filter>
+        </activity>
+
         <receiver android:name=".utils.ReminderReceiver" android:exported="false" />
         
         <receiver android:name=".ui.widgets.WidgetUpdateReceiver" android:exported="false" />
@@ -101,6 +122,16 @@
 
     <!-- Enable Sentry Logs ingestion -->
     <meta-data android:name="io.sentry.logs.enabled" android:value="true" />
+    <!-- Enable Sentry Metrics API ingestion -->
+    <meta-data android:name="io.sentry.metrics.enabled" android:value="true" />
+    <!-- Capture request/response context where supported -->
+    <meta-data android:name="io.sentry.send-default-pii" android:value="true" />
+
+    <!-- Session Replay defaults (final rates are refined in SentryOptionsConfig) -->
+    <meta-data android:name="io.sentry.session-replay.on-error-sample-rate" android:value="1.0" />
+    <meta-data android:name="io.sentry.session-replay.session-sample-rate" android:value="0.1" />
+    <meta-data android:name="io.sentry.session-replay.mask-all-text" android:value="true" />
+    <meta-data android:name="io.sentry.session-replay.mask-all-images" android:value="true" />
 
     <!-- Custom options configuration class for beforeSend / event filtering -->
     <meta-data android:name="io.sentry.options-configuration"

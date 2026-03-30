@@ -207,6 +207,12 @@ data class BouncerDimensions(
     // Interactive Elements
     /** 48dp — Minimum touch target size */
     val minTouchTarget: Dp = 48.dp,
+    /** 52dp — Default primary/secondary button height */
+    val buttonHeight: Dp = 52.dp,
+    /** 48dp — Compact button height */
+    val buttonHeightCompact: Dp = 48.dp,
+    /** 20dp — Default horizontal content padding inside buttons */
+    val buttonHorizontalPadding: Dp = 20.dp,
     /** 36dp — Chip height */
     val chipHeight: Dp = 36.dp,
     /** 32dp — Compact chip height */

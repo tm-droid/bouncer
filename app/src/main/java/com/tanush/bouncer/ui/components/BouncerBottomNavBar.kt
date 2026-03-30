@@ -1,9 +1,13 @@
 package com.tanush.bouncer.ui.components
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -88,12 +92,14 @@ enum class NavItem(
  * - Active state with gold icon + animated label
  * - Smooth scale animations on selection
  * - Safe area handling for navigation bars
+ * - Pulsing live badge on Matches tab when live matches exist
  *
  * @param selectedItem Currently selected navigation item
  * @param onItemSelected Callback when a nav item is tapped
  * @param onCenterClick Callback when the center FAB is tapped
  * @param modifier Modifier for the container
  * @param bottomPadding Additional bottom padding (on top of nav bar safe area)
+ * @param hasLiveMatch Whether there are live matches (shows badge on Matches tab)
  */
 @Composable
 fun BouncerBottomNav(
@@ -101,14 +107,16 @@ fun BouncerBottomNav(
     onItemSelected: (NavItem) -> Unit,
     onCenterClick: () -> Unit,
     modifier: Modifier = Modifier,
-    bottomPadding: Dp = 16.dp
+    bottomPadding: Dp = BouncerDesignSystem.dimens.md,
+    hasLiveMatch: Boolean = false
 ) {
     val colors = BouncerDesignSystem.colors
+    val dimens = BouncerDesignSystem.dimens
 
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 24.dp)
+            .padding(horizontal = dimens.lg)
             .padding(bottom = bottomPadding)
             .navigationBarsPadding(),
         contentAlignment = Alignment.BottomCenter
@@ -134,8 +142,8 @@ fun BouncerBottomNav(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(64.dp)
-                    .padding(horizontal = 8.dp),
+                    .height(dimens.bottomNavHeight)
+                    .padding(horizontal = dimens.sm),
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -144,12 +152,13 @@ fun BouncerBottomNav(
                     NavBarItem(
                         item = item,
                         isSelected = selectedItem == item,
-                        onClick = { onItemSelected(item) }
+                        onClick = { onItemSelected(item) },
+                        hasLiveBadge = item == NavItem.MATCHES && hasLiveMatch
                     )
                 }
 
                 // Center FAB spacer
-                Spacer(modifier = Modifier.width(64.dp))
+                Spacer(modifier = Modifier.width(dimens.bottomNavHeight))
 
                 // Right side items: News, Settings
                 NavItem.entries.drop(3).forEach { item ->
@@ -168,7 +177,7 @@ fun BouncerBottomNav(
             onClick = onCenterClick,
             modifier = Modifier
                 .align(Alignment.TopCenter)
-                .offset(y = (-24).dp)
+                .offset(y = (-dimens.lg))
         )
     }
 }
@@ -181,7 +190,8 @@ private fun GlassNavBarContainer(
     content: @Composable () -> Unit
 ) {
     val colors = BouncerDesignSystem.colors
-    val shape = RoundedCornerShape(100.dp) // Full pill shape
+    val dimens = BouncerDesignSystem.dimens
+    val shape = RoundedCornerShape(dimens.radius.pill)
 
     // Gradient border from gold
     val borderBrush = Brush.linearGradient(
@@ -231,21 +241,23 @@ private fun GlassNavBarContainer(
 }
 
 /**
- * Individual navigation bar item with animated states.
+ * Individual navigation bar item with animated states and optional live badge.
  */
 @Composable
 private fun NavBarItem(
     item: NavItem,
     isSelected: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    hasLiveBadge: Boolean = false
 ) {
     val colors = BouncerDesignSystem.colors
+    val dimens = BouncerDesignSystem.dimens
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
     // Animate icon size on selection
     val iconSize by animateDpAsState(
-        targetValue = if (isSelected) 26.dp else 24.dp,
+        targetValue = if (isSelected) dimens.iconSize.xl else dimens.iconSize.lg,
         animationSpec = spring(stiffness = Spring.StiffnessMedium),
         label = "iconSize"
     )
@@ -265,7 +277,7 @@ private fun NavBarItem(
 
     Column(
         modifier = Modifier
-            .width(56.dp)
+            .width(dimens.fabSize)
             .scale(scale)
             .clickable(
                 interactionSource = interactionSource,
@@ -275,17 +287,17 @@ private fun NavBarItem(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        // Icon with glow effect when selected
+        // Icon with glow effect when selected + live badge
         Box(
             contentAlignment = Alignment.Center,
             modifier = Modifier
-                .size(40.dp)
+                .size(dimens.minTouchTarget)
                 .then(
                     if (isSelected) {
                         Modifier.drawBehind {
                             drawCircle(
                                 color = colors.goldPrimary.copy(alpha = 0.15f),
-                                radius = 20.dp.toPx()
+                                radius = (dimens.minTouchTarget / 2).toPx()
                             )
                         }
                     } else Modifier
@@ -297,6 +309,15 @@ private fun NavBarItem(
                 tint = iconColor,
                 modifier = Modifier.size(iconSize)
             )
+            
+            // Pulsing live badge indicator
+            if (hasLiveBadge) {
+                PulsingLiveDot(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .offset(x = 4.dp, y = (-2).dp)
+                )
+            }
         }
 
         // Animated label (only shown when selected)
@@ -311,13 +332,56 @@ private fun NavBarItem(
             Text(
                 text = label,
                 color = colors.goldPrimary,
-                fontSize = 10.sp,
+                style = BouncerDesignSystem.typography.labelSmall,
                 fontWeight = FontWeight.SemiBold,
                 textAlign = TextAlign.Center,
-                modifier = Modifier.padding(top = 2.dp)
+                modifier = Modifier.padding(top = dimens.xxs)
             )
         }
     }
+}
+
+/**
+ * Pulsing red dot indicator for live matches.
+ */
+@Composable
+private fun PulsingLiveDot(modifier: Modifier = Modifier) {
+    val dimens = BouncerDesignSystem.dimens
+    val infiniteTransition = rememberInfiniteTransition(label = "livePulse")
+    val pulseScale by infiniteTransition.animateFloat(
+        initialValue = 0.85f,
+        targetValue = 1.15f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(800),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "pulseScale"
+    )
+    val pulseAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.7f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(800),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "pulseAlpha"
+    )
+    
+    Box(
+        modifier = modifier
+            .size(dimens.liveDotSize)
+            .scale(pulseScale)
+            .graphicsLayer { alpha = pulseAlpha }
+            .background(
+                color = Color(0xFFFF3B30), // Live red
+                shape = CircleShape
+            )
+            .border(
+                width = 0.5.dp,
+                color = Color.White.copy(alpha = 0.5f),
+                shape = CircleShape
+            )
+    )
 }
 
 /**
@@ -329,6 +393,7 @@ private fun CenterFab(
     modifier: Modifier = Modifier
 ) {
     val colors = BouncerDesignSystem.colors
+    val dimens = BouncerDesignSystem.dimens
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
@@ -358,9 +423,9 @@ private fun CenterFab(
 
     Box(
         modifier = modifier
-            .size(56.dp)
+            .size(dimens.fabSize)
             .shadow(
-                elevation = 16.dp,
+                elevation = dimens.elevation.overlay,
                 shape = CircleShape,
                 spotColor = colors.goldPrimary.copy(alpha = 0.5f),
                 ambientColor = colors.goldPrimary.copy(alpha = 0.3f)
@@ -369,7 +434,7 @@ private fun CenterFab(
             .clip(CircleShape)
             .background(goldGradient)
             .border(
-                width = 2.dp,
+                width = dimens.focusBorderWidth,
                 color = Color.Black.copy(alpha = 0.3f),
                 shape = CircleShape
             )
@@ -403,7 +468,7 @@ private fun CenterFab(
             contentDescription = "Quick Action",
             tint = Color.Black,
             modifier = Modifier
-                .size(28.dp)
+                .size(dimens.iconSize.xl)
                 .graphicsLayer { rotationZ = rotation }
         )
     }
@@ -411,11 +476,17 @@ private fun CenterFab(
 
 /**
  * Simplified BouncerBottomNav that works with route strings.
+ * 
+ * @param currentRoute The current navigation route
+ * @param onNavigate Callback when navigation is requested
+ * @param hasLiveMatch Whether there are live matches (shows badge on Matches tab)
+ * @param modifier Modifier for the container
  */
 @Composable
 fun BouncerBottomNavBar(
     currentRoute: String?,
     onNavigate: (String) -> Unit,
+    hasLiveMatch: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val selectedItem = NavItem.entries.find { it.route == currentRoute } ?: NavItem.HOME
@@ -424,7 +495,8 @@ fun BouncerBottomNavBar(
         selectedItem = selectedItem,
         onItemSelected = { onNavigate(it.route) },
         onCenterClick = { onNavigate(NavItem.CENTER_ACTION.route) },
-        modifier = modifier
+        modifier = modifier,
+        hasLiveMatch = hasLiveMatch
     )
 }
 

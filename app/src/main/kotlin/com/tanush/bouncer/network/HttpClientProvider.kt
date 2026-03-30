@@ -3,6 +3,7 @@ package com.tanush.bouncer.network
 import android.util.Log
 import io.sentry.Breadcrumb
 import io.sentry.Sentry
+import io.sentry.SentryLogLevel
 import io.sentry.SentryLevel
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
@@ -58,6 +59,7 @@ object HttpClientProvider {
             setData("url", url)
             setData("method", method)
         })
+        Sentry.metrics().count("http.request", 1.0)
         
         var response: Response? = null
         try {
@@ -73,6 +75,20 @@ object HttpClientProvider {
                 setData("statusCode", response.code)
                 setData("durationMs", duration)
             })
+            Sentry.metrics().distribution("http.duration_ms", duration.toDouble())
+            Sentry.metrics().count(
+                "http.response",
+                1.0,
+                null
+            )
+            Sentry.logger().log(
+                if (response.isSuccessful) SentryLogLevel.INFO else SentryLogLevel.WARN,
+                "HTTP %s %s -> %d (%dms)",
+                method,
+                request.url.encodedPath,
+                response.code,
+                duration
+            )
             
             if (!response.isSuccessful) {
                 Log.w(TAG, "HTTP $method $url returned ${response.code} in ${duration}ms")
@@ -105,6 +121,8 @@ object HttpClientProvider {
                     setData("error", e.message ?: "Unknown error")
                     setData("errorType", e.javaClass.simpleName)
                 })
+                Sentry.metrics().count("http.failure", 1.0)
+                Sentry.logger().error("HTTP %s %s failed after %dms: %s", method, request.url.encodedPath, duration, e.message ?: "unknown")
                 Sentry.captureException(e)
             }
             throw e

@@ -88,7 +88,7 @@ Premium home screen and lock screen widgets have been successfully implemented f
 ✅ "LIVE" badge with red background  
 ✅ Win probability display  
 ✅ Match status text  
-✅ Tap to open MainActivity  
+✅ Tap to open BouncerActivity  
 ✅ Empty state ("No matches")  
 ✅ Auto-refresh via AlarmManager  
 ✅ Premium glass-morphism aesthetic  

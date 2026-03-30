@@ -39,6 +39,7 @@ import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 import com.tanush.bouncer.ui.theme.TeamPrimaryColors
 import com.tanush.bouncer.viewmodels.LiveActivityViewModel
 import kotlin.math.absoluteValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @Composable
 fun AnalystFeedScreen(
@@ -51,9 +52,9 @@ fun AnalystFeedScreen(
     val typography = BouncerDesignSystem.typography
     val dimens = BouncerDesignSystem.dimens
 
-    val matches by viewModel.currentMatches.collectAsState()
-    val isLoading by viewModel.isLoading.collectAsState()
-    val isRefreshing by viewModel.isRefreshing.collectAsState()
+    val matches by viewModel.currentMatches.collectAsStateWithLifecycle()
+    val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
+    val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
 
     var selectedFormat by remember { mutableStateOf("All") }
     val formats = listOf("All", "T20", "ODI", "Test")

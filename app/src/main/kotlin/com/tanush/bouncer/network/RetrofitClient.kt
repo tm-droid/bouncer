@@ -10,41 +10,34 @@ object RetrofitClient {
     // Local development API (Android emulator uses 10.0.2.2 to reach host localhost)
     private const val BASE_URL_LOCAL = "http://10.0.2.2:8000/"
 
-    val vercelApi: VercelApi by lazy {
-        Retrofit.Builder()
-            .baseUrl(BASE_URL_VERCEL)
+    // Share one Retrofit per backend to reduce initialization overhead.
+    private fun retrofit(baseUrl: String): Retrofit {
+        return Retrofit.Builder()
+            .baseUrl(baseUrl)
             .client(HttpClientProvider.sharedClient)
             .addConverterFactory(GsonConverterFactory.create())
             .build()
+    }
+
+    val vercelApi: VercelApi by lazy {
+        retrofit(BASE_URL_VERCEL)
             .create(VercelApi::class.java)
     }
 
     val rapidApi: RapidApi by lazy {
-        Retrofit.Builder()
-            .baseUrl(BASE_URL_RAPID)
-            .client(HttpClientProvider.sharedClient)
-            .addConverterFactory(GsonConverterFactory.create())
-            .build()
+        retrofit(BASE_URL_RAPID)
             .create(RapidApi::class.java)
     }
 
     // Local API client used for development and testing (mock server)
     val localApi: LocalApi by lazy {
-        Retrofit.Builder()
-            .baseUrl(BASE_URL_LOCAL)
-            .client(HttpClientProvider.sharedClient)
-            .addConverterFactory(GsonConverterFactory.create())
-            .build()
+        retrofit(BASE_URL_LOCAL)
             .create(LocalApi::class.java)
     }
 
     // Cricbuzz News API via RapidAPI
     val cricbuzzNewsApi: CricbuzzNewsApi by lazy {
-        Retrofit.Builder()
-            .baseUrl(BASE_URL_CRICBUZZ_RAPID)
-            .client(HttpClientProvider.sharedClient)
-            .addConverterFactory(GsonConverterFactory.create())
-            .build()
+        retrofit(BASE_URL_CRICBUZZ_RAPID)
             .create(CricbuzzNewsApi::class.java)
     }
 }
@@ -69,4 +62,3 @@ data class ProbabilityPointDto(
 data class CommentaryDto(
     val latestCommentary: String
 )
-

@@ -51,6 +51,8 @@ fun PrimaryElevatedButton(
     loading: Boolean = false
 ) {
     val colors = BouncerDesignSystem.colors
+    val dimens = BouncerDesignSystem.dimens
+    val typography = BouncerDesignSystem.typography
     val haptic = rememberHapticFeedback()
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
@@ -81,14 +83,14 @@ fun PrimaryElevatedButton(
             }
         },
         modifier = modifier
-            .height(56.dp)
+            .height(dimens.buttonHeight)
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
             }
             .shadow(
                 elevation = elevation.dp,
-                shape = RoundedCornerShape(16.dp),
+                shape = RoundedCornerShape(dimens.radius.lg),
                 spotColor = colors.goldPrimary.copy(alpha = 0.4f),
                 ambientColor = colors.goldPrimary.copy(alpha = 0.15f)
             )
@@ -96,7 +98,7 @@ fun PrimaryElevatedButton(
                 contentDescription = text
             },
         enabled = enabled && !loading,
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(dimens.radius.lg),
         colors = ButtonDefaults.buttonColors(
             containerColor = colors.goldPrimary,
             contentColor = colors.backgroundBase,
@@ -109,7 +111,7 @@ fun PrimaryElevatedButton(
             disabledElevation = 0.dp
         ),
         interactionSource = interactionSource,
-        contentPadding = PaddingValues(horizontal = 24.dp)
+        contentPadding = PaddingValues(horizontal = dimens.buttonHorizontalPadding)
     ) {
         if (loading) {
             CircularProgressIndicator(
@@ -128,9 +130,8 @@ fun PrimaryElevatedButton(
             }
             Text(
                 text = text,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 0.5.sp
+                style = typography.button,
+                fontWeight = FontWeight.Bold
             )
         }
     }
@@ -148,6 +149,8 @@ fun OutlinedMaterialButton(
     enabled: Boolean = true
 ) {
     val colors = BouncerDesignSystem.colors
+    val dimens = BouncerDesignSystem.dimens
+    val typography = BouncerDesignSystem.typography
     val haptic = rememberHapticFeedback()
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
@@ -167,7 +170,7 @@ fun OutlinedMaterialButton(
             onClick()
         },
         modifier = modifier
-            .height(56.dp)
+            .height(dimens.buttonHeight)
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
@@ -176,7 +179,7 @@ fun OutlinedMaterialButton(
                 contentDescription = text
             },
         enabled = enabled,
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(dimens.radius.lg),
         colors = ButtonDefaults.outlinedButtonColors(
             containerColor = Color.Transparent,
             contentColor = colors.goldPrimary,
@@ -197,7 +200,7 @@ fun OutlinedMaterialButton(
             )
         ),
         interactionSource = interactionSource,
-        contentPadding = PaddingValues(horizontal = 24.dp)
+        contentPadding = PaddingValues(horizontal = dimens.buttonHorizontalPadding)
     ) {
         if (icon != null) {
             Icon(
@@ -209,9 +212,8 @@ fun OutlinedMaterialButton(
         }
         Text(
             text = text,
-            fontSize = 16.sp,
-            fontWeight = FontWeight.SemiBold,
-            letterSpacing = 0.5.sp
+            style = typography.button,
+            fontWeight = FontWeight.SemiBold
         )
     }
 }
@@ -228,6 +230,8 @@ fun GlassMorphicButton(
     tint: Color = GoldPrimary
 ) {
     val colors = BouncerDesignSystem.colors
+    val dimens = BouncerDesignSystem.dimens
+    val typography = BouncerDesignSystem.typography
     val haptic = rememberHapticFeedback()
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
@@ -243,18 +247,18 @@ fun GlassMorphicButton(
     
     Box(
         modifier = modifier
-            .height(56.dp)
+            .height(dimens.buttonHeight)
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
             }
             .shadow(
                 elevation = if (isPressed) 4.dp else 8.dp,
-                shape = RoundedCornerShape(18.dp),
+                shape = RoundedCornerShape(dimens.radius.xl),
                 spotColor = tint.copy(alpha = 0.3f),
                 ambientColor = tint.copy(alpha = 0.1f)
             )
-            .clip(RoundedCornerShape(18.dp))
+            .clip(RoundedCornerShape(dimens.radius.xl))
             .background(
                 Brush.linearGradient(
                     colors = listOf(
@@ -271,7 +275,7 @@ fun GlassMorphicButton(
                         GlassSurface
                     )
                 ),
-                shape = RoundedCornerShape(18.dp)
+                shape = RoundedCornerShape(dimens.radius.xl)
             )
             .clickable(
                 interactionSource = interactionSource,
@@ -286,7 +290,7 @@ fun GlassMorphicButton(
             .semantics {
                 contentDescription = text
             }
-            .padding(horizontal = 24.dp),
+            .padding(horizontal = dimens.buttonHorizontalPadding),
         contentAlignment = Alignment.Center
     ) {
         Row(
@@ -304,10 +308,9 @@ fun GlassMorphicButton(
             }
             Text(
                 text = text,
-                fontSize = 16.sp,
+                style = typography.button,
                 fontWeight = FontWeight.SemiBold,
                 color = colors.textPrimary,
-                letterSpacing = 0.5.sp
             )
         }
     }
@@ -326,6 +329,7 @@ fun EnhancedFAB(
     contentColor: Color = BackgroundBase,
     elevation: Dp = 12.dp
 ) {
+    val dimens = BouncerDesignSystem.dimens
     val haptic = rememberHapticFeedback()
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
@@ -354,7 +358,7 @@ fun EnhancedFAB(
             onClick()
         },
         modifier = modifier
-            .size(56.dp)
+            .size(dimens.fabSize)
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale

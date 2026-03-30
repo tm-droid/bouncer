@@ -3,13 +3,19 @@ package com.tanush.bouncer.ui.updates
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
+import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
+import android.util.Log
 import androidx.core.content.edit
 import com.tanush.bouncer.BuildConfig
 import com.tanush.bouncer.R
 import com.google.android.gms.tasks.Task
 import com.google.android.play.core.appupdate.AppUpdateManagerFactory
 import com.google.android.play.core.install.model.UpdateAvailability
+import io.sentry.Breadcrumb
+import io.sentry.Sentry
+import io.sentry.SentryLevel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -51,6 +57,29 @@ data class UpdateInfo(
 
 class AppUpdateManager(private val context: Context) {
 
+    companion object {
+        private const val TAG = "AppUpdateManager"
+        private const val PREF_FILE = "app_update_prefs"
+        private const val KEY_STATE = "state"
+        private const val KEY_PROGRESS = "progress"
+        private const val KEY_AVAILABLE_VERSION = "available_version"
+        private const val KEY_READY_VERSION = "ready_version"
+        private const val KEY_LAST_DISMISSED_VERSION = "last_dismissed_version"
+        private const val KEY_LAST_DISMISS_TIME = "last_dismiss_time"
+        private const val KEY_LAST_CHECK_TIME = "last_check_time"
+        private const val KEY_ALLOW_METERED = "allow_metered"
+        private const val KEY_INSTALLED_VERSION = "installed_version"
+
+        private const val REPROMPT_DAYS = 2L
+        private const val DAY_IN_MILLIS = 24 * 60 * 60 * 1000L
+
+        // Play Store package names for sideload detection
+        private val PLAY_STORE_INSTALLERS = setOf(
+            "com.android.vending",
+            "com.google.android.feedback"
+        )
+    }
+
     private val prefs: SharedPreferences =
         context.getSharedPreferences(PREF_FILE, Context.MODE_PRIVATE)
 
@@ -66,13 +95,66 @@ class AppUpdateManager(private val context: Context) {
         restorePersistedState()
     }
 
+    /**
+     * Checks if the app was sideloaded (not installed from Play Store).
+     * Returns true if sideloaded or unable to determine install source.
+     */
+    private fun isSideloaded(): Boolean {
+        return try {
+            val packageName = context.packageName
+            val installerPackage = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                context.packageManager
+                    .getInstallSourceInfo(packageName)
+                    .installingPackageName
+            } else {
+                @Suppress("DEPRECATION")
+                context.packageManager.getInstallerPackageName(packageName)
+            }
+            
+            val isSideloaded = installerPackage == null || installerPackage !in PLAY_STORE_INSTALLERS
+            if (isSideloaded) {
+                Log.d(TAG, "App is sideloaded (installer: $installerPackage)")
+            }
+            isSideloaded
+        } catch (e: Exception) {
+            Log.w(TAG, "Unable to determine install source, assuming sideloaded", e)
+            true
+        }
+    }
+
     suspend fun checkForUpdates(forcePrompt: Boolean = false, silent: Boolean = false): UpdateInfo? {
+        // Skip update checks on sideloaded apps - Play Store APIs don't work
+        if (isSideloaded()) {
+            Log.d(TAG, "Skipping update check - app is sideloaded")
+            Sentry.addBreadcrumb(Breadcrumb().apply {
+                category = "app.update"
+                message = "Skipped update check (sideloaded app)"
+                level = SentryLevel.INFO
+            })
+            _uiState.value = AppUpdateUiState.Idle
+            return null
+        }
+
         if (!silent) {
             _uiState.value = AppUpdateUiState.CheckingForUpdates
             delay(450)
         }
 
-        val availableUpdate = fetchAvailableUpdateInfo() ?: run {
+        val availableUpdate = try {
+            fetchAvailableUpdateInfo()
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to check for updates", e)
+            Sentry.addBreadcrumb(Breadcrumb().apply {
+                category = "app.update"
+                message = "Update check failed: ${e.javaClass.simpleName}"
+                level = SentryLevel.WARNING
+                setData("error", e.message ?: "unknown")
+            })
+            // Don't crash - just treat as no update available
+            null
+        }
+        
+        if (availableUpdate == null) {
             _uiState.value = AppUpdateUiState.Idle
             _showUpdateBadge.value = false
             saveState(StateValue.IDLE)
@@ -382,22 +464,6 @@ class AppUpdateManager(private val context: Context) {
         AVAILABLE,
         DOWNLOADING,
         READY
-    }
-
-    companion object {
-        private const val PREF_FILE = "app_update_prefs"
-        private const val KEY_STATE = "state"
-        private const val KEY_PROGRESS = "progress"
-        private const val KEY_AVAILABLE_VERSION = "available_version"
-        private const val KEY_READY_VERSION = "ready_version"
-        private const val KEY_LAST_DISMISSED_VERSION = "last_dismissed_version"
-        private const val KEY_LAST_DISMISS_TIME = "last_dismiss_time"
-        private const val KEY_LAST_CHECK_TIME = "last_check_time"
-        private const val KEY_ALLOW_METERED = "allow_metered"
-        private const val KEY_INSTALLED_VERSION = "installed_version"
-
-        private const val REPROMPT_DAYS = 2L
-        private const val DAY_IN_MILLIS = 24 * 60 * 60 * 1000L
     }
 }
 

@@ -1,6 +1,8 @@
 package com.tanush.bouncer
 
 import android.Manifest
+import android.content.Context
+import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -8,17 +10,23 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -39,12 +47,18 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -52,6 +66,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.core.view.WindowCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -68,6 +83,7 @@ import com.tanush.bouncer.liveactivity.LiveActivityNotificationBuilder
 import com.tanush.bouncer.managers.FavouriteTeamsManager
 import com.tanush.bouncer.ui.components.AppUpdateDialog
 import com.tanush.bouncer.ui.components.BouncerBottomNavBar
+import com.tanush.bouncer.ui.components.InAppBanner
 import com.tanush.bouncer.ui.screens.AnalystFeedScreen
 import com.tanush.bouncer.ui.screens.BouncerFavouritesScreen
 import com.tanush.bouncer.ui.screens.BouncerHomeScreen
@@ -75,7 +91,11 @@ import com.tanush.bouncer.ui.screens.BouncerMatchDetailScreen
 import com.tanush.bouncer.ui.screens.BouncerSettingsScreen
 import com.tanush.bouncer.ui.screens.NewsScreen
 import com.tanush.bouncer.ui.screens.NewsDetailScreen
+import com.tanush.bouncer.ui.screens.OnboardingScreen
+import com.tanush.bouncer.ui.screens.SplashScreen
+import com.tanush.bouncer.ui.theme.BgBase
 import com.tanush.bouncer.ui.theme.BouncerTheme
+import com.tanush.bouncer.ui.theme.Gold400
 import com.tanush.bouncer.ui.updates.AppUpdateManager
 import com.tanush.bouncer.ui.updates.AppUpdateUiState
 import com.tanush.bouncer.ui.updates.UpdateCheckService
@@ -90,6 +110,7 @@ import com.tanush.bouncer.ui.screens.StatsOverviewScreen
 import com.tanush.bouncer.ui.screens.TrophyRoomScreen
 import com.tanush.bouncer.services.LiveNotificationManager
 import io.sentry.Sentry
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
@@ -114,6 +135,7 @@ class BouncerActivity : ComponentActivity() {
 
         // Enable edge-to-edge display
         enableEdgeToEdge()
+        WindowCompat.setDecorFitsSystemWindows(window, false)
 
         // Initialize singleton managers
         FavouriteTeamsManager.initialize(this)
@@ -121,9 +143,16 @@ class BouncerActivity : ComponentActivity() {
         LiveActivityNotificationBuilder(applicationContext).createNotificationChannel()
         requestNotificationPermissionIfNeeded()
 
+        // Check onboarding status
+        val prefs = getSharedPreferences("bouncer_prefs", Context.MODE_PRIVATE)
+        val hasCompletedOnboarding = prefs.getBoolean("onboarding_complete", false)
+
         setContent {
             BouncerTheme {
-                BouncerAppRoot()
+                BouncerAppRoot(
+                    hasCompletedOnboarding = hasCompletedOnboarding,
+                    prefs = prefs
+                )
             }
         }
     }
@@ -153,6 +182,8 @@ class BouncerActivity : ComponentActivity() {
 // ──────────────────────────────────────────────────────────────────────────────
 
 private object Routes {
+    const val SPLASH = "splash"
+    const val ONBOARDING = "onboarding"
     const val HOME = "home"
     const val MATCHES = "matches"
     const val QUICK_ACTION = "quick_action"
@@ -181,45 +212,138 @@ private object Routes {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun BouncerAppRoot() {
+fun BouncerAppRoot(
+    hasCompletedOnboarding: Boolean = true,
+    prefs: SharedPreferences? = null
+) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val navController = rememberNavController()
     val viewModel: LiveActivityViewModel = viewModel()
     val newsViewModel: NewsViewModel = viewModel()
     val coroutineScope = rememberCoroutineScope()
     val appUpdateManager = remember(context) { AppUpdateManager(context.applicationContext) }
+    val liveNotificationManager = remember(context) { LiveNotificationManager(context.applicationContext) }
     val updateState by appUpdateManager.uiState.collectAsStateWithLifecycle()
     val showUpdateBadge by appUpdateManager.showUpdateBadge.collectAsStateWithLifecycle()
+    
+    // In-app banner for key events
+    val keyEvent by viewModel.keyEvent.collectAsStateWithLifecycle()
+    var bannerMessageLocal by remember { mutableStateOf<String?>(null) }
+    
+    // Derive live matches state for nav badge
+    val currentMatches by viewModel.currentMatches.collectAsStateWithLifecycle()
+    val hasLiveMatches = remember(currentMatches) {
+        currentMatches.any { it.isLive }
+    }
+    
+    // Determine start destination: splash -> onboarding (if first time) -> home
+    val startDestination = if (!hasCompletedOnboarding) Routes.SPLASH else Routes.HOME
 
     LaunchedEffect(Unit) {
         UpdateCheckService.schedule(
             context = context.applicationContext,
             allowMetered = appUpdateManager.shouldAllowMeteredChecks()
         )
-        appUpdateManager.checkForUpdates()
+        // Defensive try-catch for update check - prevents crashes on sideloaded/emulator builds
+        try {
+            appUpdateManager.checkForUpdates()
+        } catch (e: Exception) {
+            Sentry.addBreadcrumb(
+                io.sentry.Breadcrumb().apply {
+                    category = "app.update"
+                    message = "Update check failed at callsite: ${e.javaClass.simpleName}"
+                    level = io.sentry.SentryLevel.WARNING
+                }
+            )
+            // Silently ignore - update checks are non-critical
+        }
         // Wire LiveNotificationManager for enriched notifications
-        viewModel.setNotificationManager(
-            LiveNotificationManager(context.applicationContext)
-        )
+        viewModel.setNotificationManager(liveNotificationManager)
+    }
+
+    LaunchedEffect(keyEvent) {
+        keyEvent?.let { (title, body) ->
+            bannerMessageLocal = "$title — ${body.take(100)}"
+            viewModel.clearKeyEvent()
+        }
+    }
+
+    LaunchedEffect(bannerMessageLocal) {
+        if (bannerMessageLocal != null) {
+            delay(5000)
+            bannerMessageLocal = null
+        }
     }
 
     // Track current route for bottom nav visibility
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
-    // Routes where the bottom navigation bar should be visible
-    val bottomNavRoutes = listOf(
-        Routes.HOME,
-        Routes.MATCHES,
-        Routes.QUICK_ACTION,
-        Routes.NEWS,
-        Routes.SETTINGS,
-        Routes.FAVOURITES
-    )
+    // Routes where the bottom navigation bar should be visible (not on splash/onboarding)
+    val bottomNavRoutes = remember {
+        setOf(
+            Routes.HOME,
+            Routes.MATCHES,
+            Routes.QUICK_ACTION,
+            Routes.NEWS,
+            Routes.SETTINGS,
+            Routes.FAVOURITES,
+            Routes.ACHIEVEMENTS,
+            Routes.ACTIVITY,
+            Routes.MORE,
+            Routes.ABOUT
+        )
+    }
     val showBottomNav = currentRoute in bottomNavRoutes
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    // Premium background with subtle grid pattern
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(BgBase)
+            .drawWithCache {
+                // Subtle grid pattern — cached to avoid recalculating every frame
+                val gridSpacing = 60.dp.toPx()
+                val gridColor = Color.White.copy(alpha = 0.005f)
+                val xCount = (size.width / gridSpacing).toInt()
+                val yCount = (size.height / gridSpacing).toInt()
+                onDrawBehind {
+                    for (x in 0..xCount) {
+                        drawLine(
+                            color = gridColor,
+                            start = Offset(x * gridSpacing, 0f),
+                            end = Offset(x * gridSpacing, size.height),
+                            strokeWidth = 1f
+                        )
+                    }
+                    for (y in 0..yCount) {
+                        drawLine(
+                            color = gridColor,
+                            start = Offset(0f, y * gridSpacing),
+                            end = Offset(size.width, y * gridSpacing),
+                            strokeWidth = 1f
+                        )
+                    }
+                }
+            }
+    ) {
+        // Subtle atmospheric top-ambient glow — very restrained
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(350.dp)
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            Gold400.copy(alpha = 0.015f),
+                            Color.Transparent
+                        )
+                    )
+                )
+        )
+        
         Scaffold(
+            containerColor = Color.Transparent,
             bottomBar = {
                 AnimatedVisibility(
                     visible = showBottomNav,
@@ -238,21 +362,74 @@ fun BouncerAppRoot() {
                                 launchSingleTop = true
                                 restoreState = true
                             }
-                        }
+                        },
+                        hasLiveMatch = hasLiveMatches
                     )
                 }
             }
         ) { innerPadding ->
             NavHost(
                 navController = navController,
-                startDestination = Routes.HOME,
+                startDestination = startDestination,
                 modifier = Modifier.padding(innerPadding)
             ) {
+            // ── Splash Screen ────────────────────────────────────────────────
+            composable(
+                route = Routes.SPLASH,
+                enterTransition = { fadeIn(tween(400)) },
+                exitTransition = { fadeOut(tween(300)) }
+            ) {
+                SplashScreen(
+                    onSplashComplete = {
+                        val destination = if (!hasCompletedOnboarding) Routes.ONBOARDING else Routes.HOME
+                        navController.navigate(destination) {
+                            popUpTo(Routes.SPLASH) { inclusive = true }
+                        }
+                    }
+                )
+            }
+            
+            // ── Onboarding ───────────────────────────────────────────────────
+            composable(
+                route = Routes.ONBOARDING,
+                enterTransition = { 
+                    fadeIn(tween(400)) + slideInVertically(
+                        initialOffsetY = { it / 6 },
+                        animationSpec = tween(400, easing = FastOutSlowInEasing)
+                    )
+                },
+                exitTransition = { 
+                    fadeOut(tween(300)) + slideOutVertically(
+                        targetOffsetY = { -it / 6 },
+                        animationSpec = tween(300, easing = FastOutSlowInEasing)
+                    )
+                }
+            ) {
+                OnboardingScreen(
+                    onComplete = {
+                        prefs?.edit()?.putBoolean("onboarding_complete", true)?.apply()
+                        navController.navigate(Routes.HOME) {
+                            popUpTo(Routes.ONBOARDING) { inclusive = true }
+                        }
+                    }
+                )
+            }
+            
             // ── Home ─────────────────────────────────────────────────────
             composable(
                 route = Routes.HOME,
-                enterTransition = { fadeIn(animationSpec = tween(300)) },
-                exitTransition = { fadeOut(animationSpec = tween(300)) }
+                enterTransition = { 
+                    fadeIn(tween(400)) + slideInHorizontally(
+                        initialOffsetX = { -it / 8 },
+                        animationSpec = tween(400, easing = FastOutSlowInEasing)
+                    )
+                },
+                exitTransition = { 
+                    fadeOut(tween(300)) + slideOutHorizontally(
+                        targetOffsetX = { -it / 8 },
+                        animationSpec = tween(300, easing = FastOutSlowInEasing)
+                    )
+                }
             ) {
                 BouncerHomeScreen(
                     viewModel = viewModel,
@@ -262,7 +439,11 @@ fun BouncerAppRoot() {
                     showUpdateBadge = showUpdateBadge,
                     onUpdateBadgeClick = {
                         coroutineScope.launch {
-                            appUpdateManager.checkForUpdates(forcePrompt = true)
+                            try {
+                                appUpdateManager.checkForUpdates(forcePrompt = true)
+                            } catch (_: Exception) {
+                                // Silently ignore - update checks are non-critical
+                            }
                         }
                     }
                 )
@@ -271,8 +452,18 @@ fun BouncerAppRoot() {
             // ── All Matches (Analyst Feed) ───────────────────────────────────
             composable(
                 route = Routes.MATCHES,
-                enterTransition = { fadeIn(animationSpec = tween(300)) },
-                exitTransition = { fadeOut(animationSpec = tween(300)) }
+                enterTransition = { 
+                    fadeIn(tween(400)) + slideInHorizontally(
+                        initialOffsetX = { it / 8 },
+                        animationSpec = tween(400, easing = FastOutSlowInEasing)
+                    )
+                },
+                exitTransition = { 
+                    fadeOut(tween(300)) + slideOutHorizontally(
+                        targetOffsetX = { it / 8 },
+                        animationSpec = tween(300, easing = FastOutSlowInEasing)
+                    )
+                }
             ) {
                 AnalystFeedScreen(
                     viewModel = viewModel,
@@ -530,8 +721,23 @@ fun BouncerAppRoot() {
                     appUpdateManager.dismissUpdate()
                 },
                 onRetry = {
-                    coroutineScope.launch { appUpdateManager.checkForUpdates(forcePrompt = true) }
+                    coroutineScope.launch {
+                        try {
+                            appUpdateManager.checkForUpdates(forcePrompt = true)
+                        } catch (_: Exception) {
+                            // Silently ignore - update checks are non-critical
+                        }
+                    }
                 }
+            )
+        }
+        
+        bannerMessageLocal?.let { msg ->
+            InAppBanner(
+                message = msg,
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 56.dp) // Adjusted for status bar
             )
         }
     }

@@ -131,8 +131,8 @@ fun BouncerChipRow(
 private fun BouncerFilterChipPreview() {
     BouncerTheme(dynamicColor = false) {
         Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.padding(16.dp)
+            horizontalArrangement = Arrangement.spacedBy(BouncerDesignSystem.dimens.sm),
+            modifier = Modifier.padding(BouncerDesignSystem.dimens.md)
         ) {
             BouncerFilterChip(label = "All", selected = true, onClick = {})
             BouncerFilterChip(label = "Live", selected = false, onClick = {})
@@ -149,7 +149,7 @@ private fun BouncerChipRowPreview() {
             items = listOf("All", "Live", "T20I", "ODI", "Test", "Women", "Domestic"),
             selectedItem = "Live",
             onItemSelected = {},
-            modifier = Modifier.padding(16.dp)
+            modifier = Modifier.padding(BouncerDesignSystem.dimens.md)
         )
     }
 }

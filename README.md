@@ -112,7 +112,7 @@
 ```
 android/
 ├── app/src/main/kotlin/com/tanush/bouncer/
-│   ├── MainActivity.kt          # Entry point — nav graph, edge-to-edge, onboarding
+│   ├── BouncerActivity.kt       # Entry point — nav graph, edge-to-edge, onboarding
 │   ├── analysis/                # Win probability, pitch analysis, team analysis
 │   ├── data/                    # CricketRepository, TeamDirectory
 │   ├── network/                 # Retrofit, Jsoup scrapers, RapidAPI, Vercel, Cricsheet

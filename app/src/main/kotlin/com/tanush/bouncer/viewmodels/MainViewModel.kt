@@ -8,6 +8,7 @@ import com.tanush.bouncer.network.CricBuzzScraper
 import com.tanush.bouncer.network.CricBuzzUrls
 import io.sentry.Breadcrumb
 import io.sentry.Sentry
+import io.sentry.SentryLogLevel
 import io.sentry.SentryLevel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -103,6 +104,9 @@ class MainViewModel : ViewModel() {
                 } else {
                     MatchLoadState.Success
                 }
+                Sentry.metrics().gauge("matches.loaded", matches.size.toDouble())
+                Sentry.metrics().count("matches.fetch.success", 1.0)
+                Sentry.logger().log(SentryLogLevel.INFO, "MainViewModel fetched %s matches for %s", matches.size.toString(), status)
                 Log.d(TAG, "Fetched ${matches.size} matches for $status")
             } catch (e: CancellationException) {
                 throw e
@@ -114,6 +118,7 @@ class MainViewModel : ViewModel() {
                     level = SentryLevel.ERROR
                 })
                 Sentry.captureException(e)
+                Sentry.metrics().count("matches.fetch.error.unknown_host", 1.0)
                 _loadState.value = MatchLoadState.Error(
                     message = "No internet connection. Check your network and try again.",
                     isRetryable = true
@@ -126,6 +131,7 @@ class MainViewModel : ViewModel() {
                     level = SentryLevel.ERROR
                 })
                 Sentry.captureException(e)
+                Sentry.metrics().count("matches.fetch.error.timeout", 1.0)
                 _loadState.value = MatchLoadState.Error(
                     message = "Request timed out. Try again.",
                     isRetryable = true
@@ -140,6 +146,8 @@ class MainViewModel : ViewModel() {
                     setData("error_type", e.javaClass.simpleName)
                 })
                 Sentry.captureException(e)
+                Sentry.metrics().count("matches.fetch.error.general", 1.0)
+                Sentry.logger().error("MainViewModel fetch failed for %s: %s", status, e.message ?: "unknown")
                 _loadState.value = MatchLoadState.Error(
                     message = "Failed to load matches: ${e.localizedMessage ?: "Unknown error"}",
                     isRetryable = true

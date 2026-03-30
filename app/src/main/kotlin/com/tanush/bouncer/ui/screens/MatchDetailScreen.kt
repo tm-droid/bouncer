@@ -77,7 +77,7 @@ fun MatchDetailScreen(matchId: String) {
                 style = typography.headingLarge,
                 fontWeight = FontWeight.Black,
                 color = colors.textPrimary,
-                letterSpacing = 2.sp,
+                letterSpacing = typography.labelLarge.letterSpacing,
                 modifier = Modifier.staggeredFadeIn(0)
             )
             
@@ -86,9 +86,9 @@ fun MatchDetailScreen(matchId: String) {
                 color = colors.goldPrimary,
                 style = typography.labelMedium,
                 fontWeight = FontWeight.Bold,
-                letterSpacing = 1.sp,
+                letterSpacing = typography.labelMedium.letterSpacing,
                 modifier = Modifier
-                    .padding(top = 4.dp)
+                    .padding(top = dimens.xs)
                     .staggeredFadeIn(1)
             )
             
@@ -150,7 +150,7 @@ fun MatchDetailScreen(matchId: String) {
         }
 
         bannerMessage?.let { msg ->
-            InAppBanner(message = msg, modifier = Modifier.padding(top = 8.dp))
+            InAppBanner(message = msg, modifier = Modifier.padding(top = dimens.sm))
         }
     }
 }

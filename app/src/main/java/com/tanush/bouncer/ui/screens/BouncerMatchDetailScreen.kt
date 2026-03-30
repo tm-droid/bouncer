@@ -70,7 +70,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.res.stringResource
 import com.tanush.bouncer.R
 import com.tanush.bouncer.models.CricketMatch
@@ -110,15 +110,6 @@ import kotlinx.coroutines.launch
 
 private enum class DetailTab { LIVE, SCORECARD, LINEUPS, OVERS, INFO }
 
-@Composable
-private fun getTabSegmentItems() = listOf(
-    SegmentItem(stringResource(R.string.tab_live))      { tint -> Icon(Icons.Outlined.LiveTv, null, Modifier.size(14.dp), tint) },
-    SegmentItem(stringResource(R.string.tab_scorecard)) { tint -> Icon(Icons.AutoMirrored.Outlined.Assignment, null, Modifier.size(14.dp), tint) },
-    SegmentItem(stringResource(R.string.tab_lineups))  { tint -> Icon(Icons.Outlined.Groups, null, Modifier.size(14.dp), tint) },
-    SegmentItem(stringResource(R.string.tab_overs))    { tint -> Icon(Icons.Outlined.SportsCricket, null, Modifier.size(14.dp), tint) },
-    SegmentItem(stringResource(R.string.tab_info))     { tint -> Icon(Icons.Outlined.Info, null, Modifier.size(14.dp), tint) }
-)
-
 // ─────────────────────────────────────────────────────────────────────────────
 //  Main Screen
 // ─────────────────────────────────────────────────────────────────────────────
@@ -135,7 +126,7 @@ fun BouncerMatchDetailScreen(
     val colors = BouncerDesignSystem.colors
     val dimens = BouncerDesignSystem.dimens
 
-    val matches by viewModel.currentMatches.collectAsState()
+    val matches by viewModel.currentMatches.collectAsStateWithLifecycle()
     val match = remember(matches, matchId) { matches.find { it.id == matchId } }
 
     // ── State ──────────────────────────────────────────────────────────────
@@ -150,11 +141,32 @@ fun BouncerMatchDetailScreen(
 
     val scraper = remember { CricBuzzScraper() }
     val pagerState = rememberPagerState(pageCount = { DetailTab.entries.size })
-    val tabSegmentItems = getTabSegmentItems()
+    val liveTabLabel = stringResource(R.string.tab_live)
+    val scorecardTabLabel = stringResource(R.string.tab_scorecard)
+    val lineupsTabLabel = stringResource(R.string.tab_lineups)
+    val oversTabLabel = stringResource(R.string.tab_overs)
+    val infoTabLabel = stringResource(R.string.tab_info)
+    val tabSegmentItems = remember(
+        liveTabLabel,
+        scorecardTabLabel,
+        lineupsTabLabel,
+        oversTabLabel,
+        infoTabLabel
+    ) {
+        listOf(
+            SegmentItem(liveTabLabel) { tint -> Icon(Icons.Outlined.LiveTv, null, Modifier.size(14.dp), tint) },
+            SegmentItem(scorecardTabLabel) { tint -> Icon(Icons.AutoMirrored.Outlined.Assignment, null, Modifier.size(14.dp), tint) },
+            SegmentItem(lineupsTabLabel) { tint -> Icon(Icons.Outlined.Groups, null, Modifier.size(14.dp), tint) },
+            SegmentItem(oversTabLabel) { tint -> Icon(Icons.Outlined.SportsCricket, null, Modifier.size(14.dp), tint) },
+            SegmentItem(infoTabLabel) { tint -> Icon(Icons.Outlined.Info, null, Modifier.size(14.dp), tint) }
+        )
+    }
 
     // Sync pager <-> segment control
     LaunchedEffect(selectedTabIndex) {
-        pagerState.animateScrollToPage(selectedTabIndex)
+        if (pagerState.currentPage != selectedTabIndex) {
+            pagerState.animateScrollToPage(selectedTabIndex)
+        }
     }
     LaunchedEffect(pagerState.currentPage) {
         selectedTabIndex = pagerState.currentPage

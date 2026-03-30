@@ -7,6 +7,7 @@ import com.tanush.bouncer.models.NewsArticleData
 import com.tanush.bouncer.network.RetrofitClient
 import io.sentry.Breadcrumb
 import io.sentry.Sentry
+import io.sentry.SentryLogLevel
 import io.sentry.SentryLevel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -95,6 +96,9 @@ class NewsViewModel : ViewModel() {
 
                 _articles.value = stories
                 lastFetchTime = System.currentTimeMillis()
+                Sentry.metrics().gauge("news.articles.count", stories.size.toDouble())
+                Sentry.metrics().count("news.fetch.success", 1.0)
+                Sentry.logger().log(SentryLogLevel.INFO, "News fetch success: %s articles", stories.size.toString())
                 Log.d(TAG, "Fetched ${stories.size} news articles")
             } catch (e: CancellationException) {
                 throw e
@@ -107,6 +111,7 @@ class NewsViewModel : ViewModel() {
                     setData("error_type", e.javaClass.simpleName)
                 })
                 Sentry.captureException(e)
+                Sentry.metrics().count("news.fetch.error", 1.0)
                 _error.value = e.localizedMessage ?: "Failed to load news"
             } finally {
                 _isLoading.value = false
@@ -213,6 +218,7 @@ class NewsViewModel : ViewModel() {
                     }
                 }
                 _articleBody.value = paragraphs
+                Sentry.metrics().distribution("news.article.paragraphs", paragraphs.size.toDouble())
                 Log.d(TAG, "Scraped ${paragraphs.size} paragraphs for article")
             } catch (e: CancellationException) {
                 throw e
@@ -226,6 +232,8 @@ class NewsViewModel : ViewModel() {
                     setData("error_type", e.javaClass.simpleName)
                 })
                 Sentry.captureException(e)
+                Sentry.metrics().count("news.article.scrape.error", 1.0)
+                Sentry.logger().error("Article scrape failed: %s", e.message ?: "unknown")
                 _articleBody.value = listOf("Failed to load article. Please check your connection and try again.")
             } finally {
                 _isLoadingArticle.value = false

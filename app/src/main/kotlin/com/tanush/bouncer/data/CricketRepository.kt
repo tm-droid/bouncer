@@ -6,6 +6,7 @@ import com.tanush.bouncer.network.models.SanwebMatchResponse
 import com.tanush.bouncer.network.models.SanwebMatchesListResponse
 import io.sentry.Breadcrumb
 import io.sentry.Sentry
+import io.sentry.SentryLogLevel
 import io.sentry.SentryLevel
 
 object CricketRepository {
@@ -22,6 +23,9 @@ object CricketRepository {
         return try {
             val resp = RetrofitClient.vercelApi.getMatches(type)
             Log.d(TAG, "Successfully fetched matches for type: $type")
+            Sentry.metrics().gauge("repository.matches.count", resp.matches.size.toDouble())
+            Sentry.metrics().count("repository.getMatches.success", 1.0)
+            Sentry.logger().log(SentryLogLevel.INFO, "Repository getMatches success for %s", type)
             
             Sentry.addBreadcrumb(Breadcrumb().apply {
                 category = "network.api"
@@ -41,6 +45,7 @@ object CricketRepository {
                 setData("error", t.message ?: "Unknown error")
             })
             Sentry.captureException(t)
+            Sentry.metrics().count("repository.getMatches.error", 1.0)
             Result.failure(t)
         }
     }
@@ -56,6 +61,7 @@ object CricketRepository {
         return try {
             val resp = RetrofitClient.vercelApi.getMatchScore(id)
             Log.d(TAG, "Successfully fetched match score for id: $id")
+            Sentry.metrics().count("repository.getMatchScore.success", 1.0)
             
             Sentry.addBreadcrumb(Breadcrumb().apply {
                 category = "network.api"
@@ -75,6 +81,7 @@ object CricketRepository {
                 setData("error", t.message ?: "Unknown error")
             })
             Sentry.captureException(t)
+            Sentry.metrics().count("repository.getMatchScore.error", 1.0)
             Result.failure(t)
         }
     }
@@ -102,6 +109,7 @@ object CricketRepository {
                 )
             }
             Log.d(TAG, "Successfully fetched probability history for matchId: $matchId")
+            Sentry.metrics().distribution("repository.probability.points", mapped.size.toDouble())
             
             Sentry.addBreadcrumb(Breadcrumb().apply {
                 category = "network.api"
@@ -122,6 +130,7 @@ object CricketRepository {
                 setData("error", t.message ?: "Unknown error")
             })
             Sentry.captureException(t)
+            Sentry.metrics().count("repository.getProbabilityHistory.error", 1.0)
             Result.failure(t)
         }
     }
@@ -137,6 +146,7 @@ object CricketRepository {
         return try {
             val resp = RetrofitClient.localApi.getCommentary(matchId)
             Log.d(TAG, "Successfully fetched match commentary for matchId: $matchId")
+            Sentry.metrics().count("repository.getMatchCommentary.success", 1.0)
             
             Sentry.addBreadcrumb(Breadcrumb().apply {
                 category = "network.api"
@@ -156,6 +166,7 @@ object CricketRepository {
                 setData("error", t.message ?: "Unknown error")
             })
             Sentry.captureException(t)
+            Sentry.metrics().count("repository.getMatchCommentary.error", 1.0)
             Result.failure(t)
         }
     }

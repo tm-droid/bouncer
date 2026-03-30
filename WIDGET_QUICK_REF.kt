@@ -36,7 +36,7 @@ override fun onMatchScoreUpdate(match: CricketMatch) {
     WidgetManager.updateAllWidgets(this, match)
 }
 
-// In MainActivity on app launch:
+// In BouncerActivity on app launch:
 override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
     WidgetManager.forceRefresh(this)
