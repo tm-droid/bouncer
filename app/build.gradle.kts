@@ -36,8 +36,8 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
 
-        buildConfigField("String", "OPENROUTER_API_KEY", "\"${localProperties.getProperty("OPENROUTER_API_KEY", "")}\"")
-        buildConfigField("String", "RAPIDAPI_KEY", "\"${localProperties.getProperty("RAPIDAPI_KEY", "")}\"")
+        buildConfigField("String", "OPENROUTER_API_KEY", "\"${localProperties.getProperty("OPENROUTER_API_KEY") ?: System.getenv("OPENROUTER_API_KEY") ?: ""}\"")
+        buildConfigField("String", "RAPIDAPI_KEY", "\"${localProperties.getProperty("RAPIDAPI_KEY") ?: System.getenv("RAPIDAPI_KEY") ?: ""}\"")
         manifestPlaceholders["sentryDsn"] = localProperties.getProperty("SENTRY_DSN", "https://e9ade5d835c36a97939191077734e5a7@o4510958403518464.ingest.us.sentry.io/4510963429212160")
         // Default environment; overridden per build type below
         manifestPlaceholders["sentryEnvironment"] = "production"
