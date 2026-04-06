@@ -28,7 +28,7 @@ import com.tanush.bouncer.logic.MatchSimulator
 import com.tanush.bouncer.ui.components.BouncerImportance
 import com.tanush.bouncer.ui.components.GlassCard
 import com.tanush.bouncer.ui.components.GlassSurface
-import com.tanush.bouncer.ui.components.WinProbabilityGauge
+import com.tanush.bouncer.ui.components.stats.WinProbabilityGauge
 import com.tanush.bouncer.ui.components.glass.GlassBloomBackground
 import com.tanush.bouncer.ui.theme.*
 import com.tanush.bouncer.ui.theme.BouncerDesignSystem

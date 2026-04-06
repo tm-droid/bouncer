@@ -241,7 +241,7 @@ fun MatchDetailView(
 
     Scaffold(
         containerColor = BgBase,
-        topBar = { EliteMatchDetailHeader(
+        topBar = { MatchDetailHeader_Extracted(
             match = match,
             onBackClick = onBackClick,
             liveTeam1Score = liveTeam1Score,
@@ -251,7 +251,7 @@ fun MatchDetailView(
             liveCurrentRunRate = liveCurrentRunRate,
             liveRequiredRunRate = liveRequiredRunRate
         ) },
-        bottomBar = { EliteFloatingMatchNav(selectedTab, { selectedTab = it }, onArClick) }
+        bottomBar = { EliteFloatingMatchNav_Extracted(selectedTab, { selectedTab = it }, onArClick) }
     ) { paddingValues ->
         Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
             // Background Layer: Obsidian Grid Architecture
@@ -289,11 +289,11 @@ fun MatchDetailView(
                     contentPadding = PaddingValues(top = Spacing.sm)
                 ) { page ->
                     when (page) {
-                        0 -> EliteOverviewTab(match, batsmen, bowler, recentBalls, commentary, liveCurrentRunRate, liveRequiredRunRate)
-                        1 -> EliteScorecardTab(scorecard)
-                        2 -> EliteSquadsTab(match, scorecard)
-                        3 -> EliteStatisticsTab(match, scorecard)
-                        4 -> EliteVenueInfoTab(match)
+                        0 -> OverviewTab_Extracted(match, batsmen, bowler, recentBalls, commentary, liveCurrentRunRate, liveRequiredRunRate)
+                        1 -> ScorecardTab_Extracted(scorecard)
+                        2 -> SquadsTab_Extracted(match, scorecard)
+                        3 -> StatisticsTab_Extracted(match, scorecard)
+                        4 -> VenueTab_Extracted(match)
                     }
                 }
             }
@@ -1066,7 +1066,7 @@ fun MicroStatCard(
 }
 
 @Composable
-private fun EliteImpactHeroCard() {
+fun EliteImpactHeroCard() {
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -1117,7 +1117,7 @@ private fun EliteImpactHeroCard() {
 }
 
 @Composable
-private fun EliteAiInsightsTab(match: CricketMatch) {
+fun EliteAiInsightsTab(match: CricketMatch) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(20.dp),
@@ -1311,7 +1311,7 @@ private fun EliteScorecardTab(scorecard: Scorecard?) {
 }
 
 @Composable
-private fun EliteBattingTable(inning: Innings) {
+fun EliteBattingTable(inning: Innings) {
     Column(
         modifier = Modifier
             .padding(horizontal = 16.dp)
@@ -1355,7 +1355,7 @@ private fun EliteBattingTable(inning: Innings) {
 }
 
 @Composable
-private fun EliteBowlingTable(inning: Innings) {
+fun EliteBowlingTable(inning: Innings) {
     Column(
         modifier = Modifier
             .padding(horizontal = 16.dp)
@@ -1399,7 +1399,7 @@ private fun EliteBowlingTable(inning: Innings) {
 }
 
 @Composable
-private fun BowlingRowItem(bowler: BowlerStats) {
+fun BowlingRowItem(bowler: BowlerStats) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -1420,7 +1420,7 @@ private fun BowlingRowItem(bowler: BowlerStats) {
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun EliteFowTable(fows: List<ModelFallOfWicket>) {
+fun EliteFowTable(fows: List<ModelFallOfWicket>) {
     Column(modifier = Modifier.padding(horizontal = 16.dp)) {
         Text(
             "FALL OF WICKETS",
@@ -1453,7 +1453,7 @@ private fun EliteFowTable(fows: List<ModelFallOfWicket>) {
 }
 
 @Composable
-private fun BattingRowItem(batsman: BatsmanStats) {
+fun BattingRowItem(batsman: BatsmanStats) {
     val isNotOut = batsman.dismissal.contains("not out", ignoreCase = true) || batsman.dismissal.isBlank()
     Row(
         modifier = Modifier
@@ -1857,7 +1857,7 @@ private fun roleBadgeColor(role: String): Color {
  * Right side: name + role badge + avatar with right border (mirrored).
  */
 @Composable
-private fun SplitPlayerRow(
+fun SplitPlayerRow(
     playerName: String,
     teamColor: Color,
     isLeftSide: Boolean,
@@ -2092,7 +2092,7 @@ private fun EliteStatisticsTab(match: CricketMatch, scorecard: Scorecard?) {
 }
 
 @Composable
-private fun MatchStatsOverviewCard(match: CricketMatch, scorecard: Scorecard?) {
+fun MatchStatsOverviewCard(match: CricketMatch, scorecard: Scorecard?) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.05f)),
@@ -2161,7 +2161,7 @@ private fun StatItem(label: String, value: String, valueColor: Color = Color.Whi
 }
 
 @Composable
-private fun BattingLeadersCard(innings: Innings) {
+fun BattingLeadersCard(innings: Innings) {
     val topBatsmen = innings.batsmen
         .sortedByDescending { it.runs.toIntOrNull() ?: 0 }
         .take(3)
@@ -2248,7 +2248,7 @@ private fun BattingLeadersCard(innings: Innings) {
 }
 
 @Composable
-private fun BowlingLeadersCard(innings: Innings) {
+fun BowlingLeadersCard(innings: Innings) {
     val topBowlers = innings.bowlers
         .sortedByDescending { it.wickets.toIntOrNull() ?: 0 }
         .take(3)
@@ -2335,7 +2335,7 @@ private fun BowlingLeadersCard(innings: Innings) {
 }
 
 @Composable
-private fun PartnershipStatsCard(innings: Innings) {
+fun PartnershipStatsCard(innings: Innings) {
     val topPartnerships = innings.partnerships
         .sortedByDescending { it.runs.toIntOrNull() ?: 0 }
         .take(3)

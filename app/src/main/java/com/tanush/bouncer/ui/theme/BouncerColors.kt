@@ -1,3 +1,5 @@
+@file:Suppress("DEPRECATION")
+
 package com.tanush.bouncer.ui.theme
 
 import androidx.compose.material3.ColorScheme
@@ -10,7 +12,19 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 
 /**
- * Bouncer Design System — Futuristic Glass-Morphism Color Palette
+ * Bouncer Design System — Futuristic Glass-Morphism Color Palette (Legacy)
+ *
+ * @deprecated This file is deprecated. Use UnifiedColors.kt from the kotlin theme directory instead.
+ * 
+ * Migration Guide:
+ * 1. Replace standalone color values (e.g., `GoldPrimary`) with `BouncerColorTokens.goldPrimary`
+ * 2. Replace `BouncerColors` data class usage with `UnifiedBouncerColors`
+ * 3. Access colors via `Bouncer.colors` in composables
+ * 
+ * New imports:
+ * - import com.tanush.bouncer.ui.theme.BouncerColorTokens
+ * - import com.tanush.bouncer.ui.theme.UnifiedBouncerColors
+ * - import com.tanush.bouncer.ui.theme.Bouncer
  *
  * A premium dark-first design system built around deep charcoal backgrounds,
  * warm gold accents, and frosted glass surfaces. Optimized for OLED displays
@@ -21,27 +35,39 @@ import androidx.compose.ui.graphics.Color
 // Background Colors — Deep charcoal hierarchy
 // =============================================================================
 
+@Deprecated("Use BouncerColorTokens.backgroundBase instead", ReplaceWith("BouncerColorTokens.backgroundBase", "com.tanush.bouncer.ui.theme.BouncerColorTokens"))
 val BackgroundBase = Color(0xFF0F1115)
+@Deprecated("Use BouncerColorTokens.backgroundElevated instead", ReplaceWith("BouncerColorTokens.backgroundElevated", "com.tanush.bouncer.ui.theme.BouncerColorTokens"))
 val BackgroundElevated = Color(0xFF1A1A1A)
+@Deprecated("Use BouncerColorTokens.surface1 instead", ReplaceWith("BouncerColorTokens.surface1", "com.tanush.bouncer.ui.theme.BouncerColorTokens"))
 val Surface1 = Color(0xFF1C2028)
+@Deprecated("Use BouncerColorTokens.surface2 instead", ReplaceWith("BouncerColorTokens.surface2", "com.tanush.bouncer.ui.theme.BouncerColorTokens"))
 val Surface2 = Color(0xFF252A34)
+@Deprecated("Use BouncerColorTokens.surface3 instead", ReplaceWith("BouncerColorTokens.surface3", "com.tanush.bouncer.ui.theme.BouncerColorTokens"))
 val Surface3 = Color(0xFF323945)
 
 // =============================================================================
 // Gold Accent Colors — Premium warm tones
 // =============================================================================
 
+@Deprecated("Use BouncerColorTokens.goldPrimary instead", ReplaceWith("BouncerColorTokens.goldPrimary", "com.tanush.bouncer.ui.theme.BouncerColorTokens"))
 val GoldPrimary = Color(0xFFD4AF37)
+@Deprecated("Use BouncerColorTokens.goldDark instead", ReplaceWith("BouncerColorTokens.goldDark", "com.tanush.bouncer.ui.theme.BouncerColorTokens"))
 val GoldDark = Color(0xFFB08D26)
+@Deprecated("Use BouncerColorTokens.goldLight instead", ReplaceWith("BouncerColorTokens.goldLight", "com.tanush.bouncer.ui.theme.BouncerColorTokens"))
 val GoldLight = Color(0xFFE8C677)
+@Deprecated("Use BouncerColorTokens.goldSubtle instead", ReplaceWith("BouncerColorTokens.goldSubtle", "com.tanush.bouncer.ui.theme.BouncerColorTokens"))
 val GoldSubtle = Color(0xFF2D2510)
+@Deprecated("Use BouncerColorTokens.etchedGold instead", ReplaceWith("BouncerColorTokens.etchedGold", "com.tanush.bouncer.ui.theme.BouncerColorTokens"))
 val EtchedGold = Color(0xFFC4A456)  // Handcrafted metallic feel
 
+@Deprecated("Use BouncerColorTokens.goldGradientVertical instead", ReplaceWith("BouncerColorTokens.goldGradientVertical", "com.tanush.bouncer.ui.theme.BouncerColorTokens"))
 val GoldGradient = Brush.verticalGradient(
     0.0f to Color.White,
     0.6f to Color(0xFFD4AF37),
     1.0f to Color(0xFFB08D26)
 )
+@Deprecated("Use BouncerColorTokens.goldGradientHorizontal instead", ReplaceWith("BouncerColorTokens.goldGradientHorizontal", "com.tanush.bouncer.ui.theme.BouncerColorTokens"))
 val GoldGradientHorizontal = Brush.horizontalGradient(
     colors = listOf(Color(0xFFFCD34D), GoldPrimary, GoldDark)
 )
@@ -50,9 +76,13 @@ val GoldGradientHorizontal = Brush.horizontalGradient(
 // Text Colors — High contrast hierarchy
 // =============================================================================
 
+@Deprecated("Use BouncerColorTokens.textPrimary instead", ReplaceWith("BouncerColorTokens.textPrimary", "com.tanush.bouncer.ui.theme.BouncerColorTokens"))
 val TextPrimary = Color(0xFFF9FAFB)
+@Deprecated("Use BouncerColorTokens.textSecondary instead", ReplaceWith("BouncerColorTokens.textSecondary", "com.tanush.bouncer.ui.theme.BouncerColorTokens"))
 val TextSecondary = Color(0xFF9CA3AF)
+@Deprecated("Use BouncerColorTokens.textTertiary instead", ReplaceWith("BouncerColorTokens.textTertiary", "com.tanush.bouncer.ui.theme.BouncerColorTokens"))
 val TextTertiary = Color(0xFF6B7280)
+@Deprecated("Use BouncerColorTokens.textMuted instead", ReplaceWith("BouncerColorTokens.textMuted", "com.tanush.bouncer.ui.theme.BouncerColorTokens"))
 val TextMuted = Color(0xFF4B5563)
 
 // =============================================================================
@@ -376,6 +406,18 @@ val TeamBangladesh = TeamPrimaryColors.BangladeshGreen
 // BouncerColors — Semantic color container
 // =============================================================================
 
+/**
+ * Semantic color container for Bouncer theme.
+ * 
+ * @deprecated Use `UnifiedBouncerColors` from UnifiedColors.kt instead.
+ * 
+ * Migration: Replace `BouncerColors` with `UnifiedBouncerColors`.
+ * Access via `Bouncer.colors` in composables.
+ */
+@Deprecated(
+    message = "Use UnifiedBouncerColors from UnifiedColors.kt instead",
+    replaceWith = ReplaceWith("UnifiedBouncerColors", "com.tanush.bouncer.ui.theme.UnifiedBouncerColors")
+)
 @Immutable
 data class BouncerColors(
     // Backgrounds
@@ -509,12 +551,20 @@ data class BouncerColors(
 // CompositionLocal
 // =============================================================================
 
+/**
+ * @deprecated Use `LocalUnifiedBouncerColors` from UnifiedTheme.kt instead.
+ */
+@Suppress("DEPRECATION")
 val LocalBouncerColors = staticCompositionLocalOf { BouncerColors() }
 
 // =============================================================================
 // Material 3 Color Scheme Generation
 // =============================================================================
 
+/**
+ * @deprecated Use `ThemeVariant.Dark.toMaterial3ColorScheme()` from ThemeVariants.kt instead.
+ */
+@Suppress("DEPRECATION")
 val BouncerDarkColorScheme: ColorScheme = darkColorScheme(
     primary = GoldPrimary,
     onPrimary = BackgroundBase,
@@ -562,6 +612,10 @@ val BouncerDarkColorScheme: ColorScheme = darkColorScheme(
     surfaceContainerLowest = BackgroundBase
 )
 
+/**
+ * @deprecated Light themes are not recommended for Bouncer. Use dark variants instead.
+ */
+@Suppress("DEPRECATION")
 val BouncerLightColorScheme: ColorScheme = lightColorScheme(
     primary = GoldDark,
     onPrimary = Color.White,

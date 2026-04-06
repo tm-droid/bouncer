@@ -31,6 +31,7 @@ import com.tanush.bouncer.ui.theme.*
 import com.tanush.bouncer.viewmodels.LiveActivityViewModel
 import com.tanush.bouncer.ui.components.InAppBanner
 import com.tanush.bouncer.ui.components.PremiumBottomNavBar
+import com.tanush.bouncer.utils.PreferencesHelper
 
 /**
  * MainActivity - Main entry point for Bouncer app.
@@ -44,17 +45,69 @@ class MainActivity : ComponentActivity() {
         
         val prefs = getSharedPreferences("bouncer_prefs", Context.MODE_PRIVATE)
         val hasCompletedOnboarding = prefs.getBoolean("onboarding_complete", false)
+        val initialThemeVariant = runCatching {
+            ThemeVariant.valueOf(
+                PreferencesHelper.getString(
+                    this,
+                    PreferencesHelper.KEY_THEME_VARIANT,
+                    ThemeVariant.Dark.name
+                )
+            )
+        }.getOrDefault(ThemeVariant.Dark)
+        val initialBackgroundSkin = runCatching {
+            BackgroundSkinType.valueOf(
+                PreferencesHelper.getString(
+                    this,
+                    PreferencesHelper.KEY_BACKGROUND_SKIN,
+                    BackgroundSkinType.MIDNIGHT_GRADIENT.name
+                )
+            )
+        }.getOrDefault(BackgroundSkinType.MIDNIGHT_GRADIENT)
         
         setContent {
-            BouncerTheme {
-                MainAppContent(hasCompletedOnboarding = hasCompletedOnboarding, prefs = prefs)
+            var currentThemeVariant by remember { mutableStateOf(initialThemeVariant) }
+            var currentBackgroundSkin by remember { mutableStateOf(initialBackgroundSkin) }
+
+            BouncerTheme(
+                themeVariant = currentThemeVariant,
+                backgroundSkin = BackgroundSkin.fromType(currentBackgroundSkin)
+            ) {
+                MainAppContent(
+                    hasCompletedOnboarding = hasCompletedOnboarding,
+                    prefs = prefs,
+                    currentThemeVariant = currentThemeVariant,
+                    currentBackgroundSkin = currentBackgroundSkin,
+                    onThemeVariantChanged = { variant ->
+                        currentThemeVariant = variant
+                        PreferencesHelper.setString(
+                            this@MainActivity,
+                            PreferencesHelper.KEY_THEME_VARIANT,
+                            variant.name
+                        )
+                    },
+                    onBackgroundSkinChanged = { skin ->
+                        currentBackgroundSkin = skin
+                        PreferencesHelper.setString(
+                            this@MainActivity,
+                            PreferencesHelper.KEY_BACKGROUND_SKIN,
+                            skin.name
+                        )
+                    }
+                )
             }
         }
     }
 }
 
 @Composable
-private fun MainAppContent(hasCompletedOnboarding: Boolean = true, prefs: android.content.SharedPreferences? = null) {
+private fun MainAppContent(
+    hasCompletedOnboarding: Boolean = true,
+    prefs: android.content.SharedPreferences? = null,
+    currentThemeVariant: ThemeVariant = ThemeVariant.Dark,
+    currentBackgroundSkin: BackgroundSkinType = BackgroundSkinType.MIDNIGHT_GRADIENT,
+    onThemeVariantChanged: (ThemeVariant) -> Unit = {},
+    onBackgroundSkinChanged: (BackgroundSkinType) -> Unit = {}
+) {
     val navController = rememberNavController()
     val viewModel: LiveActivityViewModel = viewModel()
     val keyEvent by viewModel.keyEvent.collectAsState()
@@ -82,7 +135,7 @@ private fun MainAppContent(hasCompletedOnboarding: Boolean = true, prefs: androi
     // Show bottom bar on all 5 primary tabs and their sub-routes (but not on splash/onboarding)
     val showBottomBar = currentRoute in listOf(
         "home", "all_matches", "favourites", "stats", "more",
-        "achievements", "settings", "about", "activity"
+        "achievements", "settings", "appearance", "about", "activity"
     )
 
     // Background with subtle grid pattern
@@ -230,6 +283,19 @@ private fun MainAppContent(hasCompletedOnboarding: Boolean = true, prefs: androi
                 "stats",
                 enterTransition = { fadeIn(tween(AnimationDuration.moderate)) + slideInHorizontally(initialOffsetX = { it / 8 }, animationSpec = tween(AnimationDuration.moderate, easing = FastOutSlowInEasing)) },
                 exitTransition = { fadeOut(tween(AnimationDuration.normal)) + slideOutHorizontally(targetOffsetX = { it / 8 }, animationSpec = tween(AnimationDuration.normal, easing = FastOutSlowInEasing)) }
+            ) {
+                StatsHubScreen(
+                    onBackClick = { navController.popBackStack() },
+                    onOpenTrophy = { navController.navigate("trophy-room") },
+                    onOpenAnalytics = { navController.navigate("stats_overview") },
+                    onOpenAchievements = { navController.navigate("achievements") }
+                )
+            }
+
+            composable(
+                "stats_overview",
+                enterTransition = { fadeIn(tween(AnimationDuration.moderate)) + slideInHorizontally(initialOffsetX = { it / 8 }, animationSpec = tween(AnimationDuration.moderate, easing = FastOutSlowInEasing)) },
+                exitTransition = { fadeOut(tween(AnimationDuration.normal)) + slideOutHorizontally(targetOffsetX = { it / 8 }, animationSpec = tween(AnimationDuration.normal, easing = FastOutSlowInEasing)) }
             ) { StatsOverviewScreen(onBackClick = { navController.popBackStack() }) }
             composable(
                 "activity",
@@ -246,9 +312,23 @@ private fun MainAppContent(hasCompletedOnboarding: Boolean = true, prefs: androi
                     onFavoritesClick = { navController.navigate("favourites") }, 
                     onAchievementsClick = { navController.navigate("achievements") }, 
                     onAboutClick = { navController.navigate("about") },
+                    onAppearanceClick = { navController.navigate("appearance") },
                     onNotificationSettingsClick = { navController.navigate("notification_settings") },
                     onAIInsightsChanged = { enabled -> viewModel.setAIInsightsEnabled(enabled) }
                 ) 
+            }
+            composable(
+                "appearance",
+                enterTransition = { fadeIn(tween(AnimationDuration.moderate)) + slideInHorizontally(initialOffsetX = { it / 6 }, animationSpec = tween(AnimationDuration.moderate, easing = FastOutSlowInEasing)) },
+                exitTransition = { fadeOut(tween(AnimationDuration.normal)) + slideOutHorizontally(targetOffsetX = { it / 6 }, animationSpec = tween(AnimationDuration.normal, easing = FastOutSlowInEasing)) }
+            ) {
+                AppearanceScreen(
+                    onBackClick = { navController.popBackStack() },
+                    currentThemeVariant = currentThemeVariant,
+                    currentBackgroundSkin = currentBackgroundSkin,
+                    onThemeVariantChanged = onThemeVariantChanged,
+                    onBackgroundSkinChanged = onBackgroundSkinChanged
+                )
             }
             composable(
                 "about",

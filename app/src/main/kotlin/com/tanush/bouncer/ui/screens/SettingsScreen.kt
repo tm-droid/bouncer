@@ -15,6 +15,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.RadioButton
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -65,6 +68,7 @@ fun SettingsScreen(
     onFavoritesClick: () -> Unit,
     onAchievementsClick: () -> Unit,
     onAboutClick: () -> Unit,
+    onAppearanceClick: () -> Unit = {},
     onNotificationSettingsClick: (() -> Unit)? = null,
     onAIInsightsChanged: (Boolean) -> Unit = {}
 ) {
@@ -83,7 +87,32 @@ fun SettingsScreen(
     var showProbability by remember { mutableStateOf(true) }
     var aiInsights by remember { mutableStateOf(com.tanush.bouncer.utils.PreferencesHelper.getBoolean(ctx, com.tanush.bouncer.utils.PreferencesHelper.KEY_AI_INSIGHTS, false)) }
 
+    // Personalization: default landing tab
+    var defaultLandingTab by remember { mutableStateOf(com.tanush.bouncer.viewmodels.LandingTab.HOME) }
+    // Dialog visibility
+    var showLandingDialog by remember { mutableStateOf(false) }
+
+    // Load persisted default landing on composition
+    LaunchedEffect(Unit) {
+        defaultLandingTab = when (com.tanush.bouncer.utils.PreferencesHelper.getString(ctx, com.tanush.bouncer.utils.PreferencesHelper.KEY_DEFAULT_LANDING, com.tanush.bouncer.viewmodels.LandingTab.HOME.name)) {
+            com.tanush.bouncer.viewmodels.LandingTab.ALL_MATCHES.name -> com.tanush.bouncer.viewmodels.LandingTab.ALL_MATCHES
+            com.tanush.bouncer.viewmodels.LandingTab.FAVOURITES.name -> com.tanush.bouncer.viewmodels.LandingTab.FAVOURITES
+            else -> com.tanush.bouncer.viewmodels.LandingTab.HOME
+        }
+    }
+
     val sections = listOf(
+        SettingsSection(
+            title = "Appearance",
+            items = listOf(
+                SettingsItem.Navigation(
+                    title = "Theme & Background",
+                    description = "Customize colors, skins, and visual style",
+                    icon = Icons.Default.Palette,
+                    onClick = onAppearanceClick
+                )
+            )
+        ),
         SettingsSection(
             title = "Notifications",
             items = listOf(
@@ -158,6 +187,16 @@ fun SettingsScreen(
                     icon = Icons.Default.Analytics,
                     isEnabled = showProbability,
                     onToggle = { showProbability = it }
+                ),
+                SettingsItem.Navigation(
+                    title = "Default Landing Tab",
+                    description = when (defaultLandingTab) {
+                        com.tanush.bouncer.viewmodels.LandingTab.ALL_MATCHES -> "Default: All Matches"
+                        com.tanush.bouncer.viewmodels.LandingTab.FAVOURITES -> "Default: Favorites"
+                        else -> "Default: Home"
+                    },
+                    icon = Icons.Default.Home,
+                    onClick = { showLandingDialog = true }
                 )
             )
         ),
@@ -203,7 +242,7 @@ fun SettingsScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .statusBarsPadding()
-                    .padding(horizontal = dimens.screenHorizontal, vertical = dimens.sm),
+                    .padding(horizontal = com.tanush.bouncer.ui.theme.DesignTokens.Spacing.screenHorizontal(), vertical = com.tanush.bouncer.ui.theme.DesignTokens.Spacing.sm()),
                 horizontalArrangement = Arrangement.spacedBy(dimens.md),
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -216,7 +255,7 @@ fun SettingsScreen(
                 Text(
                     text = "SETTINGS",
                     style = typography.headingMedium,
-                    color = colors.goldPrimary,
+                    color = com.tanush.bouncer.ui.theme.DesignTokens.Color.goldPrimary(),
                     letterSpacing = 2.sp,
                     fontWeight = FontWeight.Black
                 )
@@ -249,6 +288,50 @@ fun SettingsScreen(
                     SettingsFooter()
                 }
             }
+        }
+
+        // Landing tab selection dialog
+        if (showLandingDialog) {
+            AlertDialog(
+                onDismissRequest = { showLandingDialog = false },
+                title = { Text(text = "Default Landing Tab") },
+                text = {
+                    Column {
+                        val options = listOf(
+                            com.tanush.bouncer.viewmodels.LandingTab.HOME to "Home",
+                            com.tanush.bouncer.viewmodels.LandingTab.ALL_MATCHES to "All Matches",
+                            com.tanush.bouncer.viewmodels.LandingTab.FAVOURITES to "Favorites"
+                        )
+                        options.forEach { (tab, label) ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        defaultLandingTab = tab
+                                        com.tanush.bouncer.utils.PreferencesHelper.setString(ctx, com.tanush.bouncer.utils.PreferencesHelper.KEY_DEFAULT_LANDING, tab.name)
+                                        showLandingDialog = false
+                                    }
+                                    .padding(vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                RadioButton(
+                                    selected = defaultLandingTab == tab,
+                                    onClick = {
+                                        defaultLandingTab = tab
+                                        com.tanush.bouncer.utils.PreferencesHelper.setString(ctx, com.tanush.bouncer.utils.PreferencesHelper.KEY_DEFAULT_LANDING, tab.name)
+                                        showLandingDialog = false
+                                    }
+                                )
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Text(text = label)
+                            }
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = { showLandingDialog = false }) { Text("Close") }
+                }
+            )
         }
     }
 }

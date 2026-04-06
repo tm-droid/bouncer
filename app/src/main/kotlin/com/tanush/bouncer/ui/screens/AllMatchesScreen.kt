@@ -32,7 +32,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.tanush.bouncer.ui.components.EmptyStateView
 import com.tanush.bouncer.ui.components.PremiumMatchListCard
-import com.tanush.bouncer.ui.components.MatchCardSkeleton
+import com.tanush.bouncer.ui.components.core.MatchCardSkeleton
 import com.tanush.bouncer.ui.components.glass.GlassBloomBackground
 import com.tanush.bouncer.ui.theme.*
 import com.tanush.bouncer.ui.theme.BouncerDesignSystem

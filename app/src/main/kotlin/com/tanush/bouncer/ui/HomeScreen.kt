@@ -39,9 +39,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.tanush.bouncer.models.CricketMatch
-import com.tanush.bouncer.ui.components.CoilImage
-import com.tanush.bouncer.ui.components.MatchCard
-import com.tanush.bouncer.ui.components.MatchListSkeleton
+import com.tanush.bouncer.ui.components.core.CoilImage
+import com.tanush.bouncer.ui.components.match.MatchCard
+import com.tanush.bouncer.ui.components.core.MatchListSkeleton
 import com.tanush.bouncer.ui.components.glass.*
 import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 import com.tanush.bouncer.ui.theme.GlassSurface
@@ -186,7 +186,7 @@ fun HomeScreen(
                                 Brush.horizontalGradient(
                                     colors = listOf(
                                         Color.Transparent,
-                                        colors.goldPrimary.copy(alpha = 0.25f),
+                                        com.tanush.bouncer.ui.theme.DesignTokens.Color.goldPrimary().copy(alpha = 0.25f),
                                         Color.Transparent
                                     )
                                 )
@@ -222,7 +222,8 @@ fun HomeScreen(
                             item(key = "upcoming_header") {
                                 MatchSectionHeader(
                                     title = "Upcoming",
-                                    count = upcomingMatches.size
+                                    count = upcomingMatches.size,
+                                    onSeeAll = onMoreMatchesClick
                                 )
                             }
                             itemsIndexed(
@@ -245,7 +246,8 @@ fun HomeScreen(
                             item(key = "recent_header") {
                                 MatchSectionHeader(
                                     title = "Recent Results",
-                                    count = recentMatches.size
+                                    count = recentMatches.size,
+                                    onSeeAll = onMoreMatchesClick
                                 )
                             }
                             itemsIndexed(
@@ -270,7 +272,8 @@ fun HomeScreen(
                             item(key = "fallback_header") {
                                 MatchSectionHeader(
                                     title = "$selectedStatus Matches",
-                                    count = currentMatches.size
+                                    count = currentMatches.size,
+                                    onSeeAll = onMoreMatchesClick
                                 )
                             }
                             itemsIndexed(
@@ -683,7 +686,8 @@ private fun LiveBadge() {
 private fun MatchSectionHeader(
     title: String,
     count: Int = 0,
-    showLiveDot: Boolean = false
+    showLiveDot: Boolean = false,
+    onSeeAll: (() -> Unit)? = null
 ) {
     val colors = BouncerDesignSystem.colors
     val dimens = BouncerDesignSystem.dimens
@@ -761,6 +765,30 @@ private fun MatchSectionHeader(
                         fontWeight = FontWeight.SemiBold
                     )
                 }
+            }
+        }
+
+        // Right-side action: 'See all' / chevron
+        if (onSeeAll != null) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) {
+                    onSeeAll()
+                }
+            ) {
+                Text(
+                    text = "See All",
+                    color = colors.goldPrimary,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Icon(
+                    imageVector = Icons.Outlined.ArrowForward,
+                    contentDescription = "See All",
+                    tint = colors.goldPrimary,
+                    modifier = Modifier.size(18.dp)
+                )
             }
         }
     }

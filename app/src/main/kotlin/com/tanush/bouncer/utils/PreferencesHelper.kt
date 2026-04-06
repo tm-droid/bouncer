@@ -13,6 +13,12 @@ object PreferencesHelper {
     const val KEY_WICKET_ALERTS = "wicket_alerts"
     const val KEY_MATCH_REMINDERS = "match_reminders"
     const val KEY_AI_INSIGHTS = "ai_insights"
+    
+    // Appearance keys
+    const val KEY_THEME_VARIANT = "theme_variant"
+    const val KEY_BACKGROUND_SKIN = "background_skin"
+    // Personalization defaults
+    const val KEY_DEFAULT_LANDING = "default_landing"
 
     fun getBoolean(context: Context, key: String, default: Boolean): Boolean {
         try {
@@ -64,6 +70,41 @@ object PreferencesHelper {
         try {
             val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             prefs.edit().putBoolean("follow_\$statKey", followed).apply()
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
+    }
+    
+    fun getString(context: Context, key: String, default: String): String {
+        try {
+            Sentry.addBreadcrumb(Breadcrumb().apply {
+                category = "util.preferences"
+                message = "Reading string preference"
+                level = SentryLevel.DEBUG
+                setData("key", key)
+            })
+            
+            val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            return prefs.getString(key, default) ?: default
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
+    }
+
+    fun setString(context: Context, key: String, value: String) {
+        try {
+            Sentry.addBreadcrumb(Breadcrumb().apply {
+                category = "util.preferences"
+                message = "Setting string preference"
+                level = SentryLevel.DEBUG
+                setData("key", key)
+                setData("value", value)
+            })
+            
+            val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            prefs.edit().putString(key, value).apply()
         } catch (e: Exception) {
             Sentry.captureException(e)
             throw e

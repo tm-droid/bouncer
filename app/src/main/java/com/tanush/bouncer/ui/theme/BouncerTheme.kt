@@ -1,3 +1,5 @@
+@file:Suppress("DEPRECATION")
+
 package com.tanush.bouncer.ui.theme
 
 import android.app.Activity
@@ -23,7 +25,21 @@ import androidx.compose.ui.draw.blur
 import androidx.compose.ui.unit.dp
 
 /**
- * Bouncer Theme
+ * Bouncer Theme (Legacy)
+ *
+ * @deprecated This file is deprecated. Use UnifiedBouncerTheme from the kotlin theme directory instead.
+ * 
+ * Migration Guide:
+ * 1. Replace `BouncerTheme { }` with `UnifiedBouncerTheme { }`
+ * 2. Replace `BouncerDesignSystem.colors` with `Bouncer.colors`
+ * 3. For theme variants, use: `UnifiedBouncerTheme(variant = ThemeVariant.Midnight) { }`
+ * 4. For background skins, use: `UnifiedBouncerTheme(backgroundSkin = BackgroundSkin.StadiumLights()) { }`
+ * 
+ * New imports:
+ * - import com.tanush.bouncer.ui.theme.UnifiedBouncerTheme
+ * - import com.tanush.bouncer.ui.theme.Bouncer
+ * - import com.tanush.bouncer.ui.theme.ThemeVariant
+ * - import com.tanush.bouncer.ui.theme.BackgroundSkin
  *
  * Main theme composable implementing the futuristic glass-morphism design system.
  * Dark-only enforced theme optimized for immersive cricket viewing.
@@ -108,7 +124,14 @@ object BouncerDesignSystem {
 
 /**
  * Alias for BouncerDesignSystem for backward compatibility.
+ * 
+ * @deprecated Use `Bouncer` object from UnifiedTheme.kt instead.
  */
+@Suppress("DEPRECATION")
+@Deprecated(
+    message = "Use Bouncer object from UnifiedTheme.kt instead",
+    replaceWith = ReplaceWith("Bouncer", "com.tanush.bouncer.ui.theme.Bouncer")
+)
 val BouncerDesign = BouncerDesignSystem
 
 // =============================================================================
@@ -117,8 +140,13 @@ val BouncerDesign = BouncerDesignSystem
 
 /**
  * Legacy theme accessor for backward compatibility.
- * Prefer using BouncerDesignSystem for new code.
+ * 
+ * @deprecated Use `Bouncer` object from UnifiedTheme.kt instead.
  */
+@Deprecated(
+    message = "Use Bouncer object from UnifiedTheme.kt instead",
+    replaceWith = ReplaceWith("Bouncer", "com.tanush.bouncer.ui.theme.Bouncer")
+)
 object BouncerTheme {
     val dimens: BouncerDimensions
         @Composable
@@ -148,31 +176,59 @@ object BouncerTheme {
 /**
  * Bouncer Material 3 theme with custom glass-morphism extensions.
  *
+ * @deprecated Use `UnifiedBouncerTheme` from UnifiedTheme.kt instead.
+ * 
+ * Migration:
+ * ```
+ * // Old:
+ * BouncerTheme { content() }
+ * 
+ * // New:
+ * UnifiedBouncerTheme { content() }
+ * ```
+ * 
  * This theme enforces dark mode by default for the premium glass effect.
  * The light theme is minimal and primarily exists for system compatibility.
+ * 
+ * Now supports:
+ * - **Theme Variants**: Dark, Midnight, AMOLED
+ * - **Background Skins**: Midnight Gradient, Stadium Lights, Carbon Fiber, Aurora, Pure Black, Team Colors
  *
  * @param darkTheme Whether to use dark theme. Defaults to true (enforced).
  * @param dynamicColor Whether to use Material You dynamic colors on Android 12+.
  *                     Defaults to false to preserve the Bouncer brand identity.
+ * @param themeVariant Theme color variant (Dark, Midnight, or AMOLED).
+ * @param backgroundSkin Background skin style (Midnight Gradient, Stadium Lights, etc.).
  * @param content Composable content rendered inside the theme.
  */
+@Deprecated(
+    message = "Use UnifiedBouncerTheme from UnifiedTheme.kt instead",
+    replaceWith = ReplaceWith(
+        "UnifiedBouncerTheme(variant = themeVariant, backgroundSkin = backgroundSkin, content = content)",
+        "com.tanush.bouncer.ui.theme.UnifiedBouncerTheme"
+    )
+)
 @Composable
 fun BouncerTheme(
     darkTheme: Boolean = FORCE_DARK_THEME,
     dynamicColor: Boolean = false,
+    themeVariant: ThemeVariant = ThemeVariant.Dark,
+    backgroundSkin: BackgroundSkin = BackgroundSkin.MidnightGradient(),
     content: @Composable () -> Unit
 ) {
     // Always use dark theme for the glass-morphism effect
     val useDarkTheme = if (FORCE_DARK_THEME) true else darkTheme
     
-    // Select color scheme
+    // Get variant palette and convert to Material 3 color scheme
+    val variantPalette = themeVariant.toPalette()
+    
+    // Select color scheme - use variant palette if not using dynamic colors
     val colorScheme = when {
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
             // Even with dynamic colors, we prefer our dark scheme for consistency
             BouncerDarkColorScheme
         }
-        useDarkTheme -> BouncerDarkColorScheme
-        else -> BouncerLightColorScheme
+        else -> variantPalette.toMaterial3ColorScheme()
     }
     
     // Custom Bouncer tokens
@@ -195,9 +251,9 @@ fun BouncerTheme(
             @Suppress("DEPRECATION")
             window.statusBarColor = Color.Transparent.toArgb()
             
-            // Navigation bar blends with surface
+            // Navigation bar blends with variant background
             @Suppress("DEPRECATION")
-            window.navigationBarColor = BackgroundBase.toArgb()
+            window.navigationBarColor = variantPalette.backgroundBase.toArgb()
             
             // Icon contrast: light icons on dark backgrounds
             val insetsController = WindowCompat.getInsetsController(window, view)
@@ -206,13 +262,16 @@ fun BouncerTheme(
         }
     }
     
-    // Provide all CompositionLocals
+    // Provide all CompositionLocals including theme variant and background skin
     CompositionLocalProvider(
         LocalBouncerColors provides bouncerColors,
         LocalBouncerTypography provides bouncerTypography,
         LocalBouncerDimens provides bouncerDimensions,
         LocalBouncerShapes provides bouncerShapes,
-        LocalTeamColorScheme provides bouncerColors.team
+        LocalTeamColorScheme provides bouncerColors.team,
+        LocalThemeVariant provides themeVariant,
+        LocalVariantPalette provides variantPalette,
+        LocalBackgroundSkin provides backgroundSkin
     ) {
         MaterialTheme(
             colorScheme = colorScheme,
@@ -220,57 +279,12 @@ fun BouncerTheme(
             shapes = BouncerMaterial3Shapes,
         ) {
             // =========================================================================
-            // Global Design Foundations: Stadium Gradient, Noise, and Gold Bloom
+            // Background Skin Layer - Renders selected skin as background
             // =========================================================================
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black)
-            ) {
-                // 1. Stadium Gradient (Background layer)
-                // Radial gradient: #1A1A1A (center-top) to #0F1115 to #000000
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .drawBehind {
-                            drawRect(
-                                brush = Brush.radialGradient(
-                                    0.0f to Color(0xFF1A1A1A),
-                                    0.6f to Color(0xFF0F1115),
-                                    1.0f to Color.Black,
-                                    center = Offset(size.width / 2f, size.height * 0.1f),
-                                    radius = size.height * 0.8f
-                                )
-                            )
-                        }
-                )
-
-                // 2. Gold Bloom (Subtle blurred gold radial ellipse)
-                // Radial ellipse rgba(212,175,55,0.15), filter: blur(80px)
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .blur(80.dp)
-                        .drawBehind {
-                            drawRect(
-                                brush = Brush.radialGradient(
-                                    0.0f to Color(0xFFD4AF37).copy(alpha = 0.15f),
-                                    1.0f to Color.Transparent,
-                                    center = Offset(size.width / 2f, -size.height * 0.05f),
-                                    radius = size.width * 1.2f
-                                )
-                            )
-                        }
-                )
-
-                // 3. Noise Overlay (Subtle grain effect simulated with alpha)
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(Color.White.copy(alpha = 0.04f))
-                    // Could be replaced by Modifier.glassmorphism(noiseAlpha = 0.05f)
-                )
-
+            Box(modifier = Modifier.fillMaxSize()) {
+                // Render the selected background skin
+                BackgroundSkinLayer(skin = backgroundSkin)
+                
                 // Render content on top
                 content()
             }
@@ -316,26 +330,36 @@ fun isBouncerDarkTheme(): Boolean {
 @Composable
 fun BouncerPreviewTheme(
     darkTheme: Boolean = true,
+    themeVariant: ThemeVariant = ThemeVariant.Dark,
+    backgroundSkin: BackgroundSkin = BackgroundSkin.MidnightGradient(),
     content: @Composable () -> Unit
 ) {
     val bouncerColors = BouncerColors()
     val bouncerTypography = BouncerTypography()
     val bouncerDimensions = BouncerDimensions()
     val bouncerShapes = BouncerShapes()
+    val variantPalette = themeVariant.toPalette()
     
-    val colorScheme = if (darkTheme) BouncerDarkColorScheme else BouncerLightColorScheme
+    val colorScheme = variantPalette.toMaterial3ColorScheme()
     
     CompositionLocalProvider(
         LocalBouncerColors provides bouncerColors,
         LocalBouncerTypography provides bouncerTypography,
         LocalBouncerDimens provides bouncerDimensions,
-        LocalBouncerShapes provides bouncerShapes
+        LocalBouncerShapes provides bouncerShapes,
+        LocalThemeVariant provides themeVariant,
+        LocalVariantPalette provides variantPalette,
+        LocalBackgroundSkin provides backgroundSkin
     ) {
         MaterialTheme(
             colorScheme = colorScheme,
             typography = BouncerMaterial3Typography,
-            shapes = BouncerMaterial3Shapes,
-            content = content
-        )
+            shapes = BouncerMaterial3Shapes
+        ) {
+            Box(modifier = Modifier.fillMaxSize()) {
+                BackgroundSkinLayer(skin = backgroundSkin)
+                content()
+            }
+        }
     }
 }
