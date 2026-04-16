@@ -28,7 +28,7 @@ jobs:
         run: |
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-          git add ios/Bouncer/Resources/TeamLogos.json
+          git add app/src/main/assets/TeamLogos.json
           # Check if there are changes to commit
           if git diff --staged --quiet; then
             echo "No changes to commit"
