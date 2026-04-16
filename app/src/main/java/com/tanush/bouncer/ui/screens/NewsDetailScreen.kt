@@ -30,6 +30,7 @@ import com.tanush.bouncer.ui.components.bouncerShimmerBrush
 import com.tanush.bouncer.ui.components.glass.GlassBloomBackground
 import com.tanush.bouncer.ui.components.glass.GlassCard
 import com.tanush.bouncer.ui.components.glass.GlassIconButton
+import com.tanush.bouncer.ui.components.glass.GlassSecondaryButton
 import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 import com.tanush.bouncer.viewmodels.NewsViewModel
 
@@ -255,18 +256,39 @@ fun NewsDetailScreen(
                         }
                     }
                     else -> {
-                        // Fallback — show summary only
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(vertical = dimens.xl),
+                                .padding(
+                                    horizontal = dimens.screenHorizontalPadding,
+                                    vertical = dimens.xl
+                                ),
                             contentAlignment = Alignment.Center
                         ) {
-                            Text(
-                                text = "Tap 'Open in browser' to read the full article",
-                                style = typography.bodySmall,
-                                color = colors.textMuted
-                            )
+                            GlassCard(
+                                modifier = Modifier.fillMaxWidth(),
+                                contentPadding = PaddingValues(dimens.lg)
+                            ) {
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.spacedBy(dimens.md)
+                                ) {
+                                    Text(
+                                        text = "Full article unavailable in-app",
+                                        style = typography.headingSmall,
+                                        color = colors.textPrimary
+                                    )
+                                    Text(
+                                        text = "Open this story in your browser for full coverage.",
+                                        style = typography.bodySmall,
+                                        color = colors.textMuted
+                                    )
+                                    GlassSecondaryButton(
+                                        text = "Open in browser",
+                                        onClick = { onOpenInBrowser(article.articleUrl) }
+                                    )
+                                }
+                            }
                         }
                     }
                 }

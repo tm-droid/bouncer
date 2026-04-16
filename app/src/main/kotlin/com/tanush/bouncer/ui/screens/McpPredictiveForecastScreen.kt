@@ -56,14 +56,18 @@ fun McpPredictiveForecastScreen(
     val currentOverStr = battingTeam?.overs ?: "14.0"
     val currentOver = currentOverStr.toDoubleOrNull()?.toInt() ?: 14
     
-    val predictions = remember {
+    val predictions = remember(currentOver, match.scrapedBatsmen, match.currentBowler) {
+        val prob = match.calculateHeuristicProbability()
+        val dotProb = (50 + (100 - prob) * 0.3).toInt().coerceIn(20, 85)
+        val wicketProb = ((100 - prob) * 0.4).toInt().coerceIn(5, 40)
+        val boundaryProb = (prob * 0.5).toInt().coerceIn(10, 70)
         listOf(
-            BallPrediction("${currentOver + 1}.1", 78, "Dot Ball"),
-            BallPrediction("${currentOver + 1}.2", 45, "1 Run"),
-            BallPrediction("${currentOver + 1}.3", 92, "Wicket", isCritical = true),
-            BallPrediction("${currentOver + 1}.4", 60, "2 Runs"),
-            BallPrediction("${currentOver + 1}.5", 30, "Dot"),
-            BallPrediction("${currentOver + 1}.6", 88, "Boundary")
+            BallPrediction("${currentOver + 1}.1", dotProb, "Dot Ball"),
+            BallPrediction("${currentOver + 1}.2", (100 - dotProb).coerceIn(15, 75), "1 Run"),
+            BallPrediction("${currentOver + 1}.3", wicketProb, "Wicket", isCritical = wicketProb > 25),
+            BallPrediction("${currentOver + 1}.4", (dotProb * 0.7).toInt().coerceIn(15, 65), "2 Runs"),
+            BallPrediction("${currentOver + 1}.5", dotProb, "Dot"),
+            BallPrediction("${currentOver + 1}.6", boundaryProb, "Boundary")
         )
     }
 
@@ -246,32 +250,39 @@ private fun EliteForecastHero(match: CricketMatch) {
                     )
                 }
                 Column(horizontalAlignment = Alignment.End) {
-                    Text(battingTeam?.score ?: "145/3", color = colors.goldPrimary, fontSize = 24.sp, fontWeight = FontWeight.Black)
-                    Text("${battingTeam?.overs ?: "14.0"} OVERS", color = colors.textSecondary, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    Text(battingTeam?.score ?: "--", color = colors.goldPrimary, fontSize = 24.sp, fontWeight = FontWeight.Black)
+                    Text("${battingTeam?.overs ?: "--"} OVERS", color = colors.textSecondary, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                 }
             }
 
+            val totalOvers = when {
+                match.matchType.contains("T20", ignoreCase = true) -> 20f
+                match.matchType.contains("ODI", ignoreCase = true) -> 50f
+                else -> 20f
+            }
+            val currentOversFloat = (battingTeam?.overs ?: "0").toFloatOrNull() ?: 0f
+            val matchProgress = (currentOversFloat / totalOvers).coerceIn(0.01f, 1f)
             Box(modifier = Modifier.fillMaxWidth().height(2.dp).clip(CircleShape).background(GlassSurface)) {
-                Box(modifier = Modifier.fillMaxWidth(0.52f).fillMaxHeight().background(colors.goldPrimary))
+                Box(modifier = Modifier.fillMaxWidth(matchProgress).fillMaxHeight().background(colors.goldPrimary))
             }
 
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text("ON STRIKE", color = colors.textTertiary, fontSize = 9.sp, fontWeight = FontWeight.Black)
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text(striker?.name ?: "V. Kohli", color = colors.textPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                        Text("${striker?.runs ?: "56"}*", color = colors.goldPrimary, fontSize = 14.sp, fontWeight = FontWeight.Black)
+                        Text(striker?.name ?: "No striker", color = colors.textPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                        Text("${striker?.runs ?: "--"}*", color = colors.goldPrimary, fontSize = 14.sp, fontWeight = FontWeight.Black)
                     }
-                    Text("SR: ${striker?.strikeRate ?: "142.5"}", color = colors.textSecondary, fontSize = 10.sp)
+                    Text("SR: ${striker?.strikeRate ?: "--"}", color = colors.textSecondary, fontSize = 10.sp)
                 }
                 Box(modifier = Modifier.width(1.dp).height(32.dp).background(GlassSurface).align(Alignment.CenterVertically))
                 Column(modifier = Modifier.weight(1f)) {
                     Text("BOWLER", color = colors.textTertiary, fontSize = 9.sp, fontWeight = FontWeight.Black)
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text(bowler?.name ?: "M. Starc", color = colors.textPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                        Text("${bowler?.wickets ?: "1"}/${bowler?.runs ?: "24"}", color = colors.goldPrimary, fontSize = 14.sp, fontWeight = FontWeight.Black)
+                        Text(bowler?.name ?: "No bowler", color = colors.textPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                        Text("${bowler?.wickets ?: "-"}/${bowler?.runs ?: "-"}", color = colors.goldPrimary, fontSize = 14.sp, fontWeight = FontWeight.Black)
                     }
-                    Text("ECON: ${bowler?.economy ?: "6.8"}", color = colors.textSecondary, fontSize = 10.sp)
+                    Text("ECON: ${bowler?.economy ?: "--"}", color = colors.textSecondary, fontSize = 10.sp)
                 }
             }
         }

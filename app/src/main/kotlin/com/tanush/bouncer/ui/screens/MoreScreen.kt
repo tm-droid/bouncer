@@ -2,12 +2,29 @@ package com.tanush.bouncer.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.HelpCenter
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.BarChart
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Code
+import androidx.compose.material.icons.filled.EmojiEvents
+import androidx.compose.material.icons.filled.Insights
+import androidx.compose.material.icons.filled.Newspaper
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.ViewInAr
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -15,18 +32,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.ui.components.glass.GlassBloomBackground
 import com.tanush.bouncer.ui.components.glass.GlassCard
 import com.tanush.bouncer.ui.theme.BouncerDesignSystem
-
-// ==========================================
-// BOUNCER – More Hub Screen
-// The 5th tab: gateway to Settings, Achievements,
-// Activity Feed, AR Tracking, About, Dev Tools.
-// ==========================================
 
 private data class MoreItemData(
     val icon: ImageVector,
@@ -38,6 +52,7 @@ private data class MoreItemData(
 @Composable
 fun MoreScreen(
     onSettingsClick: () -> Unit,
+    onStatsClick: () -> Unit,
     onAchievementsClick: () -> Unit,
     onActivityClick: () -> Unit,
     onArTrackingClick: () -> Unit,
@@ -50,53 +65,64 @@ fun MoreScreen(
     val dimens = BouncerDesignSystem.dimens
 
     val exploreItems = listOf(
-        MoreItemData(Icons.Default.Newspaper, "Cricket News", "Latest stories & updates", onNewsClick),
-        MoreItemData(Icons.Default.Settings, "Settings", "Preferences, notifications, data", onSettingsClick),
-        MoreItemData(Icons.Default.EmojiEvents, "Achievements", "Trophy room & milestones", onAchievementsClick),
-        MoreItemData(Icons.Default.Insights, "Activity Feed", "Intelligence & AI insights", onActivityClick),
+        MoreItemData(Icons.Default.Newspaper, "Cricket News", "Latest stories and updates", onNewsClick),
+        MoreItemData(Icons.Default.BarChart, "Stats", "Analytics, trophies and milestones", onStatsClick),
+        MoreItemData(Icons.Default.EmojiEvents, "Achievements", "Unlocks and progress badges", onAchievementsClick),
+        MoreItemData(Icons.Default.Insights, "Activity Feed", "Recent insights and momentum events", onActivityClick),
         MoreItemData(Icons.Default.ViewInAr, "AR Ball Tracking", "Augmented reality experience", onArTrackingClick)
     )
 
-    val supportItems = listOf(
-        MoreItemData(Icons.AutoMirrored.Filled.HelpCenter, "About Bouncer", "Version, licenses, credits", onAboutClick),
-        MoreItemData(Icons.Default.Code, "Developer Tools", "API diagnostics & debug", onDevToolsClick)
+    val settingsItems = listOf(
+        MoreItemData(Icons.Default.Settings, "Settings", "Preferences and notifications", onSettingsClick),
+        MoreItemData(Icons.AutoMirrored.Filled.HelpCenter, "About Bouncer", "Version, licenses and credits", onAboutClick),
+        MoreItemData(Icons.Default.Code, "Developer Tools", "Diagnostics and debug utilities", onDevToolsClick)
     )
 
     GlassBloomBackground(modifier = Modifier.fillMaxSize()) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            // Gold gradient header
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .statusBarsPadding()
-                    .padding(horizontal = dimens.screenHorizontal, vertical = dimens.sm),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "MORE",
-                    style = typography.headingMedium,
-                    color = colors.goldPrimary,
-                    letterSpacing = 2.sp,
-                    fontWeight = FontWeight.Black
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(
+                top = dimens.sm,
+                start = dimens.screenHorizontal,
+                end = dimens.screenHorizontal,
+                bottom = dimens.bottomNavHeight + dimens.lg
+            ),
+            verticalArrangement = Arrangement.spacedBy(dimens.lg)
+        ) {
+            item {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .statusBarsPadding(),
+                    verticalArrangement = Arrangement.spacedBy(dimens.xs)
+                ) {
+                    Text(
+                        text = "More",
+                        style = typography.headingLarge,
+                        color = colors.textPrimary
+                    )
+                    Text(
+                        text = "Shortcuts, preferences, and app information in one place.",
+                        style = typography.bodySmall,
+                        color = colors.textSecondary
+                    )
+                }
+            }
+
+            item {
+                MoreSectionGroup(
+                    title = "Explore",
+                    subtitle = "Discover content and match intelligence",
+                    items = exploreItems
                 )
             }
 
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(
-                    top = dimens.lg,
-                    start = dimens.xl,
-                    end = dimens.xl,
-                    bottom = 140.dp
-                ),
-                verticalArrangement = Arrangement.spacedBy(dimens.xxl)
-            ) {
-                item {
-                    MoreSectionGroup(title = "EXPLORE", items = exploreItems)
-                }
-                item {
-                    MoreSectionGroup(title = "SUPPORT", items = supportItems)
-                }
+            item {
+                MoreSectionGroup(
+                    title = "Support",
+                    subtitle = "Manage app settings and information",
+                    items = settingsItems
+                )
             }
         }
     }
@@ -105,29 +131,30 @@ fun MoreScreen(
 @Composable
 private fun MoreSectionGroup(
     title: String,
+    subtitle: String,
     items: List<MoreItemData>
 ) {
     val colors = BouncerDesignSystem.colors
     val typography = BouncerDesignSystem.typography
     val dimens = BouncerDesignSystem.dimens
 
-    Column(
-        verticalArrangement = Arrangement.spacedBy(dimens.cardSpacing)
-    ) {
-        // Section header with gold text
+    Column(verticalArrangement = Arrangement.spacedBy(dimens.sm)) {
         Text(
             text = title,
-            style = typography.labelLarge,
-            color = colors.goldPrimary,
-            letterSpacing = 1.5.sp,
-            modifier = Modifier.padding(start = dimens.xs, bottom = dimens.xs)
+            style = typography.headingSmall,
+            color = colors.textPrimary
+        )
+        Text(
+            text = subtitle,
+            style = typography.bodySmall,
+            color = colors.textSecondary
         )
 
-        // Glass card container
         GlassCard(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(20.dp),
-            contentPadding = PaddingValues(0.dp)
+            shape = RoundedCornerShape(dimens.radius.card),
+            contentPadding = PaddingValues(0.dp),
+            useGoldBorder = false
         ) {
             Column {
                 items.forEachIndexed { index, item ->
@@ -141,7 +168,7 @@ private fun MoreSectionGroup(
                         HorizontalDivider(
                             color = colors.glassBorder,
                             thickness = 0.5.dp,
-                            modifier = Modifier.padding(horizontal = dimens.xl)
+                            modifier = Modifier.padding(horizontal = dimens.md)
                         )
                     }
                 }
@@ -164,48 +191,52 @@ private fun MoreMenuItem(
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .heightIn(min = 56.dp)
             .clickable(onClick = onClick)
-            .padding(horizontal = dimens.xl, vertical = dimens.lg),
+            .semantics(mergeDescendants = true) {
+                role = Role.Button
+                contentDescription = "$title. $subtitle"
+            }
+            .padding(horizontal = dimens.md, vertical = dimens.sm),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(dimens.lg)
+        horizontalArrangement = Arrangement.spacedBy(dimens.sm)
     ) {
         Box(
             contentAlignment = Alignment.Center,
             modifier = Modifier
-                .size(40.dp)
-                .background(
-                    colors.goldPrimary.copy(alpha = 0.12f),
-                    RoundedCornerShape(12.dp)
-                )
+                .size(dimens.md + dimens.sm)
+                .background(colors.goldPrimary.copy(alpha = 0.14f), RoundedCornerShape(dimens.radius.sm))
         ) {
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                tint = colors.goldPrimary.copy(alpha = 0.6f),
-                modifier = Modifier.size(20.dp)
+                tint = colors.goldPrimary,
+                modifier = Modifier.size(dimens.sm + dimens.xs)
             )
         }
+
         Column(
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(dimens.xxs)
         ) {
             Text(
                 text = title,
-                style = typography.headingSmall,
-                fontWeight = FontWeight.SemiBold,
-                color = colors.textPrimary
+                style = typography.bodyMedium,
+                color = colors.textPrimary,
+                fontWeight = FontWeight.SemiBold
             )
             Text(
                 text = subtitle,
                 style = typography.bodySmall,
-                color = colors.textMuted
+                color = colors.textSecondary
             )
         }
+
         Icon(
             imageVector = Icons.Default.ChevronRight,
             contentDescription = null,
-            tint = colors.textMuted,
-            modifier = Modifier.size(20.dp)
+            tint = colors.textSecondary,
+            modifier = Modifier.size(dimens.sm + dimens.xs)
         )
     }
 }

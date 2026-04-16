@@ -65,10 +65,42 @@ fun ScorecardTab_Extracted(scorecard: Scorecard?) {
 
         LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 100.dp), verticalArrangement = Arrangement.spacedBy(24.dp)) {
             item {
-                Row(modifier = Modifier.fillMaxWidth().padding(16.dp).clip(RoundedCornerShape(12.dp)).background(Color.White.copy(alpha = 0.05f)).border(BorderWidth.hairline, Gold400.copy(alpha = 0.12f), RoundedCornerShape(12.dp)).padding(4.dp)) {
+                Text(
+                    text = "SCORECARD",
+                    color = Gold400,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = 1.2.sp,
+                    modifier = Modifier.padding(horizontal = 16.dp)
+                )
+            }
+            item {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Color.White.copy(alpha = 0.04f))
+                        .border(BorderWidth.hairline, Color.White.copy(alpha = 0.08f), RoundedCornerShape(12.dp))
+                        .padding(4.dp)
+                ) {
                     scorecard.innings.forEachIndexed { index, inning ->
-                        Box(modifier = Modifier.weight(1f).clip(RoundedCornerShape(8.dp)).background(if (selectedInnings == index) Gold400 else Color.Transparent).clickable { selectedInnings = index }.padding(vertical = 10.dp), contentAlignment = Alignment.Center) {
-                            Text(inning.teamName.uppercase(), color = if (selectedInnings == index) Color.Black else TextSecondary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(if (selectedInnings == index) Gold400.copy(alpha = 0.2f) else Color.Transparent)
+                                .clickable { selectedInnings = index }
+                                .padding(vertical = 10.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                inning.teamName.uppercase(),
+                                color = if (selectedInnings == index) Gold400 else TextSecondary,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 12.sp,
+                                maxLines = 1
+                            )
                         }
                     }
                 }

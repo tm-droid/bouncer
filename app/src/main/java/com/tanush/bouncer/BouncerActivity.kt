@@ -2,6 +2,7 @@ package com.tanush.bouncer
 
 import android.Manifest
 import android.content.Context
+import android.content.Intent
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.os.Build
@@ -120,6 +121,7 @@ import kotlinx.coroutines.launch
  * bottom-navigation–driven single-Activity architecture.
  */
 class BouncerActivity : ComponentActivity() {
+    private val externalDeepLinkUri = mutableStateOf<String?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -142,19 +144,20 @@ class BouncerActivity : ComponentActivity() {
 
         LiveActivityNotificationBuilder(applicationContext).createNotificationChannel()
         requestNotificationPermissionIfNeeded()
-
-        // Check onboarding status
-        val prefs = getSharedPreferences("bouncer_prefs", Context.MODE_PRIVATE)
-        val hasCompletedOnboarding = prefs.getBoolean("onboarding_complete", false)
+        externalDeepLinkUri.value = intent?.dataString
 
         setContent {
-            BouncerTheme {
-                BouncerAppRoot(
-                    hasCompletedOnboarding = hasCompletedOnboarding,
-                    prefs = prefs
-                )
-            }
+            // Route launcher to the refurbished Compose flow used by the updated UI.
+            com.tanush.bouncer.ui.BouncerAppContent(
+                externalDeepLinkUri = externalDeepLinkUri.value
+            )
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        externalDeepLinkUri.value = intent.dataString
     }
 
     private fun requestNotificationPermissionIfNeeded() {
@@ -669,6 +672,7 @@ fun BouncerAppRoot(
             ) {
                 MoreScreen(
                     onSettingsClick = { navController.navigate(Routes.SETTINGS) },
+                    onStatsClick = { navController.navigate(Routes.STATS) },
                     onAchievementsClick = { navController.navigate(Routes.ACHIEVEMENTS) },
                     onActivityClick = { navController.navigate(Routes.ACTIVITY) },
                     onArTrackingClick = { navController.navigate(Routes.AR_TRACKING) },

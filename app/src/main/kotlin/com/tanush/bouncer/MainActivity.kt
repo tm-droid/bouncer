@@ -29,6 +29,7 @@ import com.tanush.bouncer.ui.MatchDetailView
 import com.tanush.bouncer.ui.screens.*
 import com.tanush.bouncer.ui.theme.*
 import com.tanush.bouncer.viewmodels.LiveActivityViewModel
+import com.tanush.bouncer.viewmodels.LandingTab
 import com.tanush.bouncer.ui.components.InAppBanner
 import com.tanush.bouncer.ui.components.PremiumBottomNavBar
 import com.tanush.bouncer.utils.PreferencesHelper
@@ -63,6 +64,17 @@ class MainActivity : ComponentActivity() {
                 )
             )
         }.getOrDefault(BackgroundSkinType.MIDNIGHT_GRADIENT)
+        val initialLandingRoute = when (
+            PreferencesHelper.getString(
+                this,
+                PreferencesHelper.KEY_DEFAULT_LANDING,
+                LandingTab.HOME.name
+            )
+        ) {
+            LandingTab.ALL_MATCHES.name -> "all_matches"
+            LandingTab.FAVOURITES.name -> "favourites"
+            else -> "home"
+        }
         
         setContent {
             var currentThemeVariant by remember { mutableStateOf(initialThemeVariant) }
@@ -75,6 +87,7 @@ class MainActivity : ComponentActivity() {
                 MainAppContent(
                     hasCompletedOnboarding = hasCompletedOnboarding,
                     prefs = prefs,
+                    defaultLandingRoute = initialLandingRoute,
                     currentThemeVariant = currentThemeVariant,
                     currentBackgroundSkin = currentBackgroundSkin,
                     onThemeVariantChanged = { variant ->
@@ -103,6 +116,7 @@ class MainActivity : ComponentActivity() {
 private fun MainAppContent(
     hasCompletedOnboarding: Boolean = true,
     prefs: android.content.SharedPreferences? = null,
+    defaultLandingRoute: String = "home",
     currentThemeVariant: ThemeVariant = ThemeVariant.Dark,
     currentBackgroundSkin: BackgroundSkinType = BackgroundSkinType.MIDNIGHT_GRADIENT,
     onThemeVariantChanged: (ThemeVariant) -> Unit = {},
@@ -116,7 +130,7 @@ private fun MainAppContent(
     val currentRoute = navBackStackEntry?.destination?.route ?: "home"
     
     // Determine start destination: splash -> onboarding (if first time) -> home
-    val startDestination = if (!hasCompletedOnboarding) "splash" else "home"
+    val startDestination = if (!hasCompletedOnboarding) "splash" else defaultLandingRoute
     
     // Wire LiveNotificationManager so enriched notifications work
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -195,7 +209,7 @@ private fun MainAppContent(
                 exitTransition = { fadeOut(tween(AnimationDuration.normal)) }
             ) { 
                 SplashScreen(onSplashComplete = { 
-                    val destination = if (!hasCompletedOnboarding) "onboarding" else "home"
+                    val destination = if (!hasCompletedOnboarding) "onboarding" else defaultLandingRoute
                     navController.navigate(destination) { 
                         popUpTo("splash") { inclusive = true } 
                     } 
@@ -208,7 +222,7 @@ private fun MainAppContent(
             ) {
                 OnboardingScreen(onComplete = {
                     prefs?.edit()?.putBoolean("onboarding_complete", true)?.apply()
-                    navController.navigate("home") {
+                    navController.navigate(defaultLandingRoute) {
                         popUpTo("onboarding") { inclusive = true }
                     }
                 })
@@ -238,24 +252,100 @@ private fun MainAppContent(
                 }
             ) { backStackEntry ->
                 val matchId = backStackEntry.arguments?.getString("matchId")
-                val matches by viewModel.currentMatches.collectAsState()
-                val match = matches.find { it.id == matchId }
+                val match = currentMatches.find { it.id == matchId }
                 if (match != null) { 
                     MatchDetailView(
                         match = match, 
                         onBackClick = { navController.popBackStack() }, 
-                        onForecastClick = { navController.navigate("forecast/$matchId") },
-                        onArClick = { navController.navigate("ar_tracking") }
+                        onForecastClick = { navController.navigate("forecast/${match.id}") },
+                        onArClick = { navController.navigate("ar_tracking") },
+                        onOpenCommentary = { navController.navigate("match/${match.id}/commentary") },
+                        onOpenScorecard = { navController.navigate("match/${match.id}/scorecard") },
+                        onOpenAnalysis = { navController.navigate("match/${match.id}/analysis") }
                     ) 
                 }
             }
             
             composable("forecast/{matchId}") { backStackEntry ->
                 val matchId = backStackEntry.arguments?.getString("matchId")
-                val matches by viewModel.currentMatches.collectAsState()
-                val match = matches.find { it.id == matchId }
+                val match = currentMatches.find { it.id == matchId }
                 if (match != null) { 
                     McpPredictiveForecastScreen(match = match, onBackClick = { navController.popBackStack() }) 
+                }
+            }
+
+            composable(
+                "match/{matchId}/commentary",
+                enterTransition = {
+                    slideInHorizontally(
+                        initialOffsetX = { it / 8 },
+                        animationSpec = tween(AnimationDuration.moderate, easing = FastOutSlowInEasing)
+                    ) + fadeIn(tween(AnimationDuration.moderate))
+                },
+                exitTransition = {
+                    slideOutHorizontally(
+                        targetOffsetX = { it / 8 },
+                        animationSpec = tween(AnimationDuration.normal, easing = FastOutSlowInEasing)
+                    ) + fadeOut(tween(AnimationDuration.normal))
+                }
+            ) { backStackEntry ->
+                val matchId = backStackEntry.arguments?.getString("matchId")
+                val match = currentMatches.find { it.id == matchId }
+                if (match != null) {
+                    MatchCommentaryScreen(
+                        match = match,
+                        onBackClick = { navController.popBackStack() }
+                    )
+                }
+            }
+
+            composable(
+                "match/{matchId}/scorecard",
+                enterTransition = {
+                    slideInHorizontally(
+                        initialOffsetX = { it / 8 },
+                        animationSpec = tween(AnimationDuration.moderate, easing = FastOutSlowInEasing)
+                    ) + fadeIn(tween(AnimationDuration.moderate))
+                },
+                exitTransition = {
+                    slideOutHorizontally(
+                        targetOffsetX = { it / 8 },
+                        animationSpec = tween(AnimationDuration.normal, easing = FastOutSlowInEasing)
+                    ) + fadeOut(tween(AnimationDuration.normal))
+                }
+            ) { backStackEntry ->
+                val matchId = backStackEntry.arguments?.getString("matchId")
+                val match = currentMatches.find { it.id == matchId }
+                if (match != null) {
+                    MatchScorecardScreen(
+                        match = match,
+                        onBackClick = { navController.popBackStack() }
+                    )
+                }
+            }
+
+            composable(
+                "match/{matchId}/analysis",
+                enterTransition = {
+                    slideInHorizontally(
+                        initialOffsetX = { it / 8 },
+                        animationSpec = tween(AnimationDuration.moderate, easing = FastOutSlowInEasing)
+                    ) + fadeIn(tween(AnimationDuration.moderate))
+                },
+                exitTransition = {
+                    slideOutHorizontally(
+                        targetOffsetX = { it / 8 },
+                        animationSpec = tween(AnimationDuration.normal, easing = FastOutSlowInEasing)
+                    ) + fadeOut(tween(AnimationDuration.normal))
+                }
+            ) { backStackEntry ->
+                val matchId = backStackEntry.arguments?.getString("matchId")
+                val match = currentMatches.find { it.id == matchId }
+                if (match != null) {
+                    MatchAnalysisScreen(
+                        match = match,
+                        onBackClick = { navController.popBackStack() }
+                    )
                 }
             }
             

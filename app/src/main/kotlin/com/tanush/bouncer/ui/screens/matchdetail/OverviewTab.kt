@@ -66,9 +66,19 @@ fun OverviewTab_Extracted(
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(28.dp)
+        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
+        item {
+            Text(
+                text = "SUMMARY",
+                color = Gold400,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Black,
+                letterSpacing = 1.2.sp
+            )
+        }
+
         item {
             QuickMatchStatsBar(
                 currentRunRate = liveCurrentRunRate ?: match.score?.currentRunRate ?: "--",

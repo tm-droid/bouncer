@@ -57,7 +57,7 @@ import io.sentry.SentryLevel
 @Composable
 fun StatisticsTab_Extracted(match: CricketMatch, scorecard: Scorecard?) {
     LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
-        item { Text(text = "MATCH STATISTICS", color = Gold400, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.5.sp) }
+        item { Text(text = "STATS", color = Gold400, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.2.sp) }
         item { MatchStatsOverviewCard(match, scorecard) }
 
         scorecard?.innings?.firstOrNull()?.let { innings ->

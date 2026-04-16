@@ -19,6 +19,7 @@ import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
@@ -31,6 +32,11 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -53,6 +59,15 @@ import com.tanush.bouncer.viewmodels.LiveActivityViewModel
 import com.tanush.bouncer.viewmodels.LoadingState
 import com.tanush.bouncer.managers.TeamLogoManager
 import com.tanush.bouncer.utils.rememberHapticFeedback
+
+private val HOME_STATUS_FILTERS = listOf("Live", "Upcoming", "Recent", "Completed")
+private val HOME_CATEGORIES = listOf("All", "International", "League", "Domestic", "Women")
+
+private data class HomeMatchBuckets(
+    val live: List<CricketMatch>,
+    val upcoming: List<CricketMatch>,
+    val recent: List<CricketMatch>
+)
 
 // ==========================================
 // BOUNCER – Home Screen v3.0
@@ -102,32 +117,51 @@ fun HomeScreen(
     val listState = rememberLazyListState()
 
     // Derive active category from ViewModel state
-    val selectedCategory = when {
-        selectedGender == "Women" -> "Women"
-        selectedCompetitionType != "All" -> selectedCompetitionType
-        else -> "All"
+    val selectedCategory by remember(selectedCompetitionType, selectedGender) {
+        derivedStateOf {
+            when {
+                selectedGender == "Women" -> "Women"
+                selectedCompetitionType != "All" -> selectedCompetitionType
+                else -> "All"
+            }
+        }
     }
 
     // ── Categorize matches ──
-    val liveMatches = currentMatches.filter { it.isLive }
-    val upcomingMatches = currentMatches.filter {
-        val s = it.status.lowercase()
-        !it.isLive && (s.contains("upcoming") || s.contains("scheduled") || s.contains("not started"))
+    val matchBuckets by remember(currentMatches) {
+        derivedStateOf {
+            HomeMatchBuckets(
+                live = currentMatches.filter { it.isLive },
+                upcoming = currentMatches.filter {
+                    val s = it.status.lowercase()
+                    !it.isLive && (s.contains("upcoming") || s.contains("scheduled") || s.contains("not started"))
+                },
+                recent = currentMatches.filter {
+                    val s = it.status.lowercase()
+                    !it.isLive && (s.contains("complete") || s.contains("result") || s.contains("ended") || s.contains("won"))
+                }
+            )
+        }
     }
-    val recentMatches = currentMatches.filter {
-        val s = it.status.lowercase()
-        !it.isLive && (s.contains("complete") || s.contains("result") || s.contains("ended") || s.contains("won"))
-    }
+    val liveMatches = matchBuckets.live
+    val upcomingMatches = matchBuckets.upcoming
+    val recentMatches = matchBuckets.recent
 
     GlassBloomBackground {
         Box(
             modifier = Modifier
                 .fillMaxSize()
+                .semantics(mergeDescendants = true) {
+                    contentDescription = if (isRefreshing) {
+                        "Refreshing matches"
+                    } else {
+                        "Home matches list. Pull down to refresh"
+                    }
+                }
                 .pullRefresh(pullRefreshState)
         ) {
             if (isLoading && currentMatches.isEmpty()) {
-                // ── Skeleton loading state ──
-                MatchListSkeleton(modifier = Modifier.padding(top = dimens.sm))
+                LoadingMatchState()
             } else if (loadingState is LoadingState.Error && currentMatches.isEmpty()) {
                 // ── Error state (no cached data to show) ──
                 ErrorMatchState(
@@ -136,15 +170,16 @@ fun HomeScreen(
                 )
             } else {
                 Column(modifier = Modifier.fillMaxSize()) {
-                    // ── 1. Premium Header (64dp) ──
-                    GoldHeader(
+                    // ── 1. Cleaner header ──
+                    ModernHomeHeader(
+                        totalCount = currentMatches.size,
                         matchCount = liveMatches.size,
                         selectedStatus = selectedStatus
                     )
 
                     // ── 2. Status Segmented Control ──
                     StatusSegmentedControl(
-                        statuses = listOf("Live", "Upcoming", "Recent", "Completed"),
+                        statuses = HOME_STATUS_FILTERS,
                         selectedStatus = selectedStatus,
                         onStatusSelected = { status ->
                             haptic.click()
@@ -154,7 +189,15 @@ fun HomeScreen(
 
                     Spacer(modifier = Modifier.height(dimens.sm))
 
-                    // ── 3. Category Filter Chips ──
+                    // ── 3. Category filter ──
+                    Text(
+                        text = "Category",
+                        color = colors.textMuted,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier.padding(horizontal = dimens.screenHorizontal)
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
                     CategoryChipRow(
                         selectedCategory = selectedCategory,
                         onCategorySelected = { category ->
@@ -186,7 +229,7 @@ fun HomeScreen(
                                 Brush.horizontalGradient(
                                     colors = listOf(
                                         Color.Transparent,
-                                        com.tanush.bouncer.ui.theme.DesignTokens.Color.goldPrimary().copy(alpha = 0.25f),
+                                        colors.glassBorder,
                                         Color.Transparent
                                     )
                                 )
@@ -200,6 +243,27 @@ fun HomeScreen(
                         contentPadding = PaddingValues(bottom = dimens.bottomNavHeight + dimens.spacing.xl),
                         verticalArrangement = Arrangement.spacedBy(dimens.sm)
                     ) {
+                        if (isRefreshing && currentMatches.isNotEmpty()) {
+                            item(key = "refreshing_banner") {
+                                HomeInlineStatusBanner(
+                                    text = "Refreshing latest scores…",
+                                    isError = false
+                                )
+                            }
+                        }
+
+                        if (loadingState is LoadingState.Error &&
+                            currentMatches.isNotEmpty() &&
+                            !isRefreshing
+                        ) {
+                            item(key = "cached_error_banner") {
+                                HomeInlineStatusBanner(
+                                    text = "Showing saved matches while reconnecting. Pull to retry.",
+                                    isError = true
+                                )
+                            }
+                        }
+
                         // ── Live Matches Carousel ──
                         if (liveMatches.isNotEmpty()) {
                             item(key = "live_section_header") {
@@ -328,6 +392,74 @@ fun HomeScreen(
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 @Composable
+private fun ModernHomeHeader(
+    totalCount: Int,
+    matchCount: Int,
+    selectedStatus: String
+) {
+    val colors = BouncerDesignSystem.colors
+    val dimens = BouncerDesignSystem.dimens
+
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = dimens.screenHorizontal, vertical = dimens.sm),
+        shape = RoundedCornerShape(18.dp),
+        color = colors.glassBackground,
+        border = BorderStroke(1.dp, colors.glassBorder)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = dimens.md, vertical = dimens.md),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    text = "Bouncer",
+                    color = colors.textPrimary,
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = "${selectedStatus.lowercase().replaceFirstChar { it.uppercase() }} matches • $totalCount total",
+                    color = colors.textSecondary,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+
+            if (matchCount > 0) {
+                Surface(
+                    shape = RoundedCornerShape(50.dp),
+                    color = colors.statusLive.copy(alpha = 0.12f),
+                    border = BorderStroke(1.dp, colors.statusLive.copy(alpha = 0.28f))
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(7.dp)
+                                .background(colors.statusLive, CircleShape)
+                        )
+                        Text(
+                            text = "$matchCount live",
+                            color = colors.statusLive,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun StatusSegmentedControl(
     statuses: List<String>,
     selectedStatus: String,
@@ -342,28 +474,23 @@ private fun StatusSegmentedControl(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = dimens.screenHorizontal)
-            .padding(top = dimens.sm)
     ) {
         Surface(
-            shape = RoundedCornerShape(12.dp),
+            shape = RoundedCornerShape(14.dp),
             color = colors.glassBackground,
             border = BorderStroke(1.dp, colors.glassBorder)
         ) {
             BoxWithConstraints(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(44.dp)
+                    .height(dimens.minTouchTarget)
                     .padding(dimens.xs)
             ) {
                 val tabWidth = maxWidth / statuses.size
 
-                // Animated gold pill indicator
                 val indicatorOffset by animateDpAsState(
                     targetValue = tabWidth * selectedIndex,
-                    animationSpec = spring(
-                        dampingRatio = Spring.DampingRatioLowBouncy,
-                        stiffness = Spring.StiffnessLow
-                    ),
+                    animationSpec = tween(220, easing = FastOutSlowInEasing),
                     label = "tabIndicator"
                 )
 
@@ -373,27 +500,21 @@ private fun StatusSegmentedControl(
                         .width(tabWidth)
                         .fillMaxHeight()
                         .background(
-                            Brush.verticalGradient(
-                                colors = listOf(
-                                    colors.goldPrimary.copy(alpha = 0.18f),
-                                    colors.goldPrimary.copy(alpha = 0.08f)
-                                )
-                            ),
+                            colors.goldPrimary.copy(alpha = 0.16f),
                             RoundedCornerShape(8.dp)
                         )
                         .border(
                             1.dp,
-                            colors.goldPrimary.copy(alpha = 0.25f),
+                            colors.goldPrimary.copy(alpha = 0.32f),
                             RoundedCornerShape(8.dp)
                         )
                 )
 
-                // Tab labels
                 Row(modifier = Modifier.fillMaxSize()) {
                     statuses.forEachIndexed { index, status ->
                         val isSelected = index == selectedIndex
                         val textColor by animateColorAsState(
-                            targetValue = if (isSelected) colors.goldPrimary else colors.textMuted,
+                            targetValue = if (isSelected) colors.textPrimary else colors.textSecondary,
                             animationSpec = tween(200),
                             label = "tabTextColor_$index"
                         )
@@ -413,8 +534,12 @@ private fun StatusSegmentedControl(
                                 text = status,
                                 color = textColor,
                                 fontSize = 13.sp,
-                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                letterSpacing = if (isSelected) 0.5.sp else 0.sp
+                                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
+                                modifier = Modifier.semantics {
+                                    role = Role.Tab
+                                    selected = isSelected
+                                    contentDescription = "$status status tab"
+                                }
                             )
                         }
                     }
@@ -437,18 +562,17 @@ private fun CategoryChipRow(
 ) {
     val colors = BouncerDesignSystem.colors
     val dimens = BouncerDesignSystem.dimens
-    val categories = listOf("All", "International", "League", "Domestic", "Women")
 
     LazyRow(
         modifier = modifier,
         contentPadding = PaddingValues(horizontal = dimens.screenHorizontal),
         horizontalArrangement = Arrangement.spacedBy(dimens.sm)
     ) {
-        items(categories) { category ->
+        items(HOME_CATEGORIES, key = { it }) { category ->
             val isSelected = category == selectedCategory
 
             val bgColor by animateColorAsState(
-                targetValue = if (isSelected) colors.goldPrimary.copy(alpha = 0.14f) else Color.Transparent,
+                targetValue = if (isSelected) colors.goldPrimary.copy(alpha = 0.14f) else colors.glassBackground.copy(alpha = 0.6f),
                 animationSpec = tween(200),
                 label = "chipBg_$category"
             )
@@ -458,7 +582,7 @@ private fun CategoryChipRow(
                 label = "chipBorder_$category"
             )
             val textColor by animateColorAsState(
-                targetValue = if (isSelected) colors.goldPrimary else colors.textMuted,
+                targetValue = if (isSelected) colors.textPrimary else colors.textSecondary,
                 animationSpec = tween(200),
                 label = "chipText_$category"
             )
@@ -467,11 +591,18 @@ private fun CategoryChipRow(
                 shape = RoundedCornerShape(50.dp),
                 color = bgColor,
                 border = BorderStroke(1.dp, borderColor),
-                onClick = { onCategorySelected(category) }
+                onClick = { onCategorySelected(category) },
+                modifier = Modifier.semantics {
+                    role = Role.Button
+                    selected = isSelected
+                    contentDescription = "Category $category"
+                }
             ) {
                 Text(
                     text = category,
-                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp),
+                    modifier = Modifier
+                        .heightIn(min = dimens.minTouchTarget)
+                        .padding(horizontal = 14.dp, vertical = 8.dp),
                     color = textColor,
                     fontSize = 12.sp,
                     fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium
@@ -533,7 +664,11 @@ private fun LiveMatchCarouselCard(
     val team2 = match.teams.getOrNull(1)
 
     Surface(
-        modifier = Modifier.width(320.dp),
+        modifier = Modifier
+            .width(320.dp)
+            .semantics {
+                contentDescription = "Open match details for ${match.matchTitle}"
+            },
         shape = RoundedCornerShape(24.dp),
         color = colors.glassBackground,
         border = BorderStroke(1.dp, colors.goldPrimary.copy(alpha = borderAlpha)),
@@ -609,10 +744,12 @@ private fun CarouselTeamRow(team: CricketMatch.Team?) {
                     ),
                 contentAlignment = Alignment.Center
             ) {
-                val logoUrl = TeamLogoManager.getBestLogoUrl(team?.name, team?.logoUrl, 56, 56)
+                val logoUrl = remember(team?.name, team?.logoUrl) {
+                    TeamLogoManager.getBestLogoUrl(team?.name, team?.logoUrl, 56, 56)
+                }
                 CoilImage(
                     model = logoUrl,
-                    contentDescription = null,
+                    contentDescription = "${team?.name ?: "Unknown"} team logo",
                     modifier = Modifier.size(20.dp),
                     contentScale = ContentScale.Fit
                 )
@@ -696,7 +833,7 @@ private fun MatchSectionHeader(
             .fillMaxWidth()
             .padding(
                 horizontal = dimens.screenHorizontal,
-                vertical = dimens.md
+                vertical = dimens.sm
             ),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
@@ -705,7 +842,6 @@ private fun MatchSectionHeader(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(dimens.sm)
         ) {
-            // Gold accent bar (matches mockup: 1w × 4h gold bar)
             Box(
                 modifier = Modifier
                     .width(3.dp)
@@ -737,19 +873,10 @@ private fun MatchSectionHeader(
             }
 
             Text(
-                text = title.uppercase(),
-                style = TextStyle(
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    letterSpacing = (-0.3).sp,
-                    brush = Brush.linearGradient(
-                        listOf(
-                            TextPrimary,
-                            colors.goldPrimary,
-                            colors.goldDark
-                        )
-                    )
-                )
+                text = title,
+                color = colors.textPrimary,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.SemiBold
             )
 
             if (count > 0) {
@@ -760,7 +887,7 @@ private fun MatchSectionHeader(
                     Text(
                         text = "$count",
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-                        color = if (showLiveDot) colors.statusLive else colors.textMuted,
+                        color = if (showLiveDot) colors.statusLive else colors.textSecondary,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.SemiBold
                     )
@@ -773,23 +900,76 @@ private fun MatchSectionHeader(
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) {
-                    onSeeAll()
-                }
+                modifier = Modifier
+                    .sizeIn(minHeight = dimens.minTouchTarget, minWidth = dimens.minTouchTarget)
+                    .clickable(
+                        indication = null,
+                        interactionSource = remember { MutableInteractionSource() }
+                    ) { onSeeAll() }
+                    .semantics(mergeDescendants = true) {
+                        role = Role.Button
+                        contentDescription = "See all $title matches"
+                    }
             ) {
                 Text(
                     text = "See All",
-                    color = colors.goldPrimary,
+                    color = colors.textPrimary,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.SemiBold
                 )
                 Icon(
                     imageVector = Icons.Outlined.ArrowForward,
                     contentDescription = "See All",
-                    tint = colors.goldPrimary,
+                    tint = colors.textPrimary,
                     modifier = Modifier.size(18.dp)
                 )
             }
+        }
+    }
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// Inline Status Banners — Non-blocking refresh/error feedback
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+@Composable
+private fun HomeInlineStatusBanner(
+    text: String,
+    isError: Boolean
+) {
+    val colors = BouncerDesignSystem.colors
+    val dimens = BouncerDesignSystem.dimens
+
+    val accentColor = if (isError) NeonError else colors.goldPrimary
+    val icon = if (isError) Icons.Outlined.CloudOff else Icons.Default.Refresh
+
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = dimens.screenHorizontal)
+            .semantics(mergeDescendants = true) {
+                contentDescription = text
+            },
+        shape = RoundedCornerShape(14.dp),
+        color = accentColor.copy(alpha = 0.12f),
+        border = BorderStroke(1.dp, accentColor.copy(alpha = 0.38f))
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = dimens.md, vertical = dimens.sm),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = accentColor,
+                modifier = Modifier.size(16.dp)
+            )
+            Text(
+                text = text,
+                color = colors.textPrimary,
+                style = BouncerDesignSystem.typography.bodySmall
+            )
         }
     }
 }
@@ -799,67 +979,90 @@ private fun MatchSectionHeader(
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 @Composable
+private fun HomeStateContainer(
+    icon: @Composable () -> Unit,
+    title: String,
+    subtitle: String,
+    action: (@Composable () -> Unit)? = null
+) {
+    val colors = BouncerDesignSystem.colors
+    val dimens = BouncerDesignSystem.dimens
+    val typography = BouncerDesignSystem.typography
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = dimens.screenHorizontal, vertical = dimens.xxxl),
+        contentAlignment = Alignment.Center
+    ) {
+        Surface(
+            shape = RoundedCornerShape(20.dp),
+            color = colors.glassBackground,
+            border = BorderStroke(1.dp, colors.glassBorder)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = dimens.lg, vertical = dimens.xl),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(dimens.md)
+            ) {
+                icon()
+                Text(
+                    text = title,
+                    style = typography.headingMedium,
+                    color = colors.textPrimary,
+                    fontWeight = FontWeight.SemiBold,
+                    textAlign = TextAlign.Center
+                )
+                Text(
+                    text = subtitle,
+                    style = typography.bodySmall,
+                    color = colors.textSecondary,
+                    textAlign = TextAlign.Center
+                )
+                action?.invoke()
+            }
+        }
+    }
+}
+
+@Composable
+private fun LoadingMatchState() {
+    val colors = BouncerDesignSystem.colors
+    HomeStateContainer(
+        icon = {
+            CircularProgressIndicator(
+                color = colors.goldPrimary,
+                strokeWidth = 2.5.dp
+            )
+        },
+        title = "Loading matches",
+        subtitle = "Fetching the latest scores and fixtures."
+    )
+}
+
+@Composable
 private fun EmptyMatchState(
     selectedStatus: String,
     onViewAll: () -> Unit
 ) {
     val colors = BouncerDesignSystem.colors
-    val dimens = BouncerDesignSystem.dimens
-    val typography = BouncerDesignSystem.typography
-    val infiniteTransition = rememberInfiniteTransition(label = "empty_pulse")
-    val iconAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.3f,
-        targetValue = 0.6f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(2000),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "emptyIconAlpha"
-    )
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = dimens.screenHorizontal)
-            .padding(vertical = dimens.xxxl),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(dimens.md)
-    ) {
-        // Decorative cricket icon in circle
-        Box(
-            modifier = Modifier
-                .size(80.dp)
-                .background(colors.glassBackground, CircleShape)
-                .border(1.dp, colors.glassBorder, CircleShape),
-            contentAlignment = Alignment.Center
-        ) {
+    HomeStateContainer(
+        icon = {
             Icon(
-                imageVector = Icons.Outlined.SportsCricket,
+                imageVector = Icons.Outlined.EventBusy,
                 contentDescription = null,
-                tint = colors.textMuted.copy(alpha = iconAlpha),
-                modifier = Modifier.size(40.dp)
+                tint = colors.textMuted,
+                modifier = Modifier.size(32.dp)
             )
-        }
-
-        Text(
-            text = "No ${selectedStatus.lowercase()} matches",
-            style = typography.headingMedium,
-            color = colors.textSecondary,
-            fontWeight = FontWeight.SemiBold
-        )
-
-        Text(
-            text = "Pull down to refresh or try a different filter.",
-            style = typography.bodySmall,
-            color = colors.textMuted,
-            textAlign = TextAlign.Center
-        )
-
-        Spacer(modifier = Modifier.height(dimens.sm))
-
+        },
+        title = "No ${selectedStatus.lowercase()} matches",
+        subtitle = "Pull to refresh or switch category filters."
+    ) {
         GlassSecondaryButton(
             onClick = onViewAll,
-            text = "View All Matches"
+            text = "View all matches"
         )
     }
 }
@@ -874,68 +1077,18 @@ private fun ErrorMatchState(
     onRetry: () -> Unit
 ) {
     val colors = BouncerDesignSystem.colors
-    val dimens = BouncerDesignSystem.dimens
-    val typography = BouncerDesignSystem.typography
-    val infiniteTransition = rememberInfiniteTransition(label = "error_pulse")
-    val iconAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.4f,
-        targetValue = 0.8f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1500),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "errorIconAlpha"
-    )
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(horizontal = dimens.screenHorizontal)
-            .padding(vertical = dimens.xxxl),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        // Error icon
-        Box(
-            modifier = Modifier
-                .size(80.dp)
-                .background(
-                    StatusLive.copy(alpha = 0.10f),
-                    CircleShape
-                )
-                .border(1.dp, StatusLive.copy(alpha = 0.20f), CircleShape),
-            contentAlignment = Alignment.Center
-        ) {
+    HomeStateContainer(
+        icon = {
             Icon(
-                imageVector = Icons.Outlined.WifiOff,
+                imageVector = Icons.Outlined.CloudOff,
                 contentDescription = "Error",
-                tint = NeonError.copy(alpha = iconAlpha),
-                modifier = Modifier.size(40.dp)
+                tint = NeonError,
+                modifier = Modifier.size(34.dp)
             )
-        }
-
-        Spacer(modifier = Modifier.height(dimens.md))
-
-        Text(
-            text = "Something went wrong",
-            style = typography.headingMedium,
-            color = colors.textSecondary,
-            fontWeight = FontWeight.SemiBold
-        )
-
-        Spacer(modifier = Modifier.height(dimens.sm))
-
-        Text(
-            text = errorMessage,
-            style = typography.bodySmall,
-            color = colors.textMuted,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.padding(horizontal = dimens.md)
-        )
-
-        Spacer(modifier = Modifier.height(dimens.lg))
-
-        // Retry button with gold styling
+        },
+        title = "Couldn’t load matches",
+        subtitle = errorMessage
+    ) {
         Surface(
             shape = RoundedCornerShape(50.dp),
             color = colors.goldPrimary.copy(alpha = 0.14f),
@@ -943,7 +1096,7 @@ private fun ErrorMatchState(
             onClick = onRetry
         ) {
             Row(
-                modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp),
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
@@ -951,12 +1104,12 @@ private fun ErrorMatchState(
                     imageVector = Icons.Default.Refresh,
                     contentDescription = null,
                     tint = colors.goldPrimary,
-                    modifier = Modifier.size(18.dp)
+                    modifier = Modifier.size(16.dp)
                 )
                 Text(
-                    text = "Try Again",
+                    text = "Retry",
                     color = colors.goldPrimary,
-                    fontSize = 14.sp,
+                    fontSize = 13.sp,
                     fontWeight = FontWeight.SemiBold
                 )
             }

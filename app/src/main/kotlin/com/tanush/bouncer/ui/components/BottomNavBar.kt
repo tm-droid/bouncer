@@ -31,6 +31,7 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription as semanticContentDescription
 import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -41,7 +42,7 @@ import com.tanush.bouncer.utils.rememberHapticFeedback
 // BOUNCER – Bottom Navigation Bar v3.0
 // Design Spec: android/design/BOUNCER_DESIGN_SYSTEM.md §16
 //
-// 5 tabs: Home, Matches, Favourites, Stats, More
+// 4 tabs: Home, Matches, Favourites, More
 // 80dp total height (56dp nav + safe area)
 // Glassmorphism bg-elevated, 1dp top border
 // Active: gold icon+label + animated pill indicator
@@ -61,13 +62,12 @@ data class NavDestination(
 )
 
 /**
- * The 5 primary navigation destinations.
+ * The 4 primary navigation destinations.
  */
 val navDestinations = listOf(
     NavDestination("home", "Home", Icons.Filled.Home, Icons.Outlined.Home, "Home tab"),
     NavDestination("all_matches", "Matches", Icons.Filled.SportsCricket, Icons.Outlined.SportsCricket, "Matches tab"),
     NavDestination("favourites", "Favourites", Icons.Filled.Favorite, Icons.Outlined.FavoriteBorder, "Favourites tab"),
-    NavDestination("stats", "Stats", Icons.Filled.BarChart, Icons.Outlined.BarChart, "Stats tab"),
     NavDestination("more", "More", Icons.Filled.MoreHoriz, Icons.Outlined.MoreHoriz, "More tab")
 )
 
@@ -95,25 +95,36 @@ fun PremiumBottomNavBar(
     val selectedIndex = remember(currentRoute) {
         navDestinations.indexOfFirst { dest ->
             currentRoute == dest.route ||
-                (dest.route == "more" && currentRoute in listOf(
-                    "achievements", "settings", "about", "activity", "ar_tracking"
-                ))
+                (dest.route == "more" && (
+                    currentRoute in listOf(
+                        "stats",
+                        "stats_overview",
+                        "trophy-room",
+                        "achievements",
+                        "settings",
+                        "appearance",
+                        "about",
+                        "devtools",
+                        "news",
+                        "activity",
+                        "activity-feed",
+                        "ar_tracking",
+                        "ar-tracking"
+                    ) || currentRoute?.startsWith("news/") == true
+                    ))
         }.coerceAtLeast(0)
     }
 
     // Animate the entire bar in/out for hide-on-scroll
     val barOffsetY by animateDpAsState(
         targetValue = if (visible) 0.dp else 100.dp,
-        animationSpec = spring(
-            dampingRatio = SpringConfig.noBounce,
-            stiffness = SpringConfig.medium
-        ),
+        animationSpec = BouncerMotion.Springs.gentle(),
         label = "barOffset"
     )
 
     val barAlpha by animateFloatAsState(
         targetValue = if (visible) 1f else 0f,
-        animationSpec = tween(AnimationDuration.fast),
+        animationSpec = tween(BouncerMotion.Duration.Fast),
         label = "barAlpha"
     )
 
@@ -194,30 +205,36 @@ private fun RowScope.BottomNavItem(
     // ── Icon scale: 1.1x when active, 1.0x inactive ──
     val iconScale by animateFloatAsState(
         targetValue = if (isSelected) 1.1f else 1f,
-        animationSpec = spring(
-            dampingRatio = SpringConfig.gentleDamping / 20f,
-            stiffness = SpringConfig.gentleStiffness
-        ),
+        animationSpec = BouncerMotion.Springs.medium(),
         label = "iconScale_${destination.route}"
     )
 
     // ── Color transitions ──
     val iconColor by animateColorAsState(
-        targetValue = if (isSelected) Gold400 else TextTertiary,
-        animationSpec = tween(AnimationDuration.fast, easing = BouncerEasing.EaseOutExpo),
+        targetValue = if (isSelected) Gold400 else TextSecondary,
+        animationSpec = tween(
+            BouncerMotion.Duration.Fast,
+            easing = BouncerEasing.EaseOutExpo
+        ),
         label = "iconColor_${destination.route}"
     )
 
     val labelColor by animateColorAsState(
-        targetValue = if (isSelected) Gold400 else TextTertiary,
-        animationSpec = tween(AnimationDuration.fast, easing = BouncerEasing.EaseOutExpo),
+        targetValue = if (isSelected) Gold400 else TextSecondary,
+        animationSpec = tween(
+            BouncerMotion.Duration.Fast,
+            easing = BouncerEasing.EaseOutExpo
+        ),
         label = "labelColor_${destination.route}"
     )
 
     // ── Radial glow alpha for active state ──
     val glowAlpha by animateFloatAsState(
         targetValue = if (isSelected) 0.25f else 0f,
-        animationSpec = tween(AnimationDuration.normal, easing = BouncerEasing.EaseOutExpo),
+        animationSpec = tween(
+            BouncerMotion.Duration.Normal,
+            easing = BouncerEasing.EaseOutExpo
+        ),
         label = "glowAlpha_${destination.route}"
     )
 
@@ -238,6 +255,7 @@ private fun RowScope.BottomNavItem(
                     "${destination.label}. Tab ${tabIndex + 1} of $totalTabs"
                 selected = isSelected
                 role = Role.Tab
+                stateDescription = if (isSelected) "Selected" else "Not selected"
             }
             .padding(vertical = Spacing.space1),
         horizontalAlignment = Alignment.CenterHorizontally,

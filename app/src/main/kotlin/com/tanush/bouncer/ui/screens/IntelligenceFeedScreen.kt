@@ -21,6 +21,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.tanush.bouncer.models.CricketMatch
+import com.tanush.bouncer.viewmodels.LiveActivityViewModel
 import com.tanush.bouncer.ui.components.GlassCard
 import com.tanush.bouncer.ui.components.PulsingBadge
 import com.tanush.bouncer.ui.theme.*
@@ -44,15 +46,93 @@ enum class AlertType {
 }
 
 @Composable
-fun IntelligenceFeedScreen(onBackClick: () -> Unit) {
+fun IntelligenceFeedScreen(
+    match: CricketMatch? = null,
+    liveActivityViewModel: LiveActivityViewModel? = null,
+    onBackClick: () -> Unit
+) {
     val colors = BouncerDesignSystem.colors
-    val alerts = remember {
-        listOf(
-            ActivityAlert("1", "Wicket Fall", "V. Kohli c. Smith b. Cummins", "OUT", "2m ago", AlertType.WICKET),
-            ActivityAlert("2", "Century", "R. Sharma (52 balls)", "100*", "5m ago", AlertType.MILESTONE),
-            ActivityAlert("3", "Pitch Report", "Heavy abrasive patch detected on good length", "INFO", "12m ago", AlertType.INFO),
-            ActivityAlert("4", "DRS Review", "Impact: In Line | Wickets: Hitting", "DRS", "15m ago", AlertType.WARNING)
-        )
+
+    // Derive alerts from real match data
+    val vmEvents by liveActivityViewModel?.probabilityEvents?.collectAsState()
+        ?: remember { mutableStateOf(emptyMap()) }
+    val aiCommentary by liveActivityViewModel?.aiCommentary?.collectAsState()
+        ?: remember { mutableStateOf(emptyMap()) }
+
+    val alerts = remember(match, vmEvents, aiCommentary) {
+        val alertList = mutableListOf<ActivityAlert>()
+        val matchId = match?.id ?: ""
+
+        // Generate alerts from probability events (wickets, boundaries)
+        val events = vmEvents[matchId] ?: emptyList()
+        events.takeLast(5).reversed().forEachIndexed { idx, event ->
+            val type = when (event.eventType) {
+                com.tanush.bouncer.viewmodels.ProbabilityEventType.WICKET -> AlertType.WICKET
+                com.tanush.bouncer.viewmodels.ProbabilityEventType.BOUNDARY -> AlertType.MILESTONE
+                else -> AlertType.INFO
+            }
+            alertList.add(
+                ActivityAlert(
+                    id = "event_$idx",
+                    title = event.description.take(30),
+                    subtitle = "Over ${event.over}, Ball ${event.ball % 6 + 1}",
+                    value = when (event.eventType) {
+                        com.tanush.bouncer.viewmodels.ProbabilityEventType.WICKET -> "OUT"
+                        com.tanush.bouncer.viewmodels.ProbabilityEventType.BOUNDARY -> "4/6"
+                        else -> "•"
+                    },
+                    time = "${idx + 1}m ago",
+                    type = type
+                )
+            )
+        }
+
+        // Add AI commentary alert if available
+        val commentary = aiCommentary[matchId]
+        if (!commentary.isNullOrBlank()) {
+            alertList.add(
+                ActivityAlert("ai_commentary", "AI Analysis", commentary.take(80), "AI", "Now", AlertType.INFO)
+            )
+        }
+
+        // Add match status alert from match data
+        if (match != null) {
+            val battingTeam = match.teams.firstOrNull { it.isBatting }
+            val bowler = match.currentBowler
+            if (battingTeam != null) {
+                alertList.add(
+                    ActivityAlert(
+                        "match_status",
+                        "${battingTeam.name} Batting",
+                        "${battingTeam.score ?: "--"} in ${battingTeam.overs ?: "--"} overs",
+                        match.status.take(6),
+                        "Live",
+                        AlertType.INFO
+                    )
+                )
+            }
+            if (bowler != null) {
+                alertList.add(
+                    ActivityAlert(
+                        "bowler_status",
+                        "Current Bowler",
+                        "${bowler.name}: ${bowler.wickets}/${bowler.runs} (${bowler.overs} ov)",
+                        "BOWL",
+                        "Now",
+                        AlertType.INFO
+                    )
+                )
+            }
+        }
+
+        // If no data at all, show empty state alert
+        if (alertList.isEmpty()) {
+            alertList.add(
+                ActivityAlert("empty", "No Activity", "Waiting for match events...", "--", "Now", AlertType.INFO)
+            )
+        }
+
+        alertList.toList()
     }
 
     Scaffold(

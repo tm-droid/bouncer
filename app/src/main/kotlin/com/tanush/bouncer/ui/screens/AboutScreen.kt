@@ -1,360 +1,230 @@
 package com.tanush.bouncer.ui.screens
 
-import androidx.compose.animation.*
-import androidx.compose.animation.core.*
-import androidx.compose.foundation.*
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.Analytics
+import androidx.compose.material.icons.filled.Bolt
+import androidx.compose.material.icons.filled.EmojiEvents
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.SportsCricket
+import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.*
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.*
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.ui.components.glass.GlassBloomBackground
 import com.tanush.bouncer.ui.components.glass.GlassCard
-import com.tanush.bouncer.ui.theme.*
+import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
+@OptIn(ExperimentalMaterial3Api::class)
 fun AboutScreen(
     onBackClick: () -> Unit
 ) {
-    val infiniteTransition = rememberInfiniteTransition(label = "aboutShimmer")
-    val shimmerOffset by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(3000, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "shimmerOffset"
-    )
-    
-    val pulseScale by infiniteTransition.animateFloat(
-        initialValue = 1f,
-        targetValue = 1.05f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(2000, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "pulseScale"
-    )
-
     val colors = BouncerDesignSystem.colors
+    val typography = BouncerDesignSystem.typography
+    val dimens = BouncerDesignSystem.dimens
 
     Scaffold(
-        containerColor = Color.Transparent,
+        containerColor = androidx.compose.ui.graphics.Color.Transparent,
         topBar = {
             CenterAlignedTopAppBar(
                 title = {
                     Text(
-                        "ABOUT",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Black,
-                        letterSpacing = 2.sp,
-                        color = colors.goldDark
+                        text = "About",
+                        style = typography.headingMedium,
+                        color = colors.textPrimary
                     )
                 },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = colors.textPrimary)
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back",
+                            tint = colors.textPrimary
+                        )
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Transparent
-                )
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = androidx.compose.ui.graphics.Color.Transparent)
             )
         }
     ) { paddingValues ->
-        GlassBloomBackground(
-            modifier = Modifier.fillMaxSize()
-        ) {
-            Column(
+        GlassBloomBackground(modifier = Modifier.fillMaxSize()) {
+            LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(paddingValues)
-                    .verticalScroll(rememberScrollState())
-                    .padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(24.dp)
+                    .padding(paddingValues),
+                contentPadding = PaddingValues(
+                    start = dimens.screenHorizontal,
+                    end = dimens.screenHorizontal,
+                    top = dimens.sm,
+                    bottom = dimens.xxl
+                ),
+                verticalArrangement = Arrangement.spacedBy(dimens.md)
             ) {
-                Spacer(modifier = Modifier.height(24.dp))
-
-                // App Logo with glow
-                Box(
-                    contentAlignment = Alignment.Center,
-                    modifier = Modifier
-                        .graphicsLayer { scaleX = pulseScale; scaleY = pulseScale }
-                        .size(140.dp)
-                        .background(
-                            Brush.radialGradient(
-                                colors = listOf(
-                                    colors.goldPrimary.copy(alpha = 0.3f),
-                                    colors.goldPrimary.copy(alpha = 0.1f),
-                                    Color.Transparent
-                                )
-                            ),
-                            CircleShape
-                        )
-                ) {
-                    Box(
-                        contentAlignment = Alignment.Center,
-                        modifier = Modifier
-                            .size(100.dp)
-                            .shadow(
-                                elevation = 24.dp,
-                                shape = CircleShape,
-                                spotColor = colors.goldPrimary.copy(alpha = 0.5f)
-                            )
-                            .background(
-                                Brush.linearGradient(
-                                    colors = listOf(
-                                        GlassSurface,
-                                        GlassSurface
-                                    )
-                                ),
-                                CircleShape
-                            )
-                            .border(
-                                2.dp,
-                                Brush.linearGradient(
-                                    colors = listOf(
-                                        colors.goldLight.copy(alpha = 0.6f + shimmerOffset * 0.4f),
-                                        colors.goldPrimary.copy(alpha = 0.4f),
-                                        colors.goldDark.copy(alpha = 0.6f)
-                                    )
-                                ),
-                                CircleShape
-                            )
+                item {
+                    GlassCard(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(dimens.radius.card),
+                        useGoldBorder = true,
+                        contentPadding = PaddingValues(dimens.md)
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.SportsCricket,
-                            contentDescription = null,
-                            tint = colors.goldPrimary,
-                            modifier = Modifier.size(48.dp)
-                        )
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(dimens.sm)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.SportsCricket,
+                                contentDescription = null,
+                                tint = colors.goldPrimary,
+                                modifier = Modifier.size(dimens.lg)
+                            )
+                            Text(
+                                text = "Bouncer",
+                                style = typography.headingLarge,
+                                color = colors.textPrimary,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Text(
+                                text = "Live Cricket Scores",
+                                style = typography.bodyMedium,
+                                color = colors.textSecondary
+                            )
+                            Text(
+                                text = "Version 1.0.0",
+                                style = typography.bodySmall,
+                                color = colors.textMuted
+                            )
+                        }
                     }
                 }
 
-                // App Name
-                Text(
-                    text = "BOUNCER",
-                    fontSize = 36.sp,
-                    fontWeight = FontWeight.Black,
-                    letterSpacing = 4.sp,
-                    style = LocalTextStyle.current.copy(
-                        brush = Brush.linearGradient(
-                            colors = listOf(
-                                colors.goldLight,
-                                colors.goldDark,
-                                colors.goldPrimary
+                item {
+                    GlassCard(
+                        modifier = Modifier.fillMaxWidth(),
+                        useGoldBorder = false,
+                        contentPadding = PaddingValues(dimens.md)
+                    ) {
+                        Column(verticalArrangement = Arrangement.spacedBy(dimens.sm)) {
+                            Text(
+                                text = "What you get",
+                                style = typography.headingSmall,
+                                color = colors.textPrimary
                             )
-                        )
-                    )
-                )
 
-                Text(
-                    text = "Live Cricket Scores",
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = colors.textSecondary,
-                    letterSpacing = 2.sp
-                )
-
-                // Version Badge
-                Surface(
-                    color = colors.goldPrimary.copy(alpha = 0.1f),
-                    shape = RoundedCornerShape(50),
-                    border = BorderStroke(1.dp, colors.goldPrimary.copy(alpha = 0.3f))
-                ) {
-                    Text(
-                        text = "Version 1.0.0",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = colors.goldPrimary,
-                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Features Section
-                GlassCard(
-                    modifier = Modifier.fillMaxWidth(),
-                    contentPadding = PaddingValues(0.dp)
-                ) {
-                    Column(
-                        modifier = Modifier.padding(24.dp),
-                        verticalArrangement = Arrangement.spacedBy(20.dp)
-                    ) {
-                        Text(
-                            text = "FEATURES",
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = colors.goldPrimary,
-                            letterSpacing = 2.sp
-                        )
-
-                        FeatureItem(
-                            icon = Icons.Default.Bolt,
-                            title = "Real-Time Updates",
-                            description = "Ball-by-ball live scores with instant notifications"
-                        )
-
-                        FeatureItem(
-                            icon = Icons.Default.Analytics,
-                            title = "Win Probability",
-                            description = "AI-powered match predictions updated in real-time"
-                        )
-
-                        FeatureItem(
-                            icon = Icons.Default.EmojiEvents,
-                            title = "Achievements",
-                            description = "Track milestones and celebrate cricket moments"
-                        )
-
-                        FeatureItem(
-                            icon = Icons.Default.Favorite,
-                            title = "Favorite Teams",
-                            description = "Follow your teams and never miss a match"
-                        )
+                            FeatureRow(
+                                icon = Icons.Default.Bolt,
+                                title = "Real-time updates",
+                                description = "Ball-by-ball scores with live context"
+                            )
+                            FeatureRow(
+                                icon = Icons.Default.Analytics,
+                                title = "Win probability",
+                                description = "Model-powered match trends and momentum"
+                            )
+                            FeatureRow(
+                                icon = Icons.Default.EmojiEvents,
+                                title = "Achievements",
+                                description = "Track milestones and notable moments"
+                            )
+                            FeatureRow(
+                                icon = Icons.Default.Favorite,
+                                title = "Favorites",
+                                description = "Follow teams and get focused updates"
+                            )
+                        }
                     }
                 }
 
-                // Credits Section
-                GlassCard(
-                    modifier = Modifier.fillMaxWidth(),
-                    useGoldBorder = true,
-                    contentPadding = PaddingValues(0.dp)
-                ) {
-                    Column(
-                        modifier = Modifier.padding(24.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                item {
+                    GlassCard(
+                        modifier = Modifier.fillMaxWidth(),
+                        useGoldBorder = false,
+                        contentPadding = PaddingValues(dimens.md)
                     ) {
-                        Text(
-                            text = "CREATED BY",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = colors.textTertiary,
-                            letterSpacing = 2.sp
-                        )
-                        
-                        Text(
-                            text = "A Cricket Enthusiast",
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = colors.textPrimary
-                        )
-                        
-                        Text(
-                            text = "Built with passion for the game",
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = colors.textSecondary,
-                            textAlign = TextAlign.Center
-                        )
+                        Column(
+                            verticalArrangement = Arrangement.spacedBy(dimens.xs),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = "Built for cricket fans",
+                                style = typography.headingSmall,
+                                color = colors.textPrimary
+                            )
+                            Text(
+                                text = "Crafted with clarity, speed, and passion for the game.",
+                                style = typography.bodySmall,
+                                color = colors.textSecondary,
+                                textAlign = TextAlign.Center
+                            )
+                            Spacer(modifier = Modifier.height(dimens.xs))
+                            Text(
+                                text = "2024",
+                                style = typography.bodySmall,
+                                color = colors.textMuted
+                            )
+                        }
                     }
                 }
-
-                // Footer
-                Spacer(modifier = Modifier.height(24.dp))
-
-                Box(
-                    modifier = Modifier
-                        .width(60.dp)
-                        .height(2.dp)
-                        .background(
-                            Brush.horizontalGradient(
-                                colors = listOf(
-                                    Color.Transparent,
-                                    colors.goldPrimary.copy(alpha = 0.4f),
-                                    Color.Transparent
-                                )
-                            ),
-                            RoundedCornerShape(50)
-                        )
-                )
-
-                Text(
-                    text = "Made with passion for cricket",
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = colors.textTertiary
-                )
-
-                Text(
-                    text = "2024",
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = colors.goldPrimary.copy(alpha = 0.5f),
-                    letterSpacing = 2.sp
-                )
-
-                Spacer(modifier = Modifier.height(32.dp))
             }
         }
     }
 }
 
 @Composable
-private fun FeatureItem(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+private fun FeatureRow(
+    icon: ImageVector,
     title: String,
     description: String
 ) {
     val colors = BouncerDesignSystem.colors
+    val typography = BouncerDesignSystem.typography
+    val dimens = BouncerDesignSystem.dimens
+
     Row(
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        horizontalArrangement = Arrangement.spacedBy(dimens.sm),
         verticalAlignment = Alignment.Top
     ) {
-        Box(
-            contentAlignment = Alignment.Center,
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = colors.goldPrimary,
             modifier = Modifier
-                .size(44.dp)
-                .background(
-                    colors.goldPrimary.copy(alpha = 0.12f),
-                    RoundedCornerShape(14.dp)
-                )
-                .border(
-                    0.5.dp,
-                    colors.goldPrimary.copy(alpha = 0.2f),
-                    RoundedCornerShape(14.dp)
-                )
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = colors.goldPrimary,
-                modifier = Modifier.size(22.dp)
-            )
-        }
-
-        Column(
-            verticalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
+                .padding(top = 2.dp)
+                .size(dimens.sm + dimens.xs)
+        )
+        Column(verticalArrangement = Arrangement.spacedBy(dimens.xxs)) {
             Text(
                 text = title,
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Bold,
-                color = colors.textPrimary
+                style = typography.bodyMedium,
+                color = colors.textPrimary,
+                fontWeight = FontWeight.SemiBold
             )
             Text(
                 text = description,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Medium,
-                color = colors.textTertiary,
-                lineHeight = 18.sp
+                style = typography.bodySmall,
+                color = colors.textSecondary
             )
         }
     }

@@ -1,24 +1,50 @@
 package com.tanush.bouncer.ui.screens
 
-import androidx.compose.animation.*
-import androidx.compose.animation.core.*
-import androidx.compose.foundation.*
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.Album
+import androidx.compose.material.icons.filled.Cake
+import androidx.compose.material.icons.filled.EmojiEvents
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Radar
+import androidx.compose.material.icons.filled.SportsCricket
+import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.*
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.*
-import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -26,23 +52,19 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import com.tanush.bouncer.ui.components.CoilImage
-import com.tanush.bouncer.ui.components.PerformanceRadarChart
-import com.tanush.bouncer.ui.components.FormIndicator
 import com.tanush.bouncer.ui.components.AchievementBadges
-import com.tanush.bouncer.ui.components.PlayerAchievement
 import com.tanush.bouncer.ui.components.AchievementTier
+import com.tanush.bouncer.ui.components.CoilImage
+import com.tanush.bouncer.ui.components.FormIndicator
+import com.tanush.bouncer.ui.components.PerformanceRadarChart
+import com.tanush.bouncer.ui.components.PlayerAchievement
 import com.tanush.bouncer.ui.components.glass.GlassBloomBackground
 import com.tanush.bouncer.ui.components.glass.GlassCard
-import coil.request.ImageRequest
-import com.tanush.bouncer.ui.theme.*
 import com.tanush.bouncer.ui.theme.BouncerDesignSystem
-import com.tanush.bouncer.ui.theme.BrandGradients
+import coil.request.ImageRequest
+import kotlinx.coroutines.delay
+import java.util.Locale
 
-/**
- * Player data model for the detail screen
- */
 data class PlayerDetails(
     val name: String,
     val role: String,
@@ -53,9 +75,7 @@ data class PlayerDetails(
     val bowlingStyle: String? = null,
     val isCaptain: Boolean = false,
     val isWicketKeeper: Boolean = false,
-    // Batting stats
     val battingStats: BattingStats? = null,
-    // Bowling stats
     val bowlingStats: BowlingStats? = null
 )
 
@@ -85,11 +105,8 @@ data class BowlingStats(
     val tenWickets: Int = 0
 )
 
-/**
- * Premium Player Detail Screen with animated visualizations
- */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
+@OptIn(ExperimentalMaterial3Api::class)
 fun PlayerDetailScreen(
     playerName: String,
     playerRole: String,
@@ -98,21 +115,20 @@ fun PlayerDetailScreen(
     isWicketKeeper: Boolean = false,
     onBackClick: () -> Unit
 ) {
-    val context = LocalContext.current
-    
-    // Loading state - in real app, fetch from API
+    val colors = BouncerDesignSystem.colors
+    val typography = BouncerDesignSystem.typography
+    val dimens = BouncerDesignSystem.dimens
+
     var isLoading by remember { mutableStateOf(true) }
     var player by remember { mutableStateOf<PlayerDetails?>(null) }
-    
-    // Simulate loading player data
+
     LaunchedEffect(playerName) {
-        kotlinx.coroutines.delay(800)
-        // Generate mock stats for demo - in real app, fetch from API
+        delay(800)
         player = PlayerDetails(
             name = playerName,
             role = playerRole,
             imageUrl = playerImageUrl,
-            country = "India", // Mock
+            country = "India",
             age = 28,
             battingStyle = "Right-handed",
             bowlingStyle = if (playerRole.contains("bowl", ignoreCase = true)) "Right-arm fast" else null,
@@ -143,34 +159,12 @@ fun PlayerDetailScreen(
                     fiveWickets = 2,
                     tenWickets = 0
                 )
-            } else null
+            } else {
+                null
+            }
         )
         isLoading = false
     }
-    
-    val infiniteTransition = rememberInfiniteTransition(label = "playerShimmer")
-    val shimmerOffset by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(2500, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "shimmer"
-    )
-    
-    val pulseScale by infiniteTransition.animateFloat(
-        initialValue = 1f,
-        targetValue = 1.03f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(2000, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "pulse"
-    )
-
-    val colors = BouncerDesignSystem.colors
-    val dimens = BouncerDesignSystem.dimens
 
     Scaffold(
         containerColor = Color.Transparent,
@@ -178,166 +172,130 @@ fun PlayerDetailScreen(
             CenterAlignedTopAppBar(
                 title = {
                     Text(
-                        "PLAYER PROFILE",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Black,
-                        letterSpacing = 2.sp,
-                        style = androidx.compose.ui.text.TextStyle(
-                            brush = Brush.verticalGradient(
-                                colors = listOf(
-                                    TextPrimary,
-                                    colors.goldPrimary,
-                                    colors.goldDark
-                                )
-                            )
-                        )
+                        text = "Player profile",
+                        style = typography.headingMedium,
+                        color = colors.textPrimary
                     )
                 },
                 navigationIcon = {
-                    Surface(
-                        onClick = onBackClick,
-                        shape = RoundedCornerShape(12.dp),
-                        color = colors.glassSurface,
-                        border = BorderStroke(0.5.dp, colors.goldDark.copy(alpha = 0.3f)),
-                        modifier = Modifier.padding(start = 8.dp)
-                    ) {
+                    IconButton(onClick = onBackClick) {
                         Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
-                            "Back",
-                            tint = colors.goldLight,
-                            modifier = Modifier.padding(8.dp)
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back",
+                            tint = colors.textPrimary
                         )
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Transparent
-                )
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
             )
         }
     ) { paddingValues ->
-        GlassBloomBackground(
-            modifier = Modifier.fillMaxSize()
-        ) {
+        GlassBloomBackground(modifier = Modifier.fillMaxSize()) {
             if (isLoading) {
-                // Loading state
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(dimens.md)
+                        verticalArrangement = Arrangement.spacedBy(dimens.sm)
                     ) {
-                        CircularProgressIndicator(
-                            color = colors.goldPrimary,
-                            strokeWidth = 3.dp,
-                            modifier = Modifier.size(48.dp)
-                        )
+                        CircularProgressIndicator(color = colors.goldPrimary)
                         Text(
-                            "Loading player data...",
-                            color = colors.textSecondary,
-                            fontSize = 14.sp
+                            text = "Loading player data...",
+                            style = typography.bodySmall,
+                            color = colors.textSecondary
                         )
                     }
                 }
-            } else if (player != null) {
-                val p = player ?: return@GlassBloomBackground
+            } else {
+                val details = player ?: return@GlassBloomBackground
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(paddingValues),
-                    contentPadding = PaddingValues(dimens.md + dimens.xs),
-                    verticalArrangement = Arrangement.spacedBy(dimens.md + dimens.xs)
+                    contentPadding = PaddingValues(
+                        start = dimens.screenHorizontal,
+                        end = dimens.screenHorizontal,
+                        top = dimens.sm,
+                        bottom = dimens.xxl
+                    ),
+                    verticalArrangement = Arrangement.spacedBy(dimens.md)
                 ) {
-                    // Player header card
+                    item { PlayerHeaderCard(player = details) }
+                    item { PlayerQuickInfo(player = details) }
+
+                    if (details.battingStats != null) {
+                        item {
+                            SectionTitle(
+                                title = "Batting statistics",
+                                icon = Icons.Default.SportsCricket
+                            )
+                        }
+                        item { BattingStatsCard(stats = details.battingStats) }
+                    }
+
                     item {
-                        PlayerHeaderCard(
-                            player = p,
-                            shimmerOffset = shimmerOffset,
-                            pulseScale = pulseScale,
-                            context = context
+                        SectionTitle(
+                            title = "Recent form",
+                            icon = Icons.AutoMirrored.Filled.TrendingUp
                         )
                     }
-                    
-                    // Quick info
                     item {
-                        PlayerQuickInfo(player = p)
-                    }
-                    
-                    // Batting stats
-                    if (p.battingStats != null) {
-                        item {
-                            SectionTitle(title = "BATTING STATISTICS", icon = Icons.Default.SportsCricket)
-                        }
-                        item {
-                            BattingStatsCard(stats = p.battingStats)
+                        GlassCard(modifier = Modifier.fillMaxWidth(), useGoldBorder = false) {
+                            FormIndicator(recentScores = listOf(45, 12, 78, 0, 102), showLabels = true)
                         }
                     }
 
-                    // Recent form
-                    item {
-                        SectionTitle(title = "RECENT FORM", icon = Icons.AutoMirrored.Filled.TrendingUp)
+                    if (details.bowlingStats != null) {
+                        item {
+                            SectionTitle(
+                                title = "Bowling statistics",
+                                icon = Icons.Default.Album
+                            )
+                        }
+                        item { BowlingStatsCard(stats = details.bowlingStats) }
                     }
+
                     item {
-                        FormIndicator(
-                            recentScores = listOf(45, 12, 78, 0, 102),
-                            showLabels = true
+                        SectionTitle(
+                            title = "Performance overview",
+                            icon = Icons.Default.Radar
                         )
                     }
-                    
-                    // Bowling stats
-                    if (p.bowlingStats != null) {
-                        item {
-                            SectionTitle(title = "BOWLING STATISTICS", icon = Icons.Default.Album)
-                        }
-                        item {
-                            BowlingStatsCard(stats = p.bowlingStats)
-                        }
-                    }
-                    
-                    // Performance radar chart
                     item {
-                        SectionTitle(title = "PERFORMANCE OVERVIEW", icon = Icons.Default.Radar)
-                    }
-                    item {
-                        val battingAvg = p.battingStats?.average?.toFloat() ?: 0f
-                        val matches = p.battingStats?.matches ?: 0
-                        val bowlingAvg = p.bowlingStats?.average?.toFloat()
-                        GlassCard(
-                            useGoldBorder = true
-                        ) {
+                        GlassCard(modifier = Modifier.fillMaxWidth(), useGoldBorder = false) {
+                            val battingAvg = details.battingStats?.average?.toFloat() ?: 0f
+                            val matches = details.battingStats?.matches ?: 0
+                            val bowlingAvg = details.bowlingStats?.average?.toFloat()
                             PerformanceRadarChart(
                                 battingSkill = (battingAvg / 60f * 100f).coerceIn(0f, 100f),
                                 bowlingSkill = if (bowlingAvg != null) ((60f - bowlingAvg) / 60f * 100f).coerceIn(0f, 100f) else 0f,
                                 fieldingSkill = 65f,
                                 fitnessSkill = 70f,
                                 experienceSkill = (matches / 100f * 100f).coerceIn(0f, 100f),
-                                playerName = p.name,
+                                playerName = details.name,
                                 primaryColor = colors.goldPrimary
                             )
                         }
                     }
 
-                    // Achievements
                     item {
-                        SectionTitle(title = "ACHIEVEMENTS", icon = Icons.Default.EmojiEvents)
-                    }
-                    item {
-                        AchievementBadges(
-                            achievements = listOf(
-                                PlayerAchievement("Century King", "Scored 8 centuries", Icons.Default.Star, true, AchievementTier.GOLD),
-                                PlayerAchievement("Run Machine", "3000+ career runs", Icons.AutoMirrored.Filled.TrendingUp, true, AchievementTier.PLATINUM),
-                                PlayerAchievement("Boundary Master", "300+ fours", Icons.Default.FlashOn, true, AchievementTier.SILVER),
-                                PlayerAchievement("Six Hitter", "150+ sixes", Icons.Default.Whatshot, true, AchievementTier.GOLD),
-                                PlayerAchievement("Match Winner", "10 MOM awards", Icons.Default.EmojiEvents, false, AchievementTier.PLATINUM)
-                            )
+                        SectionTitle(
+                            title = "Achievements",
+                            icon = Icons.Default.EmojiEvents
                         )
                     }
-                    
-                    // Footer
                     item {
-                        PlayerFooter()
+                        GlassCard(modifier = Modifier.fillMaxWidth(), useGoldBorder = false) {
+                            AchievementBadges(
+                                achievements = listOf(
+                                    PlayerAchievement("Century King", "Scored 8 centuries", Icons.Default.EmojiEvents, true, AchievementTier.GOLD),
+                                    PlayerAchievement("Run Machine", "3000+ career runs", Icons.AutoMirrored.Filled.TrendingUp, true, AchievementTier.PLATINUM),
+                                    PlayerAchievement("Boundary Master", "300+ fours", Icons.Default.SportsCricket, true, AchievementTier.SILVER)
+                                )
+                            )
+                        }
                     }
+
+                    item { PlayerFooter() }
                 }
             }
         }
@@ -347,231 +305,115 @@ fun PlayerDetailScreen(
 @Composable
 private fun SectionTitle(title: String, icon: ImageVector) {
     val colors = BouncerDesignSystem.colors
+    val typography = BouncerDesignSystem.typography
     val dimens = BouncerDesignSystem.dimens
+
     Row(
+        modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(dimens.sm + dimens.xxs),
-        modifier = Modifier.padding(vertical = dimens.sm)
+        horizontalArrangement = Arrangement.spacedBy(dimens.xs)
     ) {
         Icon(
-            icon,
+            imageVector = icon,
             contentDescription = null,
             tint = colors.goldPrimary,
-            modifier = Modifier.size(18.dp)
+            modifier = Modifier.size(dimens.sm + dimens.xs)
         )
         Text(
-            title,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Bold,
-            letterSpacing = 1.5.sp,
-            style = androidx.compose.ui.text.TextStyle(
-                brush = Brush.horizontalGradient(
-                    colors = listOf(
-                        colors.goldLight,
-                        colors.goldPrimary,
-                        colors.goldDark
-                    )
-                )
-            )
-        )
-        Box(
-            modifier = Modifier
-                .weight(1f)
-                .height(1.dp)
-                .background(
-                    Brush.horizontalGradient(
-                        colors = listOf(
-                            colors.goldDark.copy(alpha = 0.3f),
-                            Color.Transparent
-                        )
-                    )
-                )
+            text = title,
+            style = typography.headingSmall,
+            color = colors.textPrimary
         )
     }
 }
 
 @Composable
-private fun PlayerHeaderCard(
-    player: PlayerDetails,
-    shimmerOffset: Float,
-    pulseScale: Float,
-    context: android.content.Context
-) {
+private fun PlayerHeaderCard(player: PlayerDetails) {
     val colors = BouncerDesignSystem.colors
+    val typography = BouncerDesignSystem.typography
     val dimens = BouncerDesignSystem.dimens
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .shadow(
-                elevation = 24.dp,
-                shape = RoundedCornerShape(dimens.lg + dimens.xs),
-                spotColor = colors.goldDark.copy(alpha = 0.25f)
-            ),
-        colors = CardDefaults.cardColors(containerColor = colors.glassSurface),
-        shape = RoundedCornerShape(dimens.lg + dimens.xs),
-        border = BorderStroke(
-            1.dp,
-            Brush.linearGradient(
-                colors = listOf(
-                    colors.goldLight.copy(alpha = 0.4f * shimmerOffset),
-                    colors.goldDark.copy(alpha = 0.2f),
-                    Color.Transparent
-                )
-            )
-        )
+    val context = LocalContext.current
+
+    GlassCard(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(dimens.radius.card),
+        useGoldBorder = true,
+        contentPadding = PaddingValues(dimens.md)
     ) {
-        Box(modifier = Modifier.fillMaxWidth()) {
-            // Gold bloom radial gradient behind avatar
-            Canvas(modifier = Modifier.fillMaxWidth().height(200.dp)) {
-                drawCircle(
-                    brush = Brush.radialGradient(
-                        colors = listOf(
-                            colors.goldPrimary.copy(alpha = 0.12f),
-                            colors.goldDark.copy(alpha = 0.04f),
-                            Color.Transparent
-                        ),
-                        center = Offset(size.width * 0.5f, size.height * 0.3f),
-                        radius = size.width * 0.6f
-                    ),
-                    radius = size.width * 0.6f,
-                    center = Offset(size.width * 0.5f, size.height * 0.3f)
-                )
-            }
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(dimens.lg + dimens.xs),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                // Player image with gold gradient border
-                Box(
-                    contentAlignment = Alignment.Center,
-                    modifier = Modifier
-                        .graphicsLayer { scaleX = pulseScale; scaleY = pulseScale }
-                        .size(140.dp)
-                        .background(
-                            Brush.radialGradient(
-                                colors = listOf(
-                                    colors.goldPrimary.copy(alpha = 0.2f),
-                                    colors.goldDark.copy(alpha = 0.05f),
-                                    Color.Transparent
-                                )
-                            ),
-                            CircleShape
-                        )
-                ) {
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(dimens.sm)
+        ) {
+            Box(contentAlignment = Alignment.BottomEnd) {
+                if (!player.imageUrl.isNullOrEmpty()) {
+                    CoilImage(
+                        model = ImageRequest.Builder(context)
+                            .data(player.imageUrl)
+                            .crossfade(true)
+                            .build(),
+                        contentDescription = player.name,
+                        modifier = Modifier
+                            .size(dimens.xxxl)
+                            .clip(CircleShape)
+                            .border(1.dp, colors.glassBorder, CircleShape),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
                     Box(
                         modifier = Modifier
-                            .size(110.dp)
-                            .shadow(
-                                elevation = 20.dp,
-                                shape = CircleShape,
-                                spotColor = colors.goldDark.copy(alpha = 0.4f)
-                            )
-                            .background(colors.glassSurface, CircleShape)
-                            .border(
-                                2.dp,
-                                Brush.linearGradient(
-                                    colors = listOf(
-                                        colors.goldLight,
-                                        colors.goldPrimary,
-                                        colors.goldDark
-                                    )
-                                ),
-                                CircleShape
-                            ),
+                            .size(dimens.xxxl)
+                            .background(colors.surface1, CircleShape)
+                            .border(1.dp, colors.glassBorder, CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
-                        if (!player.imageUrl.isNullOrEmpty()) {
-                            CoilImage(
-                                model = ImageRequest.Builder(context)
-                                    .data(player.imageUrl)
-                                    .crossfade(true)
-                                    .build(),
-                                contentDescription = player.name,
-                                modifier = Modifier
-                                    .size(100.dp)
-                                    .clip(CircleShape),
-                                contentScale = ContentScale.Crop
-                            )
-                        } else {
-                            Icon(
-                                Icons.Default.Person,
-                                contentDescription = null,
-                                tint = colors.goldPrimary,
-                                modifier = Modifier.size(48.dp)
-                            )
-                        }
-                    }
-                    
-                    // Captain/WK badges
-                    if (player.isCaptain || player.isWicketKeeper) {
-                        Surface(
-                            modifier = Modifier
-                                .align(Alignment.BottomEnd)
-                                .offset(x = 5.dp, y = 5.dp),
-                            shape = CircleShape,
-                            color = if (player.isCaptain) colors.goldPrimary else colors.glassSurface,
-                            border = BorderStroke(1.5.dp, colors.goldDark.copy(alpha = 0.5f))
-                        ) {
-                            Text(
-                                if (player.isCaptain) "C" else "WK",
-                                color = if (player.isCaptain) colors.backgroundBase else colors.textPrimary,
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(dimens.sm)
-                            )
-                        }
-                    }
-                }
-                
-                Spacer(modifier = Modifier.height(dimens.md + dimens.xs))
-                
-                // Player name with etched gold gradient text
-                Text(
-                    text = player.name,
-                    fontSize = 26.sp,
-                    fontWeight = FontWeight.Black,
-                    textAlign = TextAlign.Center,
-                    letterSpacing = (-0.5).sp,
-                    style = androidx.compose.ui.text.TextStyle(
-                        brush = Brush.verticalGradient(
-                            colors = listOf(
-                                TextPrimary,
-                                colors.goldPrimary,
-                                colors.goldDark
-                            )
+                        Icon(
+                            imageVector = Icons.Default.Person,
+                            contentDescription = null,
+                            tint = colors.textSecondary,
+                            modifier = Modifier.size(dimens.lg)
                         )
-                    )
+                    }
+                }
+
+                val badge = when {
+                    player.isCaptain -> "C"
+                    player.isWicketKeeper -> "WK"
+                    else -> null
+                }
+                if (badge != null) {
+                    Box(
+                        modifier = Modifier
+                            .background(colors.goldPrimary, CircleShape)
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                    ) {
+                        Text(
+                            text = badge,
+                            style = typography.labelSmall,
+                            color = colors.backgroundBase,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+
+            Text(
+                text = player.name,
+                style = typography.headingLarge,
+                color = colors.textPrimary,
+                textAlign = TextAlign.Center
+            )
+            Text(
+                text = player.role,
+                style = typography.bodyMedium,
+                color = colors.textSecondary
+            )
+            player.country?.let {
+                Text(
+                    text = it,
+                    style = typography.bodySmall,
+                    color = colors.textMuted
                 )
-                
-                Spacer(modifier = Modifier.height(dimens.sm))
-                
-                // Role badge - pill shape with gold accent
-                Surface(
-                    color = colors.goldDark.copy(alpha = 0.12f),
-                    shape = RoundedCornerShape(50),
-                    border = BorderStroke(0.5.dp, colors.goldDark.copy(alpha = 0.3f))
-                ) {
-                    Text(
-                        text = player.role.uppercase(),
-                        modifier = Modifier.padding(horizontal = dimens.md, vertical = 6.dp),
-                        color = colors.goldPrimary,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.2.sp
-                    )
-                }
-                
-                if (player.country != null) {
-                    Spacer(modifier = Modifier.height(dimens.sm + dimens.xxs))
-                    Text(
-                        text = player.country,
-                        color = colors.textSecondary,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
             }
         }
     }
@@ -579,307 +421,133 @@ private fun PlayerHeaderCard(
 
 @Composable
 private fun PlayerQuickInfo(player: PlayerDetails) {
-    val colors = BouncerDesignSystem.colors
-    val dimens = BouncerDesignSystem.dimens
-    Card(
+    val dims = BouncerDesignSystem.dimens
+
+    GlassCard(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = colors.glassSurface),
-        shape = RoundedCornerShape(dimens.md + dimens.xs),
-        border = BorderStroke(0.5.dp, colors.goldDark.copy(alpha = 0.2f))
+        useGoldBorder = false,
+        contentPadding = PaddingValues(dims.md)
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(dimens.md + dimens.xs),
-            horizontalArrangement = Arrangement.SpaceEvenly
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            QuickInfoItem(
-                label = "Age",
-                value = player.age?.toString() ?: "-",
-                icon = Icons.Default.Cake
-            )
-            QuickInfoItem(
-                label = "Batting",
-                value = player.battingStyle?.take(6) ?: "-",
-                icon = Icons.Default.SportsCricket
-            )
+            QuickInfoItem(label = "Age", value = player.age?.toString() ?: "-")
+            QuickInfoItem(label = "Batting", value = player.battingStyle ?: "-")
             if (player.bowlingStyle != null) {
-                QuickInfoItem(
-                    label = "Bowling",
-                    value = player.bowlingStyle.take(6),
-                    icon = Icons.Default.Album
-                )
+                QuickInfoItem(label = "Bowling", value = player.bowlingStyle)
             }
         }
     }
 }
 
 @Composable
-private fun QuickInfoItem(
-    label: String,
-    value: String,
-    icon: ImageVector
-) {
+private fun QuickInfoItem(label: String, value: String) {
     val colors = BouncerDesignSystem.colors
+    val typography = BouncerDesignSystem.typography
+
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(6.dp)
+        verticalArrangement = Arrangement.spacedBy(2.dp)
     ) {
-        Icon(
-            icon,
-            contentDescription = null,
-            tint = colors.goldPrimary,
-            modifier = Modifier.size(20.dp)
-        )
         Text(
-            value,
+            text = value,
+            style = typography.bodyMedium,
             color = colors.textPrimary,
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Bold
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
         )
         Text(
-            label,
-            color = colors.textTertiary,
-            fontSize = 11.sp,
-            fontWeight = FontWeight.Medium
+            text = label,
+            style = typography.bodySmall,
+            color = colors.textSecondary
         )
     }
 }
 
 @Composable
 private fun BattingStatsCard(stats: BattingStats) {
-    val colors = BouncerDesignSystem.colors
-    val dimens = BouncerDesignSystem.dimens
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .shadow(
-                elevation = 16.dp,
-                shape = RoundedCornerShape(dimens.lg),
-                spotColor = colors.goldDark.copy(alpha = 0.15f)
-            ),
-        colors = CardDefaults.cardColors(containerColor = colors.glassSurface),
-        shape = RoundedCornerShape(dimens.lg),
-        border = BorderStroke(0.5.dp, colors.goldDark.copy(alpha = 0.2f))
-    ) {
-        Column(
-            modifier = Modifier.padding(dimens.lg)
-        ) {
-            // Main stats row
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                StatItem(label = "Matches", value = stats.matches.toString(), color = colors.textPrimary)
-                StatItem(label = "Runs", value = stats.runs.toString(), color = colors.goldPrimary, large = true)
-                StatItem(label = "HS", value = stats.highScore, color = colors.textPrimary)
-            }
-            
-            Spacer(modifier = Modifier.height(dimens.md))
-            HorizontalDivider(color = colors.glassBorder)
-            Spacer(modifier = Modifier.height(dimens.md))
-            
-            // Secondary stats - gold for key figures
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                StatItem(label = "Average", value = String.format("%.1f", stats.average), color = colors.goldPrimary)
-                StatItem(label = "SR", value = String.format("%.1f", stats.strikeRate), color = colors.statusInfo)
-                StatItem(label = "100s", value = stats.hundreds.toString(), color = colors.goldLight)
-                StatItem(label = "50s", value = stats.fifties.toString(), color = colors.goldDark)
-            }
-            
-            Spacer(modifier = Modifier.height(dimens.md))
-            HorizontalDivider(color = colors.glassBorder)
-            Spacer(modifier = Modifier.height(dimens.md))
-            
-            // Boundary stats
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                BoundaryStatItem(label = "4s", value = stats.fours.toString(), color = colors.statusInfo)
-                BoundaryStatItem(label = "6s", value = stats.sixes.toString(), color = colors.goldPrimary)
-            }
-        }
-    }
+    StatsGridCard(
+        rows = listOf(
+            listOf("Matches" to stats.matches.toString(), "Runs" to stats.runs.toString(), "HS" to stats.highScore),
+            listOf("Average" to format(stats.average), "SR" to format(stats.strikeRate), "100s" to stats.hundreds.toString()),
+            listOf("50s" to stats.fifties.toString(), "4s" to stats.fours.toString(), "6s" to stats.sixes.toString())
+        )
+    )
 }
 
 @Composable
 private fun BowlingStatsCard(stats: BowlingStats) {
+    StatsGridCard(
+        rows = listOf(
+            listOf("Matches" to stats.matches.toString(), "Wickets" to stats.wickets.toString(), "Best" to stats.bestBowling),
+            listOf("Average" to format(stats.average), "Economy" to format(stats.economy), "SR" to format(stats.strikeRate)),
+            listOf("Overs" to format(stats.overs), "5W" to stats.fiveWickets.toString(), "10W" to stats.tenWickets.toString())
+        )
+    )
+}
+
+@Composable
+private fun StatsGridCard(rows: List<List<Pair<String, String>>>) {
     val colors = BouncerDesignSystem.colors
+    val typography = BouncerDesignSystem.typography
     val dimens = BouncerDesignSystem.dimens
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .shadow(
-                elevation = 16.dp,
-                shape = RoundedCornerShape(dimens.lg),
-                spotColor = colors.goldDark.copy(alpha = 0.15f)
-            ),
-        colors = CardDefaults.cardColors(containerColor = colors.glassSurface),
-        shape = RoundedCornerShape(dimens.lg),
-        border = BorderStroke(0.5.dp, colors.goldDark.copy(alpha = 0.2f))
+
+    GlassCard(
+        modifier = Modifier.fillMaxWidth(),
+        useGoldBorder = false,
+        contentPadding = PaddingValues(dimens.md)
     ) {
-        Column(
-            modifier = Modifier.padding(dimens.lg)
-        ) {
-            // Main stats row
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                StatItem(label = "Matches", value = stats.matches.toString(), color = colors.textPrimary)
-                StatItem(label = "Wickets", value = stats.wickets.toString(), color = colors.statusLive, large = true)
-                StatItem(label = "Best", value = stats.bestBowling, color = colors.textPrimary)
-            }
-            
-            Spacer(modifier = Modifier.height(dimens.md))
-            HorizontalDivider(color = colors.glassBorder)
-            Spacer(modifier = Modifier.height(dimens.md))
-            
-            // Secondary stats - gold for key figures
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                StatItem(label = "Average", value = String.format("%.1f", stats.average), color = colors.goldPrimary)
-                StatItem(label = "Economy", value = String.format("%.1f", stats.economy), color = colors.goldLight)
-                StatItem(label = "SR", value = String.format("%.1f", stats.strikeRate), color = colors.statusInfo)
-                StatItem(label = "5W", value = stats.fiveWickets.toString(), color = colors.goldDark)
+        Column(verticalArrangement = Arrangement.spacedBy(dimens.sm)) {
+            rows.forEachIndexed { rowIndex, row ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    row.forEach { (label, value) ->
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                text = value,
+                                style = typography.bodyMedium,
+                                color = colors.textPrimary,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Text(
+                                text = label,
+                                style = typography.bodySmall,
+                                color = colors.textSecondary
+                            )
+                        }
+                    }
+                }
+                if (rowIndex < rows.lastIndex) {
+                    HorizontalDivider(color = colors.glassBorder, thickness = 0.5.dp)
+                }
             }
         }
-    }
-}
-
-@Composable
-private fun StatItem(
-    label: String,
-    value: String,
-    color: Color,
-    large: Boolean = false
-) {
-    val colors = BouncerDesignSystem.colors
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(4.dp)
-    ) {
-        Text(
-            value,
-            color = color,
-            fontSize = if (large) 28.sp else 20.sp,
-            fontWeight = FontWeight.Bold,
-            letterSpacing = if (large) (-1).sp else (-0.5).sp
-        )
-        Text(
-            label,
-            color = colors.textTertiary,
-            fontSize = 11.sp,
-            fontWeight = FontWeight.Medium,
-            letterSpacing = 0.5.sp
-        )
-    }
-}
-
-@Composable
-private fun BoundaryStatItem(
-    label: String,
-    value: String,
-    color: Color
-) {
-    val colors = BouncerDesignSystem.colors
-    val dimens = BouncerDesignSystem.dimens
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(dimens.sm + dimens.xs)
-    ) {
-        Box(
-            modifier = Modifier
-                .size(48.dp)
-                .background(
-                    Brush.radialGradient(
-                        colors = listOf(
-                            color.copy(alpha = 0.2f),
-                            color.copy(alpha = 0.05f)
-                        )
-                    ),
-                    CircleShape
-                )
-                .border(1.dp, color.copy(alpha = 0.3f), CircleShape),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                label,
-                color = color,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold
-            )
-        }
-        Text(
-            value,
-            color = colors.textPrimary,
-            fontSize = 24.sp,
-            fontWeight = FontWeight.Bold
-        )
-    }
-}
-
-@Composable
-private fun LegendItem(label: String, color: Color) {
-    val colors = BouncerDesignSystem.colors
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .size(8.dp)
-                .background(color, CircleShape)
-        )
-        Text(
-            label,
-            color = colors.textTertiary,
-            fontSize = 10.sp,
-            fontWeight = FontWeight.Medium
-        )
     }
 }
 
 @Composable
 private fun PlayerFooter() {
     val colors = BouncerDesignSystem.colors
+    val typography = BouncerDesignSystem.typography
     val dimens = BouncerDesignSystem.dimens
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = dimens.lg),
-        horizontalAlignment = Alignment.CenterHorizontally
+            .padding(vertical = dimens.sm),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(dimens.xxs)
     ) {
-        Box(
-            modifier = Modifier
-                .width(48.dp)
-                .height(2.dp)
-                .background(
-                    Brush.horizontalGradient(
-                        colors = listOf(
-                            Color.Transparent,
-                            colors.goldDark.copy(alpha = 0.4f),
-                            Color.Transparent
-                        )
-                    ),
-                    RoundedCornerShape(50)
-                )
-        )
-        
-        Spacer(modifier = Modifier.height(dimens.md))
-        
         Text(
             text = "Stats powered by Bouncer",
-            color = colors.textTertiary,
-            fontSize = 11.sp,
-            fontWeight = FontWeight.Medium,
-            letterSpacing = 0.5.sp
+            style = typography.bodySmall,
+            color = colors.textMuted
         )
     }
 }
+
+private fun format(value: Double): String = String.format(Locale.US, "%.1f", value)

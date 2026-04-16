@@ -3,12 +3,10 @@ package com.tanush.bouncer.ui
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
@@ -17,22 +15,24 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.tanush.bouncer.managers.TeamLogoManager
 import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.ui.components.BouncerImportance
-import com.tanush.bouncer.ui.components.CoilImage
-import com.tanush.bouncer.ui.components.GlassCard
+import com.tanush.bouncer.ui.components.core.BouncerCard
+import com.tanush.bouncer.ui.components.core.MatchScoreRow
+import com.tanush.bouncer.ui.components.core.StatusBadge
+import com.tanush.bouncer.ui.components.core.resolveMatchStatusType
+import com.tanush.bouncer.ui.components.core.statusColorFor
 import com.tanush.bouncer.ui.theme.*
 import com.tanush.bouncer.utils.*
 import io.sentry.Sentry
@@ -108,25 +108,19 @@ fun MatchCard(
     val scoreInfo2 = parseScore(team2?.score)
     val score1Display = scoreInfo1.toDisplayString()
     val score2Display = scoreInfo2.toDisplayString()
+    val matchPalette = rememberMatchTeamPalette(team1?.name, team2?.name)
+    val team1Colors = matchPalette.home
+    val team2Colors = matchPalette.away
+    val activeTeamColors = when {
+        team1?.isBatting == true -> team1Colors
+        team2?.isBatting == true -> team2Colors
+        else -> team1Colors
+    }
     
     // Prefer live AI commentary from ViewModel; fall back to local heuristic
     val aiInsight = liveAiCommentary ?: remember(match) { generateAiInsight(match) }
     
-    val statusColor = when {
-        isLive -> SuccessGreen
-        match.status.lowercase().contains("completed") || match.status.lowercase().contains("won") -> ChartCyan
-        match.status.lowercase().contains("upcoming") -> LiveBlue
-        match.status.lowercase().contains("delayed") -> WarningOrange
-        else -> TextSecondary
-    }
-    
-    val statusText = when {
-        isLive -> "Live"
-        match.status.lowercase().contains("completed") || match.status.lowercase().contains("won") -> "Completed"
-        match.status.lowercase().contains("upcoming") -> "Upcoming"
-        match.status.lowercase().contains("delayed") -> "Delayed"
-        else -> "Scheduled"
-    }
+    val statusType = remember(match.status, isLive) { resolveMatchStatusType(match.status, isLive) }
     
     // Press scale animation
     val interactionSource = remember { MutableInteractionSource() }
@@ -137,7 +131,7 @@ fun MatchCard(
         label = "cardScale"
     )
     
-    GlassCard(
+    BouncerCard(
         modifier = Modifier
             .padding(horizontal = Spacing.md, vertical = Spacing.xs)
             .fillMaxWidth()
@@ -148,7 +142,17 @@ fun MatchCard(
             .clickable(
                 interactionSource = interactionSource,
                 indication = null
-            ) { onClick() },
+            ) { onClick() }
+            .semantics {
+                role = Role.Button
+                contentDescription = buildString {
+                    append(match.matchTitle)
+                    if (match.currentStatus.isNotBlank()) {
+                        append(". ")
+                        append(match.currentStatus)
+                    }
+                }
+            },
         importance = if (isLive) BouncerImportance.CRITICAL else BouncerImportance.STANDARD,
         cornerRadius = CornerRadius.lg
     ) {
@@ -167,7 +171,7 @@ fun MatchCard(
                         modifier = Modifier
                             .size(4.dp, 14.dp)
                             .clip(RoundedCornerShape(2.dp))
-                            .background(statusColor)
+                            .background(statusColorFor(statusType))
                     )
                     Text(
                         match.matchTitle, 
@@ -179,88 +183,27 @@ fun MatchCard(
                     )
                 }
                 
-                // Status Badge — glass pill with pulsing dot for live
-                Surface(
-                    shape = RoundedCornerShape(CornerRadius.pill),
-                    color = if (isLive) SuccessGreen.copy(alpha = 0.10f)
-                            else statusColor.copy(alpha = 0.10f),
-                    border = BorderStroke(
-                        BorderWidth.hairline,
-                        if (isLive) SuccessGreen.copy(alpha = 0.20f)
-                        else statusColor.copy(alpha = 0.15f)
-                    )
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = Spacing.sm, vertical = Spacing.xs),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(Spacing.xs)
-                    ) {
-                        if (isLive) {
-                            val infiniteTransition = rememberInfiniteTransition(label = "pulse")
-                            val alpha by infiniteTransition.animateFloat(
-                                initialValue = 0.4f, 
-                                targetValue = 1f,
-                                animationSpec = infiniteRepeatable(
-                                    tween(800, easing = LinearEasing), 
-                                    RepeatMode.Reverse
-                                ),
-                                label = "alpha"
-                            )
-                            Box(
-                                modifier = Modifier
-                                    .size(6.dp)
-                                    .graphicsLayer { this.alpha = alpha }
-                                    .background(SuccessGreen, CircleShape)
-                            )
-                        }
-                        Text(
-                            statusText, 
-                            color = if (isLive) SuccessGreen else statusColor, 
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 1.sp
-                        )
-                    }
-                }
+                StatusBadge(statusType = statusType)
             }
 
             Spacer(modifier = Modifier.height(Spacing.md))
 
-            // Teams Display
-            Row(
-                modifier = Modifier.fillMaxWidth(), 
-                horizontalArrangement = Arrangement.SpaceBetween, 
-                verticalAlignment = Alignment.CenterVertically
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(Spacing.sm)
             ) {
-                // Teams Column
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(Spacing.sm)
-                ) {
-                    TeamRowSimple(team = team1)
-                    TeamRowSimple(team = team2)
-                }
-                
-                // Scores Column — bold gold scores
-                Column(
-                    horizontalAlignment = Alignment.End,
-                    verticalArrangement = Arrangement.spacedBy(Spacing.sm)
-                ) {
-                    Text(
-                        text = score1Display, 
-                        color = if (team1?.isBatting == true) GoldPrimary else TextSecondary, 
-                        fontWeight = FontWeight.Black, 
-                        fontSize = 28.sp,
-                        letterSpacing = (-0.5).sp
-                    )
-                    Text(
-                        text = score2Display, 
-                        color = if (team2?.isBatting == true) GoldPrimary else TextSecondary, 
-                        fontWeight = FontWeight.Black, 
-                        fontSize = 28.sp,
-                        letterSpacing = (-0.5).sp
-                    )
-                }
+                MatchScoreRow(
+                    team = team1,
+                    score = score1Display,
+                    teamTint = team1Colors.primary,
+                    emphasized = team1?.isBatting == true
+                )
+                MatchScoreRow(
+                    team = team2,
+                    score = score2Display,
+                    teamTint = team2Colors.primary,
+                    emphasized = team2?.isBatting == true
+                )
             }
 
             // Status Footer — etched gold gradient text
@@ -273,8 +216,8 @@ fun MatchCard(
                         fontWeight = FontWeight.SemiBold,
                         brush = Brush.verticalGradient(
                             colors = listOf(
-                                TextPrimary.copy(alpha = 0.9f),
-                                GoldPrimary.copy(alpha = 0.7f)
+                                activeTeamColors.onSurface.copy(alpha = 0.92f),
+                                activeTeamColors.primary.copy(alpha = 0.76f)
                             )
                         )
                     ),
@@ -288,8 +231,8 @@ fun MatchCard(
                 Spacer(modifier = Modifier.height(Spacing.xs))
                 Surface(
                     shape = RoundedCornerShape(CornerRadius.xs),
-                    color = ShinyGoldDeep.copy(alpha = 0.08f),
-                    border = BorderStroke(BorderWidth.hairline, ShinyGoldDeep.copy(alpha = 0.15f))
+                    color = activeTeamColors.accent,
+                    border = BorderStroke(BorderWidth.hairline, activeTeamColors.border)
                 ) {
                     Row(
                         modifier = Modifier.padding(horizontal = Spacing.xs, vertical = Spacing.micro),
@@ -299,12 +242,12 @@ fun MatchCard(
                         Icon(
                             Icons.Default.AutoAwesome,
                             contentDescription = "AI Insight",
-                            tint = ShinyGoldDeep,
+                            tint = activeTeamColors.primary,
                             modifier = Modifier.size(12.dp)
                         )
                         Text(
                             text = aiInsight,
-                            color = ShinyGoldDeep,
+                            color = activeTeamColors.primary,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Medium
                         )
@@ -312,45 +255,5 @@ fun MatchCard(
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun TeamRowSimple(team: CricketMatch.Team?) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(Spacing.xs)
-    ) {
-        // Team Logo — glass circle with subtle border
-        Box(
-            modifier = Modifier
-                .size(36.dp)
-                .clip(CircleShape)
-                .background(GlassSurface)
-                .border(
-                    BorderWidth.hairline,
-                    GlassBorderHighlight,
-                    CircleShape
-                ),
-            contentAlignment = Alignment.Center
-        ) {
-            val logoUrl = TeamLogoManager.getBestLogoUrl(team?.name, team?.logoUrl, 72, 72)
-            CoilImage(
-                model = logoUrl, 
-                contentDescription = null, 
-                modifier = Modifier.size(26.dp),
-                contentScale = ContentScale.Fit
-            )
-        }
-        
-        // Team Name
-        Text(
-            text = team?.name ?: "TBD", 
-            color = if (team?.isBatting == true) TextPrimary else TextSecondary, 
-            fontWeight = if (team?.isBatting == true) FontWeight.Bold else FontWeight.Medium, 
-            fontSize = 14.sp,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
     }
 }

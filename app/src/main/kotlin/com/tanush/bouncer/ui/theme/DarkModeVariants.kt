@@ -290,6 +290,7 @@ fun ThemeSelector(
     onVariantSelected: (DarkModeVariant) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val typography = BouncerDesignSystem.typography
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -297,7 +298,7 @@ fun ThemeSelector(
     ) {
         Text(
             text = "Dark Mode Theme",
-            style = MaterialTheme.typography.titleMedium,
+            style = typography.titleMedium,
             color = TextPrimary,
             modifier = Modifier.padding(bottom = 16.dp)
         )
@@ -328,6 +329,7 @@ private fun ThemePreviewCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val typography = BouncerDesignSystem.typography
     val borderColor by animateColorAsState(
         targetValue = if (isSelected) ShinyGoldDeep else GlassBorder,
         animationSpec = tween(200),
@@ -410,7 +412,7 @@ private fun ThemePreviewCard(
             
             Text(
                 text = variant.label,
-                style = MaterialTheme.typography.labelMedium.copy(
+                style = typography.labelMedium.copy(
                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
                 ),
                 color = if (isSelected) ShinyGoldDeep else textColor
@@ -418,7 +420,7 @@ private fun ThemePreviewCard(
             
             Text(
                 text = variant.description,
-                style = MaterialTheme.typography.labelSmall,
+                style = typography.labelSmall,
                 color = textColor.copy(alpha = 0.6f),
                 maxLines = 1
             )
@@ -532,6 +534,7 @@ fun BrightnessAdjustmentBar(
     onBrightnessChange: (Float) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val typography = BouncerDesignSystem.typography
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -543,7 +546,7 @@ fun BrightnessAdjustmentBar(
         ) {
             Text(
                 text = "Brightness",
-                style = MaterialTheme.typography.titleMedium,
+                style = typography.titleMedium,
                 color = TextPrimary
             )
             
@@ -551,7 +554,7 @@ fun BrightnessAdjustmentBar(
             
             Text(
                 text = "${(brightness * 100).toInt()}%",
-                style = MaterialTheme.typography.labelMedium,
+                style = typography.labelMedium,
                 color = ShinyGoldDeep
             )
         }
@@ -608,12 +611,12 @@ fun BrightnessAdjustmentBar(
         ) {
             Text(
                 text = "Dim",
-                style = MaterialTheme.typography.labelSmall,
+                style = typography.labelSmall,
                 color = TextTertiary
             )
             Text(
                 text = "Bright",
-                style = MaterialTheme.typography.labelSmall,
+                style = typography.labelSmall,
                 color = TextTertiary
             )
         }

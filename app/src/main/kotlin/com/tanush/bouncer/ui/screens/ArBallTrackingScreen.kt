@@ -20,11 +20,13 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.ui.components.CoilImage
 import com.tanush.bouncer.ui.theme.*
 
 @Composable
 fun ArBallTrackingScreen(
+    match: CricketMatch? = null,
     onBackClick: () -> Unit
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "ar_effects")
@@ -67,17 +69,17 @@ fun ArBallTrackingScreen(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             // Top Bar
-            EliteArHeader(onBackClick)
+            EliteArHeader(match = match, onBackClick = onBackClick)
 
             Spacer(modifier = Modifier.weight(1f))
 
             // Speed Highlight
-            ArSpeedHeadline()
+            ArSpeedHeadline(match = match)
 
             Spacer(modifier = Modifier.weight(1f))
 
             // Bottom Widgets & Controls
-            ArBottomSection()
+            ArBottomSection(match = match)
         }
     }
 }
@@ -165,8 +167,13 @@ private fun ArReticleFocus() {
 }
 
 @Composable
-private fun EliteArHeader(onBackClick: () -> Unit) {
+private fun EliteArHeader(match: CricketMatch? = null, onBackClick: () -> Unit) {
     val colors = BouncerDesignSystem.colors
+    val team1 = match?.teams?.getOrNull(0)?.acronym ?: match?.teams?.getOrNull(0)?.name?.take(3)?.uppercase() ?: "---"
+    val team2 = match?.teams?.getOrNull(1)?.acronym ?: match?.teams?.getOrNull(1)?.name?.take(3)?.uppercase() ?: "---"
+    val matchLabel = "$team1 vs $team2"
+    val battingTeam = match?.teams?.firstOrNull { it.isBatting }
+    val currentOver = battingTeam?.overs ?: "--"
     Surface(
         modifier = Modifier
             .fillMaxWidth()
@@ -185,32 +192,34 @@ private fun EliteArHeader(onBackClick: () -> Unit) {
                     Icon(Icons.Default.EmergencyRecording, null, tint = colors.goldPrimary, modifier = Modifier.size(18.dp))
                 }
                 Column {
-                    Text("IND vs AUS", color = colors.textPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                    Text(matchLabel, color = colors.textPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                     Text("LIVE FEED • 4K", color = colors.textSecondary, fontSize = 9.sp, fontWeight = FontWeight.Black)
                 }
             }
             
             Surface(color = colors.goldPrimary.copy(alpha = 0.2f), shape = RoundedCornerShape(4.dp)) {
-                Text("OVER 14.2", color = colors.goldPrimary, fontSize = 9.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
+                Text("OVER $currentOver", color = colors.goldPrimary, fontSize = 9.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
             }
         }
     }
 }
 
 @Composable
-private fun ArSpeedHeadline() {
+private fun ArSpeedHeadline(match: CricketMatch? = null) {
     val colors = BouncerDesignSystem.colors
+    // No ball speed data available on model — show placeholder derived from bowler context
+    val speedText = "---"
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Box(contentAlignment = Alignment.Center) {
             Text(
-                "145.2", 
+                speedText, 
                 color = colors.textMuted, 
                 fontSize = 72.sp, 
                 fontWeight = FontWeight.Black,
                 modifier = Modifier.offset(x = 4.dp, y = 4.dp)
             )
             Text(
-                "145.2", 
+                speedText, 
                 color = colors.goldPrimary, 
                 fontSize = 72.sp, 
                 fontWeight = FontWeight.Black,
@@ -227,17 +236,19 @@ private fun ArSpeedHeadline() {
 }
 
 @Composable
-private fun ArBottomSection() {
+private fun ArBottomSection(match: CricketMatch? = null) {
     val colors = BouncerDesignSystem.colors
+    val bowler = match?.currentBowler
+    val econLabel = bowler?.economy ?: "--"
     Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
         // Floating Widgets
         Row(
             modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            ArWidget("Pitch Map", "Good", Icons.Default.Layers, ChartCyan)
-            ArWidget("Spin Rate", "2400 RPM", Icons.AutoMirrored.Filled.RotateRight, colors.goldPrimary)
-            ArWidget("Swing", "1.2°", Icons.Default.AirlineStops, ChartCyan)
+            ArWidget("Pitch Map", if (bowler != null) "Live" else "N/A", Icons.Default.Layers, ChartCyan)
+            ArWidget("Economy", econLabel, Icons.AutoMirrored.Filled.RotateRight, colors.goldPrimary)
+            ArWidget("Wickets", bowler?.wickets ?: "--", Icons.Default.AirlineStops, ChartCyan)
         }
 
         // Camera Controls

@@ -1,8 +1,6 @@
 package com.tanush.bouncer.ui.navigation
 
 import androidx.compose.animation.*
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -15,53 +13,10 @@ import com.tanush.bouncer.ui.HomeScreen
 import com.tanush.bouncer.ui.devtools.DevToolsScreen
 import com.tanush.bouncer.ui.screens.*
 import com.tanush.bouncer.ui.theme.BackgroundSkinType
+import com.tanush.bouncer.ui.theme.BouncerMotion
 import com.tanush.bouncer.ui.theme.ThemeVariant
 import com.tanush.bouncer.viewmodels.LiveActivityViewModel
 import com.tanush.bouncer.viewmodels.NewsViewModel
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// Animation Constants
-// ═══════════════════════════════════════════════════════════════════════════════
-
-private const val FADE_DURATION = 300
-private const val SLIDE_DURATION = 350
-private const val SLIDE_OFFSET_DIVISOR = 4
-
-/**
- * Standard enter transition for horizontal navigation (tabs).
- */
-private fun slideInFromRight(): EnterTransition =
-    fadeIn(tween(FADE_DURATION)) + slideInHorizontally(
-        initialOffsetX = { it / SLIDE_OFFSET_DIVISOR },
-        animationSpec = tween(SLIDE_DURATION, easing = FastOutSlowInEasing)
-    )
-
-/**
- * Standard exit transition for horizontal navigation.
- */
-private fun slideOutToLeft(): ExitTransition =
-    fadeOut(tween(200)) + slideOutHorizontally(
-        targetOffsetX = { -it / SLIDE_OFFSET_DIVISOR },
-        animationSpec = tween(SLIDE_DURATION, easing = FastOutSlowInEasing)
-    )
-
-/**
- * Reverse enter transition for back navigation.
- */
-private fun slideInFromLeft(): EnterTransition =
-    fadeIn(tween(FADE_DURATION)) + slideInHorizontally(
-        initialOffsetX = { -it / SLIDE_OFFSET_DIVISOR },
-        animationSpec = tween(SLIDE_DURATION, easing = FastOutSlowInEasing)
-    )
-
-/**
- * Reverse exit transition for back navigation.
- */
-private fun slideOutToRight(): ExitTransition =
-    fadeOut(tween(200)) + slideOutHorizontally(
-        targetOffsetX = { it / SLIDE_OFFSET_DIVISOR },
-        animationSpec = tween(SLIDE_DURATION, easing = FastOutSlowInEasing)
-    )
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // NavHost Composable
@@ -93,10 +48,10 @@ fun BouncerNavHost(
         navController = navController,
         startDestination = BouncerScreen.Home.route,
         modifier = modifier.fillMaxSize(),
-        enterTransition = { slideInFromRight() },
-        exitTransition = { slideOutToLeft() },
-        popEnterTransition = { slideInFromLeft() },
-        popExitTransition = { slideOutToRight() }
+        enterTransition = { BouncerMotion.Transitions.horizontalEnter() },
+        exitTransition = { BouncerMotion.Transitions.horizontalExit() },
+        popEnterTransition = { BouncerMotion.Transitions.horizontalPopEnter() },
+        popExitTransition = { BouncerMotion.Transitions.horizontalPopExit() }
     ) {
         // Primary tabs
         primaryTabDestinations(navController, liveActivityViewModel, onMatchClick)
@@ -127,7 +82,7 @@ private fun NavGraphBuilder.primaryTabDestinations(
                 navController.navigateToTab(BouncerScreen.Matches.route)
             },
             onAchievementsClick = {
-                navController.navigateToTab(BouncerScreen.Stats.route)
+                navController.navigateForward(BouncerScreen.Stats.route)
             }
         )
     }
@@ -138,7 +93,8 @@ private fun NavGraphBuilder.primaryTabDestinations(
             viewModel = liveActivityViewModel,
             onBackClick = {
                 navController.navigateToTab(BouncerScreen.Home.route)
-            }
+            },
+            onMatchClick = onMatchClick
         )
     }
 
@@ -159,7 +115,9 @@ private fun NavGraphBuilder.primaryTabDestinations(
     composable(BouncerScreen.Stats.route) {
         StatsHubScreen(
             onBackClick = {
-                navController.navigateToTab(BouncerScreen.Home.route)
+                if (!navController.popBackStack()) {
+                    navController.navigateToTab(BouncerScreen.Home.route)
+                }
             },
             onOpenTrophy = {
                 navController.navigateForward(BouncerScreen.Trophy.route)
@@ -179,8 +137,11 @@ private fun NavGraphBuilder.primaryTabDestinations(
             onSettingsClick = {
                 navController.navigateForward(BouncerScreen.Settings.route)
             },
+            onStatsClick = {
+                navController.navigateForward(BouncerScreen.Stats.route)
+            },
             onAchievementsClick = {
-                navController.navigateToTab(BouncerScreen.Stats.route)
+                navController.navigateForward(BouncerScreen.Achievements.route)
             },
             onActivityClick = {
                 navController.navigateForward(BouncerScreen.ActivityFeed.route)
@@ -218,7 +179,7 @@ private fun NavGraphBuilder.moreChildDestinations(
                 navController.navigateToTab(BouncerScreen.Favorites.route)
             },
             onAchievementsClick = {
-                navController.navigateToTab(BouncerScreen.Stats.route)
+                navController.navigateForward(BouncerScreen.Stats.route)
             },
             onAboutClick = {
                 navController.navigateForward(BouncerScreen.About.route)

@@ -1,6 +1,7 @@
 package com.tanush.bouncer.ui.components
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
@@ -22,12 +23,14 @@ fun CoilImage(
 ) {
     val context = LocalContext.current
 
-    val finalRequest = when (model) {
-        is ImageRequest -> model
-        else -> ImageRequest.Builder(context)
-            .data(model)
-            .crossfade(true)
-            .build()
+    val finalRequest = remember(model, context) {
+        when (model) {
+            is ImageRequest -> model
+            else -> ImageRequest.Builder(context)
+                .data(model)
+                .crossfade(true)
+                .build()
+        }
     }
 
     AsyncImage(

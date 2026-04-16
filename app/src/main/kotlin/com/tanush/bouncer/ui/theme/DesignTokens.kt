@@ -40,6 +40,12 @@ object DesignTokens {
 
     object Spacing {
         @Composable
+        fun micro(): Dp = LocalBouncerDimens.current.spacing.micro
+
+        @Composable
+        fun xs(): Dp = LocalBouncerDimens.current.spacing.xs
+
+        @Composable
         fun sm(): Dp = LocalBouncerDimens.current.sm
 
         @Composable
@@ -52,10 +58,13 @@ object DesignTokens {
         fun xl(): Dp = LocalBouncerDimens.current.xl
 
         @Composable
+        fun xxl(): Dp = LocalBouncerDimens.current.xxl
+
+        @Composable
         fun screenHorizontal(): Dp = LocalBouncerDimens.current.screenHorizontal
 
         @Composable
-        fun spacingXS(): Dp = LocalBouncerDimens.current.spacing.xs
+        fun spacingXS(): Dp = xs()
 
         @Composable
         fun gridUnit(multiplier: Int): Dp = LocalBouncerDimens.current.spacing.gridUnit(multiplier)
@@ -70,17 +79,40 @@ object DesignTokens {
 
         @Composable
         fun lg(): Dp = LocalBouncerDimens.current.radius.lg
+
+        @Composable
+        fun xl(): Dp = LocalBouncerDimens.current.radius.xl
+
+        @Composable
+        fun pill(): Dp = LocalBouncerDimens.current.radius.pill
+    }
+
+    object Elevation {
+        @Composable
+        fun sm(): Dp = LocalBouncerDimens.current.elevation.sm
+
+        @Composable
+        fun md(): Dp = LocalBouncerDimens.current.elevation.md
+
+        @Composable
+        fun lg(): Dp = LocalBouncerDimens.current.elevation.lg
+
+        @Composable
+        fun xl(): Dp = LocalBouncerDimens.current.elevation.xl
     }
 
     object Typography {
         @Composable
-        fun headingMedium() = LocalBouncerTypography.current.headingMedium
+        fun headlineMedium() = LocalBouncerTypography.current.headlineMedium
 
         @Composable
         fun bodySmall() = LocalBouncerTypography.current.bodySmall
 
         @Composable
         fun labelSmall() = LocalBouncerTypography.current.labelSmall
+
+        @Composable
+        fun headingMedium() = LocalBouncerTypography.current.headlineMedium
     }
 }
 

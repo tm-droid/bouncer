@@ -10,6 +10,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.SportsCricket
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -32,6 +33,7 @@ import com.tanush.bouncer.ui.components.glass.*
 import coil.request.ImageRequest
 import com.tanush.bouncer.managers.FavouriteTeamsManager
 import com.tanush.bouncer.managers.TeamLogoManager
+import com.tanush.bouncer.ui.components.EmptyStateView
 import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 import kotlin.math.roundToInt
 
@@ -117,12 +119,12 @@ fun FavoritesScreen(
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(
-                            top = dimens.xl,
-                            start = dimens.xl,
-                            end = dimens.xl,
-                            bottom = 140.dp
+                            top = dimens.lg,
+                            start = dimens.screenHorizontalPadding,
+                            end = dimens.screenHorizontalPadding,
+                            bottom = dimens.bottomNavHeight + dimens.xxxl
                         ),
-                        verticalArrangement = Arrangement.spacedBy(dimens.lg)
+                        verticalArrangement = Arrangement.spacedBy(dimens.cardGap)
                     ) {
                         // Header Stats
                         item {
@@ -146,10 +148,10 @@ fun FavoritesScreen(
                                     modifier = Modifier.size(18.dp)
                                 )
                                 Text(
-                                    text = if (isEditMode) "DRAG TO REORDER" else "YOUR TEAMS",
+                                    text = if (isEditMode) "Drag to reorder" else "Saved teams",
                                     style = typography.labelSmall,
                                     color = if (isEditMode) colors.goldPrimary else colors.textSecondary,
-                                    letterSpacing = 1.5.sp
+                                    letterSpacing = 0.8.sp
                                 )
                                 Box(
                                     modifier = Modifier
@@ -201,23 +203,13 @@ fun FavoritesScreen(
                                 )
                             }
                         } else {
-                            items(reorderableFavorites.chunked(2)) { rowTeams ->
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(dimens.md)
-                                ) {
-                                    rowTeams.forEach { teamName ->
-                                        FavoriteTeamCard(
-                                            teamName = teamName,
-                                            onClick = { onTeamClick(teamName) },
-                                            onRemove = { FavouriteTeamsManager.remove(teamName) },
-                                            modifier = Modifier.weight(1f)
-                                        )
-                                    }
-                                    if (rowTeams.size == 1) {
-                                        Spacer(modifier = Modifier.weight(1f))
-                                    }
-                                }
+                            itemsIndexed(reorderableFavorites) { index, teamName ->
+                                FavoriteTeamListRow(
+                                    teamName = teamName,
+                                    position = index + 1,
+                                    onClick = { onTeamClick(teamName) },
+                                    onRemove = { FavouriteTeamsManager.remove(teamName) }
+                                )
                             }
                         }
 
@@ -572,89 +564,141 @@ private fun ReorderableTeamCard(
 }
 
 @Composable
-private fun EmptyFavoritesState(
-    onAddTeam: () -> Unit
+private fun FavoriteTeamListRow(
+    teamName: String,
+    position: Int,
+    onClick: () -> Unit,
+    onRemove: () -> Unit
 ) {
     val colors = BouncerDesignSystem.colors
     val typography = BouncerDesignSystem.typography
     val dimens = BouncerDesignSystem.dimens
+    val context = LocalContext.current
+    val logoUrl = TeamLogoManager.getBestLogoUrl(teamName, null, 128, 128)
+    var showRemoveDialog by remember { mutableStateOf(false) }
 
-    val infiniteTransition = rememberInfiniteTransition(label = "emptyPulse")
-    val pulseScale by infiniteTransition.animateFloat(
-        initialValue = 0.95f,
-        targetValue = 1.05f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1500, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "pulseScale"
-    )
+    GlassCard(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(dimens.radius.lg),
+        contentPadding = PaddingValues(dimens.md)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(dimens.md),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(28.dp)
+                    .background(colors.goldPrimary.copy(alpha = 0.14f), CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = position.toString(),
+                    style = typography.labelSmall,
+                    color = colors.goldPrimary
+                )
+            }
+
+            CoilImage(
+                model = if (logoUrl == null) null else ImageRequest.Builder(context)
+                    .data(logoUrl)
+                    .crossfade(true)
+                    .size(96)
+                    .build(),
+                contentDescription = teamName,
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(colors.glassBackground, CircleShape),
+                contentScale = ContentScale.Fit
+            )
+
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(dimens.xxs)
+            ) {
+                Text(
+                    text = teamName,
+                    style = typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = colors.textPrimary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = "Tap to open team details",
+                    style = typography.labelSmall,
+                    color = colors.textMuted
+                )
+            }
+
+            GlassIconButtonSmall(
+                icon = Icons.Default.Close,
+                onClick = { showRemoveDialog = true },
+                contentDescription = "Remove",
+                useGoldTint = false
+            )
+        }
+    }
+
+    if (showRemoveDialog) {
+        Dialog(onDismissRequest = { showRemoveDialog = false }) {
+            GlassCard(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(24.dp),
+                contentPadding = PaddingValues(dimens.xxl)
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(dimens.lg)) {
+                    Text("Remove Team", style = typography.headingSmall, color = colors.textPrimary)
+                    Text(
+                        "Remove $teamName from favorites?",
+                        style = typography.bodyMedium,
+                        color = colors.textSecondary
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        GlassTextButton(
+                            text = "Cancel",
+                            onClick = { showRemoveDialog = false }
+                        )
+                        Spacer(modifier = Modifier.width(dimens.sm))
+                        GlassPrimaryButton(
+                            text = "Remove",
+                            onClick = {
+                                onRemove()
+                                showRemoveDialog = false
+                            }
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun EmptyFavoritesState(
+    onAddTeam: () -> Unit
+) {
+    val dimens = BouncerDesignSystem.dimens
 
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(dimens.xl)
-        ) {
-            // Animated Heart Icon
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .graphicsLayer {
-                        scaleX = pulseScale
-                        scaleY = pulseScale
-                    }
-                    .size(100.dp)
-                    .background(
-                        Brush.radialGradient(
-                            colors = listOf(
-                                colors.statusLive.copy(alpha = 0.15f),
-                                colors.statusLive.copy(alpha = 0.05f),
-                                Color.Transparent
-                            )
-                        ),
-                        CircleShape
-                    )
-            ) {
-                Box(
-                    contentAlignment = Alignment.Center,
-                    modifier = Modifier
-                        .size(72.dp)
-                        .background(colors.glassBackground, CircleShape)
-                        .border(1.dp, colors.statusLive.copy(alpha = 0.3f), CircleShape)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.FavoriteBorder,
-                        contentDescription = null,
-                        tint = colors.statusLive.copy(alpha = 0.6f),
-                        modifier = Modifier.size(36.dp)
-                    )
-                }
-            }
-
-            Text(
-                text = "No Favorite Teams",
-                style = typography.headingMedium,
-                color = colors.textPrimary
-            )
-
-            Text(
-                text = "Add teams to quickly access their\nmatches and updates",
-                style = typography.bodyMedium,
-                color = colors.textMuted,
-                textAlign = TextAlign.Center
-            )
-
-            Spacer(modifier = Modifier.height(dimens.sm))
-
-            GlassPrimaryButton(
-                text = "Add Your First Team",
-                onClick = onAddTeam,
-                icon = Icons.Default.Add
-            )
-        }
+        EmptyStateView(
+            icon = Icons.Outlined.SportsCricket,
+            title = "No favorite teams yet",
+            message = "Add teams to quickly access fixtures and updates.",
+            actionLabel = "Add team",
+            onAction = onAddTeam,
+            modifier = Modifier.padding(horizontal = dimens.screenHorizontalPadding)
+        )
     }
 }
 

@@ -88,8 +88,8 @@ fun AiInsightsDrsScreen(
             // DRS Visualization Card
             DrsVisualizationCard(match)
 
-            // Verdict Module — placeholder until DRS event stream integration
-            VerdictModule(isOut = true)
+            // Verdict Module — no DRS event data available on model yet; show awaiting state
+            VerdictModule(isOut = false, hasReview = false)
 
             // Delivery Metrics
             DeliveryMetricsSection(match)
@@ -139,9 +139,19 @@ private fun AiNeuralBanner(match: CricketMatch) {
     val colors = BouncerDesignSystem.colors
 
     // Use AiAnalysisCard for the banner
+    val bowler = match.currentBowler
+    val striker = match.scrapedBatsmen?.firstOrNull { it.isStriker }
+    val bowlerEcon = bowler?.economy?.toDoubleOrNull()
+    val strikerSR = striker?.strikeRate?.toDoubleOrNull()
+    val analysisDesc = when {
+        bowlerEcon != null && bowlerEcon < 6.0 -> "${bowler.name} bowling tight (econ ${bowler.economy}). Pressure building on batting side."
+        strikerSR != null && strikerSR > 150.0 -> "${striker?.name} striking at ${striker?.strikeRate}. High boundary probability on current trajectory."
+        bowler != null -> "${bowler.name} has bowled ${bowler.overs} overs for ${bowler.wickets} wickets."
+        else -> "Awaiting delivery data for analysis."
+    }
     AiAnalysisCard(
         title = "Match Critical Analysis",
-        description = "Spin rate on last delivery increased by 15%. High probability of LBW on current trajectory.",
+        description = analysisDesc,
         highlightText = "AI ANALYSIS",
         type = AnalysisType.WARNING,
         modifier = Modifier.padding(0.dp)
@@ -192,17 +202,17 @@ private fun DrsVisualizationCard(match: CricketMatch) {
                 horizontalAlignment = Alignment.End,
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                // Placeholder DRS metrics — replace with live ball tracking results
-                DrsMetricsRow("PITCHING", "IN LINE", colors.statusInfo)
-                DrsMetricsRow("IMPACT", "IN LINE", colors.statusInfo)
-                DrsMetricsRow("WICKETS", "HITTING", colors.goldPrimary)
+                // DRS metrics — no live ball tracking data available yet; show awaiting state
+                DrsMetricsRow("PITCHING", "AWAITING", colors.textMuted)
+                DrsMetricsRow("IMPACT", "AWAITING", colors.textMuted)
+                DrsMetricsRow("WICKETS", "AWAITING", colors.textMuted)
             }
         }
         
         Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text("DRS Visualization", color = colors.textPrimary, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-            // Placeholder summary — replace with real trajectory analysis output
-            Text("Projected path indicates ball hitting top of leg stump.", color = colors.textSecondary, fontSize = 14.sp)
+            // Summary — no DRS ball tracking integration yet
+            Text("Awaiting DRS review data. Ball trajectory will be visualized when a review is triggered.", color = colors.textSecondary, fontSize = 14.sp)
         }
     }
 }
@@ -217,15 +227,15 @@ private fun DrsMetricsRow(label: String, value: String, valueColor: Color) {
 }
 
 @Composable
-private fun VerdictModule(isOut: Boolean) {
+private fun VerdictModule(isOut: Boolean, hasReview: Boolean = true) {
     val colors = BouncerDesignSystem.colors
     Column(
         modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
-            text = if (isOut) "OUT" else "NOT OUT",
-            color = colors.goldPrimary,
+            text = if (!hasReview) "NO REVIEW" else if (isOut) "OUT" else "NOT OUT",
+            color = if (hasReview) colors.goldPrimary else colors.textMuted,
             fontSize = 56.sp,
             fontWeight = FontWeight.Black,
             fontStyle = FontStyle.Italic,
@@ -234,7 +244,7 @@ private fun VerdictModule(isOut: Boolean) {
             }
         )
         Text(
-            text = "UMPIRE'S DECISION OVERTURNED",
+            text = if (!hasReview) "AWAITING DRS REVIEW" else "UMPIRE'S DECISION OVERTURNED",
             color = colors.textMuted,
             fontSize = 11.sp,
             fontWeight = FontWeight.Bold,
@@ -253,10 +263,13 @@ private fun DeliveryMetricsSection(match: CricketMatch) {
         }
         
         LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            // Placeholder metrics — replace with real per-ball telemetry data when available
-            item { MetricCard(Icons.Default.Speed, "Impact Speed", "142", "kph") }
-            item { MetricCard(Icons.AutoMirrored.Filled.RotateRight, "Turn Degree", "2.1°", "") }
-            item { MetricCard(Icons.Default.Psychology, "Confidence", "98%", "") }
+            // Derive metrics from bowler data when available
+            val bowlerData = match.currentBowler
+            val speedValue = bowlerData?.let { "N/A" } ?: "N/A"
+            item { MetricCard(Icons.Default.Speed, "Impact Speed", speedValue, "kph") }
+            item { MetricCard(Icons.AutoMirrored.Filled.RotateRight, "Turn Degree", "--", "") }
+            val prob = match.calculateHeuristicProbability()
+            item { MetricCard(Icons.Default.Psychology, "Confidence", "${prob.toInt()}%", "") }
         }
     }
 }
@@ -302,8 +315,15 @@ private fun PitchMapMiniCard(match: CricketMatch) {
                 }
                 Column {
                     Text("Pitch Map", color = colors.textPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                    // Placeholder classification — replace with ball impact coordinate mapping
-                    Text("Good Length", color = colors.goldPrimary, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                    // Derive pitch classification from bowler overs/type
+                    val bowler = match.currentBowler
+                    val pitchLabel = when {
+                        bowler == null -> "Awaiting Data"
+                        bowler.economy?.toDoubleOrNull()?.let { it < 5.0 } == true -> "Tight Line"
+                        bowler.economy?.toDoubleOrNull()?.let { it > 8.0 } == true -> "Full & Wide"
+                        else -> "Good Length"
+                    }
+                    Text(pitchLabel, color = colors.goldPrimary, fontSize = 11.sp, fontWeight = FontWeight.Medium)
                 }
             }
             Icon(Icons.Default.ChevronRight, null, tint = colors.textMuted)

@@ -17,6 +17,13 @@ object PreferencesHelper {
     // Appearance keys
     const val KEY_THEME_VARIANT = "theme_variant"
     const val KEY_BACKGROUND_SKIN = "background_skin"
+
+    // UX behavior and accessibility keys
+    const val KEY_HAPTIC_FEEDBACK = "haptic_feedback"
+    const val KEY_AUTO_REFRESH = "auto_refresh"
+    const val KEY_SHOW_WIN_PROBABILITY = "show_win_probability"
+    const val KEY_REDUCED_MOTION = "reduced_motion"
+
     // Personalization defaults
     const val KEY_DEFAULT_LANDING = "default_landing"
 
@@ -59,7 +66,7 @@ object PreferencesHelper {
     fun isFollowed(context: Context, statKey: String): Boolean {
         try {
             val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            return prefs.getBoolean("follow_\$statKey", false)
+            return prefs.getBoolean("follow_$statKey", false)
         } catch (e: Exception) {
             Sentry.captureException(e)
             throw e
@@ -69,7 +76,7 @@ object PreferencesHelper {
     fun setFollowed(context: Context, statKey: String, followed: Boolean) {
         try {
             val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            prefs.edit().putBoolean("follow_\$statKey", followed).apply()
+            prefs.edit().putBoolean("follow_$statKey", followed).apply()
         } catch (e: Exception) {
             Sentry.captureException(e)
             throw e

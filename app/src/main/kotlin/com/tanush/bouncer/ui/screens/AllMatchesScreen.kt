@@ -25,6 +25,11 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -33,10 +38,15 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.tanush.bouncer.ui.components.EmptyStateView
 import com.tanush.bouncer.ui.components.PremiumMatchListCard
 import com.tanush.bouncer.ui.components.core.MatchCardSkeleton
+import com.tanush.bouncer.ui.components.glass.GlassCard
 import com.tanush.bouncer.ui.components.glass.GlassBloomBackground
 import com.tanush.bouncer.ui.theme.*
 import com.tanush.bouncer.ui.theme.BouncerDesignSystem
+import com.tanush.bouncer.viewmodels.LoadingState
 import com.tanush.bouncer.viewmodels.LiveActivityViewModel
+
+private val ALL_MATCH_STATUS_FILTERS = listOf("Live", "Upcoming", "Recent")
+private val ALL_MATCH_FORMAT_FILTERS = listOf("All", "T20", "ODI", "Test")
 
 // =============================================================================
 // Private composables for AllMatchesScreen premium design
@@ -144,11 +154,16 @@ private fun GlassFilterPill(
 
     Box(
         modifier = Modifier
-            .height(36.dp)
+            .heightIn(min = BouncerDesignSystem.dimens.minTouchTarget)
             .clip(RoundedCornerShape(18.dp))
             .background(bgColor)
             .border(1.dp, borderColor, RoundedCornerShape(18.dp))
             .clickable { onClick() }
+            .semantics {
+                role = Role.Button
+                selected = isSelected
+                contentDescription = "Filter by $text"
+            }
             .padding(horizontal = BouncerDesignSystem.dimens.spacing.md),
         contentAlignment = Alignment.Center
     ) {
@@ -190,7 +205,7 @@ private fun GlassSearchBar(
         cursorBrush = SolidColor(colors.goldPrimary),
         modifier = modifier
             .fillMaxWidth()
-            .height(44.dp)
+            .height(BouncerDesignSystem.dimens.minTouchTarget)
             .clip(RoundedCornerShape(12.dp))
             .background(colors.glassSurface)
             .border(1.dp, borderColor, RoundedCornerShape(12.dp))
@@ -213,21 +228,24 @@ private fun GlassSearchBar(
                     if (query.isEmpty()) {
                         Text(
                             text = "Search matches...",
-                            color = colors.textMuted,
+                            color = colors.textSecondary,
                             fontSize = 14.sp
                         )
                     }
                     innerTextField()
                 }
                 if (query.isNotEmpty()) {
-                    Icon(
-                        Icons.Default.Close,
-                        contentDescription = "Clear",
-                        tint = colors.textTertiary,
-                        modifier = Modifier
-                            .size(20.dp)
-                            .clickable { onQueryChange("") }
-                    )
+                    IconButton(
+                        onClick = { onQueryChange("") },
+                        modifier = Modifier.size(BouncerDesignSystem.dimens.minTouchTarget)
+                    ) {
+                        Icon(
+                            Icons.Default.Close,
+                            contentDescription = "Clear search query",
+                            tint = colors.textSecondary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
                 }
             }
         }
@@ -247,22 +265,26 @@ private fun GlassSearchBar(
 @Composable
 fun AllMatchesScreen(
     viewModel: LiveActivityViewModel = viewModel(),
-    onBackClick: () -> Unit
+    onBackClick: () -> Unit,
+    onMatchClick: (CricketMatch) -> Unit = {}
 ) {
     val colors = BouncerDesignSystem.colors
+    val typography = BouncerDesignSystem.typography
+    val dimens = BouncerDesignSystem.dimens
     val selectedStatus by viewModel.selectedStatus.collectAsState()
     val currentMatches by viewModel.currentMatches.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
+    val loadingState by viewModel.loadingState.collectAsState()
     var searchQuery by remember { mutableStateOf("") }
     var selectedFormat by remember { mutableStateOf("All") }
-    val formatFilters = listOf("All", "T20", "ODI", "Test")
+    val normalizedQuery by remember(searchQuery) { derivedStateOf { searchQuery.trim() } }
 
     // Filter matches by search query and format
-    val filteredMatches = remember(currentMatches, searchQuery, selectedFormat) {
+    val filteredMatches = remember(currentMatches, normalizedQuery, selectedFormat) {
         currentMatches.filter { match ->
-            val matchesSearch = searchQuery.isBlank() ||
-                match.matchTitle.contains(searchQuery, ignoreCase = true) ||
-                match.teams.any { it.name.contains(searchQuery, ignoreCase = true) }
+            val matchesSearch = normalizedQuery.isBlank() ||
+                match.matchTitle.contains(normalizedQuery, ignoreCase = true) ||
+                match.teams.any { it.name.contains(normalizedQuery, ignoreCase = true) }
             val matchesFormat = selectedFormat == "All" ||
                 match.matchTitle.contains(selectedFormat, ignoreCase = true) ||
                 match.matchType.contains(selectedFormat, ignoreCase = true)
@@ -275,19 +297,16 @@ fun AllMatchesScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Column(verticalArrangement = Arrangement.spacedBy(dimens.xxs)) {
                         Text(
-                            text = "Analyst Feed",
+                            text = "All Matches",
                             color = colors.goldPrimary,
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 1.sp,
-                            modifier = Modifier.etchedText()
+                            style = typography.headingLarge
                         )
                         Text(
-                            text = "${currentMatches.size} matches available",
-                            color = colors.textMuted,
-                            fontSize = 12.sp
+                            text = "${filteredMatches.size} results • ${selectedStatus.lowercase().replaceFirstChar { it.uppercase() }}",
+                            color = colors.textSecondary,
+                            style = typography.bodySmall
                         )
                     }
                 },
@@ -295,7 +314,7 @@ fun AllMatchesScreen(
                     IconButton(
                         onClick = onBackClick,
                         modifier = Modifier
-                            .padding(start = BouncerDesignSystem.dimens.spacing.sm)
+                            .padding(start = dimens.sm)
                             .clip(CircleShape)
                             .background(colors.glassSurface)
                             .border(1.dp, colors.goldPrimary.copy(alpha = 0.2f), CircleShape)
@@ -348,89 +367,52 @@ fun AllMatchesScreen(
                         radius = size.width * 0.8f
                     )
                 },
-            contentPadding = PaddingValues(vertical = BouncerDesignSystem.dimens.spacing.md),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            contentPadding = PaddingValues(vertical = dimens.md),
+            verticalArrangement = Arrangement.spacedBy(dimens.cardGap)
         ) {
-            // Search bar
             item {
-                GlassSearchBar(
-                    query = searchQuery,
-                    onQueryChange = { searchQuery = it },
-                    modifier = Modifier.padding(horizontal = BouncerDesignSystem.dimens.spacing.md)
-                )
-            }
-
-            // Status Filter Pills — Live, Upcoming, Recent
-            item {
-                LazyRow(
-                    contentPadding = PaddingValues(horizontal = BouncerDesignSystem.dimens.spacing.md),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    items(listOf("Live", "Upcoming", "Recent")) { status ->
-                        GlassFilterPill(
-                            text = status,
-                            isSelected = selectedStatus == status,
-                            onClick = { viewModel.setAndFetchMatches(status) }
-                        )
-                    }
-                }
-            }
-
-            // Format Filter Pills — All, T20, ODI, Test
-            item {
-                LazyRow(
-                    contentPadding = PaddingValues(horizontal = BouncerDesignSystem.dimens.spacing.md),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    items(formatFilters) { format ->
-                        GlassFilterPill(
-                            text = format,
-                            isSelected = selectedFormat == format,
-                            onClick = { selectedFormat = format }
-                        )
-                    }
-                }
-            }
-
-            // Gold gradient divider after filters
-            item {
-                GoldGradientDivider(modifier = Modifier.padding(vertical = BouncerDesignSystem.dimens.spacing.sm))
-            }
-
-            // Section header with etched gold text
-            item {
-                SectionHeader(
-                    title = when (selectedStatus) {
-                        "Live" -> "Live Now"
-                        "Upcoming" -> "Upcoming"
-                        else -> "Recent"
-                    },
-                    showLiveDot = selectedStatus == "Live",
-                    modifier = Modifier.padding(bottom = BouncerDesignSystem.dimens.spacing.xs)
-                )
-            }
-
-            // Match count sub-header
-            item {
-                Row(
+                GlassCard(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = BouncerDesignSystem.dimens.spacing.md),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                        .padding(horizontal = dimens.screenHorizontalPadding),
+                    contentPadding = PaddingValues(dimens.md)
                 ) {
-                    Text(
-                        text = "$selectedStatus Matches".uppercase(),
-                        color = colors.textTertiary,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.sp
-                    )
-                    Text(
-                        text = "${filteredMatches.size} results",
-                        color = colors.textMuted,
-                        fontSize = 11.sp
-                    )
+                    Column(verticalArrangement = Arrangement.spacedBy(dimens.md)) {
+                        GlassSearchBar(
+                            query = searchQuery,
+                            onQueryChange = { searchQuery = it }
+                        )
+
+                        LazyRow(horizontalArrangement = Arrangement.spacedBy(dimens.sm)) {
+                            items(ALL_MATCH_STATUS_FILTERS, key = { it }) { status ->
+                                GlassFilterPill(
+                                    text = status,
+                                    isSelected = selectedStatus == status,
+                                    onClick = { viewModel.setAndFetchMatches(status) }
+                                )
+                            }
+                        }
+
+                        LazyRow(horizontalArrangement = Arrangement.spacedBy(dimens.sm)) {
+                            items(ALL_MATCH_FORMAT_FILTERS, key = { it }) { format ->
+                                GlassFilterPill(
+                                    text = format,
+                                    isSelected = selectedFormat == format,
+                                    onClick = { selectedFormat = format }
+                                )
+                            }
+                        }
+
+                        GoldGradientDivider()
+                        SectionHeader(
+                            title = when (selectedStatus) {
+                                "Live" -> "Live Now"
+                                "Upcoming" -> "Upcoming"
+                                else -> "Recent"
+                            },
+                            showLiveDot = selectedStatus == "Live"
+                        )
+                    }
                 }
             }
 
@@ -439,11 +421,23 @@ fun AllMatchesScreen(
                 items(5) { index ->
                     Box(
                         modifier = Modifier
-                            .padding(horizontal = BouncerDesignSystem.dimens.spacing.md)
+                            .padding(horizontal = dimens.screenHorizontalPadding)
                             .staggeredFadeIn(index = index)
                     ) {
                         MatchCardSkeleton()
                     }
+                }
+            } else if (loadingState is LoadingState.Error && filteredMatches.isEmpty()) {
+                item {
+                    EmptyStateView(
+                        title = "Couldn't load matches",
+                        message = (loadingState as LoadingState.Error).message,
+                        actionLabel = "Retry",
+                        onAction = { viewModel.refreshMatches() },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = dimens.screenHorizontalPadding, vertical = dimens.xxl)
+                    )
                 }
             } else if (filteredMatches.isEmpty()) {
                 item {
@@ -453,34 +447,24 @@ fun AllMatchesScreen(
                             "No matches match \"$searchQuery\". Try a different search."
                         else
                             "No $selectedStatus ${if (selectedFormat != "All") selectedFormat else ""} matches available. Pull down to refresh or try a different filter.",
+                        actionLabel = "Refresh",
+                        onAction = { viewModel.refreshMatches() },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 48.dp)
+                            .padding(horizontal = dimens.screenHorizontalPadding, vertical = dimens.xxl)
                     )
                 }
             } else {
                 itemsIndexed(filteredMatches, key = { _, match -> match.id }) { index, match ->
-                    AnimatedVisibility(
-                        visible = true,
-                        enter = fadeIn(
-                            animationSpec = tween(
-                                durationMillis = 400,
-                                delayMillis = index * 60,
-                                easing = FastOutSlowInEasing
-                            )
-                        ) + slideInVertically(
-                            animationSpec = tween(
-                                durationMillis = 400,
-                                delayMillis = index * 60,
-                                easing = FastOutSlowInEasing
-                            ),
-                            initialOffsetY = { it / 4 }
-                        )
+                    Box(
+                        modifier = Modifier
+                            .padding(horizontal = dimens.screenHorizontalPadding)
+                            .staggeredFadeIn(index = index)
                     ) {
                         PremiumMatchListCard(
                             match = match,
-                            onClick = { /* Navigate to match detail */ },
-                            modifier = Modifier.padding(horizontal = BouncerDesignSystem.dimens.spacing.md)
+                            onClick = { onMatchClick(match) },
+                            modifier = Modifier
                         )
                     }
                 }
@@ -488,7 +472,7 @@ fun AllMatchesScreen(
 
             // Gold gradient divider at bottom
             item {
-                GoldGradientDivider(modifier = Modifier.padding(vertical = BouncerDesignSystem.dimens.spacing.sm))
+                GoldGradientDivider(modifier = Modifier.padding(vertical = dimens.sm))
             }
 
             // Bottom spacing

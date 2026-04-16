@@ -96,7 +96,7 @@ fun Modifier.surfaceGradientOverlay(
  */
 fun Modifier.accentGlow(
     color: Color = GoldDark,
-    radius: Dp = 16.dp,
+    radius: Dp = BouncerTokenScales.spacing.md,
     alpha: Float = 0.25f
 ): Modifier = drawWithContent {
     drawContent()
@@ -131,12 +131,13 @@ object ElevationTint {
  */
 fun getElevationTint(elevation: Dp): Color {
     try {
+        val tiers = BouncerTokenScales.elevation
         return when {
-            elevation < 1.dp -> ElevationTint.Level0
-            elevation < 3.dp -> ElevationTint.Level1
-            elevation < 6.dp -> ElevationTint.Level2
-            elevation < 8.dp -> ElevationTint.Level3
-            elevation < 12.dp -> ElevationTint.Level4
+            elevation <= tiers.none -> ElevationTint.Level0
+            elevation <= tiers.sm -> ElevationTint.Level1
+            elevation <= tiers.md -> ElevationTint.Level2
+            elevation <= tiers.lg -> ElevationTint.Level3
+            elevation <= tiers.xl -> ElevationTint.Level4
             else -> ElevationTint.Level5
         }
     } catch (e: Exception) {
@@ -149,12 +150,13 @@ fun getElevationTint(elevation: Dp): Color {
  * Material 3 shape system extended
  */
 object MaterialShapes {
-    val ExtraSmall = 4.dp
-    val Small = 8.dp
-    val Medium = 12.dp
-    val Large = 16.dp
-    val ExtraLarge = 28.dp
-    val ExtraExtraLarge = 32.dp
+    private val radius = BouncerTokenScales.radius
+    val ExtraSmall = radius.xs
+    val Small = radius.sm
+    val Medium = radius.md
+    val Large = radius.lg
+    val ExtraLarge = radius.hero
+    val ExtraExtraLarge = radius.sheet
 }
 
 /**

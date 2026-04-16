@@ -113,12 +113,18 @@ fun NewsScreen(
                     contentDescription = "Back"
                 )
                 Spacer(modifier = Modifier.width(dimens.md))
-                Text(
-                    text = "NEWS",
-                    style = typography.headingLarge,
-                    color = colors.goldPrimary,
-                    letterSpacing = typography.labelLarge.letterSpacing
-                )
+                Column(verticalArrangement = Arrangement.spacedBy(dimens.xxs)) {
+                    Text(
+                        text = "News",
+                        style = typography.headingLarge,
+                        color = colors.goldPrimary
+                    )
+                    Text(
+                        text = "${filteredArticles.size} stories",
+                        style = typography.bodySmall,
+                        color = colors.textMuted
+                    )
+                }
             }
 
             // ── Category Chips ──────────────────────────────────────
@@ -205,30 +211,16 @@ fun NewsScreen(
                         }
                     }
                     error != null && articles.isEmpty() -> {
-                        // Error state
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text(
-                                    text = "Couldn't load news",
-                                    style = typography.headingSmall,
-                                    color = colors.textPrimary
-                                )
-                                Spacer(modifier = Modifier.height(dimens.sm))
-                                Text(
-                                    text = error ?: "",
-                                    style = typography.bodySmall,
-                                    color = colors.textMuted
-                                )
-                                Spacer(modifier = Modifier.height(dimens.md))
-                                GlassSecondaryButton(
-                                    text = "Retry",
-                                    onClick = { newsViewModel.refreshNews() }
-                                )
-                            }
-                        }
+                        EmptyStateView(
+                            icon = Icons.Outlined.SportsCricket,
+                            title = "Couldn't load news",
+                            message = error ?: "Please try again in a moment.",
+                            actionLabel = "Retry",
+                            onAction = { newsViewModel.refreshNews() },
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(dimens.xxl)
+                        )
                     }
                     filteredArticles.isEmpty() -> {
                         // Empty state for no matching articles

@@ -1,13 +1,14 @@
 package com.tanush.bouncer.ui
 
+import android.net.Uri
 import androidx.compose.animation.*
-import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
@@ -15,12 +16,13 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.ui.components.PremiumBottomNavBar
-import com.tanush.bouncer.ui.components.navDestinations
 import com.tanush.bouncer.ui.navigation.BouncerNavHost
 import com.tanush.bouncer.ui.navigation.BouncerScreen
+import com.tanush.bouncer.ui.navigation.navigateForward
 import com.tanush.bouncer.ui.navigation.navigateToTab
 import com.tanush.bouncer.ui.screens.*
 import com.tanush.bouncer.ui.theme.*
+import com.tanush.bouncer.utils.PreferencesHelper
 import com.tanush.bouncer.viewmodels.LiveActivityViewModel
 import com.tanush.bouncer.viewmodels.NewsViewModel
 
@@ -34,9 +36,22 @@ import com.tanush.bouncer.viewmodels.NewsViewModel
  * The MainAppContainer handles all in-app navigation via NavController.
  */
 @Composable
-fun BouncerAppContent() {
+fun BouncerAppContent(
+    externalDeepLinkUri: String? = null
+) {
     var currentMatch by remember { mutableStateOf<CricketMatch?>(null) }
     var showArTracking by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+
+    LaunchedEffect(Unit) {
+        BouncerMotion.applyReducedMotionPreference(
+            PreferencesHelper.getBoolean(
+                context,
+                PreferencesHelper.KEY_REDUCED_MOTION,
+                false
+            )
+        )
+    }
 
     BouncerTheme {
         Box(modifier = Modifier.fillMaxSize().background(BlackBackground)) {
@@ -44,19 +59,11 @@ fun BouncerAppContent() {
                 targetState = currentMatch,
                 transitionSpec = {
                     if (targetState != null) {
-                        (fadeIn(tween(300)) + slideInVertically(
-                            initialOffsetY = { it / 10 },
-                            animationSpec = tween(400, easing = FastOutSlowInEasing)
-                        )).togetherWith(
-                            fadeOut(tween(200))
-                        )
+                        BouncerMotion.Transitions.verticalEnter(offsetDivisor = 10)
+                            .togetherWith(fadeOut(BouncerMotion.Specs.FadeOut))
                     } else {
-                        fadeIn(tween(200)) togetherWith (
-                            fadeOut(tween(300)) + slideOutVertically(
-                                targetOffsetY = { it / 10 },
-                                animationSpec = tween(400, easing = FastOutSlowInEasing)
-                            )
-                        )
+                        fadeIn(BouncerMotion.Specs.FadeIn) togetherWith
+                            BouncerMotion.Transitions.verticalExit(offsetDivisor = 10)
                     }
                 },
                 label = "rootNavigation"
@@ -72,7 +79,8 @@ fun BouncerAppContent() {
                         onMatchClick = { clickedMatch ->
                             currentMatch = clickedMatch
                         },
-                        onArTrackingRequest = { showArTracking = true }
+                        onArTrackingRequest = { showArTracking = true },
+                        externalDeepLinkUri = externalDeepLinkUri
                     )
                 }
             }
@@ -80,8 +88,8 @@ fun BouncerAppContent() {
             // AR Overlay Layer
             AnimatedVisibility(
                 visible = showArTracking,
-                enter = fadeIn(tween(500)) + scaleIn(initialScale = 0.9f),
-                exit = fadeOut(tween(400)) + scaleOut(targetScale = 0.9f)
+                enter = BouncerMotion.Transitions.scaleFadeIn(initialScale = 0.9f),
+                exit = BouncerMotion.Transitions.scaleFadeOut(targetScale = 0.9f)
             ) {
                 ArBallTrackingScreen(onBackClick = { showArTracking = false })
             }
@@ -107,10 +115,12 @@ fun MainAppContainer(
     viewModel: LiveActivityViewModel = viewModel(),
     newsViewModel: NewsViewModel = viewModel(),
     onMatchClick: (CricketMatch) -> Unit,
-    onArTrackingRequest: () -> Unit = {}
+    onArTrackingRequest: () -> Unit = {},
+    externalDeepLinkUri: String? = null
 ) {
     // Navigation controller - survives configuration changes via rememberNavController
     val navController = rememberNavController()
+    var consumedDeepLink by remember { mutableStateOf<String?>(null) }
 
     // Observe current route for bottom nav state
     val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -120,6 +130,21 @@ fun MainAppContainer(
     val currentMatches by viewModel.currentMatches.collectAsState()
     val hasLiveMatches = remember(currentMatches) {
         currentMatches.any { it.isLive }
+    }
+
+    LaunchedEffect(externalDeepLinkUri, currentMatches) {
+        val incomingLink = externalDeepLinkUri?.takeIf { it.isNotBlank() } ?: return@LaunchedEffect
+        if (consumedDeepLink == incomingLink) return@LaunchedEffect
+
+        val consumed = handleExternalDeepLink(
+            deepLinkUri = incomingLink,
+            navController = navController,
+            availableMatches = currentMatches,
+            onMatchClick = onMatchClick
+        )
+        if (consumed) {
+            consumedDeepLink = incomingLink
+        }
     }
 
     // Map current route to bottom nav route (for child routes like settings -> more)
@@ -171,34 +196,49 @@ fun MainAppContainer(
  * the "more" tab, while primary routes map directly.
  */
 private fun getBottomNavRouteForCurrentRoute(route: String?): String {
-    return when {
-        route == null -> BouncerScreen.Home.route
-        route in listOf(
-            BouncerScreen.Home.route,
-            BouncerScreen.Matches.route,
-            BouncerScreen.Favorites.route,
-            BouncerScreen.Stats.route,
-            BouncerScreen.More.route
-        ) -> route
-        // Child routes of "More" tab
-        route in listOf(
-            BouncerScreen.Settings.route,
-            BouncerScreen.Appearance.route,
-            BouncerScreen.About.route,
-            BouncerScreen.DevTools.route,
-            BouncerScreen.News.route,
-            BouncerScreen.Achievements.route,
-            BouncerScreen.ArTracking.route,
-            BouncerScreen.ActivityFeed.route
-        ) -> BouncerScreen.More.route
-        // News detail routes (pattern: news/{articleId})
-        route.startsWith("news/") -> BouncerScreen.More.route
-        // Match-related routes
-        route.startsWith("match/") || route.startsWith("match-info/") -> BouncerScreen.Matches.route
-        // Player and squad routes
-        route.startsWith("player/") -> BouncerScreen.Stats.route
-        route.startsWith("squad/") -> BouncerScreen.Matches.route
-        // Default fallback
-        else -> BouncerScreen.Home.route
+    return BouncerScreen.getParentTab(route)
+}
+
+private fun handleExternalDeepLink(
+    deepLinkUri: String,
+    navController: NavHostController,
+    availableMatches: List<CricketMatch>,
+    onMatchClick: (CricketMatch) -> Unit
+): Boolean {
+    val parsedUri = runCatching { Uri.parse(deepLinkUri) }.getOrNull() ?: return false
+
+    if (parsedUri.scheme != "app" || parsedUri.host != "bouncer") {
+        return false
     }
+
+    val pathSegments = parsedUri.pathSegments.filter { it.isNotBlank() }
+    val topLevel = pathSegments.firstOrNull()?.lowercase() ?: "home"
+
+    when (topLevel) {
+        "home" -> navController.navigateToTab(BouncerScreen.Home.route)
+        "matches", "all_matches" -> navController.navigateToTab(BouncerScreen.Matches.route)
+        "favorites", "favourites" -> navController.navigateToTab(BouncerScreen.Favorites.route)
+        "stats" -> navController.navigateForward(BouncerScreen.Stats.route)
+        "more" -> navController.navigateToTab(BouncerScreen.More.route)
+        "settings" -> navController.navigateForward(BouncerScreen.Settings.route)
+        "appearance" -> navController.navigateForward(BouncerScreen.Appearance.route)
+        "about" -> navController.navigateForward(BouncerScreen.About.route)
+        "news" -> navController.navigateForward(BouncerScreen.News.route)
+        "activity" -> navController.navigateForward(BouncerScreen.ActivityFeed.route)
+        "ar", "ar-tracking" -> navController.navigateForward(BouncerScreen.ArTracking.route)
+        "match" -> {
+            val deepLinkMatchId = pathSegments.getOrNull(1) ?: parsedUri.getQueryParameter("matchId")
+            val targetMatch = deepLinkMatchId?.let { id ->
+                availableMatches.firstOrNull { it.id == id }
+            }
+            if (targetMatch != null) {
+                onMatchClick(targetMatch)
+            } else {
+                navController.navigateToTab(BouncerScreen.Matches.route)
+            }
+        }
+        else -> return false
+    }
+
+    return true
 }

@@ -1,38 +1,71 @@
 package com.tanush.bouncer.ui.screens
 
-import androidx.compose.animation.core.*
-import androidx.compose.foundation.*
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.*
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.AccessTime
+import androidx.compose.material.icons.filled.Analytics
+import androidx.compose.material.icons.filled.Celebration
+import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.EmojiEvents
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Memory
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.SportsCricket
+import androidx.compose.material.icons.filled.Vibration
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.RadioButton
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.*
-import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import com.tanush.bouncer.ui.components.glass.GlassBloomBackground
 import com.tanush.bouncer.ui.components.glass.GlassCard
-import com.tanush.bouncer.ui.components.glass.GlassCardLarge
 import com.tanush.bouncer.ui.components.glass.GlassIconButton
 import com.tanush.bouncer.ui.theme.BouncerDesignSystem
+import com.tanush.bouncer.ui.theme.BouncerMotion
+import com.tanush.bouncer.utils.PreferencesHelper
+import com.tanush.bouncer.viewmodels.LandingTab
 
 data class SettingsSection(
     val title: String,
@@ -77,42 +110,71 @@ fun SettingsScreen(
     val dimens = BouncerDesignSystem.dimens
     val ctx = LocalContext.current
 
-    // Preference states (persisted)
-    var liveNotifications by remember { mutableStateOf(com.tanush.bouncer.utils.PreferencesHelper.getBoolean(ctx, com.tanush.bouncer.utils.PreferencesHelper.KEY_LIVE_NOTIFICATIONS, true)) }
-    var boundaryAlerts by remember { mutableStateOf(com.tanush.bouncer.utils.PreferencesHelper.getBoolean(ctx, com.tanush.bouncer.utils.PreferencesHelper.KEY_BOUNDARY_ALERTS, true)) }
-    var wicketAlerts by remember { mutableStateOf(com.tanush.bouncer.utils.PreferencesHelper.getBoolean(ctx, com.tanush.bouncer.utils.PreferencesHelper.KEY_WICKET_ALERTS, true)) }
-    var matchReminders by remember { mutableStateOf(com.tanush.bouncer.utils.PreferencesHelper.getBoolean(ctx, com.tanush.bouncer.utils.PreferencesHelper.KEY_MATCH_REMINDERS, false)) }
-    var hapticFeedback by remember { mutableStateOf(true) }
-    var autoRefresh by remember { mutableStateOf(true) }
-    var showProbability by remember { mutableStateOf(true) }
-    var aiInsights by remember { mutableStateOf(com.tanush.bouncer.utils.PreferencesHelper.getBoolean(ctx, com.tanush.bouncer.utils.PreferencesHelper.KEY_AI_INSIGHTS, false)) }
-
-    // Personalization: default landing tab
-    var defaultLandingTab by remember { mutableStateOf(com.tanush.bouncer.viewmodels.LandingTab.HOME) }
-    // Dialog visibility
+    var liveNotifications by remember {
+        mutableStateOf(
+            PreferencesHelper.getBoolean(ctx, PreferencesHelper.KEY_LIVE_NOTIFICATIONS, true)
+        )
+    }
+    var boundaryAlerts by remember {
+        mutableStateOf(
+            PreferencesHelper.getBoolean(ctx, PreferencesHelper.KEY_BOUNDARY_ALERTS, true)
+        )
+    }
+    var wicketAlerts by remember {
+        mutableStateOf(
+            PreferencesHelper.getBoolean(ctx, PreferencesHelper.KEY_WICKET_ALERTS, true)
+        )
+    }
+    var matchReminders by remember {
+        mutableStateOf(
+            PreferencesHelper.getBoolean(ctx, PreferencesHelper.KEY_MATCH_REMINDERS, false)
+        )
+    }
+    var hapticFeedback by remember {
+        mutableStateOf(
+            PreferencesHelper.getBoolean(ctx, PreferencesHelper.KEY_HAPTIC_FEEDBACK, true)
+        )
+    }
+    var autoRefresh by remember {
+        mutableStateOf(
+            PreferencesHelper.getBoolean(ctx, PreferencesHelper.KEY_AUTO_REFRESH, true)
+        )
+    }
+    var showProbability by remember {
+        mutableStateOf(
+            PreferencesHelper.getBoolean(ctx, PreferencesHelper.KEY_SHOW_WIN_PROBABILITY, true)
+        )
+    }
+    var reducedMotion by remember {
+        mutableStateOf(
+            PreferencesHelper.getBoolean(ctx, PreferencesHelper.KEY_REDUCED_MOTION, false)
+        )
+    }
+    var aiInsights by remember {
+        mutableStateOf(
+            PreferencesHelper.getBoolean(ctx, PreferencesHelper.KEY_AI_INSIGHTS, false)
+        )
+    }
+    var defaultLandingTab by remember { mutableStateOf(LandingTab.HOME) }
     var showLandingDialog by remember { mutableStateOf(false) }
 
-    // Load persisted default landing on composition
     LaunchedEffect(Unit) {
-        defaultLandingTab = when (com.tanush.bouncer.utils.PreferencesHelper.getString(ctx, com.tanush.bouncer.utils.PreferencesHelper.KEY_DEFAULT_LANDING, com.tanush.bouncer.viewmodels.LandingTab.HOME.name)) {
-            com.tanush.bouncer.viewmodels.LandingTab.ALL_MATCHES.name -> com.tanush.bouncer.viewmodels.LandingTab.ALL_MATCHES
-            com.tanush.bouncer.viewmodels.LandingTab.FAVOURITES.name -> com.tanush.bouncer.viewmodels.LandingTab.FAVOURITES
-            else -> com.tanush.bouncer.viewmodels.LandingTab.HOME
+        BouncerMotion.applyReducedMotionPreference(reducedMotion)
+
+        defaultLandingTab = when (
+            PreferencesHelper.getString(
+                ctx,
+                PreferencesHelper.KEY_DEFAULT_LANDING,
+                LandingTab.HOME.name
+            )
+        ) {
+            LandingTab.ALL_MATCHES.name -> LandingTab.ALL_MATCHES
+            LandingTab.FAVOURITES.name -> LandingTab.FAVOURITES
+            else -> LandingTab.HOME
         }
     }
 
     val sections = listOf(
-        SettingsSection(
-            title = "Appearance",
-            items = listOf(
-                SettingsItem.Navigation(
-                    title = "Theme & Background",
-                    description = "Customize colors, skins, and visual style",
-                    icon = Icons.Default.Palette,
-                    onClick = onAppearanceClick
-                )
-            )
-        ),
         SettingsSection(
             title = "Notifications",
             items = listOf(
@@ -121,35 +183,51 @@ fun SettingsScreen(
                     description = "Get notified when your favorite team is playing",
                     icon = Icons.Default.Notifications,
                     isEnabled = liveNotifications,
-                    onToggle = { liveNotifications = it; com.tanush.bouncer.utils.PreferencesHelper.setBoolean(ctx, com.tanush.bouncer.utils.PreferencesHelper.KEY_LIVE_NOTIFICATIONS, it) }
+                    onToggle = {
+                        liveNotifications = it
+                        PreferencesHelper.setBoolean(ctx, PreferencesHelper.KEY_LIVE_NOTIFICATIONS, it)
+                    }
                 ),
                 SettingsItem.Toggle(
                     title = "Boundary Alerts",
                     description = "Celebrate every four and six",
                     icon = Icons.Default.Celebration,
                     isEnabled = boundaryAlerts,
-                    onToggle = { boundaryAlerts = it; com.tanush.bouncer.utils.PreferencesHelper.setBoolean(ctx, com.tanush.bouncer.utils.PreferencesHelper.KEY_BOUNDARY_ALERTS, it) }
+                    onToggle = {
+                        boundaryAlerts = it
+                        PreferencesHelper.setBoolean(ctx, PreferencesHelper.KEY_BOUNDARY_ALERTS, it)
+                    }
                 ),
                 SettingsItem.Toggle(
                     title = "Wicket Alerts",
                     description = "Never miss a crucial wicket",
                     icon = Icons.Default.SportsCricket,
                     isEnabled = wicketAlerts,
-                    onToggle = { wicketAlerts = it; com.tanush.bouncer.utils.PreferencesHelper.setBoolean(ctx, com.tanush.bouncer.utils.PreferencesHelper.KEY_WICKET_ALERTS, it) }
+                    onToggle = {
+                        wicketAlerts = it
+                        PreferencesHelper.setBoolean(ctx, PreferencesHelper.KEY_WICKET_ALERTS, it)
+                    }
                 ),
                 SettingsItem.Toggle(
                     title = "Match Reminders",
                     description = "Remind me before matches start",
                     icon = Icons.Default.AccessTime,
                     isEnabled = matchReminders,
-                    onToggle = { matchReminders = it; com.tanush.bouncer.utils.PreferencesHelper.setBoolean(ctx, com.tanush.bouncer.utils.PreferencesHelper.KEY_MATCH_REMINDERS, it) }
+                    onToggle = {
+                        matchReminders = it
+                        PreferencesHelper.setBoolean(ctx, PreferencesHelper.KEY_MATCH_REMINDERS, it)
+                    }
                 ),
                 SettingsItem.Toggle(
                     title = "AI insights",
                     description = "Enable short AI-generated insights in commentary and stats",
                     icon = Icons.Default.Memory,
                     isEnabled = aiInsights,
-                    onToggle = { aiInsights = it; com.tanush.bouncer.utils.PreferencesHelper.setBoolean(ctx, com.tanush.bouncer.utils.PreferencesHelper.KEY_AI_INSIGHTS, it); onAIInsightsChanged(it) }
+                    onToggle = {
+                        aiInsights = it
+                        PreferencesHelper.setBoolean(ctx, PreferencesHelper.KEY_AI_INSIGHTS, it)
+                        onAIInsightsChanged(it)
+                    }
                 )
             ).let { items ->
                 if (onNotificationSettingsClick != null) {
@@ -165,44 +243,74 @@ fun SettingsScreen(
             }
         ),
         SettingsSection(
-            title = "Preferences",
+            title = "Appearance",
+            items = listOf(
+                SettingsItem.Navigation(
+                    title = "Appearance",
+                    description = "Theme variants, skins, and display options",
+                    icon = Icons.Default.Palette,
+                    onClick = onAppearanceClick
+                )
+            )
+        ),
+        SettingsSection(
+            title = "Data & Behavior",
             items = listOf(
                 SettingsItem.Toggle(
                     title = "Haptic Feedback",
                     description = "Feel the game with vibrations",
                     icon = Icons.Default.Vibration,
                     isEnabled = hapticFeedback,
-                    onToggle = { hapticFeedback = it }
+                    onToggle = {
+                        hapticFeedback = it
+                        PreferencesHelper.setBoolean(ctx, PreferencesHelper.KEY_HAPTIC_FEEDBACK, it)
+                    }
+                ),
+                SettingsItem.Toggle(
+                    title = "Reduced Motion",
+                    description = "Use simpler transitions and fewer movement effects",
+                    icon = Icons.Default.AccessTime,
+                    isEnabled = reducedMotion,
+                    onToggle = {
+                        reducedMotion = it
+                        PreferencesHelper.setBoolean(ctx, PreferencesHelper.KEY_REDUCED_MOTION, it)
+                        BouncerMotion.applyReducedMotionPreference(it)
+                    }
                 ),
                 SettingsItem.Toggle(
                     title = "Auto Refresh",
                     description = "Automatically update scores every 10 seconds",
                     icon = Icons.Default.Refresh,
                     isEnabled = autoRefresh,
-                    onToggle = { autoRefresh = it }
+                    onToggle = {
+                        autoRefresh = it
+                        PreferencesHelper.setBoolean(ctx, PreferencesHelper.KEY_AUTO_REFRESH, it)
+                    }
                 ),
                 SettingsItem.Toggle(
                     title = "Win Probability",
                     description = "Show live win probability predictions",
                     icon = Icons.Default.Analytics,
                     isEnabled = showProbability,
-                    onToggle = { showProbability = it }
+                    onToggle = {
+                        showProbability = it
+                        PreferencesHelper.setBoolean(
+                            ctx,
+                            PreferencesHelper.KEY_SHOW_WIN_PROBABILITY,
+                            it
+                        )
+                    }
                 ),
                 SettingsItem.Navigation(
                     title = "Default Landing Tab",
                     description = when (defaultLandingTab) {
-                        com.tanush.bouncer.viewmodels.LandingTab.ALL_MATCHES -> "Default: All Matches"
-                        com.tanush.bouncer.viewmodels.LandingTab.FAVOURITES -> "Default: Favorites"
-                        else -> "Default: Home"
+                        LandingTab.ALL_MATCHES -> "Default: All Matches"
+                        LandingTab.FAVOURITES -> "Default: Favorites"
+                        LandingTab.HOME -> "Default: Home"
                     },
                     icon = Icons.Default.Home,
                     onClick = { showLandingDialog = true }
-                )
-            )
-        ),
-        SettingsSection(
-            title = "Account",
-            items = listOf(
+                ),
                 SettingsItem.Navigation(
                     title = "Favorite Teams",
                     description = "Manage your favorite teams",
@@ -235,14 +343,17 @@ fun SettingsScreen(
         )
     )
 
-    GlassBloomBackground(modifier = Modifier.fillMaxSize()) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(colors.backgroundBase)
+    ) {
         Column(modifier = Modifier.fillMaxSize()) {
-            // Glass Header
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .statusBarsPadding()
-                    .padding(horizontal = com.tanush.bouncer.ui.theme.DesignTokens.Spacing.screenHorizontal(), vertical = com.tanush.bouncer.ui.theme.DesignTokens.Spacing.sm()),
+                    .padding(horizontal = dimens.screenHorizontal, vertical = dimens.md),
                 horizontalArrangement = Arrangement.spacedBy(dimens.md),
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -252,45 +363,39 @@ fun SettingsScreen(
                     contentDescription = "Back",
                     useGoldTint = false
                 )
-                Text(
-                    text = "SETTINGS",
-                    style = typography.headingMedium,
-                    color = com.tanush.bouncer.ui.theme.DesignTokens.Color.goldPrimary(),
-                    letterSpacing = 2.sp,
-                    fontWeight = FontWeight.Black
-                )
+                Column(verticalArrangement = Arrangement.spacedBy(dimens.xxs)) {
+                    Text(
+                        text = "Settings",
+                        style = typography.headingMedium,
+                        color = colors.textPrimary,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "Manage notifications, appearance, and app behavior",
+                        style = typography.bodySmall,
+                        color = colors.textSecondary
+                    )
+                }
             }
 
             LazyColumn(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .navigationBarsPadding(),
                 contentPadding = PaddingValues(
-                    top = dimens.lg,
                     start = dimens.xl,
                     end = dimens.xl,
-                    bottom = 140.dp
+                    top = dimens.sm,
+                    bottom = 120.dp
                 ),
-                verticalArrangement = Arrangement.spacedBy(dimens.xxl)
+                verticalArrangement = Arrangement.spacedBy(dimens.xl)
             ) {
-                // Profile Header
-                item {
-                    SettingsProfileHeader()
-                }
-
-                // Settings Sections
-                sections.forEach { section ->
-                    item {
-                        SettingsSectionView(section = section)
-                    }
-                }
-
-                // Footer
-                item {
-                    SettingsFooter()
+                items(sections) { section ->
+                    SettingsSectionView(section)
                 }
             }
         }
 
-        // Landing tab selection dialog
         if (showLandingDialog) {
             AlertDialog(
                 onDismissRequest = { showLandingDialog = false },
@@ -298,9 +403,9 @@ fun SettingsScreen(
                 text = {
                     Column {
                         val options = listOf(
-                            com.tanush.bouncer.viewmodels.LandingTab.HOME to "Home",
-                            com.tanush.bouncer.viewmodels.LandingTab.ALL_MATCHES to "All Matches",
-                            com.tanush.bouncer.viewmodels.LandingTab.FAVOURITES to "Favorites"
+                            LandingTab.HOME to "Home",
+                            LandingTab.ALL_MATCHES to "All Matches",
+                            LandingTab.FAVOURITES to "Favorites"
                         )
                         options.forEach { (tab, label) ->
                             Row(
@@ -308,134 +413,44 @@ fun SettingsScreen(
                                     .fillMaxWidth()
                                     .clickable {
                                         defaultLandingTab = tab
-                                        com.tanush.bouncer.utils.PreferencesHelper.setString(ctx, com.tanush.bouncer.utils.PreferencesHelper.KEY_DEFAULT_LANDING, tab.name)
+                                        PreferencesHelper.setString(
+                                            ctx,
+                                            PreferencesHelper.KEY_DEFAULT_LANDING,
+                                            tab.name
+                                        )
                                         showLandingDialog = false
                                     }
-                                    .padding(vertical = 8.dp),
+                                    .padding(vertical = 6.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 RadioButton(
                                     selected = defaultLandingTab == tab,
                                     onClick = {
                                         defaultLandingTab = tab
-                                        com.tanush.bouncer.utils.PreferencesHelper.setString(ctx, com.tanush.bouncer.utils.PreferencesHelper.KEY_DEFAULT_LANDING, tab.name)
+                                        PreferencesHelper.setString(
+                                            ctx,
+                                            PreferencesHelper.KEY_DEFAULT_LANDING,
+                                            tab.name
+                                        )
                                         showLandingDialog = false
                                     }
                                 )
-                                Spacer(modifier = Modifier.width(12.dp))
-                                Text(text = label)
+                                Text(
+                                    text = label,
+                                    style = typography.bodyMedium,
+                                    color = colors.textPrimary,
+                                    modifier = Modifier.padding(start = 12.dp)
+                                )
                             }
                         }
                     }
                 },
                 confirmButton = {
-                    TextButton(onClick = { showLandingDialog = false }) { Text("Close") }
+                    TextButton(onClick = { showLandingDialog = false }) {
+                        Text("Close")
+                    }
                 }
             )
-        }
-    }
-}
-
-@Composable
-private fun SettingsProfileHeader() {
-    val colors = BouncerDesignSystem.colors
-    val typography = BouncerDesignSystem.typography
-    val dimens = BouncerDesignSystem.dimens
-
-    val infiniteTransition = rememberInfiniteTransition(label = "profileGlow")
-    val glowAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.3f,
-        targetValue = 0.6f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(2000, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "glowAlpha"
-    )
-
-    GlassCardLarge(
-        modifier = Modifier.fillMaxWidth(),
-        useGoldBorder = true
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(18.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Avatar
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .size(72.dp)
-                    .background(
-                        Brush.radialGradient(
-                            colors = listOf(
-                                colors.goldPrimary.copy(alpha = glowAlpha),
-                                colors.goldPrimary.copy(alpha = 0.1f),
-                                Color.Transparent
-                            )
-                        ),
-                        CircleShape
-                    )
-            ) {
-                Box(
-                    contentAlignment = Alignment.Center,
-                    modifier = Modifier
-                        .size(56.dp)
-                        .background(
-                            Brush.linearGradient(
-                                colors = listOf(
-                                    colors.goldLight,
-                                    colors.goldPrimary
-                                )
-                            ),
-                            CircleShape
-                        )
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Person,
-                        contentDescription = null,
-                        tint = colors.backgroundBase,
-                        modifier = Modifier.size(28.dp)
-                    )
-                }
-            }
-
-            Column(
-                verticalArrangement = Arrangement.spacedBy(dimens.xs)
-            ) {
-                Text(
-                    text = "Cricket Fan",
-                    style = typography.headingMedium,
-                    color = colors.textPrimary
-                )
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(dimens.sm),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .background(
-                                colors.goldPrimary.copy(alpha = 0.15f),
-                                RoundedCornerShape(6.dp)
-                            )
-                            .padding(horizontal = dimens.sm, vertical = 3.dp)
-                    ) {
-                        Text(
-                            text = "PREMIUM",
-                            style = typography.labelSmall,
-                            color = colors.goldPrimary,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 1.sp
-                        )
-                    }
-                    Text(
-                        text = "Since 2024",
-                        style = typography.bodySmall,
-                        color = colors.textMuted
-                    )
-                }
-            }
         }
     }
 }
@@ -446,22 +461,18 @@ private fun SettingsSectionView(section: SettingsSection) {
     val typography = BouncerDesignSystem.typography
     val dimens = BouncerDesignSystem.dimens
 
-    Column(
-        verticalArrangement = Arrangement.spacedBy(dimens.cardSpacing)
-    ) {
-        // Section Header
+    Column(verticalArrangement = Arrangement.spacedBy(dimens.sm)) {
         Text(
-            text = section.title.uppercase(),
+            text = section.title,
             style = typography.labelLarge,
-            color = colors.goldPrimary,
-            letterSpacing = 1.5.sp,
-            modifier = Modifier.padding(start = dimens.xs, bottom = dimens.xs)
+            color = colors.textSecondary,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.padding(horizontal = dimens.xs)
         )
 
-        // Section Card
         GlassCard(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(20.dp),
+            shape = RoundedCornerShape(16.dp),
             contentPadding = PaddingValues(0.dp)
         ) {
             Column {
@@ -476,7 +487,7 @@ private fun SettingsSectionView(section: SettingsSection) {
                         HorizontalDivider(
                             color = colors.glassBorder,
                             thickness = 0.5.dp,
-                            modifier = Modifier.padding(horizontal = dimens.xl)
+                            modifier = Modifier.padding(start = 68.dp, end = dimens.lg)
                         )
                     }
                 }
@@ -488,205 +499,134 @@ private fun SettingsSectionView(section: SettingsSection) {
 @Composable
 private fun SettingsToggleRow(item: SettingsItem.Toggle) {
     val colors = BouncerDesignSystem.colors
-    val typography = BouncerDesignSystem.typography
-    val dimens = BouncerDesignSystem.dimens
 
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = dimens.xl, vertical = dimens.lg),
-        horizontalArrangement = Arrangement.spacedBy(dimens.lg),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier = Modifier
-                .size(40.dp)
-                .background(
-                    if (item.isEnabled) colors.goldPrimary.copy(alpha = 0.12f)
-                    else colors.glassBackground,
-                    RoundedCornerShape(12.dp)
+    SettingsRow(
+        title = item.title,
+        description = item.description,
+        icon = item.icon,
+        iconTint = if (item.isEnabled) colors.goldPrimary else colors.textMuted,
+        trailing = {
+            Switch(
+                checked = item.isEnabled,
+                onCheckedChange = item.onToggle,
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = colors.goldPrimary,
+                    checkedTrackColor = colors.goldPrimary.copy(alpha = 0.35f),
+                    uncheckedThumbColor = colors.textMuted,
+                    uncheckedTrackColor = colors.glassBackground
                 )
-        ) {
-            Icon(
-                imageVector = item.icon,
-                contentDescription = null,
-                tint = if (item.isEnabled) colors.goldPrimary else colors.textMuted,
-                modifier = Modifier.size(20.dp)
             )
         }
-
-        Column(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(dimens.xxs)
-        ) {
-            Text(
-                text = item.title,
-                style = typography.headingSmall,
-                color = colors.textPrimary,
-                fontWeight = FontWeight.SemiBold
-            )
-            Text(
-                text = item.description,
-                style = typography.bodySmall,
-                color = colors.textMuted
-            )
-        }
-
-        Switch(
-            checked = item.isEnabled,
-            onCheckedChange = item.onToggle,
-            colors = SwitchDefaults.colors(
-                checkedThumbColor = colors.goldPrimary,
-                checkedTrackColor = colors.goldPrimary.copy(alpha = 0.3f),
-                uncheckedThumbColor = colors.textMuted,
-                uncheckedTrackColor = colors.glassBackground
-            )
-        )
-    }
+    )
 }
 
 @Composable
 private fun SettingsNavigationRow(item: SettingsItem.Navigation) {
     val colors = BouncerDesignSystem.colors
-    val typography = BouncerDesignSystem.typography
-    val dimens = BouncerDesignSystem.dimens
 
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = item.onClick)
-            .padding(horizontal = dimens.xl, vertical = dimens.lg),
-        horizontalArrangement = Arrangement.spacedBy(dimens.lg),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier = Modifier
-                .size(40.dp)
-                .background(colors.goldPrimary.copy(alpha = 0.12f), RoundedCornerShape(12.dp))
-        ) {
+    SettingsRow(
+        title = item.title,
+        description = item.description,
+        icon = item.icon,
+        iconTint = colors.goldPrimary,
+        onClick = item.onClick,
+        trailing = {
             Icon(
-                imageVector = item.icon,
+                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
                 contentDescription = null,
-                tint = colors.goldPrimary,
-                modifier = Modifier.size(20.dp)
+                tint = colors.textSecondary,
+                modifier = Modifier.size(22.dp)
             )
         }
-
-        Column(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(dimens.xxs)
-        ) {
-            Text(
-                text = item.title,
-                style = typography.headingSmall,
-                color = colors.textPrimary,
-                fontWeight = FontWeight.SemiBold
-            )
-            Text(
-                text = item.description,
-                style = typography.bodySmall,
-                color = colors.textMuted
-            )
-        }
-
-        Icon(
-            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-            contentDescription = null,
-            tint = colors.textMuted,
-            modifier = Modifier.size(24.dp)
-        )
-    }
+    )
 }
 
 @Composable
 private fun SettingsInfoRow(item: SettingsItem.Info) {
     val colors = BouncerDesignSystem.colors
     val typography = BouncerDesignSystem.typography
+
+    SettingsRow(
+        title = item.title,
+        description = null,
+        icon = item.icon,
+        iconTint = colors.textSecondary,
+        trailing = {
+            Text(
+                text = item.value,
+                style = typography.bodyMedium,
+                color = colors.textSecondary,
+                fontWeight = FontWeight.Medium,
+                modifier = Modifier.width(72.dp)
+            )
+        }
+    )
+}
+
+@Composable
+private fun SettingsRow(
+    title: String,
+    description: String?,
+    icon: ImageVector,
+    iconTint: androidx.compose.ui.graphics.Color,
+    trailing: @Composable () -> Unit,
+    onClick: (() -> Unit)? = null
+) {
+    val colors = BouncerDesignSystem.colors
+    val typography = BouncerDesignSystem.typography
     val dimens = BouncerDesignSystem.dimens
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = dimens.xl, vertical = dimens.lg),
-        horizontalArrangement = Arrangement.spacedBy(dimens.lg),
+            .heightIn(min = dimens.minTouchTarget)
+            .let {
+                if (onClick != null) {
+                    it.clickable(onClick = onClick).semantics(mergeDescendants = true) {
+                        role = Role.Button
+                        contentDescription = listOfNotNull(title, description).joinToString(". ")
+                    }
+                } else {
+                    it
+                }
+            }
+            .padding(horizontal = dimens.lg, vertical = dimens.md),
+        horizontalArrangement = Arrangement.spacedBy(dimens.md),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
             contentAlignment = Alignment.Center,
             modifier = Modifier
-                .size(40.dp)
-                .background(colors.glassBackground, RoundedCornerShape(12.dp))
+                .size(36.dp)
+                .background(colors.glassBackground, RoundedCornerShape(10.dp))
         ) {
             Icon(
-                imageVector = item.icon,
+                imageVector = icon,
                 contentDescription = null,
-                tint = colors.textSecondary,
-                modifier = Modifier.size(20.dp)
+                tint = iconTint,
+                modifier = Modifier.size(18.dp)
             )
         }
 
-        Text(
-            text = item.title,
-            style = typography.headingSmall,
-            color = colors.textPrimary,
-            fontWeight = FontWeight.SemiBold,
-            modifier = Modifier.weight(1f)
-        )
-
-        Text(
-            text = item.value,
-            style = typography.bodyMedium,
-            color = colors.textMuted
-        )
-    }
-}
-
-@Composable
-private fun SettingsFooter() {
-    val colors = BouncerDesignSystem.colors
-    val typography = BouncerDesignSystem.typography
-    val dimens = BouncerDesignSystem.dimens
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = dimens.xxl),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(dimens.sm)
-    ) {
-        // Decorative line
-        Box(
-            modifier = Modifier
-                .width(48.dp)
-                .height(2.dp)
-                .background(
-                    Brush.horizontalGradient(
-                        colors = listOf(
-                            Color.Transparent,
-                            colors.goldPrimary.copy(alpha = 0.4f),
-                            Color.Transparent
-                        )
-                    ),
-                    RoundedCornerShape(50)
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(dimens.xxs)
+        ) {
+            Text(
+                text = title,
+                style = typography.headingSmall,
+                color = colors.textPrimary,
+                fontWeight = FontWeight.SemiBold
+            )
+            if (!description.isNullOrEmpty()) {
+                Text(
+                    text = description,
+                    style = typography.bodySmall,
+                    color = colors.textSecondary
                 )
-        )
+            }
+        }
 
-        Spacer(modifier = Modifier.height(dimens.sm))
-
-        Text(
-            text = "Made with passion for cricket",
-            style = typography.bodySmall,
-            color = colors.textMuted
-        )
-
-        Text(
-            text = "Bouncer v1.0",
-            style = typography.labelSmall,
-            color = colors.goldPrimary.copy(alpha = 0.6f),
-            fontWeight = FontWeight.SemiBold,
-            letterSpacing = 1.sp
-        )
+        trailing()
     }
 }

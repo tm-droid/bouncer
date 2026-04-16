@@ -57,7 +57,7 @@ import io.sentry.SentryLevel
 @Composable
 fun VenueTab_Extracted(match: CricketMatch) {
     LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(24.dp)) {
-        item { Text(text = "VENUE", color = Gold400, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.5.sp) }
+        item { Text(text = "MATCH INFO", color = Gold400, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.2.sp) }
         item { VenueCard(venue = VenueInfo(name = match.venue, city = "Live Telemetry", country = "Global Broadcast", imageUrl = "https://images.unsplash.com/photo-1531415074968-036ba1b575da?q=80&w=800")) }
         item { Spacer(modifier = Modifier.height(80.dp)) }
     }

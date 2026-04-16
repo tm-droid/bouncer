@@ -89,10 +89,23 @@ val TextMuted = Color(0xFF4B5563)
 // Status Colors — Clear semantic indicators
 // =============================================================================
 
-val StatusLive = Color(0xFFEF4444)
-val StatusSuccess = Color(0xFF22C55E)
-val StatusWarning = Color(0xFFF59E0B)
-val StatusInfo = Color(0xFF3B82F6)
+/**
+ * Semantic Status Colors
+ * 
+ * These colors are used for states, feedback, and cricket events.
+ * They remain static regardless of team colors to maintain clarity.
+ */
+
+// Primary Status Colors
+val StatusLive = Color(0xFFEF4444)      // Red - Live matches, errors
+val StatusSuccess = Color(0xFF22C55E)   // Green - Success, wins, boundaries
+val StatusWarning = Color(0xFFF59E0B)   // Orange - Warnings, delays
+val StatusInfo = Color(0xFF3B82F6)      // Blue - Information, neutral
+
+// Extended Status Colors
+val StatusPending = Color(0xFF9CA3AF)    // Gray - Pending/upcoming
+val StatusCompleted = StatusSuccess      // Alias for completed
+val StatusAbandoned = Color(0xFF6B7280)  // Dark gray - Abandoned matches
 
 // =============================================================================
 // Team Colors — Official team palette
@@ -100,7 +113,7 @@ val StatusInfo = Color(0xFF3B82F6)
 
 /**
  * Simple team color palette for single-color uses (badges, indicators, etc).
- * For full TeamColorScheme with primary/secondary/tertiary, see TeamColors in DynamicTheming.kt.
+ * For full TeamColorScheme with primary/secondary/tertiary, see LegacyTeamSchemes in DynamicTheming.kt.
  */
 object TeamPrimaryColors {
     val SouthAfricaGreen = Color(0xFF10B981)
@@ -475,8 +488,12 @@ data class BouncerColors(
     val probabilityLow: Color = ProbabilityLow,
     val probabilityNeutral: Color = ProbabilityNeutral,
     
-    // Dynamics
-    val team: TeamColorScheme = TeamColors.Default
+    // Match semantic tokens (dynamic, team-based)
+    val team: TeamColorScheme = LegacyTeamSchemes.Default,
+    val matchPrimary: Color = team.primary,
+    val matchSecondary: Color = team.secondary,
+    val matchAccent: Color = team.tertiary,
+    val onMatchPrimary: Color = team.onPrimary
 ) {
     /**
      * Legacy static color accessors for backward compatibility.

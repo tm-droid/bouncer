@@ -5,15 +5,21 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.BarChart
+import androidx.compose.material.icons.filled.EmojiEvents
+import androidx.compose.material.icons.filled.MilitaryTech
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.ui.components.*
 import com.tanush.bouncer.ui.components.glass.GlassBloomBackground
+import com.tanush.bouncer.ui.components.glass.GlassCard
+import com.tanush.bouncer.ui.components.glass.GlassIconButton
+import com.tanush.bouncer.ui.components.glass.GlassSecondaryButton
 import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -25,26 +31,25 @@ fun StatsHubScreen(
     onOpenAchievements: () -> Unit
 ) {
     val colors = BouncerDesignSystem.colors
+    val typography = BouncerDesignSystem.typography
+    val dimens = BouncerDesignSystem.dimens
 
     Scaffold(
         containerColor = Color.Transparent,
         topBar = {
             CenterAlignedTopAppBar(
                 title = {
-                    Text(
-                        "STATISTICS HUB",
-                        fontSize = 18.sp,
-                        color = colors.textPrimary
-                    )
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("Stats Hub", style = typography.headingMedium, color = colors.textPrimary)
+                        Text("Trends and quick actions", style = typography.bodySmall, color = colors.textMuted)
+                    }
                 },
                 navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
-                            tint = colors.textPrimary
-                        )
-                    }
+                    GlassIconButton(
+                        icon = Icons.AutoMirrored.Filled.ArrowBack,
+                        onClick = onBackClick,
+                        contentDescription = "Back"
+                    )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = Color.Transparent
@@ -58,20 +63,21 @@ fun StatsHubScreen(
                     .fillMaxSize()
                     .padding(padding)
                     .verticalScroll(rememberScrollState())
-                    .padding(bottom = 120.dp),
-                verticalArrangement = Arrangement.spacedBy(20.dp)
+                    .padding(
+                        horizontal = dimens.screenHorizontalPadding,
+                        vertical = dimens.md
+                    )
+                    .padding(bottom = dimens.bottomNavHeight + dimens.lg),
+                verticalArrangement = Arrangement.spacedBy(dimens.cardGap)
             ) {
-                // Overview Cards
                 GlassCard(
-                    modifier = Modifier
-                        .padding(horizontal = 24.dp)
-                        .fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth(),
                     importance = BouncerImportance.CRITICAL
                 ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text("OVERVIEW", style = MaterialTheme.typography.labelLarge, color = colors.textSecondary)
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Column(modifier = Modifier.padding(dimens.md)) {
+                        Text("Overview", style = typography.labelLarge, color = colors.textSecondary)
+                        Spacer(modifier = Modifier.height(dimens.sm))
+                        Row(horizontalArrangement = Arrangement.spacedBy(dimens.sm)) {
                             StatCard(label = "Matches", value = "1,234", trend = 2.3f)
                             StatCard(label = "Runs", value = "98,321", trend = 1.2f)
                             StatCard(label = "Wkts", value = "4,321", trend = -0.6f)
@@ -79,57 +85,102 @@ fun StatsHubScreen(
                     }
                 }
 
-                // Trending Stats
                 GlassCard(
-                    modifier = Modifier
-                        .padding(horizontal = 24.dp)
-                        .fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth(),
                     importance = BouncerImportance.STANDARD
                 ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text("TRENDING", style = MaterialTheme.typography.labelLarge, color = colors.textPrimary)
-                        Spacer(modifier = Modifier.height(12.dp))
+                    Column(modifier = Modifier.padding(dimens.md)) {
+                        Text("Trending", style = typography.labelLarge, color = colors.textPrimary)
+                        Spacer(modifier = Modifier.height(dimens.sm))
                         MiniSparkline(data = listOf(120f, 130f, 125f, 140f, 150f, 160f), color = colors.goldPrimary)
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Spacer(modifier = Modifier.height(dimens.sm))
+                        Row(horizontalArrangement = Arrangement.spacedBy(dimens.sm)) {
                             StatCard(label = "Form", value = "+8%", trend = 8f)
                             StatCard(label = "Strike", value = "+3%", trend = 3f)
                         }
                     }
                 }
 
-                // Quick Links
                 GlassCard(
-                    modifier = Modifier
-                        .padding(horizontal = 24.dp)
-                        .fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth(),
                     importance = BouncerImportance.STANDARD
                 ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text("QUICK LINKS", style = MaterialTheme.typography.labelLarge, color = colors.textPrimary)
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Button(onClick = onOpenAnalytics) { Text("Open Analytics") }
-                            Button(onClick = onOpenTrophy) { Text("Trophy Room") }
-                            Button(onClick = onOpenAchievements) { Text("Achievements") }
-                        }
+                    Column(
+                        modifier = Modifier.padding(dimens.md),
+                        verticalArrangement = Arrangement.spacedBy(dimens.sm)
+                    ) {
+                        Text("Quick links", style = typography.labelLarge, color = colors.textPrimary)
+                        StatsHubActionRow(
+                            icon = Icons.Default.BarChart,
+                            title = "Analytics",
+                            description = "Open match trends and performance insights.",
+                            actionLabel = "Open",
+                            onAction = onOpenAnalytics
+                        )
+                        StatsHubActionRow(
+                            icon = Icons.Default.EmojiEvents,
+                            title = "Trophy Room",
+                            description = "Browse cups, titles and milestone wins.",
+                            actionLabel = "Open",
+                            onAction = onOpenTrophy
+                        )
+                        StatsHubActionRow(
+                            icon = Icons.Default.MilitaryTech,
+                            title = "Achievements",
+                            description = "Track badges and progression history.",
+                            actionLabel = "Open",
+                            onAction = onOpenAchievements
+                        )
                     }
                 }
 
-                // Preserve access to other stats screens
                 GlassCard(
-                    modifier = Modifier
-                        .padding(horizontal = 24.dp)
-                        .fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth(),
                     importance = BouncerImportance.MINIMAL
                 ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text("DEEP DIVE", style = MaterialTheme.typography.labelLarge, color = colors.textSecondary)
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text("Compare players, run custom filters, or open detailed match stats from here.", color = colors.textPrimary)
+                    Column(modifier = Modifier.padding(dimens.md)) {
+                        Text("Deep dive", style = typography.labelLarge, color = colors.textSecondary)
+                        Spacer(modifier = Modifier.height(dimens.xs))
+                        Text(
+                            "Compare players, run filters, and jump into detailed match stats from this hub.",
+                            style = typography.bodyMedium,
+                            color = colors.textPrimary,
+                            fontWeight = FontWeight.Medium
+                        )
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun StatsHubActionRow(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    title: String,
+    description: String,
+    actionLabel: String,
+    onAction: () -> Unit
+) {
+    val colors = BouncerDesignSystem.colors
+    val typography = BouncerDesignSystem.typography
+    val dimens = BouncerDesignSystem.dimens
+
+    GlassCard(
+        modifier = Modifier.fillMaxWidth(),
+        contentPadding = PaddingValues(dimens.sm)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(dimens.sm),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(imageVector = icon, contentDescription = null, tint = colors.goldPrimary)
+            Column(modifier = Modifier.weight(1f)) {
+                Text(title, style = typography.bodyMedium, color = colors.textPrimary, fontWeight = FontWeight.SemiBold)
+                Text(description, style = typography.bodySmall, color = colors.textMuted)
+            }
+            GlassSecondaryButton(text = actionLabel, onClick = onAction)
         }
     }
 }

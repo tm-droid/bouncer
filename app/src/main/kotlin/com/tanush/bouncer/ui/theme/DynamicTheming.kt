@@ -47,7 +47,7 @@ data class TeamColorScheme(
 /**
  * Predefined team color schemes
  */
-object TeamColors {
+object LegacyTeamSchemes {
     val India = TeamColorScheme(
         primary = Color(0xFF138808),
         secondary = Color(0xFFFF9933),
@@ -202,7 +202,7 @@ data class HighContrastMode(
     }
 }
 
-val LocalTeamColorScheme = staticCompositionLocalOf { TeamColors.Default }
+val LocalTeamColorScheme = staticCompositionLocalOf { LegacyTeamSchemes.Default }
 val LocalTimeBasedTheme = staticCompositionLocalOf { TimeBasedTheme.forCurrentTime() }
 val LocalHighContrastMode = staticCompositionLocalOf { HighContrastMode.Normal }
 
@@ -222,15 +222,15 @@ object TeamThemeProvider {
                 
                     val primary = palette.dominantSwatch?.rgb?.let { Color(it) }
                         ?: palette.vibrantSwatch?.rgb?.let { Color(it) }
-                        ?: TeamColors.Default.primary
+                        ?: LegacyTeamSchemes.Default.primary
                 
                     val secondary = palette.vibrantSwatch?.rgb?.let { Color(it) }
                         ?: palette.mutedSwatch?.rgb?.let { Color(it) }
-                        ?: TeamColors.Default.secondary
+                        ?: LegacyTeamSchemes.Default.secondary
                 
                     val tertiary = palette.mutedSwatch?.rgb?.let { Color(it) }
                         ?: palette.lightMutedSwatch?.rgb?.let { Color(it) }
-                        ?: TeamColors.Default.tertiary
+                        ?: LegacyTeamSchemes.Default.tertiary
                 
                     val surface = palette.darkMutedSwatch?.rgb?.let { Color(it) }
                         ?: BlackSurface
@@ -248,7 +248,7 @@ object TeamThemeProvider {
                         onSecondary = onSecondary
                     )
                 } catch (e: Exception) {
-                    TeamColors.Default
+                    LegacyTeamSchemes.Default
                 }
             }
         } catch (e: Exception) {
@@ -265,17 +265,17 @@ object TeamThemeProvider {
             val normalizedName = teamName.lowercase().trim()
         
             return when {
-                normalizedName.contains("india") -> TeamColors.India
-                normalizedName.contains("australia") -> TeamColors.Australia
-                normalizedName.contains("england") -> TeamColors.England
-                normalizedName.contains("pakistan") -> TeamColors.Pakistan
-                normalizedName.contains("south africa") || normalizedName.contains("proteas") -> TeamColors.SouthAfrica
-                normalizedName.contains("new zealand") || normalizedName.contains("black caps") -> TeamColors.NewZealand
-                normalizedName.contains("west indies") || normalizedName.contains("windies") -> TeamColors.WestIndies
-                normalizedName.contains("sri lanka") -> TeamColors.SriLanka
-                normalizedName.contains("bangladesh") -> TeamColors.Bangladesh
-                normalizedName.contains("afghanistan") -> TeamColors.Afghanistan
-                else -> TeamColors.Default
+                normalizedName.contains("india") -> LegacyTeamSchemes.India
+                normalizedName.contains("australia") -> LegacyTeamSchemes.Australia
+                normalizedName.contains("england") -> LegacyTeamSchemes.England
+                normalizedName.contains("pakistan") -> LegacyTeamSchemes.Pakistan
+                normalizedName.contains("south africa") || normalizedName.contains("proteas") -> LegacyTeamSchemes.SouthAfrica
+                normalizedName.contains("new zealand") || normalizedName.contains("black caps") -> LegacyTeamSchemes.NewZealand
+                normalizedName.contains("west indies") || normalizedName.contains("windies") -> LegacyTeamSchemes.WestIndies
+                normalizedName.contains("sri lanka") -> LegacyTeamSchemes.SriLanka
+                normalizedName.contains("bangladesh") -> LegacyTeamSchemes.Bangladesh
+                normalizedName.contains("afghanistan") -> LegacyTeamSchemes.Afghanistan
+                else -> LegacyTeamSchemes.Default
             }
         } catch (e: Exception) {
             Sentry.captureException(e)
@@ -300,7 +300,7 @@ object TeamThemeProvider {
  * Remember and cache extracted team colors from a bitmap
  */
 @Composable
-fun rememberTeamColors(
+fun rememberLegacyTeamColorScheme(
     bitmap: Bitmap?,
     fallbackTeamName: String = ""
 ): TeamColorScheme {
@@ -319,7 +319,7 @@ fun rememberTeamColors(
  * Remember team colors by team name only
  */
 @Composable
-fun rememberTeamColors(teamName: String): TeamColorScheme {
+fun rememberLegacyTeamColorScheme(teamName: String): TeamColorScheme {
     return remember(teamName) {
         TeamThemeProvider.getTeamColors(teamName)
     }
@@ -395,7 +395,7 @@ fun TeamColorScheme.toMaterialColorScheme(): ColorScheme {
  */
 @Composable
 fun DynamicThemeWrapper(
-    teamColorScheme: TeamColorScheme = TeamColors.Default,
+    teamColorScheme: TeamColorScheme = LegacyTeamSchemes.Default,
     timeBasedTheme: TimeBasedTheme = TimeBasedTheme.forCurrentTime(),
     highContrastMode: HighContrastMode = HighContrastMode.Normal,
     content: @Composable () -> Unit

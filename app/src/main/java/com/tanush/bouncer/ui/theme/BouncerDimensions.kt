@@ -8,7 +8,7 @@ import androidx.compose.ui.unit.dp
 /**
  * Bouncer Dimensions System
  *
- * 8-point grid spacing system with semantic component sizing tokens.
+ * 4dp-grid spacing system with semantic component sizing tokens.
  * Designed for consistent, harmonious layouts across all screen sizes.
  */
 
@@ -21,62 +21,6 @@ val BottomNavHeight = 64.dp
 
 /** Glass blur radius for glassmorphism effects */
 val GlassBlur = 24.dp
-
-// =============================================================================
-// Spacing Scale — 8-point grid foundation
-// =============================================================================
-
-@Immutable
-data class BouncerSpacing(
-    /** 4dp — Extra small spacing */
-    val xs: Dp = 4.dp,
-    /** 8dp — Small spacing (base unit) */
-    val sm: Dp = 8.dp,
-    /** 16dp — Medium-Large spacing */
-    val md: Dp = 16.dp,
-    /** 24dp — Large spacing */
-    val lg: Dp = 24.dp,
-    /** 32dp — Extra large spacing */
-    val xl: Dp = 32.dp,
-    /** 48dp — Double extra large spacing */
-    val xxl: Dp = 48.dp,
-    /** 64dp — Triple extra large spacing */
-    val xxxl: Dp = 64.dp,
-    /** 80dp — Jumbo spacing */
-    val jumbo: Dp = 80.dp,
-    /** 96dp — Mega spacing */
-    val mega: Dp = 96.dp,
-    /** 128dp — Ultra spacing */
-    val ultra: Dp = 128.dp
-)
-
-// =============================================================================
-// Corner Radius Scale
-// =============================================================================
-
-@Immutable
-data class BouncerRadius(
-    /** 4dp — Extra small radius */
-    val xs: Dp = 4.dp,
-    /** 8dp — Small radius */
-    val sm: Dp = 8.dp,
-    /** 12dp — Medium radius */
-    val md: Dp = 12.dp,
-    /** 16dp — Large radius */
-    val lg: Dp = 16.dp,
-    /** 20dp — Extra large radius */
-    val xl: Dp = 20.dp,
-    /** 24dp — Extra extra large radius */
-    val xxl: Dp = 24.dp,
-    /** 100dp — Pill/capsule shape */
-    val pill: Dp = 100.dp,
-    /** 20dp — Standard card corners */
-    val card: Dp = 20.dp,
-    /** 28dp — Hero card corners */
-    val hero: Dp = 28.dp,
-    /** 24dp — Bottom sheet corners */
-    val sheet: Dp = 24.dp
-)
 
 // =============================================================================
 // Icon Sizes
@@ -99,30 +43,6 @@ data class BouncerIconSizes(
 )
 
 // =============================================================================
-// Elevation Levels (matching glass tiers)
-// =============================================================================
-
-@Immutable
-data class BouncerElevation(
-    /** 0dp — No elevation (base surface) */
-    val none: Dp = 0.dp,
-    /** 1dp — Level 1 elevation */
-    val level1: Dp = 1.dp,
-    /** 2dp — Level 2 elevation */
-    val level2: Dp = 2.dp,
-    /** 4dp — Level 3 elevation */
-    val level3: Dp = 4.dp,
-    /** 6dp — Level 4 elevation */
-    val level4: Dp = 6.dp,
-    /** 8dp — Level 5 elevation */
-    val level5: Dp = 8.dp,
-    /** 12dp — Modal elevation */
-    val modal: Dp = 12.dp,
-    /** 16dp — Overlay elevation */
-    val overlay: Dp = 16.dp
-)
-
-// =============================================================================
 // Component Dimensions
 // =============================================================================
 
@@ -134,16 +54,16 @@ data class BouncerDimensions(
     val elevation: BouncerElevation = BouncerElevation(),
     
     // Shortcut properties for legacy compatibility
-    val xxs: Dp = 2.dp,
-    val xs: Dp = 4.dp,
-    val sm: Dp = 8.dp,
-    val md: Dp = 16.dp,
-    val lg: Dp = 24.dp,
-    val xl: Dp = 32.dp,
-    val xxl: Dp = 48.dp,
-    val xxxl: Dp = 64.dp,
-    val screenHorizontal: Dp = 16.dp,
-    val screenVertical: Dp = 8.dp,
+    val xxs: Dp = spacing.micro,
+    val xs: Dp = spacing.xs,
+    val sm: Dp = spacing.sm,
+    val md: Dp = spacing.md,
+    val lg: Dp = spacing.lg,
+    val xl: Dp = spacing.xl,
+    val xxl: Dp = spacing.xxl,
+    val xxxl: Dp = spacing.xxxl,
+    val screenHorizontal: Dp = spacing.md,
+    val screenVertical: Dp = spacing.sm,
     val cardSpacing: Dp = 12.dp,
     
     // Card Dimensions
@@ -295,13 +215,6 @@ val LocalBouncerDimens = staticCompositionLocalOf { BouncerDimensions() }
 // =============================================================================
 
 /**
- * Returns spacing based on a multiplier of the base unit (8dp).
- */
-fun BouncerSpacing.gridUnit(multiplier: Int): Dp {
-    return (8 * multiplier).dp
-}
-
-/**
  * Compact mode dimensions for smaller screens.
  */
 val CompactBouncerDimensions = BouncerDimensions(
@@ -329,25 +242,29 @@ val CompactBouncerDimensions = BouncerDimensions(
  * New code should use BouncerDesignSystem.dimens or LocalBouncerDimens.current instead.
  */
 object BouncerDimens {
+    private val spacing = BouncerTokenScales.spacing
+    private val radius = BouncerTokenScales.radius
+    private val elevation = BouncerTokenScales.elevation
+
     // Spacing scale
-    val xxs: Dp = 2.dp
-    val xs: Dp = 4.dp
-    val sm: Dp = 8.dp
-    val md: Dp = 16.dp
-    val lg: Dp = 24.dp
-    val xl: Dp = 32.dp
-    val xxl: Dp = 48.dp
-    val xxxl: Dp = 64.dp
+    val xxs: Dp = spacing.micro
+    val xs: Dp = spacing.xs
+    val sm: Dp = spacing.sm
+    val md: Dp = spacing.md
+    val lg: Dp = spacing.lg
+    val xl: Dp = spacing.xl
+    val xxl: Dp = spacing.xxl
+    val xxxl: Dp = spacing.xxxl
     
     // Screen padding
-    val screenHorizontal: Dp = 16.dp
-    val screenVertical: Dp = 8.dp
-    val screenTop: Dp = 16.dp
+    val screenHorizontal: Dp = spacing.md
+    val screenVertical: Dp = spacing.sm
+    val screenTop: Dp = spacing.md
     
     // Card dimensions
-    val cardPadding: Dp = 16.dp
+    val cardPadding: Dp = spacing.md
     val cardInnerPadding: Dp = 12.dp
-    val cardElevation: Dp = 2.dp
+    val cardElevation: Dp = elevation.sm
     val cardSpacing: Dp = 12.dp
     
     // Match card specific
@@ -360,14 +277,14 @@ object BouncerDimens {
     // Bottom navigation
     val bottomNavHeight: Dp = 64.dp
     val bottomNavIconSize: Dp = 24.dp
-    val bottomNavLabelSpacing: Dp = 4.dp
+    val bottomNavLabelSpacing: Dp = spacing.xs
     
     // Interactive elements
     val minTapTarget: Dp = 48.dp
     val iconButtonSize: Dp = 48.dp
     val fabSize: Dp = 56.dp
     val chipHeight: Dp = 36.dp
-    val chipHorizontalPadding: Dp = 16.dp
+    val chipHorizontalPadding: Dp = spacing.md
     
     // Dividers & borders
     val dividerThickness: Dp = 0.5.dp
@@ -388,7 +305,7 @@ object BouncerDimens {
     val heroScoreSize: Dp = 32.dp
     
     // Glassmorphism
-    val glassBlurRadius: Dp = 24.dp
+    val glassBlurRadius: Dp = spacing.lg
     val glassBlurRadiusStrong: Dp = 32.dp
     val glassBorderWidth: Dp = 1.dp
     const val glassFrostIntensity: Float = 0.15f

@@ -25,6 +25,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.logic.MatchSimulator
+import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.ui.components.BouncerImportance
 import com.tanush.bouncer.ui.components.GlassCard
 import com.tanush.bouncer.ui.components.GlassSurface
@@ -40,12 +41,14 @@ import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ExecutiveBoxScreen(
+    match: CricketMatch,
     onBackClick: () -> Unit
 ) {
     val colors = BouncerDesignSystem.colors
+    val matchProb = (match.calculateHeuristicProbability() / 100.0).toFloat().coerceIn(0.05f, 0.95f)
     // Simulation States
-    var baseProbability by remember { mutableFloatStateOf(0.72f) }
-    var simulatedProbability by remember { mutableFloatStateOf(0.72f) }
+    var baseProbability by remember { mutableFloatStateOf(matchProb) }
+    var simulatedProbability by remember { mutableFloatStateOf(matchProb) }
     var lastSimResult by remember { mutableStateOf<MatchSimulator.SimResult?>(null) }
     var isSimulating by remember { mutableStateOf(false) }
 
@@ -89,8 +92,8 @@ fun ExecutiveBoxScreen(
             item {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     WinProbabilityGauge(
-                        team1Name = "INDIA",
-                        team2Name = "AUSTRALIA",
+                        team1Name = match.teams.getOrNull(0)?.name?.uppercase() ?: "TEAM 1",
+                        team2Name = match.teams.getOrNull(1)?.name?.uppercase() ?: "TEAM 2",
                         team1Probability = displayProbability,
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -109,15 +112,27 @@ fun ExecutiveBoxScreen(
 
             // 2. Tactical Simulation Console - STANDARD
             item {
+                val battingTeam = match.teams.firstOrNull { it.isBatting }
+                val wicketsDown = battingTeam?.score?.split("/")?.getOrNull(1)?.trim()?.toIntOrNull() ?: 0
+                val oversStr = battingTeam?.overs ?: "0"
+                val totalOvers = when {
+                    match.matchType.contains("T20", ignoreCase = true) -> 20f
+                    match.matchType.contains("ODI", ignoreCase = true) -> 50f
+                    else -> 20f
+                }
+                val currentOvers = oversStr.toFloatOrNull() ?: 0f
+                val oversRemaining = (totalOvers - currentOvers).coerceAtLeast(0.1f)
+                val target = match.teams.firstOrNull { !it.isBatting }?.score?.split("/")?.firstOrNull()?.trim()?.toIntOrNull()
+                
                 TacticalSimulationConsole(
                     onSimulate = { event ->
                         isSimulating = true
                         val result = MatchSimulator.simulateEvent(
                             currentProb = simulatedProbability,
                             event = event,
-                            wicketsDown = 4,
-                            target = 280,
-                            oversRemaining = 12.4f
+                            wicketsDown = wicketsDown,
+                            target = target,
+                            oversRemaining = oversRemaining
                         )
                         simulatedProbability = result.newProbability
                         lastSimResult = result
@@ -131,7 +146,7 @@ fun ExecutiveBoxScreen(
                     if (result != null) {
                         SimulationImpactCard(result)
                     } else {
-                        StrategyBriefingCard()
+                        StrategyBriefingCard(match)
                     }
                 }
             }
@@ -147,13 +162,27 @@ fun ExecutiveBoxScreen(
                 )
             }
 
-            // 5. Telemetry Events - MINIMAL
-            items(2) { index ->
+            // 5. Telemetry Events - derived from match state
+            item {
+                val battingTeam = match.teams.firstOrNull { it.isBatting }
+                val overs = battingTeam?.overs ?: "--"
+                val striker = match.scrapedBatsmen?.find { it.isStriker }
+                val bowler = match.currentBowler
                 TelemetryEventItem(
-                    time = "18.4 OV",
-                    title = if (index == 0) "MOMENTUM SHIFT" else "BOUNDARY IMPACT",
-                    body = if (index == 0) "Win probability increased by 8.2% after Kohli's aggressive sweep." else "Boundary adds pressure to the bowling unit. RRR now below 7.0.",
-                    type = if (index == 0) EventType.MOMENTUM else EventType.IMPACT
+                    time = "$overs OV",
+                    title = if (striker != null) "BATTING UPDATE" else "MATCH UPDATE",
+                    body = if (striker != null) "${striker.name} on ${striker.runs} off ${striker.balls} balls. SR: ${striker.strikeRate}." else "Awaiting live ball-by-ball data.",
+                    type = EventType.MOMENTUM
+                )
+            }
+            
+            item {
+                val bowler = match.currentBowler
+                TelemetryEventItem(
+                    time = "NOW",
+                    title = if (bowler != null) "BOWLING PRESSURE" else "MATCH STATE",
+                    body = if (bowler != null) "${bowler.name} figures: ${bowler.wickets}/${bowler.runs} (${bowler.overs} ov). Economy: ${bowler.economy}." else "Current run rate: ${match.score?.currentRunRate ?: "--"}.",
+                    type = EventType.IMPACT
                 )
             }
 
@@ -238,8 +267,19 @@ private fun SimulationImpactCard(result: MatchSimulator.SimResult) {
 }
 
 @Composable
-private fun StrategyBriefingCard() {
+private fun StrategyBriefingCard(match: CricketMatch) {
     val colors = BouncerDesignSystem.colors
+    val team1 = match.teams.getOrNull(0)?.name ?: "Team 1"
+    val team2 = match.teams.getOrNull(1)?.name ?: "Team 2"
+    val battingTeam = match.teams.firstOrNull { it.isBatting }?.name ?: team1
+    val bowlingTeam = if (battingTeam == team1) team2 else team1
+    val crr = match.score?.currentRunRate ?: "--"
+    val rrr = match.score?.requiredRunRate
+    val briefingText = if (rrr != null) {
+        "$battingTeam chasing at $crr RPO. Required rate: $rrr. $bowlingTeam should target wickets to increase pressure."
+    } else {
+        "$battingTeam currently batting at $crr RPO. Tactical analysis updating with live data."
+    }
     GlassCard(
         modifier = Modifier.fillMaxWidth(),
         importance = BouncerImportance.CRITICAL,
@@ -259,7 +299,7 @@ private fun StrategyBriefingCard() {
             Spacer(modifier = Modifier.height(16.dp))
             
             Text(
-                text = "India should target the next 2 overs of spin. Australia's field suggested a defensive mindset. High boundary probability square of the wicket.",
+                text = briefingText,
                 color = colors.textPrimary,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Medium,
