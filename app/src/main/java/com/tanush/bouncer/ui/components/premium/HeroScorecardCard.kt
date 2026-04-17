@@ -72,6 +72,7 @@ fun HeroScorecardCard(
     modifier: Modifier = Modifier,
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val dimens = BouncerDesignSystem.dimens
     val teams = match.teams
 
@@ -122,6 +123,7 @@ fun HeroScorecardCard(
 
 @Composable
 private fun HeroTopRow(match: CricketMatch) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val typography = BouncerDesignSystem.typography
     val dimens = BouncerDesignSystem.dimens
@@ -140,7 +142,7 @@ private fun HeroTopRow(match: CricketMatch) {
             Text(
                 text = match.matchType.uppercase(),
                 style = typography.labelSmall,
-                color = colors.goldPrimary,
+                color = hierarchy.secondary.primary,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 1.sp
             )
@@ -168,6 +170,7 @@ private fun HeroTopRow(match: CricketMatch) {
 
 @Composable
 private fun HeroCenterSection(match: CricketMatch) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val team1 = match.teams.getOrNull(0)
     val team2 = match.teams.getOrNull(1)
     val colors = BouncerDesignSystem.colors
@@ -191,7 +194,7 @@ private fun HeroCenterSection(match: CricketMatch) {
         Text(
             text = "VS",
             style = typography.headingSmall,
-            color = colors.goldPrimary.copy(alpha = 0.5f),
+            color = hierarchy.secondary.primary.copy(alpha = 0.5f),
             fontWeight = FontWeight.ExtraLight,
             modifier = Modifier.padding(horizontal = dimens.sm)
         )
@@ -270,6 +273,7 @@ private fun HeroTeamColumn(
 
 @Composable
 private fun HeroBottomSection(match: CricketMatch) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val typography = BouncerDesignSystem.typography
     val dimens = BouncerDesignSystem.dimens
@@ -284,7 +288,7 @@ private fun HeroBottomSection(match: CricketMatch) {
             Text(
                 text = statusText.uppercase(),
                 style = typography.labelSmall,
-                color = if (match.isLive) colors.goldPrimary else colors.textMuted,
+                color = if (match.isLive) hierarchy.secondary.primary else colors.textMuted,
                 fontWeight = if (match.isLive) FontWeight.Bold else FontWeight.Normal,
                 letterSpacing = 1.sp,
                 maxLines = 2,

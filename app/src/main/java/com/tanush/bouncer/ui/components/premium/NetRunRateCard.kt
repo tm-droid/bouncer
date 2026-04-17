@@ -90,6 +90,7 @@ fun NetRunRateCard(
     modifier: Modifier = Modifier,
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val animatedProgress = remember { Animatable(0f) }
     val animatedNRR = remember { Animatable(0f) }
 
@@ -159,7 +160,7 @@ fun NetRunRateCard(
                     Column {
                         Text(
                             text = "NET RUN RATE",
-                            color = colors.goldLight,
+                            color = hierarchy.secondary.secondary,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.5.sp,
@@ -181,7 +182,7 @@ fun NetRunRateCard(
                 ) {
                     Text(
                         text = "#${nrrData.tournamentPosition}",
-                        color = colors.goldDark,
+                        color = hierarchy.secondary.primary,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,
                     )

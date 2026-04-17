@@ -26,6 +26,7 @@ fun EliteForecastCarousel(
     predictions: List<BallPrediction> = emptyList() // Default mock data if empty
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val typography = BouncerDesignSystem.typography
     val dimens = BouncerDesignSystem.dimens
 
@@ -57,7 +58,7 @@ fun EliteForecastCarousel(
             Text(
                 text = "NEXT OVER",
                 style = typography.labelSmall,
-                color = colors.goldPrimary,
+                color = hierarchy.secondary.primary,
                 fontWeight = FontWeight.Bold
             )
         }

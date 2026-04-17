@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.tanush.bouncer.ui.theme.*
+import com.tanush.bouncer.ui.theme.GoldPrimary
 
 /**
  * Premium modal dialog with animations
@@ -248,6 +249,7 @@ fun PremiumBottomSheet(
     title: String? = null,
     content: @Composable () -> Unit
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val infiniteTransition = rememberInfiniteTransition(label = "bottomSheet")
     val glowAlpha by infiniteTransition.animateFloat(
         initialValue = 0.3f,
@@ -304,7 +306,7 @@ fun PremiumBottomSheet(
                     width = 1.dp,
                     brush = Brush.verticalGradient(
                         colors = listOf(
-                            GoldPrimary.copy(alpha = glowAlpha),
+                            hierarchy.secondary.primary.copy(alpha = glowAlpha),
                             Color.Transparent
                         )
                     )
@@ -400,6 +402,7 @@ fun PremiumInputDialog(
     confirmText: String = "Save",
     dismissText: String = "Cancel"
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     var inputValue by remember { mutableStateOf(initialValue) }
 
     PremiumDialog(
@@ -419,9 +422,9 @@ fun PremiumInputDialog(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(14.dp),
             colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = GoldPrimary,
+                focusedBorderColor = hierarchy.secondary.primary,
                 unfocusedBorderColor = GlassBorder.copy(alpha = 0.5f),
-                cursorColor = GoldPrimary,
+                cursorColor = hierarchy.secondary.primary,
                 focusedTextColor = TextPrimary,
                 unfocusedTextColor = TextPrimary
             ),
@@ -443,6 +446,7 @@ fun <T> PremiumSelectionDialog(
     onItemSelected: (T) -> Unit,
     itemContent: @Composable (T, Boolean) -> Unit
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     if (!visible) return
 
     Dialog(
@@ -455,7 +459,7 @@ fun <T> PremiumSelectionDialog(
                 .shadow(
                     elevation = 24.dp,
                     shape = RoundedCornerShape(28.dp),
-                    spotColor = GoldPrimary.copy(alpha = 0.3f)
+                    spotColor = hierarchy.secondary.primary.copy(alpha = 0.3f)
                 ),
             shape = RoundedCornerShape(28.dp),
             color = GlassSurface
@@ -647,6 +651,7 @@ fun PremiumLoadingDialog(
     visible: Boolean,
     message: String = "Loading..."
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     if (!visible) return
     
     val infiniteTransition = rememberInfiniteTransition(label = "loading")
@@ -684,7 +689,7 @@ fun PremiumLoadingDialog(
                     contentAlignment = Alignment.Center
                 ) {
                     CircularProgressIndicator(
-                        color = GoldPrimary,
+                        color = hierarchy.secondary.primary,
                         strokeWidth = 4.dp,
                         modifier = Modifier.size(48.dp)
                     )

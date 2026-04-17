@@ -233,6 +233,82 @@ object GradientPresets {
     )
     
     // ========================================
+    // Team / Secondary (30%) Gradients
+    // ========================================
+    
+    /**
+     * Team-tinted section header — subtle top-down team wash.
+     * Use instead of gold for non-CTA headers and section fills.
+     */
+    fun teamHeader(teamColor: Color, alpha: Float = 0.18f) = Brush.verticalGradient(
+        colors = listOf(
+            teamColor.copy(alpha = alpha),
+            teamColor.copy(alpha = alpha * 0.4f),
+            Color.Transparent
+        )
+    )
+    
+    /**
+     * Horizontal team gradient for card borders or indicator bars.
+     */
+    fun teamHorizontal(teamPrimary: Color, teamSecondary: Color, alpha: Float = 0.5f) =
+        Brush.horizontalGradient(
+            colors = listOf(
+                teamPrimary.copy(alpha = alpha),
+                teamSecondary.copy(alpha = alpha * 0.7f),
+                teamPrimary.copy(alpha = alpha * 0.5f)
+            )
+        )
+    
+    /**
+     * Subtle team card tint — very faint team wash for card backgrounds.
+     */
+    fun teamCardTint(teamColor: Color, alpha: Float = 0.06f) = Brush.verticalGradient(
+        colors = listOf(
+            teamColor.copy(alpha = alpha),
+            Color.Transparent
+        )
+    )
+    
+    /**
+     * Team glow — radial team glow for emphasis spots.
+     */
+    fun teamRadialGlow(teamColor: Color, alpha: Float = 0.15f) = Brush.radialGradient(
+        colors = listOf(
+            teamColor.copy(alpha = alpha),
+            teamColor.copy(alpha = alpha * 0.3f),
+            Color.Transparent
+        )
+    )
+    
+    /**
+     * Team shimmer sweep — team-colored loading/shimmer effect.
+     * Replaces goldShimmerSweep for non-CTA contexts.
+     */
+    fun teamShimmerSweep(teamColor: Color, alpha: Float = 0.2f) = Brush.horizontalGradient(
+        colors = listOf(
+            Color.Transparent,
+            teamColor.copy(alpha = alpha * 0.5f),
+            teamColor.copy(alpha = alpha),
+            teamColor.copy(alpha = alpha * 0.5f),
+            Color.Transparent
+        )
+    )
+    
+    /**
+     * Team accent divider — replaces goldDivider for non-premium contexts.
+     */
+    fun teamDivider(teamColor: Color, alpha: Float = 0.15f) = Brush.horizontalGradient(
+        colors = listOf(
+            Color.Transparent,
+            teamColor.copy(alpha = alpha * 0.6f),
+            teamColor.copy(alpha = alpha),
+            teamColor.copy(alpha = alpha * 0.6f),
+            Color.Transparent
+        )
+    )
+    
+    // ========================================
     // Glassmorphism Effects
     // ========================================
     

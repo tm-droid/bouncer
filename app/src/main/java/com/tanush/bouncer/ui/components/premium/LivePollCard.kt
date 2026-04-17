@@ -96,6 +96,7 @@ fun LivePollCard(
     modifier: Modifier = Modifier,
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val infiniteTransition = rememberInfiniteTransition(label = "poll")
 
     val liveIndicatorAlpha by infiniteTransition.animateFloat(
@@ -281,6 +282,7 @@ private fun PollOptionItem(
     onVote: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val animatedProgress = remember { Animatable(0f) }
 
@@ -296,7 +298,7 @@ private fun PollOptionItem(
     val optionColor = when (index) {
         0 -> colors.statusInfo
         1 -> colors.statusLive
-        2 -> colors.goldDark
+        2 -> hierarchy.secondary.primary
         else -> colors.statusSuccess
     }
 

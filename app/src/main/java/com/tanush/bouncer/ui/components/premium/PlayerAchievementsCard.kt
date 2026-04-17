@@ -87,7 +87,8 @@ fun PlayerAchievementsCard(
     )
 
     val colors = BouncerDesignSystem.colors
-    val goldDarkC = colors.goldDark
+    val hierarchy = BouncerDesignSystem.hierarchy
+    val goldDarkC = hierarchy.secondary.primary
 
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -129,7 +130,7 @@ fun PlayerAchievementsCard(
                     Icon(
                         imageVector = Icons.Default.Whatshot,
                         contentDescription = null,
-                        tint = colors.goldDark,
+                        tint = hierarchy.secondary.primary,
                         modifier = Modifier.size(24.dp),
                     )
 
@@ -137,7 +138,7 @@ fun PlayerAchievementsCard(
 
                     Text(
                         text = "MILESTONES",
-                        color = colors.goldDark,
+                        color = hierarchy.secondary.primary,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 2.sp,
@@ -148,7 +149,7 @@ fun PlayerAchievementsCard(
                     Icon(
                         imageVector = Icons.Default.Whatshot,
                         contentDescription = null,
-                        tint = colors.goldDark,
+                        tint = hierarchy.secondary.primary,
                         modifier = Modifier.size(24.dp),
                     )
                 }
@@ -176,13 +177,14 @@ private fun AchievementRow(
     glowPulse: Float,
     modifier: Modifier = Modifier,
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val milestoneColor = when (achievement.milestoneType) {
-        "century" -> colors.goldDark
+        "century" -> hierarchy.secondary.primary
         "half_century" -> colors.statusInfo
         "five_wicket" -> colors.statusLive
         "hat_trick" -> colors.statusSuccess
-        else -> colors.goldDark
+        else -> hierarchy.secondary.primary
     }
 
     val milestoneEmoji = when (achievement.milestoneType) {

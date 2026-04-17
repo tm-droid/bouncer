@@ -79,6 +79,7 @@ fun FantasyPointsCard(
     modifier: Modifier = Modifier,
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val animatedProgress = remember { Animatable(0f) }
     val animatedPoints = remember { Animatable(0f) }
 
@@ -149,7 +150,7 @@ fun FantasyPointsCard(
                     Column {
                         Text(
                             text = "FANTASY POINTS",
-                            color = colors.goldLight,
+                            color = hierarchy.secondary.secondary,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.5.sp,
@@ -168,7 +169,7 @@ fun FantasyPointsCard(
                         modifier = Modifier
                             .size(32.dp)
                             .clip(CircleShape)
-                            .background(colors.goldPrimary),
+                            .background(hierarchy.secondary.primary),
                         contentAlignment = Alignment.Center,
                     ) {
                         Text(
@@ -229,7 +230,7 @@ fun FantasyPointsCard(
                         ) {
                             Text(
                                 text = "2x Captain bonus",
-                                color = colors.goldDark,
+                                color = hierarchy.secondary.primary,
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Medium,
                             )
@@ -260,7 +261,7 @@ fun FantasyPointsCard(
                             .clip(RoundedCornerShape(6.dp))
                             .background(
                                 if (pointsData.rank <= 3) {
-                                    colors.goldPrimary.copy(alpha = 0.3f)
+                                    hierarchy.secondary.primary.copy(alpha = 0.3f)
                                 } else {
                                     Color.White.copy(alpha = 0.1f)
                                 },
@@ -269,7 +270,7 @@ fun FantasyPointsCard(
                     ) {
                         Text(
                             text = "Rank #${pointsData.rank}",
-                            color = if (pointsData.rank <= 3) colors.goldLight else colors.textPrimary,
+                            color = if (pointsData.rank <= 3) hierarchy.secondary.secondary else colors.textPrimary,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
                         )

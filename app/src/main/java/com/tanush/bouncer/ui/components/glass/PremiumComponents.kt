@@ -34,6 +34,7 @@ fun GlassHeroCard(
     content: @Composable BoxScope.() -> Unit
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val shapes = BouncerDesignSystem.shapes
     
     Box(
@@ -45,7 +46,7 @@ fun GlassHeroCard(
                 drawRect(
                     brush = Brush.radialGradient(
                         colors = listOf(
-                            colors.goldPrimary.copy(alpha = 0.15f),
+                            hierarchy.secondary.primary.copy(alpha = 0.15f),
                             Color.Transparent
                         ),
                         center = Offset(size.width / 2, size.height),
@@ -57,8 +58,8 @@ fun GlassHeroCard(
                 width = 1.dp,
                 brush = Brush.verticalGradient(
                     colors = listOf(
-                        colors.goldPrimary.copy(alpha = 0.4f),
-                        colors.goldPrimary.copy(alpha = 0.1f)
+                        hierarchy.secondary.primary.copy(alpha = 0.4f),
+                        hierarchy.secondary.primary.copy(alpha = 0.1f)
                     )
                 ),
                 shape = shapes.glassCardHero
@@ -84,6 +85,7 @@ fun GlassFilterChip(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val typography = BouncerDesignSystem.typography
     val dimens = BouncerDesignSystem.dimens
@@ -94,12 +96,12 @@ fun GlassFilterChip(
         modifier = modifier
             .clip(shape)
             .background(
-                if (selected) colors.goldPrimary.copy(alpha = 0.2f) 
+                if (selected) hierarchy.secondary.primary.copy(alpha = 0.2f) 
                 else colors.glassSurface
             )
             .border(
                 width = 1.dp,
-                color = if (selected) colors.goldPrimary.copy(alpha = 0.5f) 
+                color = if (selected) hierarchy.secondary.primary.copy(alpha = 0.5f) 
                         else colors.glassBorder,
                 shape = shape
             )
@@ -110,7 +112,7 @@ fun GlassFilterChip(
         Text(
             text = text,
             style = typography.labelSmall,
-            color = if (selected) colors.goldPrimary else colors.textSecondary,
+            color = if (selected) hierarchy.secondary.primary else colors.textSecondary,
             fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium
         )
     }

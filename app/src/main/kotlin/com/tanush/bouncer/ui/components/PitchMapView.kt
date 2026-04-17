@@ -72,6 +72,7 @@ fun PitchMapView(
     title: String = "Pitch Map"
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     var selectedDelivery by remember { mutableStateOf<PitchDelivery?>(null) }
     
     val infiniteTransition = rememberInfiniteTransition(label = "pitchAnim")
@@ -101,7 +102,7 @@ fun PitchMapView(
             .shadow(
                 elevation = 16.dp,
                 shape = RoundedCornerShape(24.dp),
-                spotColor = colors.goldPrimary.copy(alpha = 0.12f),
+                spotColor = hierarchy.secondary.primary.copy(alpha = 0.12f),
                 ambientColor = Color.Black.copy(alpha = 0.25f)
             ),
         shape = RoundedCornerShape(24.dp),
@@ -130,7 +131,7 @@ fun PitchMapView(
                     text = "${deliveries.size} balls",
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Medium,
-                    color = colors.goldPrimary
+                    color = hierarchy.secondary.primary
                 )
             }
             
@@ -143,7 +144,7 @@ fun PitchMapView(
             val boundarySixColor = colors.statusWarning
             val wicketRedColor = colors.statusLive
             val chartPurpleColor = colors.statusInfo
-            val selectionColor = colors.goldPrimary
+            val selectionColor = hierarchy.secondary.primary
             
             // Pitch Canvas
             Box(
@@ -155,9 +156,9 @@ fun PitchMapView(
                         1.dp,
                         Brush.linearGradient(
                             colors = listOf(
-                                colors.goldPrimary.copy(alpha = 0.3f + shimmerOffset * 0.2f),
+                                hierarchy.secondary.primary.copy(alpha = 0.3f + shimmerOffset * 0.2f),
                                 colors.glassBorder,
-                                colors.goldPrimary.copy(alpha = 0.2f)
+                                hierarchy.secondary.primary.copy(alpha = 0.2f)
                             )
                         ),
                         RoundedCornerShape(16.dp)
@@ -416,7 +417,7 @@ fun PitchMapView(
                                 text = "${speed.toInt()} km/h",
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.Medium,
-                                color = colors.goldPrimary
+                                color = hierarchy.secondary.primary
                             )
                         }
                         

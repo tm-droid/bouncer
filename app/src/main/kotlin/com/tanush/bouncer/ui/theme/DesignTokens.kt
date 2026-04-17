@@ -38,6 +38,24 @@ object DesignTokens {
         fun glassBorder(): androidx.compose.ui.graphics.Color = LocalBouncerColors.current.glassBorder
     }
 
+    /** 60-30-10 hierarchy color accessors */
+    object Hierarchy {
+        /** 60% — dark backgrounds, surfaces, text */
+        val dominant: DominantColors
+            @Composable @androidx.compose.runtime.ReadOnlyComposable
+            get() = LocalColorHierarchy.current.dominant
+
+        /** 30% — team colors: tints, borders, fills, indicators */
+        val secondary: SecondaryColors
+            @Composable @androidx.compose.runtime.ReadOnlyComposable
+            get() = LocalColorHierarchy.current.secondary
+
+        /** 10% — Bouncer Gold: CTAs, premium badges, key highlights */
+        val accent: AccentColors
+            @Composable @androidx.compose.runtime.ReadOnlyComposable
+            get() = LocalColorHierarchy.current.accent
+    }
+
     object Spacing {
         @Composable
         fun micro(): Dp = LocalBouncerDimens.current.spacing.micro
@@ -113,6 +131,22 @@ object DesignTokens {
 
         @Composable
         fun headingMedium() = LocalBouncerTypography.current.headlineMedium
+
+        /** Tabular (monospace) numbers at various sizes */
+        @Composable
+        fun numberLarge() = LocalBouncerTypography.current.numberLarge
+
+        @Composable
+        fun numberMedium() = LocalBouncerTypography.current.numberMedium
+
+        @Composable
+        fun numberSmall() = LocalBouncerTypography.current.numberSmall
+
+        @Composable
+        fun runRate() = LocalBouncerTypography.current.runRate
+
+        @Composable
+        fun figureStat() = LocalBouncerTypography.current.figureStat
     }
 }
 

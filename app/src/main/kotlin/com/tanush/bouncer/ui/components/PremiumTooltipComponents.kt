@@ -49,7 +49,8 @@ fun PremiumTooltip(
     position: TooltipPosition = TooltipPosition.BOTTOM
 ) {
     val colors = BouncerDesignSystem.colors
-    val goldDark = colors.goldDark
+    val hierarchy = BouncerDesignSystem.hierarchy
+    val goldDark = hierarchy.secondary.primary
     val alpha by animateFloatAsState(
         targetValue = if (isVisible) 1f else 0f,
         animationSpec = tween(200),
@@ -155,6 +156,7 @@ fun InfoPopup(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val alpha by animateFloatAsState(
         targetValue = if (isVisible) 1f else 0f,
@@ -178,7 +180,7 @@ fun InfoPopup(
                 .border(
                     width = 1.dp,
                     brush = Brush.linearGradient(
-                        colors = listOf(colors.goldDark.copy(alpha = 0.5f), colors.goldLight.copy(alpha = 0.2f))
+                        colors = listOf(hierarchy.secondary.primary.copy(alpha = 0.5f), hierarchy.secondary.secondary.copy(alpha = 0.2f))
                     ),
                     shape = RoundedCornerShape(16.dp)
                 )
@@ -200,13 +202,13 @@ fun InfoPopup(
                             modifier = Modifier
                                 .size(32.dp)
                                 .clip(CircleShape)
-                                .background(colors.goldDark.copy(alpha = 0.2f)),
+                                .background(hierarchy.secondary.primary.copy(alpha = 0.2f)),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 imageVector = icon,
                                 contentDescription = null,
-                                tint = colors.goldDark,
+                                tint = hierarchy.secondary.primary,
                                 modifier = Modifier.size(18.dp)
                             )
                         }
@@ -415,6 +417,7 @@ fun ContextualHelp(
     tips: List<String>,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     Column(
         modifier = modifier
@@ -422,7 +425,7 @@ fun ContextualHelp(
             .background(GlassSurface)
             .border(
                 width = 1.dp,
-                color = colors.goldDark.copy(alpha = 0.2f),
+                color = hierarchy.secondary.primary.copy(alpha = 0.2f),
                 shape = RoundedCornerShape(16.dp)
             )
             .padding(16.dp),
@@ -435,7 +438,7 @@ fun ContextualHelp(
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.Help,
                 contentDescription = null,
-                tint = colors.goldDark,
+                tint = hierarchy.secondary.primary,
                 modifier = Modifier.size(20.dp)
             )
             
@@ -460,7 +463,7 @@ fun ContextualHelp(
                             .padding(top = 6.dp)
                             .size(6.dp)
                             .clip(CircleShape)
-                            .background(colors.goldDark.copy(alpha = 0.6f))
+                            .background(hierarchy.secondary.primary.copy(alpha = 0.6f))
                     )
                     
                     Text(
@@ -482,6 +485,7 @@ fun QuickTip(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "tip")
     
@@ -503,14 +507,14 @@ fun QuickTip(
                 .background(
                     brush = Brush.horizontalGradient(
                         colors = listOf(
-                            colors.goldDark.copy(alpha = 0.2f),
-                            colors.goldLight.copy(alpha = 0.1f)
+                            hierarchy.secondary.primary.copy(alpha = 0.2f),
+                            hierarchy.secondary.secondary.copy(alpha = 0.1f)
                         )
                     )
                 )
                 .border(
                     width = 1.dp,
-                    color = colors.goldDark.copy(alpha = 0.4f),
+                    color = hierarchy.secondary.primary.copy(alpha = 0.4f),
                     shape = RoundedCornerShape(12.dp)
                 )
                 .padding(12.dp),
@@ -520,7 +524,7 @@ fun QuickTip(
             Icon(
                 imageVector = Icons.Default.TipsAndUpdates,
                 contentDescription = null,
-                tint = colors.goldDark,
+                tint = hierarchy.secondary.primary,
                 modifier = Modifier.size(20.dp)
             )
             
@@ -549,6 +553,7 @@ fun GlossaryItem(
     definition: String,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     Column(
         modifier = modifier
@@ -560,7 +565,7 @@ fun GlossaryItem(
     ) {
         Text(
             text = term,
-            color = colors.goldDark,
+            color = hierarchy.secondary.primary,
             fontSize = 14.sp,
             fontWeight = FontWeight.Bold
         )
@@ -582,6 +587,7 @@ fun FeatureSpotlight(
     isNew: Boolean = false,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "spotlight")
     
@@ -602,7 +608,7 @@ fun FeatureSpotlight(
             .background(
                 brush = Brush.verticalGradient(
                     colors = listOf(
-                        colors.goldDark.copy(alpha = 0.15f),
+                        hierarchy.secondary.primary.copy(alpha = 0.15f),
                         GlassSurface
                     )
                 )
@@ -610,7 +616,7 @@ fun FeatureSpotlight(
             .border(
                 width = if (isNew) 2.dp else 1.dp,
                 brush = Brush.linearGradient(
-                    colors = listOf(colors.goldDark, colors.goldLight.copy(alpha = 0.5f))
+                    colors = listOf(hierarchy.secondary.primary, hierarchy.secondary.secondary.copy(alpha = 0.5f))
                 ),
                 shape = RoundedCornerShape(16.dp)
             )
@@ -621,7 +627,7 @@ fun FeatureSpotlight(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
                     .clip(RoundedCornerShape(8.dp))
-                    .background(colors.goldDark)
+                    .background(hierarchy.secondary.primary)
                     .padding(horizontal = 8.dp, vertical = 4.dp)
             ) {
                 Text(
@@ -645,10 +651,10 @@ fun FeatureSpotlight(
                     modifier = Modifier
                         .size(48.dp)
                         .clip(CircleShape)
-                        .background(colors.goldDark.copy(alpha = 0.2f))
+                        .background(hierarchy.secondary.primary.copy(alpha = 0.2f))
                         .border(
                             width = 1.dp,
-                            color = colors.goldDark.copy(alpha = 0.5f),
+                            color = hierarchy.secondary.primary.copy(alpha = 0.5f),
                             shape = CircleShape
                         ),
                     contentAlignment = Alignment.Center
@@ -656,7 +662,7 @@ fun FeatureSpotlight(
                     Icon(
                         imageVector = icon,
                         contentDescription = null,
-                        tint = colors.goldDark,
+                        tint = hierarchy.secondary.primary,
                         modifier = Modifier.size(24.dp)
                     )
                 }
@@ -686,6 +692,7 @@ fun InteractiveGuide(
     onStepChange: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     Column(
         modifier = modifier
@@ -693,7 +700,7 @@ fun InteractiveGuide(
             .background(GlassSurface)
             .border(
                 width = 1.dp,
-                color = colors.goldDark.copy(alpha = 0.2f),
+                color = hierarchy.secondary.primary.copy(alpha = 0.2f),
                 shape = RoundedCornerShape(16.dp)
             )
             .padding(16.dp),
@@ -714,7 +721,7 @@ fun InteractiveGuide(
             
             Text(
                 text = "${currentStep + 1}/${steps.size}",
-                color = colors.goldDark,
+                color = hierarchy.secondary.primary,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Medium
             )
@@ -725,7 +732,7 @@ fun InteractiveGuide(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(12.dp))
-                .background(colors.goldDark.copy(alpha = 0.1f))
+                .background(hierarchy.secondary.primary.copy(alpha = 0.1f))
                 .padding(16.dp)
         ) {
             Text(
@@ -751,7 +758,7 @@ fun InteractiveGuide(
                         .size(if (isActive) 10.dp else 8.dp)
                         .clip(CircleShape)
                         .background(
-                            if (isActive) colors.goldDark else colors.goldDark.copy(alpha = 0.3f)
+                            if (isActive) hierarchy.secondary.primary else hierarchy.secondary.primary.copy(alpha = 0.3f)
                         )
                         .clickable { onStepChange(index) }
                 )
@@ -797,14 +804,14 @@ fun InteractiveGuide(
                 ) {
                     Text(
                         text = "Next",
-                        color = colors.goldDark,
+                        color = hierarchy.secondary.primary,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Bold
                     )
                     Icon(
                         imageVector = Icons.Default.ChevronRight,
                         contentDescription = "Next",
-                        tint = colors.goldDark,
+                        tint = hierarchy.secondary.primary,
                         modifier = Modifier.size(18.dp)
                     )
                 }

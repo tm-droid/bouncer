@@ -40,6 +40,7 @@ import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.ui.theme.*
 import com.tanush.bouncer.utils.rememberHapticFeedback
 import io.sentry.Sentry
+import com.tanush.bouncer.ui.theme.GoldPrimary
 
 @Composable
 fun CompactMatchCard(
@@ -66,6 +67,7 @@ fun CompactMatchCard(
     )
     
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     Surface(
         modifier = modifier
             .fillMaxWidth()
@@ -150,6 +152,7 @@ private fun CompactTeamInfo(
     modifier: Modifier = Modifier,
     isRight: Boolean = false
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val context = LocalContext.current
     val logoUrl = TeamLogoManager.getBestLogoUrl(team?.name, team?.logoUrl, 128, 128)
@@ -164,7 +167,7 @@ private fun CompactTeamInfo(
                 modifier = Modifier
                     .size(40.dp)
                     .background(colors.glassBorderHighlight, CircleShape)
-                    .border(0.5.dp, colors.goldDark.copy(alpha = 0.2f), CircleShape)
+                    .border(0.5.dp, hierarchy.secondary.primary.copy(alpha = 0.2f), CircleShape)
                     .padding(6.dp)
             ) {
                 CoilImage(
@@ -201,7 +204,7 @@ private fun CompactTeamInfo(
                 modifier = Modifier
                     .size(40.dp)
                     .background(colors.glassBorderHighlight, CircleShape)
-                    .border(0.5.dp, colors.goldDark.copy(alpha = 0.2f), CircleShape)
+                    .border(0.5.dp, hierarchy.secondary.primary.copy(alpha = 0.2f), CircleShape)
                     .padding(6.dp)
             ) {
                 CoilImage(
@@ -282,7 +285,7 @@ fun ExpandableMatchCard(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = if (isExpanded) "LESS INFO" else "MORE INFO",
-                        color = colors.goldDark,
+                        color = GoldPrimary,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Black,
                         letterSpacing = 1.sp
@@ -291,7 +294,7 @@ fun ExpandableMatchCard(
                     Icon(
                         imageVector = Icons.Default.KeyboardArrowDown,
                         contentDescription = null,
-                        tint = colors.goldDark,
+                        tint = GoldPrimary,
                         modifier = Modifier
                             .size(18.dp)
                             .rotate(rotation)
@@ -326,14 +329,14 @@ fun ExpandableMatchCard(
                     
                     if (match.currentStatus.isNotEmpty()) {
                         Surface(
-                            color = colors.goldDark.copy(alpha = 0.05f),
+                            color = GoldPrimary.copy(alpha = 0.05f),
                             shape = RoundedCornerShape(12.dp),
-                            border = androidx.compose.foundation.BorderStroke(0.5.dp, colors.goldDark.copy(alpha = 0.2f))
+                            border = androidx.compose.foundation.BorderStroke(0.5.dp, GoldPrimary.copy(alpha = 0.2f))
                         ) {
                             Column(modifier = Modifier.padding(16.dp)) {
                                 Text(
                                     text = "LIVE SUMMARY",
-                                    color = colors.goldDark,
+                                    color = GoldPrimary,
                                     fontSize = 10.sp,
                                     fontWeight = FontWeight.Black,
                                     letterSpacing = 1.sp

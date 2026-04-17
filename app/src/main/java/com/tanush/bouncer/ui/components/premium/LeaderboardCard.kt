@@ -48,6 +48,7 @@ fun LeaderboardCard(
     modifier: Modifier = Modifier,
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val animatedProgress = remember { Animatable(0f) }
 
     LaunchedEffect(entries) {
@@ -81,7 +82,7 @@ fun LeaderboardCard(
                             .clip(RoundedCornerShape(12.dp))
                             .background(
                                 Brush.linearGradient(
-                                    colors = listOf(GoldDark, GoldPrimary),
+                                    colors = listOf(hierarchy.secondary.primary, hierarchy.secondary.primary),
                                 ),
                             ),
                         contentAlignment = Alignment.Center,
@@ -99,7 +100,7 @@ fun LeaderboardCard(
                     Column {
                         Text(
                             text = title.uppercase(),
-                            color = colors.goldDark,
+                            color = hierarchy.secondary.primary,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.5.sp,
@@ -138,12 +139,13 @@ private fun LeaderboardEntryRow(
     progress: Float,
     index: Int,
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val delayedProgress = ((progress - index * 0.08f) / 0.92f).coerceIn(0f, 1f)
 
     val isTopThree = entry.rank <= 3
     val rankColor = when (entry.rank) {
-        1 -> colors.goldDark
+        1 -> hierarchy.secondary.primary
         2 -> Color(0xFFC0C0C0) // Silver
         3 -> Color(0xFFCD7F32) // Bronze
         else -> colors.textTertiary
@@ -236,7 +238,7 @@ private fun LeaderboardEntryRow(
         Column(horizontalAlignment = Alignment.End) {
             Text(
                 text = entry.value,
-                color = if (isTopThree) rankColor else colors.goldDark,
+                color = if (isTopThree) rankColor else hierarchy.secondary.primary,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
             )

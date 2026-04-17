@@ -94,6 +94,7 @@ fun OversTimelineTab(
     bowlerName: String?,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     if (recentBalls.isEmpty()) {
         EmptyStateView(
             icon = Icons.Outlined.SportsCricket,
@@ -133,8 +134,8 @@ fun OversTimelineTab(
                         .background(
                             Brush.verticalGradient(
                                 colors = listOf(
-                                    BouncerDesignSystem.colors.goldPrimary.copy(alpha = 0.25f),
-                                    BouncerDesignSystem.colors.goldPrimary.copy(alpha = 0.10f)
+                                    BouncerDesignSystem.hierarchy.secondary.primary.copy(alpha = 0.25f),
+                                    BouncerDesignSystem.hierarchy.secondary.primary.copy(alpha = 0.10f)
                                 )
                             ),
                             shape = RoundedCornerShape(1.dp)
@@ -161,6 +162,7 @@ private fun OverCard(
 ) {
     var expanded by rememberSaveable { mutableStateOf(initiallyExpanded) }
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val typography = BouncerDesignSystem.typography
     val dimens = BouncerDesignSystem.dimens
 
@@ -175,7 +177,7 @@ private fun OverCard(
                 val accentColor = when {
                     hasWicket -> colors.ballWicket.copy(alpha = 0.5f)
                     hasBoundaries -> colors.ballBoundary.copy(alpha = 0.4f)
-                    else -> colors.goldPrimary.copy(alpha = 0.3f)
+                    else -> hierarchy.secondary.primary.copy(alpha = 0.3f)
                 }
                 drawRect(
                     color = accentColor,
@@ -328,6 +330,7 @@ private fun BallDetailRow(
  */
 @Composable
 private fun OverRunsSummary(over: OverData) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val typography = BouncerDesignSystem.typography
 
@@ -363,7 +366,7 @@ private fun OverRunsSummary(over: OverData) {
             Text(
                 text = "RR %.1f".format(over.runRate),
                 style = typography.labelSmall,
-                color = if (over.runRate >= 10f) colors.goldPrimary else colors.textSecondary
+                color = if (over.runRate >= 10f) hierarchy.secondary.primary else colors.textSecondary
             )
         }
     }

@@ -52,6 +52,7 @@ fun DuckworthLewisCard(
     modifier: Modifier = Modifier
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val infiniteTransition = rememberInfiniteTransition(label = "dls_animation")
     
     val pulseAlpha by infiniteTransition.animateFloat(
@@ -95,7 +96,7 @@ fun DuckworthLewisCard(
                     Icon(
                         imageVector = Icons.Filled.Calculate,
                         contentDescription = null,
-                        tint = colors.goldPrimary,
+                        tint = hierarchy.secondary.primary,
                         modifier = Modifier.size(24.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
@@ -210,7 +211,7 @@ fun DuckworthLewisCard(
                     )
                     Text(
                         text = "${dlsInfo.revisedTarget ?: dlsInfo.targetScore}",
-                        color = colors.goldPrimary,
+                        color = hierarchy.secondary.primary,
                         fontSize = 36.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -356,7 +357,7 @@ fun DuckworthLewisCard(
                                 modifier = Modifier
                                     .fillMaxHeight()
                                     .weight(dlsInfo.team2Resources / 200f)
-                                    .background(colors.goldPrimary.copy(alpha = 0.7f))
+                                    .background(hierarchy.secondary.primary.copy(alpha = 0.7f))
                             )
                         }
                     }
@@ -373,7 +374,7 @@ fun DuckworthLewisCard(
                         )
                         Text(
                             text = "${dlsInfo.team2Resources.toInt()}%",
-                            color = colors.goldPrimary,
+                            color = hierarchy.secondary.primary,
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -386,7 +387,7 @@ fun DuckworthLewisCard(
                 Spacer(modifier = Modifier.height(16.dp))
                 
                 Surface(
-                    color = colors.goldPrimary.copy(alpha = 0.15f),
+                    color = hierarchy.secondary.primary.copy(alpha = 0.15f),
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
@@ -400,7 +401,7 @@ fun DuckworthLewisCard(
                         Icon(
                             imageVector = Icons.Filled.Speed,
                             contentDescription = null,
-                            tint = colors.goldPrimary.copy(alpha = pulseAlpha),
+                            tint = hierarchy.secondary.primary.copy(alpha = pulseAlpha),
                             modifier = Modifier.size(20.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
@@ -411,7 +412,7 @@ fun DuckworthLewisCard(
                         )
                         Text(
                             text = "${dlsInfo.projectedScore}",
-                            color = colors.goldPrimary,
+                            color = hierarchy.secondary.primary,
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold
                         )

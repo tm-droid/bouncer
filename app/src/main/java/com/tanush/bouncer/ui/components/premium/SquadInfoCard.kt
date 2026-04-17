@@ -61,6 +61,7 @@ fun SquadInfoCard(
     modifier: Modifier = Modifier,
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val animatedProgress = remember { Animatable(0f) }
 
     LaunchedEffect(squadData) {
@@ -161,7 +162,7 @@ fun SquadInfoCard(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                LeadershipBadge(Modifier.weight(1f), "CPT", squadData.captain, colors.goldPrimary)
+                LeadershipBadge(Modifier.weight(1f), "CPT", squadData.captain, hierarchy.secondary.primary)
                 if (squadData.viceCaptain != null) {
                     LeadershipBadge(Modifier.weight(1f), "VCP", squadData.viceCaptain, TextSecondary)
                 }
@@ -293,6 +294,7 @@ private fun PlayerChip(
     roleEmoji: String,
     modifier: Modifier = Modifier,
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     Row(
         modifier = modifier
@@ -316,7 +318,7 @@ private fun PlayerChip(
                     modifier = Modifier.weight(1f, fill = false)
                 )
                 if (player.isCaptain) {
-                    Text(text = "©", color = colors.goldPrimary, fontSize = 9.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(start = 2.dp))
+                    Text(text = "©", color = hierarchy.secondary.primary, fontSize = 9.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(start = 2.dp))
                 }
             }
             Text(

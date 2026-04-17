@@ -83,6 +83,7 @@ fun UmpireDecisionCard(
     modifier: Modifier = Modifier,
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val animatedProgress = remember { Animatable(0f) }
 
     val infiniteTransition = rememberInfiniteTransition(label = "umpire")
@@ -164,7 +165,7 @@ fun UmpireDecisionCard(
                     Column {
                         Text(
                             text = "UMPIRE DECISION",
-                            color = colors.goldLight,
+                            color = hierarchy.secondary.secondary,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.5.sp,

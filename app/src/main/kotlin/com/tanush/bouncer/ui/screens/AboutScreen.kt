@@ -43,6 +43,7 @@ fun AboutScreen(
     onBackClick: () -> Unit
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val typography = BouncerDesignSystem.typography
     val dimens = BouncerDesignSystem.dimens
 
@@ -97,7 +98,7 @@ fun AboutScreen(
                             Icon(
                                 imageVector = Icons.Default.SportsCricket,
                                 contentDescription = null,
-                                tint = colors.goldPrimary,
+                                tint = hierarchy.secondary.primary,
                                 modifier = Modifier.size(dimens.lg)
                             )
                             Text(
@@ -198,6 +199,7 @@ private fun FeatureRow(
     title: String,
     description: String
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val typography = BouncerDesignSystem.typography
     val dimens = BouncerDesignSystem.dimens
@@ -209,7 +211,7 @@ private fun FeatureRow(
         Icon(
             imageVector = icon,
             contentDescription = null,
-            tint = colors.goldPrimary,
+            tint = hierarchy.secondary.primary,
             modifier = Modifier
                 .padding(top = 2.dp)
                 .size(dimens.sm + dimens.xs)

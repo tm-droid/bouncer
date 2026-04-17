@@ -17,8 +17,14 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.FlashOn
+import androidx.compose.material.icons.filled.GpsFixed
+import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -75,10 +81,11 @@ fun BattingControlCard(
     )
     
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     
     val controlColor = when {
         data.controlPercentage >= 80 -> colors.statusSuccess
-        data.controlPercentage >= 60 -> colors.goldPrimary
+        data.controlPercentage >= 60 -> hierarchy.secondary.primary
         data.controlPercentage >= 40 -> colors.statusWarning
         else -> colors.statusLive
     }
@@ -110,7 +117,7 @@ fun BattingControlCard(
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 1.5.sp,
-                        color = colors.goldPrimary
+                        color = hierarchy.secondary.primary
                     )
                     Text(
                         text = data.playerName,
@@ -169,7 +176,7 @@ fun BattingControlCard(
                     val sections = listOf(
                         colors.statusLive.copy(alpha = 0.3f),
                         colors.statusWarning.copy(alpha = 0.3f),
-                        colors.goldPrimary.copy(alpha = 0.3f),
+                        hierarchy.secondary.primary.copy(alpha = 0.3f),
                         colors.statusSuccess.copy(alpha = 0.3f)
                     )
                     
@@ -193,7 +200,7 @@ fun BattingControlCard(
                             colorStops = arrayOf(
                                 0f to colors.statusLive,
                                 0.25f to colors.statusWarning,
-                                0.5f to colors.goldPrimary,
+                                0.5f to hierarchy.secondary.primary,
                                 0.75f to colors.statusSuccess,
                                 1f to colors.statusSuccess
                             ),
@@ -279,28 +286,28 @@ fun BattingControlCard(
                     label = "Middled",
                     percentage = data.middlingPercentage,
                     color = colors.statusSuccess,
-                    emoji = "🎯",
+                    icon = Icons.Filled.GpsFixed,
                     modifier = Modifier.weight(1f)
                 )
                 ControlBreakdownItem(
                     label = "Mistimed",
                     percentage = data.mistimingPercentage,
                     color = colors.statusWarning,
-                    emoji = "⚡",
+                    icon = Icons.Filled.FlashOn,
                     modifier = Modifier.weight(1f)
                 )
                 ControlBreakdownItem(
                     label = "Edges",
                     percentage = data.edgesPercentage,
                     color = colors.statusLive.copy(alpha = 0.8f),
-                    emoji = "📐",
+                    icon = Icons.Filled.SwapHoriz,
                     modifier = Modifier.weight(1f)
                 )
                 ControlBreakdownItem(
                     label = "False",
                     percentage = data.falseShotPercentage,
                     color = colors.statusLive,
-                    emoji = "❌",
+                    icon = Icons.Filled.Close,
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -332,7 +339,7 @@ private fun ControlBreakdownItem(
     label: String,
     percentage: Float,
     color: Color,
-    emoji: String,
+    icon: ImageVector,
     modifier: Modifier = Modifier
 ) {
     val colors = BouncerDesignSystem.colors
@@ -353,9 +360,11 @@ private fun ControlBreakdownItem(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(2.dp)
         ) {
-            Text(
-                text = emoji,
-                fontSize = 14.sp
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = color,
+                modifier = Modifier.size(16.dp)
             )
             Text(
                 text = "${percentage.toInt()}%",
@@ -377,6 +386,7 @@ private fun ShotTypeControlRow(
     shotType: ShotTypeControl,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val animatedProgress by animateFloatAsState(
         targetValue = shotType.controlPercentage / 100f,
         animationSpec = tween(1000, easing = FastOutSlowInEasing),
@@ -387,7 +397,7 @@ private fun ShotTypeControlRow(
     
     val shotColor = when {
         shotType.controlPercentage >= 80 -> colors.statusSuccess
-        shotType.controlPercentage >= 60 -> colors.goldPrimary
+        shotType.controlPercentage >= 60 -> hierarchy.secondary.primary
         shotType.controlPercentage >= 40 -> colors.statusWarning
         else -> colors.statusLive
     }
@@ -460,10 +470,11 @@ fun CompactControlIndicator(
     controlPercentage: Float,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val color = when {
         controlPercentage >= 80 -> colors.statusSuccess
-        controlPercentage >= 60 -> colors.goldPrimary
+        controlPercentage >= 60 -> hierarchy.secondary.primary
         controlPercentage >= 40 -> colors.statusWarning
         else -> colors.statusLive
     }

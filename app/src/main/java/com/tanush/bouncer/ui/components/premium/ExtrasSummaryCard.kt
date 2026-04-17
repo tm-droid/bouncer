@@ -55,6 +55,7 @@ fun ExtrasSummaryCard(
     modifier: Modifier = Modifier,
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val animatedProgress = remember { Animatable(0f) }
 
     LaunchedEffect(extras) {
@@ -112,7 +113,7 @@ fun ExtrasSummaryCard(
                     Column {
                         Text(
                             text = "EXTRAS ANALYSIS",
-                            color = colors.goldDark,
+                            color = hierarchy.secondary.primary,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.5.sp,
@@ -130,7 +131,7 @@ fun ExtrasSummaryCard(
                 Column(horizontalAlignment = Alignment.End) {
                     Text(
                         text = "$totalExtras",
-                        color = if (isHighExtras) colors.statusLive else colors.goldDark,
+                        color = if (isHighExtras) colors.statusLive else hierarchy.secondary.primary,
                         fontSize = 32.sp,
                         fontWeight = FontWeight.Bold,
                     )

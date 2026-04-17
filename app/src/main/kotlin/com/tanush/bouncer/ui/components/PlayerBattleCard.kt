@@ -51,6 +51,7 @@ fun PlayerBattleCard(
     onExpandChange: ((Boolean) -> Unit)? = null
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     var isExpanded by remember { mutableStateOf(false) }
     
     val infiniteTransition = rememberInfiniteTransition(label = "battleCard")
@@ -95,20 +96,20 @@ fun PlayerBattleCard(
                             .background(
                                 Brush.radialGradient(
                                     colors = listOf(
-                                        colors.goldPrimary.copy(alpha = 0.3f),
+                                        hierarchy.secondary.primary.copy(alpha = 0.3f),
                                         Color.Transparent
                                     )
                                 ),
                                 CircleShape
                             )
-                            .border(1.5.dp, colors.goldPrimary.copy(alpha = 0.5f), CircleShape),
+                            .border(1.5.dp, hierarchy.secondary.primary.copy(alpha = 0.5f), CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
                             text = batsmanName.take(2).uppercase(),
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Black,
-                            color = colors.goldPrimary
+                            color = hierarchy.secondary.primary
                         )
                     }
                     
@@ -237,7 +238,7 @@ fun PlayerBattleCard(
                 BattleStatItem(
                     label = "RUNS",
                     value = "${headToHead.runsScored}",
-                    color = colors.goldPrimary
+                    color = hierarchy.secondary.primary
                 )
                 
                 BattleStatItem(
@@ -392,6 +393,7 @@ private fun DetailStatColumn(stats: List<Pair<String, String>>) {
 
 @Composable
 private fun DominanceBar(stats: BatsmanVsBowlerStats) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val batsmanDominance = stats.batsmanDominance
     
@@ -406,7 +408,7 @@ private fun DominanceBar(stats: BatsmanVsBowlerStats) {
                 text = "BATSMAN",
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Bold,
-                color = if (batsmanDominance > 0.5f) colors.goldPrimary else colors.textTertiary,
+                color = if (batsmanDominance > 0.5f) hierarchy.secondary.primary else colors.textTertiary,
                 letterSpacing = 1.sp
             )
             Text(
@@ -444,8 +446,8 @@ private fun DominanceBar(stats: BatsmanVsBowlerStats) {
                         .background(
                             Brush.horizontalGradient(
                                 colors = listOf(
-                                    colors.goldDark,
-                                    colors.goldPrimary
+                                    hierarchy.secondary.primary,
+                                    hierarchy.secondary.primary
                                 )
                             )
                         )
@@ -479,7 +481,7 @@ private fun DominanceBar(stats: BatsmanVsBowlerStats) {
                 text = "${(batsmanDominance * 100).toInt()}%",
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
-                color = colors.goldPrimary
+                color = hierarchy.secondary.primary
             )
             Text(
                 text = "${((1 - batsmanDominance) * 100).toInt()}%",
@@ -561,6 +563,7 @@ fun PlayerBattleCardCompact(
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     GlassSurface(
         modifier = modifier
@@ -581,7 +584,7 @@ fun PlayerBattleCardCompact(
                     text = batsmanName,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
-                    color = colors.goldPrimary,
+                    color = hierarchy.secondary.primary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )

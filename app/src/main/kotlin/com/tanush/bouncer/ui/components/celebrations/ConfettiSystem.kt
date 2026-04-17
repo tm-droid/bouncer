@@ -15,6 +15,8 @@ import kotlinx.coroutines.delay
 import kotlin.math.*
 import kotlin.random.Random
 import io.sentry.Sentry
+import com.tanush.bouncer.ui.theme.GoldPrimary
+import com.tanush.bouncer.ui.theme.GoldLight
 
 /**
  * Shape types for confetti particles
@@ -401,7 +403,7 @@ fun CenturyConfetti(
         Color(0xFFFFD700), // Gold
         Color(0xFFFFA500), // Orange Gold
         GoldPrimary,
-        GoldDark,
+        GoldPrimary,
         GoldLight,
         Color.White
     )

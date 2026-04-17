@@ -36,6 +36,7 @@ import com.tanush.bouncer.ui.theme.*
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
+import com.tanush.bouncer.ui.theme.GoldPrimary
 
 /**
  * Enhanced premium match card with advanced animations and glass effects
@@ -52,6 +53,7 @@ fun EnhancedPremiumMatchCard(
     val team2 = match.teams.getOrNull(1)
     val isLive = match.status.contains("live", ignoreCase = true)
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
@@ -96,7 +98,7 @@ fun EnhancedPremiumMatchCard(
             .shadow(
                 elevation = if (isLive) 20.dp else 12.dp,
                 shape = RoundedCornerShape(24.dp),
-                spotColor = if (isLive) colors.statusLive.copy(alpha = 0.3f * liveGlow) else colors.goldPrimary.copy(alpha = 0.2f),
+                spotColor = if (isLive) colors.statusLive.copy(alpha = 0.3f * liveGlow) else hierarchy.secondary.primary.copy(alpha = 0.2f),
                 ambientColor = Color.Black.copy(alpha = 0.4f)
             )
             .clip(RoundedCornerShape(24.dp))
@@ -296,16 +298,17 @@ private fun LiveBadgeEnhanced(glowIntensity: Float) {
 
 @Composable
 private fun MatchTypeBadge(matchType: String) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     Surface(
-        color = colors.goldPrimary.copy(alpha = 0.12f),
+        color = hierarchy.secondary.primary.copy(alpha = 0.12f),
         shape = RoundedCornerShape(10.dp)
     ) {
         Text(
             text = matchType.uppercase(),
             fontSize = 10.sp,
             fontWeight = FontWeight.Bold,
-            color = colors.goldPrimary,
+            color = hierarchy.secondary.primary,
             letterSpacing = 1.sp,
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
         )
@@ -318,6 +321,7 @@ private fun TeamDisplay(
     accentColor: Color,
     isLeading: Boolean
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     Column(
         modifier = Modifier.width(120.dp),
@@ -391,7 +395,7 @@ private fun TeamDisplay(
                 text = team?.score?.replace("-", "/") ?: "",
                 fontSize = 22.sp,
                 fontWeight = FontWeight.Black,
-                color = colors.goldPrimary,
+                color = hierarchy.secondary.primary,
                 letterSpacing = (-0.5).sp
             )
         }
@@ -496,9 +500,10 @@ private fun RecentBallsStrip(balls: List<String>) {
 
 @Composable
 private fun BallChip(ball: String) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val (backgroundColor, textColor) = when {
-        ball == "6" -> colors.goldPrimary.copy(alpha = 0.2f) to colors.goldPrimary
+        ball == "6" -> hierarchy.secondary.primary.copy(alpha = 0.2f) to hierarchy.secondary.primary
         ball == "4" -> colors.statusInfo.copy(alpha = 0.2f) to colors.statusInfo
         ball == "W" -> colors.statusLive.copy(alpha = 0.2f) to colors.statusLive
         ball == "0" || ball == "." -> DotBall.copy(alpha = 0.15f) to DotBall
@@ -531,6 +536,7 @@ fun QuickActionPill(
     modifier: Modifier = Modifier,
     accentColor: Color = GoldPrimary
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
     

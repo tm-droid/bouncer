@@ -55,6 +55,7 @@ fun PlayerComparisonCard(
     modifier: Modifier = Modifier
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val infiniteTransition = rememberInfiniteTransition(label = "comparison")
     
     val vsGlow by infiniteTransition.animateFloat(
@@ -73,7 +74,7 @@ fun PlayerComparisonCard(
             .shadow(
                 elevation = 24.dp,
                 shape = RoundedCornerShape(28.dp),
-                spotColor = colors.goldPrimary.copy(alpha = 0.15f)
+                spotColor = hierarchy.secondary.primary.copy(alpha = 0.15f)
             ),
         colors = CardDefaults.cardColors(containerColor = GlassSurface),
         shape = RoundedCornerShape(28.dp),
@@ -89,7 +90,7 @@ fun PlayerComparisonCard(
                 Icon(
                     Icons.AutoMirrored.Filled.CompareArrows,
                     contentDescription = null,
-                    tint = colors.goldPrimary,
+                    tint = hierarchy.secondary.primary,
                     modifier = Modifier.size(20.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
@@ -112,7 +113,7 @@ fun PlayerComparisonCard(
                 // Player 1
                 PlayerProfile(
                     player = player1,
-                    color = colors.goldPrimary,
+                    color = hierarchy.secondary.primary,
                     modifier = Modifier.weight(1f)
                 )
                 
@@ -124,7 +125,7 @@ fun PlayerComparisonCard(
                         .background(
                             brush = Brush.radialGradient(
                                 colors = listOf(
-                                    colors.goldPrimary.copy(alpha = vsGlow * 0.3f),
+                                    hierarchy.secondary.primary.copy(alpha = vsGlow * 0.3f),
                                     Color.Transparent
                                 )
                             ),
@@ -135,13 +136,13 @@ fun PlayerComparisonCard(
                     Surface(
                         shape = CircleShape,
                         color = GlassSurface,
-                        border = BorderStroke(1.dp, colors.goldPrimary.copy(alpha = vsGlow)),
+                        border = BorderStroke(1.dp, hierarchy.secondary.primary.copy(alpha = vsGlow)),
                         modifier = Modifier.size(36.dp)
                     ) {
                         Box(contentAlignment = Alignment.Center) {
                             Text(
                                 text = "VS",
-                                color = colors.goldPrimary,
+                                color = hierarchy.secondary.primary,
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Black
                             )
@@ -173,7 +174,7 @@ fun PlayerComparisonCard(
                         player2Value = stat2.value,
                         player2Display = stat2.displayValue,
                         isHigherBetter = stat1.isHigherBetter,
-                        player1Color = colors.goldPrimary,
+                        player1Color = hierarchy.secondary.primary,
                         player2Color = colors.statusInfo
                     )
                     Spacer(modifier = Modifier.height(12.dp))
@@ -418,6 +419,7 @@ private fun ComparisonVerdict(
     player2: ComparisonPlayer,
     stats: List<String>
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     var player1Wins = 0
     var player2Wins = 0
@@ -434,7 +436,7 @@ private fun ComparisonVerdict(
     }
     
     val verdict = when {
-        player1Wins > player2Wins -> player1.name to colors.goldPrimary
+        player1Wins > player2Wins -> player1.name to hierarchy.secondary.primary
         player2Wins > player1Wins -> player2.name to colors.statusInfo
         else -> "Draw" to colors.textTertiary
     }
@@ -480,10 +482,11 @@ private fun ComparisonVerdict(
 fun MiniComparisonIndicator(
     value1: Float,
     value2: Float,
-    color1: Color = BouncerDesignSystem.colors.goldPrimary,
+    color1: Color = BouncerDesignSystem.hierarchy.secondary.primary,
     color2: Color = BouncerDesignSystem.colors.statusInfo,
     modifier: Modifier = Modifier.width(60.dp)
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val total = (value1 + value2).coerceAtLeast(0.01f)
     val ratio1 = value1 / total
     

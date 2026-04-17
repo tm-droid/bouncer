@@ -120,6 +120,14 @@ object BouncerDesignSystem {
      * Handcrafted metallic gold color.
      */
     val EtchedGold = com.tanush.bouncer.ui.theme.EtchedGold
+
+    /**
+     * 60-30-10 color hierarchy: dominant (60%), secondary/team (30%), accent/gold (10%).
+     */
+    val hierarchy: ColorHierarchy
+        @Composable
+        @ReadOnlyComposable
+        get() = LocalColorHierarchy.current
 }
 
 /**
@@ -237,6 +245,17 @@ fun BouncerTheme(
     val bouncerDimensions = BouncerDimensions()
     val bouncerShapes = BouncerShapes()
     
+    // 60-30-10 color hierarchy
+    val teamScheme = LocalTeamColorScheme.current
+    val colorHierarchy = buildColorHierarchy(
+        teamPrimary = teamScheme.primary,
+        teamSecondary = teamScheme.secondary,
+        teamSurface = teamScheme.surface,
+        teamOnPrimary = teamScheme.onPrimary,
+        teamOnSurface = teamScheme.onSurface,
+        palette = variantPalette
+    )
+    
     // System bars styling
     val view = LocalView.current
     if (!view.isInEditMode) {
@@ -271,7 +290,8 @@ fun BouncerTheme(
         LocalTeamColorScheme provides bouncerColors.team,
         LocalThemeVariant provides themeVariant,
         LocalVariantPalette provides variantPalette,
-        LocalBackgroundSkin provides backgroundSkin
+        LocalBackgroundSkin provides backgroundSkin,
+        LocalColorHierarchy provides colorHierarchy
     ) {
         MaterialTheme(
             colorScheme = colorScheme,
@@ -349,7 +369,15 @@ fun BouncerPreviewTheme(
         LocalBouncerShapes provides bouncerShapes,
         LocalThemeVariant provides themeVariant,
         LocalVariantPalette provides variantPalette,
-        LocalBackgroundSkin provides backgroundSkin
+        LocalBackgroundSkin provides backgroundSkin,
+        LocalColorHierarchy provides buildColorHierarchy(
+            teamPrimary = LegacyTeamSchemes.Default.primary,
+            teamSecondary = LegacyTeamSchemes.Default.secondary,
+            teamSurface = LegacyTeamSchemes.Default.surface,
+            teamOnPrimary = LegacyTeamSchemes.Default.onPrimary,
+            teamOnSurface = LegacyTeamSchemes.Default.onSurface,
+            palette = variantPalette
+        )
     ) {
         MaterialTheme(
             colorScheme = colorScheme,

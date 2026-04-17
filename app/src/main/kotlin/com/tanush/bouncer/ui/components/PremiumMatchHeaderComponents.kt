@@ -83,6 +83,7 @@ fun PremiumMatchHeader(
     )
     
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
 
     Box(
         modifier = modifier
@@ -91,7 +92,7 @@ fun PremiumMatchHeader(
             .background(
                 brush = Brush.verticalGradient(
                     colors = listOf(
-                        colors.goldPrimary.copy(alpha = 0.12f),
+                        hierarchy.secondary.primary.copy(alpha = 0.12f),
                         colors.backgroundBase
                     )
                 )
@@ -112,7 +113,7 @@ fun PremiumMatchHeader(
                 Column {
                     Text(
                         text = seriesName.uppercase(),
-                        color = colors.goldPrimary,
+                        color = hierarchy.secondary.primary,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Black,
                         letterSpacing = 2.sp,
@@ -147,7 +148,7 @@ fun PremiumMatchHeader(
                         .padding(horizontal = 20.dp)
                         .size(56.dp)
                         .background(colors.glassSurface.copy(alpha = 0.03f), CircleShape)
-                        .border(0.5.dp, colors.goldPrimary.copy(alpha = 0.3f), CircleShape),
+                        .border(0.5.dp, hierarchy.secondary.primary.copy(alpha = 0.3f), CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
@@ -187,6 +188,7 @@ private fun TeamHeaderDisplay(
     logoUrl: String?,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
 
     Column(
@@ -204,7 +206,7 @@ private fun TeamHeaderDisplay(
                     .size(80.dp)
                     .blur(20.dp)
                     .alpha(0.2f)
-                    .background(colors.goldPrimary, CircleShape)
+                    .background(hierarchy.secondary.primary, CircleShape)
             )
             
             Box(
@@ -215,7 +217,7 @@ private fun TeamHeaderDisplay(
                     .border(
                         width = 1.dp,
                         brush = Brush.verticalGradient(
-                            colors = listOf(colors.goldPrimary, Color.Transparent)
+                            colors = listOf(hierarchy.secondary.primary, Color.Transparent)
                         ),
                         shape = CircleShape
                     ),
@@ -231,7 +233,7 @@ private fun TeamHeaderDisplay(
                 } else {
                     Text(
                         text = name.take(3).uppercase(),
-                        color = colors.goldPrimary,
+                        color = hierarchy.secondary.primary,
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Black
                     )
@@ -293,6 +295,7 @@ fun VenueCard(
     venue: VenueInfo,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
 
     Box(
@@ -302,7 +305,7 @@ fun VenueCard(
             .background(colors.glassSurface)
             .border(
                 width = 0.5.dp,
-                brush = Brush.linearGradient(listOf(colors.goldPrimary.copy(alpha = 0.3f), Color.Transparent)),
+                brush = Brush.linearGradient(listOf(hierarchy.secondary.primary.copy(alpha = 0.3f), Color.Transparent)),
                 shape = RoundedCornerShape(24.dp)
             )
     ) {
@@ -342,13 +345,13 @@ fun VenueCard(
                     modifier = Modifier
                         .size(48.dp)
                         .clip(CircleShape)
-                        .background(colors.goldPrimary.copy(alpha = 0.1f)),
+                        .background(hierarchy.secondary.primary.copy(alpha = 0.1f)),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = Icons.Default.Stadium,
                         contentDescription = null,
-                        tint = colors.goldPrimary,
+                        tint = hierarchy.secondary.primary,
                         modifier = Modifier.size(24.dp)
                     )
                 }
@@ -356,7 +359,7 @@ fun VenueCard(
                 Column {
                     Text(
                         text = "STADIUM TELEMETRY",
-                        color = colors.goldPrimary,
+                        color = hierarchy.secondary.primary,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Black,
                         letterSpacing = 2.sp
@@ -420,6 +423,7 @@ fun WeatherCard(
     weather: WeatherInfo,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
 
     Box(
@@ -429,7 +433,7 @@ fun WeatherCard(
             .background(colors.glassSurface)
             .border(
                 width = 0.5.dp,
-                brush = Brush.linearGradient(listOf(colors.goldPrimary.copy(alpha = 0.3f), Color.Transparent)),
+                brush = Brush.linearGradient(listOf(hierarchy.secondary.primary.copy(alpha = 0.3f), Color.Transparent)),
                 shape = RoundedCornerShape(24.dp)
             )
             .padding(24.dp)
@@ -460,7 +464,7 @@ fun WeatherCard(
                     Icon(
                         imageVector = weatherIcon,
                         contentDescription = null,
-                        tint = colors.goldPrimary,
+                        tint = hierarchy.secondary.primary,
                         modifier = Modifier.size(32.dp)
                     )
                 }
@@ -468,7 +472,7 @@ fun WeatherCard(
                 Column {
                     Text(
                         text = "ATMOSPHERIC DATA",
-                        color = colors.goldPrimary,
+                        color = hierarchy.secondary.primary,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Black,
                         letterSpacing = 1.5.sp
@@ -501,11 +505,12 @@ fun WeatherCard(
 
 @Composable
 private fun WeatherStatItemCompact(icon: ImageVector, value: String, label: String) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
 
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(text = "$value $label", color = colors.textPrimary, fontSize = 11.sp, fontWeight = FontWeight.Black)
-        Icon(imageVector = icon, contentDescription = null, tint = colors.goldPrimary.copy(alpha = 0.6f), modifier = Modifier.size(12.dp))
+        Icon(imageVector = icon, contentDescription = null, tint = hierarchy.secondary.primary.copy(alpha = 0.6f), modifier = Modifier.size(12.dp))
     }
 }
 
@@ -517,6 +522,7 @@ fun PitchReportCard(
     battingFriendly: Float,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
 
     Box(
@@ -526,7 +532,7 @@ fun PitchReportCard(
             .background(colors.glassSurface)
             .border(
                 width = 0.5.dp,
-                brush = Brush.linearGradient(listOf(colors.goldPrimary.copy(alpha = 0.3f), Color.Transparent)),
+                brush = Brush.linearGradient(listOf(hierarchy.secondary.primary.copy(alpha = 0.3f), Color.Transparent)),
                 shape = RoundedCornerShape(24.dp)
             )
             .padding(24.dp)
@@ -540,7 +546,7 @@ fun PitchReportCard(
                 Column {
                     Text(
                         text = "SURFACE ANALYSIS",
-                        color = colors.goldPrimary,
+                        color = hierarchy.secondary.primary,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Black,
                         letterSpacing = 2.sp
@@ -553,7 +559,7 @@ fun PitchReportCard(
                     )
                 }
                 
-                Icon(Icons.Default.AutoAwesome, null, tint = colors.goldPrimary.copy(alpha = 0.3f), modifier = Modifier.size(20.dp))
+                Icon(Icons.Default.AutoAwesome, null, tint = hierarchy.secondary.primary.copy(alpha = 0.3f), modifier = Modifier.size(20.dp))
             }
             
             PitchVisualization(
@@ -565,7 +571,7 @@ fun PitchReportCard(
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 PitchStatBlock(modifier = Modifier.weight(1f), label = "PACE", value = paceFriendly, color = Color(0xFF3B82F6))
                 PitchStatBlock(modifier = Modifier.weight(1f), label = "SPIN", value = spinFriendly, color = Color(0xFF10B981))
-                PitchStatBlock(modifier = Modifier.weight(1f), label = "BAT", value = battingFriendly, color = colors.goldPrimary)
+                PitchStatBlock(modifier = Modifier.weight(1f), label = "BAT", value = battingFriendly, color = hierarchy.secondary.primary)
             }
         }
     }
@@ -601,6 +607,7 @@ private fun PitchVisualization(
     spinFriendly: Float,
     battingFriendly: Float
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val animatedPace by animateFloatAsState(targetValue = paceFriendly, animationSpec = tween(1500), label = "pace")
     val animatedSpin by animateFloatAsState(targetValue = spinFriendly, animationSpec = tween(1500), label = "spin")
@@ -627,7 +634,7 @@ private fun PitchVisualization(
         
         val angles = listOf(-90f, 30f, 150f)
         val values = listOf(animatedPace, animatedSpin, animatedBat)
-        val segmentColors = listOf(Color(0xFF3B82F6), Color(0xFF10B981), colors.goldPrimary)
+        val segmentColors = listOf(Color(0xFF3B82F6), Color(0xFF10B981), hierarchy.secondary.primary)
         
         val path = Path()
         angles.forEachIndexed { index, angle ->
@@ -650,7 +657,7 @@ private fun PitchVisualization(
         }
         path.close()
         
-        drawPath(path = path, brush = Brush.radialGradient(listOf(colors.goldPrimary.copy(alpha = 0.15f), Color.Transparent)), alpha = 0.5f)
-        drawPath(path = path, color = colors.goldPrimary, style = Stroke(width = 2.dp.toPx()))
+        drawPath(path = path, brush = Brush.radialGradient(listOf(hierarchy.secondary.primary.copy(alpha = 0.15f), Color.Transparent)), alpha = 0.5f)
+        drawPath(path = path, color = hierarchy.secondary.primary, style = Stroke(width = 2.dp.toPx()))
     }
 }

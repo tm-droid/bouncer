@@ -33,6 +33,7 @@ fun EmptyStateView(
     onAction: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -44,7 +45,7 @@ fun EmptyStateView(
             imageVector = icon,
             contentDescription = null,
             modifier = Modifier.size(48.dp),
-            tint = BouncerDesignSystem.colors.goldPrimary
+            tint = BouncerDesignSystem.hierarchy.secondary.primary
         )
 
         Spacer(modifier = Modifier.height(16.dp))

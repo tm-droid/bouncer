@@ -50,6 +50,7 @@ fun HeadToHeadPremiumCard(
     modifier: Modifier = Modifier
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val infiniteTransition = rememberInfiniteTransition(label = "h2hGlow")
     val glowAlpha by infiniteTransition.animateFloat(
         initialValue = 0.2f,
@@ -72,7 +73,7 @@ fun HeadToHeadPremiumCard(
             Brush.linearGradient(
                 colors = listOf(
                     team1.primaryColor.copy(alpha = glowAlpha),
-                    colors.goldPrimary.copy(alpha = 0.3f),
+                    hierarchy.secondary.primary.copy(alpha = 0.3f),
                     team2.primaryColor.copy(alpha = glowAlpha)
                 )
             )
@@ -88,7 +89,7 @@ fun HeadToHeadPremiumCard(
                         drawCircle(
                             brush = Brush.radialGradient(
                                 colors = listOf(
-                                    colors.goldPrimary.copy(alpha = 0.08f),
+                                    hierarchy.secondary.primary.copy(alpha = 0.08f),
                                     Color.Transparent
                                 )
                             ),
@@ -111,7 +112,7 @@ fun HeadToHeadPremiumCard(
                 ) {
                     Text(
                         text = "HEAD TO HEAD",
-                        color = colors.goldPrimary,
+                        color = hierarchy.secondary.primary,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Black,
                         letterSpacing = 2.sp
@@ -145,17 +146,17 @@ fun HeadToHeadPremiumCard(
                             .size(48.dp)
                             .clip(CircleShape)
                             .background(colors.glassBorderHighlight)
-                            .border(1.dp, colors.goldPrimary.copy(alpha = 0.5f), CircleShape)
+                            .border(1.dp, hierarchy.secondary.primary.copy(alpha = 0.5f), CircleShape)
                             .shadow(
                                 elevation = 8.dp,
                                 shape = CircleShape,
-                                spotColor = colors.goldPrimary
+                                spotColor = hierarchy.secondary.primary
                             ),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
                             text = "VS",
-                            color = colors.goldPrimary,
+                            color = hierarchy.secondary.primary,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Black
                         )
@@ -437,6 +438,7 @@ fun TacticalMatrixCard(
     metrics: List<TacticalMetric>,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     Surface(
         modifier = modifier
@@ -444,7 +446,7 @@ fun TacticalMatrixCard(
             .padding(horizontal = 16.dp),
         shape = RoundedCornerShape(20.dp),
         color = colors.glassSurface,
-        border = BorderStroke(0.5.dp, colors.goldPrimary.copy(alpha = 0.15f))
+        border = BorderStroke(0.5.dp, hierarchy.secondary.primary.copy(alpha = 0.15f))
     ) {
         Column(
             modifier = Modifier.padding(20.dp)

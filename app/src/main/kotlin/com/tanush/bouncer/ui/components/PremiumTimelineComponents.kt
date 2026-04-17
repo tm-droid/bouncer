@@ -29,6 +29,8 @@ import com.tanush.bouncer.ui.theme.*
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.random.Random
+import com.tanush.bouncer.ui.theme.GoldPrimary
+import com.tanush.bouncer.ui.theme.GoldLight
 
 /**
  * Match timeline event types
@@ -65,6 +67,7 @@ fun PremiumMatchTimeline(
 private fun PremiumTimelineEventItem(event: PremiumTimelineEvent) {
     val infiniteTransition = rememberInfiniteTransition(label = "timeline")
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -89,11 +92,11 @@ private fun PremiumTimelineEventItem(event: PremiumTimelineEvent) {
                         .shadow(
                             elevation = 8.dp,
                             shape = CircleShape,
-                            spotColor = if (event.runs == 6) colors.goldPrimary.copy(alpha = glowAlpha)
+                            spotColor = if (event.runs == 6) hierarchy.secondary.primary.copy(alpha = glowAlpha)
                             else colors.statusInfo.copy(alpha = glowAlpha)
                         )
                         .background(
-                            if (event.runs == 6) colors.goldPrimary else colors.statusInfo,
+                            if (event.runs == 6) hierarchy.secondary.primary else colors.statusInfo,
                             CircleShape
                         ),
                     contentAlignment = Alignment.Center
@@ -178,7 +181,7 @@ private fun PremiumTimelineEventItem(event: PremiumTimelineEvent) {
                         .size(40.dp)
                         .background(
                             Brush.linearGradient(
-                                colors = listOf(colors.goldPrimary, colors.goldPrimary)
+                                colors = listOf(hierarchy.secondary.primary, hierarchy.secondary.primary)
                             ),
                             CircleShape
                         ),
@@ -289,11 +292,11 @@ fun CelebrationOverlay(
                 }
                 .background(
                     when (type) {
-                        CelebrationType.SIX -> colors.goldPrimary.copy(alpha = 0.3f)
+                        CelebrationType.SIX -> GoldPrimary.copy(alpha = 0.3f)
                         CelebrationType.FOUR -> colors.statusInfo.copy(alpha = 0.3f)
                         CelebrationType.WICKET -> colors.statusLive.copy(alpha = 0.3f)
                         CelebrationType.MILESTONE -> colors.statusInfo.copy(alpha = 0.3f)
-                        CelebrationType.VICTORY -> colors.goldDark.copy(alpha = 0.3f)
+                        CelebrationType.VICTORY -> GoldPrimary.copy(alpha = 0.3f)
                     },
                     CircleShape
                 ),
@@ -310,11 +313,11 @@ fun CelebrationOverlay(
                 fontSize = 48.sp,
                 fontWeight = FontWeight.Black,
                 color = when (type) {
-                    CelebrationType.SIX -> colors.goldPrimary
+                    CelebrationType.SIX -> GoldPrimary
                     CelebrationType.FOUR -> colors.statusInfo
                     CelebrationType.WICKET -> colors.statusLive
                     CelebrationType.MILESTONE -> colors.statusInfo
-                    CelebrationType.VICTORY -> colors.goldDark
+                    CelebrationType.VICTORY -> GoldPrimary
                 }
             )
         }
@@ -330,7 +333,7 @@ private data class CelebrationParticle(
     val y: Float = Random.nextFloat() * 0.3f,
     val size: Dp = (4 + Random.nextInt(8)).dp,
     val color: Color = listOf(
-        GoldDark,
+        GoldPrimary,
         GoldLight,
         GoldPrimary,
         StatusInfo,
@@ -427,6 +430,7 @@ fun MomentumIndicator(
     team2Name: String,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val animatedMomentum by animateFloatAsState(
         targetValue = momentum.coerceIn(-1f, 1f),
@@ -492,8 +496,8 @@ fun MomentumIndicator(
                     modifier = Modifier
                         .offset(x = (indicatorPosition * 100).dp - 8.dp)
                         .size(16.dp)
-                        .shadow(8.dp, CircleShape, spotColor = colors.goldDark.copy(alpha = 0.5f))
-                        .background(colors.goldDark, CircleShape)
+                        .shadow(8.dp, CircleShape, spotColor = hierarchy.secondary.primary.copy(alpha = 0.5f))
+                        .background(hierarchy.secondary.primary, CircleShape)
                         .border(2.dp, colors.textPrimary, CircleShape)
                 )
             }
@@ -514,6 +518,7 @@ fun MatchPredictionCard(
     prediction: String = "",
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val team2WinChance = 1f - team1WinChance
     
@@ -627,7 +632,7 @@ fun MatchPredictionCard(
                     modifier = Modifier
                         .fillMaxWidth()
                         .background(
-                            colors.goldDark.copy(alpha = 0.1f),
+                            hierarchy.secondary.primary.copy(alpha = 0.1f),
                             RoundedCornerShape(12.dp)
                         )
                         .padding(12.dp)
@@ -636,7 +641,7 @@ fun MatchPredictionCard(
                         text = prediction,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Medium,
-                        color = colors.goldLight,
+                        color = hierarchy.secondary.secondary,
                         textAlign = TextAlign.Center,
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -659,6 +664,7 @@ fun InningsComparisonCard(
     innings2Label: String = "2nd Innings",
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val maxScore = maxOf(innings1Score, innings2Score).coerceAtLeast(1)
     
@@ -778,7 +784,7 @@ fun InningsComparisonCard(
                     color = when {
                         difference > 0 -> ChartGreen
                         difference < 0 -> colors.statusInfo
-                        else -> colors.goldDark
+                        else -> hierarchy.secondary.primary
                     }
                 )
             }

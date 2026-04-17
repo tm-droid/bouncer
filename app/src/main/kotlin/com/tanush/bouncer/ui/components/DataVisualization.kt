@@ -20,12 +20,14 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.ui.theme.*
 import kotlin.math.cos
 import kotlin.math.min
 import kotlin.math.sin
+import com.tanush.bouncer.ui.theme.GoldPrimary
 
 @Composable
 fun StatCard(
@@ -35,6 +37,7 @@ fun StatCard(
     modifier: Modifier = Modifier
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val shimmer by rememberInfiniteTransition(label = "statShimmer").animateFloat(
         initialValue = 0.7f,
         targetValue = 1f,
@@ -47,7 +50,7 @@ fun StatCard(
     
     Box(
         modifier = modifier
-            .shadow(6.dp, RoundedCornerShape(16.dp), spotColor = colors.goldPrimary.copy(alpha = 0.2f))
+            .shadow(6.dp, RoundedCornerShape(16.dp), spotColor = hierarchy.secondary.primary.copy(alpha = 0.2f))
             .background(
                 Brush.linearGradient(
                     colors = listOf(
@@ -74,10 +77,12 @@ fun StatCard(
             ) {
                 Text(
                     text = value,
-                    color = colors.goldPrimary.copy(alpha = shimmer),
+                    color = hierarchy.secondary.primary.copy(alpha = shimmer),
                     fontSize = 24.sp,
                     fontWeight = FontWeight.ExtraBold,
-                    letterSpacing = 0.5.sp
+                    letterSpacing = 0.5.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
                 trend?.let {
                     TrendIndicator(trend = it)
@@ -108,6 +113,7 @@ fun ProgressBar(
     label: String? = null,
     showPercentage: Boolean = true
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val animatedProgress by animateFloatAsState(
         targetValue = progress.coerceIn(0f, 1f),
@@ -133,7 +139,7 @@ fun ProgressBar(
                 if (showPercentage) {
                     Text(
                         text = "${(animatedProgress * 100).toInt()}%",
-                        color = colors.goldPrimary,
+                        color = hierarchy.secondary.primary,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -155,9 +161,9 @@ fun ProgressBar(
                     .background(
                         Brush.horizontalGradient(
                             colors = listOf(
-                                colors.goldLight,
-                                colors.goldPrimary,
-                                colors.goldDark
+                                hierarchy.secondary.secondary,
+                                hierarchy.secondary.primary,
+                                hierarchy.secondary.primary
                             )
                         ),
                         RoundedCornerShape(4.dp)
@@ -174,6 +180,7 @@ fun CircularProgressIndicator(
     label: String? = null,
     size: androidx.compose.ui.unit.Dp = 100.dp
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val animatedProgress by animateFloatAsState(
         targetValue = progress.coerceIn(0f, 1f),
@@ -207,10 +214,10 @@ fun CircularProgressIndicator(
             drawArc(
                 brush = Brush.sweepGradient(
                     colors = listOf(
-                        colors.goldLight,
-                        colors.goldPrimary,
-                        colors.goldDark,
-                        colors.goldLight
+                        hierarchy.secondary.secondary,
+                        hierarchy.secondary.primary,
+                        hierarchy.secondary.primary,
+                        hierarchy.secondary.secondary
                     )
                 ),
                 startAngle = -90f,
@@ -225,7 +232,7 @@ fun CircularProgressIndicator(
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
                 text = "${(animatedProgress * 100).toInt()}%",
-                color = colors.goldPrimary,
+                color = hierarchy.secondary.primary,
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Black
             )
@@ -247,6 +254,7 @@ fun BarChart(
     modifier: Modifier = Modifier,
     maxValue: Float? = null
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val max = maxValue ?: data.maxOfOrNull { it.second } ?: 1f
     
@@ -278,9 +286,9 @@ fun BarChart(
                         .background(
                             Brush.verticalGradient(
                                 colors = listOf(
-                                    colors.goldLight,
-                                    colors.goldPrimary,
-                                    colors.goldDark
+                                    hierarchy.secondary.secondary,
+                                    hierarchy.secondary.primary,
+                                    hierarchy.secondary.primary
                                 )
                             ),
                             RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp)
@@ -305,6 +313,7 @@ fun RadarChart(
     modifier: Modifier = Modifier,
     maxValue: Float = 100f
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     Canvas(modifier = modifier.size(200.dp)) {
         val centerX = size.width / 2
         val centerY = size.height / 2
@@ -356,8 +365,8 @@ fun RadarChart(
             path = dataPath,
             brush = Brush.radialGradient(
                 colors = listOf(
-                    GoldLight.copy(alpha = 0.4f),
-                    GoldPrimary.copy(alpha = 0.2f)
+                    hierarchy.secondary.secondary.copy(alpha = 0.4f),
+                    hierarchy.secondary.primary.copy(alpha = 0.2f)
                 ),
                 center = Offset(centerX, centerY),
                 radius = radius
@@ -366,7 +375,7 @@ fun RadarChart(
         
         drawPath(
             path = dataPath,
-            color = GoldPrimary,
+            color = hierarchy.secondary.primary,
             style = Stroke(width = 2.dp.toPx())
         )
     }
@@ -378,6 +387,7 @@ fun MiniSparkline(
     modifier: Modifier = Modifier,
     color: Color = GoldPrimary
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     Canvas(modifier = modifier
         .fillMaxWidth()
         .height(40.dp)

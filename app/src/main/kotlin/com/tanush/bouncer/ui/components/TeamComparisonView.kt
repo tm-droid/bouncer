@@ -86,13 +86,14 @@ fun TeamComparisonView(
     )
     
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     
     Card(
         modifier = modifier
             .shadow(
                 elevation = 20.dp,
                 shape = RoundedCornerShape(28.dp),
-                spotColor = colors.goldDark.copy(alpha = 0.15f),
+                spotColor = hierarchy.secondary.primary.copy(alpha = 0.15f),
                 ambientColor = Color.Black.copy(alpha = 0.3f)
             ),
         colors = CardDefaults.cardColors(containerColor = colors.glassSurface),
@@ -167,6 +168,7 @@ private fun TeamComparisonHeader(
     team1Color: Color,
     team2Color: Color
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val context = LocalContext.current
     val colors = BouncerDesignSystem.colors
     
@@ -233,20 +235,20 @@ private fun TeamComparisonHeader(
                 .background(
                     Brush.radialGradient(
                         colors = listOf(
-                            colors.goldDark.copy(alpha = 0.2f),
-                            colors.goldDark.copy(alpha = 0.05f)
+                            hierarchy.secondary.primary.copy(alpha = 0.2f),
+                            hierarchy.secondary.primary.copy(alpha = 0.05f)
                         )
                     ),
                     CircleShape
                 )
-                .border(1.dp, colors.goldDark.copy(alpha = 0.3f), CircleShape),
+                .border(1.dp, hierarchy.secondary.primary.copy(alpha = 0.3f), CircleShape),
             contentAlignment = Alignment.Center
         ) {
             Text(
                 "VS",
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Black,
-                color = colors.goldDark
+                color = hierarchy.secondary.primary
             )
         }
         
@@ -310,6 +312,7 @@ private fun HeadToHeadRecord(
     team2Color: Color,
     animationProgress: Float
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val totalMatches = headToHead.team1Wins + headToHead.team2Wins + headToHead.draws + headToHead.noResults
     val team1Percentage = if (totalMatches > 0) headToHead.team1Wins.toFloat() / totalMatches else 0f
     val team2Percentage = if (totalMatches > 0) headToHead.team2Wins.toFloat() / totalMatches else 0f
@@ -332,7 +335,7 @@ private fun HeadToHeadRecord(
                 Icon(
                     Icons.Default.EmojiEvents,
                     contentDescription = null,
-                    tint = colors.goldDark,
+                    tint = hierarchy.secondary.primary,
                     modifier = Modifier.size(20.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
@@ -573,6 +576,7 @@ private fun LastFiveMatches(
     team1Color: Color,
     team2Color: Color
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -589,7 +593,7 @@ private fun LastFiveMatches(
                 Icon(
                     Icons.Default.History,
                     contentDescription = null,
-                    tint = colors.goldDark,
+                    tint = hierarchy.secondary.primary,
                     modifier = Modifier.size(18.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
@@ -711,6 +715,7 @@ fun CompactTeamComparison(
     totalMatches: Int,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val team1Ratio = if (totalMatches > 0) team1Wins.toFloat() / totalMatches else 0.5f
     val team2Ratio = if (totalMatches > 0) team2Wins.toFloat() / totalMatches else 0.5f
     
@@ -730,7 +735,7 @@ fun CompactTeamComparison(
             .shadow(
                 elevation = 12.dp,
                 shape = RoundedCornerShape(20.dp),
-                spotColor = colors.goldDark.copy(alpha = 0.1f)
+                spotColor = hierarchy.secondary.primary.copy(alpha = 0.1f)
             ),
         colors = CardDefaults.cardColors(containerColor = colors.glassSurface),
         shape = RoundedCornerShape(20.dp),
@@ -747,7 +752,7 @@ fun CompactTeamComparison(
                 Icon(
                     Icons.Default.Compare,
                     contentDescription = null,
-                    tint = colors.goldDark,
+                    tint = hierarchy.secondary.primary,
                     modifier = Modifier.size(16.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))

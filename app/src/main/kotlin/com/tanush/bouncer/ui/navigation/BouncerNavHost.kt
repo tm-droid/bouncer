@@ -74,7 +74,13 @@ private fun NavGraphBuilder.primaryTabDestinations(
     onMatchClick: (CricketMatch) -> Unit
 ) {
     // Home Tab
-    composable(BouncerScreen.Home.route) {
+    composable(
+        BouncerScreen.Home.route,
+        enterTransition = { BouncerMotion.Transitions.tabEnter() },
+        exitTransition = { BouncerMotion.Transitions.tabExit() },
+        popEnterTransition = { BouncerMotion.Transitions.tabEnter() },
+        popExitTransition = { BouncerMotion.Transitions.tabExit() }
+    ) {
         HomeScreen(
             viewModel = liveActivityViewModel,
             onMatchClick = onMatchClick,
@@ -88,7 +94,13 @@ private fun NavGraphBuilder.primaryTabDestinations(
     }
 
     // All Matches Tab
-    composable(BouncerScreen.Matches.route) {
+    composable(
+        BouncerScreen.Matches.route,
+        enterTransition = { BouncerMotion.Transitions.tabEnter() },
+        exitTransition = { BouncerMotion.Transitions.tabExit() },
+        popEnterTransition = { BouncerMotion.Transitions.tabEnter() },
+        popExitTransition = { BouncerMotion.Transitions.tabExit() }
+    ) {
         AllMatchesScreen(
             viewModel = liveActivityViewModel,
             onBackClick = {
@@ -99,7 +111,13 @@ private fun NavGraphBuilder.primaryTabDestinations(
     }
 
     // Favourites Tab
-    composable(BouncerScreen.Favorites.route) {
+    composable(
+        BouncerScreen.Favorites.route,
+        enterTransition = { BouncerMotion.Transitions.tabEnter() },
+        exitTransition = { BouncerMotion.Transitions.tabExit() },
+        popEnterTransition = { BouncerMotion.Transitions.tabEnter() },
+        popExitTransition = { BouncerMotion.Transitions.tabExit() }
+    ) {
         FavoritesScreen(
             onBackClick = {
                 navController.navigateToTab(BouncerScreen.Home.route)
@@ -112,7 +130,13 @@ private fun NavGraphBuilder.primaryTabDestinations(
     }
 
     // Stats/Trophy Room Tab -> Stats Hub
-    composable(BouncerScreen.Stats.route) {
+    composable(
+        BouncerScreen.Stats.route,
+        enterTransition = { BouncerMotion.Transitions.tabEnter() },
+        exitTransition = { BouncerMotion.Transitions.tabExit() },
+        popEnterTransition = { BouncerMotion.Transitions.tabEnter() },
+        popExitTransition = { BouncerMotion.Transitions.tabExit() }
+    ) {
         StatsHubScreen(
             onBackClick = {
                 if (!navController.popBackStack()) {
@@ -132,7 +156,13 @@ private fun NavGraphBuilder.primaryTabDestinations(
     }
 
     // More Tab
-    composable(BouncerScreen.More.route) {
+    composable(
+        BouncerScreen.More.route,
+        enterTransition = { BouncerMotion.Transitions.tabEnter() },
+        exitTransition = { BouncerMotion.Transitions.tabExit() },
+        popEnterTransition = { BouncerMotion.Transitions.tabEnter() },
+        popExitTransition = { BouncerMotion.Transitions.tabExit() }
+    ) {
         MoreScreen(
             onSettingsClick = {
                 navController.navigateForward(BouncerScreen.Settings.route)

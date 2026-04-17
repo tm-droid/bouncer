@@ -31,6 +31,7 @@ import com.tanush.bouncer.ui.theme.*
  */
 @Composable
 fun PressureIndexHeatmapCard(modifier: Modifier = Modifier) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val infiniteTransition = rememberInfiniteTransition(label = "heatmap")
     val pulseAlpha by infiniteTransition.animateFloat(
         initialValue = 0.3f, targetValue = 0.7f,
@@ -67,7 +68,7 @@ fun PressureIndexHeatmapCard(modifier: Modifier = Modifier) {
             
             drawCircle(
                 brush = Brush.radialGradient(
-                    colors = listOf(GoldPrimary.copy(alpha = 0.3f * pulseAlpha), Color.Transparent)
+                    colors = listOf(hierarchy.secondary.primary.copy(alpha = 0.3f * pulseAlpha), Color.Transparent)
                 ),
                 radius = 160.dp.toPx(),
                 center = Offset(size.width * 0.7f, size.height * 0.3f)
@@ -89,7 +90,7 @@ fun PressureIndexHeatmapCard(modifier: Modifier = Modifier) {
             verticalArrangement = Arrangement.Bottom
         ) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
-                Box(modifier = Modifier.size(8.dp).background(GoldPrimary, RoundedCornerShape(2.dp)))
+                Box(modifier = Modifier.size(8.dp).background(hierarchy.secondary.primary, RoundedCornerShape(2.dp)))
                 Text(
                     "PRESSURE INDICES",
                     color = TextPrimary,
@@ -100,7 +101,7 @@ fun PressureIndexHeatmapCard(modifier: Modifier = Modifier) {
             }
             Text(
                 "AI-POWERED LENGTH ANALYSIS",
-                color = GoldPrimary.copy(alpha = 0.8f),
+                color = hierarchy.secondary.primary.copy(alpha = 0.8f),
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 2.sp

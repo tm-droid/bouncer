@@ -41,7 +41,8 @@ fun CricketBallLoader(
     loadingText: String = "SYNCHRONIZING TELEMETRY..."
 ) {
     val colors = BouncerDesignSystem.colors
-    val goldPrimaryColor = colors.goldPrimary
+    val hierarchy = BouncerDesignSystem.hierarchy
+    val goldPrimaryColor = hierarchy.secondary.primary
     val infiniteTransition = rememberInfiniteTransition(label = "loader")
     
     val rotation by infiniteTransition.animateFloat(
@@ -118,8 +119,9 @@ fun CricketBallLoader(
 fun CricketBallLoadingScreen(
     loadingText: String = "SYNCHRONIZING MATCH ANALYTICS..."
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
-    val goldPrimaryColor = colors.goldPrimary
+    val goldPrimaryColor = hierarchy.secondary.primary
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -141,7 +143,8 @@ fun CricketBallLoadingScreen(
 
 @Composable
 fun MiniCricketBallLoader(modifier: Modifier = Modifier, size: Dp = 24.dp) {
-    val goldPrimaryColor = BouncerDesignSystem.colors.goldPrimary
+    val hierarchy = BouncerDesignSystem.hierarchy
+    val goldPrimaryColor = BouncerDesignSystem.hierarchy.secondary.primary
     val rotation by rememberInfiniteTransition(label = "mini").animateFloat(
         initialValue = 0f,
         targetValue = 360f,

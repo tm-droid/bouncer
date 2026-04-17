@@ -59,6 +59,7 @@ fun TouchRevealChart(
     onPointSelected: ((ChartDataPoint?) -> Unit)? = null,
     content: @Composable BoxScope.(selectedPoint: ChartDataPoint?, touchPosition: Offset?) -> Unit
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     var selectedPoint by remember { mutableStateOf<ChartDataPoint?>(null) }
     var touchPosition by remember { mutableStateOf<Offset?>(null) }
     
@@ -115,6 +116,7 @@ fun AnimatedLineChart(
     strokeWidth: Float = 3f,
     onPointSelected: ((ChartDataPoint?) -> Unit)? = null
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     if (dataPoints.isEmpty()) return
     
     var selectedPoint by remember { mutableStateOf<ChartDataPoint?>(null) }
@@ -278,7 +280,7 @@ fun AnimatedLineChart(
                         // Draw selection indicator
                         if (isSelected) {
                             drawCircle(
-                                color = GoldPrimary,
+                                color = hierarchy.secondary.primary,
                                 radius = pointRadius + 4.dp.toPx(),
                                 center = point,
                                 style = Stroke(width = 2.dp.toPx())
@@ -316,6 +318,7 @@ fun AnimatedBarChart(
     animationDuration: Int = 800,
     onBarSelected: ((Int, String, Float) -> Unit)? = null
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     if (data.isEmpty()) return
     
     val maxValue = data.maxOfOrNull { it.second } ?: 1f
@@ -416,7 +419,7 @@ fun AnimatedBarChart(
             // Selection indicator
             if (isSelected) {
                 drawRoundRect(
-                    color = GoldPrimary,
+                    color = hierarchy.secondary.primary,
                     topLeft = Offset(x - 2.dp.toPx(), y - 2.dp.toPx()),
                     size = Size(barWidth + 4.dp.toPx(), animatedHeight + 4.dp.toPx()),
                     cornerRadius = CornerRadius(8.dp.toPx()),
@@ -592,6 +595,7 @@ fun AreaChart(
     animationDuration: Int = 1200,
     onSeriesSelected: ((Int, ChartDataPoint?) -> Unit)? = null
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     if (dataSeries.isEmpty() || dataSeries.all { it.isEmpty() }) return
     
     val animatedProgress by animateFloatAsState(
@@ -753,7 +757,7 @@ fun AreaChart(
                     
                     if (isPointSelected) {
                         drawCircle(
-                            color = GoldPrimary,
+                            color = hierarchy.secondary.primary,
                             radius = 8.dp.toPx(),
                             center = point,
                             style = Stroke(width = 2.dp.toPx())

@@ -105,9 +105,10 @@ fun PowerplayStatusCard(
     val oversRemaining = powerplayInfo.totalPowerplayOvers - powerplayInfo.currentOver
     
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     // Capture colors for Canvas/draw scopes (non-composable)
     val statusWarningColor = colors.statusWarning
-    val goldDarkColor = colors.goldDark
+    val goldDarkColor = hierarchy.secondary.primary
     val statusInfoColor = colors.statusInfo
     
     Card(
@@ -305,7 +306,7 @@ fun PowerplayStatusCard(
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
                             text = "${powerplayInfo.runs}/${powerplayInfo.wickets}",
-                            color = colors.goldDark,
+                            color = hierarchy.secondary.primary,
                             fontSize = 42.sp,
                             fontWeight = FontWeight.Black
                         )
@@ -365,7 +366,7 @@ fun PowerplayStatusCard(
                             if (powerplayInfo.projectedScore != null) {
                                 Text(
                                     text = " • Projected: ${powerplayInfo.projectedScore}",
-                                    color = colors.goldDark,
+                                    color = hierarchy.secondary.primary,
                                     fontSize = 14.sp,
                                     fontWeight = FontWeight.Bold
                                 )

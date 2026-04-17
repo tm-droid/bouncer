@@ -56,6 +56,7 @@ fun HeroLiveMatchCard(
     onClick: () -> Unit
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val team1 = match.teams.firstOrNull()
     val team2 = match.teams.getOrNull(1)
     val isLive = match.isLive
@@ -78,11 +79,11 @@ fun HeroLiveMatchCard(
             .shadow(
                 elevation = 16.dp,
                 shape = RoundedCornerShape(24.dp),
-                spotColor = colors.goldPrimary.copy(alpha = 0.15f)
+                spotColor = hierarchy.secondary.primary.copy(alpha = 0.15f)
             ),
         shape = RoundedCornerShape(24.dp),
         color = GlassSurface,
-        border = BorderStroke(0.5.dp, colors.goldPrimary.copy(alpha = 0.12f)),
+        border = BorderStroke(0.5.dp, hierarchy.secondary.primary.copy(alpha = 0.12f)),
         onClick = onClick
     ) {
         Column(
@@ -208,6 +209,7 @@ private fun TeamScoreDisplay(
     team: CricketMatch.Team?,
     alignment: Alignment.Horizontal
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     Column(
         horizontalAlignment = alignment,
@@ -221,7 +223,7 @@ private fun TeamScoreDisplay(
                 .background(GlassSurface)
                 .border(
                     width = if (team?.isBatting == true) 2.dp else 0.5.dp,
-                    color = if (team?.isBatting == true) colors.goldPrimary else GlassBorder,
+                    color = if (team?.isBatting == true) hierarchy.secondary.primary else GlassBorder,
                     shape = CircleShape
                 ),
             contentAlignment = Alignment.Center
@@ -246,7 +248,7 @@ private fun TeamScoreDisplay(
         // Score
         Text(
             text = team?.score?.ifEmpty { "-" } ?: "-",
-            color = if (team?.isBatting == true) colors.goldPrimary else colors.textSecondary,
+            color = if (team?.isBatting == true) hierarchy.secondary.primary else colors.textSecondary,
             fontSize = 20.sp,
             fontWeight = FontWeight.Black
         )
@@ -283,6 +285,7 @@ fun MatchCarouselCard(
     match: CricketMatch,
     onClick: () -> Unit
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val team1 = match.teams.firstOrNull()
     val team2 = match.teams.getOrNull(1)
@@ -297,7 +300,7 @@ fun MatchCarouselCard(
             ),
         shape = RoundedCornerShape(20.dp),
         color = GlassSurface,
-        border = BorderStroke(0.5.dp, colors.goldPrimary.copy(alpha = 0.12f)),
+        border = BorderStroke(0.5.dp, hierarchy.secondary.primary.copy(alpha = 0.12f)),
         onClick = onClick
     ) {
         Column(
@@ -349,7 +352,7 @@ fun MatchCarouselCard(
                                     .background(GlassSurface)
                                     .border(
                                         if (team.isBatting) 1.5.dp else 0.5.dp,
-                                        if (team.isBatting) colors.goldPrimary else GlassSurface,
+                                        if (team.isBatting) hierarchy.secondary.primary else GlassSurface,
                                         CircleShape
                                     ),
                                 contentAlignment = Alignment.Center
@@ -371,7 +374,7 @@ fun MatchCarouselCard(
                         
                         Text(
                             text = team.score.ifEmpty { "-" },
-                            color = if (team.isBatting) colors.goldPrimary else colors.textSecondary,
+                            color = if (team.isBatting) hierarchy.secondary.primary else colors.textSecondary,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -498,6 +501,7 @@ private fun TeamScoreRow(
     team: CricketMatch.Team?,
     isBatting: Boolean
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     Row(
         modifier = Modifier
@@ -539,7 +543,7 @@ private fun TeamScoreRow(
         Column(horizontalAlignment = Alignment.End) {
             Text(
                 text = team?.score?.ifEmpty { "-" } ?: "-",
-                color = if (isBatting) colors.goldPrimary else colors.textPrimary,
+                color = if (isBatting) hierarchy.secondary.primary else colors.textPrimary,
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
                 fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
@@ -729,12 +733,13 @@ fun MarketInsightCard(
     badgeColor: Color = StatusSuccess,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     Surface(
         modifier = modifier.height(100.dp),
         shape = RoundedCornerShape(16.dp),
         color = GlassSurface,
-        border = BorderStroke(0.5.dp, colors.goldPrimary.copy(alpha = 0.12f))
+        border = BorderStroke(0.5.dp, hierarchy.secondary.primary.copy(alpha = 0.12f))
     ) {
         Column(
             modifier = Modifier.padding(14.dp),
@@ -748,7 +753,7 @@ fun MarketInsightCard(
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
-                    tint = colors.goldPrimary.copy(alpha = 0.6f),
+                    tint = hierarchy.secondary.primary.copy(alpha = 0.6f),
                     modifier = Modifier.size(18.dp)
                 )
                 
@@ -803,6 +808,7 @@ fun MarketInsightCard(
  */
 @Composable
 fun AppFooter() {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     Column(
         modifier = Modifier
@@ -818,7 +824,7 @@ fun AppFooter() {
             Icon(
                 Icons.Default.SportsCricket,
                 contentDescription = null,
-                tint = colors.goldPrimary.copy(alpha = 0.4f),
+                tint = hierarchy.secondary.primary.copy(alpha = 0.4f),
                 modifier = Modifier.size(16.dp)
             )
             Text(

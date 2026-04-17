@@ -35,6 +35,7 @@ import com.tanush.bouncer.utils.*
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
+import com.tanush.bouncer.ui.theme.GoldPrimary
 
 /**
  * MEGA UI UPGRADE: LiveMatchDashboard (v5.2).
@@ -59,6 +60,7 @@ fun LiveMatchDashboard(
     modifier: Modifier = Modifier
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val infiniteTransition = rememberInfiniteTransition(label = "dashboard")
     
     val livePulse by infiniteTransition.animateFloat(
@@ -78,7 +80,7 @@ fun LiveMatchDashboard(
             .background(Color.White.copy(alpha = 0.07f))
             .border(
                 0.5.dp,
-                Brush.linearGradient(colors = listOf(colors.goldPrimary.copy(alpha = 0.3f), colors.glassSurface)),
+                Brush.linearGradient(colors = listOf(hierarchy.secondary.primary.copy(alpha = 0.3f), colors.glassSurface)),
                 RoundedCornerShape(32.dp)
             )
     ) {
@@ -88,7 +90,7 @@ fun LiveMatchDashboard(
                 .matchParentSize()
                 .background(
                     Brush.radialGradient(
-                        colors = listOf(colors.goldDark.copy(alpha = 0.04f), Color.Transparent),
+                        colors = listOf(hierarchy.secondary.primary.copy(alpha = 0.04f), Color.Transparent),
                         center = Offset(0f, 0f)
                     )
                 )
@@ -107,7 +109,7 @@ fun LiveMatchDashboard(
                 Column {
                     Text(
                         text = "LIVE TELEMETRY STREAM",
-                        color = colors.goldDark,
+                        color = hierarchy.secondary.primary,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Black,
                         letterSpacing = 2.sp
@@ -230,6 +232,7 @@ private fun TeamTechnicalBlock(
     modifier: Modifier = Modifier,
     isRightAligned: Boolean = false
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     Column(
         modifier = modifier,
@@ -243,7 +246,7 @@ private fun TeamTechnicalBlock(
                 .background(colors.glassSurface)
                 .border(
                     width = 1.dp,
-                    brush = if (isBatting) Brush.verticalGradient(listOf(colors.goldDark, Color.Transparent)) else Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.1f), Color.Transparent)),
+                    brush = if (isBatting) Brush.verticalGradient(listOf(hierarchy.secondary.primary, Color.Transparent)) else Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.1f), Color.Transparent)),
                     shape = CircleShape
                 ),
             contentAlignment = Alignment.Center
@@ -269,7 +272,7 @@ private fun TeamTechnicalBlock(
             )
             Text(
                 text = score,
-                color = if (isBatting) colors.goldDark else colors.textSecondary,
+                color = if (isBatting) hierarchy.secondary.primary else colors.textSecondary,
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Black,
                 letterSpacing = (-0.5).sp
@@ -288,6 +291,7 @@ private fun TeamTechnicalBlock(
 
 @Composable
 private fun PrecisionProbabilityGauge(prob: Float) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val animatedProb by animateFloatAsState(targetValue = prob, animationSpec = tween(1500), label = "prob")
     
@@ -297,7 +301,7 @@ private fun PrecisionProbabilityGauge(prob: Float) {
             drawCircle(color = colors.glassSurface, style = Stroke(width = strokeWidth))
             
             drawArc(
-                brush = Brush.sweepGradient(listOf(colors.goldDark, colors.goldLight, colors.goldDark)),
+                brush = Brush.sweepGradient(listOf(hierarchy.secondary.primary, hierarchy.secondary.secondary, hierarchy.secondary.primary)),
                 startAngle = -90f,
                 sweepAngle = animatedProb * 360f,
                 useCenter = false,
@@ -314,7 +318,8 @@ private fun PrecisionProbabilityGauge(prob: Float) {
 }
 
 @Composable
-private fun TechStatMini(label: String, value: String, color: Color = GoldDark) {
+private fun TechStatMini(label: String, value: String, color: Color = GoldPrimary) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(label, color = colors.textMuted, fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
@@ -336,6 +341,7 @@ fun InningsSummaryCard(
     fallOfWickets: List<String>?,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     Box(
         modifier = modifier
@@ -359,7 +365,7 @@ fun InningsSummaryCard(
                 Column {
                     Text(
                         text = "INNINGS 0$inningsNumber",
-                        color = colors.goldDark,
+                        color = hierarchy.secondary.primary,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Black,
                         letterSpacing = 2.sp
@@ -396,7 +402,7 @@ fun InningsSummaryCard(
                 horizontalArrangement = Arrangement.spacedBy(32.dp)
             ) {
                 extras?.let { TechSummaryItem(label = "EXTRAS", value = it) }
-                runRate?.let { TechSummaryItem(label = "RUN RATE", value = it, color = colors.goldPrimary) }
+                runRate?.let { TechSummaryItem(label = "RUN RATE", value = it, color = hierarchy.secondary.primary) }
             }
             
             // Fall of Wickets: Dynamic Rail
@@ -506,6 +512,7 @@ fun LiveMatchMiniWidget(
 
 @Composable
 private fun MiniTeamRow(name: String, score: String, isLive: Boolean) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -522,7 +529,7 @@ private fun MiniTeamRow(name: String, score: String, isLive: Boolean) {
         )
         Text(
             text = score,
-            color = if (isLive) colors.goldDark else colors.textSecondary,
+            color = if (isLive) hierarchy.secondary.primary else colors.textSecondary,
             fontSize = 13.sp,
             fontWeight = FontWeight.Black
         )

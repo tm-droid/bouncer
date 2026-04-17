@@ -38,6 +38,7 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -172,7 +173,7 @@ fun HomeScreen(
                 Column(modifier = Modifier.fillMaxSize()) {
                     // ── 1. Cleaner header ──
                     ModernHomeHeader(
-                        totalCount = currentMatches.size,
+                        totalCount = if (selectedStatus == "Completed") recentMatches.size else currentMatches.size,
                         matchCount = liveMatches.size,
                         selectedStatus = selectedStatus
                     )
@@ -309,7 +310,7 @@ fun HomeScreen(
                         if (recentMatches.isNotEmpty()) {
                             item(key = "recent_header") {
                                 MatchSectionHeader(
-                                    title = "Recent Results",
+                                    title = if (selectedStatus == "Completed") "Completed Results" else "Recent Results",
                                     count = recentMatches.size,
                                     onSeeAll = onMoreMatchesClick
                                 )
@@ -582,7 +583,7 @@ private fun CategoryChipRow(
                 label = "chipBorder_$category"
             )
             val textColor by animateColorAsState(
-                targetValue = if (isSelected) colors.textPrimary else colors.textSecondary,
+                targetValue = if (isSelected) colors.textPrimary else colors.textPrimary.copy(alpha = 0.78f),
                 animationSpec = tween(200),
                 label = "chipText_$category"
             )
@@ -770,6 +771,7 @@ private fun CarouselTeamRow(team: CricketMatch.Team?) {
             text = team?.score ?: "",
             color = if (team?.isBatting == true) colors.goldPrimary else colors.textPrimary,
             fontWeight = FontWeight.Bold,
+            fontFamily = FontFamily.Monospace,
             fontSize = 15.sp
         )
     }

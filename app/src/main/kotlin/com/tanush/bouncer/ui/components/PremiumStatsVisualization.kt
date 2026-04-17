@@ -44,6 +44,7 @@ fun HeadToHeadComparison(
     modifier: Modifier = Modifier
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val total = team1Value + team2Value
     val team1Ratio = if (total > 0) team1Value.toFloat() / total else 0.5f
     
@@ -59,7 +60,7 @@ fun HeadToHeadComparison(
             .shadow(
                 elevation = 8.dp,
                 shape = RoundedCornerShape(16.dp),
-                spotColor = colors.goldDark.copy(alpha = 0.1f)
+                spotColor = hierarchy.secondary.primary.copy(alpha = 0.1f)
             ),
         shape = RoundedCornerShape(16.dp),
         color = colors.glassBackground
@@ -90,7 +91,7 @@ fun HeadToHeadComparison(
                         text = "$team1Value",
                         fontSize = 24.sp,
                         fontWeight = FontWeight.Black,
-                        color = colors.goldDark
+                        color = hierarchy.secondary.primary
                     )
                     Text(
                         text = team1Name,
@@ -132,7 +133,7 @@ fun HeadToHeadComparison(
                             .fillMaxWidth(animatedRatio)
                             .background(
                                 Brush.horizontalGradient(
-                                    colors = listOf(colors.goldDark, colors.goldPrimary)
+                                    colors = listOf(hierarchy.secondary.primary, hierarchy.secondary.primary)
                                 )
                             )
                     )
@@ -150,6 +151,7 @@ fun ScoringZonesChart(
     zones: List<ScoringZone>,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "zones")
     val rotation by infiniteTransition.animateFloat(
@@ -167,7 +169,7 @@ fun ScoringZonesChart(
             .shadow(
                 elevation = 12.dp,
                 shape = RoundedCornerShape(20.dp),
-                spotColor = colors.goldDark.copy(alpha = 0.15f)
+                spotColor = hierarchy.secondary.primary.copy(alpha = 0.15f)
             ),
         shape = RoundedCornerShape(20.dp),
         color = colors.glassBackground
@@ -182,7 +184,7 @@ fun ScoringZonesChart(
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 1.5.sp,
-                color = colors.goldDark
+                color = hierarchy.secondary.primary
             )
             
             Box(
@@ -261,7 +263,7 @@ fun ScoringZonesChart(
                     )
                     
                     drawCircle(
-                        color = GoldDark.copy(alpha = 0.5f),
+                        color = hierarchy.secondary.primary.copy(alpha = 0.5f),
                         radius = 24.dp.toPx(),
                         center = Offset(centerX, centerY),
                         style = Stroke(2.dp.toPx())
@@ -324,6 +326,7 @@ fun RunFlowChart(
     overs: List<OverRuns>,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val maxRuns = overs.maxOfOrNull { it.runs } ?: 10
     
@@ -333,7 +336,7 @@ fun RunFlowChart(
             .shadow(
                 elevation = 12.dp,
                 shape = RoundedCornerShape(20.dp),
-                spotColor = colors.goldDark.copy(alpha = 0.15f)
+                spotColor = hierarchy.secondary.primary.copy(alpha = 0.15f)
             ),
         shape = RoundedCornerShape(20.dp),
         color = colors.glassBackground
@@ -354,7 +357,7 @@ fun RunFlowChart(
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 1.5.sp,
-                    color = colors.goldDark
+                    color = hierarchy.secondary.primary
                 )
                 
                 Text(
@@ -383,7 +386,7 @@ fun RunFlowChart(
                             over.wicket -> StatusLive
                             over.runs >= 15 -> StatusSix
                             over.runs >= 10 -> StatusInfo
-                            over.runs >= 6 -> GoldDark
+                            over.runs >= 6 -> hierarchy.secondary.primary
                             else -> TextSecondary
                         }
                         
@@ -463,6 +466,7 @@ fun MatchComparisonRadar(
     stats: List<RadarComparisonStat>,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "radar")
     val glowPulse by infiniteTransition.animateFloat(
@@ -480,7 +484,7 @@ fun MatchComparisonRadar(
             .shadow(
                 elevation = 12.dp,
                 shape = RoundedCornerShape(20.dp),
-                spotColor = colors.goldDark.copy(alpha = 0.15f)
+                spotColor = hierarchy.secondary.primary.copy(alpha = 0.15f)
             ),
         shape = RoundedCornerShape(20.dp),
         color = colors.glassBackground
@@ -495,7 +499,7 @@ fun MatchComparisonRadar(
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 1.5.sp,
-                color = colors.goldDark
+                color = hierarchy.secondary.primary
             )
             
             Box(
@@ -562,8 +566,8 @@ fun MatchComparisonRadar(
                         path = team1Path,
                         brush = Brush.radialGradient(
                             colors = listOf(
-                                GoldDark.copy(alpha = 0.3f * glowPulse),
-                                GoldDark.copy(alpha = 0.1f)
+                                hierarchy.secondary.primary.copy(alpha = 0.3f * glowPulse),
+                                hierarchy.secondary.primary.copy(alpha = 0.1f)
                             ),
                             center = Offset(centerX, centerY),
                             radius = radius
@@ -573,7 +577,7 @@ fun MatchComparisonRadar(
                     // Team 1 stroke
                     drawPath(
                         path = team1Path,
-                        color = GoldDark,
+                        color = hierarchy.secondary.primary,
                         style = Stroke(2.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
                     )
                     
@@ -616,7 +620,7 @@ fun MatchComparisonRadar(
                         val point1Y = centerY + (sin(angle) * point1Radius).toFloat()
                         
                         drawCircle(
-                            color = GoldDark,
+                            color = hierarchy.secondary.primary,
                             radius = 5.dp.toPx(),
                             center = Offset(point1X, point1Y)
                         )
@@ -640,7 +644,7 @@ fun MatchComparisonRadar(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                TeamLegend(name = team1Name, color = colors.goldDark)
+                TeamLegend(name = team1Name, color = hierarchy.secondary.primary)
                 TeamLegend(name = team2Name, color = colors.statusInfo)
             }
         }
@@ -682,6 +686,7 @@ fun EconomyMeter(
     economy: Float,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val animatedEconomy by animateFloatAsState(
         targetValue = economy.coerceIn(0f, 15f),
@@ -691,7 +696,7 @@ fun EconomyMeter(
     
     val economyColor = when {
         economy <= 4.5f -> colors.statusSuccess
-        economy <= 6.0f -> colors.goldDark
+        economy <= 6.0f -> hierarchy.secondary.primary
         economy <= 8.0f -> colors.statusWarning
         economy <= 10.0f -> colors.statusLive.copy(alpha = 0.8f)
         else -> colors.statusLive
@@ -747,7 +752,7 @@ fun EconomyMeter(
                         brush = Brush.sweepGradient(
                             colors = listOf(
                                 StatusSuccess,
-                                GoldDark,
+                                hierarchy.secondary.primary,
                                 StatusWarning,
                                 StatusLive
                             ),

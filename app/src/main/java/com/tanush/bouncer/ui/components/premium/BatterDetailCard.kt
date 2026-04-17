@@ -62,6 +62,7 @@ fun BatterDetailCard(
     modifier: Modifier = Modifier,
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val infiniteTransition = rememberInfiniteTransition(label = "batter")
 
     val strikeGlow by infiniteTransition.animateFloat(
@@ -96,7 +97,7 @@ fun BatterDetailCard(
                     drawCircle(
                         brush = Brush.radialGradient(
                             colors = listOf(
-                                colors.goldDark.copy(alpha = 0.2f * strikeGlow),
+                                hierarchy.secondary.primary.copy(alpha = 0.2f * strikeGlow),
                                 Color.Transparent,
                             ),
                             center = Offset(100f, 100f),
@@ -128,7 +129,7 @@ fun BatterDetailCard(
                                 drawCircle(
                                     brush = Brush.radialGradient(
                                         colors = listOf(
-                                            colors.goldDark.copy(alpha = strikeGlow * 0.5f),
+                                            hierarchy.secondary.primary.copy(alpha = strikeGlow * 0.5f),
                                             Color.Transparent,
                                         ),
                                     ),
@@ -189,7 +190,7 @@ fun BatterDetailCard(
                                     modifier = Modifier
                                         .size(8.dp)
                                         .clip(CircleShape)
-                                        .background(colors.goldDark),
+                                        .background(hierarchy.secondary.primary),
                                 )
                             }
                         }
@@ -206,7 +207,7 @@ fun BatterDetailCard(
                         Text(
                             text = "${stats.runs}",
                             color = when {
-                                stats.runs >= 100 -> colors.goldDark
+                                stats.runs >= 100 -> hierarchy.secondary.primary
                                 stats.runs >= 50 -> colors.statusSuccess
                                 else -> colors.textPrimary
                             },
@@ -256,7 +257,7 @@ fun BatterDetailCard(
                     BatterStatItem(
                         label = "Strike Rate",
                         value = String.format("%.1f", stats.strikeRate),
-                        color = if (stats.strikeRate > 150) colors.statusSuccess else if (stats.strikeRate < 100) colors.statusLive else colors.goldDark,
+                        color = if (stats.strikeRate > 150) colors.statusSuccess else if (stats.strikeRate < 100) colors.statusLive else hierarchy.secondary.primary,
                     )
 
                     BatterStatItem(
@@ -308,7 +309,7 @@ fun BatterDetailCard(
                                     .background(
                                         when {
                                             stats.controlPercentage > 0.8f -> colors.statusSuccess
-                                            stats.controlPercentage > 0.6f -> colors.goldDark
+                                            stats.controlPercentage > 0.6f -> hierarchy.secondary.primary
                                             else -> colors.statusLive
                                         },
                                     ),

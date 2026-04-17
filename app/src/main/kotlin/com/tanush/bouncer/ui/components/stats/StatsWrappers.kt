@@ -15,12 +15,13 @@ fun WinProbabilityGauge(
     team1Name: String,
     team2Name: String,
     team1Probability: Float,
-    team1Color: Color = BouncerDesignSystem.colors.goldPrimary,
+    team1Color: Color = BouncerDesignSystem.hierarchy.secondary.primary,
     team2Color: Color = BouncerDesignSystem.colors.statusInfo,
     change: String? = "+4.2%",
     isPositive: Boolean = true,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     BaseWinProbabilityGauge(
         team1Name = team1Name,
         team2Name = team2Name,

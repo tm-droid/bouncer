@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.ui.theme.*
+import com.tanush.bouncer.ui.theme.GoldPrimary
 
 /**
  * Quick action widget types
@@ -55,6 +56,7 @@ fun QuickActionsRow(
     actions: List<QuickAction>,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     LazyRow(
         modifier = modifier,
         contentPadding = PaddingValues(horizontal = 20.dp),
@@ -207,6 +209,7 @@ fun LargeActionCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val infiniteTransition = rememberInfiniteTransition(label = "largeAction")
     val shimmerOffset by infiniteTransition.animateFloat(
         initialValue = -1f,
@@ -323,6 +326,7 @@ fun FloatingQuickBar(
     items: List<Pair<ImageVector, () -> Unit>>,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val infiniteTransition = rememberInfiniteTransition(label = "quickBar")
     val glowAlpha by infiniteTransition.animateFloat(
         initialValue = 0.2f,
@@ -339,7 +343,7 @@ fun FloatingQuickBar(
             .shadow(
                 elevation = 20.dp,
                 shape = RoundedCornerShape(28.dp),
-                spotColor = GoldPrimary.copy(alpha = glowAlpha)
+                spotColor = hierarchy.secondary.primary.copy(alpha = glowAlpha)
             ),
         shape = RoundedCornerShape(28.dp),
         color = GlassSurface,
@@ -347,9 +351,9 @@ fun FloatingQuickBar(
             1.dp,
             Brush.horizontalGradient(
                 colors = listOf(
-                    GoldPrimary.copy(alpha = 0.5f),
+                    hierarchy.secondary.primary.copy(alpha = 0.5f),
                     GlassBorder.copy(alpha = 0.3f),
-                    GoldPrimary.copy(alpha = 0.5f)
+                    hierarchy.secondary.primary.copy(alpha = 0.5f)
                 )
             )
         )
@@ -387,6 +391,7 @@ fun FeatureHighlightCard(
     onCtaClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     PremiumGlassCard(modifier = modifier) {
         Column(
             modifier = Modifier.padding(20.dp),
@@ -401,7 +406,7 @@ fun FeatureHighlightCard(
                     modifier = Modifier
                         .size(48.dp)
                         .background(
-                            GoldPrimary.copy(alpha = 0.15f),
+                            hierarchy.secondary.primary.copy(alpha = 0.15f),
                             RoundedCornerShape(14.dp)
                         ),
                     contentAlignment = Alignment.Center
@@ -409,7 +414,7 @@ fun FeatureHighlightCard(
                     Icon(
                         imageVector = icon,
                         contentDescription = null,
-                        tint = GoldPrimary,
+                        tint = hierarchy.secondary.primary,
                         modifier = Modifier.size(26.dp)
                     )
                 }
@@ -490,6 +495,7 @@ fun CompactStatWidget(
     accentColor: Color = GoldPrimary,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(16.dp),
@@ -578,6 +584,7 @@ fun CircularProgressWidget(
     progressColor: Color = GoldPrimary,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val animatedProgress by animateFloatAsState(
         targetValue = progress.coerceIn(0f, 1f),
         animationSpec = tween(1000, easing = FastOutSlowInEasing),
@@ -656,11 +663,12 @@ fun TipCard(
     onDismiss: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(16.dp),
-        color = GoldPrimary.copy(alpha = 0.1f),
-        border = BorderStroke(1.dp, GoldPrimary.copy(alpha = 0.3f))
+        color = hierarchy.secondary.primary.copy(alpha = 0.1f),
+        border = BorderStroke(1.dp, hierarchy.secondary.primary.copy(alpha = 0.3f))
     ) {
         Row(
             modifier = Modifier.padding(16.dp),
@@ -670,7 +678,7 @@ fun TipCard(
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                tint = GoldPrimary,
+                tint = hierarchy.secondary.primary,
                 modifier = Modifier.size(24.dp)
             )
             
@@ -679,7 +687,7 @@ fun TipCard(
                     text = title,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
-                    color = GoldLight
+                    color = hierarchy.secondary.secondary
                 )
                 
                 Spacer(modifier = Modifier.height(4.dp))

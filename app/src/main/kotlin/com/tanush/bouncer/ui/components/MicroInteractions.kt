@@ -34,6 +34,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 import io.sentry.Sentry
+import com.tanush.bouncer.ui.theme.GoldPrimary
 
 // ==========================================
 // BOUNCER - Micro Interactions Library
@@ -114,6 +115,7 @@ fun PressScaleEffect(
     onClick: () -> Unit,
     content: @Composable () -> Unit
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val hapticFeedback = LocalHapticFeedback.current
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
@@ -303,6 +305,7 @@ fun RipplePulse(
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val infiniteTransition = rememberInfiniteTransition(label = "ripple_pulse")
     
     Box(
@@ -590,6 +593,7 @@ fun ProgressMorph(
     cornerRadius: Dp = 4.dp,
     showPulse: Boolean = false
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val animatedProgress by animateFloatAsState(
         targetValue = progress.coerceIn(0f, 1f),
         animationSpec = tween(
@@ -645,6 +649,7 @@ fun CircularProgressMorph(
     strokeWidth: Dp = 4.dp,
     showIndeterminate: Boolean = false
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val animatedProgress by animateFloatAsState(
         targetValue = progress.coerceIn(0f, 1f),
         animationSpec = tween(
@@ -747,6 +752,7 @@ fun TouchFeedback(
     onClick: () -> Unit,
     content: @Composable () -> Unit
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     var touchPosition by remember { mutableStateOf(Offset.Zero) }
     var showRipple by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()

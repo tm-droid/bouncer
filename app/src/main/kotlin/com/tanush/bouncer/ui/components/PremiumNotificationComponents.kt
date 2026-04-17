@@ -28,6 +28,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.ui.theme.*
 import kotlinx.coroutines.delay
+import com.tanush.bouncer.ui.theme.GoldPrimary
+import com.tanush.bouncer.ui.theme.GoldLight
 
 /**
  * Premium snackbar types
@@ -50,6 +52,7 @@ fun PremiumSnackbar(
     duration: Long = 3000L,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val infiniteTransition = rememberInfiniteTransition(label = "snackbar")
     
     val shimmerOffset by infiniteTransition.animateFloat(
@@ -73,7 +76,7 @@ fun PremiumSnackbar(
     val accentColor = when (type) {
         SnackbarType.SUCCESS -> ChartGreen
         SnackbarType.ERROR -> StatusLive
-        SnackbarType.WARNING -> GoldPrimary
+        SnackbarType.WARNING -> hierarchy.secondary.primary
         SnackbarType.INFO -> StatusInfo
         SnackbarType.LIVE -> BoundarySix
     }
@@ -271,6 +274,7 @@ fun PremiumFAB(
     text: String = "",
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     var isPressed by remember { mutableStateOf(false) }
     
     val scale by animateFloatAsState(
@@ -307,7 +311,7 @@ fun PremiumFAB(
                 .graphicsLayer { alpha = glowAlpha }
                 .blur(16.dp)
                 .background(
-                    GoldPrimary.copy(alpha = 0.5f),
+                    hierarchy.secondary.primary.copy(alpha = 0.5f),
                     if (extended) RoundedCornerShape(28.dp) else CircleShape
                 )
         )
@@ -327,9 +331,9 @@ fun PremiumFAB(
                     .background(
                         Brush.linearGradient(
                             colors = listOf(
-                                GoldPrimary,
-                                GoldPrimary,
-                                GoldDark
+                                hierarchy.secondary.primary,
+                                hierarchy.secondary.primary,
+                                hierarchy.secondary.primary
                             )
                         ),
                         if (extended) RoundedCornerShape(28.dp) else CircleShape
@@ -373,6 +377,7 @@ fun AnimatedScoreCounter(
     textSize: Int = 32,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     var previousScore by remember { mutableStateOf(score) }
     var isAnimating by remember { mutableStateOf(false) }
     
@@ -417,7 +422,7 @@ fun AnimatedScoreCounter(
                     text = animatedScore.toString(),
                     fontSize = textSize.sp,
                     fontWeight = FontWeight.Black,
-                    color = GoldPrimary.copy(alpha = glowAlpha),
+                    color = hierarchy.secondary.primary.copy(alpha = glowAlpha),
                     modifier = Modifier
                         .blur(8.dp)
                         .graphicsLayer { alpha = glowAlpha }

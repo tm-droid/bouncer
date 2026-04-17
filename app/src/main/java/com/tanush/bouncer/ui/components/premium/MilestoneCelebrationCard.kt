@@ -82,6 +82,7 @@ fun MilestoneCelebrationCard(
     modifier: Modifier = Modifier,
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val infiniteTransition = rememberInfiniteTransition(label = "milestone")
 
     val celebrationPulse by infiniteTransition.animateFloat(
@@ -114,11 +115,11 @@ fun MilestoneCelebrationCard(
     }
 
     val milestoneColor = when (milestone.milestoneType) {
-        MilestoneType.CENTURY, MilestoneType.DOUBLE_CENTURY, MilestoneType.TRIPLE_CENTURY -> colors.goldDark
+        MilestoneType.CENTURY, MilestoneType.DOUBLE_CENTURY, MilestoneType.TRIPLE_CENTURY -> hierarchy.secondary.primary
         MilestoneType.FIFTY -> Color(0xFFC0C0C0) // Silver
         MilestoneType.FIVE_WICKETS, MilestoneType.TEN_WICKETS -> Color(0xFF00BCD4)
         MilestoneType.FASTEST_FIFTY, MilestoneType.FASTEST_CENTURY -> colors.statusLive
-        else -> colors.goldLight
+        else -> hierarchy.secondary.secondary
     }
 
     val milestoneLabel = when (milestone.milestoneType) {
@@ -232,7 +233,7 @@ fun MilestoneCelebrationCard(
                         Column {
                             Text(
                                 text = "MILESTONE",
-                                color = colors.goldLight,
+                                color = hierarchy.secondary.secondary,
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.Bold,
                                 letterSpacing = 1.5.sp,

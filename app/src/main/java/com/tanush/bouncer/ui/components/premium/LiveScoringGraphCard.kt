@@ -74,8 +74,9 @@ fun LiveScoringGraphCard(
     }
 
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val statusInfoC = colors.statusInfo
-    val goldDarkC = colors.goldDark
+    val goldDarkC = hierarchy.secondary.primary
     val statusSuccessC = colors.statusSuccess
 
     Card(
@@ -120,7 +121,7 @@ fun LiveScoringGraphCard(
                     Column {
                         Text(
                             text = "LIVE SCORING GRAPH",
-                            color = colors.goldLight,
+                            color = hierarchy.secondary.secondary,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.5.sp,
@@ -166,7 +167,7 @@ fun LiveScoringGraphCard(
                     score = scoringData.team1Scores.lastOrNull() ?: 0,
                 )
                 LegendItem(
-                    color = colors.goldDark,
+                    color = hierarchy.secondary.primary,
                     label = scoringData.team2Name,
                     score = if (scoringData.team2Scores.isNotEmpty()) scoringData.team2Scores.last() else null,
                 )
@@ -199,15 +200,17 @@ fun LiveScoringGraphCard(
                         20,
                     )
 
-                    // Draw grid lines
+                    // Draw grid lines (dashed for subtlety)
                     val gridLines = 4
+                    val gridDash = PathEffect.dashPathEffect(floatArrayOf(6f, 6f), 0f)
                     for (i in 0..gridLines) {
                         val y = height - (height * i / gridLines)
                         drawLine(
-                            color = Color.White.copy(alpha = 0.1f),
+                            color = Color.White.copy(alpha = 0.08f),
                             start = Offset(0f, y),
                             end = Offset(width, y),
-                            strokeWidth = 1.dp.toPx(),
+                            strokeWidth = 0.5.dp.toPx(),
+                            pathEffect = gridDash,
                         )
                     }
 
@@ -303,6 +306,20 @@ fun LiveScoringGraphCard(
                             color = statusInfoC,
                             style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round),
                         )
+
+                        // Data-point markers at powerplay/milestone overs
+                        val milestoneOvers = setOf(0, 5, 9, 14, 19)
+                        animatedScores.forEachIndexed { index, score ->
+                            if (index in milestoneOvers && index < animatedScores.size - 1) {
+                                val mx = width * index / maxOvers
+                                val my = height - (height * score / maxScore)
+                                drawCircle(
+                                    color = statusInfoC,
+                                    radius = 2.5.dp.toPx(),
+                                    center = Offset(mx, my),
+                                )
+                            }
+                        }
 
                         // Current point indicator
                         if (animatedScores.isNotEmpty()) {

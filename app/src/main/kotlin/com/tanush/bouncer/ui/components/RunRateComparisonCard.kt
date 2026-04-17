@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.ui.theme.*
 import kotlin.math.max
 import kotlin.math.min
+import com.tanush.bouncer.ui.theme.GoldPrimary
 
 /**
  * Run rate data for each over
@@ -54,6 +55,7 @@ fun RunRateComparisonCard(
     modifier: Modifier = Modifier
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val infiniteTransition = rememberInfiniteTransition(label = "rrShimmer")
     val shimmerOffset by infiniteTransition.animateFloat(
         initialValue = 0f,
@@ -87,7 +89,7 @@ fun RunRateComparisonCard(
             .shadow(
                 elevation = 16.dp,
                 shape = RoundedCornerShape(24.dp),
-                spotColor = colors.goldPrimary.copy(alpha = 0.15f)
+                spotColor = hierarchy.secondary.primary.copy(alpha = 0.15f)
             ),
         colors = CardDefaults.cardColors(containerColor = colors.glassSurface),
         shape = RoundedCornerShape(24.dp),
@@ -109,7 +111,7 @@ fun RunRateComparisonCard(
                     Icon(
                         Icons.AutoMirrored.Filled.ShowChart,
                         contentDescription = null,
-                        tint = colors.goldPrimary,
+                        tint = hierarchy.secondary.primary,
                         modifier = Modifier.size(20.dp)
                     )
                     Text(

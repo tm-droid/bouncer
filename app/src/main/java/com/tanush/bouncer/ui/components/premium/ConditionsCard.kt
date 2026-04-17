@@ -8,6 +8,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Cloud
+import androidx.compose.material.icons.filled.WaterDrop
+import androidx.compose.material.icons.filled.WbCloudy
+import androidx.compose.material.icons.filled.WbSunny
+import androidx.compose.material.icons.filled.WbTwilight
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -56,6 +60,7 @@ fun ConditionsCard(
     modifier: Modifier = Modifier,
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val animatedProgress = remember { Animatable(0f) }
 
     LaunchedEffect(weather, pitch) {
@@ -179,7 +184,7 @@ fun ConditionsCard(
                 
                 PitchCharacteristicRow(label = "PACE", value = pitch.pace, progress = animatedProgress.value, color = colors.statusInfo)
                 PitchCharacteristicRow(label = "BOUNCE", value = pitch.bounce, progress = animatedProgress.value, color = colors.statusSuccess)
-                PitchCharacteristicRow(label = "SPIN", value = pitch.spin, progress = animatedProgress.value, color = colors.goldPrimary.copy(alpha = 0.7f))
+                PitchCharacteristicRow(label = "SPIN", value = pitch.spin, progress = animatedProgress.value, color = hierarchy.secondary.primary.copy(alpha = 0.7f))
                 PitchCharacteristicRow(label = "SEAM", value = pitch.seam, progress = animatedProgress.value, color = colors.statusLive)
             }
 
@@ -211,15 +216,20 @@ fun ConditionsCard(
 @Composable
 private fun WeatherEmoji(condition: String) {
     val colors = BouncerDesignSystem.colors
-    val icon = when (condition) {
-        "Sunny" -> "☀️"
-        "Cloudy" -> "⛅"
-        "Overcast" -> "☁️"
-        "Rain" -> "🌧️"
-        "Drizzle" -> "🌦️"
-        else -> "🌤️"
+    val (icon, tint) = when (condition) {
+        "Sunny" -> Icons.Filled.WbSunny to Gold400
+        "Cloudy" -> Icons.Filled.WbCloudy to TextSecondary
+        "Overcast" -> Icons.Filled.Cloud to TextMuted
+        "Rain" -> Icons.Filled.WaterDrop to ChartBlue
+        "Drizzle" -> Icons.Filled.WaterDrop to ChartBlue.copy(alpha = 0.7f)
+        else -> Icons.Filled.WbTwilight to Gold400.copy(alpha = 0.7f)
     }
-    Text(text = icon, fontSize = 20.sp)
+    Icon(
+        imageVector = icon,
+        contentDescription = condition,
+        tint = tint,
+        modifier = Modifier.size(20.dp)
+    )
 }
 
 @Composable

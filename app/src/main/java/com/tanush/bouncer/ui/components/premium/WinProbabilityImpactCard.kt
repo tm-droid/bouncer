@@ -81,6 +81,7 @@ fun WinProbabilityImpactCard(
     modifier: Modifier = Modifier,
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val infiniteTransition = rememberInfiniteTransition(label = "impact")
 
     val pulseAlpha by infiniteTransition.animateFloat(
@@ -144,7 +145,7 @@ fun WinProbabilityImpactCard(
                     Column {
                         Text(
                             text = "WIN PROBABILITY IMPACT",
-                            color = colors.goldDark,
+                            color = hierarchy.secondary.primary,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.5.sp,
@@ -378,6 +379,7 @@ private fun ImpactMomentRow(
 
 @Composable
 private fun EventTypeBadge(eventType: String) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val (color, icon) = when (eventType) {
         "Wicket" -> Pair(colors.statusLive, "W")
@@ -385,7 +387,7 @@ private fun EventTypeBadge(eventType: String) {
         "Six" -> Pair(colors.statusWarning, "6")
         "Drop" -> Pair(colors.statusWarning, "!")
         "Run Out" -> Pair(colors.statusLive, "RO")
-        else -> Pair(colors.goldDark, "•")
+        else -> Pair(hierarchy.secondary.primary, "•")
     }
 
     Box(

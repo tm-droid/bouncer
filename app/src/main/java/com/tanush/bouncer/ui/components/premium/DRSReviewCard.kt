@@ -43,6 +43,7 @@ fun DRSReviewCard(
     modifier: Modifier = Modifier,
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val infiniteTransition = rememberInfiniteTransition(label = "drs_elite")
     val neonPulse by infiniteTransition.animateFloat(
         initialValue = 0.4f,
@@ -116,7 +117,7 @@ fun DRSReviewCard(
             ) {
                 DrsStatusRow("PITCHING", "IN LINE", ChartCyan)
                 DrsStatusRow("IMPACT", "IN LINE", ChartCyan)
-                DrsStatusRow("WICKETS", "HITTING", colors.goldPrimary)
+                DrsStatusRow("WICKETS", "HITTING", hierarchy.secondary.primary)
             }
         }
 
@@ -124,12 +125,12 @@ fun DRSReviewCard(
         Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
                 text = if (review.isSuccessful) "OUT" else "NOT OUT",
-                color = colors.goldPrimary,
+                color = hierarchy.secondary.primary,
                 fontSize = 52.sp,
                 fontWeight = FontWeight.Black,
                 fontStyle = FontStyle.Italic,
                 letterSpacing = (-2).sp,
-                modifier = Modifier.shadow(20.dp, spotColor = colors.goldPrimary.copy(alpha = 0.4f))
+                modifier = Modifier.shadow(20.dp, spotColor = hierarchy.secondary.primary.copy(alpha = 0.4f))
             )
             Text(
                 "UMPIRE'S DECISION OVERTURNED",
@@ -160,6 +161,7 @@ private fun DrsStatusRow(label: String, value: String, color: Color) {
 
 @Composable
 private fun MetricGlassCard(label: String, value: String, icon: androidx.compose.ui.graphics.vector.ImageVector, modifier: Modifier) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     Surface(
         modifier = modifier.height(100.dp),
@@ -169,7 +171,7 @@ private fun MetricGlassCard(label: String, value: String, icon: androidx.compose
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Box(modifier = Modifier.size(32.dp).background(colors.textPrimary.copy(alpha = 0.05f), CircleShape), contentAlignment = Alignment.Center) {
-                Icon(icon, null, tint = colors.goldPrimary, modifier = Modifier.size(16.dp))
+                Icon(icon, null, tint = hierarchy.secondary.primary, modifier = Modifier.size(16.dp))
             }
             Spacer(modifier = Modifier.weight(1f))
             Text(label, color = colors.textSecondary, fontSize = 9.sp, fontWeight = FontWeight.Bold)

@@ -67,6 +67,7 @@ fun SettingSectionCard(
     content: @Composable () -> Unit
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val rotation = animateFloatAsState(
         targetValue = if (isExpanded) 0f else -90f,
         animationSpec = spring(dampingRatio = 0.8f),
@@ -89,7 +90,7 @@ fun SettingSectionCard(
                     .background(
                         Brush.horizontalGradient(
                             listOf(
-                                colors.goldPrimary.copy(alpha = 0.9f),
+                                hierarchy.secondary.primary.copy(alpha = 0.9f),
                                 colors.statusInfo.copy(alpha = 0.9f)
                             )
                         )
@@ -111,7 +112,7 @@ fun SettingSectionCard(
                 Text(
                     text = title,
                     style = MaterialTheme.typography.titleMedium,
-                    color = colors.goldPrimary,
+                    color = hierarchy.secondary.primary,
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.weight(1f)
                 )
@@ -139,7 +140,7 @@ fun SettingSectionCard(
 
             if (!isExpandable || isExpanded) {
                 Spacer(modifier = Modifier.height(10.dp))
-                HorizontalDivider(color = colors.goldPrimary.copy(alpha = 0.2f), thickness = 0.8.dp)
+                HorizontalDivider(color = hierarchy.secondary.primary.copy(alpha = 0.2f), thickness = 0.8.dp)
                 Spacer(modifier = Modifier.height(10.dp))
                 content()
             }
@@ -157,6 +158,7 @@ fun NotificationToggleItem(
     modifier: Modifier = Modifier,
     enabled: Boolean = true
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val switchScale = animateFloatAsState(
         targetValue = if (checked) 1f else 0.95f,
@@ -178,7 +180,7 @@ fun NotificationToggleItem(
                 .size(36.dp)
                 .clip(CircleShape)
                 .background(colors.backgroundElevated)
-                .border(1.dp, colors.goldPrimary.copy(alpha = 0.25f), CircleShape),
+                .border(1.dp, hierarchy.secondary.primary.copy(alpha = 0.25f), CircleShape),
             contentAlignment = Alignment.Center
         ) {
             Icon(
@@ -281,6 +283,7 @@ fun FrequencySelector(
     onSelect: (NotificationFrequency) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
 
     Row(
@@ -303,7 +306,7 @@ fun FrequencySelector(
                     containerColor = if (selectedState) colors.statusInfo else colors.backgroundElevated,
                     labelColor = if (selectedState) colors.backgroundBase else colors.textPrimary
                 ),
-                border = if (selectedState) null else BorderStroke(1.dp, colors.goldPrimary.copy(alpha = 0.25f))
+                border = if (selectedState) null else BorderStroke(1.dp, hierarchy.secondary.primary.copy(alpha = 0.25f))
             )
         }
     }

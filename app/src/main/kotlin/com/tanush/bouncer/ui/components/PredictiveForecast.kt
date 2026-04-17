@@ -41,6 +41,7 @@ fun PredictiveForecastSection(
     modifier: Modifier = Modifier
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     Column(modifier = modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier
@@ -58,7 +59,7 @@ fun PredictiveForecastSection(
             )
             Text(
                 text = "View History",
-                color = colors.goldPrimary,
+                color = hierarchy.secondary.primary,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Medium
             )
@@ -79,8 +80,9 @@ fun PredictiveForecastSection(
 
 @Composable
 fun PredictiveBallCard(prediction: BallPrediction) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
-    val goldPrimary = colors.goldPrimary
+    val goldPrimary = hierarchy.secondary.primary
     val infiniteTransition = rememberInfiniteTransition(label = "pulse")
     val pulseAlpha by infiniteTransition.animateFloat(
         initialValue = 0.3f,
@@ -191,7 +193,8 @@ private fun PredictionProgressRing(
     isCritical: Boolean,
     pulseAlpha: Float
 ) {
-    val goldPrimary = BouncerDesignSystem.colors.goldPrimary
+    val hierarchy = BouncerDesignSystem.hierarchy
+    val goldPrimary = BouncerDesignSystem.hierarchy.secondary.primary
     val animatedProgress by animateFloatAsState(
         targetValue = probability / 100f,
         animationSpec = tween(1500, easing = FastOutSlowInEasing),

@@ -90,6 +90,7 @@ fun PressureIndexCard(
     modifier: Modifier = Modifier,
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val dimens = BouncerDesignSystem.dimens
     val typography = BouncerDesignSystem.typography
 
@@ -162,7 +163,7 @@ fun PressureIndexCard(
                             .clip(CircleShape)
                             .background(
                                 Brush.linearGradient(
-                                    colors = listOf(colors.goldPrimary, colors.goldLight),
+                                    colors = listOf(hierarchy.secondary.primary, hierarchy.secondary.secondary),
                                 ),
                             ),
                         contentAlignment = Alignment.Center,
@@ -180,7 +181,7 @@ fun PressureIndexCard(
                     Column {
                         Text(
                             text = "PRESSURE INDEX",
-                            color = colors.goldPrimary,
+                            color = hierarchy.secondary.primary,
                             style = typography.labelLarge,
                         )
                         Text(
@@ -408,7 +409,7 @@ fun PressureIndexCard(
                 ) {
                     Text(
                         text = "PRESSURE FACTORS",
-                        color = colors.goldLight,
+                        color = hierarchy.secondary.secondary,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 1.sp,

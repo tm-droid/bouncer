@@ -61,6 +61,7 @@ fun WinProbabilityChartCard(
     modifier: Modifier = Modifier,
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val animatedProgress = remember { Animatable(0f) }
 
     LaunchedEffect(probabilityHistory) {
@@ -90,14 +91,14 @@ fun WinProbabilityChartCard(
                     Box(
                         modifier = Modifier
                             .size(32.dp)
-                            .background(colors.goldPrimary.copy(alpha = 0.1f), CircleShape)
+                            .background(hierarchy.secondary.primary.copy(alpha = 0.1f), CircleShape)
                             .border(0.5.dp, GoldHairline.copy(alpha = 0.3f), CircleShape),
                         contentAlignment = Alignment.Center,
                     ) {
                         Icon(
                             Icons.AutoMirrored.Filled.TrendingUp,
                             contentDescription = null,
-                            tint = colors.goldPrimary,
+                            tint = hierarchy.secondary.primary,
                             modifier = Modifier.size(16.dp),
                         )
                     }
@@ -107,7 +108,7 @@ fun WinProbabilityChartCard(
                     Column {
                         Text(
                             text = "WIN PROBABILITY".uppercase(),
-                            color = colors.goldPrimary,
+                            color = hierarchy.secondary.primary,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Black,
                             letterSpacing = 1.5.sp,
@@ -162,7 +163,7 @@ fun WinProbabilityChartCard(
             Spacer(modifier = Modifier.height(24.dp))
 
             // Capture color for Canvas scope
-            val goldPrimary = colors.goldPrimary
+            val goldPrimary = hierarchy.secondary.primary
 
             // Probability chart - Technical Grid
             Box(
@@ -180,14 +181,16 @@ fun WinProbabilityChartCard(
                     val points = probabilityHistory
                     val maxOver = points.maxOfOrNull { it.over } ?: 20f
 
-                    // Draw subtle technical grid
+                    // Draw subtle technical grid (dashed)
+                    val probGridDash = PathEffect.dashPathEffect(floatArrayOf(6f, 6f), 0f)
                     for (i in 0..4) {
                         val y = height * (i / 4f)
                         drawLine(
-                            color = Color.White.copy(alpha = 0.03f),
+                            color = Color.White.copy(alpha = 0.06f),
                             start = Offset(0f, y),
                             end = Offset(width, y),
-                            strokeWidth = 1f,
+                            strokeWidth = 0.5f,
+                            pathEffect = probGridDash,
                         )
                     }
 

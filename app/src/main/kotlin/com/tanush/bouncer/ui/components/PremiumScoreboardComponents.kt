@@ -73,11 +73,12 @@ fun PremiumPlayerCard(
     )
 
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
 
     PremiumGlassCard(
         modifier = modifier,
         onClick = onClick,
-        accentColor = if (isOnStrike) colors.goldPrimary else colors.goldPrimary
+        accentColor = if (isOnStrike) hierarchy.secondary.primary else hierarchy.secondary.primary
     ) {
         Row(
             modifier = Modifier
@@ -96,7 +97,7 @@ fun PremiumPlayerCard(
                                 Modifier.shadow(
                                     elevation = 8.dp,
                                     shape = CircleShape,
-                                    spotColor = colors.goldPrimary.copy(alpha = strikeGlow)
+                                    spotColor = hierarchy.secondary.primary.copy(alpha = strikeGlow)
                                 )
                             } else Modifier
                         )
@@ -105,15 +106,15 @@ fun PremiumPlayerCard(
                             if (isOnStrike) {
                                 Brush.linearGradient(
                                     colors = listOf(
-                                        colors.goldPrimary.copy(alpha = strikeGlow),
-                                        colors.goldPrimary.copy(alpha = strikeGlow * 0.5f)
+                                        hierarchy.secondary.primary.copy(alpha = strikeGlow),
+                                        hierarchy.secondary.primary.copy(alpha = strikeGlow * 0.5f)
                                     )
                                 )
                             } else {
                                 Brush.linearGradient(
                                     colors = listOf(
-                                        colors.goldLight.copy(alpha = borderAlpha),
-                                        colors.goldPrimary.copy(alpha = borderAlpha * 0.5f)
+                                        hierarchy.secondary.secondary.copy(alpha = borderAlpha),
+                                        hierarchy.secondary.primary.copy(alpha = borderAlpha * 0.5f)
                                     )
                                 )
                             },
@@ -139,7 +140,7 @@ fun PremiumPlayerCard(
                                 text = name.split(" ").map { it.first() }.take(2).joinToString(""),
                                 fontSize = 20.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = colors.goldPrimary
+                                color = hierarchy.secondary.primary
                             )
                         }
                     }
@@ -152,7 +153,7 @@ fun PremiumPlayerCard(
                             .align(Alignment.BottomEnd)
                             .size(18.dp)
                             .graphicsLayer { alpha = strikeGlow }
-                            .background(colors.goldPrimary, CircleShape)
+                            .background(hierarchy.secondary.primary, CircleShape)
                             .border(1.5.dp, colors.glassSurface, CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
@@ -185,7 +186,7 @@ fun PremiumPlayerCard(
                     if (isCaptain) {
                         Box(
                             modifier = Modifier
-                                .background(colors.goldPrimary, RoundedCornerShape(4.dp))
+                                .background(hierarchy.secondary.primary, RoundedCornerShape(4.dp))
                                 .padding(horizontal = 4.dp, vertical = 1.dp)
                         ) {
                             Text(
@@ -231,7 +232,7 @@ fun PremiumPlayerCard(
                         text = primaryStat,
                         fontSize = 22.sp,
                         fontWeight = FontWeight.Black,
-                        color = if (isOnStrike) colors.goldPrimary else colors.textPrimary
+                        color = if (isOnStrike) hierarchy.secondary.primary else colors.textPrimary
                     )
                     if (primaryStatLabel.isNotEmpty()) {
                         Text(
@@ -284,6 +285,7 @@ fun MiniScoreboard(
     requiredRate: String = "",
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val infiniteTransition = rememberInfiniteTransition(label = "scoreboard")
     val shimmerOffset by infiniteTransition.animateFloat(
         initialValue = 0f,
@@ -355,10 +357,10 @@ fun MiniScoreboard(
                     text = score,
                     fontSize = 36.sp,
                     fontWeight = FontWeight.Black,
-                    color = colors.goldLight,
+                    color = hierarchy.secondary.secondary,
                     style = LocalTextStyle.current.copy(
                         shadow = Shadow(
-                            color = colors.goldPrimary.copy(alpha = 0.3f),
+                            color = hierarchy.secondary.primary.copy(alpha = 0.3f),
                             offset = Offset(0f, 2f),
                             blurRadius = 8f
                         )
@@ -504,6 +506,7 @@ fun PartnershipCard(
     player2Balls: Int,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val player1Contribution = if (runs > 0) player1Runs.toFloat() / runs else 0.5f
     
     val animatedContribution by animateFloatAsState(
@@ -541,7 +544,7 @@ fun PartnershipCard(
                         text = "$runs",
                         fontSize = 24.sp,
                         fontWeight = FontWeight.Black,
-                        color = colors.goldPrimary
+                        color = hierarchy.secondary.primary
                     )
                     Text(
                         text = "($balls)",
@@ -700,11 +703,12 @@ fun CurrentOverDisplay(
 
 @Composable
 private fun BallDisplay(ball: String) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
 
     val backgroundColor = when {
         ball == "W" -> colors.statusLive
-        ball == "6" -> colors.goldPrimary
+        ball == "6" -> hierarchy.secondary.primary
         ball == "4" -> colors.statusInfo
         ball.contains("WD") || ball.contains("NB") -> colors.statusWarning
         ball == "0" -> colors.ballDot

@@ -21,6 +21,7 @@ import com.tanush.bouncer.ui.theme.*
 @Composable
 fun StatsOverviewScreen(onBackClick: () -> Unit) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
 
     Scaffold(
         containerColor = Color.Transparent,
@@ -32,7 +33,7 @@ fun StatsOverviewScreen(onBackClick: () -> Unit) {
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Black,
                         letterSpacing = 3.sp,
-                        color = colors.goldPrimary
+                        color = hierarchy.secondary.primary
                     )
                 },
                 navigationIcon = {
@@ -182,6 +183,7 @@ private fun PlayerImpactSection() {
 
 @Composable
 private fun TrendsSection() {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
 
     Column(
@@ -208,7 +210,7 @@ private fun TrendsSection() {
                 Spacer(modifier = Modifier.height(8.dp))
                 MiniSparkline(
                     data = listOf(152f, 160f, 155f, 163f, 168f, 170f, 168.4f),
-                    color = colors.goldPrimary
+                    color = hierarchy.secondary.primary
                 )
             }
             Column(modifier = Modifier.weight(1f)) {

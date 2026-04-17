@@ -107,6 +107,7 @@ fun SquadScreen(
     onPlayerClick: ((Player) -> Unit)? = null
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val typography = BouncerDesignSystem.typography
     val dimens = BouncerDesignSystem.dimens
 
@@ -202,7 +203,7 @@ fun SquadScreen(
                         Icon(
                             imageVector = Icons.Default.Groups,
                             contentDescription = null,
-                            tint = colors.goldPrimary,
+                            tint = hierarchy.secondary.primary,
                             modifier = Modifier.size(dimens.sm + dimens.xs)
                         )
                         Text(
@@ -221,7 +222,7 @@ fun SquadScreen(
                                 .padding(vertical = dimens.lg),
                             contentAlignment = Alignment.Center
                         ) {
-                            CircularProgressIndicator(color = colors.goldPrimary)
+                            CircularProgressIndicator(color = hierarchy.secondary.primary)
                         }
                     }
                 } else {
@@ -341,6 +342,7 @@ private fun PlayerRowCard(
     player: Player,
     onClick: () -> Unit
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val typography = BouncerDesignSystem.typography
     val dimens = BouncerDesignSystem.dimens
@@ -391,7 +393,7 @@ private fun PlayerRowCard(
             }
 
             if (player.isCaptain) {
-                RoleBadge(text = "C", color = colors.goldPrimary)
+                RoleBadge(text = "C", color = hierarchy.secondary.primary)
             }
             if (player.isWicketKeeper) {
                 RoleBadge(text = "WK", color = colors.statusInfo)
@@ -402,6 +404,7 @@ private fun PlayerRowCard(
 
 @Composable
 private fun RoleBadge(text: String, color: Color) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val typography = BouncerDesignSystem.typography
 
@@ -413,7 +416,7 @@ private fun RoleBadge(text: String, color: Color) {
         Text(
             text = text,
             style = typography.labelSmall,
-            color = if (text == "C") colors.goldPrimary else color,
+            color = if (text == "C") hierarchy.secondary.primary else color,
             fontWeight = FontWeight.Bold
         )
     }

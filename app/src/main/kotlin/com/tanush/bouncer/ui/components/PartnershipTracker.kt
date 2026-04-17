@@ -77,6 +77,7 @@ fun PartnershipTracker(
     )
 
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
 
     Card(
         modifier = modifier
@@ -84,7 +85,7 @@ fun PartnershipTracker(
             .shadow(
                 elevation = 16.dp,
                 shape = RoundedCornerShape(24.dp),
-                spotColor = colors.goldPrimary.copy(alpha = 0.12f),
+                spotColor = hierarchy.secondary.primary.copy(alpha = 0.12f),
                 ambientColor = Color.Black.copy(alpha = 0.25f)
             ),
         shape = RoundedCornerShape(24.dp),
@@ -115,7 +116,7 @@ fun PartnershipTracker(
                     text = "$totalRuns runs",
                     fontSize = 14.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = colors.goldPrimary
+                    color = hierarchy.secondary.primary
                 )
             }
             
@@ -160,6 +161,7 @@ private fun CurrentPartnershipCard(
     pulseAlpha: Float,
     shimmerOffset: Float
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
 
     Box(
@@ -169,9 +171,9 @@ private fun CurrentPartnershipCard(
             .background(
                 Brush.linearGradient(
                     colors = listOf(
-                        colors.goldPrimary.copy(alpha = 0.12f),
-                        colors.goldPrimary.copy(alpha = 0.08f),
-                        colors.goldPrimary.copy(alpha = 0.12f)
+                        hierarchy.secondary.primary.copy(alpha = 0.12f),
+                        hierarchy.secondary.primary.copy(alpha = 0.08f),
+                        hierarchy.secondary.primary.copy(alpha = 0.12f)
                     )
                 )
             )
@@ -179,9 +181,9 @@ private fun CurrentPartnershipCard(
                 1.dp,
                 Brush.linearGradient(
                     colors = listOf(
-                        colors.goldPrimary.copy(alpha = pulseAlpha * 0.5f),
-                        colors.goldLight.copy(alpha = 0.3f),
-                        colors.goldPrimary.copy(alpha = pulseAlpha * 0.5f)
+                        hierarchy.secondary.primary.copy(alpha = pulseAlpha * 0.5f),
+                        hierarchy.secondary.secondary.copy(alpha = 0.3f),
+                        hierarchy.secondary.primary.copy(alpha = pulseAlpha * 0.5f)
                     )
                 ),
                 RoundedCornerShape(16.dp)
@@ -254,7 +256,7 @@ private fun CurrentPartnershipCard(
                             text = "${partnership.totalRuns}",
                             fontSize = 36.sp,
                             fontWeight = FontWeight.Black,
-                            color = colors.goldPrimary
+                            color = hierarchy.secondary.primary
                         )
                         
                         // Shimmer overlay
@@ -269,7 +271,7 @@ private fun CurrentPartnershipCard(
                                     brush = Brush.horizontalGradient(
                                         colors = listOf(
                                             Color.Transparent,
-                                            colors.goldLight.copy(alpha = 0.5f),
+                                            hierarchy.secondary.secondary.copy(alpha = 0.5f),
                                             Color.Transparent
                                         ),
                                         startX = size.width * shimmerOffset - size.width * 0.5f,
@@ -295,7 +297,7 @@ private fun CurrentPartnershipCard(
                         fontWeight = FontWeight.Medium,
                         color = when {
                             runRate >= 10 -> colors.statusSuccess
-                            runRate >= 6 -> colors.goldPrimary
+                            runRate >= 6 -> hierarchy.secondary.primary
                             else -> colors.textSecondary
                         }
                     )
@@ -431,6 +433,7 @@ private fun PartnershipBarsChart(
     partnerships: List<Partnership>,
     shimmerOffset: Float
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val maxRuns = partnerships.maxOfOrNull { it.totalRuns } ?: 1
     val colors = BouncerDesignSystem.colors
     
@@ -447,7 +450,7 @@ private fun PartnershipBarsChart(
                 label = "barAnim${partnership.wicketNumber}"
             )
             
-            val barColor = if (partnership.isCurrentPartnership) colors.statusSuccess else colors.goldPrimary
+            val barColor = if (partnership.isCurrentPartnership) colors.statusSuccess else hierarchy.secondary.primary
             
             Row(
                 modifier = Modifier.fillMaxWidth(),

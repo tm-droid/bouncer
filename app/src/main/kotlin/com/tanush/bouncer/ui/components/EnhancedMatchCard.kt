@@ -49,6 +49,7 @@ import com.tanush.bouncer.utils.rememberHapticFeedback
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import io.sentry.Sentry
+import com.tanush.bouncer.ui.theme.GoldPrimary
 
 @Composable
 fun EnhancedMatchCard(
@@ -135,6 +136,7 @@ fun EnhancedMatchCard(
     
     val matchDescription = "Match: ${team1?.name ?: "Team 1"} $score1 versus ${team2?.name ?: "Team 2"} $score2. Status: ${statusInfo.text}"
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     
     Box(
         modifier = modifier
@@ -163,7 +165,7 @@ fun EnhancedMatchCard(
                 interactionSource = interactionSource,
                 indication = ripple(
                     bounded = true,
-                    color = if (isLive) colors.statusInfo.copy(alpha = 0.2f) else colors.goldPrimary.copy(alpha = 0.2f)
+                    color = if (isLive) colors.statusInfo.copy(alpha = 0.2f) else GoldPrimary.copy(alpha = 0.2f)
                 )
             ) {
                 haptic.click()
@@ -192,7 +194,7 @@ fun EnhancedMatchCard(
                             brush = Brush.verticalGradient(
                                 colors = listOf(
                                     Color.Transparent,
-                                    colors.goldPrimary.copy(alpha = 0.08f),
+                                    GoldPrimary.copy(alpha = 0.08f),
                                     Color.Transparent
                                 )
                             )
@@ -264,7 +266,7 @@ fun EnhancedMatchCard(
                             Brush.horizontalGradient(
                                 colors = listOf(
                                     Color.Transparent,
-                                    colors.goldPrimary.copy(alpha = 0.2f),
+                                    GoldPrimary.copy(alpha = 0.2f),
                                     Color.Transparent
                                 )
                             )
@@ -307,6 +309,7 @@ private fun MatchCardHeader(
     isFavorite: Boolean,
     winProb: Float
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val haptic = rememberHapticFeedback()
     val colors = BouncerDesignSystem.colors
     
@@ -318,7 +321,7 @@ private fun MatchCardHeader(
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = match.matchTitle.substringBefore(",").trim().uppercase(),
-                color = colors.goldLight.copy(alpha = 0.8f),
+                color = hierarchy.secondary.secondary.copy(alpha = 0.8f),
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Black,
                 letterSpacing = 1.2.sp,
@@ -359,7 +362,7 @@ private fun MatchCardHeader(
                     Icon(
                         imageVector = if (isFavorite) Icons.Default.Star else Icons.Default.StarBorder,
                         contentDescription = null,
-                        tint = if (isFavorite) colors.goldPrimary else colors.textMuted,
+                        tint = if (isFavorite) hierarchy.secondary.primary else colors.textMuted,
                         modifier = Modifier.size(20.dp)
                     )
                 }
@@ -462,6 +465,7 @@ private fun EnhancedTeamSection(
     isLeft: Boolean,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val context = LocalContext.current
     val logoUrl = TeamLogoManager.getBestLogoUrl(team?.name, team?.logoUrl, 256, 256)
     val colors = BouncerDesignSystem.colors
@@ -476,10 +480,10 @@ private fun EnhancedTeamSection(
                 .shadow(
                     elevation = 12.dp,
                     shape = CircleShape,
-                    spotColor = colors.goldPrimary.copy(alpha = 0.3f)
+                    spotColor = hierarchy.secondary.primary.copy(alpha = 0.3f)
                 )
                 .background(colors.glassSurface, CircleShape)
-                .border(1.dp, colors.goldPrimary.copy(alpha = 0.2f), CircleShape)
+                .border(1.dp, hierarchy.secondary.primary.copy(alpha = 0.2f), CircleShape)
                 .padding(12.dp)
         ) {
             CoilImage(
@@ -525,6 +529,7 @@ private fun MatchCardLiveDetails(
     match: CricketMatch,
     isLive: Boolean
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
@@ -550,7 +555,7 @@ private fun MatchCardLiveDetails(
                         )
                         Text(
                             text = "${batsman.runs}(${batsman.balls})",
-                            color = colors.goldPrimary,
+                            color = hierarchy.secondary.primary,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Black
                         )
@@ -574,7 +579,7 @@ private fun MatchCardLiveDetails(
                     )
                     Text(
                         text = "${bowler.overs}-${bowler.runs}-${bowler.wickets}",
-                        color = colors.goldPrimary,
+                        color = hierarchy.secondary.primary,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Black
                     )

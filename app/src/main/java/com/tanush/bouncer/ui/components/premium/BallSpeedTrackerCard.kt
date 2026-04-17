@@ -58,7 +58,8 @@ fun BallSpeedTrackerCard(
     modifier: Modifier = Modifier,
 ) {
     val colors = BouncerDesignSystem.colors
-    val goldDarkC = colors.goldDark
+    val hierarchy = BouncerDesignSystem.hierarchy
+    val goldDarkC = hierarchy.secondary.primary
     val statusSuccessC = colors.statusSuccess
     val statusWarningC = colors.statusWarning
     val statusLiveC = colors.statusLive
@@ -107,7 +108,7 @@ fun BallSpeedTrackerCard(
                             .clip(CircleShape)
                             .background(
                                 Brush.linearGradient(
-                                    colors = listOf(colors.goldDark, colors.goldPrimary),
+                                    colors = listOf(hierarchy.secondary.primary, hierarchy.secondary.primary),
                                 ),
                             ),
                         contentAlignment = Alignment.Center,
@@ -125,7 +126,7 @@ fun BallSpeedTrackerCard(
                     Column {
                         Text(
                             text = "BALL SPEED TRACKER",
-                            color = colors.goldLight,
+                            color = hierarchy.secondary.secondary,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.5.sp,
@@ -338,7 +339,7 @@ fun BallSpeedTrackerCard(
                 ) {
                     Text(
                         text = "RECENT DELIVERIES",
-                        color = colors.goldLight,
+                        color = hierarchy.secondary.secondary,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 1.sp,

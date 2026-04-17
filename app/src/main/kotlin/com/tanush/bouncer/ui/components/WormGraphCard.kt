@@ -59,6 +59,7 @@ fun WormGraphCard(
     modifier: Modifier = Modifier
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     var selectedPoint by remember { mutableStateOf<Pair<Int, InningsDataPoint>?>(null) }
     val textMeasurer = rememberTextMeasurer()
     
@@ -93,7 +94,7 @@ fun WormGraphCard(
                 Column {
                     Text(
                         "SCORING TRAJECTORY",
-                        color = colors.goldPrimary,
+                        color = hierarchy.secondary.primary,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Black,
                         letterSpacing = 2.sp
@@ -207,7 +208,7 @@ fun WormGraphCard(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
-                    WormStatBlock("MAX SCORE", maxRuns.toString(), colors.goldPrimary)
+                    WormStatBlock("MAX SCORE", maxRuns.toString(), hierarchy.secondary.primary)
                     VerticalDivider(modifier = Modifier.height(24.dp), color = GlassBorder)
                     WormStatBlock("TOTAL OVERS", String.format("%.1f", maxOvers), colors.statusInfo)
                     VerticalDivider(modifier = Modifier.height(24.dp), color = GlassBorder)

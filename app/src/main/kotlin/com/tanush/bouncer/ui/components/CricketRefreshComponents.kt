@@ -29,6 +29,7 @@ import com.tanush.bouncer.ui.theme.*
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
+import com.tanush.bouncer.ui.theme.GoldPrimary
 
 /**
  * Premium cricket ball refresh indicator
@@ -206,8 +207,9 @@ fun CricketBallRefreshIndicator(
 @Composable
 fun WicketLoadingIndicator(
     modifier: Modifier = Modifier,
-    color: Color = GoldDark
+    color: Color = GoldPrimary
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val infiniteTransition = rememberInfiniteTransition(label = "wicket")
     
     val stump1Height by infiniteTransition.animateFloat(
@@ -307,9 +309,10 @@ fun WicketLoadingIndicator(
 fun AnimatedScoreFlip(
     score: String,
     modifier: Modifier = Modifier,
-    color: Color = GoldDark,
+    color: Color = GoldPrimary,
     fontSize: Int = 28
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     var previousScore by remember { mutableStateOf(score) }
     var isFlipping by remember { mutableStateOf(false) }
     
@@ -402,6 +405,7 @@ fun RunRateVisualization(
     
     val maxRate = maxOf(currentRunRate, requiredRunRate, 12f)
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     
     val infiniteTransition = rememberInfiniteTransition(label = "runRate")
     val glowPulse by infiniteTransition.animateFloat(
@@ -418,7 +422,7 @@ fun RunRateVisualization(
         modifier = modifier.shadow(
             elevation = 12.dp,
             shape = RoundedCornerShape(20.dp),
-            spotColor = colors.goldDark.copy(alpha = 0.15f)
+            spotColor = hierarchy.secondary.primary.copy(alpha = 0.15f)
         ),
         shape = RoundedCornerShape(20.dp),
         color = colors.glassSurface
@@ -435,7 +439,7 @@ fun RunRateVisualization(
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 1.5.sp,
-                color = colors.goldDark
+                color = hierarchy.secondary.primary
             )
             
             // Current run rate

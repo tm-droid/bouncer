@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.ui.theme.*
 import kotlin.math.*
 import io.sentry.Sentry
+import com.tanush.bouncer.ui.theme.GoldPrimary
 
 /**
  * Power play phase data
@@ -60,6 +61,7 @@ fun PowerPlayStatsCard(
     modifier: Modifier = Modifier
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val infiniteTransition = rememberInfiniteTransition(label = "powerplay")
     
     // Animated glow for current phase
@@ -197,6 +199,7 @@ private fun PowerPlayPhaseCard(
     teamColor: Color,
     phaseColors: Pair<Color, Color>
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val (accentColor, backgroundColor) = phaseColors
     
@@ -287,7 +290,7 @@ private fun PowerPlayPhaseCard(
                 PhaseStatItem(
                     value = "${phase.sixes}",
                     label = "Sixes",
-                    color = colors.goldPrimary
+                    color = hierarchy.secondary.primary
                 )
                 PhaseStatItem(
                     value = "${phase.dots}",
@@ -311,7 +314,7 @@ private fun PowerPlayPhaseCard(
                     )
                     Text(
                         text = "${String.format("%.1f", phase.boundaryPercentage)}%",
-                        color = if (phase.boundaryPercentage >= 50f) colors.goldPrimary else accentColor,
+                        color = if (phase.boundaryPercentage >= 50f) hierarchy.secondary.primary else accentColor,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -330,7 +333,7 @@ private fun PowerPlayPhaseCard(
                             .fillMaxWidth(fraction = (phase.boundaryPercentage / 100f).coerceIn(0f, 1f))
                             .background(
                                 brush = Brush.horizontalGradient(
-                                    colors = listOf(accentColor, colors.goldPrimary)
+                                    colors = listOf(accentColor, hierarchy.secondary.primary)
                                 ),
                                 shape = RoundedCornerShape(3.dp)
                             )
@@ -477,6 +480,7 @@ fun MiniPowerPlayIndicator(
     teamColor: Color = GoldPrimary,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val isInPowerPlay = powerPlayOvers.any { (start, end) -> 
         currentOver >= start && currentOver <= end 
     }
@@ -525,6 +529,7 @@ fun PhaseComparisonBar(
         .fillMaxWidth()
         .height(12.dp)
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val totalRuns = phases.sumOf { it.runs }.coerceAtLeast(1)
     
     Row(
@@ -534,7 +539,7 @@ fun PhaseComparisonBar(
             val fraction = phase.runs.toFloat() / totalRuns
             val color = when (index) {
                 0 -> StatusInfo
-                1 -> GoldPrimary
+                1 -> hierarchy.secondary.primary
                 2 -> StatusSuccess
                 else -> TextTertiary
             }

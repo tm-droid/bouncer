@@ -45,6 +45,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.ui.theme.*
+import com.tanush.bouncer.ui.theme.GoldPrimary
 
 /**
  * Premium form input and control components
@@ -67,14 +68,15 @@ fun PremiumTextField(
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
     keyboardActions: KeyboardActions = KeyboardActions.Default
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val interactionSource = remember { MutableInteractionSource() }
     val isFocused by interactionSource.collectIsFocusedAsState()
     
     val borderColor by animateColorAsState(
         targetValue = when {
             isError -> Color(0xFFEF4444)
-            isFocused -> GoldPrimary
-            else -> GoldPrimary.copy(alpha = 0.3f)
+            isFocused -> hierarchy.secondary.primary
+            else -> hierarchy.secondary.primary.copy(alpha = 0.3f)
         },
         animationSpec = tween(200),
         label = "borderColor"
@@ -109,7 +111,7 @@ fun PremiumTextField(
                         .alpha(glowAlpha)
                         .blur(8.dp)
                         .background(
-                            color = if (isError) Color(0xFFEF4444) else GoldPrimary,
+                            color = if (isError) Color(0xFFEF4444) else hierarchy.secondary.primary,
                             shape = RoundedCornerShape(12.dp)
                         )
                 )
@@ -134,7 +136,7 @@ fun PremiumTextField(
                     color = if (enabled) TextPrimary else TextMuted,
                     fontSize = 16.sp
                 ),
-                cursorBrush = SolidColor(GoldPrimary),
+                cursorBrush = SolidColor(hierarchy.secondary.primary),
                 keyboardOptions = keyboardOptions,
                 keyboardActions = keyboardActions,
                 interactionSource = interactionSource,
@@ -148,7 +150,7 @@ fun PremiumTextField(
                             Icon(
                                 imageVector = leadingIcon,
                                 contentDescription = null,
-                                tint = if (isFocused) GoldPrimary else TextSecondary,
+                                tint = if (isFocused) hierarchy.secondary.primary else TextSecondary,
                                 modifier = Modifier.size(20.dp)
                             )
                         }
@@ -216,6 +218,7 @@ fun PremiumPasswordField(
     isError: Boolean = false,
     errorMessage: String = ""
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     var passwordVisible by remember { mutableStateOf(false) }
     
     val interactionSource = remember { MutableInteractionSource() }
@@ -224,8 +227,8 @@ fun PremiumPasswordField(
     val borderColor by animateColorAsState(
         targetValue = when {
             isError -> Color(0xFFEF4444)
-            isFocused -> GoldPrimary
-            else -> GoldPrimary.copy(alpha = 0.3f)
+            isFocused -> hierarchy.secondary.primary
+            else -> hierarchy.secondary.primary.copy(alpha = 0.3f)
         },
         animationSpec = tween(200),
         label = "borderColor"
@@ -262,7 +265,7 @@ fun PremiumPasswordField(
                 color = TextPrimary,
                 fontSize = 16.sp
             ),
-            cursorBrush = SolidColor(GoldPrimary),
+            cursorBrush = SolidColor(hierarchy.secondary.primary),
             visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
             interactionSource = interactionSource,
@@ -315,6 +318,7 @@ fun PremiumSwitch(
     modifier: Modifier = Modifier,
     enabled: Boolean = true
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val thumbOffset by animateFloatAsState(
         targetValue = if (checked) 1f else 0f,
         animationSpec = spring(
@@ -325,7 +329,7 @@ fun PremiumSwitch(
     )
     
     val trackColor by animateColorAsState(
-        targetValue = if (checked) GoldPrimary else TextMuted,
+        targetValue = if (checked) hierarchy.secondary.primary else TextMuted,
         animationSpec = tween(200),
         label = "track"
     )
@@ -336,7 +340,7 @@ fun PremiumSwitch(
             .height(28.dp)
             .clip(RoundedCornerShape(14.dp))
             .background(
-                if (checked) GoldPrimary.copy(alpha = 0.3f) else GlassSurface
+                if (checked) hierarchy.secondary.primary.copy(alpha = 0.3f) else GlassSurface
             )
             .border(
                 width = 1.dp,
@@ -355,7 +359,7 @@ fun PremiumSwitch(
                 .background(
                     brush = if (checked) {
                         Brush.linearGradient(
-                            colors = listOf(GoldPrimary, GoldLight)
+                            colors = listOf(hierarchy.secondary.primary, hierarchy.secondary.secondary)
                         )
                     } else {
                         Brush.linearGradient(
@@ -385,6 +389,7 @@ fun PremiumCheckbox(
     label: String = "",
     enabled: Boolean = true
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val scale by animateFloatAsState(
         targetValue = if (checked) 1f else 0f,
         animationSpec = spring(
@@ -395,7 +400,7 @@ fun PremiumCheckbox(
     )
     
     val borderColor by animateColorAsState(
-        targetValue = if (checked) GoldPrimary else TextMuted,
+        targetValue = if (checked) hierarchy.secondary.primary else TextMuted,
         animationSpec = tween(200),
         label = "border"
     )
@@ -411,7 +416,7 @@ fun PremiumCheckbox(
                 .size(24.dp)
                 .clip(RoundedCornerShape(6.dp))
                 .background(
-                    if (checked) GoldPrimary.copy(alpha = 0.2f) else Color.Transparent
+                    if (checked) hierarchy.secondary.primary.copy(alpha = 0.2f) else Color.Transparent
                 )
                 .border(
                     width = 2.dp,
@@ -423,7 +428,7 @@ fun PremiumCheckbox(
             Icon(
                 imageVector = Icons.Default.Check,
                 contentDescription = null,
-                tint = GoldPrimary,
+                tint = hierarchy.secondary.primary,
                 modifier = Modifier
                     .size(16.dp)
                     .scale(scale)
@@ -448,6 +453,7 @@ fun PremiumRadioButton(
     label: String = "",
     enabled: Boolean = true
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val innerScale by animateFloatAsState(
         targetValue = if (selected) 1f else 0f,
         animationSpec = spring(
@@ -458,7 +464,7 @@ fun PremiumRadioButton(
     )
     
     val borderColor by animateColorAsState(
-        targetValue = if (selected) GoldPrimary else TextMuted,
+        targetValue = if (selected) hierarchy.secondary.primary else TextMuted,
         animationSpec = tween(200),
         label = "border"
     )
@@ -487,7 +493,7 @@ fun PremiumRadioButton(
                     .clip(CircleShape)
                     .background(
                         brush = Brush.radialGradient(
-                            colors = listOf(GoldLight, GoldPrimary)
+                            colors = listOf(hierarchy.secondary.secondary, hierarchy.secondary.primary)
                         )
                     )
             )
@@ -512,6 +518,7 @@ fun PremiumSlider(
     steps: Int = 0,
     enabled: Boolean = true
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val normalizedValue = ((value - valueRange.start) / (valueRange.endInclusive - valueRange.start)).coerceIn(0f, 1f)
     
     Column(
@@ -530,7 +537,7 @@ fun PremiumSlider(
                     .fillMaxWidth()
                     .height(6.dp)
                     .clip(RoundedCornerShape(3.dp))
-                    .background(GoldPrimary.copy(alpha = 0.2f))
+                    .background(hierarchy.secondary.primary.copy(alpha = 0.2f))
             )
             
             // Active track
@@ -541,7 +548,7 @@ fun PremiumSlider(
                     .clip(RoundedCornerShape(3.dp))
                     .background(
                         brush = Brush.horizontalGradient(
-                            colors = listOf(GoldPrimary, GoldPrimary)
+                            colors = listOf(hierarchy.secondary.primary, hierarchy.secondary.primary)
                         )
                     )
             )
@@ -559,7 +566,7 @@ fun PremiumSlider(
                         .size(32.dp)
                         .blur(8.dp)
                         .alpha(0.5f)
-                        .background(GoldPrimary, CircleShape)
+                        .background(hierarchy.secondary.primary, CircleShape)
                 )
                 
                 // Thumb button
@@ -569,12 +576,12 @@ fun PremiumSlider(
                         .clip(CircleShape)
                         .background(
                             brush = Brush.radialGradient(
-                                colors = listOf(GoldLight, GoldPrimary)
+                                colors = listOf(hierarchy.secondary.secondary, hierarchy.secondary.primary)
                             )
                         )
                         .border(
                             width = 2.dp,
-                            color = GoldPrimary,
+                            color = hierarchy.secondary.primary,
                             shape = CircleShape
                         )
                 )
@@ -697,13 +704,14 @@ fun InputSegmentedControl(
     onOptionSelected: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     Row(
         modifier = modifier
             .clip(RoundedCornerShape(12.dp))
             .background(GlassSurface)
             .border(
                 width = 1.dp,
-                color = GoldPrimary.copy(alpha = 0.3f),
+                color = hierarchy.secondary.primary.copy(alpha = 0.3f),
                 shape = RoundedCornerShape(12.dp)
             )
             .padding(4.dp),

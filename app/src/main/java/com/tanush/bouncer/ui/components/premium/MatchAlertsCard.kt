@@ -48,6 +48,7 @@ fun MatchAlertsCard(
     modifier: Modifier = Modifier,
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val dimens = BouncerDesign.dimens
     val typography = BouncerDesign.typography
 
@@ -97,7 +98,7 @@ fun MatchAlertsCard(
                             .clip(CircleShape)
                             .background(
                                 Brush.linearGradient(
-                                    colors = listOf(colors.goldPrimary, colors.goldPrimary.copy(alpha = 0.7f)),
+                                    colors = listOf(hierarchy.secondary.primary, hierarchy.secondary.primary.copy(alpha = 0.7f)),
                                 ),
                             ),
                         contentAlignment = Alignment.Center,
@@ -137,7 +138,7 @@ fun MatchAlertsCard(
                     Column {
                         Text(
                             text = "MATCH ALERTS",
-                            color = colors.goldPrimary,
+                            color = hierarchy.secondary.primary,
                             style = typography.labelLarge,
                         )
                         Text(
@@ -188,7 +189,7 @@ fun MatchAlertsCard(
 
                 Text(
                     text = "View ${alerts.size - 5} more alerts →",
-                    color = GoldPrimary,
+                    color = hierarchy.secondary.primary,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Medium,
                     modifier = Modifier.align(Alignment.CenterHorizontally),
@@ -203,11 +204,12 @@ private fun AlertItem(
     alert: MatchAlert,
     alpha: Float,
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val alertConfig = when (alert.type) {
         AlertType.WICKET -> AlertConfig(colors.statusLive, "W", "Wicket")
         AlertType.BOUNDARY -> AlertConfig(BouncerDesignSystem.colors.statusWarning, "B", "Boundary")
-        AlertType.MILESTONE -> AlertConfig(colors.goldPrimary, "M", "Milestone")
+        AlertType.MILESTONE -> AlertConfig(hierarchy.secondary.primary, "M", "Milestone")
         AlertType.RAIN -> AlertConfig(BouncerDesignSystem.colors.statusInfo, "R", "Weather")
         AlertType.INJURY -> AlertConfig(colors.statusWarning, "I", "Injury")
         AlertType.REVIEW -> AlertConfig(Color(0xFF9C27B0), "V", "Review")

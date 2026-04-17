@@ -33,6 +33,8 @@ import com.tanush.bouncer.ui.components.glass.GlassIconButton
 import com.tanush.bouncer.ui.components.glass.GlassSecondaryButton
 import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 import com.tanush.bouncer.viewmodels.NewsViewModel
+import com.tanush.bouncer.ui.theme.GoldSubtle
+import com.tanush.bouncer.ui.theme.GoldPrimary
 
 // =============================================================================
 // News Detail Screen — Full Article Body
@@ -47,6 +49,7 @@ fun NewsDetailScreen(
     modifier: Modifier = Modifier
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val typography = BouncerDesignSystem.typography
     val dimens = BouncerDesignSystem.dimens
 
@@ -86,7 +89,7 @@ fun NewsDetailScreen(
                 Text(
                     text = article.storyType.uppercase().ifBlank { "NEWS" },
                     style = typography.labelLarge,
-                    color = colors.goldPrimary
+                    color = GoldPrimary
                 )
 
                 GlassIconButton(
@@ -159,7 +162,7 @@ fun NewsDetailScreen(
                         Text(
                             text = article.source,
                             style = typography.labelMedium,
-                            color = colors.goldSubtle,
+                            color = GoldSubtle,
                             fontWeight = FontWeight.SemiBold
                         )
                         Spacer(modifier = Modifier.width(dimens.sm))

@@ -62,6 +62,7 @@ fun PitchMapCard(
     modifier: Modifier = Modifier,
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val animatedProgress = remember { Animatable(0f) }
 
     LaunchedEffect(balls) {
@@ -150,7 +151,7 @@ fun PitchMapCard(
 
             // Main Visualization Layer
             // Capture color for Canvas scope
-            val goldPrimary = colors.goldPrimary
+            val goldPrimary = hierarchy.secondary.primary
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
@@ -261,7 +262,7 @@ fun PitchMapCard(
             ) {
                 LegendItem(color = TextTertiary, text = "DOT")
                 LegendItem(color = colors.statusSuccess, text = "RUNS")
-                LegendItem(color = colors.goldPrimary, text = "BDRY")
+                LegendItem(color = hierarchy.secondary.primary, text = "BDRY")
                 LegendItem(color = colors.statusLive, text = "WKT")
             }
         }

@@ -79,6 +79,7 @@ fun PowerPlayAnalysisCard(
     modifier: Modifier = Modifier,
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val infiniteTransition = rememberInfiniteTransition(label = "powerplay")
 
     val pulseAlpha by infiniteTransition.animateFloat(
@@ -142,7 +143,7 @@ fun PowerPlayAnalysisCard(
                     Column {
                         Text(
                             text = "POWERPLAY ANALYSIS",
-                            color = colors.goldDark,
+                            color = hierarchy.secondary.primary,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.5.sp,
@@ -176,8 +177,8 @@ fun PowerPlayAnalysisCard(
             Spacer(modifier = Modifier.height(16.dp))
 
             // Capture colors for Canvas scope
-            val goldDark = colors.goldDark
-            val goldPrimary = colors.goldPrimary
+            val goldDark = hierarchy.secondary.primary
+            val goldPrimary = hierarchy.secondary.primary
             val statusInfoColor = colors.statusInfo
 
             // Run rate comparison graph
@@ -243,7 +244,7 @@ fun PowerPlayAnalysisCard(
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
                             text = phase.name,
-                            color = if (phase.isActive) colors.goldDark else colors.textSecondary,
+                            color = if (phase.isActive) hierarchy.secondary.primary else colors.textSecondary,
                             fontSize = 12.sp,
                             fontWeight = if (phase.isActive) FontWeight.Bold else FontWeight.Medium,
                         )
@@ -266,6 +267,7 @@ private fun PowerPlayPhaseRow(
     maxRuns: Int,
     pulseAlpha: Float,
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     Box(
         modifier = Modifier
@@ -275,7 +277,7 @@ private fun PowerPlayPhaseRow(
                 if (phase.isActive) {
                     Brush.horizontalGradient(
                         colors = listOf(
-                            colors.goldDark.copy(alpha = pulseAlpha * 0.3f),
+                            hierarchy.secondary.primary.copy(alpha = pulseAlpha * 0.3f),
                             Color.Transparent,
                         ),
                     )
@@ -303,14 +305,14 @@ private fun PowerPlayPhaseRow(
                             modifier = Modifier
                                 .size(8.dp)
                                 .clip(RoundedCornerShape(4.dp))
-                                .background(colors.goldDark),
+                                .background(hierarchy.secondary.primary),
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                     }
 
                     Text(
                         text = phase.name,
-                        color = if (phase.isActive) colors.goldDark else colors.textPrimary,
+                        color = if (phase.isActive) hierarchy.secondary.primary else colors.textPrimary,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,
                     )
@@ -353,11 +355,12 @@ private fun StatBubble(
     label: String,
     isHighlighted: Boolean,
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
             text = value,
-            color = if (isHighlighted) colors.goldDark else colors.textPrimary,
+            color = if (isHighlighted) hierarchy.secondary.primary else colors.textPrimary,
             fontSize = 14.sp,
             fontWeight = FontWeight.Bold,
         )

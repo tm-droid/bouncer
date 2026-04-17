@@ -86,6 +86,7 @@ fun DLSCard(
     modifier: Modifier = Modifier,
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val infiniteTransition = rememberInfiniteTransition(label = "dls")
 
     val resourcePulse by infiniteTransition.animateFloat(
@@ -191,7 +192,7 @@ fun DLSCard(
                     Column(horizontalAlignment = Alignment.End) {
                         Text(
                             text = "${dlsInfo.targetRevised}",
-                            color = colors.goldDark,
+                            color = hierarchy.secondary.primary,
                             fontSize = 28.sp,
                             fontWeight = FontWeight.Bold,
                         )
@@ -312,7 +313,7 @@ fun DLSCard(
                             .clip(RoundedCornerShape(10.dp))
                             .background(
                                 Brush.horizontalGradient(
-                                    colors = listOf(colors.statusInfo, colors.goldDark),
+                                    colors = listOf(colors.statusInfo, hierarchy.secondary.primary),
                                 ),
                             ),
                     )
@@ -366,7 +367,7 @@ fun DLSCard(
                     DLSStatItem(
                         label = "Need",
                         value = "$runsNeeded",
-                        color = colors.goldDark,
+                        color = hierarchy.secondary.primary,
                     )
                 }
 

@@ -68,6 +68,7 @@ fun MatchInfoContent(
     modifier: Modifier = Modifier
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val typography = BouncerDesignSystem.typography
     val dimens = BouncerDesignSystem.dimens
 
@@ -126,7 +127,7 @@ fun MatchInfoContent(
                         .background(
                             Brush.verticalGradient(
                                 colors = listOf(
-                                    colors.goldPrimary.copy(alpha = 0.08f),
+                                    hierarchy.secondary.primary.copy(alpha = 0.08f),
                                     Color.Transparent,
                                     colors.backgroundBase.copy(alpha = 0.6f)
                                 ),
@@ -142,13 +143,13 @@ fun MatchInfoContent(
                             modifier = Modifier
                                 .size(48.dp)
                                 .clip(CircleShape)
-                                .background(colors.goldPrimary.copy(alpha = 0.12f)),
+                                .background(hierarchy.secondary.primary.copy(alpha = 0.12f)),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Stadium,
                                 contentDescription = null,
-                                tint = colors.goldPrimary,
+                                tint = hierarchy.secondary.primary,
                                 modifier = Modifier.size(24.dp)
                             )
                         }
@@ -176,7 +177,7 @@ fun MatchInfoContent(
                                 Icon(
                                     imageVector = Icons.Default.LocationOn,
                                     contentDescription = null,
-                                    tint = colors.goldPrimary,
+                                    tint = hierarchy.secondary.primary,
                                     modifier = Modifier.size(16.dp)
                                 )
                                 Text(
@@ -213,7 +214,7 @@ fun MatchInfoContent(
                                 Text(
                                     text = match.matchType.uppercase(),
                                     style = typography.labelSmall,
-                                    color = colors.goldPrimary,
+                                    color = hierarchy.secondary.primary,
                                     fontWeight = FontWeight.Bold,
                                     letterSpacing = 1.sp
                                 )
@@ -292,7 +293,7 @@ fun MatchInfoContent(
                                 color = colors.textMuted
                             )
                             Spacer(modifier = Modifier.height(4.dp))
-                            ProgressBar(progress = 0.75f, teamColor = colors.goldPrimary)
+                            ProgressBar(progress = 0.75f, teamColor = hierarchy.secondary.primary)
                         }
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
@@ -442,7 +443,7 @@ fun MatchInfoContent(
                             modifier = Modifier
                                 .size(40.dp)
                                 .clip(CircleShape)
-                                .background(colors.goldPrimary.copy(alpha = 0.15f)),
+                                .background(hierarchy.secondary.primary.copy(alpha = 0.15f)),
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
@@ -504,13 +505,13 @@ fun MatchInfoContent(
                                     modifier = Modifier
                                         .size(32.dp)
                                         .clip(CircleShape)
-                                        .background(colors.goldPrimary.copy(alpha = 0.10f)),
+                                        .background(hierarchy.secondary.primary.copy(alpha = 0.10f)),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.Person,
                                         contentDescription = null,
-                                        tint = colors.goldPrimary,
+                                        tint = hierarchy.secondary.primary,
                                         modifier = Modifier.size(16.dp)
                                     )
                                 }
@@ -580,6 +581,7 @@ private fun SectionHeader(
     title: String,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val typography = BouncerDesignSystem.typography
 
@@ -591,13 +593,13 @@ private fun SectionHeader(
         Icon(
             imageVector = icon,
             contentDescription = null,
-            tint = colors.goldPrimary,
+            tint = hierarchy.secondary.primary,
             modifier = Modifier.size(16.dp)
         )
         Text(
             text = title,
             style = typography.labelSmall,
-            color = colors.goldPrimary,
+            color = hierarchy.secondary.primary,
             fontWeight = FontWeight.Bold,
             letterSpacing = 1.2.sp
         )

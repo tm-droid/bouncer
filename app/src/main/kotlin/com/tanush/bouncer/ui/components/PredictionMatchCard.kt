@@ -35,6 +35,7 @@ import com.tanush.bouncer.managers.TeamLogoManager
 import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.ui.theme.*
 import com.tanush.bouncer.utils.*
+import com.tanush.bouncer.ui.theme.GoldPrimary
 
 @Composable
 fun PredictionMatchCard(
@@ -45,6 +46,7 @@ fun PredictionMatchCard(
 ) {
     val haptic = rememberHapticFeedback()
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val team1 = match.teams.firstOrNull()
     val team2 = match.teams.getOrNull(1)
     
@@ -105,12 +107,12 @@ fun PredictionMatchCard(
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.TrendingUp,
                     contentDescription = "Prediction",
-                    tint = colors.goldPrimary,
+                    tint = GoldPrimary,
                     modifier = Modifier.size(16.dp)
                 )
                 Text(
                     text = "AI PREDICTION",
-                    color = colors.goldPrimary,
+                    color = GoldPrimary,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Black,
                     letterSpacing = 0.8.sp
@@ -153,6 +155,7 @@ private fun PredictionTeamsSection(
     team2: CricketMatch.Team?,
     team1Probability: Float
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val context = LocalContext.current
     val colors = BouncerDesignSystem.colors
     Row(
@@ -169,7 +172,7 @@ private fun PredictionTeamsSection(
             Box(
                 modifier = Modifier
                     .size(64.dp)
-                    .shadow(8.dp, CircleShape, spotColor = colors.goldPrimary.copy(alpha = 0.3f))
+                    .shadow(8.dp, CircleShape, spotColor = hierarchy.secondary.primary.copy(alpha = 0.3f))
                     .background(
                         Brush.radialGradient(
                             colors = listOf(
@@ -211,12 +214,12 @@ private fun PredictionTeamsSection(
             // Win probability percentage
             Box(
                 modifier = Modifier
-                    .shadow(6.dp, RoundedCornerShape(12.dp), spotColor = colors.goldPrimary.copy(alpha = 0.3f))
+                    .shadow(6.dp, RoundedCornerShape(12.dp), spotColor = hierarchy.secondary.primary.copy(alpha = 0.3f))
                     .background(
                         Brush.linearGradient(
                             colors = listOf(
-                                colors.goldPrimary.copy(alpha = 0.2f),
-                                colors.goldPrimary.copy(alpha = 0.15f)
+                                hierarchy.secondary.primary.copy(alpha = 0.2f),
+                                hierarchy.secondary.primary.copy(alpha = 0.15f)
                             )
                         ),
                         RoundedCornerShape(12.dp)
@@ -225,7 +228,7 @@ private fun PredictionTeamsSection(
             ) {
                 Text(
                     text = "${(team1Probability * 100).toInt()}%",
-                    color = colors.goldPrimary,
+                    color = hierarchy.secondary.primary,
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Black,
                     letterSpacing = 0.5.sp
@@ -259,7 +262,7 @@ private fun PredictionTeamsSection(
             Box(
                 modifier = Modifier
                     .size(64.dp)
-                    .shadow(8.dp, CircleShape, spotColor = colors.goldPrimary.copy(alpha = 0.3f))
+                    .shadow(8.dp, CircleShape, spotColor = hierarchy.secondary.primary.copy(alpha = 0.3f))
                     .background(
                         Brush.radialGradient(
                             colors = listOf(
@@ -300,12 +303,12 @@ private fun PredictionTeamsSection(
             
             Box(
                 modifier = Modifier
-                    .shadow(6.dp, RoundedCornerShape(12.dp), spotColor = colors.goldPrimary.copy(alpha = 0.3f))
+                    .shadow(6.dp, RoundedCornerShape(12.dp), spotColor = hierarchy.secondary.primary.copy(alpha = 0.3f))
                     .background(
                         Brush.linearGradient(
                             colors = listOf(
-                                colors.goldPrimary.copy(alpha = 0.2f),
-                                colors.goldPrimary.copy(alpha = 0.15f)
+                                hierarchy.secondary.primary.copy(alpha = 0.2f),
+                                hierarchy.secondary.primary.copy(alpha = 0.15f)
                             )
                         ),
                         RoundedCornerShape(12.dp)
@@ -314,7 +317,7 @@ private fun PredictionTeamsSection(
             ) {
                 Text(
                     text = "${((1 - team1Probability) * 100).toInt()}%",
-                    color = colors.goldPrimary,
+                    color = hierarchy.secondary.primary,
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Black,
                     letterSpacing = 0.5.sp
@@ -330,6 +333,7 @@ private fun WinProbabilityBar(
     team2Name: String,
     team1Probability: Float
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
@@ -370,9 +374,9 @@ private fun WinProbabilityBar(
                     .background(
                         Brush.horizontalGradient(
                             colors = listOf(
-                                colors.goldLight,
-                                colors.goldPrimary,
-                                colors.goldPrimary
+                                hierarchy.secondary.secondary,
+                                hierarchy.secondary.primary,
+                                hierarchy.secondary.primary
                             )
                         )
                     )
@@ -392,6 +396,7 @@ private fun WinProbabilityBar(
 
 @Composable
 private fun KeyStatsComparison(match: CricketMatch) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val team1 = match.teams.firstOrNull()
     val team2 = match.teams.getOrNull(1)
     val colors = BouncerDesignSystem.colors
@@ -408,7 +413,7 @@ private fun KeyStatsComparison(match: CricketMatch) {
     ) {
         Text(
             text = "LIVE STATS",
-            color = colors.goldPrimary,
+            color = hierarchy.secondary.primary,
             fontSize = 10.sp,
             fontWeight = FontWeight.Black,
             letterSpacing = 1.sp
@@ -446,6 +451,7 @@ private fun StatComparisonRow(
     format: (Float) -> String,
     inverse: Boolean = false
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
@@ -493,7 +499,7 @@ private fun StatComparisonRow(
                         .weight(if (inverse) 1f - team1Fraction else team1Fraction)
                         .fillMaxHeight()
                         .background(
-                            if (!inverse && team1Value > team2Value) colors.goldPrimary 
+                            if (!inverse && team1Value > team2Value) hierarchy.secondary.primary 
                             else GlassSurface
                         )
                 )
@@ -506,7 +512,7 @@ private fun StatComparisonRow(
                         .weight(if (inverse) 1f - team2Fraction else team2Fraction)
                         .fillMaxHeight()
                         .background(
-                            if (!inverse && team2Value > team1Value) colors.goldPrimary
+                            if (!inverse && team2Value > team1Value) hierarchy.secondary.primary
                             else GlassSurface
                         )
                 )

@@ -80,6 +80,7 @@ fun SpellAnalysisCard(
     modifier: Modifier = Modifier,
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val animatedProgress = remember { Animatable(0f) }
 
     LaunchedEffect(spells) {
@@ -113,7 +114,7 @@ fun SpellAnalysisCard(
                             .clip(CircleShape)
                             .background(
                                 Brush.linearGradient(
-                                    colors = listOf(colors.goldDark, colors.goldPrimary),
+                                    colors = listOf(hierarchy.secondary.primary, hierarchy.secondary.primary),
                                 ),
                             ),
                         contentAlignment = Alignment.Center,
@@ -131,7 +132,7 @@ fun SpellAnalysisCard(
                     Column {
                         Text(
                             text = "SPELL ANALYSIS",
-                            color = colors.goldLight,
+                            color = hierarchy.secondary.secondary,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.5.sp,
@@ -149,7 +150,7 @@ fun SpellAnalysisCard(
                 Column(horizontalAlignment = Alignment.End) {
                     Text(
                         text = "$totalWickets/$totalRuns",
-                        color = colors.goldDark,
+                        color = hierarchy.secondary.primary,
                         fontSize = 24.sp,
                         fontWeight = FontWeight.Bold,
                     )
@@ -326,7 +327,7 @@ fun SpellAnalysisCard(
                     ) {
                         Text(
                             text = "#${spell.spellNumber}",
-                            color = colors.goldDark,
+                            color = hierarchy.secondary.primary,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
                             modifier = Modifier.width(50.dp),

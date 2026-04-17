@@ -48,6 +48,7 @@ fun MatchCountdownTimer(
     modifier: Modifier = Modifier
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     var isVisible by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { isVisible = true }
     
@@ -79,7 +80,7 @@ fun MatchCountdownTimer(
             .shadow(
                 elevation = 24.dp,
                 shape = RoundedCornerShape(28.dp),
-                spotColor = colors.goldPrimary.copy(alpha = 0.2f),
+                spotColor = hierarchy.secondary.primary.copy(alpha = 0.2f),
                 ambientColor = Color.Black.copy(alpha = 0.4f)
             ),
         colors = CardDefaults.cardColors(containerColor = GlassSurface),
@@ -88,9 +89,9 @@ fun MatchCountdownTimer(
             1.dp,
             Brush.linearGradient(
                 colors = listOf(
-                    colors.goldPrimary.copy(alpha = 0.3f),
-                    colors.goldLight.copy(alpha = 0.1f),
-                    colors.goldPrimary.copy(alpha = 0.3f)
+                    hierarchy.secondary.primary.copy(alpha = 0.3f),
+                    hierarchy.secondary.secondary.copy(alpha = 0.1f),
+                    hierarchy.secondary.primary.copy(alpha = 0.3f)
                 )
             )
         )
@@ -133,20 +134,20 @@ fun MatchCountdownTimer(
                         .background(
                             Brush.radialGradient(
                                 colors = listOf(
-                                    colors.goldPrimary.copy(alpha = 0.2f),
+                                    hierarchy.secondary.primary.copy(alpha = 0.2f),
                                     Color.Transparent
                                 )
                             ),
                             CircleShape
                         )
-                        .border(1.dp, colors.goldPrimary.copy(alpha = 0.3f), CircleShape),
+                        .border(1.dp, hierarchy.secondary.primary.copy(alpha = 0.3f), CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = "VS",
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Black,
-                        color = colors.goldPrimary
+                        color = hierarchy.secondary.primary
                     )
                 }
                 
@@ -170,7 +171,7 @@ fun MatchCountdownTimer(
                 Icon(
                     Icons.Default.AccessTime,
                     contentDescription = null,
-                    tint = colors.goldPrimary,
+                    tint = hierarchy.secondary.primary,
                     modifier = Modifier.size(18.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
@@ -192,21 +193,21 @@ fun MatchCountdownTimer(
                 CountdownUnit(
                     value = days,
                     label = "DAYS",
-                    color = colors.goldPrimary,
+                    color = hierarchy.secondary.primary,
                     scale = if (days > 0) pulseScale else 1f
                 )
                 CountdownSeparator()
                 CountdownUnit(
                     value = hours,
                     label = "HOURS",
-                    color = colors.goldDark,
+                    color = hierarchy.secondary.primary,
                     scale = if (days == 0 && hours > 0) pulseScale else 1f
                 )
                 CountdownSeparator()
                 CountdownUnit(
                     value = minutes,
                     label = "MINS",
-                    color = colors.goldLight,
+                    color = hierarchy.secondary.secondary,
                     scale = if (days == 0 && hours == 0 && minutes > 0) pulseScale else 1f
                 )
                 CountdownSeparator()
@@ -290,6 +291,7 @@ private fun CountdownUnit(
 
 @Composable
 private fun CountdownSeparator() {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "separator")
     val alpha by infiniteTransition.animateFloat(
@@ -309,13 +311,13 @@ private fun CountdownSeparator() {
         Box(
             modifier = Modifier
                 .size(4.dp)
-                .background(colors.goldPrimary.copy(alpha = alpha), CircleShape)
+                .background(hierarchy.secondary.primary.copy(alpha = alpha), CircleShape)
         )
         Spacer(modifier = Modifier.height(8.dp))
         Box(
             modifier = Modifier
                 .size(4.dp)
-                .background(colors.goldPrimary.copy(alpha = alpha), CircleShape)
+                .background(hierarchy.secondary.primary.copy(alpha = alpha), CircleShape)
         )
     }
 }
@@ -325,11 +327,12 @@ private fun CountdownProgressRing(
     progress: Float,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val cardBorder = colors.glassBorder
-    val goldPrimary = colors.goldPrimary
-    val goldLight = colors.goldLight
-    val goldDark = colors.goldDark
+    val goldPrimary = hierarchy.secondary.primary
+    val goldLight = hierarchy.secondary.secondary
+    val goldDark = hierarchy.secondary.primary
     val neonSuccess = colors.statusSuccess
     val animatedProgress by animateFloatAsState(
         targetValue = progress,
@@ -444,9 +447,10 @@ fun CircularCountdown(
     label: String = "Time Left",
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val cardBorder = colors.glassBorder
-    val goldPrimary = colors.goldPrimary
+    val goldPrimary = hierarchy.secondary.primary
     val progress = seconds.toFloat() / totalSeconds
     
     val animatedProgress by animateFloatAsState(
@@ -549,6 +553,7 @@ fun AnimatedClockDisplay(
     time: String,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "clock")
     val colonAlpha by infiniteTransition.animateFloat(
@@ -571,7 +576,7 @@ fun AnimatedClockDisplay(
                     text = ":",
                     fontSize = 32.sp,
                     fontWeight = FontWeight.Bold,
-                    color = colors.goldPrimary.copy(alpha = colonAlpha),
+                    color = hierarchy.secondary.primary.copy(alpha = colonAlpha),
                     modifier = Modifier.padding(horizontal = 2.dp)
                 )
             } else {
@@ -582,7 +587,7 @@ fun AnimatedClockDisplay(
                         .background(GlassSurface)
                         .border(
                             0.5.dp,
-                            colors.goldPrimary.copy(alpha = 0.2f),
+                            hierarchy.secondary.primary.copy(alpha = 0.2f),
                             RoundedCornerShape(6.dp)
                         ),
                     contentAlignment = Alignment.Center

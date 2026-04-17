@@ -106,6 +106,7 @@ fun SettingsScreen(
     onAIInsightsChanged: (Boolean) -> Unit = {}
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val typography = BouncerDesignSystem.typography
     val dimens = BouncerDesignSystem.dimens
     val ctx = LocalContext.current
@@ -498,13 +499,14 @@ private fun SettingsSectionView(section: SettingsSection) {
 
 @Composable
 private fun SettingsToggleRow(item: SettingsItem.Toggle) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
 
     SettingsRow(
         title = item.title,
         description = item.description,
         icon = item.icon,
-        iconTint = if (item.isEnabled) colors.goldPrimary else colors.textMuted,
+        iconTint = if (item.isEnabled) hierarchy.secondary.primary else colors.textMuted,
         trailing = {
             Switch(
                 checked = item.isEnabled,
@@ -522,13 +524,14 @@ private fun SettingsToggleRow(item: SettingsItem.Toggle) {
 
 @Composable
 private fun SettingsNavigationRow(item: SettingsItem.Navigation) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
 
     SettingsRow(
         title = item.title,
         description = item.description,
         icon = item.icon,
-        iconTint = colors.goldPrimary,
+        iconTint = hierarchy.secondary.primary,
         onClick = item.onClick,
         trailing = {
             Icon(

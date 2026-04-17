@@ -60,6 +60,7 @@ fun BattingShotsCard(
     modifier: Modifier = Modifier,
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val animatedProgress = remember { Animatable(0f) }
 
     val infiniteTransition = rememberInfiniteTransition(label = "shots")
@@ -106,7 +107,7 @@ fun BattingShotsCard(
                             .clip(CircleShape)
                             .background(
                                 Brush.linearGradient(
-                                    colors = listOf(colors.goldDark, colors.goldPrimary),
+                                    colors = listOf(hierarchy.secondary.primary, hierarchy.secondary.primary),
                                 ),
                             ),
                         contentAlignment = Alignment.Center,
@@ -124,7 +125,7 @@ fun BattingShotsCard(
                     Column {
                         Text(
                             text = "BATTING SHOTS",
-                            color = colors.goldLight,
+                            color = hierarchy.secondary.secondary,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.5.sp,
@@ -141,7 +142,7 @@ fun BattingShotsCard(
                 Column(horizontalAlignment = Alignment.End) {
                     Text(
                         text = "${shotsData.totalRuns}",
-                        color = colors.goldDark,
+                        color = hierarchy.secondary.primary,
                         fontSize = 24.sp,
                         fontWeight = FontWeight.Black,
                     )
@@ -165,7 +166,7 @@ fun BattingShotsCard(
             ) {
                 val statusWarningC = colors.statusWarning
                 val statusInfoC = colors.statusInfo
-                val goldDarkC = colors.goldDark
+                val goldDarkC = hierarchy.secondary.primary
                 Canvas(modifier = Modifier.fillMaxSize()) {
                     val centerX = size.width / 2
                     val centerY = size.height / 2

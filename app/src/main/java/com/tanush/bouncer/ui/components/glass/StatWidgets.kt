@@ -43,6 +43,7 @@ fun StatPill(
     modifier: Modifier = Modifier
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val typography = BouncerDesignSystem.typography
     
     val shape = RoundedCornerShape(percent = 50)
@@ -141,6 +142,7 @@ fun MilestoneTracker(
     currentValue: Int,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val typography = BouncerDesignSystem.typography
     
@@ -178,13 +180,13 @@ fun MilestoneTracker(
                     Icon(
                         imageVector = Icons.Default.Star,
                         contentDescription = null,
-                        tint = colors.goldPrimary,
+                        tint = hierarchy.secondary.primary,
                         modifier = Modifier.size(14.dp)
                     )
                     Text(
                         text = "APPROACHING",
                         style = typography.labelSmall,
-                        color = colors.goldPrimary,
+                        color = hierarchy.secondary.primary,
                         fontWeight = FontWeight.Bold
                     )
                 }
@@ -216,7 +218,7 @@ fun MilestoneTracker(
             ProgressBar(
                 progress = progress,
                 trackColor = Color.Black.copy(alpha = 0.2f),
-                progressColor = colors.goldPrimary,
+                progressColor = hierarchy.secondary.primary,
                 showGlow = true,
                 height = 4.dp
             )
@@ -245,6 +247,7 @@ fun PartnershipCard(
     batter2Runs: Int,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val typography = BouncerDesignSystem.typography
     
@@ -257,7 +260,7 @@ fun PartnershipCard(
             Text(
                 text = "PARTNERSHIP",
                 style = typography.labelSmall,
-                color = colors.goldPrimary.copy(alpha = 0.8f)
+                color = hierarchy.secondary.primary.copy(alpha = 0.8f)
             )
             
             Spacer(modifier = Modifier.height(8.dp))
@@ -295,7 +298,7 @@ fun PartnershipCard(
                     modifier = Modifier
                         .weight(batter1Ratio.coerceAtLeast(0.01f))
                         .fillMaxHeight()
-                        .background(colors.goldPrimary)
+                        .background(hierarchy.secondary.primary)
                 )
                 Box(
                     modifier = Modifier
@@ -316,7 +319,7 @@ fun PartnershipCard(
                     Text(
                         text = batter1Name,
                         style = typography.labelSmall,
-                        color = colors.goldPrimary
+                        color = hierarchy.secondary.primary
                     )
                     Text(
                         text = "$batter1Runs",

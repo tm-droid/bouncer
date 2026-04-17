@@ -54,6 +54,7 @@ fun TossInformationCard(
     modifier: Modifier = Modifier
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val infiniteTransition = rememberInfiniteTransition(label = "toss")
     
     // Coin shimmer effect
@@ -95,7 +96,7 @@ fun TossInformationCard(
             .shadow(
                 elevation = 16.dp,
                 shape = RoundedCornerShape(24.dp),
-                spotColor = colors.goldPrimary.copy(alpha = 0.25f)
+                spotColor = hierarchy.secondary.primary.copy(alpha = 0.25f)
             ),
         shape = RoundedCornerShape(24.dp),
         color = Color.White.copy(alpha = 0.05f)
@@ -106,9 +107,9 @@ fun TossInformationCard(
                 .background(
                     Brush.verticalGradient(
                         colors = listOf(
-                            colors.goldPrimary.copy(alpha = 0.08f),
+                            hierarchy.secondary.primary.copy(alpha = 0.08f),
                             Color.Transparent,
-                            colors.goldPrimary.copy(alpha = 0.05f)
+                            hierarchy.secondary.primary.copy(alpha = 0.05f)
                         )
                     )
                 )
@@ -134,7 +135,7 @@ fun TossInformationCard(
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 2.sp,
-                        color = colors.goldPrimary
+                        color = hierarchy.secondary.primary
                     )
                 }
                 
@@ -143,9 +144,9 @@ fun TossInformationCard(
                     modifier = Modifier.size(80.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    val goldPrimary = colors.goldPrimary
-                    val goldLight = colors.goldLight
-                    val goldDark = colors.goldDark
+                    val goldPrimary = hierarchy.secondary.primary
+                    val goldLight = hierarchy.secondary.secondary
+                    val goldDark = hierarchy.secondary.primary
                     Canvas(
                         modifier = Modifier.fillMaxSize()
                     ) {
@@ -263,7 +264,7 @@ fun TossInformationCard(
                                     .background(
                                         Brush.radialGradient(
                                             colors = listOf(
-                                                colors.goldPrimary.copy(alpha = 0.2f),
+                                                hierarchy.secondary.primary.copy(alpha = 0.2f),
                                                 Color.Transparent
                                             )
                                         )
@@ -271,7 +272,7 @@ fun TossInformationCard(
                                     .border(
                                         width = 2.dp,
                                         brush = Brush.linearGradient(
-                                            colors = listOf(colors.goldLight, colors.goldPrimary)
+                                            colors = listOf(hierarchy.secondary.secondary, hierarchy.secondary.primary)
                                         ),
                                         shape = CircleShape
                                     )
@@ -295,7 +296,7 @@ fun TossInformationCard(
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp),
                     shape = RoundedCornerShape(16.dp),
-                    color = colors.goldPrimary.copy(alpha = 0.1f)
+                    color = hierarchy.secondary.primary.copy(alpha = 0.1f)
                 ) {
                     Box(
                         modifier = Modifier
@@ -304,9 +305,9 @@ fun TossInformationCard(
                                 width = 1.dp,
                                 brush = Brush.linearGradient(
                                     colors = listOf(
-                                        colors.goldPrimary.copy(alpha = 0.5f),
-                                        colors.goldDark.copy(alpha = 0.3f),
-                                        colors.goldPrimary.copy(alpha = 0.5f)
+                                        hierarchy.secondary.primary.copy(alpha = 0.5f),
+                                        hierarchy.secondary.primary.copy(alpha = 0.3f),
+                                        hierarchy.secondary.primary.copy(alpha = 0.5f)
                                     )
                                 ),
                                 shape = RoundedCornerShape(16.dp)
@@ -378,17 +379,18 @@ fun CompactTossInfo(
     tossInfo: TossInfo,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(12.dp),
-        color = colors.goldPrimary.copy(alpha = 0.1f)
+        color = hierarchy.secondary.primary.copy(alpha = 0.1f)
     ) {
         Row(
             modifier = Modifier
                 .border(
                     width = 1.dp,
-                    color = colors.goldPrimary.copy(alpha = 0.3f),
+                    color = hierarchy.secondary.primary.copy(alpha = 0.3f),
                     shape = RoundedCornerShape(12.dp)
                 )
                 .padding(horizontal = 12.dp, vertical = 8.dp),

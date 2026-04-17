@@ -35,6 +35,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.ui.theme.*
+import com.tanush.bouncer.ui.theme.GoldPrimary
 
 /**
  * Premium search bar with glass morphism effect and animations
@@ -213,6 +214,7 @@ fun ExpandableSearchBar(
     placeholder: String = "Search...",
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val transition = updateTransition(targetState = expanded, label = "searchExpand")
     val keyboardController = LocalSoftwareKeyboardController.current
     val focusRequester = remember { FocusRequester() }
@@ -250,7 +252,7 @@ fun ExpandableSearchBar(
             .shadow(
                 elevation = 12.dp,
                 shape = RoundedCornerShape(cornerRadius),
-                spotColor = GoldPrimary.copy(alpha = 0.2f)
+                spotColor = hierarchy.secondary.primary.copy(alpha = 0.2f)
             ),
         shape = RoundedCornerShape(cornerRadius),
         color = GlassSurface,
@@ -258,7 +260,7 @@ fun ExpandableSearchBar(
             width = 1.dp,
             brush = Brush.linearGradient(
                 colors = listOf(
-                    GoldPrimary.copy(alpha = 0.4f),
+                    hierarchy.secondary.primary.copy(alpha = 0.4f),
                     GlassBorder.copy(alpha = 0.3f)
                 )
             )
@@ -285,7 +287,7 @@ fun ExpandableSearchBar(
                 Icon(
                     imageVector = if (expanded) Icons.Default.Close else Icons.Default.Search,
                     contentDescription = if (expanded) "Close" else "Search",
-                    tint = GoldPrimary,
+                    tint = hierarchy.secondary.primary,
                     modifier = Modifier.size(24.dp)
                 )
             }
@@ -304,7 +306,7 @@ fun ExpandableSearchBar(
                         color = TextPrimary
                     ),
                     singleLine = true,
-                    cursorBrush = SolidColor(GoldPrimary),
+                    cursorBrush = SolidColor(hierarchy.secondary.primary),
                     decorationBox = { innerTextField ->
                         Box {
                             if (query.isEmpty()) {
@@ -334,6 +336,7 @@ fun PremiumFilterChip(
     leadingIcon: @Composable (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val scale by animateFloatAsState(
         targetValue = if (selected) 1.05f else 1f,
         animationSpec = spring(
@@ -344,19 +347,19 @@ fun PremiumFilterChip(
     )
     
     val backgroundColor by animateColorAsState(
-        targetValue = if (selected) GoldPrimary.copy(alpha = 0.15f) else Color.Transparent,
+        targetValue = if (selected) hierarchy.secondary.primary.copy(alpha = 0.15f) else Color.Transparent,
         animationSpec = tween(200),
         label = "chipBg"
     )
     
     val borderColor by animateColorAsState(
-        targetValue = if (selected) GoldPrimary else GlassBorder.copy(alpha = 0.4f),
+        targetValue = if (selected) hierarchy.secondary.primary else GlassBorder.copy(alpha = 0.4f),
         animationSpec = tween(200),
         label = "chipBorder"
     )
     
     val textColor by animateColorAsState(
-        targetValue = if (selected) GoldLight else TextSecondary,
+        targetValue = if (selected) hierarchy.secondary.secondary else TextSecondary,
         animationSpec = tween(200),
         label = "chipText"
     )
@@ -369,7 +372,7 @@ fun PremiumFilterChip(
             }
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
-                indication = ripple(color = GoldPrimary.copy(alpha = 0.1f)),
+                indication = ripple(color = hierarchy.secondary.primary.copy(alpha = 0.1f)),
                 onClick = onClick
             ),
         shape = RoundedCornerShape(16.dp),
@@ -399,7 +402,7 @@ fun PremiumFilterChip(
                 Icon(
                     imageVector = Icons.Default.Check,
                     contentDescription = null,
-                    tint = GoldPrimary,
+                    tint = hierarchy.secondary.primary,
                     modifier = Modifier.size(16.dp)
                 )
             }
@@ -417,6 +420,7 @@ fun RecentSearchesSection(
     onClearAll: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     if (searches.isEmpty()) return
     
     Column(
@@ -440,7 +444,7 @@ fun RecentSearchesSection(
                 text = "Clear All",
                 fontSize = 12.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = GoldPrimary,
+                color = hierarchy.secondary.primary,
                 modifier = Modifier.clickable(onClick = onClearAll)
             )
         }
@@ -506,6 +510,7 @@ fun SearchSuggestions(
     onSuggestionClick: (SearchSuggestion) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     if (suggestions.isEmpty()) return
     
     Surface(
@@ -514,7 +519,7 @@ fun SearchSuggestions(
             .shadow(
                 elevation = 16.dp,
                 shape = RoundedCornerShape(16.dp),
-                spotColor = GoldPrimary.copy(alpha = 0.15f)
+                spotColor = hierarchy.secondary.primary.copy(alpha = 0.15f)
             ),
         shape = RoundedCornerShape(16.dp),
         color = GlassSurface,
@@ -555,6 +560,7 @@ private fun SuggestionItem(
     suggestion: SearchSuggestion,
     onClick: () -> Unit
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -569,7 +575,7 @@ private fun SuggestionItem(
                 .size(36.dp)
                 .background(
                     when (suggestion.type) {
-                        SuggestionType.TEAM -> GoldPrimary.copy(alpha = 0.15f)
+                        SuggestionType.TEAM -> hierarchy.secondary.primary.copy(alpha = 0.15f)
                         SuggestionType.MATCH -> ChartGreen.copy(alpha = 0.15f)
                         SuggestionType.PLAYER -> StatusInfo.copy(alpha = 0.15f)
                         SuggestionType.VENUE -> ChartPurple.copy(alpha = 0.15f)
@@ -587,7 +593,7 @@ private fun SuggestionItem(
                 },
                 contentDescription = null,
                 tint = when (suggestion.type) {
-                    SuggestionType.TEAM -> GoldPrimary
+                    SuggestionType.TEAM -> hierarchy.secondary.primary
                     SuggestionType.MATCH -> ChartGreen
                     SuggestionType.PLAYER -> StatusInfo
                     SuggestionType.VENUE -> ChartPurple

@@ -51,6 +51,7 @@ fun TrophyRoomScreen(
     onBackClick: () -> Unit
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val scrollState = rememberScrollState()
 
     GlassBloomBackground(modifier = Modifier.fillMaxSize()) {
@@ -76,7 +77,7 @@ fun TrophyRoomScreen(
                     },
                     actions = {
                         IconButton(onClick = {}) {
-                            Icon(Icons.Default.Share, contentDescription = "Share", tint = colors.goldPrimary)
+                            Icon(Icons.Default.Share, contentDescription = "Share", tint = hierarchy.secondary.primary)
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(containerColor = colors.backgroundBase.copy(alpha = 0.8f))
@@ -101,10 +102,10 @@ fun TrophyRoomScreen(
                     Column(modifier = Modifier.padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                                Box(modifier = Modifier.size(4.dp, 18.dp).background(colors.goldPrimary, RoundedCornerShape(2.dp)))
+                                Box(modifier = Modifier.size(4.dp, 18.dp).background(hierarchy.secondary.primary, RoundedCornerShape(2.dp)))
                                 Text("MEDAL COLLECTION", color = colors.textPrimary, fontSize = 14.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.sp)
                             }
-                            Text("Filter", color = colors.goldPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                            Text("Filter", color = hierarchy.secondary.primary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                         }
 
                         Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -115,7 +116,7 @@ fun TrophyRoomScreen(
                                     description = "Score 100 runs in a single innings.",
                                     tier = "GOLD",
                                     icon = Icons.Default.SportsCricket,
-                                    tierColor = colors.goldPrimary
+                                    tierColor = hierarchy.secondary.primary
                                 )
                                 Spacer(modifier = Modifier.width(16.dp))
                                 TrophyItemCard(
@@ -134,7 +135,7 @@ fun TrophyRoomScreen(
                                     description = "Take 5 wickets in a single match.",
                                     tier = "BRONZE",
                                     icon = Icons.Default.Stadium,
-                                    tierColor = colors.goldDark
+                                    tierColor = hierarchy.secondary.primary
                                 )
                                 Spacer(modifier = Modifier.width(16.dp))
                                 TrophyItemCard(
@@ -178,6 +179,7 @@ fun TrophyRoomScreen(
 
 @Composable
 private fun HeroProgressCardTechnical() {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
 
     Box(
@@ -189,7 +191,7 @@ private fun HeroProgressCardTechnical() {
         SparkParticles(
             modifier = Modifier.matchParentSize(),
             sparkCount = 12,
-            colors = listOf(colors.goldPrimary, colors.goldLight, colors.goldDark),
+            colors = listOf(hierarchy.secondary.primary, hierarchy.secondary.secondary, hierarchy.secondary.primary),
             isActive = true
         )
 
@@ -203,7 +205,7 @@ private fun HeroProgressCardTechnical() {
                     .padding(28.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Text("ACHIEVEMENT PROGRESSION", color = colors.goldPrimary, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 2.5.sp)
+                Text("ACHIEVEMENT PROGRESSION", color = hierarchy.secondary.primary, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 2.5.sp)
                 Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text("12", color = colors.textPrimary, fontSize = 56.sp, fontWeight = FontWeight.Black, letterSpacing = (-2).sp)
                     Text("/ 50", color = colors.textMuted, fontSize = 28.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 10.dp))
@@ -217,7 +219,7 @@ private fun HeroProgressCardTechnical() {
                     Text(
                         text = buildAnnotatedString {
                             append("STATUS: ")
-                            withStyle(style = SpanStyle(color = colors.goldPrimary, fontWeight = FontWeight.Black)) {
+                            withStyle(style = SpanStyle(color = hierarchy.secondary.primary, fontWeight = FontWeight.Black)) {
                                 append("RISING STAR")
                             }
                         },
@@ -232,7 +234,7 @@ private fun HeroProgressCardTechnical() {
                         modifier = Modifier
                             .fillMaxWidth(0.24f)
                             .fillMaxHeight()
-                            .background(colors.goldPrimary)
+                            .background(hierarchy.secondary.primary)
                     )
                 }
             }
@@ -250,6 +252,7 @@ private fun TrophyItemCard(
     tierColor: Color = TextPrimary,
     isLocked: Boolean = false
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     var showConfetti by remember { mutableStateOf(false) }
 
@@ -338,7 +341,7 @@ private fun TrophyItemCard(
                 modifier = Modifier.matchParentSize(),
                 burstPoint = Offset(100f, 100f),
                 particleCount = 30,
-                colors = listOf(colors.goldPrimary, colors.goldLight, colors.statusInfo),
+                colors = listOf(hierarchy.secondary.primary, hierarchy.secondary.secondary, colors.statusInfo),
                 isActive = showConfetti,
                 onComplete = { showConfetti = false }
             )
@@ -348,12 +351,13 @@ private fun TrophyItemCard(
 
 @Composable
 private fun CareerRadarSectionTechnical() {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
 
     Column(modifier = Modifier.padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Box(modifier = Modifier.size(4.dp, 18.dp).background(colors.goldPrimary, RoundedCornerShape(2.dp)))
+                Box(modifier = Modifier.size(4.dp, 18.dp).background(hierarchy.secondary.primary, RoundedCornerShape(2.dp)))
                 Text("CAREER RADAR", color = colors.textPrimary, fontSize = 14.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.sp)
             }
             PulsingBadge(text = "SYNCED")
@@ -390,7 +394,7 @@ private fun CareerRadarSectionTechnical() {
                     }
                     Column(horizontalAlignment = Alignment.End) {
                         Text("PROJECTED", color = colors.textMuted, fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
-                        Text("+12.4% GAIN", color = colors.goldPrimary, fontSize = 15.sp, fontWeight = FontWeight.Black)
+                        Text("+12.4% GAIN", color = hierarchy.secondary.primary, fontSize = 15.sp, fontWeight = FontWeight.Black)
                     }
                 }
             }

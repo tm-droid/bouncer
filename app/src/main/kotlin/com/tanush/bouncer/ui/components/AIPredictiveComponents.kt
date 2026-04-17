@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.ui.theme.*
 import kotlin.math.*
+import com.tanush.bouncer.ui.theme.GoldPrimary
 
 /**
  * AI-Powered Predictive Forecast Components.
@@ -52,6 +53,7 @@ fun NextOverForecastCarousel(
     modifier: Modifier = Modifier
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     Column(modifier = modifier.fillMaxWidth()) {
         // Header
         Row(
@@ -69,7 +71,7 @@ fun NextOverForecastCarousel(
                     Icon(
                         imageVector = Icons.Default.AutoAwesome,
                         contentDescription = null,
-                        tint = colors.goldDark,
+                        tint = GoldPrimary,
                         modifier = Modifier.size(18.dp)
                     )
                     Text(
@@ -91,14 +93,14 @@ fun NextOverForecastCarousel(
             TextButton(onClick = onViewHistory) {
                 Text(
                     text = "View History",
-                    color = colors.goldDark,
+                    color = GoldPrimary,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold
                 )
                 Icon(
                     imageVector = Icons.Default.ChevronRight,
                     contentDescription = null,
-                    tint = colors.goldDark,
+                    tint = GoldPrimary,
                     modifier = Modifier.size(16.dp)
                 )
             }
@@ -134,15 +136,16 @@ private fun AIPredictionCard(
     prediction: AIPrediction,
     overNumber: Int
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val isHighConfidence = prediction.confidence >= 0.8f
     val isCritical = prediction.predictedOutcome.equals("Wicket", ignoreCase = true)
     val colors = BouncerDesignSystem.colors
     
     val accentColor = when {
         isCritical -> colors.statusLive
-        prediction.predictedOutcome.contains("6") -> colors.goldPrimary
+        prediction.predictedOutcome.contains("6") -> hierarchy.secondary.primary
         prediction.predictedOutcome.contains("4") || prediction.predictedOutcome.contains("Boundary") -> colors.statusInfo
-        else -> colors.goldDark
+        else -> hierarchy.secondary.primary
     }
     
     val infiniteTransition = rememberInfiniteTransition(label = "predictionPulse")
@@ -170,7 +173,7 @@ private fun AIPredictionCard(
         border = BorderStroke(
             if (isCritical) 1.5.dp else 0.5.dp,
             if (isCritical) accentColor.copy(alpha = pulseAlpha) 
-            else colors.goldPrimary.copy(alpha = 0.15f)
+            else hierarchy.secondary.primary.copy(alpha = 0.15f)
         )
     ) {
         Column(
@@ -307,6 +310,7 @@ private fun EngineConfidenceBadge(
     confidence: Float,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     Row(
         modifier = modifier.fillMaxWidth(),
@@ -317,7 +321,7 @@ private fun EngineConfidenceBadge(
             modifier = Modifier.weight(1f),
             shape = RoundedCornerShape(12.dp),
             color = colors.glassSurface,
-            border = BorderStroke(0.5.dp, colors.goldPrimary.copy(alpha = 0.15f))
+            border = BorderStroke(0.5.dp, hierarchy.secondary.primary.copy(alpha = 0.15f))
         ) {
             Row(
                 modifier = Modifier
@@ -334,7 +338,7 @@ private fun EngineConfidenceBadge(
                         Icon(
                             imageVector = Icons.Default.Psychology,
                             contentDescription = null,
-                            tint = colors.goldDark,
+                            tint = hierarchy.secondary.primary,
                             modifier = Modifier.size(14.dp)
                         )
                         Text(
@@ -380,7 +384,7 @@ private fun EngineConfidenceBadge(
             modifier = Modifier.weight(0.6f),
             shape = RoundedCornerShape(12.dp),
             color = colors.glassSurface,
-            border = BorderStroke(0.5.dp, colors.goldDark.copy(alpha = 0.3f))
+            border = BorderStroke(0.5.dp, hierarchy.secondary.primary.copy(alpha = 0.3f))
         ) {
             Row(
                 modifier = Modifier
@@ -393,13 +397,13 @@ private fun EngineConfidenceBadge(
                     modifier = Modifier
                         .size(8.dp)
                         .clip(CircleShape)
-                        .background(colors.goldDark)
+                        .background(hierarchy.secondary.primary)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
                         text = "MCP",
-                        color = colors.goldDark,
+                        color = hierarchy.secondary.primary,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Black,
                         letterSpacing = 1.sp
@@ -428,12 +432,13 @@ fun AiAnalysisCard(
     type: AnalysisType = AnalysisType.NEUTRAL,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val accentColor = when (type) {
         AnalysisType.POSITIVE -> colors.statusSuccess
         AnalysisType.WARNING -> colors.statusWarning
         AnalysisType.CRITICAL -> colors.statusLive
-        AnalysisType.NEUTRAL -> colors.goldDark
+        AnalysisType.NEUTRAL -> hierarchy.secondary.primary
     }
     
     val icon = when (type) {
@@ -537,6 +542,7 @@ fun PitchConditionWidget(
     pitchType: String = "Batting Friendly",
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     Surface(
         modifier = modifier
@@ -544,7 +550,7 @@ fun PitchConditionWidget(
             .padding(horizontal = 16.dp),
         shape = RoundedCornerShape(16.dp),
         color = colors.glassSurface,
-        border = BorderStroke(0.5.dp, colors.goldPrimary.copy(alpha = 0.15f))
+        border = BorderStroke(0.5.dp, hierarchy.secondary.primary.copy(alpha = 0.15f))
     ) {
         Row(
             modifier = Modifier
@@ -572,7 +578,7 @@ fun PitchConditionWidget(
                 Icon(
                     imageVector = Icons.Default.WbSunny,
                     contentDescription = null,
-                    tint = colors.goldDark,
+                    tint = hierarchy.secondary.primary,
                     modifier = Modifier.size(32.dp)
                 )
             }

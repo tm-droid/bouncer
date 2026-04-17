@@ -26,6 +26,8 @@ import com.tanush.bouncer.ui.theme.*
 import kotlinx.coroutines.delay
 import kotlin.math.*
 import kotlin.random.Random
+import com.tanush.bouncer.ui.theme.GoldLight
+import com.tanush.bouncer.ui.theme.GoldPrimary
 
 /**
  * Enhanced Premium Animated Splash Screen for Bouncer Cricket App
@@ -45,6 +47,7 @@ fun EnhancedSplashScreen(
     onSplashComplete: () -> Unit
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val density = LocalDensity.current
     
     // Animation phase states
@@ -258,8 +261,8 @@ fun EnhancedSplashScreen(
                         drawCircle(
                             brush = Brush.radialGradient(
                                 colors = listOf(
-                                    colors.goldPrimary.copy(alpha = glowPulse * 0.4f),
-                                    colors.goldDark.copy(alpha = glowPulse * 0.2f),
+                                    hierarchy.secondary.primary.copy(alpha = glowPulse * 0.4f),
+                                    hierarchy.secondary.primary.copy(alpha = glowPulse * 0.2f),
                                     Color.Transparent
                                 )
                             ),
@@ -338,7 +341,7 @@ fun EnhancedSplashScreen(
                         brush = Brush.linearGradient(
                             colors = listOf(
                                 colors.textSecondary,
-                                colors.goldPrimary.copy(alpha = 0.7f),
+                                hierarchy.secondary.primary.copy(alpha = 0.7f),
                                 colors.textSecondary
                             )
                         )
@@ -424,7 +427,7 @@ private fun DrawScope.drawPitchBackground(colors: BouncerColors) {
     )
     
     // Pitch crease lines
-    val creaseColor = colors.goldLight.copy(alpha = 0.15f)
+    val creaseColor = GoldLight.copy(alpha = 0.15f)
     val creaseY1 = pitchTop + pitchHeight * 0.15f
     val creaseY2 = pitchTop + pitchHeight * 0.85f
     
@@ -445,8 +448,8 @@ private fun DrawScope.drawPitchBackground(colors: BouncerColors) {
     drawCircle(
         brush = Brush.radialGradient(
             colors = listOf(
-                colors.goldPrimary.copy(alpha = 0.08f),
-                colors.goldDark.copy(alpha = 0.04f),
+                GoldPrimary.copy(alpha = 0.08f),
+                GoldPrimary.copy(alpha = 0.04f),
                 Color.Transparent
             ),
             center = Offset(centerX, size.height * 0.15f),
@@ -462,7 +465,7 @@ private fun DrawScope.drawPitchBackground(colors: BouncerColors) {
  */
 private fun DrawScope.drawCrowdSilhouettes(colors: BouncerColors, animPhase: Float) {
     val crowdColor = Color(0xFF15171A)
-    val crowdHighlight = colors.goldDark.copy(alpha = 0.05f)
+    val crowdHighlight = GoldPrimary.copy(alpha = 0.05f)
     
     // Left crowd silhouette
     val leftPath = Path().apply {
@@ -536,7 +539,7 @@ private fun DrawScope.drawDustParticles(colors: BouncerColors, phase: Float) {
         
         if (y > 0 && y < size.height) {
             drawCircle(
-                color = colors.goldLight.copy(alpha = alpha * (1 - currentPhase)),
+                color = GoldLight.copy(alpha = alpha * (1 - currentPhase)),
                 radius = particleSize,
                 center = Offset(x, y)
             )
@@ -595,8 +598,8 @@ private fun DrawScope.drawFloodlights(colors: BouncerColors, angle: Float, glowI
             path = beamPath,
             brush = Brush.radialGradient(
                 colors = listOf(
-                    colors.goldLight.copy(alpha = beamAlpha),
-                    colors.goldPrimary.copy(alpha = beamAlpha * 0.5f),
+                    GoldLight.copy(alpha = beamAlpha),
+                    GoldPrimary.copy(alpha = beamAlpha * 0.5f),
                     Color.Transparent
                 ),
                 center = corner,
@@ -610,7 +613,7 @@ private fun DrawScope.drawFloodlights(colors: BouncerColors, angle: Float, glowI
             brush = Brush.radialGradient(
                 colors = listOf(
                     Color.White.copy(alpha = 0.15f + glowIntensity * 0.1f),
-                    colors.goldLight.copy(alpha = 0.08f),
+                    GoldLight.copy(alpha = 0.08f),
                     Color.Transparent
                 )
             ),
@@ -669,8 +672,8 @@ private fun DrawScope.drawBallTrajectory(
             brush = Brush.linearGradient(
                 colors = listOf(
                     Color.Transparent,
-                    colors.goldDark.copy(alpha = 0.2f),
-                    colors.goldPrimary.copy(alpha = 0.4f)
+                    GoldPrimary.copy(alpha = 0.2f),
+                    GoldPrimary.copy(alpha = 0.4f)
                 ),
                 start = Offset(startX, startY),
                 end = Offset(ballX, ballY)
@@ -888,8 +891,8 @@ private fun DrawScope.draw3DCricketBall(
     drawCircle(
         brush = Brush.radialGradient(
             colors = listOf(
-                colors.goldLight.copy(alpha = 0.3f),
-                colors.goldPrimary.copy(alpha = 0.15f),
+                GoldLight.copy(alpha = 0.3f),
+                GoldPrimary.copy(alpha = 0.15f),
                 Color.Transparent
             ),
             center = Offset(shimmerX, shimmerY),
@@ -904,9 +907,9 @@ private fun DrawScope.draw3DCricketBall(
         brush = Brush.sweepGradient(
             colors = listOf(
                 Color.Transparent,
-                colors.goldLight.copy(alpha = 0.15f),
+                GoldLight.copy(alpha = 0.15f),
                 Color.Transparent,
-                colors.goldLight.copy(alpha = 0.1f),
+                GoldLight.copy(alpha = 0.1f),
                 Color.Transparent
             ),
             center = center
@@ -926,6 +929,7 @@ private fun LetterByLetterText(
     shimmerOffset: Float,
     colors: BouncerColors
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     var visibleLetters by remember { mutableIntStateOf(0) }
     
     LaunchedEffect(Unit) {
@@ -963,10 +967,10 @@ private fun LetterByLetterText(
                             brush = Brush.linearGradient(
                                 colors = listOf(
                                     TextPrimary,
-                                    colors.goldLight,
-                                    colors.goldPrimary,
+                                    hierarchy.secondary.secondary,
+                                    hierarchy.secondary.primary,
                                     colors.etchedGold,
-                                    colors.goldDark
+                                    hierarchy.secondary.primary
                                 )
                             )
                         )
@@ -990,9 +994,9 @@ private fun LetterByLetterText(
                                     brush = Brush.horizontalGradient(
                                         colors = listOf(
                                             Color.Transparent,
-                                            colors.goldLight.copy(alpha = 0.7f),
+                                            hierarchy.secondary.secondary.copy(alpha = 0.7f),
                                             Color.White.copy(alpha = 0.9f),
-                                            colors.goldLight.copy(alpha = 0.7f),
+                                            hierarchy.secondary.secondary.copy(alpha = 0.7f),
                                             Color.Transparent
                                         ),
                                         startX = -size.width + letterShimmerOffset * size.width * 3,

@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.ui.theme.*
 import kotlinx.coroutines.delay
+import com.tanush.bouncer.ui.theme.GoldPrimary
 
 @Composable
 fun AnimatedCard(
@@ -76,6 +77,7 @@ fun SuccessToast(
     }
     
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     
     AnimatedVisibility(
         visible = visible,
@@ -226,6 +228,7 @@ fun AnimatedScore(
     textColor: Color = TextPrimary,
     fontSize: Float = 28f
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     var previousScore by remember { mutableStateOf(score) }
     var isAnimating by remember { mutableStateOf(false) }
@@ -249,7 +252,7 @@ fun AnimatedScore(
     )
     
     val animatedColor by animateColorAsState(
-        targetValue = if (isAnimating) colors.goldPrimary else textColor,
+        targetValue = if (isAnimating) hierarchy.secondary.primary else textColor,
         animationSpec = tween(300),
         label = "scoreColor"
     )
@@ -273,6 +276,7 @@ fun BouncingArrow(
     modifier: Modifier = Modifier,
     tint: Color = GoldPrimary
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val infiniteTransition = rememberInfiniteTransition(label = "arrowBounce")
     val bounce by infiniteTransition.animateFloat(
         initialValue = 0f,

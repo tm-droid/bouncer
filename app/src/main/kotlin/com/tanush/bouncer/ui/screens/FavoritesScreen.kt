@@ -43,6 +43,7 @@ fun FavoritesScreen(
     onTeamClick: (String) -> Unit
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val typography = BouncerDesignSystem.typography
     val dimens = BouncerDesignSystem.dimens
 
@@ -86,7 +87,7 @@ fun FavoritesScreen(
                     Text(
                         "FAVORITES",
                         style = typography.headingSmall,
-                        color = colors.goldPrimary,
+                        color = hierarchy.secondary.primary,
                         letterSpacing = 2.sp
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(dimens.xs)) {
@@ -144,13 +145,13 @@ fun FavoritesScreen(
                                 Icon(
                                     imageVector = if (isEditMode) Icons.Default.DragHandle else Icons.Default.Favorite,
                                     contentDescription = null,
-                                    tint = if (isEditMode) colors.goldPrimary else colors.statusLive,
+                                    tint = if (isEditMode) hierarchy.secondary.primary else colors.statusLive,
                                     modifier = Modifier.size(18.dp)
                                 )
                                 Text(
                                     text = if (isEditMode) "Drag to reorder" else "Saved teams",
                                     style = typography.labelSmall,
-                                    color = if (isEditMode) colors.goldPrimary else colors.textSecondary,
+                                    color = if (isEditMode) hierarchy.secondary.primary else colors.textSecondary,
                                     letterSpacing = 0.8.sp
                                 )
                                 Box(
@@ -324,6 +325,7 @@ private fun FavoriteTeamCard(
     onRemove: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val typography = BouncerDesignSystem.typography
     val dimens = BouncerDesignSystem.dimens
@@ -355,7 +357,7 @@ private fun FavoriteTeamCard(
                         .background(
                             Brush.radialGradient(
                                 colors = listOf(
-                                    colors.goldPrimary.copy(alpha = 0.1f),
+                                    hierarchy.secondary.primary.copy(alpha = 0.1f),
                                     Color.Transparent
                                 )
                             ),
@@ -463,6 +465,7 @@ private fun ReorderableTeamCard(
     canMoveDown: Boolean,
     position: Int
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val typography = BouncerDesignSystem.typography
     val dimens = BouncerDesignSystem.dimens
@@ -498,12 +501,12 @@ private fun ReorderableTeamCard(
             Box(
                 modifier = Modifier
                     .size(28.dp)
-                    .background(colors.goldPrimary.copy(alpha = 0.2f), CircleShape),
+                    .background(hierarchy.secondary.primary.copy(alpha = 0.2f), CircleShape),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = position.toString(),
-                    color = colors.goldPrimary,
+                    color = hierarchy.secondary.primary,
                     style = typography.labelSmall
                 )
             }
@@ -570,6 +573,7 @@ private fun FavoriteTeamListRow(
     onClick: () -> Unit,
     onRemove: () -> Unit
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val typography = BouncerDesignSystem.typography
     val dimens = BouncerDesignSystem.dimens
@@ -592,13 +596,13 @@ private fun FavoriteTeamListRow(
             Box(
                 modifier = Modifier
                     .size(28.dp)
-                    .background(colors.goldPrimary.copy(alpha = 0.14f), CircleShape),
+                    .background(hierarchy.secondary.primary.copy(alpha = 0.14f), CircleShape),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = position.toString(),
                     style = typography.labelSmall,
-                    color = colors.goldPrimary
+                    color = hierarchy.secondary.primary
                 )
             }
 
@@ -820,6 +824,7 @@ private fun TeamSelectionRow(
     teamName: String,
     onClick: () -> Unit
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val typography = BouncerDesignSystem.typography
     val context = LocalContext.current
@@ -861,7 +866,7 @@ private fun TeamSelectionRow(
             Icon(
                 imageVector = Icons.Default.Add,
                 contentDescription = "Add",
-                tint = colors.goldPrimary,
+                tint = hierarchy.secondary.primary,
                 modifier = Modifier.size(22.dp)
             )
         }

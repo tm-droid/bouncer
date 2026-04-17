@@ -49,10 +49,11 @@ data class OverData(
 fun ManhattanChartCard(
     overs: List<OverData>,
     teamName: String,
-    teamColor: Color = BouncerDesignSystem.colors.goldPrimary,
+    teamColor: Color = BouncerDesignSystem.hierarchy.secondary.primary,
     modifier: Modifier = Modifier
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     var selectedOver by remember { mutableStateOf<OverData?>(null) }
     val maxRuns = (overs.maxOfOrNull { it.runs } ?: 15).coerceAtLeast(6)
     val textMeasurer = rememberTextMeasurer()
@@ -97,7 +98,7 @@ fun ManhattanChartCard(
                     )
                     Text(
                         "MANHATTAN CHART",
-                        color = colors.goldPrimary,
+                        color = hierarchy.secondary.primary,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 1.sp
@@ -390,6 +391,7 @@ private fun LegendBar(color: Color, label: String) {
  */
 @Composable
 private fun ManhattanSummary(overs: List<OverData>, teamColor: Color) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val totalRuns = overs.sumOf { it.runs }
     val totalWickets = overs.sumOf { it.wickets }
@@ -426,7 +428,7 @@ private fun ManhattanSummary(overs: List<OverData>, teamColor: Color) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
                     text = String.format("%.2f", avgRunRate),
-                    color = colors.goldPrimary,
+                    color = hierarchy.secondary.primary,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Black
                 )
@@ -478,11 +480,12 @@ private fun ManhattanSummary(overs: List<OverData>, teamColor: Color) {
 @Composable
 fun MiniManhattan(
     overs: List<OverData>,
-    teamColor: Color = BouncerDesignSystem.colors.goldPrimary,
+    teamColor: Color = BouncerDesignSystem.hierarchy.secondary.primary,
     modifier: Modifier = Modifier
         .fillMaxWidth()
         .height(40.dp)
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val statusLiveColor = BouncerDesignSystem.colors.statusLive
     val statusWarningColor = BouncerDesignSystem.colors.statusWarning
     val statusSuccessColor = BouncerDesignSystem.colors.statusSuccess

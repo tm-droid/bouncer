@@ -20,6 +20,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.ui.theme.*
+import com.tanush.bouncer.ui.theme.GoldPrimary
 
 /**
  * MEGA UI UPGRADE: PartnershipsCard (v2.0).
@@ -34,6 +35,7 @@ fun PartnershipsCard(
 ) {
     val maxRuns = partnerships.maxOfOrNull { it.totalRuns } ?: 100
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
 
     Box(
         modifier = modifier
@@ -57,7 +59,7 @@ fun PartnershipsCard(
                 Column {
                     Text(
                         "PARTNERSHIP DYNAMICS",
-                        color = colors.goldPrimary,
+                        color = hierarchy.secondary.primary,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Black,
                         letterSpacing = 2.sp
@@ -74,7 +76,7 @@ fun PartnershipsCard(
                 Icon(
                     imageVector = Icons.Default.People,
                     contentDescription = null,
-                    tint = colors.goldPrimary.copy(alpha = 0.3f),
+                    tint = hierarchy.secondary.primary.copy(alpha = 0.3f),
                     modifier = Modifier.size(20.dp)
                 )
             }

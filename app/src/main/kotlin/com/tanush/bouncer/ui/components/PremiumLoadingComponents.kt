@@ -33,10 +33,11 @@ fun shimmerBrush(
     showShimmer: Boolean = true
 ): Brush {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     return if (showShimmer) {
         val shimmerColors = listOf(
             Surface1.copy(alpha = 0.3f),
-            colors.goldPrimary.copy(alpha = 0.15f),
+            hierarchy.secondary.primary.copy(alpha = 0.15f),
             Surface1.copy(alpha = 0.3f)
         )
         
@@ -91,6 +92,7 @@ fun PremiumShimmerBox(
 fun PremiumMatchCardSkeleton(
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     Card(
         modifier = modifier
@@ -99,7 +101,7 @@ fun PremiumMatchCardSkeleton(
             .shadow(
                 elevation = 16.dp,
                 shape = RoundedCornerShape(12.dp),
-                spotColor = colors.goldPrimary.copy(alpha = 0.08f),
+                spotColor = hierarchy.secondary.primary.copy(alpha = 0.08f),
                 ambientColor = Color.Black.copy(alpha = 0.2f)
             ),
         colors = CardDefaults.cardColors(containerColor = Surface1),
@@ -213,6 +215,7 @@ fun PremiumMatchCardSkeleton(
 fun CommentarySkeleton(
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     Card(
         modifier = modifier
@@ -220,7 +223,7 @@ fun CommentarySkeleton(
             .shadow(
                 elevation = 8.dp,
                 shape = RoundedCornerShape(16.dp),
-                spotColor = colors.goldPrimary.copy(alpha = 0.05f)
+                spotColor = hierarchy.secondary.primary.copy(alpha = 0.05f)
             ),
         colors = CardDefaults.cardColors(containerColor = Surface1),
         shape = RoundedCornerShape(16.dp)
@@ -269,6 +272,7 @@ fun GraphSkeleton(
     modifier: Modifier = Modifier,
     height: Dp = 200.dp
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     Card(
         modifier = modifier
@@ -276,7 +280,7 @@ fun GraphSkeleton(
             .shadow(
                 elevation = 12.dp,
                 shape = RoundedCornerShape(24.dp),
-                spotColor = colors.goldPrimary.copy(alpha = 0.08f)
+                spotColor = hierarchy.secondary.primary.copy(alpha = 0.08f)
             ),
         colors = CardDefaults.cardColors(containerColor = Surface1),
         shape = RoundedCornerShape(24.dp)
@@ -320,9 +324,10 @@ fun GraphSkeleton(
 @Composable
 fun PulsingLoader(
     modifier: Modifier = Modifier,
-    color: Color = BouncerDesignSystem.colors.goldPrimary,
+    color: Color = BouncerDesignSystem.hierarchy.secondary.primary,
     size: Dp = 48.dp
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val infiniteTransition = rememberInfiniteTransition(label = "pulse")
     
     val scale by infiniteTransition.animateFloat(
@@ -390,9 +395,10 @@ fun CricketBallSpinner(
     modifier: Modifier = Modifier,
     size: Dp = 56.dp
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
-    val goldLight = colors.goldLight
-    val goldPrimary = colors.goldPrimary
+    val goldLight = hierarchy.secondary.secondary
+    val goldPrimary = hierarchy.secondary.primary
     val infiniteTransition = rememberInfiniteTransition(label = "ball_spin")
     
     val rotation by infiniteTransition.animateFloat(
@@ -498,10 +504,11 @@ fun CricketBallSpinner(
 @Composable
 fun DotWaveLoader(
     modifier: Modifier = Modifier,
-    color: Color = BouncerDesignSystem.colors.goldPrimary,
+    color: Color = BouncerDesignSystem.hierarchy.secondary.primary,
     dotCount: Int = 5,
     dotSize: Dp = 10.dp
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val infiniteTransition = rememberInfiniteTransition(label = "dots")
     
     Row(
@@ -592,6 +599,7 @@ fun FullScreenLoader(
     message: String = "Loading...",
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     Box(
         modifier = modifier
@@ -616,7 +624,7 @@ fun FullScreenLoader(
             Spacer(modifier = Modifier.height(16.dp))
             
             DotWaveLoader(
-                color = colors.goldPrimary,
+                color = hierarchy.secondary.primary,
                 dotCount = 3,
                 dotSize = 8.dp
             )
@@ -632,8 +640,9 @@ fun PremiumRefreshIndicator(
     isRefreshing: Boolean,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
-    val goldPrimary = colors.goldPrimary
+    val goldPrimary = hierarchy.secondary.primary
     val rotation by animateFloatAsState(
         targetValue = if (isRefreshing) 360f else 0f,
         animationSpec = if (isRefreshing) {

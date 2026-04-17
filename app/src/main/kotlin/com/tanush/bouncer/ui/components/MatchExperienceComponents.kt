@@ -51,9 +51,10 @@ fun LiveCommentaryCardEnhanced(
     modifier: Modifier = Modifier
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val eventColor = when {
         isWicket -> colors.statusLive
-        runs == "6" -> colors.goldPrimary
+        runs == "6" -> hierarchy.secondary.primary
         runs == "4" -> colors.statusInfo
         runs == "0" || runs == "." -> DotBall
         else -> colors.textSecondary
@@ -108,7 +109,7 @@ fun LiveCommentaryCardEnhanced(
                     text = overNumber,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
-                    color = colors.goldDark
+                    color = hierarchy.secondary.primary
                 )
                 Text(
                     text = ".$ballNumber",
@@ -182,7 +183,7 @@ fun LiveCommentaryCardEnhanced(
                 if (isWicket) {
                     EventBadge(text = "WICKET", color = colors.statusLive)
                 } else if (runs == "6") {
-                    EventBadge(text = "SIX", color = colors.goldPrimary)
+                    EventBadge(text = "SIX", color = hierarchy.secondary.primary)
                 } else if (runs == "4") {
                     EventBadge(text = "FOUR", color = colors.statusInfo)
                 }
@@ -216,6 +217,7 @@ fun EnhancedRecentBallsStrip(
     balls: List<BallEvent>,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     var selectedBall by remember { mutableStateOf<BallEvent?>(null) }
 
@@ -274,7 +276,7 @@ fun EnhancedRecentBallsStrip(
                                 text = ball.batsmanName,
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.SemiBold,
-                                color = colors.goldDark
+                                color = hierarchy.secondary.primary
                             )
                         }
                     }
@@ -301,10 +303,11 @@ private fun AnimatedBallChip(
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val color = when {
         ball.isWicket -> colors.statusLive
-        ball.runs == "6" -> colors.goldPrimary
+        ball.runs == "6" -> hierarchy.secondary.primary
         ball.runs == "4" -> colors.statusInfo
         ball.runs == "0" || ball.runs == "." -> DotBall
         else -> colors.textSecondary
@@ -384,12 +387,13 @@ fun KeyMomentsCard(
     moments: List<KeyMoment>,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     Surface(
         modifier = modifier.shadow(
             elevation = 12.dp,
             shape = RoundedCornerShape(20.dp),
-            spotColor = colors.goldDark.copy(alpha = 0.15f)
+            spotColor = hierarchy.secondary.primary.copy(alpha = 0.15f)
         ),
         shape = RoundedCornerShape(20.dp),
         color = colors.glassSurface
@@ -408,7 +412,7 @@ fun KeyMomentsCard(
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 1.5.sp,
-                    color = colors.goldDark
+                    color = hierarchy.secondary.primary
                 )
                 
                 Text(
@@ -451,13 +455,14 @@ private fun KeyMomentItem(
     moment: KeyMoment,
     index: Int
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     var isExpanded by remember { mutableStateOf(false) }
     
     val momentColor = when (moment.type) {
         KeyMoment.MomentType.WICKET -> colors.statusLive
-        KeyMoment.MomentType.BOUNDARY -> colors.goldPrimary
-        KeyMoment.MomentType.MILESTONE -> colors.goldDark
+        KeyMoment.MomentType.BOUNDARY -> hierarchy.secondary.primary
+        KeyMoment.MomentType.MILESTONE -> hierarchy.secondary.primary
         KeyMoment.MomentType.PARTNERSHIP -> colors.statusSuccess
         KeyMoment.MomentType.REVIEW -> colors.statusInfo
         KeyMoment.MomentType.OTHER -> colors.textSecondary
@@ -593,6 +598,7 @@ fun ScorecardSummaryCard(
     topBowler: PlayerPerformance?,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "scorecard")
     val shimmerOffset by infiniteTransition.animateFloat(
@@ -609,7 +615,7 @@ fun ScorecardSummaryCard(
         modifier = modifier.shadow(
             elevation = 16.dp,
             shape = RoundedCornerShape(24.dp),
-            spotColor = colors.goldDark.copy(alpha = 0.2f)
+            spotColor = hierarchy.secondary.primary.copy(alpha = 0.2f)
         ),
         shape = RoundedCornerShape(24.dp),
         color = colors.glassSurface
@@ -647,7 +653,7 @@ fun ScorecardSummaryCard(
                     Box(
                         modifier = Modifier
                             .size(48.dp)
-                            .border(1.dp, colors.goldDark.copy(alpha = 0.4f), CircleShape)
+                            .border(1.dp, hierarchy.secondary.primary.copy(alpha = 0.4f), CircleShape)
                             .clip(CircleShape)
                             .background(colors.surface1),
                         contentAlignment = Alignment.Center
@@ -666,7 +672,7 @@ fun ScorecardSummaryCard(
                                 text = teamName.take(3).uppercase(),
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Black,
-                                color = colors.goldDark
+                                color = hierarchy.secondary.primary
                             )
                         }
                     }
@@ -706,7 +712,7 @@ fun ScorecardSummaryCard(
                             text = score,
                             fontSize = 28.sp,
                             fontWeight = FontWeight.Black,
-                            color = colors.goldDark
+                            color = hierarchy.secondary.primary
                         )
                         Text(
                             text = "($overs overs)",
@@ -759,6 +765,7 @@ private fun PerformerMini(
     stat: String,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     Column(modifier = modifier) {
         Text(
@@ -780,7 +787,7 @@ private fun PerformerMini(
             text = stat,
             fontSize = 12.sp,
             fontWeight = FontWeight.Bold,
-            color = colors.goldDark
+            color = hierarchy.secondary.primary
         )
     }
 }

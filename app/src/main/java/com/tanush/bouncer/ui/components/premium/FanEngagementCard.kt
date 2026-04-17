@@ -71,6 +71,7 @@ fun FanEngagementCard(
     modifier: Modifier = Modifier,
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val infiniteTransition = rememberInfiniteTransition(label = "engagement")
 
     val heartScale by infiniteTransition.animateFloat(
@@ -104,7 +105,7 @@ fun FanEngagementCard(
     )
 
     val sentimentColor = when (engagement.fanSentiment) {
-        "electric" -> colors.goldDark
+        "electric" -> hierarchy.secondary.primary
         "intense" -> colors.statusLive
         else -> colors.statusInfo
     }
@@ -330,7 +331,7 @@ fun FanEngagementCard(
                         emojiIcon = "💬",
                         value = formatNumber(engagement.comments),
                         label = "Comments",
-                        color = colors.goldDark,
+                        color = hierarchy.secondary.primary,
                     )
                 }
 

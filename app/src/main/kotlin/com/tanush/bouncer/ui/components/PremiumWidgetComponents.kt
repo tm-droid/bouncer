@@ -55,6 +55,7 @@ fun StatSummaryWidget(
     modifier: Modifier = Modifier
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val infiniteTransition = rememberInfiniteTransition(label = "stat")
     
     val shimmer by infiniteTransition.animateFloat(
@@ -82,7 +83,7 @@ fun StatSummaryWidget(
                 brush = Brush.linearGradient(
                     colors = listOf(
                         Color.Transparent,
-                        colors.goldDark.copy(alpha = 0.05f),
+                        hierarchy.secondary.primary.copy(alpha = 0.05f),
                         Color.Transparent
                     ),
                     start = Offset(shimmer * 200, 0f),
@@ -91,7 +92,7 @@ fun StatSummaryWidget(
             )
             .border(
                 width = 1.dp,
-                color = colors.goldDark.copy(alpha = 0.2f),
+                color = hierarchy.secondary.primary.copy(alpha = 0.2f),
                 shape = RoundedCornerShape(16.dp)
             )
             .padding(16.dp)
@@ -124,7 +125,7 @@ fun StatSummaryWidget(
                     if (subtitle.isNotEmpty()) {
                         Text(
                             text = subtitle,
-                            color = colors.goldDark,
+                            color = hierarchy.secondary.primary,
                             fontSize = 12.sp
                         )
                     }
@@ -134,13 +135,13 @@ fun StatSummaryWidget(
                     modifier = Modifier
                         .size(48.dp)
                         .clip(CircleShape)
-                        .background(colors.goldDark.copy(alpha = 0.15f)),
+                        .background(hierarchy.secondary.primary.copy(alpha = 0.15f)),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = icon,
                         contentDescription = null,
-                        tint = colors.goldDark,
+                        tint = hierarchy.secondary.primary,
                         modifier = Modifier.size(24.dp)
                     )
                 }
@@ -190,10 +191,11 @@ fun CircularStatWidget(
     maxValue: Float = 100f,
     label: String,
     centerText: String,
-    color: Color = BouncerDesignSystem.colors.goldDark,
+    color: Color = BouncerDesignSystem.hierarchy.secondary.primary,
     size: Dp = 120.dp,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val progress = (value / maxValue).coerceIn(0f, 1f)
     
     val animatedProgress by animateFloatAsState(
@@ -280,6 +282,7 @@ fun CompactMatchWidget(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "match")
     
@@ -300,7 +303,7 @@ fun CompactMatchWidget(
             .background(GlassSurface)
             .border(
                 width = 1.dp,
-                color = if (isLive) Color(0xFFEF4444).copy(alpha = 0.5f) else colors.goldDark.copy(alpha = 0.2f),
+                color = if (isLive) Color(0xFFEF4444).copy(alpha = 0.5f) else hierarchy.secondary.primary.copy(alpha = 0.2f),
                 shape = RoundedCornerShape(12.dp)
             )
             .clickable { onClick() }
@@ -394,6 +397,7 @@ fun QuickStatsRow(
     stats: List<Pair<String, String>>,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     Row(
         modifier = modifier
@@ -426,7 +430,7 @@ fun QuickStatsRow(
                     modifier = Modifier
                         .width(1.dp)
                         .height(32.dp)
-                        .background(colors.goldDark.copy(alpha = 0.2f))
+                        .background(hierarchy.secondary.primary.copy(alpha = 0.2f))
                 )
             }
         }
@@ -443,6 +447,7 @@ fun UpcomingMatchWidget(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     Box(
         modifier = modifier
@@ -450,14 +455,14 @@ fun UpcomingMatchWidget(
             .background(
                 brush = Brush.linearGradient(
                     colors = listOf(
-                        colors.goldDark.copy(alpha = 0.1f),
+                        hierarchy.secondary.primary.copy(alpha = 0.1f),
                         GlassSurface
                     )
                 )
             )
             .border(
                 width = 1.dp,
-                color = colors.goldDark.copy(alpha = 0.3f),
+                color = hierarchy.secondary.primary.copy(alpha = 0.3f),
                 shape = RoundedCornerShape(16.dp)
             )
             .clickable { onClick() }
@@ -479,12 +484,12 @@ fun UpcomingMatchWidget(
                     Icon(
                         imageVector = Icons.Default.Schedule,
                         contentDescription = null,
-                        tint = colors.goldDark,
+                        tint = hierarchy.secondary.primary,
                         modifier = Modifier.size(16.dp)
                     )
                     Text(
                         text = matchTime,
-                        color = colors.goldDark,
+                        color = hierarchy.secondary.primary,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -514,7 +519,7 @@ fun UpcomingMatchWidget(
                 
                 Text(
                     text = "vs",
-                    color = colors.goldDark.copy(alpha = 0.7f),
+                    color = hierarchy.secondary.primary.copy(alpha = 0.7f),
                     fontSize = 12.sp,
                     modifier = Modifier.padding(horizontal = 12.dp)
                 )
@@ -561,6 +566,7 @@ fun DashboardHeader(
     onProfileClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "header")
     
@@ -600,7 +606,7 @@ fun DashboardHeader(
             if (subtitle.isNotEmpty()) {
                 Text(
                     text = subtitle,
-                    color = colors.goldDark,
+                    color = hierarchy.secondary.primary,
                     fontSize = 13.sp
                 )
             }
@@ -613,8 +619,8 @@ fun DashboardHeader(
                 .background(
                     brush = Brush.linearGradient(
                         colors = listOf(
-                            colors.goldDark.copy(alpha = 0.3f),
-                            colors.goldLight.copy(alpha = 0.1f)
+                            hierarchy.secondary.primary.copy(alpha = 0.3f),
+                            hierarchy.secondary.secondary.copy(alpha = 0.1f)
                         ),
                         start = Offset(shimmer * 100, 0f),
                         end = Offset((shimmer + 1) * 100, 100f)
@@ -623,7 +629,7 @@ fun DashboardHeader(
                 .border(
                     width = 2.dp,
                     brush = Brush.linearGradient(
-                        colors = listOf(colors.goldDark, colors.goldLight)
+                        colors = listOf(hierarchy.secondary.primary, hierarchy.secondary.secondary)
                     ),
                     shape = CircleShape
                 )
@@ -632,7 +638,7 @@ fun DashboardHeader(
         ) {
             Text(
                 text = userName.take(2).uppercase(),
-                color = colors.goldDark,
+                color = hierarchy.secondary.primary,
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold
             )
@@ -648,6 +654,7 @@ fun ActionTile(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     Box(
         modifier = modifier
@@ -655,7 +662,7 @@ fun ActionTile(
             .background(GlassSurface)
             .border(
                 width = 1.dp,
-                color = colors.goldDark.copy(alpha = 0.2f),
+                color = hierarchy.secondary.primary.copy(alpha = 0.2f),
                 shape = RoundedCornerShape(16.dp)
             )
             .clickable { onClick() }
@@ -668,13 +675,13 @@ fun ActionTile(
                 modifier = Modifier
                     .size(44.dp)
                     .clip(RoundedCornerShape(12.dp))
-                    .background(colors.goldDark.copy(alpha = 0.15f)),
+                    .background(hierarchy.secondary.primary.copy(alpha = 0.15f)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
-                    tint = colors.goldDark,
+                    tint = hierarchy.secondary.primary,
                     modifier = Modifier.size(24.dp)
                 )
             }
@@ -711,6 +718,7 @@ fun SummarySection(
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     Column(
         modifier = modifier.fillMaxWidth(),
@@ -736,14 +744,14 @@ fun SummarySection(
                 ) {
                     Text(
                         text = actionLabel,
-                        color = colors.goldDark,
+                        color = hierarchy.secondary.primary,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Medium
                     )
                     Icon(
                         imageVector = Icons.Default.ChevronRight,
                         contentDescription = null,
-                        tint = colors.goldDark,
+                        tint = hierarchy.secondary.primary,
                         modifier = Modifier.size(16.dp)
                     )
                 }

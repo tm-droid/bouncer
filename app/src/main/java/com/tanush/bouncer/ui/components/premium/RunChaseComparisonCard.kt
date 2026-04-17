@@ -87,6 +87,7 @@ fun RunChaseComparisonCard(
     modifier: Modifier = Modifier,
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val animatedProgress = remember { Animatable(0f) }
 
     LaunchedEffect(chaseData) {
@@ -125,7 +126,7 @@ fun RunChaseComparisonCard(
                             .clip(CircleShape)
                             .background(
                                 Brush.linearGradient(
-                                    colors = listOf(colors.goldDark, colors.goldPrimary),
+                                    colors = listOf(hierarchy.secondary.primary, hierarchy.secondary.primary),
                                 ),
                             ),
                         contentAlignment = Alignment.Center,
@@ -143,7 +144,7 @@ fun RunChaseComparisonCard(
                     Column {
                         Text(
                             text = "RUN CHASE",
-                            color = colors.goldLight,
+                            color = hierarchy.secondary.secondary,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.5.sp,
@@ -165,7 +166,7 @@ fun RunChaseComparisonCard(
                     )
                     Text(
                         text = "${chaseData.target}",
-                        color = colors.goldDark,
+                        color = hierarchy.secondary.primary,
                         fontSize = 24.sp,
                         fontWeight = FontWeight.Bold,
                     )
@@ -223,7 +224,7 @@ fun RunChaseComparisonCard(
             Spacer(modifier = Modifier.height(20.dp))
 
             // Capture color for Canvas scope
-            val goldDark = colors.goldDark
+            val goldDark = hierarchy.secondary.primary
             val statusInfoColor = colors.statusInfo
 
             // Comparison chart
@@ -409,12 +410,12 @@ fun RunChaseComparisonCard(
                         modifier = Modifier
                             .width(20.dp)
                             .height(2.dp)
-                            .background(colors.goldDark),
+                            .background(hierarchy.secondary.primary),
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
                         text = "Target",
-                        color = colors.goldDark,
+                        color = hierarchy.secondary.primary,
                         fontSize = 12.sp,
                     )
                 }

@@ -7,6 +7,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Score
+import androidx.compose.material.icons.outlined.EmojiEvents
+import androidx.compose.material.icons.outlined.SportsCricket
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -69,6 +72,7 @@ fun ScoringSummaryCard(
     modifier: Modifier = Modifier,
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val animatedProgress = remember { Animatable(0f) }
 
     val infiniteTransition = rememberInfiniteTransition(label = "scoring")
@@ -113,7 +117,7 @@ fun ScoringSummaryCard(
                             .clip(CircleShape)
                             .background(
                                 Brush.linearGradient(
-                                    colors = listOf(colors.goldDark, colors.goldPrimary),
+                                    colors = listOf(hierarchy.secondary.primary, hierarchy.secondary.primary),
                                 ),
                             ),
                         contentAlignment = Alignment.Center,
@@ -131,7 +135,7 @@ fun ScoringSummaryCard(
                     Column {
                         Text(
                             text = "SCORING SUMMARY",
-                            color = colors.goldLight,
+                            color = hierarchy.secondary.secondary,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.5.sp,
@@ -161,7 +165,7 @@ fun ScoringSummaryCard(
 
                 Text(
                     text = "VS",
-                    color = colors.goldDark,
+                    color = hierarchy.secondary.primary,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Black,
                 )
@@ -280,14 +284,14 @@ fun ScoringSummaryCard(
                 TopPerformerChip(
                     title = "Top Scorer",
                     name = summaryData.topScorer,
-                    emoji = "🏏",
+                    icon = Icons.Outlined.SportsCricket,
                     modifier = Modifier.weight(1f),
                 )
 
                 TopPerformerChip(
                     title = "Top Wicket Taker",
                     name = summaryData.topWicketTaker,
-                    emoji = "🎳",
+                    icon = Icons.Outlined.EmojiEvents,
                     modifier = Modifier.weight(1f),
                 )
             }
@@ -301,6 +305,7 @@ private fun TeamScoreColumn(
     score: String,
     isLeading: Boolean,
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
@@ -314,7 +319,7 @@ private fun TeamScoreColumn(
 
         Text(
             text = score,
-            color = if (isLeading) colors.goldDark else colors.textPrimary,
+            color = if (isLeading) hierarchy.secondary.primary else colors.textPrimary,
             fontSize = 28.sp,
             fontWeight = FontWeight.Black,
         )
@@ -326,6 +331,7 @@ private fun ScoringComparisonBar(
     item: ScoringBreakdownItem,
     progress: Float,
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val total = (item.team1Value + item.team2Value).coerceAtLeast(1)
     val team1Ratio = item.team1Value.toFloat() / total
@@ -350,7 +356,7 @@ private fun ScoringComparisonBar(
             )
             Text(
                 text = "${item.team2Value}",
-                color = colors.goldDark,
+                color = hierarchy.secondary.primary,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
             )
@@ -375,7 +381,7 @@ private fun ScoringComparisonBar(
                 modifier = Modifier
                     .fillMaxHeight()
                     .weight(((1f - team1Ratio) * progress).coerceAtLeast(0.05f))
-                    .background(colors.goldDark),
+                    .background(hierarchy.secondary.primary),
             )
         }
     }
@@ -407,7 +413,7 @@ private fun ExtrasItem(
 private fun TopPerformerChip(
     title: String,
     name: String,
-    emoji: String,
+    icon: ImageVector,
     modifier: Modifier = Modifier,
 ) {
     val colors = BouncerDesignSystem.colors
@@ -418,9 +424,11 @@ private fun TopPerformerChip(
             .padding(10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(
-            text = emoji,
-            fontSize = 20.sp,
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = colors.goldPrimary,
+            modifier = Modifier.size(20.dp)
         )
 
         Spacer(modifier = Modifier.width(8.dp))

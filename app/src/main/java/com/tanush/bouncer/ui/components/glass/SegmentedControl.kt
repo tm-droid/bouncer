@@ -58,6 +58,7 @@ fun GlassSegmentedControl(
     require(items.size in 2..6) { "GlassSegmentedControl supports 2-6 items" }
     
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val typography = BouncerDesignSystem.typography
     val dimens = BouncerDesignSystem.dimens
     val density = LocalDensity.current
@@ -103,13 +104,13 @@ fun GlassSegmentedControl(
                     .width(segmentWidth)
                     .fillMaxHeight()
                     .clip(segmentShape)
-                    .background(colors.goldPrimary.copy(alpha = 0.9f)) // Solid gold from spec
+                    .background(hierarchy.secondary.primary.copy(alpha = 0.9f)) // Solid gold from spec
                     .drawBehind {
                         // Premium Glow Effect
                         drawRect(
                             brush = Brush.radialGradient(
                                 colors = listOf(
-                                    colors.goldPrimary.copy(alpha = 0.3f),
+                                    hierarchy.secondary.primary.copy(alpha = 0.3f),
                                     Color.Transparent
                                 ),
                                 center = Offset(size.width / 2, size.height / 2),
@@ -169,6 +170,7 @@ fun GlassSegmentedControlWithIcons(
     onSelect: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     require(items.size in 2..6) { "GlassSegmentedControlWithIcons supports 2-6 items" }
     
     val colors = BouncerDesignSystem.colors
@@ -213,7 +215,7 @@ fun GlassSegmentedControlWithIcons(
                     .width(segmentWidth)
                     .fillMaxHeight()
                     .clip(segmentShape)
-                    .background(colors.goldPrimary.copy(alpha = 0.9f))
+                    .background(hierarchy.secondary.primary.copy(alpha = 0.9f))
             )
         }
         
@@ -282,12 +284,13 @@ fun GlassChip(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val typography = BouncerDesignSystem.typography
     
     val backgroundColor by animateColorAsState(
         targetValue = if (isSelected) {
-            colors.goldPrimary.copy(alpha = 0.2f)
+            hierarchy.secondary.primary.copy(alpha = 0.2f)
         } else {
             colors.glassSurface
         },
@@ -296,7 +299,7 @@ fun GlassChip(
     
     val borderColor by animateColorAsState(
         targetValue = if (isSelected) {
-            colors.goldPrimary.copy(alpha = 0.4f)
+            hierarchy.secondary.primary.copy(alpha = 0.4f)
         } else {
             colors.glassBorder
         },
@@ -305,7 +308,7 @@ fun GlassChip(
     
     val textColor by animateColorAsState(
         targetValue = if (isSelected) {
-            colors.goldPrimary
+            hierarchy.secondary.primary
         } else {
             colors.textSecondary
         },
@@ -321,7 +324,7 @@ fun GlassChip(
             .border(1.dp, borderColor, shape)
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
-                indication = ripple(color = colors.goldPrimary)
+                indication = ripple(color = hierarchy.secondary.primary)
             ) { onClick() }
             .padding(horizontal = 16.dp, vertical = 8.dp),
         contentAlignment = Alignment.Center
@@ -344,12 +347,13 @@ fun GlassChipCompact(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val typography = BouncerDesignSystem.typography
     
     val backgroundColor by animateColorAsState(
         targetValue = if (isSelected) {
-            colors.goldPrimary.copy(alpha = 0.2f)
+            hierarchy.secondary.primary.copy(alpha = 0.2f)
         } else {
             colors.glassSurface
         },
@@ -358,7 +362,7 @@ fun GlassChipCompact(
     
     val borderColor by animateColorAsState(
         targetValue = if (isSelected) {
-            colors.goldPrimary.copy(alpha = 0.4f)
+            hierarchy.secondary.primary.copy(alpha = 0.4f)
         } else {
             colors.glassBorder
         },
@@ -367,7 +371,7 @@ fun GlassChipCompact(
     
     val textColor by animateColorAsState(
         targetValue = if (isSelected) {
-            colors.goldPrimary
+            hierarchy.secondary.primary
         } else {
             colors.textSecondary
         },
@@ -383,7 +387,7 @@ fun GlassChipCompact(
             .border(1.dp, borderColor, shape)
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
-                indication = ripple(color = colors.goldPrimary)
+                indication = ripple(color = hierarchy.secondary.primary)
             ) { onClick() }
             .padding(horizontal = 12.dp, vertical = 6.dp),
         contentAlignment = Alignment.Center

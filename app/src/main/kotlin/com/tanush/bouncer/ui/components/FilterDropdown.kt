@@ -100,6 +100,7 @@ private fun MultiSelectChip(
     onClick: () -> Unit
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val backgroundColor by animateColorAsState(
         targetValue = if (isSelected) colors.goldPrimary.copy(alpha = 0.15f) else GlassSurface,
         animationSpec = tween(200),
@@ -126,7 +127,7 @@ private fun MultiSelectChip(
         modifier = Modifier.shadow(
             elevation = if (isSelected) 4.dp else 0.dp,
             shape = RoundedCornerShape(20.dp),
-            spotColor = colors.goldPrimary.copy(alpha = 0.2f)
+            spotColor = hierarchy.secondary.primary.copy(alpha = 0.2f)
         )
     ) {
         Row(
@@ -138,7 +139,7 @@ private fun MultiSelectChip(
                 Box(
                     modifier = Modifier
                         .size(14.dp)
-                        .background(colors.goldPrimary, CircleShape),
+                        .background(hierarchy.secondary.primary, CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
@@ -186,6 +187,7 @@ fun FilterDropdown(
     selectedOption: String,
     onOptionSelected: (String) -> Unit
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     var expanded by remember { mutableStateOf(false) }
     val isFiltered = selectedOption != "All"
@@ -194,8 +196,8 @@ fun FilterDropdown(
     val backgroundBrush = if (isFiltered) {
         Brush.horizontalGradient(
             colors = listOf(
-                colors.goldPrimary.copy(alpha = 0.2f),
-                colors.goldDark.copy(alpha = 0.1f)
+                hierarchy.secondary.primary.copy(alpha = 0.2f),
+                hierarchy.secondary.primary.copy(alpha = 0.1f)
             )
         )
     } else {
@@ -213,14 +215,14 @@ fun FilterDropdown(
                 .shadow(
                     elevation = if (isFiltered) 8.dp else 2.dp,
                     shape = RoundedCornerShape(16.dp),
-                    spotColor = if (isFiltered) colors.goldPrimary.copy(alpha = 0.4f) else Color.Transparent
+                    spotColor = if (isFiltered) hierarchy.secondary.primary.copy(alpha = 0.4f) else Color.Transparent
                 )
                 .clip(RoundedCornerShape(16.dp))
                 .background(backgroundBrush)
                 .border(
                     width = 1.dp,
                     brush = if (isFiltered) {
-                        Brush.linearGradient(listOf(colors.goldPrimary.copy(alpha = 0.5f), Color.Transparent))
+                        Brush.linearGradient(listOf(hierarchy.secondary.primary.copy(alpha = 0.5f), Color.Transparent))
                     } else {
                         Brush.linearGradient(listOf(colors.glassBorder.copy(alpha = 0.4f), Color.Transparent))
                     },
@@ -236,13 +238,13 @@ fun FilterDropdown(
             Icon(
                 imageVector = Icons.Default.FilterList,
                 contentDescription = null,
-                tint = if (isFiltered) colors.goldPrimary else colors.textMuted,
+                tint = if (isFiltered) hierarchy.secondary.primary else colors.textMuted,
                 modifier = Modifier.size(14.dp)
             )
             Spacer(modifier = Modifier.width(10.dp))
             Text(
                 text = if (selectedOption == "All") label else selectedOption,
-                color = if (isFiltered) colors.goldLight else colors.textSecondary,
+                color = if (isFiltered) hierarchy.secondary.secondary else colors.textSecondary,
                 fontSize = 13.sp,
                 fontWeight = if (isFiltered) FontWeight.Black else FontWeight.Bold,
                 letterSpacing = 0.5.sp
@@ -251,7 +253,7 @@ fun FilterDropdown(
             Icon(
                 imageVector = Icons.Default.ArrowDropDown,
                 contentDescription = null,
-                tint = if (isFiltered) colors.goldPrimary else colors.textTertiary,
+                tint = if (isFiltered) hierarchy.secondary.primary else colors.textTertiary,
                 modifier = Modifier.size(18.dp)
             )
         }

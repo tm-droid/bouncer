@@ -111,6 +111,7 @@ fun BouncerBottomNav(
     hasLiveMatch: Boolean = false
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val dimens = BouncerDesignSystem.dimens
 
     Box(
@@ -131,9 +132,9 @@ fun BouncerBottomNav(
                     .background(
                         Brush.horizontalGradient(
                             0.0f to Color.Transparent,
-                            0.2f to colors.goldPrimary.copy(alpha = 0.10f),
-                            0.5f to colors.goldPrimary.copy(alpha = 0.15f),
-                            0.8f to colors.goldPrimary.copy(alpha = 0.10f),
+                            0.2f to hierarchy.secondary.primary.copy(alpha = 0.10f),
+                            0.5f to hierarchy.secondary.primary.copy(alpha = 0.15f),
+                            0.8f to hierarchy.secondary.primary.copy(alpha = 0.10f),
                             1.0f to Color.Transparent
                         )
                     )
@@ -189,6 +190,7 @@ fun BouncerBottomNav(
 private fun GlassNavBarContainer(
     content: @Composable () -> Unit
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val dimens = BouncerDesignSystem.dimens
     val shape = RoundedCornerShape(dimens.radius.pill)
@@ -196,9 +198,9 @@ private fun GlassNavBarContainer(
     // Gradient border from gold
     val borderBrush = Brush.linearGradient(
         colors = listOf(
-            colors.goldLight.copy(alpha = 0.4f),
-            colors.goldPrimary.copy(alpha = 0.25f),
-            colors.goldDark.copy(alpha = 0.15f)
+            hierarchy.secondary.secondary.copy(alpha = 0.4f),
+            hierarchy.secondary.primary.copy(alpha = 0.25f),
+            hierarchy.secondary.primary.copy(alpha = 0.15f)
         ),
         start = Offset(0f, 0f),
         end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
@@ -250,6 +252,7 @@ private fun NavBarItem(
     onClick: () -> Unit,
     hasLiveBadge: Boolean = false
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val dimens = BouncerDesignSystem.dimens
     val interactionSource = remember { MutableInteractionSource() }
@@ -296,7 +299,7 @@ private fun NavBarItem(
                     if (isSelected) {
                         Modifier.drawBehind {
                             drawCircle(
-                                color = colors.goldPrimary.copy(alpha = 0.15f),
+                                color = hierarchy.secondary.primary.copy(alpha = 0.15f),
                                 radius = (dimens.minTouchTarget / 2).toPx()
                             )
                         }
@@ -331,7 +334,7 @@ private fun NavBarItem(
         ) {
             Text(
                 text = label,
-                color = colors.goldPrimary,
+                color = hierarchy.secondary.primary,
                 style = BouncerDesignSystem.typography.labelSmall,
                 fontWeight = FontWeight.SemiBold,
                 textAlign = TextAlign.Center,
@@ -392,6 +395,7 @@ private fun CenterFab(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val dimens = BouncerDesignSystem.dimens
     val interactionSource = remember { MutableInteractionSource() }
@@ -413,9 +417,9 @@ private fun CenterFab(
     // Gold gradient brush
     val goldGradient = Brush.linearGradient(
         colors = listOf(
-            colors.goldLight,
-            colors.goldPrimary,
-            colors.goldDark
+            hierarchy.secondary.secondary,
+            hierarchy.secondary.primary,
+            hierarchy.secondary.primary
         ),
         start = Offset(0f, 0f),
         end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
@@ -427,8 +431,8 @@ private fun CenterFab(
             .shadow(
                 elevation = dimens.elevation.overlay,
                 shape = CircleShape,
-                spotColor = colors.goldPrimary.copy(alpha = 0.5f),
-                ambientColor = colors.goldPrimary.copy(alpha = 0.3f)
+                spotColor = hierarchy.secondary.primary.copy(alpha = 0.5f),
+                ambientColor = hierarchy.secondary.primary.copy(alpha = 0.3f)
             )
             .scale(scale)
             .clip(CircleShape)

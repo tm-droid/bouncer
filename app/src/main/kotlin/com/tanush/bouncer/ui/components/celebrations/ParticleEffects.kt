@@ -17,6 +17,8 @@ import kotlinx.coroutines.delay
 import kotlin.math.*
 import kotlin.random.Random
 import io.sentry.Sentry
+import com.tanush.bouncer.ui.theme.GoldLight
+import com.tanush.bouncer.ui.theme.GoldPrimary
 
 /**
  * Data class representing a particle with physics properties
@@ -544,6 +546,7 @@ fun GlitterParticle(
     ),
     isActive: Boolean = true
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val infiniteTransition = rememberInfiniteTransition(label = "glitter")
     val time by infiniteTransition.animateFloat(
         initialValue = 0f,

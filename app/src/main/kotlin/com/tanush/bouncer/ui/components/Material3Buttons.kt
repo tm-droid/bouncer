@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.ui.theme.*
 import com.tanush.bouncer.utils.rememberHapticFeedback
+import com.tanush.bouncer.ui.theme.GoldPrimary
 
 /**
  * Material 3 Enhanced Button Components
@@ -51,6 +52,7 @@ fun PrimaryElevatedButton(
     loading: Boolean = false
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val dimens = BouncerDesignSystem.dimens
     val typography = BouncerDesignSystem.typography
     val haptic = rememberHapticFeedback()
@@ -91,8 +93,8 @@ fun PrimaryElevatedButton(
             .shadow(
                 elevation = elevation.dp,
                 shape = RoundedCornerShape(dimens.radius.lg),
-                spotColor = colors.goldPrimary.copy(alpha = 0.4f),
-                ambientColor = colors.goldPrimary.copy(alpha = 0.15f)
+                spotColor = hierarchy.secondary.primary.copy(alpha = 0.4f),
+                ambientColor = hierarchy.secondary.primary.copy(alpha = 0.15f)
             )
             .semantics {
                 contentDescription = text
@@ -148,6 +150,7 @@ fun OutlinedMaterialButton(
     icon: ImageVector? = null,
     enabled: Boolean = true
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val dimens = BouncerDesignSystem.dimens
     val typography = BouncerDesignSystem.typography
@@ -182,7 +185,7 @@ fun OutlinedMaterialButton(
         shape = RoundedCornerShape(dimens.radius.lg),
         colors = ButtonDefaults.outlinedButtonColors(
             containerColor = Color.Transparent,
-            contentColor = colors.goldPrimary,
+            contentColor = hierarchy.secondary.primary,
             disabledContainerColor = Color.Transparent,
             disabledContentColor = colors.textTertiary
         ),
@@ -191,8 +194,8 @@ fun OutlinedMaterialButton(
             brush = Brush.linearGradient(
                 colors = if (enabled) {
                     listOf(
-                        colors.goldPrimary.copy(alpha = 0.8f),
-                        colors.goldPrimary.copy(alpha = 0.6f)
+                        hierarchy.secondary.primary.copy(alpha = 0.8f),
+                        hierarchy.secondary.primary.copy(alpha = 0.6f)
                     )
                 } else {
                     listOf(colors.textTertiary, colors.textTertiary)
@@ -229,6 +232,7 @@ fun GlassMorphicButton(
     icon: ImageVector? = null,
     tint: Color = GoldPrimary
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val dimens = BouncerDesignSystem.dimens
     val typography = BouncerDesignSystem.typography
@@ -329,6 +333,7 @@ fun EnhancedFAB(
     contentColor: Color = BackgroundBase,
     elevation: Dp = 12.dp
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val dimens = BouncerDesignSystem.dimens
     val haptic = rememberHapticFeedback()
     val interactionSource = remember { MutableInteractionSource() }

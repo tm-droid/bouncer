@@ -61,6 +61,7 @@ fun BattingOrderCard(
     modifier: Modifier = Modifier,
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val animatedProgress = remember { Animatable(0f) }
 
     LaunchedEffect(battingOrder) {
@@ -94,7 +95,7 @@ fun BattingOrderCard(
                             .clip(CircleShape)
                             .background(
                                 Brush.linearGradient(
-                                    colors = listOf(colors.goldDark, colors.goldPrimary),
+                                    colors = listOf(hierarchy.secondary.primary, hierarchy.secondary.primary),
                                 ),
                             ),
                         contentAlignment = Alignment.Center,
@@ -112,7 +113,7 @@ fun BattingOrderCard(
                     Column {
                         Text(
                             text = "BATTING ORDER",
-                            color = colors.goldLight,
+                            color = hierarchy.secondary.secondary,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.5.sp,
@@ -130,7 +131,7 @@ fun BattingOrderCard(
                 Column(horizontalAlignment = Alignment.End) {
                     Text(
                         text = "${10 - wicketsFallen}",
-                        color = if (wicketsFallen >= 7) colors.statusLive else colors.goldDark,
+                        color = if (wicketsFallen >= 7) colors.statusLive else hierarchy.secondary.primary,
                         fontSize = 24.sp,
                         fontWeight = FontWeight.Bold,
                     )

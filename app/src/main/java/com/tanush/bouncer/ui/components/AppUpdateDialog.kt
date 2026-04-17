@@ -76,6 +76,8 @@ import com.tanush.bouncer.ui.updates.UpdateFeature
 import com.tanush.bouncer.ui.updates.UpdateFeatureType
 import com.tanush.bouncer.ui.updates.UpdateInfo
 import kotlinx.coroutines.delay
+import com.tanush.bouncer.ui.theme.GoldLight
+import com.tanush.bouncer.ui.theme.GoldPrimary
 
 @Composable
 fun AppUpdateDialog(
@@ -87,6 +89,7 @@ fun AppUpdateDialog(
     onRetry: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val updateInfo = when (state) {
         is AppUpdateUiState.UpdateAvailable -> state.info
         is AppUpdateUiState.Downloading -> state.info
@@ -200,8 +203,8 @@ fun AppUpdateDialog(
                                     .background(
                                         Brush.horizontalGradient(
                                             listOf(
-                                                BouncerDesignSystem.colors.goldLight,
-                                                BouncerDesignSystem.colors.goldPrimary,
+                                                GoldLight,
+                                                GoldPrimary,
                                                 TeamPrimaryColors.IndiaBlue
                                             )
                                         )
@@ -257,6 +260,7 @@ fun AppUpdateDialog(
 private fun UpdateHeader(updateInfo: UpdateInfo) {
     val typography = BouncerDesignSystem.typography
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
 
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -267,8 +271,8 @@ private fun UpdateHeader(updateInfo: UpdateInfo) {
             modifier = Modifier
                 .size(52.dp)
                 .clip(CircleShape)
-                .background(colors.goldPrimary.copy(alpha = 0.15f))
-                .border(1.dp, colors.goldPrimary.copy(alpha = 0.4f), CircleShape),
+                .background(hierarchy.secondary.primary.copy(alpha = 0.15f))
+                .border(1.dp, hierarchy.secondary.primary.copy(alpha = 0.4f), CircleShape),
             contentAlignment = Alignment.Center
         ) {
             Image(
@@ -300,6 +304,7 @@ private fun UpdateHeader(updateInfo: UpdateInfo) {
 
 @Composable
 private fun VersionSection(updateInfo: UpdateInfo) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
 
     Row(
@@ -327,7 +332,7 @@ private fun VersionSection(updateInfo: UpdateInfo) {
         Text(
             text = stringResource(R.string.update_new_version, updateInfo.newVersion),
             style = BouncerDesignSystem.typography.bodySmall,
-            color = colors.goldPrimary,
+            color = hierarchy.secondary.primary,
             fontWeight = FontWeight.SemiBold
         )
     }
@@ -335,6 +340,7 @@ private fun VersionSection(updateInfo: UpdateInfo) {
 
 @Composable
 private fun FeatureList(features: List<UpdateFeature>) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
 
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -354,7 +360,7 @@ private fun FeatureList(features: List<UpdateFeature>) {
                 Icon(
                     imageVector = feature.type.toIcon(),
                     contentDescription = stringResource(R.string.cd_update_feature_icon),
-                    tint = colors.goldPrimary,
+                    tint = hierarchy.secondary.primary,
                     modifier = Modifier.size(18.dp)
                 )
                 Text(
@@ -402,6 +408,7 @@ private fun SizeAndTimeEstimate(updateInfo: UpdateInfo) {
 
 @Composable
 private fun DownloadStateSection(progress: Int, state: AppUpdateUiState) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
 
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -422,7 +429,7 @@ private fun DownloadStateSection(progress: Int, state: AppUpdateUiState) {
             Text(
                 text = stringResource(R.string.update_progress_percent, progress),
                 style = BouncerDesignSystem.typography.bodySmall,
-                color = colors.goldPrimary,
+                color = hierarchy.secondary.primary,
                 fontWeight = FontWeight.SemiBold
             )
         }
@@ -451,6 +458,7 @@ private fun DownloadStateSection(progress: Int, state: AppUpdateUiState) {
 
 @Composable
 private fun GradientProgressBar(progress: Float) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val animatedProgress by animateFloatAsState(
         targetValue = progress.coerceIn(0f, 1f),
@@ -472,7 +480,7 @@ private fun GradientProgressBar(progress: Float) {
                 .clip(RoundedCornerShape(999.dp))
                 .background(
                     Brush.horizontalGradient(
-                        colors = listOf(colors.goldPrimary, TeamPrimaryColors.IndiaBlue)
+                        colors = listOf(hierarchy.secondary.primary, TeamPrimaryColors.IndiaBlue)
                     )
                 )
         )
@@ -488,6 +496,7 @@ private fun UpdateActions(
     onLater: () -> Unit,
     onRetry: () -> Unit
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
 
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -550,7 +559,7 @@ private fun UpdateActions(
                 colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textSecondary),
                 border = BorderStroke(
                     width = 1.dp,
-                    color = colors.goldPrimary.copy(alpha = 0.35f)
+                    color = hierarchy.secondary.primary.copy(alpha = 0.35f)
                 )
             ) {
                 Text(text = stringResource(R.string.update_action_later))

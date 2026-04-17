@@ -22,6 +22,7 @@ import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -36,6 +37,7 @@ import com.tanush.bouncer.utils.parseScore
 import com.tanush.bouncer.utils.toDisplayString
 import com.tanush.bouncer.utils.toFullDisplayString
 import com.tanush.bouncer.utils.rememberHapticFeedback
+import com.tanush.bouncer.ui.theme.GoldPrimary
 
 /**
  * UI Components - Bouncer App Component Library
@@ -63,6 +65,7 @@ fun EliteFloatingNavBar(
     modifier: Modifier = Modifier
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val haptic = rememberHapticFeedback()
     
     Box(
@@ -129,11 +132,11 @@ fun EliteFloatingNavBar(
                         .shadow(
                             elevation = 16.dp,
                             shape = CircleShape,
-                            spotColor = colors.goldPrimary.copy(alpha = 0.5f)
+                            spotColor = hierarchy.secondary.primary.copy(alpha = 0.5f)
                         )
                         .background(
                             brush = Brush.linearGradient(
-                                colors = listOf(colors.goldPrimary, colors.goldPrimary)
+                                colors = listOf(hierarchy.secondary.primary, hierarchy.secondary.primary)
                             ),
                             shape = CircleShape
                         )
@@ -191,6 +194,7 @@ private fun EliteNavItem(
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val animatedAlpha by animateFloatAsState(
         targetValue = if (isSelected) 1f else 0.5f,
@@ -216,7 +220,7 @@ private fun EliteNavItem(
                     modifier = Modifier
                         .size(32.dp)
                         .blur(12.dp)
-                        .background(colors.goldPrimary.copy(alpha = 0.3f), CircleShape)
+                        .background(hierarchy.secondary.primary.copy(alpha = 0.3f), CircleShape)
                 )
             }
             
@@ -240,7 +244,7 @@ private fun EliteNavItem(
                 Box(
                     modifier = Modifier
                         .size(4.dp)
-                        .background(colors.goldPrimary, CircleShape)
+                        .background(hierarchy.secondary.primary, CircleShape)
                 )
             }
         }
@@ -258,6 +262,7 @@ fun HeroLiveMatchCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val haptic = rememberHapticFeedback()
     val context = LocalContext.current
@@ -316,7 +321,7 @@ fun HeroLiveMatchCard(
             .shadow(
                 elevation = if (isLive) 28.dp else 16.dp,
                 shape = RoundedCornerShape(28.dp),
-                spotColor = if (isLive) GoldPrimary.copy(alpha = 0.4f) else Color.Black.copy(alpha = 0.5f)
+                spotColor = if (isLive) hierarchy.secondary.primary.copy(alpha = 0.4f) else Color.Black.copy(alpha = 0.5f)
             )
             .clip(RoundedCornerShape(28.dp))
             .background(
@@ -335,9 +340,9 @@ fun HeroLiveMatchCard(
                         brush = Brush.linearGradient(
                             colors = listOf(
                                 Color.Transparent,
-                                GoldPrimary.copy(alpha = 0.03f),
+                                hierarchy.secondary.primary.copy(alpha = 0.03f),
                                 Color.White.copy(alpha = 0.04f),
-                                GoldPrimary.copy(alpha = 0.03f),
+                                hierarchy.secondary.primary.copy(alpha = 0.03f),
                                 Color.Transparent
                             ),
                             start = Offset(shimmerOffset, 0f),
@@ -350,9 +355,9 @@ fun HeroLiveMatchCard(
                 1.dp,
                 Brush.linearGradient(
                     colors = if (isLive) listOf(
-                        GoldPrimary.copy(alpha = borderGlow),
+                        hierarchy.secondary.primary.copy(alpha = borderGlow),
                         GlassSurface,
-                        GoldPrimary.copy(alpha = borderGlow * 0.6f)
+                        hierarchy.secondary.primary.copy(alpha = borderGlow * 0.6f)
                     ) else listOf(
                         GlassBorder,
                         GlassSurface
@@ -374,7 +379,7 @@ fun HeroLiveMatchCard(
                         drawCircle(
                             brush = Brush.radialGradient(
                                 colors = listOf(
-                                    GoldPrimary.copy(alpha = 0.1f),
+                                    hierarchy.secondary.primary.copy(alpha = 0.1f),
                                     Color.Transparent
                                 )
                             ),
@@ -549,7 +554,7 @@ fun HeroLiveMatchCard(
                         )
                         Text(
                             text = "${team1?.acronym?.takeIf { it.isNotEmpty() } ?: team1?.name?.take(3)?.uppercase() ?: "T1"} 52%",
-                            color = GoldPrimary,
+                            color = hierarchy.secondary.primary,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -570,7 +575,7 @@ fun HeroLiveMatchCard(
                                 .fillMaxHeight()
                                 .background(
                                     Brush.horizontalGradient(
-                                        colors = listOf(GoldPrimary, GoldPrimary)
+                                        colors = listOf(hierarchy.secondary.primary, hierarchy.secondary.primary)
                                     ),
                                     RoundedCornerShape(3.dp)
                                 )
@@ -623,7 +628,7 @@ fun HeroLiveMatchCard(
                 val statusText = match.currentStatus.takeIf { it.isNotEmpty() } ?: match.status
                 val statusColor = when {
                     statusText.lowercase().contains("won") -> StatusSuccess
-                    statusText.lowercase().contains("need") -> GoldPrimary
+                    statusText.lowercase().contains("need") -> hierarchy.secondary.primary
                     else -> TextSecondary
                 }
                 
@@ -652,6 +657,7 @@ private fun HeroTeamSection(
     isBatting: Boolean,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val context = LocalContext.current
     val logoUrl = TeamLogoManager.getBestLogoUrl(team?.name, team?.logoUrl, 128, 128)
     
@@ -667,7 +673,7 @@ private fun HeroTeamSection(
                     if (isBatting) Modifier.shadow(
                         elevation = 12.dp,
                         shape = CircleShape,
-                        spotColor = GoldPrimary.copy(alpha = 0.4f)
+                        spotColor = hierarchy.secondary.primary.copy(alpha = 0.4f)
                     ) else Modifier
                 )
                 .background(
@@ -676,7 +682,7 @@ private fun HeroTeamSection(
                 )
                 .border(
                     if (isBatting) 2.dp else 1.dp,
-                    if (isBatting) GoldPrimary.copy(alpha = 0.6f) else GlassBorder,
+                    if (isBatting) hierarchy.secondary.primary.copy(alpha = 0.6f) else GlassBorder,
                     CircleShape
                 )
                 .padding(10.dp)
@@ -706,9 +712,10 @@ private fun HeroTeamSection(
         // Score - Prominent display
         Text(
             text = score,
-            color = if (isBatting) GoldPrimary else TextPrimary,
+            color = if (isBatting) hierarchy.secondary.primary else TextPrimary,
             fontSize = 26.sp,
             fontWeight = FontWeight.Black,
+            fontFamily = FontFamily.Monospace,
             letterSpacing = (-0.5).sp
         )
         
@@ -718,7 +725,8 @@ private fun HeroTeamSection(
                 text = overs,
                 color = TextTertiary,
                 fontSize = 12.sp,
-                fontWeight = FontWeight.SemiBold
+                fontWeight = FontWeight.SemiBold,
+                fontFamily = FontFamily.Monospace
             )
         }
     }
@@ -789,6 +797,7 @@ fun PremiumMatchListCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val haptic = rememberHapticFeedback()
     val context = LocalContext.current
     val team1 = match.teams.firstOrNull()
@@ -805,11 +814,23 @@ fun PremiumMatchListCard(
     val score2Full = scoreInfo2.toFullDisplayString()
     
     val statusLower = match.status.lowercase()
-    val isLive = match.isLive || statusLower.contains("live") || 
-                 (statusLower.contains("day") && !statusLower.contains("won")) ||
-                 statusLower.contains("batting") || statusLower.contains("bowling")
-    val isCompleted = statusLower.contains("won") || statusLower.contains("result") || 
-                      statusLower.contains("drawn") || statusLower.contains("tied")
+    val currentStatusLower = match.currentStatus.lowercase()
+    val isCompleted = statusLower.contains("won") || statusLower.contains("result") ||
+        statusLower.contains("drawn") || statusLower.contains("tied") ||
+        currentStatusLower.contains("won") || currentStatusLower.contains("result")
+    val hasScoreData = match.score != null || match.teams.any { it.score.isNotBlank() }
+    val isLive = match.isLive || statusLower.contains("live") ||
+        currentStatusLower.contains("live") ||
+        currentStatusLower.contains("opt to") ||
+        currentStatusLower.contains("opted to") ||
+        currentStatusLower.contains("innings") ||
+        currentStatusLower.contains("session") ||
+        currentStatusLower.contains("break") ||
+        currentStatusLower.contains("trail") ||
+        currentStatusLower.contains("lead") ||
+        currentStatusLower.contains("batting") ||
+        currentStatusLower.contains("bowling") ||
+        (hasScoreData && !isCompleted)
     
     val infiniteTransition = rememberInfiniteTransition(label = "cardEffects")
     val livePulse by infiniteTransition.animateFloat(
@@ -829,13 +850,13 @@ fun PremiumMatchListCard(
             .shadow(
                 elevation = if (isLive) 16.dp else 6.dp,
                 shape = RoundedCornerShape(20.dp),
-                spotColor = if (isLive) GoldPrimary.copy(alpha = 0.25f) else Color.Black.copy(alpha = 0.3f)
+                spotColor = if (isLive) hierarchy.secondary.primary.copy(alpha = 0.25f) else Color.Black.copy(alpha = 0.3f)
             ),
         shape = RoundedCornerShape(20.dp),
         color = GlassSurface,
         border = BorderStroke(
             0.5.dp,
-            if (isLive) GoldPrimary.copy(alpha = 0.3f) else GlassSurface
+            if (isLive) hierarchy.secondary.primary.copy(alpha = 0.3f) else GlassSurface
         ),
         onClick = { 
             haptic.click()
@@ -866,7 +887,7 @@ fun PremiumMatchListCard(
                                 when {
                                     isLive -> StatusLive
                                     isCompleted -> StatusSuccess
-                                    else -> GoldPrimary
+                                    else -> hierarchy.secondary.primary
                                 }
                             )
                     )
@@ -887,7 +908,7 @@ fun PremiumMatchListCard(
                 val (statusText, statusColor) = when {
                     isLive -> "LIVE" to StatusLive
                     isCompleted -> "RESULT" to StatusSuccess
-                    else -> "UPCOMING" to GoldSubtle
+                    else -> "UPCOMING" to hierarchy.secondary.tint
                 }
                 
                 Surface(
@@ -939,7 +960,7 @@ fun PremiumMatchListCard(
                             .background(GlassSurface, CircleShape)
                             .border(
                                 if (team1?.isBatting == true) 1.5.dp else 0.5.dp,
-                                if (team1?.isBatting == true) GoldPrimary.copy(alpha = 0.6f) else GlassSurface,
+                                if (team1?.isBatting == true) hierarchy.secondary.primary.copy(alpha = 0.6f) else GlassSurface,
                                 CircleShape
                             )
                             .padding(8.dp)
@@ -966,7 +987,7 @@ fun PremiumMatchListCard(
                         if (score1Display != "-") {
                             Text(
                                 text = score1Full,
-                                color = if (team1?.isBatting == true) GoldPrimary else TextPrimary,
+                                color = if (team1?.isBatting == true) hierarchy.secondary.primary else TextPrimary,
                                 fontSize = 15.sp,
                                 fontWeight = FontWeight.Black
                             )
@@ -1009,7 +1030,7 @@ fun PremiumMatchListCard(
                         if (score2Display != "-") {
                             Text(
                                 text = score2Full,
-                                color = if (team2?.isBatting == true) GoldPrimary else TextPrimary,
+                                color = if (team2?.isBatting == true) hierarchy.secondary.primary else TextPrimary,
                                 fontSize = 15.sp,
                                 fontWeight = FontWeight.Black
                             )
@@ -1025,7 +1046,7 @@ fun PremiumMatchListCard(
                             .background(GlassSurface, CircleShape)
                             .border(
                                 if (team2?.isBatting == true) 1.5.dp else 0.5.dp,
-                                if (team2?.isBatting == true) GoldPrimary.copy(alpha = 0.6f) else GlassSurface,
+                                if (team2?.isBatting == true) hierarchy.secondary.primary.copy(alpha = 0.6f) else GlassSurface,
                                 CircleShape
                             )
                             .padding(8.dp)
@@ -1061,7 +1082,7 @@ fun PremiumMatchListCard(
                         text = displayStatus,
                         color = when {
                             displayStatus.lowercase().contains("won") -> StatusSuccess
-                            displayStatus.lowercase().contains("need") -> GoldPrimary
+                            displayStatus.lowercase().contains("need") -> hierarchy.secondary.primary
                             else -> TextSecondary
                         },
                         fontSize = 12.sp,
@@ -1088,6 +1109,7 @@ fun VIPCarouselCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val haptic = rememberHapticFeedback()
     val context = LocalContext.current
     val team1 = match.teams.firstOrNull()
@@ -1123,7 +1145,7 @@ fun VIPCarouselCard(
             .shadow(
                 elevation = 12.dp,
                 shape = RoundedCornerShape(22.dp),
-                spotColor = if (isLive) GoldPrimary.copy(alpha = 0.3f) else Color.Black.copy(alpha = 0.4f)
+                spotColor = if (isLive) hierarchy.secondary.primary.copy(alpha = 0.3f) else Color.Black.copy(alpha = 0.4f)
             ),
         shape = RoundedCornerShape(22.dp),
         color = Color.Transparent,
@@ -1158,9 +1180,9 @@ fun VIPCarouselCard(
                         1.dp,
                         Brush.linearGradient(
                             colors = if (isLive) listOf(
-                                GoldPrimary.copy(alpha = borderGlow),
+                                hierarchy.secondary.primary.copy(alpha = borderGlow),
                                 Color.White.copy(alpha = 0.08f),
-                                GoldPrimary.copy(alpha = borderGlow * 0.5f)
+                                hierarchy.secondary.primary.copy(alpha = borderGlow * 0.5f)
                             ) else listOf(
                                 Color.White.copy(alpha = 0.12f),
                                 Color.White.copy(alpha = 0.04f)
@@ -1185,7 +1207,7 @@ fun VIPCarouselCard(
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = match.matchType.uppercase().take(12),
-                            color = if (isLive) StatusLive else GoldPrimary,
+                            color = if (isLive) StatusLive else hierarchy.secondary.primary,
                             fontSize = 9.sp,
                             fontWeight = FontWeight.Black,
                             letterSpacing = 1.5.sp
@@ -1247,7 +1269,7 @@ fun VIPCarouselCard(
                             if (score1Display != "-") {
                                 Text(
                                     text = score1Display,
-                                    color = GoldPrimary,
+                                    color = hierarchy.secondary.primary,
                                     fontSize = 13.sp,
                                     fontWeight = FontWeight.Black
                                 )
@@ -1280,7 +1302,7 @@ fun VIPCarouselCard(
                             if (score2Display != "-") {
                                 Text(
                                     text = score2Display,
-                                    color = GoldPrimary,
+                                    color = hierarchy.secondary.primary,
                                     fontSize = 13.sp,
                                     fontWeight = FontWeight.Black
                                 )
@@ -1315,7 +1337,7 @@ fun VIPCarouselCard(
                     },
                     color = when {
                         match.status.lowercase().contains("won") -> StatusSuccess.copy(alpha = 0.9f)
-                        match.currentStatus.lowercase().contains("need") -> GoldPrimary.copy(alpha = 0.9f)
+                        match.currentStatus.lowercase().contains("need") -> hierarchy.secondary.primary.copy(alpha = 0.9f)
                         else -> TextTertiary
                     },
                     fontSize = 11.sp,
@@ -1523,6 +1545,7 @@ fun EliteStatusChip(
 fun EliteMatchCardSkeleton(
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val infiniteTransition = rememberInfiniteTransition(label = "skeleton")
     
     // Premium gold shimmer sweep
@@ -1568,9 +1591,9 @@ fun EliteMatchCardSkeleton(
                 0.5.dp,
                 Brush.linearGradient(
                     colors = listOf(
-                        GoldPrimary.copy(alpha = 0.1f),
+                        hierarchy.secondary.primary.copy(alpha = 0.1f),
                         Color.White.copy(alpha = 0.03f),
-                        GoldPrimary.copy(alpha = 0.1f)
+                        hierarchy.secondary.primary.copy(alpha = 0.1f)
                     )
                 ),
                 RoundedCornerShape(24.dp)
@@ -1587,9 +1610,9 @@ fun EliteMatchCardSkeleton(
                         brush = Brush.linearGradient(
                             colors = listOf(
                                 Color.Transparent,
-                                GoldPrimary.copy(alpha = 0.04f),
+                                hierarchy.secondary.primary.copy(alpha = 0.04f),
                                 Color.White.copy(alpha = 0.06f),
-                                GoldPrimary.copy(alpha = 0.04f),
+                                hierarchy.secondary.primary.copy(alpha = 0.04f),
                                 Color.Transparent
                             ),
                             start = Offset(shimmerTranslate, 0f),
@@ -1708,6 +1731,7 @@ fun EliteMatchCardSkeleton(
 fun EliteHeroMatchSkeleton(
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val infiniteTransition = rememberInfiniteTransition(label = "heroSkeleton")
     
     // Premium gold shimmer sweep
@@ -1753,7 +1777,7 @@ fun EliteHeroMatchSkeleton(
                 drawCircle(
                     brush = Brush.radialGradient(
                         colors = listOf(
-                            GoldPrimary.copy(alpha = glowPulse),
+                            hierarchy.secondary.primary.copy(alpha = glowPulse),
                             Color.Transparent
                         )
                     ),
@@ -1765,9 +1789,9 @@ fun EliteHeroMatchSkeleton(
                 0.5.dp,
                 Brush.linearGradient(
                     colors = listOf(
-                        GoldPrimary.copy(alpha = 0.15f),
+                        hierarchy.secondary.primary.copy(alpha = 0.15f),
                         Color.White.copy(alpha = 0.05f),
-                        GoldPrimary.copy(alpha = 0.15f)
+                        hierarchy.secondary.primary.copy(alpha = 0.15f)
                     )
                 ),
                 RoundedCornerShape(28.dp)
@@ -1783,9 +1807,9 @@ fun EliteHeroMatchSkeleton(
                         brush = Brush.linearGradient(
                             colors = listOf(
                                 Color.Transparent,
-                                GoldPrimary.copy(alpha = 0.05f),
+                                hierarchy.secondary.primary.copy(alpha = 0.05f),
                                 Color.White.copy(alpha = 0.08f),
-                                GoldPrimary.copy(alpha = 0.05f),
+                                hierarchy.secondary.primary.copy(alpha = 0.05f),
                                 Color.Transparent
                             ),
                             start = Offset(shimmerTranslate, 0f),
@@ -1936,4 +1960,3 @@ fun MatchCarouselCard(
 fun HeroMatchSkeleton(
     modifier: Modifier = Modifier
 ) = EliteHeroMatchSkeleton(modifier)
-

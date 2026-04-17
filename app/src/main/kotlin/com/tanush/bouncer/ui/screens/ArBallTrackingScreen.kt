@@ -87,7 +87,8 @@ fun ArBallTrackingScreen(
 @Composable
 private fun ArTrajectoryOverlay(pulse: Float) {
     val colors = BouncerDesignSystem.colors
-    val goldPrimary = colors.goldPrimary
+    val hierarchy = BouncerDesignSystem.hierarchy
+    val goldPrimary = hierarchy.secondary.primary
     Canvas(modifier = Modifier.fillMaxSize()) {
         val centerX = size.width / 2
         val centerY = size.height / 2
@@ -132,8 +133,9 @@ private fun ArTrajectoryOverlay(pulse: Float) {
 
 @Composable
 private fun ArReticleFocus() {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
-    val goldPrimary = colors.goldPrimary
+    val goldPrimary = hierarchy.secondary.primary
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -168,6 +170,7 @@ private fun ArReticleFocus() {
 
 @Composable
 private fun EliteArHeader(match: CricketMatch? = null, onBackClick: () -> Unit) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val team1 = match?.teams?.getOrNull(0)?.acronym ?: match?.teams?.getOrNull(0)?.name?.take(3)?.uppercase() ?: "---"
     val team2 = match?.teams?.getOrNull(1)?.acronym ?: match?.teams?.getOrNull(1)?.name?.take(3)?.uppercase() ?: "---"
@@ -188,8 +191,8 @@ private fun EliteArHeader(match: CricketMatch? = null, onBackClick: () -> Unit) 
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Box(modifier = Modifier.size(32.dp).background(colors.goldPrimary.copy(alpha = 0.2f), CircleShape), contentAlignment = Alignment.Center) {
-                    Icon(Icons.Default.EmergencyRecording, null, tint = colors.goldPrimary, modifier = Modifier.size(18.dp))
+                Box(modifier = Modifier.size(32.dp).background(hierarchy.secondary.primary.copy(alpha = 0.2f), CircleShape), contentAlignment = Alignment.Center) {
+                    Icon(Icons.Default.EmergencyRecording, null, tint = hierarchy.secondary.primary, modifier = Modifier.size(18.dp))
                 }
                 Column {
                     Text(matchLabel, color = colors.textPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
@@ -197,8 +200,8 @@ private fun EliteArHeader(match: CricketMatch? = null, onBackClick: () -> Unit) 
                 }
             }
             
-            Surface(color = colors.goldPrimary.copy(alpha = 0.2f), shape = RoundedCornerShape(4.dp)) {
-                Text("OVER $currentOver", color = colors.goldPrimary, fontSize = 9.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
+            Surface(color = hierarchy.secondary.primary.copy(alpha = 0.2f), shape = RoundedCornerShape(4.dp)) {
+                Text("OVER $currentOver", color = hierarchy.secondary.primary, fontSize = 9.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
             }
         }
     }
@@ -206,6 +209,7 @@ private fun EliteArHeader(match: CricketMatch? = null, onBackClick: () -> Unit) 
 
 @Composable
 private fun ArSpeedHeadline(match: CricketMatch? = null) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     // No ball speed data available on model — show placeholder derived from bowler context
     val speedText = "---"
@@ -220,10 +224,10 @@ private fun ArSpeedHeadline(match: CricketMatch? = null) {
             )
             Text(
                 speedText, 
-                color = colors.goldPrimary, 
+                color = hierarchy.secondary.primary, 
                 fontSize = 72.sp, 
                 fontWeight = FontWeight.Black,
-                modifier = Modifier.shadow(20.dp, spotColor = colors.goldPrimary)
+                modifier = Modifier.shadow(20.dp, spotColor = hierarchy.secondary.primary)
             )
         }
         Text("KPH", color = colors.textPrimary, fontSize = 24.sp, fontWeight = FontWeight.Bold)
@@ -237,6 +241,7 @@ private fun ArSpeedHeadline(match: CricketMatch? = null) {
 
 @Composable
 private fun ArBottomSection(match: CricketMatch? = null) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val bowler = match?.currentBowler
     val econLabel = bowler?.economy ?: "--"
@@ -247,7 +252,7 @@ private fun ArBottomSection(match: CricketMatch? = null) {
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             ArWidget("Pitch Map", if (bowler != null) "Live" else "N/A", Icons.Default.Layers, ChartCyan)
-            ArWidget("Economy", econLabel, Icons.AutoMirrored.Filled.RotateRight, colors.goldPrimary)
+            ArWidget("Economy", econLabel, Icons.AutoMirrored.Filled.RotateRight, hierarchy.secondary.primary)
             ArWidget("Wickets", bowler?.wickets ?: "--", Icons.Default.AirlineStops, ChartCyan)
         }
 
@@ -271,10 +276,10 @@ private fun ArBottomSection(match: CricketMatch? = null) {
                 Box(
                     modifier = Modifier
                         .size(64.dp)
-                        .background(colors.goldPrimary.copy(alpha = 0.2f), CircleShape)
-                        .border(2.dp, colors.goldPrimary, CircleShape)
+                        .background(hierarchy.secondary.primary.copy(alpha = 0.2f), CircleShape)
+                        .border(2.dp, hierarchy.secondary.primary, CircleShape)
                         .padding(6.dp)
-                        .background(colors.goldPrimary, CircleShape)
+                        .background(hierarchy.secondary.primary, CircleShape)
                         .clickable { },
                     contentAlignment = Alignment.Center
                 ) {

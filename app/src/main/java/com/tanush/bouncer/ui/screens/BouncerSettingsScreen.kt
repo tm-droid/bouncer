@@ -59,6 +59,7 @@ import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 import com.tanush.bouncer.ui.theme.BouncerDimens
 import com.tanush.bouncer.ui.theme.etchedText
 import com.tanush.bouncer.utils.PreferencesHelper
+import com.tanush.bouncer.ui.theme.GoldPrimary
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Main Screen
@@ -118,7 +119,7 @@ fun BouncerSettingsScreen(
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back",
-                            tint = BouncerDesignSystem.colors.goldPrimary
+                            tint = GoldPrimary
                         )
                     }
                 },
@@ -307,6 +308,7 @@ fun BouncerSettingsScreen(
 @Composable
 private fun SettingsSectionHeader(title: String) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     Row(
         modifier = Modifier.padding(
             start = BouncerDimens.screenHorizontal,
@@ -324,7 +326,7 @@ private fun SettingsSectionHeader(title: String) {
                 .clip(RoundedCornerShape(2.dp))
                 .background(
                     Brush.verticalGradient(
-                        colors = listOf(colors.goldLight, colors.goldPrimary, colors.goldDark)
+                        colors = listOf(hierarchy.secondary.secondary, hierarchy.secondary.primary, hierarchy.secondary.primary)
                     )
                 )
         )
@@ -334,7 +336,7 @@ private fun SettingsSectionHeader(title: String) {
             fontSize = 12.sp,
             fontWeight = FontWeight.Bold,
             letterSpacing = 2.sp,
-            color = colors.goldPrimary,
+            color = hierarchy.secondary.primary,
             modifier = Modifier.etchedText()
         )
     }
@@ -352,6 +354,7 @@ private fun SettingsToggleRow(
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     Row(
         modifier = Modifier
@@ -373,7 +376,7 @@ private fun SettingsToggleRow(
         Icon(
             imageVector = icon,
             contentDescription = title,
-            tint = colors.goldPrimary.copy(alpha = 0.8f),
+            tint = hierarchy.secondary.primary.copy(alpha = 0.8f),
             modifier = Modifier.size(24.dp)
         )
 
@@ -422,6 +425,7 @@ private fun SettingsNavigationRow(
     description: String,
     onClick: () -> Unit
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     Row(
         modifier = Modifier
@@ -443,7 +447,7 @@ private fun SettingsNavigationRow(
         Icon(
             imageVector = icon,
             contentDescription = title,
-            tint = colors.goldPrimary.copy(alpha = 0.8f),
+            tint = hierarchy.secondary.primary.copy(alpha = 0.8f),
             modifier = Modifier.size(24.dp)
         )
 
@@ -471,7 +475,7 @@ private fun SettingsNavigationRow(
         Icon(
             imageVector = Icons.AutoMirrored.Outlined.KeyboardArrowRight,
             contentDescription = "Navigate to $title",
-            tint = colors.goldPrimary.copy(alpha = 0.5f),
+            tint = hierarchy.secondary.primary.copy(alpha = 0.5f),
             modifier = Modifier.size(24.dp)
         )
     }
@@ -487,6 +491,7 @@ private fun SettingsInfoRow(
     title: String,
     value: String
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     Row(
         modifier = Modifier
@@ -507,7 +512,7 @@ private fun SettingsInfoRow(
         Icon(
             imageVector = icon,
             contentDescription = title,
-            tint = colors.goldPrimary.copy(alpha = 0.8f),
+            tint = hierarchy.secondary.primary.copy(alpha = 0.8f),
             modifier = Modifier.size(24.dp)
         )
 
@@ -523,7 +528,7 @@ private fun SettingsInfoRow(
         Text(
             text = value,
             style = BouncerDesignSystem.typography.bodySmall,
-            color = colors.goldPrimary
+            color = hierarchy.secondary.primary
         )
     }
 }

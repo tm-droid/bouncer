@@ -42,6 +42,7 @@ fun MatchInfoScreen(
     onBackClick: () -> Unit
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val dimens = BouncerDesignSystem.dimens
     val scrollState = rememberScrollState()
     val context = LocalContext.current
@@ -103,6 +104,7 @@ fun MatchInfoScreen(
 
 @Composable
 private fun VenueHeader(match: CricketMatch) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     Box(
         modifier = Modifier
@@ -140,8 +142,8 @@ private fun VenueHeader(match: CricketMatch) {
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Icon(Icons.Default.LocationOn, null, tint = colors.goldDark, modifier = Modifier.size(16.dp))
-                Text("VENUE", color = colors.goldDark, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                Icon(Icons.Default.LocationOn, null, tint = hierarchy.secondary.primary, modifier = Modifier.size(16.dp))
+                Text("VENUE", color = hierarchy.secondary.primary, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
             }
             Text(match.venue, color = colors.textPrimary, fontSize = 28.sp, fontWeight = FontWeight.Bold)
             
@@ -161,16 +163,17 @@ private fun VenueHeader(match: CricketMatch) {
 
 @Composable
 private fun WeatherSection(match: CricketMatch) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         SectionTitle("Live Conditions")
         GlassCard(modifier = Modifier.fillMaxWidth()) {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
-                    Icon(Icons.Default.Cloud, null, tint = colors.goldDark, modifier = Modifier.size(32.dp))
+                    Icon(Icons.Default.Cloud, null, tint = hierarchy.secondary.primary, modifier = Modifier.size(32.dp))
                     Spacer(modifier = Modifier.width(12.dp))
                     Column {
-                        Text("24°C", color = colors.goldPrimary, fontSize = 32.sp, fontWeight = FontWeight.Bold)
+                        Text("24°C", color = hierarchy.secondary.primary, fontSize = 32.sp, fontWeight = FontWeight.Bold)
                         Text("Clear Skies", color = colors.textSecondary, fontSize = 12.sp)
                     }
                 }
@@ -195,25 +198,26 @@ private fun WeatherStat(icon: ImageVector, value: String) {
 
 @Composable
 private fun PitchReportSection(match: CricketMatch) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val currentTime = remember { SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date()) }
     
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             SectionTitle("Pitch Report")
-            Surface(color = colors.goldDark.copy(alpha = 0.1f), shape = CircleShape, border = BorderStroke(0.5.dp, colors.goldDark.copy(alpha = 0.2f))) {
-                Text("EXPERT ANALYSIS", color = colors.goldDark, fontSize = 8.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
+            Surface(color = hierarchy.secondary.primary.copy(alpha = 0.1f), shape = CircleShape, border = BorderStroke(0.5.dp, hierarchy.secondary.primary.copy(alpha = 0.2f))) {
+                Text("EXPERT ANALYSIS", color = hierarchy.secondary.primary, fontSize = 8.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
             }
         }
         GlassCard(modifier = Modifier.fillMaxWidth()) {
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Box(modifier = Modifier.size(40.dp).background(colors.surface2, CircleShape), contentAlignment = Alignment.Center) {
-                        Icon(Icons.Default.SportsCricket, null, tint = colors.goldDark, modifier = Modifier.size(20.dp))
+                        Icon(Icons.Default.SportsCricket, null, tint = hierarchy.secondary.primary, modifier = Modifier.size(20.dp))
                     }
                     Column {
                         val surface = if (match.matchType == "Test") "Hard & Abrasive" else "Flat & Hard"
-                        Text("Surface: $surface", color = colors.goldPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                        Text("Surface: $surface", color = hierarchy.secondary.primary, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                         Text("Updated at $currentTime", color = colors.textSecondary, fontSize = 11.sp)
                     }
                 }
@@ -247,11 +251,12 @@ private fun PitchReportSection(match: CricketMatch) {
 
 @Composable
 private fun PitchMetric(label: String, value: String, modifier: Modifier) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     Box(modifier = modifier.clip(RoundedCornerShape(8.dp)).background(colors.backgroundBase.copy(alpha = 0.4f)).padding(12.dp), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(label.uppercase(), color = colors.textSecondary, fontSize = 9.sp, fontWeight = FontWeight.Bold)
-            Text(value, color = colors.goldPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            Text(value, color = hierarchy.secondary.primary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
         }
     }
 }
@@ -278,6 +283,7 @@ private fun VenueHistoryGrid(match: CricketMatch) {
 
 @Composable
 private fun VenueStatCard(label: String, value: String, isPrimary: Boolean, modifier: Modifier) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     GlassCard(
         modifier = modifier,
@@ -288,13 +294,14 @@ private fun VenueStatCard(label: String, value: String, isPrimary: Boolean, modi
             modifier = Modifier.fillMaxWidth()
         ) {
             Text(label.uppercase(), color = colors.textSecondary, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-            Text(value, color = if (isPrimary) colors.goldPrimary else colors.textSecondary, fontSize = 28.sp, fontWeight = FontWeight.Bold)
+            Text(value, color = if (isPrimary) hierarchy.secondary.primary else colors.textSecondary, fontSize = 28.sp, fontWeight = FontWeight.Bold)
         }
     }
 }
 
 @Composable
 private fun TossImpactSection(match: CricketMatch) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val tossStats = remember(match.venue) {
         when {
@@ -310,16 +317,16 @@ private fun TossImpactSection(match: CricketMatch) {
         GlassCard(modifier = Modifier.fillMaxWidth(), useGoldBorder = true) {
             Column {
                 Row(
-                    modifier = Modifier.fillMaxWidth().background(colors.goldDark.copy(alpha = 0.1f)).padding(16.dp),
+                    modifier = Modifier.fillMaxWidth().background(hierarchy.secondary.primary.copy(alpha = 0.1f)).padding(16.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text("Win Probability by Toss", color = colors.textPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                    Icon(Icons.Default.Info, null, tint = colors.goldDark, modifier = Modifier.size(16.dp))
+                    Icon(Icons.Default.Info, null, tint = hierarchy.secondary.primary, modifier = Modifier.size(16.dp))
                 }
                 
                 Row(modifier = Modifier.padding(20.dp).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(32.dp)) {
-                    TossStat("Bat 1st Win", tossStats.first, colors.goldDark, Modifier.weight(1f))
+                    TossStat("Bat 1st Win", tossStats.first, hierarchy.secondary.primary, Modifier.weight(1f))
                     TossStat("Bowl 1st Win", tossStats.second, colors.textTertiary, Modifier.weight(1f))
                 }
             }
@@ -343,6 +350,7 @@ private fun TossStat(label: String, progress: Float, color: Color, modifier: Mod
 
 @Composable
 private fun SectionTitle(title: String) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     Row(verticalAlignment = Alignment.CenterVertically) {
         Box(
@@ -352,7 +360,7 @@ private fun SectionTitle(title: String) {
                 .clip(RoundedCornerShape(2.dp))
                 .background(
                     Brush.verticalGradient(
-                        colors = listOf(colors.goldLight, colors.goldPrimary, colors.goldDark)
+                        colors = listOf(hierarchy.secondary.secondary, hierarchy.secondary.primary, hierarchy.secondary.primary)
                     )
                 )
         )

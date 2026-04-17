@@ -65,13 +65,14 @@ fun MatchMomentumGraph(
     team2Data: List<MomentumPoint> = emptyList(),
     team1Name: String = "Team 1",
     team2Name: String = "Team 2",
-    team1Color: Color = BouncerDesignSystem.colors.goldPrimary,
+    team1Color: Color = BouncerDesignSystem.hierarchy.secondary.primary,
     team2Color: Color = BouncerDesignSystem.colors.statusInfo,
     modifier: Modifier = Modifier,
     showRequiredRate: Boolean = true,
     title: String = "MATCH MOMENTUM"
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     var selectedPoint by remember { mutableStateOf<Pair<MomentumPoint, Boolean>?>(null) }
     
     val infiniteTransition = rememberInfiniteTransition(label = "momentum")
@@ -109,7 +110,7 @@ fun MatchMomentumGraph(
                 Column {
                     Text(
                         title,
-                        color = colors.goldPrimary,
+                        color = hierarchy.secondary.primary,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Black,
                         letterSpacing = 2.sp

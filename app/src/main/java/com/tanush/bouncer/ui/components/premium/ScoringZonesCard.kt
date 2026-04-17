@@ -78,6 +78,7 @@ fun ScoringZonesCard(
     modifier: Modifier = Modifier,
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val animatedProgress = remember { Animatable(0f) }
 
     LaunchedEffect(zones) {
@@ -89,17 +90,8 @@ fun ScoringZonesCard(
 
     val textMeasurer = rememberTextMeasurer()
 
-    // Zone colors
-    val zoneColors = listOf(
-        Color(0xFF2196F3), // Blue - Third man/Fine leg
-        Color(0xFF4CAF50), // Green - Point/Square leg
-        Color(0xFFFF9800), // Orange - Cover/Mid-wicket
-        Color(0xFFE91E63), // Pink - Mid-off/Mid-on
-        Color(0xFF9C27B0), // Purple - Extra cover/Long-on
-        Color(0xFF00BCD4), // Cyan - Long-off/Deep
-        Color(0xFFFFEB3B), // Yellow - Straight
-        Color(0xFF795548), // Brown - Behind wicket
-    )
+    // Zone colors — sourced from the shared chart palette
+    val zoneColors = List(8) { ChartColorPalette.chartColor(it).stroke }
 
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -125,7 +117,7 @@ fun ScoringZonesCard(
                             .clip(CircleShape)
                             .background(
                                 Brush.linearGradient(
-                                    colors = listOf(colors.goldDark, colors.goldPrimary),
+                                    colors = listOf(hierarchy.secondary.primary, hierarchy.secondary.primary),
                                 ),
                             ),
                         contentAlignment = Alignment.Center,
@@ -143,7 +135,7 @@ fun ScoringZonesCard(
                     Column {
                         Text(
                             text = "SCORING ZONES",
-                            color = colors.goldLight,
+                            color = hierarchy.secondary.secondary,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.5.sp,
@@ -161,7 +153,7 @@ fun ScoringZonesCard(
                 Column(horizontalAlignment = Alignment.End) {
                     Text(
                         text = "$totalRuns",
-                        color = colors.goldDark,
+                        color = hierarchy.secondary.primary,
                         fontSize = 28.sp,
                         fontWeight = FontWeight.Bold,
                     )
@@ -334,7 +326,7 @@ fun ScoringZonesCard(
                         .background(
                             Brush.horizontalGradient(
                                 colors = listOf(
-                                    colors.goldPrimary.copy(alpha = 0.3f),
+                                    hierarchy.secondary.primary.copy(alpha = 0.3f),
                                     Color.Transparent,
                                 ),
                             ),
@@ -346,7 +338,7 @@ fun ScoringZonesCard(
                     Column {
                         Text(
                             text = "STRONGEST ZONE",
-                            color = colors.goldLight,
+                            color = hierarchy.secondary.secondary,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.sp,
@@ -363,7 +355,7 @@ fun ScoringZonesCard(
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
                                 text = "${zone.runs}",
-                                color = colors.goldDark,
+                                color = hierarchy.secondary.primary,
                                 fontSize = 18.sp,
                                 fontWeight = FontWeight.Bold,
                             )

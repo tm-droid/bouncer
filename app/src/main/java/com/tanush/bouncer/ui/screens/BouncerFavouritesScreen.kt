@@ -117,6 +117,7 @@ fun BouncerFavouritesScreen(
     onBackClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
@@ -141,7 +142,7 @@ fun BouncerFavouritesScreen(
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back",
-                            tint = BouncerDesignSystem.colors.goldPrimary
+                            tint = BouncerDesignSystem.hierarchy.secondary.primary
                         )
                     }
                 },
@@ -250,6 +251,7 @@ private fun EmptyFavouritesView(
     onAddTeamsClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     Column(
         modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -259,7 +261,7 @@ private fun EmptyFavouritesView(
             imageVector = Icons.Outlined.FavoriteBorder,
             contentDescription = null,
             modifier = Modifier.size(72.dp),
-            tint = BouncerDesignSystem.colors.goldPrimary.copy(alpha = 0.4f)
+            tint = BouncerDesignSystem.hierarchy.secondary.primary.copy(alpha = 0.4f)
         )
 
         Spacer(modifier = Modifier.height(BouncerDimens.lg))

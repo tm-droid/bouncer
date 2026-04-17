@@ -36,6 +36,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -186,7 +187,7 @@ fun MatchDetailHeader_Extracted(
                             )
                     )
                     Text(team1?.acronym ?: "", color = TextPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                    Text(score1, color = if (team1IsBatting) TextPrimary else TextSecondary, fontSize = 28.sp, fontWeight = FontWeight.ExtraBold)
+                    Text(score1, color = if (team1IsBatting) TextPrimary else TextSecondary, fontSize = 28.sp, fontWeight = FontWeight.ExtraBold, fontFamily = FontFamily.Monospace)
                     if (overs1.isNotBlank()) {
                         Text("($overs1 Ov)", color = TextMuted, fontSize = 10.sp)
                     }
@@ -208,7 +209,7 @@ fun MatchDetailHeader_Extracted(
                             )
                     )
                     Text(team2?.acronym ?: "", color = TextPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                    Text(score2, color = if (team2IsBatting) TextPrimary else TextSecondary, fontSize = 28.sp, fontWeight = FontWeight.ExtraBold)
+                    Text(score2, color = if (team2IsBatting) TextPrimary else TextSecondary, fontSize = 28.sp, fontWeight = FontWeight.ExtraBold, fontFamily = FontFamily.Monospace)
                     if (overs2.isNotBlank()) {
                         Text("($overs2 Ov)", color = TextMuted, fontSize = 10.sp)
                     }
@@ -263,52 +264,6 @@ fun StatPill_Extracted(label: String, value: String) {
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(text = label, color = TextMuted, fontSize = 9.sp, fontWeight = FontWeight.SemiBold, letterSpacing = LetterSpacing.relaxed)
-        Text(text = value, color = TextPrimary, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-    }
-}
-
-@Composable
-fun EliteFloatingMatchNav_Extracted(
-    selectedTab: Int,
-    onTabSelected: (Int) -> Unit,
-    onArClick: () -> Unit
-) {
-    Column(modifier = Modifier.fillMaxWidth()) {
-        Box(modifier = Modifier.fillMaxWidth().height(0.5.dp).background(Color.White.copy(alpha = 0.08f)))
-
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(BgBase.copy(alpha = 0.97f))
-                .navigationBarsPadding()
-                .padding(horizontal = Spacing.md, vertical = Spacing.sm)
-                .height(56.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            val navItems = remember {
-                listOf(
-                    Triple(Icons.Outlined.Home, "Home", 0),
-                    Triple(Icons.Outlined.SportsCricket, "Cricket", 1),
-                    Triple(Icons.Outlined.Leaderboard, "Leaderboard", 2),
-                    Triple(Icons.Outlined.Settings, "Settings", 3)
-                )
-            }
-
-            navItems.forEachIndexed { idx, (icon, label, _) ->
-                val isActive = idx == 1
-                Column(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(12.dp))
-                        .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {}
-                        .padding(horizontal = 16.dp, vertical = 4.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(2.dp)
-                ) {
-                    Icon(imageVector = icon, contentDescription = label, tint = if (isActive) Gold400 else TextMuted, modifier = Modifier.size(22.dp))
-                    Text(text = label, color = if (isActive) Gold400 else TextMuted, fontSize = 10.sp, fontWeight = if (isActive) FontWeight.SemiBold else FontWeight.Normal, maxLines = 1)
-                }
-            }
-        }
+        Text(text = value, color = TextPrimary, fontSize = 11.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
     }
 }

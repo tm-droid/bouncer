@@ -73,9 +73,10 @@ fun PlayerAvatar(
     isDismissed: Boolean = false
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     
     val borderColor = when {
-        isOnStrike -> colors.goldPrimary
+        isOnStrike -> hierarchy.secondary.primary
         teamColor != null -> teamColor.copy(alpha = 0.5f)
         else -> Color.White.copy(alpha = 0.1f)
     }
@@ -97,7 +98,7 @@ fun PlayerAvatar(
                         drawCircle(
                             brush = Brush.radialGradient(
                                 colors = listOf(
-                                    colors.goldPrimary.copy(alpha = 0.3f),
+                                    hierarchy.secondary.primary.copy(alpha = 0.3f),
                                     Color.Transparent
                                 ),
                                 radius = this.size.maxDimension * 0.7f
@@ -316,13 +317,14 @@ fun RoleBadge(
     role: PlayerRole,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val typography = BouncerDesignSystem.typography
     
     val (backgroundColor, textColor) = when (role) {
         PlayerRole.CAPTAIN -> Pair(
-            colors.goldPrimary.copy(alpha = 0.2f),
-            colors.goldPrimary
+            hierarchy.secondary.primary.copy(alpha = 0.2f),
+            hierarchy.secondary.primary
         )
         PlayerRole.WICKETKEEPER -> Pair(
             colors.statusInfo.copy(alpha = 0.15f),
@@ -373,6 +375,7 @@ fun RoleBadge(
 fun OnStrikeBadge(
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val typography = BouncerDesignSystem.typography
     
@@ -381,13 +384,13 @@ fun OnStrikeBadge(
     Box(
         modifier = modifier
             .clip(shape)
-            .background(colors.goldPrimary)
+            .background(hierarchy.secondary.primary)
             .drawBehind {
                 // Glow effect
                 drawRect(
                     brush = Brush.radialGradient(
                         colors = listOf(
-                            colors.goldPrimary.copy(alpha = 0.5f),
+                            hierarchy.secondary.primary.copy(alpha = 0.5f),
                             Color.Transparent
                         ),
                         radius = size.maxDimension
@@ -463,6 +466,7 @@ fun PlayerScoreRow(
     isDismissed: Boolean = true,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val typography = BouncerDesignSystem.typography
     
@@ -480,7 +484,7 @@ fun PlayerScoreRow(
             .drawBehind {
                 // Left border indicator
                 drawRect(
-                    color = colors.goldPrimary,
+                    color = hierarchy.secondary.primary,
                     size = size.copy(width = 3.dp.toPx())
                 )
             }

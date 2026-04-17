@@ -33,6 +33,7 @@ fun CricketRefreshIndicator(
     pullProgress: Float,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val infiniteTransition = rememberInfiniteTransition(label = "cricketRefresh")
     
     // Ball spin animation
@@ -87,8 +88,8 @@ fun CricketRefreshIndicator(
             drawCircle(
                 brush = Brush.radialGradient(
                     colors = listOf(
-                        GoldDark.copy(alpha = 0.4f),
-                        GoldDark.copy(alpha = 0.1f),
+                        hierarchy.secondary.primary.copy(alpha = 0.4f),
+                        hierarchy.secondary.primary.copy(alpha = 0.1f),
                         Color.Transparent
                     )
                 ),
@@ -292,6 +293,7 @@ fun CricketLoadingSpinner(
     modifier: Modifier = Modifier,
     size: Int = 48
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val infiniteTransition = rememberInfiniteTransition(label = "cricketSpinner")
     
     val rotation by infiniteTransition.animateFloat(
@@ -334,7 +336,7 @@ fun CricketLoadingSpinner(
                 val dotAlpha = (1f - (i * 0.15f)).coerceIn(0.3f, 1f)
                 
                 drawCircle(
-                    color = GoldDark.copy(alpha = dotAlpha),
+                    color = hierarchy.secondary.primary.copy(alpha = dotAlpha),
                     radius = 4f,
                     center = Offset(dotX, dotY)
                 )
@@ -352,7 +354,7 @@ fun CricketLoadingSpinner(
             
             drawCircle(
                 brush = Brush.radialGradient(
-                    colors = listOf(GoldPrimary, GoldDark)
+                    colors = listOf(hierarchy.secondary.primary, hierarchy.secondary.primary)
                 ),
                 radius = ballRadius,
                 center = center
@@ -371,6 +373,7 @@ fun BouncingBallLoader(
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "bouncingBalls")
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     
     Row(
         modifier = modifier,
@@ -401,11 +404,11 @@ fun BouncingBallLoader(
                     .graphicsLayer { translationY = bounceOffset }
                     .background(
                         Brush.radialGradient(
-                            colors = listOf(colors.goldPrimary, colors.goldDark)
+                            colors = listOf(hierarchy.secondary.primary, hierarchy.secondary.primary)
                         ),
                         CircleShape
                     )
-                    .shadow(4.dp, CircleShape, spotColor = colors.goldDark.copy(alpha = 0.5f))
+                    .shadow(4.dp, CircleShape, spotColor = hierarchy.secondary.primary.copy(alpha = 0.5f))
             )
         }
     }
@@ -419,6 +422,7 @@ fun ScoreUpdateIndicator(
     isUpdating: Boolean,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val infiniteTransition = rememberInfiniteTransition(label = "scoreUpdate")
     
     val pulseScale by infiniteTransition.animateFloat(
@@ -450,7 +454,7 @@ fun ScoreUpdateIndicator(
                     scaleY = pulseScale
                 },
             shape = CircleShape,
-            color = colors.goldDark.copy(alpha = glowAlpha),
+            color = hierarchy.secondary.primary.copy(alpha = glowAlpha),
             shadowElevation = 8.dp
         ) {
             Text(

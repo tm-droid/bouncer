@@ -7,10 +7,22 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Celebration
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.FlashOn
+import androidx.compose.material.icons.filled.GpsFixed
+import androidx.compose.material.icons.filled.LocalFireDepartment
+import androidx.compose.material.icons.filled.LocalHospital
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.ThumbUp
+import androidx.compose.material.icons.filled.Tv
+import androidx.compose.material.icons.filled.WaterDrop
+import androidx.compose.material.icons.outlined.EmojiEvents
+import androidx.compose.material.icons.outlined.ErrorOutline
+import androidx.compose.material.icons.outlined.SportsCricket
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -45,22 +57,22 @@ data class HighlightMoment(
     val impactScore: Float = 0.5f // 0-1, how impactful this moment was
 )
 
-enum class HighlightHighlightMomentType(val emoji: String, val color: Color) {
-    WICKET("🎯", WicketRed),
-    SIX("6️⃣", BoundarySix),
-    FOUR("4️⃣", BoundaryFour),
-    FIFTY("🔥", ShinyGoldMid),
-    CENTURY("💯", ShinyGoldDeep),
-    FIVE_WICKETS("🏆", SuccessGreen),
-    CATCH("👏", ChartBlue),
-    RUNOUT("⚡", WarningYellow),
-    DRS_REVIEW("📺", Color.Magenta),
-    DROPPED_CATCH("😱", TextTertiary),
-    MILESTONE("⭐", ShinyGoldLight),
-    INJURY("🏥", Color.Red),
-    RAIN_DELAY("🌧️", ChartBlue),
-    POWERPLAY_END("⚡", BoundarySix),
-    SUPER_OVER("🎉", Color.Magenta)
+enum class HighlightHighlightMomentType(val icon: ImageVector, val color: Color) {
+    WICKET(Icons.Filled.GpsFixed, WicketRed),
+    SIX(Icons.Filled.LocalFireDepartment, BoundarySix),
+    FOUR(Icons.Filled.Star, BoundaryFour),
+    FIFTY(Icons.Filled.LocalFireDepartment, ShinyGoldMid),
+    CENTURY(Icons.Outlined.EmojiEvents, ShinyGoldDeep),
+    FIVE_WICKETS(Icons.Outlined.EmojiEvents, SuccessGreen),
+    CATCH(Icons.Filled.ThumbUp, ChartBlue),
+    RUNOUT(Icons.Filled.FlashOn, WarningYellow),
+    DRS_REVIEW(Icons.Filled.Tv, Color.Magenta),
+    DROPPED_CATCH(Icons.Outlined.ErrorOutline, TextTertiary),
+    MILESTONE(Icons.Filled.Star, ShinyGoldLight),
+    INJURY(Icons.Filled.LocalHospital, Color.Red),
+    RAIN_DELAY(Icons.Filled.WaterDrop, ChartBlue),
+    POWERPLAY_END(Icons.Filled.FlashOn, BoundarySix),
+    SUPER_OVER(Icons.Filled.Celebration, Color.Magenta)
 }
 
 @Composable
@@ -70,6 +82,7 @@ fun HighlightMomentsCard(
     onMomentClick: ((HighlightMoment) -> Unit)? = null
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val infiniteTransition = rememberInfiniteTransition(label = "moments_animation")
     
     val glowAlpha by infiniteTransition.animateFloat(
@@ -116,12 +129,12 @@ fun HighlightMomentsCard(
                 }
                 
                 Surface(
-                    color = colors.goldPrimary.copy(alpha = 0.2f),
+                    color = hierarchy.secondary.primary.copy(alpha = 0.2f),
                     shape = RoundedCornerShape(12.dp)
                 ) {
                     Text(
                         text = "${moments.size} MOMENTS",
-                        color = colors.goldDark,
+                        color = hierarchy.secondary.primary,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 1.sp,
@@ -245,7 +258,7 @@ private fun MomentRow(
                 .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Emoji badge
+            // Icon badge
             Box(
                 modifier = Modifier
                     .size(44.dp)
@@ -253,9 +266,11 @@ private fun MomentRow(
                     .background(moment.type.color.copy(alpha = 0.2f)),
                 contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = moment.type.emoji,
-                    fontSize = 22.sp
+                Icon(
+                    imageVector = moment.type.icon,
+                    contentDescription = null,
+                    tint = moment.type.color,
+                    modifier = Modifier.size(22.dp)
                 )
             }
             
@@ -400,6 +415,7 @@ fun FeaturedMomentCard(
     onLike: (() -> Unit)? = null,
     onShare: (() -> Unit)? = null
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "featured_animation")
     
@@ -474,7 +490,7 @@ fun FeaturedMomentCard(
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
                             text = "MOMENT OF THE MATCH",
-                            color = colors.goldDark,
+                            color = hierarchy.secondary.primary,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 2.sp
@@ -490,14 +506,16 @@ fun FeaturedMomentCard(
                 
                 Spacer(modifier = Modifier.height(20.dp))
                 
-                // Moment emoji large
+                // Moment icon large
                 Box(
                     modifier = Modifier.fillMaxWidth(),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = moment.type.emoji,
-                        fontSize = 64.sp
+                    Icon(
+                        imageVector = moment.type.icon,
+                        contentDescription = null,
+                        tint = moment.type.color,
+                        modifier = Modifier.size(64.dp)
                     )
                 }
                 

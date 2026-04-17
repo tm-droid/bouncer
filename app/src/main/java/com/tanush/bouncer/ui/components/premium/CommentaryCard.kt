@@ -43,6 +43,7 @@ fun CommentaryCard(
     modifier: Modifier = Modifier,
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val infiniteTransition = rememberInfiniteTransition(label = "commentary")
 
     val liveIndicatorAlpha by infiniteTransition.animateFloat(
@@ -171,6 +172,7 @@ private fun CommentaryEntryRow(
     isFirst: Boolean,
     isLast: Boolean
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val delayedProgress = ((progress - index * 0.08f) / 0.92f).coerceIn(0f, 1f)
 
@@ -256,12 +258,12 @@ private fun CommentaryEntryRow(
                         Box(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(4.dp))
-                                .background(GoldPrimary.copy(alpha = 0.2f))
+                                .background(hierarchy.secondary.primary.copy(alpha = 0.2f))
                                 .padding(horizontal = 4.dp, vertical = 2.dp)
                         ) {
                             Text(
                                 text = "TRENDING",
-                                color = GoldPrimary,
+                                color = hierarchy.secondary.primary,
                                 fontSize = 8.sp,
                                 fontWeight = FontWeight.Bold,
                                 letterSpacing = 0.5.sp

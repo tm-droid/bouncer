@@ -116,6 +116,7 @@ fun PlayerDetailScreen(
     onBackClick: () -> Unit
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val typography = BouncerDesignSystem.typography
     val dimens = BouncerDesignSystem.dimens
 
@@ -197,7 +198,7 @@ fun PlayerDetailScreen(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(dimens.sm)
                     ) {
-                        CircularProgressIndicator(color = colors.goldPrimary)
+                        CircularProgressIndicator(color = hierarchy.secondary.primary)
                         Text(
                             text = "Loading player data...",
                             style = typography.bodySmall,
@@ -272,7 +273,7 @@ fun PlayerDetailScreen(
                                 fitnessSkill = 70f,
                                 experienceSkill = (matches / 100f * 100f).coerceIn(0f, 100f),
                                 playerName = details.name,
-                                primaryColor = colors.goldPrimary
+                                primaryColor = hierarchy.secondary.primary
                             )
                         }
                     }
@@ -304,6 +305,7 @@ fun PlayerDetailScreen(
 
 @Composable
 private fun SectionTitle(title: String, icon: ImageVector) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val typography = BouncerDesignSystem.typography
     val dimens = BouncerDesignSystem.dimens
@@ -316,7 +318,7 @@ private fun SectionTitle(title: String, icon: ImageVector) {
         Icon(
             imageVector = icon,
             contentDescription = null,
-            tint = colors.goldPrimary,
+            tint = hierarchy.secondary.primary,
             modifier = Modifier.size(dimens.sm + dimens.xs)
         )
         Text(
@@ -329,6 +331,7 @@ private fun SectionTitle(title: String, icon: ImageVector) {
 
 @Composable
 private fun PlayerHeaderCard(player: PlayerDetails) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val typography = BouncerDesignSystem.typography
     val dimens = BouncerDesignSystem.dimens
@@ -384,7 +387,7 @@ private fun PlayerHeaderCard(player: PlayerDetails) {
                 if (badge != null) {
                     Box(
                         modifier = Modifier
-                            .background(colors.goldPrimary, CircleShape)
+                            .background(hierarchy.secondary.primary, CircleShape)
                             .padding(horizontal = 6.dp, vertical = 2.dp)
                     ) {
                         Text(

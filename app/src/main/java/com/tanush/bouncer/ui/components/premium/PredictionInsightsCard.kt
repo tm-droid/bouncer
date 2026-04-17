@@ -103,7 +103,8 @@ fun PredictionInsightsCard(
 
     val favoriteTeam = if (prediction.team1WinProbability > prediction.team2WinProbability) 1 else 2
     val colors = BouncerDesignSystem.colors
-    val goldDarkC = colors.goldDark
+    val hierarchy = BouncerDesignSystem.hierarchy
+    val goldDarkC = hierarchy.secondary.primary
     val favoriteColor = if (favoriteTeam == 1) colors.statusInfo else colors.statusLive
     val favoriteProbability = maxOf(prediction.team1WinProbability, prediction.team2WinProbability)
 
@@ -158,7 +159,7 @@ fun PredictionInsightsCard(
                                 .clip(RoundedCornerShape(12.dp))
                                 .background(
                                     Brush.linearGradient(
-                                        colors = listOf(colors.goldPrimary, colors.goldDark),
+                                        colors = listOf(hierarchy.secondary.primary, hierarchy.secondary.primary),
                                     ),
                                 ),
                             contentAlignment = Alignment.Center,
@@ -176,7 +177,7 @@ fun PredictionInsightsCard(
                         Column {
                             Text(
                                 text = "AI PREDICTION",
-                                color = colors.goldDark,
+                                color = hierarchy.secondary.primary,
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold,
                                 letterSpacing = 1.5.sp,

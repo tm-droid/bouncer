@@ -39,6 +39,7 @@ import com.tanush.bouncer.ui.theme.*
 fun PremiumAiInsightsTab(match: CricketMatch) {
     val scrollState = rememberScrollState()
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val dimens = BouncerDesignSystem.dimens
     val typography = BouncerDesignSystem.typography
     
@@ -108,6 +109,7 @@ fun PremiumAiInsightsTab(match: CricketMatch) {
 
 @Composable
 private fun AiNeuralBanner() {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val typography = BouncerDesignSystem.typography
     val dimens = BouncerDesignSystem.dimens
@@ -137,8 +139,8 @@ private fun AiNeuralBanner() {
             
             Column(modifier = Modifier.padding(dimens.spacing.lg), verticalArrangement = Arrangement.spacedBy(dimens.spacing.sm)) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(dimens.spacing.sm)) {
-                    Icon(Icons.Default.AutoAwesome, null, tint = colors.goldPrimary, modifier = Modifier.size(dimens.iconSize.sm))
-                    Text("AI ANALYSIS", style = typography.labelLarge, color = colors.goldPrimary)
+                    Icon(Icons.Default.AutoAwesome, null, tint = hierarchy.secondary.primary, modifier = Modifier.size(dimens.iconSize.sm))
+                    Text("AI ANALYSIS", style = typography.labelLarge, color = hierarchy.secondary.primary)
                 }
                 Text("Match Critical Analysis", style = typography.headingLarge, color = colors.textPrimary)
                 Text(
@@ -148,13 +150,14 @@ private fun AiNeuralBanner() {
                 )
             }
             
-            Box(modifier = Modifier.align(Alignment.BottomStart).fillMaxWidth().height(3.dp).background(Brush.horizontalGradient(listOf(colors.goldPrimary, Color.Transparent))))
+            Box(modifier = Modifier.align(Alignment.BottomStart).fillMaxWidth().height(3.dp).background(Brush.horizontalGradient(listOf(hierarchy.secondary.primary, Color.Transparent))))
         }
     }
 }
 
 @Composable
 private fun DrsVisualizationCard() {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val typography = BouncerDesignSystem.typography
     val dimens = BouncerDesignSystem.dimens
@@ -191,7 +194,7 @@ private fun DrsVisualizationCard() {
                 Column(modifier = Modifier.padding(dimens.spacing.lg).align(Alignment.BottomEnd), horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(dimens.spacing.xs)) {
                     DrsIndicator("PITCHING", "IN LINE", drsAccentColor)
                     DrsIndicator("IMPACT", "IN LINE", drsAccentColor)
-                    DrsIndicator("WICKETS", "HITTING", colors.goldPrimary)
+                    DrsIndicator("WICKETS", "HITTING", hierarchy.secondary.primary)
                 }
             }
             
@@ -221,6 +224,7 @@ private fun DrsIndicator(label: String, value: String, color: Color) {
 
 @Composable
 private fun VerdictModule() {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val typography = BouncerDesignSystem.typography
     val dimens = BouncerDesignSystem.dimens
@@ -234,10 +238,10 @@ private fun VerdictModule() {
 
     Column(modifier = Modifier.fillMaxWidth().padding(vertical = dimens.spacing.lg), horizontalAlignment = Alignment.CenterHorizontally) {
         Box(contentAlignment = Alignment.Center) {
-            Box(modifier = Modifier.size(120.dp, 60.dp).background(colors.goldPrimary.copy(alpha = 0.1f), CircleShape).blur(glowIntensity.dp))
+            Box(modifier = Modifier.size(120.dp, 60.dp).background(hierarchy.secondary.primary.copy(alpha = 0.1f), CircleShape).blur(glowIntensity.dp))
             Text(
                 "OUT",
-                color = colors.goldPrimary,
+                color = hierarchy.secondary.primary,
                 fontSize = 64.sp,
                 fontWeight = FontWeight.Black,
                 fontStyle = FontStyle.Italic,
@@ -254,6 +258,7 @@ private fun VerdictModule() {
 
 @Composable
 private fun DeliveryMetricsSection() {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val typography = BouncerDesignSystem.typography
     val dimens = BouncerDesignSystem.dimens
@@ -261,7 +266,7 @@ private fun DeliveryMetricsSection() {
     Column(verticalArrangement = Arrangement.spacedBy(dimens.spacing.lg)) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(dimens.spacing.sm)) {
-                Box(modifier = Modifier.size(4.dp, 18.dp).background(colors.goldPrimary, RoundedCornerShape(2.dp)))
+                Box(modifier = Modifier.size(4.dp, 18.dp).background(hierarchy.secondary.primary, RoundedCornerShape(2.dp)))
                 Text("DELIVERY METRICS", style = typography.labelLarge, color = colors.textPrimary)
             }
             Icon(Icons.Default.BarChart, null, tint = colors.textMuted, modifier = Modifier.size(dimens.iconSize.md))
@@ -277,6 +282,7 @@ private fun DeliveryMetricsSection() {
 
 @Composable
 private fun MetricCard(modifier: Modifier, label: String, value: String, unit: String = "", icon: ImageVector) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val typography = BouncerDesignSystem.typography
     val dimens = BouncerDesignSystem.dimens
@@ -287,8 +293,8 @@ private fun MetricCard(modifier: Modifier, label: String, value: String, unit: S
         contentPadding = PaddingValues(dimens.spacing.md)
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(dimens.spacing.sm)) {
-            Box(modifier = Modifier.size(36.dp).background(colors.goldSubtle, CircleShape), contentAlignment = Alignment.Center) {
-                Icon(icon, null, tint = colors.goldPrimary, modifier = Modifier.size(dimens.iconSize.sm))
+            Box(modifier = Modifier.size(36.dp).background(hierarchy.secondary.tint, CircleShape), contentAlignment = Alignment.Center) {
+                Icon(icon, null, tint = hierarchy.secondary.primary, modifier = Modifier.size(dimens.iconSize.sm))
             }
             Column {
                 Text(label.uppercase(), style = typography.labelSmall, color = colors.textMuted)
@@ -305,6 +311,7 @@ private fun MetricCard(modifier: Modifier, label: String, value: String, unit: S
 
 @Composable
 private fun PitchMapMiniCard() {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val typography = BouncerDesignSystem.typography
     val dimens = BouncerDesignSystem.dimens
@@ -318,12 +325,12 @@ private fun PitchMapMiniCard() {
     ) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(dimens.spacing.md)) {
-                Box(modifier = Modifier.size(48.dp).background(colors.goldSubtle, RoundedCornerShape(dimens.radius.md)), contentAlignment = Alignment.Center) {
-                    Icon(Icons.Default.Map, null, tint = colors.goldPrimary, modifier = Modifier.size(dimens.iconSize.lg))
+                Box(modifier = Modifier.size(48.dp).background(hierarchy.secondary.tint, RoundedCornerShape(dimens.radius.md)), contentAlignment = Alignment.Center) {
+                    Icon(Icons.Default.Map, null, tint = hierarchy.secondary.primary, modifier = Modifier.size(dimens.iconSize.lg))
                 }
                 Column {
                     Text("Pitch Map", style = typography.headingSmall, color = colors.textPrimary)
-                    Text("Good Length", style = typography.bodySmall, color = colors.goldPrimary, fontWeight = FontWeight.Bold)
+                    Text("Good Length", style = typography.bodySmall, color = hierarchy.secondary.primary, fontWeight = FontWeight.Bold)
                 }
             }
             Icon(Icons.Default.ChevronRight, null, tint = colors.textMuted)

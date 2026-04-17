@@ -69,6 +69,7 @@ fun BowlingPerformanceCard(
     modifier: Modifier = Modifier
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     Card(
         modifier = modifier
             .fillMaxWidth()
@@ -148,6 +149,7 @@ private fun BowlerRow(
     bowler: BowlerPerformance,
     teamColor: Color
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "bowler")
     
@@ -252,7 +254,7 @@ private fun BowlerRow(
                     ) {
                         Text(
                             text = "${bowler.wickets}",
-                            color = if (bowler.wickets >= 3) colors.goldPrimary else teamColor,
+                            color = if (bowler.wickets >= 3) hierarchy.secondary.primary else teamColor,
                             fontSize = 24.sp,
                             fontWeight = FontWeight.Black
                         )
@@ -435,6 +437,7 @@ private fun MiniStatBox(value: String, label: String, color: Color) {
  */
 @Composable
 private fun BowlingSummary(bowlers: List<BowlerPerformance>, teamColor: Color) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val totalOvers = bowlers.sumOf { it.overs.toDouble() }.toFloat()
     val totalRuns = bowlers.sumOf { it.runs }
     val totalWickets = bowlers.sumOf { it.wickets }
@@ -518,13 +521,13 @@ private fun BowlingSummary(bowlers: List<BowlerPerformance>, teamColor: Color) {
                     Icon(
                         Icons.Default.Star,
                         contentDescription = null,
-                        tint = colors.goldDark,
+                        tint = hierarchy.secondary.primary,
                         modifier = Modifier.size(14.dp)
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
                         text = "Best: ${bowler.name} (${bowler.wickets}/${bowler.runs})",
-                        color = colors.goldDark,
+                        color = hierarchy.secondary.primary,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Medium
                     )

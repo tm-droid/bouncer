@@ -59,6 +59,7 @@ fun BatsmanMilestoneCard(
     modifier: Modifier = Modifier
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val infiniteTransition = rememberInfiniteTransition(label = "milestone_animation")
     
     // Star sparkle animation
@@ -94,7 +95,7 @@ fun BatsmanMilestoneCard(
     
     val milestoneColor = when (milestoneInfo.milestone) {
         MilestoneType.FIFTY -> colors.statusInfo
-        MilestoneType.HUNDRED -> colors.goldPrimary
+        MilestoneType.HUNDRED -> hierarchy.secondary.primary
         MilestoneType.DOUBLE_HUNDRED -> colors.statusSuccess
         MilestoneType.TRIPLE_HUNDRED -> Color(0xFFFF6B6B)
         MilestoneType.QUADRUPLE_HUNDRED -> Color(0xFFE040FB)
@@ -221,7 +222,7 @@ fun BatsmanMilestoneCard(
                         Icon(
                             imageVector = Icons.Filled.Star,
                             contentDescription = null,
-                            tint = colors.goldPrimary.copy(alpha = goldGlow),
+                            tint = hierarchy.secondary.primary.copy(alpha = goldGlow),
                             modifier = Modifier.fillMaxSize()
                         )
                     }
@@ -254,7 +255,7 @@ fun BatsmanMilestoneCard(
                         Icon(
                             imageVector = Icons.Filled.Star,
                             contentDescription = null,
-                            tint = colors.goldPrimary.copy(alpha = goldGlow),
+                            tint = hierarchy.secondary.primary.copy(alpha = goldGlow),
                             modifier = Modifier.fillMaxSize()
                         )
                     }
@@ -277,13 +278,13 @@ fun BatsmanMilestoneCard(
                         label = "SIXES",
                         value = "${milestoneInfo.sixes}",
                         icon = "6️⃣",
-                        color = colors.goldPrimary
+                        color = hierarchy.secondary.primary
                     )
                     InningsStatBox(
                         label = "S/R",
                         value = String.format("%.1f", milestoneInfo.strikeRate),
                         icon = "⚡",
-                        color = colors.goldPrimary
+                        color = hierarchy.secondary.primary
                     )
                 }
                 
@@ -375,6 +376,7 @@ private fun RunCompositionBar(
     fours: Int,
     sixes: Int
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val boundaryRuns = (fours * 4) + (sixes * 6)
     val runningRuns = totalRuns - boundaryRuns
@@ -420,7 +422,7 @@ private fun RunCompositionBar(
                     modifier = Modifier
                         .fillMaxHeight()
                         .weight(sixPercentage)
-                        .background(colors.goldPrimary)
+                        .background(hierarchy.secondary.primary)
                 )
             }
         }
@@ -433,7 +435,7 @@ private fun RunCompositionBar(
         ) {
             LegendItem(color = colors.textTertiary, label = "Running (${runningRuns})")
             LegendItem(color = colors.statusInfo, label = "Fours (${fours * 4})")
-            LegendItem(color = colors.goldPrimary, label = "Sixes (${sixes * 6})")
+            LegendItem(color = hierarchy.secondary.primary, label = "Sixes (${sixes * 6})")
         }
     }
 }

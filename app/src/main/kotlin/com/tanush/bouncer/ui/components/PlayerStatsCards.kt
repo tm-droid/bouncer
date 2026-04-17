@@ -30,6 +30,7 @@ import com.tanush.bouncer.ui.components.CoilImage
 import coil.request.ImageRequest
 import com.tanush.bouncer.ui.theme.*
 import kotlin.math.min
+import com.tanush.bouncer.ui.theme.GoldPrimary
 
 /**
  * MEGA UI UPGRADE: BatsmanStatsCard (v2.0).
@@ -58,6 +59,7 @@ fun BatsmanStatsCard(
         label = "pulse"
     )
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
 
     Box(
         modifier = modifier
@@ -66,7 +68,7 @@ fun BatsmanStatsCard(
             .background(if (isOut) colors.glassSurface.copy(alpha = 0.5f) else colors.glassBorderHighlight)
             .border(
                 0.5.dp,
-                if (isOnStrike) Brush.linearGradient(listOf(colors.goldPrimary, Color.Transparent)) else Brush.linearGradient(listOf(colors.glassSurface, Color.Transparent)),
+                if (isOnStrike) Brush.linearGradient(listOf(hierarchy.secondary.primary, Color.Transparent)) else Brush.linearGradient(listOf(colors.glassSurface, Color.Transparent)),
                 RoundedCornerShape(20.dp)
             )
             .then(if (onClick != null) Modifier.clickable { onClick() } else Modifier)
@@ -89,7 +91,7 @@ fun BatsmanStatsCard(
                             modifier = Modifier
                                 .size(54.dp)
                                 .blur(12.dp)
-                                .background(colors.goldPrimary.copy(alpha = 0.15f * strikePulse), CircleShape)
+                                .background(hierarchy.secondary.primary.copy(alpha = 0.15f * strikePulse), CircleShape)
                         )
                     }
                     
@@ -98,13 +100,13 @@ fun BatsmanStatsCard(
                             .size(48.dp)
                             .clip(CircleShape)
                             .background(colors.glassSurface)
-                            .border(0.5.dp, if (isOnStrike) colors.goldPrimary.copy(alpha = 0.5f) else colors.glassSurface, CircleShape),
+                            .border(0.5.dp, if (isOnStrike) hierarchy.secondary.primary.copy(alpha = 0.5f) else colors.glassSurface, CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
                         if (imageUrl != null) {
                             CoilImage(model = imageUrl, contentDescription = name, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
                         } else {
-                            Text(name.take(1), color = if (isOnStrike) colors.goldPrimary else colors.textMuted, fontSize = 18.sp, fontWeight = FontWeight.Black)
+                            Text(name.take(1), color = if (isOnStrike) hierarchy.secondary.primary else colors.textMuted, fontSize = 18.sp, fontWeight = FontWeight.Black)
                         }
                     }
                 }
@@ -120,7 +122,7 @@ fun BatsmanStatsCard(
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
-                        if (isOnStrike) Box(modifier = Modifier.size(6.dp).background(colors.goldPrimary, CircleShape))
+                        if (isOnStrike) Box(modifier = Modifier.size(6.dp).background(hierarchy.secondary.primary, CircleShape))
                     }
                     if (isOut && dismissalType != null) {
                         Text(dismissalType, color = colors.statusLive.copy(alpha = 0.7f), fontSize = 10.sp, fontWeight = FontWeight.Bold)
@@ -133,7 +135,7 @@ fun BatsmanStatsCard(
                 Column(horizontalAlignment = Alignment.End) {
                     Text(
                         text = runs.toString(),
-                        color = if (runs >= 50) colors.goldPrimary else colors.textPrimary,
+                        color = if (runs >= 50) hierarchy.secondary.primary else colors.textPrimary,
                         fontSize = 24.sp,
                         fontWeight = FontWeight.Black,
                         letterSpacing = (-1).sp
@@ -188,6 +190,7 @@ fun BowlerStatsCard(
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
 
     Box(
@@ -261,11 +264,11 @@ fun BowlerStatsCard(
                     Box(
                         modifier = Modifier
                             .clip(CircleShape)
-                            .background(colors.goldPrimary.copy(alpha = 0.1f))
-                            .border(0.5.dp, colors.goldPrimary.copy(alpha = 0.3f), CircleShape)
+                            .background(hierarchy.secondary.primary.copy(alpha = 0.1f))
+                            .border(0.5.dp, hierarchy.secondary.primary.copy(alpha = 0.3f), CircleShape)
                             .padding(horizontal = 8.dp, vertical = 4.dp)
                     ) {
-                        Text("M: $maidens", color = colors.goldPrimary, fontSize = 10.sp, fontWeight = FontWeight.Black)
+                        Text("M: $maidens", color = hierarchy.secondary.primary, fontSize = 10.sp, fontWeight = FontWeight.Black)
                     }
                 }
             }
@@ -285,6 +288,7 @@ fun CircularStatIndicator(
     color: Color = GoldPrimary,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val progress = (value / maxValue).coerceIn(0f, 1f)
     val animatedProgress by animateFloatAsState(targetValue = progress, animationSpec = tween(1500), label = "progress")

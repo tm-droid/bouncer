@@ -51,6 +51,7 @@ fun PremiumTabRow(
     modifier: Modifier = Modifier
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val infiniteTransition = rememberInfiniteTransition(label = "tab_shimmer")
     val shimmerOffset by infiniteTransition.animateFloat(
         initialValue = -200f,
@@ -180,6 +181,7 @@ private fun AnimatedTabIndicator(
     shimmerOffset: Float,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val targetOffset by animateFloatAsState(
         targetValue = selectedIndex.toFloat() / tabCount,
         animationSpec = spring(
@@ -203,9 +205,9 @@ private fun AnimatedTabIndicator(
             brush = Brush.horizontalGradient(
                 colors = listOf(
                     Color.Transparent,
-                    GoldPrimary.copy(alpha = 0.3f),
-                    GoldPrimary.copy(alpha = 0.5f),
-                    GoldPrimary.copy(alpha = 0.3f),
+                    hierarchy.secondary.primary.copy(alpha = 0.3f),
+                    hierarchy.secondary.primary.copy(alpha = 0.5f),
+                    hierarchy.secondary.primary.copy(alpha = 0.3f),
                     Color.Transparent
                 ),
                 startX = startX - 20f,
@@ -220,9 +222,9 @@ private fun AnimatedTabIndicator(
         drawRoundRect(
             brush = Brush.horizontalGradient(
                 colors = listOf(
-                    GoldLight,
-                    GoldPrimary,
-                    GoldDark
+                    hierarchy.secondary.secondary,
+                    hierarchy.secondary.primary,
+                    hierarchy.secondary.primary
                 ),
                 startX = startX,
                 endX = startX + indicatorWidth
@@ -395,6 +397,7 @@ fun GlowingIconTab(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val glowAlpha by animateFloatAsState(
         targetValue = if (isSelected) 0.3f else 0f,
@@ -428,7 +431,7 @@ fun GlowingIconTab(
                         drawCircle(
                             brush = Brush.radialGradient(
                                 colors = listOf(
-                                    colors.goldPrimary.copy(alpha = glowAlpha),
+                                    hierarchy.secondary.primary.copy(alpha = glowAlpha),
                                     Color.Transparent
                                 )
                             ),
@@ -514,6 +517,7 @@ fun AnimatedUnderlineButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val underlineWidth by animateFloatAsState(
         targetValue = if (isActive) 1f else 0f,
         animationSpec = tween(300, easing = FastOutSlowInEasing),
@@ -546,9 +550,9 @@ fun AnimatedUnderlineButton(
                 .background(
                     Brush.horizontalGradient(
                         colors = listOf(
-                            GoldLight,
-                            GoldPrimary,
-                            GoldDark
+                            hierarchy.secondary.secondary,
+                            hierarchy.secondary.primary,
+                            hierarchy.secondary.primary
                         )
                     ),
                     RoundedCornerShape(1.dp)

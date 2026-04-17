@@ -41,6 +41,7 @@ fun ErrorState(
     modifier: Modifier = Modifier,
     subtitle: String? = null
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val haptic = rememberHapticFeedback()
     
     val pulse by rememberInfiniteTransition(label = "errorPulse").animateFloat(
@@ -167,6 +168,7 @@ fun RetryingOverlay(
     maxAttempts: Int,
     onCancel: () -> Unit
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val haptic = rememberHapticFeedback()
     
     AnimatedVisibility(
@@ -210,7 +212,7 @@ fun RetryingOverlay(
                 
                 Text(
                     text = "Attempt $attemptNumber of $maxAttempts",
-                    color = GoldPrimary,
+                    color = hierarchy.secondary.primary,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Medium
                 )

@@ -81,6 +81,7 @@ fun MatchCard(
     liveAiCommentary: String? = null
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val typography = BouncerDesignSystem.typography
     val dimens = BouncerDesignSystem.dimens
     val shapes = BouncerDesignSystem.shapes
@@ -109,7 +110,7 @@ fun MatchCard(
     val battingTeamColor = if (battingTeam != null) {
         TeamPrimaryColors.getTeamColor(battingTeam.acronym.ifBlank { battingTeam.name })
     } else {
-        colors.goldPrimary
+        hierarchy.secondary.primary
     }
 
     GlassCard(
@@ -134,7 +135,7 @@ fun MatchCard(
                 // Gold accent line on left for live matches
                 if (match.isLive) {
                     drawRect(
-                        color = colors.goldPrimary,
+                        color = hierarchy.secondary.primary,
                         topLeft = Offset.Zero,
                         size = Size(4.dp.toPx(), size.height)
                     )
@@ -170,9 +171,9 @@ fun MatchCard(
                                     Brush.horizontalGradient(
                                         colors = listOf(
                                             Color.Transparent,
-                                            colors.goldPrimary.copy(alpha = 0.3f),
-                                            colors.goldPrimary.copy(alpha = 0.5f),
-                                            colors.goldPrimary.copy(alpha = 0.3f),
+                                            hierarchy.secondary.primary.copy(alpha = 0.3f),
+                                            hierarchy.secondary.primary.copy(alpha = 0.5f),
+                                            hierarchy.secondary.primary.copy(alpha = 0.3f),
                                             Color.Transparent
                                         )
                                     )
@@ -318,6 +319,7 @@ private fun HeaderRow(match: CricketMatch) {
 
 @Composable
 private fun UpcomingMatchView(match: CricketMatch) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val typography = BouncerDesignSystem.typography
     val dimens = BouncerDesignSystem.dimens
@@ -353,7 +355,7 @@ private fun UpcomingMatchView(match: CricketMatch) {
             Text(
                 text = "Starts in",
                 style = typography.labelSmall,
-                color = colors.goldPrimary.copy(alpha = 0.8f),
+                color = hierarchy.secondary.primary.copy(alpha = 0.8f),
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 1.sp
             )
@@ -520,6 +522,7 @@ private fun TeamRow(
 
 @Composable
 private fun StrikeRow(batters: List<ScrapedBatsman>) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val typography = BouncerDesignSystem.typography
     val dimens = BouncerDesignSystem.dimens
@@ -533,7 +536,7 @@ private fun StrikeRow(batters: List<ScrapedBatsman>) {
                     .background(
                         Brush.horizontalGradient(
                             colors = listOf(
-                                if (batter.isStriker) colors.goldPrimary.copy(alpha = 0.15f) else Color.White.copy(alpha = 0.05f),
+                                if (batter.isStriker) hierarchy.secondary.primary.copy(alpha = 0.15f) else Color.White.copy(alpha = 0.05f),
                                 Color.Transparent
                             )
                         )
@@ -542,7 +545,7 @@ private fun StrikeRow(batters: List<ScrapedBatsman>) {
                         // Gold-inset left border Spec for striker
                         if (batter.isStriker) {
                             drawRect(
-                                color = colors.goldPrimary,
+                                color = hierarchy.secondary.primary,
                                 size = Size(4.dp.toPx(), size.height)
                             )
                         }
@@ -564,7 +567,7 @@ private fun StrikeRow(batters: List<ScrapedBatsman>) {
                             modifier = Modifier
                                 .size(6.dp)
                                 .clip(CircleShape)
-                                .background(colors.goldPrimary)
+                                .background(hierarchy.secondary.primary)
                         )
                     }
                 }
@@ -572,7 +575,7 @@ private fun StrikeRow(batters: List<ScrapedBatsman>) {
                 Text(
                     text = "${batter.runs}(${batter.balls})",
                     style = typography.labelSmall,
-                    color = if (batter.isStriker) colors.goldPrimary else colors.textMuted,
+                    color = if (batter.isStriker) hierarchy.secondary.primary else colors.textMuted,
                     fontWeight = FontWeight.Bold
                 )
             }

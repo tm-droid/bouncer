@@ -61,6 +61,7 @@ fun MatchPredictionCard(
     modifier: Modifier = Modifier
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val infiniteTransition = rememberInfiniteTransition(label = "prediction_animation")
     
     val pulseScale by infiniteTransition.animateFloat(
@@ -203,7 +204,7 @@ fun MatchPredictionCard(
                 
                 // Predicted winner highlight
                 Surface(
-                    color = colors.goldPrimary.copy(alpha = 0.1f),
+                    color = hierarchy.secondary.primary.copy(alpha = 0.1f),
                     shape = RoundedCornerShape(16.dp),
                     modifier = Modifier
                         .fillMaxWidth()
@@ -222,13 +223,13 @@ fun MatchPredictionCard(
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
                             text = winningTeam,
-                            color = colors.goldPrimary,
+                            color = hierarchy.secondary.primary,
                             fontSize = 24.sp,
                             fontWeight = FontWeight.Bold
                         )
                         Text(
                             text = "${winningProb.toInt()}% probability",
-                            color = colors.goldPrimary.copy(alpha = 0.7f),
+                            color = hierarchy.secondary.primary.copy(alpha = 0.7f),
                             fontSize = 14.sp
                         )
                     }
@@ -275,7 +276,7 @@ fun MatchPredictionCard(
                         val team2Sweep = 180f * team2Progress
                         drawArc(
                             brush = Brush.sweepGradient(
-                                colors = listOf(colors.goldPrimary.copy(alpha = 0.5f), colors.goldPrimary),
+                                colors = listOf(hierarchy.secondary.primary.copy(alpha = 0.5f), hierarchy.secondary.primary),
                                 center = center
                             ),
                             startAngle = 0f,
@@ -356,7 +357,7 @@ fun MatchPredictionCard(
                         )
                         Text(
                             text = "${predictionInfo.team2WinProbability.toInt()}%",
-                            color = colors.goldPrimary,
+                            color = hierarchy.secondary.primary,
                             fontSize = 28.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -400,7 +401,7 @@ fun MatchPredictionCard(
                                 .weight(team2Progress)
                                 .background(
                                     Brush.horizontalGradient(
-                                        colors = listOf(colors.goldPrimary, colors.goldPrimary.copy(alpha = 0.7f))
+                                        colors = listOf(hierarchy.secondary.primary, hierarchy.secondary.primary.copy(alpha = 0.7f))
                                     )
                                 )
                         )
@@ -442,7 +443,7 @@ fun MatchPredictionCard(
                     }
                     val trendColor = when (predictionInfo.predictionTrend) {
                         PredictionTrend.TEAM1_RISING -> colors.statusInfo
-                        PredictionTrend.TEAM2_RISING -> colors.goldPrimary
+                        PredictionTrend.TEAM2_RISING -> hierarchy.secondary.primary
                         PredictionTrend.STABLE -> colors.textPrimary
                     }
                     
@@ -471,9 +472,10 @@ private fun PredictionFactorRow(
     team1Name: String,
     team2Name: String
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val favoringTeam = if (factor.impact > 0) team1Name else team2Name
-    val impactColor = if (factor.impact > 0) colors.statusInfo else colors.goldPrimary
+    val impactColor = if (factor.impact > 0) colors.statusInfo else hierarchy.secondary.primary
     val impactStrength = abs(factor.impact)
     
     Row(
@@ -500,7 +502,7 @@ private fun PredictionFactorRow(
                     modifier = Modifier
                         .fillMaxHeight()
                         .weight(impactStrength)
-                        .background(colors.goldPrimary)
+                        .background(hierarchy.secondary.primary)
                 )
                 Spacer(modifier = Modifier.weight(1f - impactStrength))
             } else {

@@ -105,19 +105,20 @@ private fun getMomentIcon(type: MatchMomentType): ImageVector {
 @Composable
 private fun getMomentColor(type: MatchMomentType): Color {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     return when (type) {
         MatchMomentType.WICKET -> StatusLive
         MatchMomentType.BOUNDARY_FOUR -> StatusInfo
-        MatchMomentType.BOUNDARY_SIX -> GoldPrimary
-        MatchMomentType.FIFTY -> GoldPrimary
-        MatchMomentType.CENTURY -> GoldPrimary
+        MatchMomentType.BOUNDARY_SIX -> hierarchy.secondary.primary
+        MatchMomentType.FIFTY -> hierarchy.secondary.primary
+        MatchMomentType.CENTURY -> hierarchy.secondary.primary
         MatchMomentType.HAT_TRICK -> colors.statusInfo
         MatchMomentType.FIVE_WICKETS -> colors.statusInfo
         MatchMomentType.INNINGS_START -> StatusInfo
         MatchMomentType.INNINGS_END -> TextTertiary
         MatchMomentType.DRINKS_BREAK -> ChartCyan
         MatchMomentType.PARTNERSHIP_50 -> colors.statusSuccess
-        MatchMomentType.PARTNERSHIP_100 -> GoldPrimary
+        MatchMomentType.PARTNERSHIP_100 -> hierarchy.secondary.primary
         MatchMomentType.POWERPLAY_START -> WarningOrange
         MatchMomentType.POWERPLAY_END -> WarningOrange
         MatchMomentType.STRATEGIC_TIMEOUT -> TextTertiary
@@ -139,6 +140,7 @@ fun MatchTimelineCard(
     moments: List<MatchMoment>,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val infiniteTransition = rememberInfiniteTransition(label = "timelineShimmer")
     val shimmerOffset by infiniteTransition.animateFloat(
         initialValue = 0f,
@@ -156,11 +158,11 @@ fun MatchTimelineCard(
             .shadow(
                 elevation = 16.dp,
                 shape = RoundedCornerShape(24.dp),
-                spotColor = GoldPrimary.copy(alpha = 0.15f)
+                spotColor = hierarchy.secondary.primary.copy(alpha = 0.15f)
             ),
         colors = CardDefaults.cardColors(containerColor = GlassSurface),
         shape = RoundedCornerShape(24.dp),
-        border = BorderStroke(0.5.dp, GoldPrimary.copy(alpha = 0.15f))
+        border = BorderStroke(0.5.dp, hierarchy.secondary.primary.copy(alpha = 0.15f))
     ) {
         Column(
             modifier = Modifier.padding(20.dp)
@@ -178,7 +180,7 @@ fun MatchTimelineCard(
                     Icon(
                         Icons.Default.Timeline,
                         contentDescription = null,
-                        tint = GoldPrimary,
+                        tint = hierarchy.secondary.primary,
                         modifier = Modifier.size(20.dp)
                     )
                     Text(
@@ -188,7 +190,7 @@ fun MatchTimelineCard(
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.sp,
                             brush = Brush.verticalGradient(
-                                colors = listOf(Color.White, GoldPrimary, GoldDark)
+                                colors = listOf(Color.White, hierarchy.secondary.primary, hierarchy.secondary.primary)
                             )
                         )
                     )
@@ -260,6 +262,7 @@ private fun TimelineMomentItem(
     isFirst: Boolean,
     isLast: Boolean
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val color = getMomentColor(moment.type)
     val icon = getMomentIcon(moment.type)
     
@@ -292,7 +295,7 @@ private fun TimelineMomentItem(
                     modifier = Modifier
                         .weight(1f)
                         .height(2.dp)
-                        .background(GoldPrimary.copy(alpha = 0.15f))
+                        .background(hierarchy.secondary.primary.copy(alpha = 0.15f))
                 )
             } else {
                 Spacer(modifier = Modifier.weight(1f))
@@ -328,7 +331,7 @@ private fun TimelineMomentItem(
                     modifier = Modifier
                         .weight(1f)
                         .height(2.dp)
-                        .background(GoldPrimary.copy(alpha = 0.15f))
+                        .background(hierarchy.secondary.primary.copy(alpha = 0.15f))
                 )
             } else {
                 Spacer(modifier = Modifier.weight(1f))
@@ -407,6 +410,7 @@ private fun VerticalTimelineItem(
     isFirst: Boolean,
     isLast: Boolean
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val color = getMomentColor(moment.type)
     val icon = getMomentIcon(moment.type)
 
@@ -427,7 +431,7 @@ private fun VerticalTimelineItem(
                     modifier = Modifier
                         .width(2.dp)
                         .height(16.dp)
-                        .background(GoldPrimary.copy(alpha = 0.15f))
+                        .background(hierarchy.secondary.primary.copy(alpha = 0.15f))
                 )
             } else {
                 Spacer(modifier = Modifier.height(16.dp))
@@ -456,7 +460,7 @@ private fun VerticalTimelineItem(
                     modifier = Modifier
                         .width(2.dp)
                         .height(16.dp)
-                        .background(GoldPrimary.copy(alpha = 0.15f))
+                        .background(hierarchy.secondary.primary.copy(alpha = 0.15f))
                 )
             }
         }

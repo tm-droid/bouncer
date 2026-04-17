@@ -80,6 +80,7 @@ fun MatchTimelineCard(
     modifier: Modifier = Modifier,
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val animatedProgress = remember { Animatable(0f) }
 
     val infiniteTransition = rememberInfiniteTransition(label = "timeline")
@@ -142,7 +143,7 @@ fun MatchTimelineCard(
                     Column {
                         Text(
                             text = "MATCH TIMELINE",
-                            color = colors.goldLight,
+                            color = hierarchy.secondary.secondary,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.5.sp,
@@ -200,7 +201,7 @@ fun MatchTimelineCard(
                     val progressWidth = (currentOver / maxOver) * width * animatedProgress.value
                     drawLine(
                         brush = Brush.horizontalGradient(
-                            colors = listOf(colors.goldDark, colors.goldPrimary),
+                            colors = listOf(hierarchy.secondary.primary, hierarchy.secondary.primary),
                         ),
                         start = Offset(0f, centerY),
                         end = Offset(progressWidth, centerY),
@@ -240,8 +241,8 @@ fun MatchTimelineCard(
                     drawCircle(
                         brush = Brush.radialGradient(
                             colors = listOf(
-                                colors.goldDark.copy(alpha = 0.4f * currentPulse),
-                                colors.goldDark.copy(alpha = 0f),
+                                hierarchy.secondary.primary.copy(alpha = 0.4f * currentPulse),
+                                hierarchy.secondary.primary.copy(alpha = 0f),
                             ),
                             center = Offset(currentX, centerY),
                             radius = 20.dp.toPx() * currentPulse,
@@ -252,7 +253,7 @@ fun MatchTimelineCard(
 
                     drawCircle(
                         brush = Brush.linearGradient(
-                            colors = listOf(colors.goldLight, colors.goldDark),
+                            colors = listOf(hierarchy.secondary.secondary, hierarchy.secondary.primary),
                         ),
                         radius = 10.dp.toPx(),
                         center = Offset(currentX, centerY),

@@ -432,6 +432,7 @@ private fun MainAppContent(
             ) {
                 MoreScreen(
                     onSettingsClick = { navController.navigate("settings") },
+                    onStatsClick = { navController.navigate("stats") },
                     onAchievementsClick = { navController.navigate("achievements") },
                     onActivityClick = { navController.navigate("activity") },
                     onArTrackingClick = { navController.navigate("ar_tracking") },

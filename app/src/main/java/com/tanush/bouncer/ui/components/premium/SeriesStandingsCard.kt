@@ -74,6 +74,7 @@ fun SeriesStandingsCard(
     modifier: Modifier = Modifier,
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val infiniteTransition = rememberInfiniteTransition(label = "standings")
 
     val shimmerOffset by infiniteTransition.animateFloat(
@@ -94,7 +95,7 @@ fun SeriesStandingsCard(
     ) {
         Box {
             // Shimmer effect
-            val goldDarkC = colors.goldDark
+            val goldDarkC = hierarchy.secondary.primary
             Canvas(modifier = Modifier.fillMaxSize()) {
                 val shimmerBrush = Brush.linearGradient(
                     colors = listOf(
@@ -126,7 +127,7 @@ fun SeriesStandingsCard(
                                 .clip(RoundedCornerShape(12.dp))
                                 .background(
                                     Brush.linearGradient(
-                                        colors = listOf(colors.goldPrimary, colors.goldDark),
+                                        colors = listOf(hierarchy.secondary.primary, hierarchy.secondary.primary),
                                     ),
                                 ),
                             contentAlignment = Alignment.Center,
@@ -144,7 +145,7 @@ fun SeriesStandingsCard(
                         Column {
                             Text(
                                 text = "STANDINGS",
-                                color = colors.goldDark,
+                                color = hierarchy.secondary.primary,
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold,
                                 letterSpacing = 1.5.sp,
@@ -264,6 +265,7 @@ private fun StandingsTeamRow(
     isQualified: Boolean,
     modifier: Modifier = Modifier,
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val positionColor = when {
         position <= 2 -> colors.statusSuccess
@@ -279,7 +281,7 @@ private fun StandingsTeamRow(
                 if (isCurrentMatchTeam) {
                     Brush.horizontalGradient(
                         colors = listOf(
-                            colors.goldDark.copy(alpha = 0.15f),
+                            hierarchy.secondary.primary.copy(alpha = 0.15f),
                             Color.Transparent,
                         ),
                     )
@@ -331,7 +333,7 @@ private fun StandingsTeamRow(
             Column {
                 Text(
                     text = team.shortName,
-                    color = if (isCurrentMatchTeam) colors.goldDark else colors.textPrimary,
+                    color = if (isCurrentMatchTeam) hierarchy.secondary.primary else colors.textPrimary,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Bold,
                 )
@@ -389,13 +391,13 @@ private fun StandingsTeamRow(
             modifier = Modifier
                 .width(30.dp)
                 .clip(RoundedCornerShape(6.dp))
-                .background(colors.goldDark.copy(alpha = 0.2f))
+                .background(hierarchy.secondary.primary.copy(alpha = 0.2f))
                 .padding(vertical = 4.dp),
             contentAlignment = Alignment.Center,
         ) {
             Text(
                 text = "${team.points}",
-                color = colors.goldDark,
+                color = hierarchy.secondary.primary,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
             )

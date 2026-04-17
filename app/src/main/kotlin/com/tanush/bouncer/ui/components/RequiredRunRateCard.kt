@@ -55,6 +55,7 @@ fun RequiredRunRateCard(
     modifier: Modifier = Modifier
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val infiniteTransition = rememberInfiniteTransition(label = "rrr")
     
     // Pulse for urgency
@@ -80,7 +81,7 @@ fun RequiredRunRateCard(
     
     val rrrColor = when {
         data.requiredRunRate <= data.currentRunRate + 1 -> colors.statusSuccess
-        data.requiredRunRate <= data.currentRunRate + 3 -> colors.goldPrimary
+        data.requiredRunRate <= data.currentRunRate + 3 -> hierarchy.secondary.primary
         data.requiredRunRate <= data.currentRunRate + 5 -> colors.statusWarning
         else -> colors.statusLive
     }
@@ -132,7 +133,7 @@ fun RequiredRunRateCard(
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 1.5.sp,
-                        color = colors.goldPrimary
+                        color = hierarchy.secondary.primary
                     )
                     Text(
                         text = chaseStatus,
@@ -145,7 +146,7 @@ fun RequiredRunRateCard(
                 // Target display
                 Surface(
                     shape = RoundedCornerShape(12.dp),
-                    color = colors.goldPrimary.copy(alpha = 0.15f)
+                    color = hierarchy.secondary.primary.copy(alpha = 0.15f)
                 ) {
                     Column(
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
@@ -161,7 +162,7 @@ fun RequiredRunRateCard(
                             text = "${data.target}",
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
-                            color = colors.goldPrimary
+                            color = hierarchy.secondary.primary
                         )
                     }
                 }
@@ -197,7 +198,7 @@ fun RequiredRunRateCard(
                         brush = Brush.sweepGradient(
                             colorStops = arrayOf(
                                 0f to colors.statusSuccess.copy(alpha = 0.7f),
-                                0.5f to colors.goldPrimary,
+                                0.5f to hierarchy.secondary.primary,
                                 1f to rrrColor
                             ),
                             center = Offset(centerX, centerY)

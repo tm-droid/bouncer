@@ -42,6 +42,7 @@ fun ProbabilityGraphView(
     var selectedEvent by remember { mutableStateOf<ProbabilityEvent?>(null) }
     
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val infiniteTransition = rememberInfiniteTransition(label = "graphShimmer")
     val shimmerAlpha by infiniteTransition.animateFloat(
         initialValue = 0.6f,
@@ -60,7 +61,7 @@ fun ProbabilityGraphView(
             .shadow(
                 elevation = 16.dp,
                 shape = RoundedCornerShape(24.dp),
-                spotColor = colors.goldPrimary.copy(alpha = 0.12f),
+                spotColor = hierarchy.secondary.primary.copy(alpha = 0.12f),
                 ambientColor = Color.Black.copy(alpha = 0.25f)
             ),
         shape = RoundedCornerShape(24.dp),
@@ -91,7 +92,7 @@ fun ProbabilityGraphView(
                     modifier = Modifier
                         .size(6.dp)
                         .background(
-                            colors.goldPrimary.copy(alpha = shimmerAlpha),
+                            hierarchy.secondary.primary.copy(alpha = shimmerAlpha),
                             CircleShape
                         )
                 )
@@ -105,7 +106,7 @@ fun ProbabilityGraphView(
                     text = currentMatchScore,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = colors.goldPrimary,
+                    color = hierarchy.secondary.primary,
                     modifier = Modifier.padding(bottom = 4.dp)
                 )
             }
@@ -143,9 +144,9 @@ fun ProbabilityGraphView(
                         .background(
                             Brush.horizontalGradient(
                                 colors = listOf(
-                                    colors.goldPrimary.copy(alpha = 0.1f),
-                                    colors.goldDark.copy(alpha = 0.15f),
-                                    colors.goldPrimary.copy(alpha = 0.1f)
+                                    hierarchy.secondary.primary.copy(alpha = 0.1f),
+                                    hierarchy.secondary.primary.copy(alpha = 0.15f),
+                                    hierarchy.secondary.primary.copy(alpha = 0.1f)
                                 )
                             ),
                             RoundedCornerShape(14.dp)
@@ -156,7 +157,7 @@ fun ProbabilityGraphView(
                         text = matchResult,
                         fontSize = 15.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = colors.goldPrimary,
+                        color = hierarchy.secondary.primary,
                         letterSpacing = 0.2.sp
                     )
                 }
@@ -209,13 +210,14 @@ private fun ProbabilityGraph(
     modifier: Modifier = Modifier,
     predictiveOverlay: List<Pair<Int, Double>>? = null
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val onSurfaceColor = MaterialTheme.colorScheme.onSurface
-    val primaryColor = colors.goldPrimary
-    val secondaryColor = colors.goldDark
+    val primaryColor = hierarchy.secondary.primary
+    val secondaryColor = hierarchy.secondary.primary
     val wicketBlue = colors.statusInfo
     val boundarySix = colors.statusWarning
-    val goldDark = colors.goldDark
+    val goldDark = hierarchy.secondary.primary
 
     Canvas(modifier = modifier) {
         val width = size.width
@@ -365,6 +367,7 @@ private fun EventDetailsCard(
     event: ProbabilityEvent,
     onDismiss: () -> Unit
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     Card(
         modifier = Modifier
@@ -373,7 +376,7 @@ private fun EventDetailsCard(
             .shadow(
                 elevation = 8.dp,
                 shape = RoundedCornerShape(14.dp),
-                spotColor = colors.goldPrimary.copy(alpha = 0.15f),
+                spotColor = hierarchy.secondary.primary.copy(alpha = 0.15f),
                 ambientColor = Color.Black.copy(alpha = 0.2f)
             ),
         shape = RoundedCornerShape(14.dp),
@@ -395,7 +398,7 @@ private fun EventDetailsCard(
                     text = "Over ${event.over}",
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
-                    color = colors.goldPrimary
+                    color = hierarchy.secondary.primary
                 )
                 IconButton(
                     onClick = onDismiss,
@@ -436,7 +439,7 @@ private fun EventDetailsCard(
             Text(
                 text = "AI Insight: This wicket shifted the win probability by 12%. Momentum now with the bowling side.",
                 fontSize = 12.sp,
-                color = colors.goldPrimary,
+                color = hierarchy.secondary.primary,
                 fontWeight = FontWeight.SemiBold
             )
 
@@ -465,6 +468,7 @@ private fun EventDetailsCard(
 
 @Composable
 private fun KeyMomentItem(event: ProbabilityEvent) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     Row(
         modifier = Modifier
@@ -513,7 +517,7 @@ private fun KeyMomentItem(event: ProbabilityEvent) {
             text = "${"%.1f".format(event.probability)}%",
             fontSize = 14.sp,
             fontWeight = FontWeight.Bold,
-            color = colors.goldPrimary
+            color = hierarchy.secondary.primary
         )
     }
 }

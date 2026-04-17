@@ -69,14 +69,15 @@ data class CommentaryEntry(
 @Composable
 private fun getEventColor(type: CommentaryEventType): Color {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     return when (type) {
-        CommentaryEventType.SIX -> GoldPrimary
+        CommentaryEventType.SIX -> hierarchy.secondary.primary
         CommentaryEventType.FOUR -> StatusInfo
-        CommentaryEventType.WICKET -> GoldPrimary
-        CommentaryEventType.MILESTONE -> GoldPrimary
+        CommentaryEventType.WICKET -> hierarchy.secondary.primary
+        CommentaryEventType.MILESTONE -> hierarchy.secondary.primary
         CommentaryEventType.WIDE, CommentaryEventType.NO_BALL -> WarningOrange
         CommentaryEventType.OVER_END -> TextTertiary
-        CommentaryEventType.INNINGS_END -> GoldPrimary
+        CommentaryEventType.INNINGS_END -> hierarchy.secondary.primary
         CommentaryEventType.REVIEW -> colors.statusInfo
         else -> TextSecondary
     }
@@ -110,6 +111,7 @@ fun LiveCommentaryBubbles(
     modifier: Modifier = Modifier,
     onEntryClick: ((CommentaryEntry) -> Unit)? = null
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val listState = rememberLazyListState()
     
     // Auto-scroll to newest entry
@@ -125,11 +127,11 @@ fun LiveCommentaryBubbles(
             .shadow(
                 elevation = 20.dp,
                 shape = RoundedCornerShape(28.dp),
-                spotColor = GoldPrimary.copy(alpha = 0.15f)
+                spotColor = hierarchy.secondary.primary.copy(alpha = 0.15f)
             ),
         colors = CardDefaults.cardColors(containerColor = GlassSurface),
         shape = RoundedCornerShape(28.dp),
-        border = BorderStroke(0.5.dp, GoldPrimary.copy(alpha = 0.15f))
+        border = BorderStroke(0.5.dp, hierarchy.secondary.primary.copy(alpha = 0.15f))
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
             // Header
@@ -245,6 +247,7 @@ private fun CommentaryBubble(
     entry: CommentaryEntry,
     onClick: (() -> Unit)? = null
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     var isVisible by remember { mutableStateOf(!entry.isNew) }
     
     LaunchedEffect(entry.id) {
@@ -304,7 +307,7 @@ private fun CommentaryBubble(
                 },
                 border = BorderStroke(
                     0.5.dp,
-                    if (isHighlight) eventColor.copy(alpha = 0.3f) else GoldPrimary.copy(alpha = 0.1f)
+                    if (isHighlight) eventColor.copy(alpha = 0.3f) else hierarchy.secondary.primary.copy(alpha = 0.1f)
                 )
             ) {
                 Column(
@@ -393,6 +396,7 @@ private fun OverBadge(
     over: String,
     type: CommentaryEventType
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val eventColor = getEventColor(type)
     val isHighlight = type in listOf(
         CommentaryEventType.SIX,
@@ -405,7 +409,7 @@ private fun OverBadge(
         color = if (isHighlight) eventColor.copy(alpha = 0.15f) else GlassSurface,
         border = BorderStroke(
             0.5.dp,
-            if (isHighlight) eventColor.copy(alpha = 0.3f) else GoldPrimary.copy(alpha = 0.1f)
+            if (isHighlight) eventColor.copy(alpha = 0.3f) else hierarchy.secondary.primary.copy(alpha = 0.1f)
         ),
         modifier = Modifier.width(44.dp)
     ) {
@@ -456,6 +460,7 @@ fun CommentaryTicker(
     latestEntry: CommentaryEntry?,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val infiniteTransition = rememberInfiniteTransition(label = "tickerShimmer")
     val shimmerOffset by infiniteTransition.animateFloat(
         initialValue = 0f,
@@ -477,9 +482,9 @@ fun CommentaryTicker(
             0.5.dp,
             Brush.linearGradient(
                 colors = listOf(
-                    GoldPrimary.copy(alpha = 0.2f * shimmerOffset),
-                    GoldPrimary.copy(alpha = 0.1f),
-                    GoldPrimary.copy(alpha = 0.2f * (1 - shimmerOffset))
+                    hierarchy.secondary.primary.copy(alpha = 0.2f * shimmerOffset),
+                    hierarchy.secondary.primary.copy(alpha = 0.1f),
+                    hierarchy.secondary.primary.copy(alpha = 0.2f * (1 - shimmerOffset))
                 ),
                 start = Offset(shimmerOffset * 300, 0f),
                 end = Offset(shimmerOffset * 300 + 200, 44f)

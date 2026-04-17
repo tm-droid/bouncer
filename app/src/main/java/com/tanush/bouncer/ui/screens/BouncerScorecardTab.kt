@@ -69,6 +69,7 @@ import com.tanush.bouncer.ui.components.glass.GlassCardSmall
 import com.tanush.bouncer.ui.components.glass.strikeRow
 import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 import com.tanush.bouncer.ui.theme.TeamPrimaryColors
+import com.tanush.bouncer.ui.theme.GoldPrimary
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  Scorecard Tab — Glass UI
@@ -142,6 +143,7 @@ fun ScorecardTab(
 @Composable
 private fun ScoreSummaryHero(scorecard: Scorecard?, modifier: Modifier = Modifier) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val typography = BouncerDesignSystem.typography
     val dimens = BouncerDesignSystem.dimens
     
@@ -202,7 +204,7 @@ private fun ScoreSummaryHero(scorecard: Scorecard?, modifier: Modifier = Modifie
                 Text(
                     text = "INNINGS BREAK",
                     style = typography.labelSmall.copy(fontSize = 8.sp),
-                    color = colors.goldPrimary,
+                    color = hierarchy.secondary.primary,
                     letterSpacing = 1.sp
                 )
             }
@@ -245,6 +247,7 @@ private fun InningsHeaderCard(
     onToggle: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val typography = BouncerDesignSystem.typography
     val dimens = BouncerDesignSystem.dimens
     val colors = BouncerDesignSystem.colors
@@ -307,7 +310,7 @@ private fun InningsHeaderCard(
             Icon(
                 imageVector = if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
                 contentDescription = null,
-                tint = colors.goldPrimary.copy(alpha = 0.7f),
+                tint = hierarchy.secondary.primary.copy(alpha = 0.7f),
                 modifier = Modifier.size(20.dp)
             )
         }
@@ -372,7 +375,7 @@ private fun LazyListScope.inningsSection(
                 Text(
                     text = "TOTAL: ${innings.score} (${innings.overs} Ov)",
                     style = typography.labelSmall.copy(fontSize = 11.sp),
-                    color = colors.goldPrimary.copy(alpha = 0.8f),
+                    color = GoldPrimary.copy(alpha = 0.8f),
                     fontWeight = FontWeight.Bold
                 )
             }
@@ -413,7 +416,7 @@ private fun LazyListScope.inningsSection(
                     Text(
                         text = "FALL OF WICKETS",
                         style = typography.labelSmall.copy(fontSize = 9.sp),
-                        color = colors.goldPrimary,
+                        color = GoldPrimary,
                         modifier = Modifier.padding(horizontal = 16.dp),
                         letterSpacing = 0.8.sp
                     )
@@ -443,6 +446,7 @@ private fun LazyListScope.inningsSection(
 
 @Composable
 private fun BattingStickyHeaderRow() {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val dimens = BouncerDesignSystem.dimens
     val colors = BouncerDesignSystem.colors
     Row(
@@ -451,7 +455,7 @@ private fun BattingStickyHeaderRow() {
             .background(Color(0xFF1A1C20).copy(alpha = 0.95f))
             .drawBehind {
                 drawLine(
-                    color = colors.goldPrimary.copy(alpha = 0.10f),
+                    color = hierarchy.secondary.primary.copy(alpha = 0.10f),
                     start = Offset(0f, size.height),
                     end = Offset(size.width, size.height),
                     strokeWidth = 1.dp.toPx()
@@ -480,6 +484,7 @@ private fun BattingStickyHeaderRow() {
 
 @Composable
 private fun BowlingStickyHeaderRow() {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val dimens = BouncerDesignSystem.dimens
     val colors = BouncerDesignSystem.colors
     Row(
@@ -488,7 +493,7 @@ private fun BowlingStickyHeaderRow() {
             .background(Color(0xFF1A1C20).copy(alpha = 0.95f))
             .drawBehind {
                 drawLine(
-                    color = colors.goldPrimary.copy(alpha = 0.10f),
+                    color = hierarchy.secondary.primary.copy(alpha = 0.10f),
                     start = Offset(0f, size.height),
                     end = Offset(size.width, size.height),
                     strokeWidth = 1.dp.toPx()
@@ -521,6 +526,7 @@ private fun BatsmanStatsRow(
     isLast: Boolean,
     teamName: String
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val typography = BouncerDesignSystem.typography
     val colors = BouncerDesignSystem.colors
 
@@ -540,7 +546,7 @@ private fun BatsmanStatsRow(
                     .background(teamColor.copy(alpha = 0.08f))
                     .drawBehind {
                         drawRect(
-                            color = colors.goldPrimary,
+                            color = hierarchy.secondary.primary,
                             topLeft = Offset.Zero,
                             size = Size(3.dp.toPx(), size.height)
                         )
@@ -580,7 +586,7 @@ private fun BatsmanStatsRow(
                     Text(
                         text = batsman.name,
                         style = typography.playerName.copy(fontSize = 13.sp),
-                        color = if (isNotable) colors.goldPrimary else colors.textPrimary,
+                        color = if (isNotable) hierarchy.secondary.primary else colors.textPrimary,
                         fontWeight = if (isNotable || isNotOut) FontWeight.Bold else FontWeight.Medium
                     )
                     Text(
@@ -600,7 +606,7 @@ private fun BatsmanStatsRow(
                 Text(
                     text = batsman.runs,
                     style = typography.labelSmall.copy(fontSize = 13.sp),
-                    color = if (isNotable) colors.goldPrimary else colors.textPrimary,
+                    color = if (isNotable) hierarchy.secondary.primary else colors.textPrimary,
                     modifier = Modifier.width(30.dp),
                     textAlign = TextAlign.Center,
                     fontWeight = FontWeight.Black
@@ -629,7 +635,7 @@ private fun BatsmanStatsRow(
                 Text(
                     text = batsman.strikeRate,
                     style = typography.bodySmall.copy(fontSize = 11.sp, fontFamily = FontFamily.Monospace),
-                    color = colors.goldPrimary.copy(alpha = 0.7f),
+                    color = hierarchy.secondary.primary.copy(alpha = 0.7f),
                     modifier = Modifier.width(50.dp),
                     textAlign = TextAlign.End
                 )
@@ -650,6 +656,7 @@ private fun BowlerStatsRow(
     bowler: BowlerStats,
     isLast: Boolean
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val typography = BouncerDesignSystem.typography
     val colors = BouncerDesignSystem.colors
 
@@ -668,7 +675,7 @@ private fun BowlerStatsRow(
             Text(
                 text = bowler.name,
                 style = typography.playerName.copy(fontSize = 12.sp),
-                color = if (isNotable) colors.goldPrimary else colors.textPrimary,
+                color = if (isNotable) hierarchy.secondary.primary else colors.textPrimary,
                 fontWeight = if (isNotable) FontWeight.Bold else FontWeight.Medium,
                 modifier = Modifier.weight(1f)
             )
@@ -698,7 +705,7 @@ private fun BowlerStatsRow(
                 Text(
                     text = bowler.wickets,
                     style = typography.statValue.copy(fontSize = 12.sp),
-                    color = colors.goldPrimary,
+                    color = hierarchy.secondary.primary,
                     modifier = Modifier.width(28.dp),
                     textAlign = TextAlign.Center,
                     fontWeight = FontWeight.Black

@@ -27,8 +27,9 @@ fun GoldLoadingIndicator(
     size: Dp = 48.dp
 ) {
     val colors = BouncerDesignSystem.colors
-    val goldDark = colors.goldDark
-    val goldPrimary = colors.goldPrimary
+    val hierarchy = BouncerDesignSystem.hierarchy
+    val goldDark = hierarchy.secondary.primary
+    val goldPrimary = hierarchy.secondary.primary
     val glassBorder = colors.glassBorder
     val infiniteTransition = rememberInfiniteTransition(label = "loadingRotation")
     
@@ -117,10 +118,11 @@ fun CricketBallLoadingIndicator(
     modifier: Modifier = Modifier,
     size: Dp = 56.dp
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
-    val goldPrimary = colors.goldPrimary
-    val goldLight = colors.goldLight
-    val goldDark = colors.goldDark
+    val goldPrimary = hierarchy.secondary.primary
+    val goldLight = hierarchy.secondary.secondary
+    val goldDark = hierarchy.secondary.primary
     val backgroundBase = colors.backgroundBase
     val infiniteTransition = rememberInfiniteTransition(label = "ballRotation")
     

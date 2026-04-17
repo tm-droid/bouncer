@@ -57,6 +57,7 @@ fun RecentFormCard(
     modifier: Modifier = Modifier,
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     var selectedTeam by remember { mutableIntStateOf(1) }
 
     GlassCard(
@@ -77,13 +78,13 @@ fun RecentFormCard(
                 Icon(
                     imageVector = Icons.Default.History,
                     contentDescription = null,
-                    tint = GoldDark,
+                    tint = hierarchy.secondary.primary,
                     modifier = Modifier.size(16.dp),
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = "RECENT FORM".uppercase(),
-                    color = GoldDark,
+                    color = hierarchy.secondary.primary,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Black,
                     letterSpacing = 1.5.sp,

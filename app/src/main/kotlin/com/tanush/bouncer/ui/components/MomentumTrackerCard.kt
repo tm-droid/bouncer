@@ -61,6 +61,7 @@ fun MomentumTrackerCard(
     modifier: Modifier = Modifier
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val infiniteTransition = rememberInfiniteTransition(label = "momentum")
     
     // Pulse animation for current momentum
@@ -115,7 +116,7 @@ fun MomentumTrackerCard(
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 1.5.sp,
-                        color = colors.goldPrimary
+                        color = hierarchy.secondary.primary
                     )
                     Text(
                         text = "Match Flow Analysis",
@@ -339,7 +340,7 @@ fun MomentumTrackerCard(
                                 
                                 val eventColor = when (event.type) {
                                     TrackerMomentumEventType.WICKET -> colors.statusLive
-                                    TrackerMomentumEventType.BOUNDARY_SPREE -> colors.goldPrimary
+                                    TrackerMomentumEventType.BOUNDARY_SPREE -> hierarchy.secondary.primary
                                     TrackerMomentumEventType.DROPPED_CATCH -> colors.statusWarning
                                     TrackerMomentumEventType.MILESTONE -> colors.statusSuccess
                                     TrackerMomentumEventType.COLLAPSE -> colors.statusLive
@@ -514,8 +515,9 @@ fun CompactMomentumIndicator(
     team2Name: String,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
-    val color = if (momentum >= 0) colors.goldPrimary else colors.statusInfo
+    val color = if (momentum >= 0) hierarchy.secondary.primary else colors.statusInfo
     val teamName = if (momentum >= 0) team1Name else team2Name
     val intensity = abs(momentum).toInt()
     

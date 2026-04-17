@@ -71,6 +71,7 @@ fun BowlerDetailCard(
     modifier: Modifier = Modifier,
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val infiniteTransition = rememberInfiniteTransition(label = "bowler")
 
     val bowlingGlow by infiniteTransition.animateFloat(
@@ -222,7 +223,7 @@ fun BowlerDetailCard(
                         Text(
                             text = "${stats.wickets}/${stats.runs}",
                             color = when {
-                                stats.wickets >= 5 -> colors.goldDark
+                                stats.wickets >= 5 -> hierarchy.secondary.primary
                                 stats.wickets >= 3 -> colors.statusSuccess
                                 else -> colors.textPrimary
                             },
@@ -285,7 +286,7 @@ fun BowlerDetailCard(
                         color = when {
                             stats.economy < 6.0 -> colors.statusSuccess
                             stats.economy > 9.0 -> colors.statusLive
-                            else -> colors.goldDark
+                            else -> hierarchy.secondary.primary
                         },
                     )
 

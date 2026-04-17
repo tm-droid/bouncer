@@ -17,6 +17,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import com.tanush.bouncer.ui.theme.BouncerDesignSystem
+import com.tanush.bouncer.ui.theme.GoldSubtle
+import com.tanush.bouncer.ui.theme.GoldPrimary
 
 /**
  * 3D-perspective view of a cricket pitch using graphicsLayer transformations.
@@ -28,6 +30,7 @@ fun Pitch3DView(
     content: @Composable BoxScope.() -> Unit = {}
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     
     Box(
         modifier = modifier
@@ -48,9 +51,9 @@ fun Pitch3DView(
                 .background(
                     brush = Brush.verticalGradient(
                         colors = listOf(
-                            colors.goldSubtle.copy(alpha = 0.4f),
+                            GoldSubtle.copy(alpha = 0.4f),
                             Color(0xFF2A3A20).copy(alpha = 0.6f),
-                            colors.goldSubtle.copy(alpha = 0.4f)
+                            GoldSubtle.copy(alpha = 0.4f)
                         )
                     )
                 )
@@ -77,7 +80,7 @@ fun Pitch3DView(
 
                 // Pitch Strip (The central rectangle)
                 drawRect(
-                    color = colors.goldPrimary.copy(alpha = 0.12f),
+                    color = GoldPrimary.copy(alpha = 0.12f),
                     topLeft = Offset(pitchWidth * 0.4f, pitchHeight * 0.2f),
                     size = Size(pitchWidth * 0.2f, pitchHeight * 0.6f)
                 )
@@ -107,7 +110,7 @@ fun Pitch3DView(
                 
                 // Far Stumps
                 drawRoundRect(
-                    color = colors.goldPrimary,
+                    color = GoldPrimary,
                     topLeft = Offset(pitchWidth * 0.5f - stumpWidth/2, pitchHeight * 0.25f - stumpHeight/2),
                     size = Size(stumpWidth, stumpHeight),
                     cornerRadius = CornerRadius(2f, 2f)
@@ -115,7 +118,7 @@ fun Pitch3DView(
                 
                 // Near Stumps
                 drawRoundRect(
-                    color = colors.goldPrimary,
+                    color = GoldPrimary,
                     topLeft = Offset(pitchWidth * 0.5f - stumpWidth/2, pitchHeight * 0.75f - stumpHeight/2),
                     size = Size(stumpWidth, stumpHeight),
                     cornerRadius = CornerRadius(2f, 2f)

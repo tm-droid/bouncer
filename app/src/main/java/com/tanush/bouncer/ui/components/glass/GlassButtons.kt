@@ -52,6 +52,7 @@ fun GlassPrimaryButton(
     icon: ImageVector? = null
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val typography = BouncerDesignSystem.typography
     val dimens = BouncerDesignSystem.dimens
     
@@ -89,8 +90,8 @@ fun GlassPrimaryButton(
                 } else {
                     Brush.linearGradient(
                         colors = listOf(
-                            colors.goldSubtle.copy(alpha = 0.3f),
-                            colors.goldSubtle.copy(alpha = 0.3f)
+                            hierarchy.secondary.tint.copy(alpha = 0.3f),
+                            hierarchy.secondary.tint.copy(alpha = 0.3f)
                         )
                     )
                 }
@@ -178,6 +179,7 @@ fun GlassSecondaryButton(
     isLoading: Boolean = false,
     icon: ImageVector? = null
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val typography = BouncerDesignSystem.typography
     val dimens = BouncerDesignSystem.dimens
@@ -194,7 +196,7 @@ fun GlassSecondaryButton(
     val backgroundColor by animateColorAsState(
         targetValue = when {
             !enabled || isLoading -> colors.glassSurface
-            isPressed -> colors.goldPrimary.copy(alpha = 0.12f)
+            isPressed -> hierarchy.secondary.primary.copy(alpha = 0.12f)
             else -> colors.glassSurface
         },
         label = "bg_color"
@@ -202,9 +204,9 @@ fun GlassSecondaryButton(
     
     val borderColor by animateColorAsState(
         targetValue = when {
-            !enabled || isLoading -> colors.goldPrimary.copy(alpha = 0.15f)
-            isPressed -> colors.goldPrimary.copy(alpha = 0.4f)
-            else -> colors.goldPrimary.copy(alpha = 0.25f)
+            !enabled || isLoading -> hierarchy.secondary.primary.copy(alpha = 0.15f)
+            isPressed -> hierarchy.secondary.primary.copy(alpha = 0.4f)
+            else -> hierarchy.secondary.primary.copy(alpha = 0.25f)
         },
         label = "border_color"
     )
@@ -222,7 +224,7 @@ fun GlassSecondaryButton(
                 if (enabled && !isLoading) {
                     Modifier.clickable(
                         interactionSource = interactionSource,
-                        indication = ripple(color = colors.goldPrimary.copy(alpha = 0.1f))
+                        indication = ripple(color = hierarchy.secondary.primary.copy(alpha = 0.1f))
                     ) { onClick() }
                 } else {
                     Modifier
@@ -232,7 +234,7 @@ fun GlassSecondaryButton(
         contentAlignment = Alignment.Center
     ) {
         if (isLoading) {
-            LoadingDots(color = colors.goldPrimary)
+            LoadingDots(color = hierarchy.secondary.primary)
         } else {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -242,7 +244,7 @@ fun GlassSecondaryButton(
                     Icon(
                         imageVector = icon,
                         contentDescription = null,
-                        tint = if (enabled) colors.goldPrimary else colors.goldPrimary.copy(alpha = 0.4f),
+                        tint = if (enabled) hierarchy.secondary.primary else hierarchy.secondary.primary.copy(alpha = 0.4f),
                         modifier = Modifier.size(dimens.iconSize.md)
                     )
                     Spacer(modifier = Modifier.width(dimens.spacing.sm))
@@ -250,7 +252,7 @@ fun GlassSecondaryButton(
                 Text(
                     text = text.uppercase(),
                     style = typography.labelLarge,
-                    color = if (enabled) colors.goldPrimary else colors.goldPrimary.copy(alpha = 0.4f),
+                    color = if (enabled) hierarchy.secondary.primary else hierarchy.secondary.primary.copy(alpha = 0.4f),
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 1.sp,
                     textAlign = TextAlign.Center
@@ -315,6 +317,7 @@ fun GlassIconButton(
     enabled: Boolean = true,
     useGoldTint: Boolean = true
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     
     val interactionSource = remember { MutableInteractionSource() }
@@ -338,7 +341,7 @@ fun GlassIconButton(
     val iconColor by animateColorAsState(
         targetValue = when {
             !enabled -> colors.textMuted
-            useGoldTint -> if (isPressed) colors.goldLight else colors.goldPrimary.copy(alpha = 0.8f)
+            useGoldTint -> if (isPressed) hierarchy.secondary.secondary else hierarchy.secondary.primary.copy(alpha = 0.8f)
             else -> if (isPressed) colors.textPrimary else colors.textSecondary
         },
         label = "icon_color"
@@ -350,12 +353,12 @@ fun GlassIconButton(
             .scale(scale)
             .clip(CircleShape)
             .background(backgroundColor)
-            .border(1.dp, colors.goldPrimary.copy(alpha = 0.2f), CircleShape)
+            .border(1.dp, hierarchy.secondary.primary.copy(alpha = 0.2f), CircleShape)
             .then(
                 if (enabled) {
                     Modifier.clickable(
                         interactionSource = interactionSource,
-                        indication = ripple(color = colors.goldPrimary)
+                        indication = ripple(color = hierarchy.secondary.primary)
                     ) { onClick() }
                 } else {
                     Modifier
@@ -442,6 +445,7 @@ fun GlassTextButton(
     enabled: Boolean = true,
     uppercase: Boolean = true
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val typography = BouncerDesignSystem.typography
     val dimens = BouncerDesignSystem.dimens
@@ -451,9 +455,9 @@ fun GlassTextButton(
     
     val textColor by animateColorAsState(
         targetValue = when {
-            !enabled -> colors.goldPrimary.copy(alpha = 0.4f)
-            isPressed -> colors.goldLight
-            else -> colors.goldPrimary
+            !enabled -> hierarchy.secondary.primary.copy(alpha = 0.4f)
+            isPressed -> hierarchy.secondary.secondary
+            else -> hierarchy.secondary.primary
         },
         label = "text_color"
     )
@@ -475,7 +479,7 @@ fun GlassTextButton(
                 if (enabled) {
                     Modifier.clickable(
                         interactionSource = interactionSource,
-                        indication = ripple(color = colors.goldPrimary, bounded = true)
+                        indication = ripple(color = hierarchy.secondary.primary, bounded = true)
                     ) { onClick() }
                 } else {
                     Modifier
@@ -500,6 +504,7 @@ fun GlassFab(
     modifier: Modifier = Modifier,
     contentDescription: String? = null
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     
     val interactionSource = remember { MutableInteractionSource() }
@@ -519,9 +524,9 @@ fun GlassFab(
             .background(
                 brush = Brush.linearGradient(
                     colors = listOf(
-                        colors.goldLight,
-                        colors.goldPrimary,
-                        colors.goldDark
+                        hierarchy.secondary.secondary,
+                        hierarchy.secondary.primary,
+                        hierarchy.secondary.primary
                     )
                 )
             )
@@ -530,7 +535,7 @@ fun GlassFab(
                 drawCircle(
                     brush = Brush.radialGradient(
                         colors = listOf(
-                            colors.goldPrimary.copy(alpha = 0.4f),
+                            hierarchy.secondary.primary.copy(alpha = 0.4f),
                             Color.Transparent
                         ),
                         radius = size.maxDimension * 0.8f
@@ -570,11 +575,12 @@ fun GlassToggleButton(
     modifier: Modifier = Modifier,
     contentDescription: String? = null
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     
     val backgroundColor by animateColorAsState(
         targetValue = if (isToggled) {
-            colors.goldPrimary.copy(alpha = 0.2f)
+            hierarchy.secondary.primary.copy(alpha = 0.2f)
         } else {
             colors.glassBackground
         },
@@ -583,16 +589,16 @@ fun GlassToggleButton(
     
     val borderColor by animateColorAsState(
         targetValue = if (isToggled) {
-            colors.goldPrimary.copy(alpha = 0.5f)
+            hierarchy.secondary.primary.copy(alpha = 0.5f)
         } else {
-            colors.goldPrimary.copy(alpha = 0.2f)
+            hierarchy.secondary.primary.copy(alpha = 0.2f)
         },
         label = "border_color"
     )
     
     val iconColor by animateColorAsState(
         targetValue = if (isToggled) {
-            colors.goldPrimary
+            hierarchy.secondary.primary
         } else {
             colors.textSecondary
         },
@@ -607,7 +613,7 @@ fun GlassToggleButton(
             .border(1.dp, borderColor, CircleShape)
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
-                indication = ripple(color = colors.goldPrimary)
+                indication = ripple(color = hierarchy.secondary.primary)
             ) { onToggle(!isToggled) },
         contentAlignment = Alignment.Center
     ) {

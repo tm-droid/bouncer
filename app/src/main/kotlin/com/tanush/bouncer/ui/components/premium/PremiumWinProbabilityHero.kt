@@ -40,6 +40,7 @@ fun PremiumWinProbabilityHero(
     team1Probability: Float, // 0.0 to 1.0
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val animatedProb by animateFloatAsState(
         targetValue = team1Probability,
         animationSpec = tween(2000, easing = FastOutSlowInEasing),
@@ -77,7 +78,7 @@ fun PremiumWinProbabilityHero(
                 .size(150.dp)
                 .align(Alignment.Center)
                 .blur(60.dp)
-                .background(GoldPrimary.copy(alpha = 0.05f * glowAlpha), CircleShape)
+                .background(hierarchy.secondary.primary.copy(alpha = 0.05f * glowAlpha), CircleShape)
         )
 
         // Content
@@ -95,7 +96,7 @@ fun PremiumWinProbabilityHero(
                 Column {
                     Text(
                         text = "WIN PROBABILITY",
-                        color = GoldPrimary,
+                        color = hierarchy.secondary.primary,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Black,
                         letterSpacing = 2.sp
@@ -112,7 +113,7 @@ fun PremiumWinProbabilityHero(
                 Icon(
                     imageVector = Icons.Default.AutoAwesome,
                     contentDescription = null,
-                    tint = GoldPrimary.copy(alpha = 0.4f),
+                    tint = hierarchy.secondary.primary.copy(alpha = 0.4f),
                     modifier = Modifier.size(20.dp)
                 )
             }
@@ -144,7 +145,7 @@ fun PremiumWinProbabilityHero(
                     // Probability Arc with Glow
                     drawArc(
                         brush = Brush.horizontalGradient(
-                            colors = listOf(GoldPrimary, GoldLight, GoldPrimary)
+                            colors = listOf(hierarchy.secondary.primary, hierarchy.secondary.secondary, hierarchy.secondary.primary)
                         ),
                         startAngle = 180f,
                         sweepAngle = 180f * animatedProb,
@@ -179,7 +180,7 @@ fun PremiumWinProbabilityHero(
                     )
                     Text(
                         text = team1Name.uppercase(),
-                        color = GoldPrimary,
+                        color = hierarchy.secondary.primary,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Black,
                         letterSpacing = 1.5.sp

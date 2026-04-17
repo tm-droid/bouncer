@@ -31,6 +31,7 @@ fun StatsHubScreen(
     onOpenAchievements: () -> Unit
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val typography = BouncerDesignSystem.typography
     val dimens = BouncerDesignSystem.dimens
 
@@ -78,9 +79,9 @@ fun StatsHubScreen(
                         Text("Overview", style = typography.labelLarge, color = colors.textSecondary)
                         Spacer(modifier = Modifier.height(dimens.sm))
                         Row(horizontalArrangement = Arrangement.spacedBy(dimens.sm)) {
-                            StatCard(label = "Matches", value = "1,234", trend = 2.3f)
-                            StatCard(label = "Runs", value = "98,321", trend = 1.2f)
-                            StatCard(label = "Wkts", value = "4,321", trend = -0.6f)
+                            StatCard(label = "Matches", value = "1,234", trend = 2.3f, modifier = Modifier.weight(1f))
+                            StatCard(label = "Runs", value = "98,321", trend = 1.2f, modifier = Modifier.weight(1f))
+                            StatCard(label = "Wkts", value = "4,321", trend = -0.6f, modifier = Modifier.weight(1f))
                         }
                     }
                 }
@@ -92,11 +93,11 @@ fun StatsHubScreen(
                     Column(modifier = Modifier.padding(dimens.md)) {
                         Text("Trending", style = typography.labelLarge, color = colors.textPrimary)
                         Spacer(modifier = Modifier.height(dimens.sm))
-                        MiniSparkline(data = listOf(120f, 130f, 125f, 140f, 150f, 160f), color = colors.goldPrimary)
+                        MiniSparkline(data = listOf(120f, 130f, 125f, 140f, 150f, 160f), color = hierarchy.secondary.primary)
                         Spacer(modifier = Modifier.height(dimens.sm))
                         Row(horizontalArrangement = Arrangement.spacedBy(dimens.sm)) {
-                            StatCard(label = "Form", value = "+8%", trend = 8f)
-                            StatCard(label = "Strike", value = "+3%", trend = 3f)
+                            StatCard(label = "Form", value = "+8%", trend = 8f, modifier = Modifier.weight(1f))
+                            StatCard(label = "Strike", value = "+3%", trend = 3f, modifier = Modifier.weight(1f))
                         }
                     }
                 }
@@ -162,6 +163,7 @@ private fun StatsHubActionRow(
     actionLabel: String,
     onAction: () -> Unit
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val typography = BouncerDesignSystem.typography
     val dimens = BouncerDesignSystem.dimens
@@ -175,7 +177,7 @@ private fun StatsHubActionRow(
             horizontalArrangement = Arrangement.spacedBy(dimens.sm),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(imageVector = icon, contentDescription = null, tint = colors.goldPrimary)
+            Icon(imageVector = icon, contentDescription = null, tint = hierarchy.secondary.primary)
             Column(modifier = Modifier.weight(1f)) {
                 Text(title, style = typography.bodyMedium, color = colors.textPrimary, fontWeight = FontWeight.SemiBold)
                 Text(description, style = typography.bodySmall, color = colors.textMuted)

@@ -36,6 +36,7 @@ fun PremiumScorecardSummary(
     innings: Innings,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val score = innings.score // Format "120/4"
     val overs = innings.overs
     
@@ -62,7 +63,7 @@ fun PremiumScorecardSummary(
             Column {
                 Text(
                     text = innings.teamName.uppercase(),
-                    color = GoldPrimary,
+                    color = hierarchy.secondary.primary,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Black,
                     letterSpacing = 2.sp

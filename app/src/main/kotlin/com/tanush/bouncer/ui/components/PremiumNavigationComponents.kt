@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.ui.theme.*
+import com.tanush.bouncer.ui.theme.GoldPrimary
 
 /**
  * Premium collapsing header with parallax effect
@@ -43,6 +44,7 @@ fun PremiumCollapsingHeader(
     modifier: Modifier = Modifier
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val collapsedHeight = 64.dp
     val expandedHeight = 180.dp
     
@@ -100,7 +102,7 @@ fun PremiumCollapsingHeader(
         }
         
         // Premium glow
-        val goldPrimaryColor = colors.goldPrimary
+        val goldPrimaryColor = GoldPrimary
         Canvas(modifier = Modifier.fillMaxSize()) {
             drawCircle(
                 brush = Brush.radialGradient(
@@ -147,7 +149,7 @@ fun PremiumCollapsingHeader(
                         text = title,
                         fontSize = androidx.compose.ui.unit.lerp(28.sp, 18.sp, progress),
                         fontWeight = FontWeight.Black,
-                        color = colors.goldDark.copy(
+                        color = GoldPrimary.copy(
                             alpha = 0.8f + shimmerOffset * 0.2f
                         ),
                         letterSpacing = if (progress < 0.5f) 2.sp else 1.sp,
@@ -193,7 +195,7 @@ fun PremiumCollapsingHeader(
                     Brush.horizontalGradient(
                         colors = listOf(
                             Color.Transparent,
-                            colors.goldPrimary.copy(alpha = 0.3f * progress),
+                            GoldPrimary.copy(alpha = 0.3f * progress),
                             Color.Transparent
                         )
                     )
@@ -261,12 +263,12 @@ fun GlassHeader(
                             .size(40.dp)
                             .clip(CircleShape)
                             .background(colors.glassSurface)
-                            .border(1.dp, colors.goldPrimary.copy(alpha = 0.2f), CircleShape)
+                            .border(1.dp, GoldPrimary.copy(alpha = 0.2f), CircleShape)
                     ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back",
-                            tint = colors.goldPrimary,
+                            tint = GoldPrimary,
                             modifier = Modifier.size(20.dp)
                         )
                     }
@@ -277,7 +279,7 @@ fun GlassHeader(
                     text = title.uppercase(),
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Black,
-                    color = colors.goldPrimary.copy(alpha = 0.8f + glowAlpha * 0.5f),
+                    color = GoldPrimary.copy(alpha = 0.8f + glowAlpha * 0.5f),
                     letterSpacing = 2.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -305,7 +307,7 @@ fun GlassHeader(
                             Brush.horizontalGradient(
                                 colors = listOf(
                                     Color.Transparent,
-                                    colors.goldPrimary.copy(alpha = 0.3f),
+                                    GoldPrimary.copy(alpha = 0.3f),
                                     Color.Transparent
                                 )
                             )
@@ -409,6 +411,7 @@ fun PremiumSectionHeader(
     action: @Composable (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     Row(
         modifier = modifier
@@ -428,7 +431,7 @@ fun PremiumSectionHeader(
                     modifier = Modifier
                         .size(32.dp)
                         .background(
-                            colors.goldPrimary.copy(alpha = 0.15f),
+                            hierarchy.secondary.primary.copy(alpha = 0.15f),
                             RoundedCornerShape(8.dp)
                         ),
                     contentAlignment = Alignment.Center
@@ -436,7 +439,7 @@ fun PremiumSectionHeader(
                     Icon(
                         imageVector = icon,
                         contentDescription = null,
-                        tint = colors.goldPrimary,
+                        tint = hierarchy.secondary.primary,
                         modifier = Modifier.size(18.dp)
                     )
                 }
@@ -495,6 +498,7 @@ fun PremiumTabRow(
     onTabSelected: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "tabRow")
     val shimmerOffset by infiniteTransition.animateFloat(
@@ -540,7 +544,7 @@ fun PremiumTabRow(
                         .background(backgroundColor)
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
-                            indication = ripple(color = colors.goldPrimary.copy(alpha = 0.1f)),
+                            indication = ripple(color = hierarchy.secondary.primary.copy(alpha = 0.1f)),
                             onClick = { onTabSelected(index) }
                         )
                         .padding(vertical = 12.dp),
@@ -569,6 +573,7 @@ fun NavigationSegmentedControl(
     onSegmentSelected: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     Surface(
         modifier = modifier,
@@ -605,8 +610,8 @@ fun NavigationSegmentedControl(
                             if (isSelected) {
                                 Brush.linearGradient(
                                     colors = listOf(
-                                        colors.goldDark,
-                                        colors.goldPrimary
+                                        hierarchy.secondary.primary,
+                                        hierarchy.secondary.primary
                                     )
                                 )
                             } else {
@@ -649,6 +654,7 @@ fun PremiumDropdown(
     onOptionSelected: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     var expanded by remember { mutableStateOf(false) }
     
@@ -666,7 +672,7 @@ fun PremiumDropdown(
             color = GlassSurface,
             border = androidx.compose.foundation.BorderStroke(
                 1.dp,
-                if (expanded) colors.goldPrimary.copy(alpha = 0.5f) else colors.glassBorder.copy(alpha = 0.3f)
+                if (expanded) hierarchy.secondary.primary.copy(alpha = 0.5f) else colors.glassBorder.copy(alpha = 0.3f)
             ),
             modifier = Modifier.clickable { expanded = !expanded }
         ) {
@@ -694,7 +700,7 @@ fun PremiumDropdown(
                 Icon(
                     imageVector = Icons.Default.KeyboardArrowDown,
                     contentDescription = "Expand",
-                    tint = colors.goldPrimary,
+                    tint = hierarchy.secondary.primary,
                     modifier = Modifier
                         .size(20.dp)
                         .graphicsLayer { rotationZ = rotation }
@@ -713,7 +719,7 @@ fun PremiumDropdown(
                     text = {
                         Text(
                             text = option,
-                            color = if (option == selectedOption) colors.goldPrimary else colors.textPrimary,
+                            color = if (option == selectedOption) hierarchy.secondary.primary else colors.textPrimary,
                             fontWeight = if (option == selectedOption) FontWeight.Bold else FontWeight.Medium
                         )
                     },
@@ -726,7 +732,7 @@ fun PremiumDropdown(
                             Icon(
                                 imageVector = Icons.Default.Check,
                                 contentDescription = null,
-                                tint = colors.goldPrimary,
+                                tint = hierarchy.secondary.primary,
                                 modifier = Modifier.size(18.dp)
                             )
                         }

@@ -45,6 +45,7 @@ import com.tanush.bouncer.ui.theme.*
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 import io.sentry.Sentry
+import com.tanush.bouncer.ui.theme.GoldPrimary
 
 /**
  * Sheet expansion states for multi-stage sheets
@@ -474,6 +475,7 @@ private fun StageIndicator(
     onClick: () -> Unit
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val size by animateDpAsState(
         targetValue = if (isActive) 24.dp else 8.dp,
         animationSpec = spring(dampingRatio = 0.6f),
@@ -486,7 +488,7 @@ private fun StageIndicator(
             .width(size)
             .clip(RoundedCornerShape(4.dp))
             .background(
-                if (isActive) colors.goldPrimary else colors.glassBorder.copy(alpha = 0.5f)
+                if (isActive) hierarchy.secondary.primary else colors.glassBorder.copy(alpha = 0.5f)
             )
             .clickable { onClick() }
     )
@@ -503,6 +505,7 @@ fun SheetHandle(
     width: Dp = 40.dp,
     height: Dp = 4.dp
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "handleAnimation")
     
@@ -529,7 +532,7 @@ fun SheetHandle(
                     Brush.horizontalGradient(
                         colors = listOf(
                             color,
-                            colors.goldPrimary.copy(alpha = shimmer * 0.5f),
+                            hierarchy.secondary.primary.copy(alpha = shimmer * 0.5f),
                             color
                         )
                     )

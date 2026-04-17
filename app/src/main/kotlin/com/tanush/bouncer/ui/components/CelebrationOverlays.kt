@@ -31,6 +31,7 @@ import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.random.Random
 import io.sentry.Sentry
+import com.tanush.bouncer.ui.theme.GoldPrimary
 
 /**
  * Event types for celebrations
@@ -70,11 +71,12 @@ enum class ParticleShape {
 @Composable
 fun CelebrationOverlay(
     eventType: CelebrationEventType,
-    team1Color: Color = BouncerDesignSystem.colors.goldDark,
+    team1Color: Color = BouncerDesignSystem.hierarchy.secondary.primary,
     team2Color: Color = StatusInfo,
     description: String? = null,
     onDismiss: () -> Unit
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     var isVisible by remember { mutableStateOf(true) }
     
     LaunchedEffect(Unit) {
@@ -230,6 +232,7 @@ private fun EventCard(
     description: String?
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val infiniteTransition = rememberInfiniteTransition(label = "cardPulse")
     val pulseScale by infiniteTransition.animateFloat(
         initialValue = 0.98f,
@@ -380,12 +383,12 @@ private fun getEventInfo(eventType: CelebrationEventType): EventInfo {
             CelebrationEventType.FIFTY -> EventInfo(
                 title = "FIFTY!",
                 icon = Icons.Default.Star,
-                color = GoldDark
+                color = GoldPrimary
             )
             CelebrationEventType.CENTURY -> EventInfo(
                 title = "CENTURY!",
                 icon = Icons.Default.EmojiEvents,
-                color = GoldDark
+                color = GoldPrimary
             )
             CelebrationEventType.HAT_TRICK -> EventInfo(
                 title = "HAT-TRICK!",

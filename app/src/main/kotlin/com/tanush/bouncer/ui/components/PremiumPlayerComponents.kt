@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.ui.components.CoilImage
 import com.tanush.bouncer.ui.theme.*
+import com.tanush.bouncer.ui.theme.GoldPrimary
 
 /**
  * Premium player profile and stats components
@@ -78,6 +79,7 @@ fun PremiumPlayerCard(
     )
     
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
 
     Box(
         modifier = modifier
@@ -95,8 +97,8 @@ fun PremiumPlayerCard(
                 width = 1.dp,
                 brush = Brush.linearGradient(
                     colors = listOf(
-                        colors.goldPrimary.copy(alpha = if (player.isOnStrike) glowAlpha else 0.3f),
-                        colors.goldLight.copy(alpha = if (player.isOnStrike) glowAlpha * 0.5f else 0.1f)
+                        hierarchy.secondary.primary.copy(alpha = if (player.isOnStrike) glowAlpha else 0.3f),
+                        hierarchy.secondary.secondary.copy(alpha = if (player.isOnStrike) glowAlpha * 0.5f else 0.1f)
                     )
                 ),
                 shape = RoundedCornerShape(16.dp)
@@ -142,7 +144,7 @@ fun PremiumPlayerCard(
                             Box(
                                 modifier = Modifier
                                     .size(8.dp)
-                                    .background(colors.goldPrimary, CircleShape)
+                                    .background(hierarchy.secondary.primary, CircleShape)
                             )
                         }
                     }
@@ -150,7 +152,7 @@ fun PremiumPlayerCard(
                     if (player.role.isNotEmpty()) {
                         Text(
                             text = player.role,
-                            color = colors.goldPrimary.copy(alpha = 0.8f),
+                            color = hierarchy.secondary.primary.copy(alpha = 0.8f),
                             fontSize = 12.sp
                         )
                     }
@@ -187,6 +189,7 @@ fun PlayerAvatar(
     isOnStrike: Boolean = false,
     isOut: Boolean = false
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
 
     Box(
@@ -199,7 +202,7 @@ fun PlayerAvatar(
                 modifier = Modifier
                     .size(size + 8.dp)
                     .blur(8.dp)
-                    .background(colors.goldPrimary.copy(alpha = 0.4f), CircleShape)
+                    .background(hierarchy.secondary.primary.copy(alpha = 0.4f), CircleShape)
             )
         }
         
@@ -217,13 +220,13 @@ fun PlayerAvatar(
                     width = 2.dp,
                     brush = if (isOnStrike) {
                         Brush.linearGradient(
-                            colors = listOf(colors.goldPrimary, colors.goldLight)
+                            colors = listOf(hierarchy.secondary.primary, hierarchy.secondary.secondary)
                         )
                     } else {
                         Brush.linearGradient(
                             colors = listOf(
-                                colors.goldPrimary.copy(alpha = 0.5f),
-                                colors.goldLight.copy(alpha = 0.2f)
+                                hierarchy.secondary.primary.copy(alpha = 0.5f),
+                                hierarchy.secondary.secondary.copy(alpha = 0.2f)
                             )
                         )
                     },
@@ -243,7 +246,7 @@ fun PlayerAvatar(
             } else {
                 Text(
                     text = name.take(2).uppercase(),
-                    color = if (isOut) colors.textMuted else colors.goldPrimary,
+                    color = if (isOut) colors.textMuted else hierarchy.secondary.primary,
                     fontSize = (size.value / 3).sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -254,6 +257,7 @@ fun PlayerAvatar(
 
 @Composable
 private fun BatsmanStatsDisplay(player: PlayerStats) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
 
     Column(
@@ -287,7 +291,7 @@ private fun BatsmanStatsDisplay(player: PlayerStats) {
             text = "SR: %.1f".format(strikeRate),
             color = when {
                 strikeRate >= 150 -> Color(0xFF22C55E)
-                strikeRate >= 100 -> colors.goldPrimary
+                strikeRate >= 100 -> hierarchy.secondary.primary
                 else -> Color(0xFFEF4444)
             },
             fontSize = 12.sp,
@@ -316,6 +320,7 @@ private fun BatsmanStatsDisplay(player: PlayerStats) {
 
 @Composable
 private fun BowlerStatsDisplay(player: PlayerStats) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
 
     Column(
@@ -345,7 +350,7 @@ private fun BowlerStatsDisplay(player: PlayerStats) {
             text = "Econ: %.1f".format(player.economy),
             color = when {
                 player.economy <= 6 -> Color(0xFF22C55E)
-                player.economy <= 8 -> colors.goldPrimary
+                player.economy <= 8 -> hierarchy.secondary.primary
                 else -> Color(0xFFEF4444)
             },
             fontSize = 12.sp,
@@ -369,6 +374,7 @@ fun PlayerPerformanceChart(
     modifier: Modifier = Modifier,
     lineColor: Color = GoldPrimary
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     if (recentScores.isEmpty()) return
     
     val colors = BouncerDesignSystem.colors
@@ -496,12 +502,13 @@ fun PlayerRatingBadge(
     maxRating: Float = 10f,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
 
     val normalizedRating = (rating / maxRating).coerceIn(0f, 1f)
     val ratingColor = when {
         normalizedRating >= 0.8f -> Color(0xFF22C55E)
-        normalizedRating >= 0.6f -> colors.goldPrimary
+        normalizedRating >= 0.6f -> hierarchy.secondary.primary
         normalizedRating >= 0.4f -> Color(0xFFFFAA00)
         else -> Color(0xFFEF4444)
     }
@@ -540,6 +547,7 @@ fun PlayerOfTheMatchCard(
     reason: String,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val infiniteTransition = rememberInfiniteTransition(label = "potm")
     
     val shimmerProgress by infiniteTransition.animateFloat(
@@ -571,9 +579,9 @@ fun PlayerOfTheMatchCard(
             .background(
                 brush = Brush.linearGradient(
                     colors = listOf(
-                        colors.goldDark.copy(alpha = 0.3f),
-                        colors.goldPrimary.copy(alpha = 0.2f),
-                        colors.goldDark.copy(alpha = 0.3f)
+                        hierarchy.secondary.primary.copy(alpha = 0.3f),
+                        hierarchy.secondary.primary.copy(alpha = 0.2f),
+                        hierarchy.secondary.primary.copy(alpha = 0.3f)
                     ),
                     start = Offset(shimmerProgress * 1000, 0f),
                     end = Offset((shimmerProgress + 1) * 1000, 0f)
@@ -582,7 +590,7 @@ fun PlayerOfTheMatchCard(
             .border(
                 width = 2.dp,
                 brush = Brush.linearGradient(
-                    colors = listOf(colors.goldDark, colors.goldPrimary, colors.goldLight)
+                    colors = listOf(hierarchy.secondary.primary, hierarchy.secondary.primary, hierarchy.secondary.secondary)
                 ),
                 shape = RoundedCornerShape(20.dp)
             )
@@ -601,14 +609,14 @@ fun PlayerOfTheMatchCard(
                 Icon(
                     imageVector = Icons.Default.Star,
                     contentDescription = null,
-                    tint = colors.goldPrimary,
+                    tint = hierarchy.secondary.primary,
                     modifier = Modifier
                         .size(24.dp)
                         .scale(starScale)
                 )
                 Text(
                     text = "PLAYER OF THE MATCH",
-                    color = colors.goldPrimary,
+                    color = hierarchy.secondary.primary,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 2.sp
@@ -616,7 +624,7 @@ fun PlayerOfTheMatchCard(
                 Icon(
                     imageVector = Icons.Default.Star,
                     contentDescription = null,
-                    tint = colors.goldPrimary,
+                    tint = hierarchy.secondary.primary,
                     modifier = Modifier
                         .size(24.dp)
                         .scale(starScale)
@@ -643,7 +651,7 @@ fun PlayerOfTheMatchCard(
             if (player.role.isNotEmpty()) {
                 Text(
                     text = player.role,
-                    color = colors.goldPrimary,
+                    color = hierarchy.secondary.primary,
                     fontSize = 14.sp
                 )
             }
@@ -666,6 +674,7 @@ fun MiniPlayerBadge(
     stat: String,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
 
     Row(
@@ -674,7 +683,7 @@ fun MiniPlayerBadge(
             .background(colors.glassSurface)
             .border(
                 width = 1.dp,
-                color = colors.goldPrimary.copy(alpha = 0.3f),
+                color = hierarchy.secondary.primary.copy(alpha = 0.3f),
                 shape = RoundedCornerShape(20.dp)
             )
             .padding(horizontal = 12.dp, vertical = 8.dp),
@@ -698,7 +707,7 @@ fun MiniPlayerBadge(
             )
             Text(
                 text = stat,
-                color = colors.goldPrimary,
+                color = hierarchy.secondary.primary,
                 fontSize = 11.sp
             )
         }

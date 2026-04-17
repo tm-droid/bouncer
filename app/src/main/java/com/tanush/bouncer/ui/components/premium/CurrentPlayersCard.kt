@@ -55,6 +55,7 @@ fun CurrentPlayersCard(
     modifier: Modifier = Modifier,
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     if (batsmen.isEmpty()) return
 
     val dimens = BouncerDesign.dimens
@@ -79,7 +80,7 @@ fun CurrentPlayersCard(
                         modifier = Modifier
                             .width(1.dp)
                             .height(dimens.spacing.xl)
-                            .background(colors.goldPrimary.copy(alpha = 0.2f))
+                            .background(hierarchy.secondary.primary.copy(alpha = 0.2f))
                     )
                 }
                 
@@ -108,6 +109,7 @@ private fun PlayerSection(
     teamColor: androidx.compose.ui.graphics.Color,
     modifier: Modifier = Modifier,
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val typography = BouncerDesign.typography
     val dimens = BouncerDesign.dimens
@@ -130,7 +132,7 @@ private fun PlayerSection(
             Text(
                 text = score,
                 style = typography.scoreCompact,
-                color = if (isOnStrike) colors.goldPrimary else colors.textMuted,
+                color = if (isOnStrike) hierarchy.secondary.primary else colors.textMuted,
                 fontWeight = FontWeight.ExtraBold,
                 modifier = if (isOnStrike) Modifier.etchedText() else Modifier
             )

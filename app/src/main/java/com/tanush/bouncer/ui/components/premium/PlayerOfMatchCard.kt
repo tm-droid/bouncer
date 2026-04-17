@@ -78,6 +78,7 @@ fun PlayerOfMatchCard(
     modifier: Modifier = Modifier,
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val animatedProgress = remember { Animatable(0f) }
 
     LaunchedEffect(candidates) {
@@ -125,7 +126,7 @@ fun PlayerOfMatchCard(
                             .clip(CircleShape)
                             .background(
                                 Brush.linearGradient(
-                                    colors = listOf(colors.goldDark, colors.goldPrimary),
+                                    colors = listOf(hierarchy.secondary.primary, hierarchy.secondary.primary),
                                 ),
                             ),
                         contentAlignment = Alignment.Center,
@@ -145,7 +146,7 @@ fun PlayerOfMatchCard(
                     Column {
                         Text(
                             text = "PLAYER OF THE MATCH",
-                            color = colors.goldLight,
+                            color = hierarchy.secondary.secondary,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.5.sp,
@@ -170,7 +171,7 @@ fun PlayerOfMatchCard(
                         .background(
                             Brush.verticalGradient(
                                 colors = listOf(
-                                    colors.goldPrimary.copy(alpha = 0.3f),
+                                    hierarchy.secondary.primary.copy(alpha = 0.3f),
                                     Color(0xFF2D2D44),
                                 ),
                             ),
@@ -188,7 +189,7 @@ fun PlayerOfMatchCard(
                                 .clip(CircleShape)
                                 .background(
                                     Brush.linearGradient(
-                                        colors = listOf(colors.goldDark, colors.goldPrimary),
+                                        colors = listOf(hierarchy.secondary.primary, hierarchy.secondary.primary),
                                     ),
                                 ),
                             contentAlignment = Alignment.Center,
@@ -206,7 +207,7 @@ fun PlayerOfMatchCard(
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = "LIKELY WINNER",
-                                color = colors.goldDark,
+                                color = hierarchy.secondary.primary,
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold,
                                 letterSpacing = 1.sp,
@@ -313,7 +314,7 @@ fun PlayerOfMatchCard(
                                     val sweepAngle = 360f * (player.impactScore / 100f) * animatedProgress.value
                                     drawArc(
                                         brush = Brush.sweepGradient(
-                                            colors = listOf(colors.goldDark, colors.goldPrimary, colors.goldDark),
+                                            colors = listOf(hierarchy.secondary.primary, hierarchy.secondary.primary, hierarchy.secondary.primary),
                                             center = center,
                                         ),
                                         startAngle = -90f,
@@ -327,7 +328,7 @@ fun PlayerOfMatchCard(
 
                                 Text(
                                     text = "${(player.impactScore * animatedProgress.value).toInt()}",
-                                    color = colors.goldDark,
+                                    color = hierarchy.secondary.primary,
                                     fontSize = 18.sp,
                                     fontWeight = FontWeight.Bold,
                                 )
@@ -370,7 +371,7 @@ fun PlayerOfMatchCard(
                             ) {
                                 Text(
                                     text = "★",
-                                    color = colors.goldDark,
+                                    color = hierarchy.secondary.primary,
                                     fontSize = 12.sp,
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
@@ -455,7 +456,7 @@ fun PlayerOfMatchCard(
 
                             Text(
                                 text = "${player.impactScore.toInt()}",
-                                color = colors.goldDark.copy(alpha = 0.7f),
+                                color = hierarchy.secondary.primary.copy(alpha = 0.7f),
                                 fontSize = 16.sp,
                                 fontWeight = FontWeight.Bold,
                             )

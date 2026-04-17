@@ -124,6 +124,7 @@ fun BouncerMatchDetailScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val dimens = BouncerDesignSystem.dimens
 
     val matches by viewModel.currentMatches.collectAsStateWithLifecycle()
@@ -378,6 +379,7 @@ private fun InsightStatCard(
     icon: ImageVector? = null,
     isGold: Boolean = false
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val typography = BouncerDesignSystem.typography
     val dimens = BouncerDesignSystem.dimens
@@ -387,7 +389,7 @@ private fun InsightStatCard(
             .width(if (isGold) 190.dp else 160.dp)
             .height(72.dp)
             .background(
-                if (isGold) colors.goldPrimary.copy(alpha = 0.08f)
+                if (isGold) hierarchy.secondary.primary.copy(alpha = 0.08f)
                 else colors.glassSurface
             ),
         shape = RoundedCornerShape(12.dp),
@@ -405,7 +407,7 @@ private fun InsightStatCard(
                     Icon(
                         imageVector = icon,
                         contentDescription = title,
-                        tint = colors.goldPrimary,
+                        tint = hierarchy.secondary.primary,
                         modifier = Modifier.size(14.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
@@ -413,7 +415,7 @@ private fun InsightStatCard(
                 Text(
                     text = title.uppercase(),
                     style = typography.labelSmall,
-                    color = if (isGold) colors.goldPrimary else colors.textSecondary,
+                    color = if (isGold) hierarchy.secondary.primary else colors.textSecondary,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 1.sp,
                     fontSize = 9.sp
@@ -459,7 +461,7 @@ private fun InsightStatCard(
                             modifier = Modifier
                                 .fillMaxHeight()
                                 .fillMaxWidth(progress)
-                                .background(colors.goldPrimary)
+                                .background(hierarchy.secondary.primary)
                                 .shadow(4.dp, CircleShape)
                         )
                     }
@@ -471,6 +473,7 @@ private fun InsightStatCard(
 
 @Composable
 private fun MatchScoreHero(match: CricketMatch) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val typography = BouncerDesignSystem.typography
     val dimens = BouncerDesignSystem.dimens
@@ -579,9 +582,9 @@ private fun MatchScoreHero(match: CricketMatch) {
                                     brush = Brush.verticalGradient(
                                         colors = listOf(
                                             Color.Transparent,
-                                            colors.goldPrimary.copy(alpha = 0.5f),
-                                            colors.goldPrimary.copy(alpha = 0.8f),
-                                            colors.goldPrimary.copy(alpha = 0.5f),
+                                            hierarchy.secondary.primary.copy(alpha = 0.5f),
+                                            hierarchy.secondary.primary.copy(alpha = 0.8f),
+                                            hierarchy.secondary.primary.copy(alpha = 0.5f),
                                             Color.Transparent
                                         )
                                     )
@@ -608,10 +611,10 @@ private fun MatchScoreHero(match: CricketMatch) {
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(12.dp))
-                            .background(colors.goldPrimary.copy(alpha = 0.12f))
+                            .background(hierarchy.secondary.primary.copy(alpha = 0.12f))
                             .border(
                                 width = 1.dp,
-                                color = colors.goldPrimary.copy(alpha = 0.3f),
+                                color = hierarchy.secondary.primary.copy(alpha = 0.3f),
                                 shape = RoundedCornerShape(12.dp)
                             )
                             .padding(horizontal = 14.dp, vertical = 4.dp)
@@ -624,7 +627,7 @@ private fun MatchScoreHero(match: CricketMatch) {
                         Text(
                             text = pillText,
                             style = typography.matchStatus,
-                            color = colors.goldPrimary,
+                            color = hierarchy.secondary.primary,
                             fontWeight = FontWeight.Bold
                         )
                     }
@@ -635,7 +638,7 @@ private fun MatchScoreHero(match: CricketMatch) {
                 Text(
                     text = match.currentStatus,
                     style = typography.labelSmall,
-                    color = colors.goldPrimary,
+                    color = hierarchy.secondary.primary,
                     fontWeight = FontWeight.Bold,
                     textAlign = TextAlign.Center,
                     modifier = Modifier.fillMaxWidth()
@@ -717,6 +720,7 @@ private fun LiveTab(
     isLoading: Boolean = false,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val typography = BouncerDesignSystem.typography
     val dimens = BouncerDesignSystem.dimens
@@ -884,7 +888,7 @@ private fun LiveTab(
                 Text(
                     text = "BATTING",
                     style = typography.labelSmall,
-                    color = colors.goldPrimary,
+                    color = hierarchy.secondary.primary,
                     fontWeight = FontWeight.Bold
                 )
             }
@@ -906,7 +910,7 @@ private fun LiveTab(
                 Text(
                     text = "BOWLING",
                     style = typography.labelSmall,
-                    color = colors.goldPrimary,
+                    color = hierarchy.secondary.primary,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(top = dimens.sm)
                 )
@@ -947,6 +951,7 @@ private fun FeaturedBatterCard(
     batter: ScrapedBatsman,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val typography = BouncerDesignSystem.typography
     val dimens = BouncerDesignSystem.dimens
@@ -1024,7 +1029,7 @@ private fun FeaturedBatterCard(
                         Icon(
                             imageVector = Icons.Default.Star,
                             contentDescription = "Top scorer",
-                            tint = colors.goldPrimary,
+                            tint = hierarchy.secondary.primary,
                             modifier = Modifier.size(16.dp)
                         )
                     }
@@ -1042,7 +1047,7 @@ private fun FeaturedBatterCard(
                 Text(
                     text = batter.runs,
                     style = typography.headingLarge.copy(fontSize = 40.sp),
-                    color = colors.goldPrimary,
+                    color = hierarchy.secondary.primary,
                     fontWeight = FontWeight.Black,
                     modifier = Modifier.etchedText()
                 )
@@ -1380,13 +1385,14 @@ internal fun StatValueCell(
     modifier: Modifier = Modifier,
     highlight: Boolean = false
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val typography = BouncerDesignSystem.typography
 
     Text(
         text = value,
         style = typography.statValue,
-        color = if (highlight) colors.goldPrimary else colors.textPrimary,
+        color = if (highlight) hierarchy.secondary.primary else colors.textPrimary,
         fontWeight = if (highlight) FontWeight.ExtraBold else FontWeight.Bold,
         textAlign = TextAlign.End,
         modifier = modifier

@@ -32,6 +32,7 @@ import kotlinx.coroutines.delay
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.random.Random
+import com.tanush.bouncer.ui.theme.GoldPrimary
 
 /**
  * Toast types for different notifications
@@ -81,8 +82,9 @@ fun AchievementToast(
     
     // Colors based on type
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val (accentColor, bgGradient) = when (type) {
-        ToastType.ACHIEVEMENT -> colors.goldPrimary to listOf(colors.goldPrimary.copy(alpha = 0.15f), colors.goldPrimary.copy(alpha = 0.08f))
+        ToastType.ACHIEVEMENT -> GoldPrimary to listOf(GoldPrimary.copy(alpha = 0.15f), GoldPrimary.copy(alpha = 0.08f))
         ToastType.MILESTONE -> colors.statusWarning to listOf(colors.statusWarning.copy(alpha = 0.15f), colors.statusWarning.copy(alpha = 0.08f))
         ToastType.INFO -> colors.statusInfo to listOf(colors.statusInfo.copy(alpha = 0.15f), colors.statusInfo.copy(alpha = 0.08f))
         ToastType.SUCCESS -> Color(0xFF10B981) to listOf(Color(0xFF10B981).copy(alpha = 0.15f), Color(0xFF10B981).copy(alpha = 0.08f))
@@ -230,6 +232,7 @@ fun ToastConfetti(
     color: Color = GoldPrimary,
     particleCount: Int = 20
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     if (!isActive) return
     
     val density = LocalDensity.current
@@ -305,12 +308,13 @@ fun ScoreChangeNotification(
     isVisible: Boolean,
     onDismiss: () -> Unit
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val isBoundary = runs in listOf(4, 6)
     val color = when (runs) {
         6 -> colors.statusWarning
         4 -> colors.statusWarning
-        else -> colors.goldPrimary
+        else -> hierarchy.secondary.primary
     }
     
     val infiniteTransition = rememberInfiniteTransition(label = "scorePulse")
@@ -371,6 +375,7 @@ fun WicketNotification(
     isVisible: Boolean,
     onDismiss: () -> Unit
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val infiniteTransition = rememberInfiniteTransition(label = "wicketPulse")
     
     val borderPulse by infiniteTransition.animateFloat(
@@ -463,7 +468,7 @@ fun WicketNotification(
                 )
                 Text(
                     bowlerName,
-                    color = GoldPrimary,
+                    color = hierarchy.secondary.primary,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.SemiBold
                 )
@@ -484,6 +489,7 @@ fun InfoBar(
     color: Color = GoldPrimary,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     Surface(
         modifier = modifier.fillMaxWidth(),
         color = color.copy(alpha = 0.1f),

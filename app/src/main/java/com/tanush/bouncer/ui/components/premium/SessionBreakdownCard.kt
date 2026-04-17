@@ -71,6 +71,7 @@ fun SessionBreakdownCard(
     modifier: Modifier = Modifier,
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val infiniteTransition = rememberInfiniteTransition(label = "session")
 
     val currentSessionGlow by infiniteTransition.animateFloat(
@@ -137,7 +138,7 @@ fun SessionBreakdownCard(
                     Column {
                         Text(
                             text = "SESSION BREAKDOWN",
-                            color = colors.goldDark,
+                            color = hierarchy.secondary.primary,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.5.sp,
@@ -154,7 +155,7 @@ fun SessionBreakdownCard(
                 Column(horizontalAlignment = Alignment.End) {
                     Text(
                         text = "$totalRuns/$totalWickets",
-                        color = colors.goldDark,
+                        color = hierarchy.secondary.primary,
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
                     )
@@ -202,6 +203,7 @@ private fun SessionBarsVisualization(
     progress: Float,
     modifier: Modifier = Modifier,
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val maxRuns = sessions.maxOfOrNull { it.runs } ?: 1
 
@@ -218,7 +220,7 @@ private fun SessionBarsVisualization(
                 drawRoundRect(
                     brush = Brush.verticalGradient(
                         colors = listOf(
-                            colors.goldDark.copy(alpha = 0.3f),
+                            hierarchy.secondary.primary.copy(alpha = 0.3f),
                             Color.Transparent,
                         ),
                     ),
@@ -230,7 +232,7 @@ private fun SessionBarsVisualization(
 
             // Session bar
             val barColor = when {
-                session.isCurrentSession -> colors.goldDark
+                session.isCurrentSession -> hierarchy.secondary.primary
                 session.runRate > 5.0 -> colors.statusSuccess
                 session.runRate < 3.0 -> colors.statusLive
                 else -> colors.statusInfo
@@ -267,6 +269,7 @@ private fun SessionRow(
     currentGlow: Float,
     index: Int,
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val delayedProgress = ((progress - index * 0.1f) / 0.9f).coerceIn(0f, 1f)
 
@@ -282,7 +285,7 @@ private fun SessionRow(
                 if (session.isCurrentSession) {
                     Brush.horizontalGradient(
                         colors = listOf(
-                            colors.goldDark.copy(alpha = 0.15f * currentGlow),
+                            hierarchy.secondary.primary.copy(alpha = 0.15f * currentGlow),
                             Color.Transparent,
                         ),
                     )
@@ -304,7 +307,7 @@ private fun SessionRow(
                 .size(36.dp)
                 .clip(CircleShape)
                 .background(
-                    if (session.isCurrentSession) colors.goldDark else colors.glassBorder,
+                    if (session.isCurrentSession) hierarchy.secondary.primary else colors.glassBorder,
                 ),
             contentAlignment = Alignment.Center,
         ) {
@@ -323,7 +326,7 @@ private fun SessionRow(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = session.sessionName,
-                    color = if (session.isCurrentSession) colors.goldDark else colors.textPrimary,
+                    color = if (session.isCurrentSession) hierarchy.secondary.primary else colors.textPrimary,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
                 )
@@ -350,7 +353,7 @@ private fun SessionRow(
         Column(horizontalAlignment = Alignment.End) {
             Text(
                 text = "${session.runs}/${session.wickets}",
-                color = if (session.isCurrentSession) colors.goldDark else colors.textPrimary,
+                color = if (session.isCurrentSession) hierarchy.secondary.primary else colors.textPrimary,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
             )

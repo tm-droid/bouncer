@@ -259,7 +259,6 @@ fun MatchDetailView(
             liveCurrentRunRate = liveCurrentRunRate,
             liveRequiredRunRate = liveRequiredRunRate
         ) },
-        bottomBar = { EliteFloatingMatchNav_Extracted(selectedTab, { selectedTab = it }, onArClick) }
     ) { paddingValues ->
         Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
             Column(modifier = Modifier.fillMaxSize()) {
@@ -2657,100 +2656,6 @@ fun EliteRecentTelemetry(balls: List<String>) {
                         color = textColor,
                         fontSize = 15.sp,
                         fontWeight = FontWeight.Bold
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun EliteFloatingMatchNav(
-    selectedTab: Int,
-    onTabSelected: (Int) -> Unit,
-    onArClick: () -> Unit
-) {
-    Column(
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        // Gold top border line
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(0.5.dp)
-                .background(
-                    Brush.horizontalGradient(
-                        colors = listOf(
-                            Color.Transparent,
-                            Gold400.copy(alpha = 0.15f),
-                            Gold400.copy(alpha = 0.25f),
-                            Gold400.copy(alpha = 0.15f),
-                            Color.Transparent
-                        )
-                    )
-                )
-        )
-
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(BgBase.copy(alpha = 0.97f))
-                .navigationBarsPadding()
-                .padding(horizontal = Spacing.md, vertical = Spacing.sm)
-                .height(56.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            val navItems = listOf(
-                Triple(Icons.Outlined.Home, "Home", 0),
-                Triple(Icons.Outlined.SportsCricket, "Cricket", 1),
-                Triple(Icons.Outlined.Leaderboard, "Leaderboard", 2),
-                Triple(Icons.Outlined.Settings, "Settings", 3)
-            )
-
-            navItems.forEachIndexed { idx, (icon, label, _) ->
-                val isActive = idx == 1 // Cricket tab is active when viewing match detail
-                Column(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(12.dp))
-                        .clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null
-                        ) { /* Navigate to section */ }
-                        .padding(horizontal = 16.dp, vertical = 4.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(2.dp)
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        // Subtle glow behind active icon
-                        if (isActive) {
-                            Box(
-                                modifier = Modifier
-                                    .size(32.dp)
-                                    .background(
-                                        Brush.radialGradient(
-                                            colors = listOf(
-                                                Gold400.copy(alpha = 0.15f),
-                                                Color.Transparent
-                                            )
-                                        ),
-                                        CircleShape
-                                    )
-                            )
-                        }
-                        Icon(
-                            imageVector = icon,
-                            contentDescription = label,
-                            tint = if (isActive) Gold400 else TextMuted,
-                            modifier = Modifier.size(22.dp)
-                        )
-                    }
-                    Text(
-                        text = label,
-                        color = if (isActive) Gold400 else TextMuted,
-                        fontSize = 10.sp,
-                        fontWeight = if (isActive) FontWeight.SemiBold else FontWeight.Normal,
-                        maxLines = 1
                     )
                 }
             }

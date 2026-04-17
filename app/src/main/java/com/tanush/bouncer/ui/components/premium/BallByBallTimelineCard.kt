@@ -38,6 +38,7 @@ fun BallByBallTimelineCard(
     modifier: Modifier = Modifier,
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val animatedProgress = remember { Animatable(0f) }
 
     LaunchedEffect(deliveries) {
@@ -69,14 +70,14 @@ fun BallByBallTimelineCard(
                     Box(
                         modifier = Modifier
                             .size(32.dp)
-                            .background(colors.goldPrimary.copy(alpha = 0.1f), CircleShape)
+                            .background(hierarchy.secondary.primary.copy(alpha = 0.1f), CircleShape)
                             .border(0.5.dp, GoldHairline, CircleShape),
                         contentAlignment = Alignment.Center,
                     ) {
                         Icon(
                             Icons.Default.Insights,
                             contentDescription = null,
-                            tint = colors.goldPrimary,
+                            tint = hierarchy.secondary.primary,
                             modifier = Modifier.size(18.dp),
                         )
                     }
@@ -86,7 +87,7 @@ fun BallByBallTimelineCard(
                     Column {
                         Text(
                             text = "LIVE TELEMETRY".uppercase(),
-                            color = colors.goldPrimary,
+                            color = hierarchy.secondary.primary,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Black,
                             letterSpacing = 1.2.sp,
@@ -153,7 +154,7 @@ fun BallByBallTimelineCard(
                 BallLegendItem(color = DotBall, text = "DOT")
                 BallLegendItem(color = colors.statusSuccess, text = "RUN")
                 BallLegendItem(color = SuccessGreenBright, text = "4S")
-                BallLegendItem(color = colors.goldPrimary, text = "6S")
+                BallLegendItem(color = hierarchy.secondary.primary, text = "6S")
                 BallLegendItem(color = ErrorRed, text = "WKT")
             }
 
@@ -166,10 +167,10 @@ fun BallByBallTimelineCard(
                 ) {
                     Column(modifier = Modifier.padding(12.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Box(modifier = Modifier.size(6.dp).background(colors.goldPrimary, CircleShape))
+                            Box(modifier = Modifier.size(6.dp).background(hierarchy.secondary.primary, CircleShape))
                             Text(
                                 text = "AI MATCH ANALYSIS",
-                                color = colors.goldPrimary,
+                                color = hierarchy.secondary.primary,
                                 fontSize = 9.sp,
                                 fontWeight = FontWeight.Black,
                                 letterSpacing = 1.sp,
@@ -281,10 +282,11 @@ private fun BallTile(
     alpha: Float,
     modifier: Modifier = Modifier,
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val bgColor = when {
         ball.isWicket -> ErrorRed
-        ball.isSix -> colors.goldPrimary
+        ball.isSix -> hierarchy.secondary.primary
         ball.isBoundary -> SuccessGreenBright
         ball.isExtra -> colors.statusWarning
         ball.runs == 0 -> DotBall

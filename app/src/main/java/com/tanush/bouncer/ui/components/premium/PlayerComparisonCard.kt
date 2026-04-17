@@ -76,6 +76,7 @@ fun PlayerComparisonCard(
     modifier: Modifier = Modifier,
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val animatedProgress = remember { Animatable(0f) }
 
     LaunchedEffect(comparisonData) {
@@ -109,7 +110,7 @@ fun PlayerComparisonCard(
                             .clip(CircleShape)
                             .background(
                                 Brush.linearGradient(
-                                    colors = listOf(colors.goldDark, colors.goldPrimary),
+                                    colors = listOf(hierarchy.secondary.primary, hierarchy.secondary.primary),
                                 ),
                             ),
                         contentAlignment = Alignment.Center,
@@ -127,7 +128,7 @@ fun PlayerComparisonCard(
                     Column {
                         Text(
                             text = "PLAYER COMPARISON",
-                            color = colors.goldLight,
+                            color = hierarchy.secondary.secondary,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.5.sp,
@@ -167,7 +168,7 @@ fun PlayerComparisonCard(
                 ) {
                     Text(
                         text = "VS",
-                        color = colors.goldDark,
+                        color = hierarchy.secondary.primary,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Black,
                     )

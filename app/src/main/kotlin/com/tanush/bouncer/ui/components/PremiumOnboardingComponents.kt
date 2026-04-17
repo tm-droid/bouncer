@@ -32,6 +32,7 @@ import com.tanush.bouncer.ui.theme.*
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
+import com.tanush.bouncer.ui.theme.GoldPrimary
 
 /**
  * Premium splash screen with animated logo
@@ -83,8 +84,9 @@ fun PremiumSplashScreen(
     )
 
     val colors = BouncerDesignSystem.colors
-    val goldPrimary = colors.goldPrimary
-    val goldLight = colors.goldLight
+    val hierarchy = BouncerDesignSystem.hierarchy
+    val goldPrimary = hierarchy.secondary.primary
+    val goldLight = hierarchy.secondary.secondary
 
     Box(
         modifier = Modifier
@@ -168,9 +170,9 @@ fun PremiumSplashScreen(
                         2.dp,
                         Brush.linearGradient(
                             colors = listOf(
-                                colors.goldLight,
-                                colors.goldPrimary,
-                                colors.goldDark
+                                hierarchy.secondary.secondary,
+                                hierarchy.secondary.primary,
+                                hierarchy.secondary.primary
                             )
                         ),
                         CircleShape
@@ -207,7 +209,7 @@ fun PremiumSplashScreen(
                     text = "B",
                     fontSize = 48.sp,
                     fontWeight = FontWeight.Black,
-                    color = colors.goldPrimary
+                    color = hierarchy.secondary.primary
                 )
             }
             
@@ -229,7 +231,7 @@ fun PremiumSplashScreen(
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Medium,
                 letterSpacing = 2.sp,
-                color = colors.goldPrimary
+                color = hierarchy.secondary.primary
             )
             
             Spacer(modifier = Modifier.height(48.dp))
@@ -242,6 +244,7 @@ fun PremiumSplashScreen(
 
 @Composable
 private fun PremiumLoadingDots() {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "dots")
     
@@ -275,7 +278,7 @@ private fun PremiumLoadingDots() {
                     .size(8.dp)
                     .graphicsLayer { scaleX = scale; scaleY = scale }
                     .background(
-                        colors.goldPrimary.copy(alpha = alpha),
+                        hierarchy.secondary.primary.copy(alpha = alpha),
                         CircleShape
                     )
             )
@@ -429,8 +432,9 @@ fun PremiumEmptyState(
     modifier: Modifier = Modifier,
     action: (@Composable () -> Unit)? = null
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
-    val goldPrimary = colors.goldPrimary
+    val goldPrimary = hierarchy.secondary.primary
     val infiniteTransition = rememberInfiniteTransition(label = "empty")
     val float by infiniteTransition.animateFloat(
         initialValue = 0f,
@@ -481,7 +485,7 @@ fun PremiumEmptyState(
                 )
                 .border(
                     1.dp,
-                    colors.goldPrimary.copy(alpha = 0.3f),
+                    hierarchy.secondary.primary.copy(alpha = 0.3f),
                     CircleShape
                 ),
             contentAlignment = Alignment.Center
@@ -489,7 +493,7 @@ fun PremiumEmptyState(
             Icon(
                 imageVector = Icons.Default.SportsBaseball,
                 contentDescription = null,
-                tint = colors.goldPrimary,
+                tint = hierarchy.secondary.primary,
                 modifier = Modifier.size(48.dp)
             )
         }
@@ -530,8 +534,9 @@ fun PremiumQuickActionsMenu(
     actions: List<OnboardingQuickAction>,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
-    val goldPrimary = colors.goldPrimary
+    val goldPrimary = hierarchy.secondary.primary
     val rotation by animateFloatAsState(
         targetValue = if (isExpanded) 45f else 0f,
         animationSpec = spring(
@@ -604,7 +609,7 @@ fun PremiumQuickActionsMenu(
                     .shadow(
                         elevation = 16.dp,
                         shape = CircleShape,
-                        spotColor = colors.goldPrimary.copy(alpha = 0.5f)
+                        spotColor = hierarchy.secondary.primary.copy(alpha = 0.5f)
                     )
             ) {
                 Icon(

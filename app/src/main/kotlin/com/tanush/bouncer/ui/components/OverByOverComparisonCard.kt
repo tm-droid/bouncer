@@ -38,7 +38,7 @@ data class OverByOverComparisonInfo(
     val currentOver: Int = 0,
     val maxOvers: Int = 20,
     val team1Color: Color = StatusInfo,
-    val team2Color: Color = GoldDark,
+    val team2Color: Color = GoldPrimary,
     val highlightOvers: List<Int> = emptyList() // Overs with significant events
 )
 
@@ -48,6 +48,7 @@ fun OverByOverComparisonCard(
     modifier: Modifier = Modifier
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val infiniteTransition = rememberInfiniteTransition(label = "comparison_animation")
     
     val glowAlpha by infiniteTransition.animateFloat(
@@ -100,7 +101,7 @@ fun OverByOverComparisonCard(
                     Icon(
                         imageVector = Icons.Filled.Compare,
                         contentDescription = null,
-                        tint = colors.goldDark,
+                        tint = hierarchy.secondary.primary,
                         modifier = Modifier.size(24.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))

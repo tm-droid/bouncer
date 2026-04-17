@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.ui.theme.*
+import com.tanush.bouncer.ui.theme.GoldPrimary
 
 /**
  * Premium section divider with animated shimmer and title
@@ -49,6 +50,7 @@ fun SectionDivider(
     )
 
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -60,14 +62,14 @@ fun SectionDivider(
         Box(
             modifier = Modifier
                 .size(6.dp)
-                .background(colors.goldPrimary, CircleShape)
+                .background(hierarchy.secondary.primary, CircleShape)
                 .graphicsLayer { alpha = shimmerAlpha }
         )
         
         // Title
         Text(
             text = title.uppercase(),
-            color = colors.goldPrimary,
+            color = hierarchy.secondary.primary,
             fontSize = 12.sp,
             fontWeight = FontWeight.Black,
             letterSpacing = 2.sp,
@@ -82,8 +84,8 @@ fun SectionDivider(
                 .background(
                     Brush.horizontalGradient(
                         colors = listOf(
-                            colors.goldPrimary.copy(alpha = 0.6f),
-                            colors.goldPrimary.copy(alpha = 0.1f),
+                            hierarchy.secondary.primary.copy(alpha = 0.6f),
+                            hierarchy.secondary.primary.copy(alpha = 0.1f),
                             Color.Transparent
                         )
                     )
@@ -100,6 +102,7 @@ fun GoldSectionDivider(
     modifier: Modifier = Modifier,
     title: String? = null
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     Row(
         modifier = modifier
@@ -116,7 +119,7 @@ fun GoldSectionDivider(
                     Brush.horizontalGradient(
                         colors = listOf(
                             Color.Transparent,
-                            colors.goldPrimary.copy(alpha = 0.5f)
+                            hierarchy.secondary.primary.copy(alpha = 0.5f)
                         )
                     )
                 )
@@ -126,7 +129,7 @@ fun GoldSectionDivider(
             Spacer(modifier = Modifier.width(20.dp))
             Text(
                 text = title.uppercase(),
-                color = colors.goldPrimary,
+                color = hierarchy.secondary.primary,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Black,
                 letterSpacing = 2.5.sp
@@ -142,7 +145,7 @@ fun GoldSectionDivider(
                 .background(
                     Brush.horizontalGradient(
                         colors = listOf(
-                            colors.goldPrimary.copy(alpha = 0.5f),
+                            hierarchy.secondary.primary.copy(alpha = 0.5f),
                             Color.Transparent
                         )
                     )
@@ -228,6 +231,7 @@ fun StatCard(
     accentColor: Color = GoldPrimary,
     isHighlighted: Boolean = false
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     Surface(
         modifier = modifier
@@ -277,6 +281,7 @@ fun GoldProgressBar(
     backgroundColor: Color = GlassSurface,
     showLabel: Boolean = true
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     Column(modifier = modifier) {
         if (showLabel) {
@@ -294,7 +299,7 @@ fun GoldProgressBar(
                 )
                 Text(
                     text = "${(progress * 100).toInt()}%",
-                    color = colors.goldPrimary,
+                    color = hierarchy.secondary.primary,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Black
                 )
@@ -315,7 +320,7 @@ fun GoldProgressBar(
                     .fillMaxHeight()
                     .background(
                         Brush.horizontalGradient(
-                            colors = listOf(colors.goldDark, colors.goldPrimary, colors.goldLight)
+                            colors = listOf(hierarchy.secondary.primary, hierarchy.secondary.primary, hierarchy.secondary.secondary)
                         ),
                         RoundedCornerShape(50)
                     )
@@ -332,6 +337,7 @@ fun GlowingIconButton(
     backgroundColor: Color = GlassSurface,
     content: @Composable () -> Unit
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val infiniteTransition = rememberInfiniteTransition(label = "iconGlow")
     val glowAlpha by infiniteTransition.animateFloat(
         initialValue = 0.3f,

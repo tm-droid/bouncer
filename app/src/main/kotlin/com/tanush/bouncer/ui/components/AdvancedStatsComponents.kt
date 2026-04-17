@@ -32,6 +32,7 @@ import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.random.Random
+import com.tanush.bouncer.ui.theme.GoldPrimary
 
 /**
  * Premium circular win probability indicator with animated arcs
@@ -41,7 +42,7 @@ fun PremiumWinProbabilityRing(
     team1Name: String,
     team2Name: String,
     team1Probability: Float,
-    team1Color: Color = GoldDark,
+    team1Color: Color = GoldPrimary,
     team2Color: Color = StatusInfo,
     size: Dp = 200.dp,
     strokeWidth: Dp = 12.dp,
@@ -56,6 +57,7 @@ fun PremiumWinProbabilityRing(
         label = "probability"
     )
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     
     val infiniteTransition = rememberInfiniteTransition(label = "ringGlow")
     val glowAlpha by infiniteTransition.animateFloat(
@@ -203,6 +205,7 @@ fun RunRateSpeedometer(
     size: Dp = 160.dp,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val animatedCRR by animateFloatAsState(
         targetValue = currentRunRate.coerceIn(0f, maxRunRate),
@@ -225,7 +228,7 @@ fun RunRateSpeedometer(
     val crrColor = when {
         requiredRunRate > 0 && currentRunRate >= requiredRunRate -> StatusSuccess
         requiredRunRate > 0 && currentRunRate < requiredRunRate -> StatusLive
-        else -> GoldDark
+        else -> hierarchy.secondary.primary
     }
 
     Box(
@@ -340,10 +343,11 @@ fun MomentumIndicator(
     momentum: Float, // -1 to 1, negative = team2, positive = team1
     team1Name: String,
     team2Name: String,
-    team1Color: Color = GoldDark,
+    team1Color: Color = GoldPrimary,
     team2Color: Color = StatusInfo,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val animatedMomentum by animateFloatAsState(
         targetValue = momentum.coerceIn(-1f, 1f),
@@ -474,10 +478,11 @@ fun PremiumOverComparisonChart(
     team2Runs: List<Int>,
     team1Name: String,
     team2Name: String,
-    team1Color: Color = GoldDark,
+    team1Color: Color = GoldPrimary,
     team2Color: Color = StatusInfo,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val maxRuns = maxOf(
         team1Runs.maxOrNull() ?: 0,
         team2Runs.maxOrNull() ?: 0,
@@ -580,9 +585,10 @@ fun PlayerImpactRating(
     playerName: String,
     impactScore: Float, // 0 to 10
     stats: String,
-    avatarColor: Color = GoldDark,
+    avatarColor: Color = GoldPrimary,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val animatedScore by animateFloatAsState(
         targetValue = impactScore,
         animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
@@ -592,7 +598,7 @@ fun PlayerImpactRating(
     
     val ratingColor = when {
         impactScore >= 8f -> colors.statusSuccess
-        impactScore >= 6f -> colors.goldDark
+        impactScore >= 6f -> hierarchy.secondary.primary
         impactScore >= 4f -> colors.statusWarning
         else -> colors.statusLive
     }

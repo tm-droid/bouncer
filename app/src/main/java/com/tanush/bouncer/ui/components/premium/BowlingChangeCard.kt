@@ -54,6 +54,7 @@ fun BowlingChangeCard(
     modifier: Modifier = Modifier,
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val infiniteTransition = rememberInfiniteTransition(label = "change")
 
     val arrowPulse by infiniteTransition.animateFloat(
@@ -225,9 +226,10 @@ private fun BowlingChangeRow(
     arrowOffset: Float,
     modifier: Modifier = Modifier,
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val reasonColor = when (change.reason) {
-        "Tactical" -> colors.goldDark
+        "Tactical" -> hierarchy.secondary.primary
         "Injury" -> colors.statusLive
         "Ineffective" -> colors.statusWarning
         else -> colors.statusInfo
@@ -281,7 +283,7 @@ private fun BowlingChangeRow(
 
             Text(
                 text = "→",
-                color = colors.goldDark,
+                color = hierarchy.secondary.primary,
                 fontSize = 18.sp,
                 modifier = Modifier.offset(x = arrowOffset.dp),
             )

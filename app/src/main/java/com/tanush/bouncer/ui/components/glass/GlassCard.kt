@@ -50,6 +50,7 @@ fun GlassCard(
     content: @Composable BoxScope.() -> Unit
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     
     // Pulse animation
     val infiniteTransition = rememberInfiniteTransition(label = "glass_pulse")
@@ -170,6 +171,7 @@ fun EtchedGoldBox(
     ),
     content: @Composable BoxScope.() -> Unit
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val shapes = BouncerDesignSystem.shapes
     val shape = RoundedCornerShape(cornerRadius)
@@ -199,7 +201,7 @@ fun EtchedGoldBox(
             }
             .border(
                 width = 1.dp,
-                color = colors.goldPrimary.copy(alpha = borderOpacity),
+                color = hierarchy.secondary.primary.copy(alpha = borderOpacity),
                 shape = shape
             )
             .padding(contentPadding),
@@ -223,6 +225,7 @@ fun GlassCardHero(
     contentPadding: PaddingValues = PaddingValues(0.dp),
     content: @Composable BoxScope.() -> Unit
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     
     // Pulse animation
@@ -246,8 +249,8 @@ fun GlassCardHero(
                 width = 1.dp,
                 brush = Brush.verticalGradient(
                     colors = listOf(
-                        colors.goldPrimary.copy(alpha = 0.3f),
-                        colors.goldPrimary.copy(alpha = 0.1f)
+                        hierarchy.secondary.primary.copy(alpha = 0.3f),
+                        hierarchy.secondary.primary.copy(alpha = 0.1f)
                     )
                 ),
                 shape = shape

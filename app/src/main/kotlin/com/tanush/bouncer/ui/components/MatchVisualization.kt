@@ -45,6 +45,7 @@ fun WicketFallTimeline(
     if (fallOfWickets.isEmpty()) return
     
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     Card(
         modifier = modifier,
         colors = CardDefaults.cardColors(containerColor = colors.glassSurface),
@@ -216,6 +217,7 @@ fun RunRateGauge(
     requiredRate: Float,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val density = LocalDensity.current
     val progress = (currentRate / requiredRate).coerceIn(0f, 1.5f)
@@ -238,8 +240,8 @@ fun RunRateGauge(
     )
     
     val gaugeColor = when {
-        progress >= 1f -> GoldPrimary
-        progress >= 0.8f -> GoldPrimary
+        progress >= 1f -> hierarchy.secondary.primary
+        progress >= 0.8f -> hierarchy.secondary.primary
         progress >= 0.6f -> StatusWarning
         else -> StatusInfo
     }
@@ -319,6 +321,7 @@ fun WagonWheelMini(
     runsByDirection: Map<String, Int>,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val density = LocalDensity.current
     val totalRuns = runsByDirection.values.sum().toFloat()
     
@@ -371,9 +374,9 @@ fun WagonWheelMini(
                 
                 // Line color based on runs
                 val lineColor = when {
-                    runs > 30 -> GoldPrimary
-                    runs > 20 -> GoldPrimary
-                    runs > 10 -> GoldPrimary
+                    runs > 30 -> hierarchy.secondary.primary
+                    runs > 20 -> hierarchy.secondary.primary
+                    runs > 10 -> hierarchy.secondary.primary
                     else -> TextTertiary
                 }
                 
@@ -413,6 +416,7 @@ fun OverByOverChart(
     overScores: List<Int>,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val maxScore = overScores.maxOrNull() ?: 0
     
@@ -450,7 +454,7 @@ fun OverByOverChart(
                         if (score > 0) {
                             Text(
                                 "$score",
-                                color = if (score >= 10) colors.goldPrimary else colors.textSecondary,
+                                color = if (score >= 10) hierarchy.secondary.primary else colors.textSecondary,
                                 fontSize = 8.sp,
                                 fontWeight = FontWeight.Bold
                             )
@@ -463,9 +467,9 @@ fun OverByOverChart(
                                 .height((40 * barHeight + 4).dp)
                                 .background(
                                     when {
-                                        score >= 15 -> Brush.verticalGradient(listOf(colors.goldPrimary, colors.goldPrimary.copy(alpha = 0.6f)))
-                                        score >= 10 -> Brush.verticalGradient(listOf(colors.goldPrimary, colors.goldPrimary))
-                                        score >= 6 -> Brush.verticalGradient(listOf(colors.goldPrimary, colors.goldLight))
+                                        score >= 15 -> Brush.verticalGradient(listOf(hierarchy.secondary.primary, hierarchy.secondary.primary.copy(alpha = 0.6f)))
+                                        score >= 10 -> Brush.verticalGradient(listOf(hierarchy.secondary.primary, hierarchy.secondary.primary))
+                                        score >= 6 -> Brush.verticalGradient(listOf(hierarchy.secondary.primary, hierarchy.secondary.secondary))
                                         else -> Brush.verticalGradient(listOf(colors.glassBorderHighlight, colors.glassBorderHighlight))
                                     },
                                     RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp)
@@ -508,6 +512,7 @@ fun MatchPhaseIndicator(
     totalOvers: Int,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val phase = when {
         currentOver <= 6 -> "POWERPLAY"
@@ -517,9 +522,9 @@ fun MatchPhaseIndicator(
     }
     
     val phaseColor = when (phase) {
-        "POWERPLAY" -> colors.goldPrimary
-        "MIDDLE OVERS" -> colors.goldPrimary
-        "BUILD UP" -> colors.goldPrimary
+        "POWERPLAY" -> hierarchy.secondary.primary
+        "MIDDLE OVERS" -> hierarchy.secondary.primary
+        "BUILD UP" -> hierarchy.secondary.primary
         else -> colors.statusInfo
     }
     

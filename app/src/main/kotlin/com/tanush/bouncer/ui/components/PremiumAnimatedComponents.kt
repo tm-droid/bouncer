@@ -33,6 +33,8 @@ import com.tanush.bouncer.ui.components.CoilImage
 import com.tanush.bouncer.ui.theme.*
 import kotlin.math.cos
 import kotlin.math.sin
+import com.tanush.bouncer.ui.theme.GoldPrimary
+import com.tanush.bouncer.ui.theme.GoldLight
 
 /**
  * Animated empty state with cricket theme
@@ -47,6 +49,7 @@ fun PremiumEmptyState(
     modifier: Modifier = Modifier
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val infiniteTransition = rememberInfiniteTransition(label = "emptyState")
     
     val pulseScale by infiniteTransition.animateFloat(
@@ -105,8 +108,8 @@ fun PremiumEmptyState(
                     .background(
                         Brush.radialGradient(
                             colors = listOf(
-                                colors.goldPrimary.copy(alpha = 0.4f),
-                                colors.goldPrimary.copy(alpha = 0.1f),
+                                hierarchy.secondary.primary.copy(alpha = 0.4f),
+                                hierarchy.secondary.primary.copy(alpha = 0.1f),
                                 Color.Transparent
                             )
                         ),
@@ -121,7 +124,7 @@ fun PremiumEmptyState(
                     .shadow(
                         elevation = 16.dp,
                         shape = CircleShape,
-                        spotColor = colors.goldPrimary.copy(alpha = 0.3f)
+                        spotColor = hierarchy.secondary.primary.copy(alpha = 0.3f)
                     )
                     .background(
                         Brush.linearGradient(
@@ -136,8 +139,8 @@ fun PremiumEmptyState(
                         2.dp,
                         Brush.linearGradient(
                             colors = listOf(
-                                colors.goldLight.copy(alpha = 0.5f),
-                                colors.goldPrimary.copy(alpha = 0.3f)
+                                hierarchy.secondary.secondary.copy(alpha = 0.5f),
+                                hierarchy.secondary.primary.copy(alpha = 0.3f)
                             )
                         ),
                         CircleShape
@@ -147,7 +150,7 @@ fun PremiumEmptyState(
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
-                    tint = colors.goldPrimary,
+                    tint = hierarchy.secondary.primary,
                     modifier = Modifier.size(36.dp)
                 )
             }
@@ -200,6 +203,7 @@ fun PremiumActionButton(
     icon: ImageVector? = null,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     var isPressed by remember { mutableStateOf(false) }
     
@@ -232,16 +236,16 @@ fun PremiumActionButton(
             .shadow(
                 elevation = 12.dp,
                 shape = RoundedCornerShape(16.dp),
-                spotColor = colors.goldPrimary.copy(alpha = 0.4f)
+                spotColor = hierarchy.secondary.primary.copy(alpha = 0.4f)
             )
             .clip(RoundedCornerShape(16.dp))
             .background(
                 if (enabled) {
                     Brush.linearGradient(
                         colors = listOf(
-                            colors.goldDark,
-                            colors.goldPrimary,
-                            colors.goldDark
+                            hierarchy.secondary.primary,
+                            hierarchy.secondary.primary,
+                            hierarchy.secondary.primary
                         ),
                         start = Offset(shimmerOffset * 100, 0f),
                         end = Offset((shimmerOffset + 1) * 100, 0f)
@@ -400,8 +404,8 @@ fun WicketFallingAnimation(
     modifier: Modifier = Modifier
 ) {
     val colors = BouncerDesignSystem.colors
-    val goldPrimary = colors.goldPrimary
-    val goldLight = colors.goldLight
+    val goldPrimary = GoldPrimary
+    val goldLight = GoldLight
     var hasStarted by remember { mutableStateOf(false) }
     
     LaunchedEffect(isActive) {
@@ -504,9 +508,10 @@ fun AnimatedStatCard(
     value: Int,
     label: String,
     icon: ImageVector,
-    accentColor: Color = BouncerDesignSystem.colors.goldPrimary,
+    accentColor: Color = BouncerDesignSystem.hierarchy.secondary.primary,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val animatedValue by animateIntAsState(
         targetValue = value,
@@ -600,6 +605,7 @@ fun TrophyBadge(
     unlocked: Boolean = true,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "trophy")
     
@@ -616,7 +622,7 @@ fun TrophyBadge(
     val color = when (tier) {
         TrophyTier.BRONZE -> Color(0xFFCD7F32)
         TrophyTier.SILVER -> Color(0xFFC0C0C0)
-        TrophyTier.GOLD -> colors.goldPrimary
+        TrophyTier.GOLD -> hierarchy.secondary.primary
         TrophyTier.PLATINUM -> Color(0xFFE5E4E2)
         TrophyTier.DIAMOND -> Color(0xFFB9F2FF)
     }
@@ -695,7 +701,7 @@ fun AnimatedProgressRing(
     size: Dp = 80.dp,
     strokeWidth: Dp = 8.dp,
     backgroundColor: Color = BouncerDesignSystem.colors.glassBorder.copy(alpha = 0.3f),
-    progressColor: Color = BouncerDesignSystem.colors.goldPrimary,
+    progressColor: Color = BouncerDesignSystem.hierarchy.secondary.primary,
     content: @Composable () -> Unit = {},
     modifier: Modifier = Modifier
 ) {

@@ -30,6 +30,7 @@ import coil.request.ImageRequest
 import com.tanush.bouncer.managers.TeamLogoManager
 import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.ui.theme.*
+import com.tanush.bouncer.ui.theme.GoldPrimary
 
 /**
  * Head-to-Head statistics data
@@ -62,6 +63,7 @@ fun HeadToHeadCard(
 ) {
     val context = LocalContext.current
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val team1 = match.teams.firstOrNull()
     val team2 = match.teams.getOrNull(1)
     
@@ -82,7 +84,7 @@ fun HeadToHeadCard(
             .shadow(
                 elevation = 20.dp,
                 shape = RoundedCornerShape(28.dp),
-                spotColor = colors.goldPrimary.copy(alpha = 0.2f)
+                spotColor = hierarchy.secondary.primary.copy(alpha = 0.2f)
             ),
         colors = CardDefaults.cardColors(containerColor = colors.glassSurface),
         shape = RoundedCornerShape(28.dp),
@@ -90,9 +92,9 @@ fun HeadToHeadCard(
             0.5.dp,
             Brush.linearGradient(
                 colors = listOf(
-                    colors.goldLight.copy(alpha = 0.3f * shimmerOffset),
+                    hierarchy.secondary.secondary.copy(alpha = 0.3f * shimmerOffset),
                     colors.glassBorder.copy(alpha = 0.3f),
-                    colors.goldLight.copy(alpha = 0.3f * (1 - shimmerOffset))
+                    hierarchy.secondary.secondary.copy(alpha = 0.3f * (1 - shimmerOffset))
                 )
             )
         )
@@ -109,13 +111,13 @@ fun HeadToHeadCard(
                 Icon(
                     Icons.AutoMirrored.Filled.CompareArrows,
                     contentDescription = null,
-                    tint = colors.goldPrimary,
+                    tint = hierarchy.secondary.primary,
                     modifier = Modifier.size(22.dp)
                 )
                 Spacer(modifier = Modifier.width(10.dp))
                 Text(
                     "HEAD TO HEAD",
-                    color = colors.goldPrimary,
+                    color = hierarchy.secondary.primary,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Black,
                     letterSpacing = 2.sp

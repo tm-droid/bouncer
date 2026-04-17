@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.ui.components.glass.GlassCard
 import com.tanush.bouncer.ui.theme.*
+import com.tanush.bouncer.ui.theme.GoldPrimary
 
 /**
  * Premium Insight Grid Card.
@@ -35,6 +36,7 @@ fun InsightGridCard(
     isHighPriority: Boolean = false
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val typography = BouncerDesignSystem.typography
     val dimens = BouncerDesignSystem.dimens
 
@@ -86,7 +88,7 @@ fun InsightGridCard(
                         .height(3.dp)
                         .clip(RoundedCornerShape(dimens.radius.xs)),
                     color = accentColor,
-                    trackColor = colors.goldSubtle
+                    trackColor = hierarchy.secondary.tint
                 )
             }
         }

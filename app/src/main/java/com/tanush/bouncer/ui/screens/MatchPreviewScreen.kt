@@ -36,6 +36,7 @@ fun MatchPreviewScreen(
     modifier: Modifier = Modifier
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val typography = BouncerDesignSystem.typography
     val dimens = BouncerDesignSystem.dimens
 
@@ -70,7 +71,7 @@ fun MatchPreviewScreen(
                     Text(
                         text = "MATCH PREVIEW",
                         style = typography.headingSmall,
-                        color = colors.goldPrimary,
+                        color = hierarchy.secondary.primary,
                         letterSpacing = 2.sp
                     )
                 }
@@ -96,7 +97,7 @@ fun MatchPreviewScreen(
                             Text(
                                 text = match.matchTitle.uppercase(),
                                 style = typography.labelSmall,
-                                color = colors.goldPrimary,
+                                color = hierarchy.secondary.primary,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                                 letterSpacing = 1.sp
@@ -140,7 +141,7 @@ fun MatchPreviewScreen(
                                 Text(
                                     text = match.matchTime.ifEmpty { "TBD" },
                                     style = typography.headingMedium,
-                                    color = colors.goldPrimary,
+                                    color = hierarchy.secondary.primary,
                                     fontWeight = FontWeight.Bold
                                 )
                                 Spacer(modifier = Modifier.height(4.dp))
@@ -299,6 +300,7 @@ fun MatchPreviewScreen(
 
 @Composable
 private fun SectionHeader(icon: ImageVector, title: String) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val typography = BouncerDesignSystem.typography
 
@@ -309,13 +311,13 @@ private fun SectionHeader(icon: ImageVector, title: String) {
         Icon(
             imageVector = icon,
             contentDescription = null,
-            tint = colors.goldPrimary,
+            tint = hierarchy.secondary.primary,
             modifier = Modifier.size(18.dp)
         )
         Text(
             text = title,
             style = typography.labelMedium,
-            color = colors.goldPrimary,
+            color = hierarchy.secondary.primary,
             fontWeight = FontWeight.Bold,
             letterSpacing = 2.sp
         )

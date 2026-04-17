@@ -19,6 +19,8 @@ data class BouncerSpacing(
     val micro: Dp = 2.dp,
     /** 4dp — Extra small spacing. */
     val xs: Dp = 4.dp,
+    /** 6dp — Dense spacing — acknowledged off-grid value for chip padding and tight layouts. */
+    val dense: Dp = 6.dp,
     /** 8dp — Small spacing. */
     val sm: Dp = 8.dp,
     /** 16dp — Medium spacing. */
@@ -52,6 +54,8 @@ data class BouncerRadius(
     val xs: Dp = 4.dp,
     /** 8dp — Small radius. */
     val sm: Dp = 8.dp,
+    /** 10dp — Chip radius. */
+    val chip: Dp = 10.dp,
     /** 12dp — Medium radius. */
     val md: Dp = 12.dp,
     /** 16dp — Large radius. */

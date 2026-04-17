@@ -36,14 +36,15 @@ fun WinProbabilityGauge(
     team1Name: String,
     team2Name: String,
     team1Probability: Float, // 0f to 1f
-    team1Color: Color = BouncerDesignSystem.colors.goldPrimary,
+    team1Color: Color = BouncerDesignSystem.hierarchy.secondary.primary,
     team2Color: Color = BouncerDesignSystem.colors.statusInfo,
     change: String? = "+4.2%",
     isPositive: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     val colors = BouncerDesignSystem.colors
-    val goldPrimary = colors.goldPrimary
+    val hierarchy = BouncerDesignSystem.hierarchy
+    val goldPrimary = hierarchy.secondary.primary
     val statusSuccess = colors.statusSuccess
     val statusLive = colors.statusLive
     val glassBorder = colors.glassBorder
@@ -257,10 +258,11 @@ private fun ProbabilityInfo(name: String, prob: Float, color: Color, isRightAlig
 fun MiniProbabilityBadge(
     team1Name: String,
     team1Probability: Float,
-    team1Color: Color = BouncerDesignSystem.colors.goldPrimary,
+    team1Color: Color = BouncerDesignSystem.hierarchy.secondary.primary,
     team2Color: Color = BouncerDesignSystem.colors.statusInfo,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val isTeam1Leading = team1Probability >= 0.5f
     val leadingColor = if (isTeam1Leading) team1Color else team2Color
     val leadingProbability = if (isTeam1Leading) team1Probability else (1 - team1Probability)

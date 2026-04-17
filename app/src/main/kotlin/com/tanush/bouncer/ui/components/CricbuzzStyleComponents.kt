@@ -47,9 +47,10 @@ fun LiveCommentaryFeedCard(
     modifier: Modifier = Modifier
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val accentColor = when {
         isWicket -> colors.statusLive
-        isBoundary && runs == "6" -> colors.goldPrimary
+        isBoundary && runs == "6" -> hierarchy.secondary.primary
         isBoundary -> colors.statusInfo
         else -> colors.textSecondary
     }
@@ -74,7 +75,7 @@ fun LiveCommentaryFeedCard(
         border = BorderStroke(
             0.5.dp,
             if (isWicket || isBoundary) accentColor.copy(alpha = pulseAlpha) 
-            else colors.goldPrimary.copy(alpha = 0.12f)
+            else hierarchy.secondary.primary.copy(alpha = 0.12f)
         )
     ) {
         Row(
@@ -172,6 +173,7 @@ fun QuickMatchStatsBar(
     lastWicket: String = "",
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     LazyRow(
         modifier = modifier.fillMaxWidth(),
@@ -183,7 +185,7 @@ fun QuickMatchStatsBar(
                 label = "CRR",
                 value = currentRunRate,
                 icon = Icons.Default.Speed,
-                accentColor = colors.goldPrimary
+                accentColor = hierarchy.secondary.primary
             )
         }
         
@@ -278,6 +280,7 @@ fun WinPredictionGauge(
     team2Color: Color = StatusLive,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val team2Probability = 1f - team1Probability
     
@@ -304,7 +307,7 @@ fun WinPredictionGauge(
             ) {
                 Text(
                     text = "WIN PREDICTION",
-                    color = colors.goldPrimary,
+                    color = hierarchy.secondary.primary,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Black,
                     letterSpacing = 2.sp
@@ -312,7 +315,7 @@ fun WinPredictionGauge(
                 Icon(
                     imageVector = Icons.Default.AutoAwesome,
                     contentDescription = null,
-                    tint = colors.goldPrimary,
+                    tint = hierarchy.secondary.primary,
                     modifier = Modifier.size(16.dp)
                 )
             }
@@ -454,6 +457,7 @@ fun OverByOverMiniChart(
     maxOvers: Int = 20,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val maxRuns = oversData.maxOrNull() ?: 1
     
@@ -463,7 +467,7 @@ fun OverByOverMiniChart(
             .padding(horizontal = 16.dp),
         shape = RoundedCornerShape(16.dp),
         color = colors.glassSurface,
-        border = BorderStroke(0.5.dp, colors.goldPrimary.copy(alpha = 0.12f))
+        border = BorderStroke(0.5.dp, hierarchy.secondary.primary.copy(alpha = 0.12f))
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(
@@ -480,7 +484,7 @@ fun OverByOverMiniChart(
                 )
                 Text(
                     text = "${oversData.size} overs",
-                    color = colors.goldPrimary,
+                    color = hierarchy.secondary.primary,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -499,10 +503,10 @@ fun OverByOverMiniChart(
                 oversData.forEachIndexed { index, runs ->
                     val height = (runs.toFloat() / maxRuns.coerceAtLeast(1)) * 60
                     val color = when {
-                        runs >= 12 -> colors.goldPrimary
+                        runs >= 12 -> hierarchy.secondary.primary
                         runs >= 8 -> colors.statusInfo
                         runs <= 4 -> TextMuted
-                        else -> colors.goldPrimary
+                        else -> hierarchy.secondary.primary
                     }
                     
                     Box(
@@ -532,8 +536,9 @@ fun InningsSummaryCard(
     isCurrentInnings: Boolean = false,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
-    val borderColor = if (isCurrentInnings) colors.goldPrimary else colors.glassBorderHighlight
+    val borderColor = if (isCurrentInnings) hierarchy.secondary.primary else colors.glassBorderHighlight
     
     val infiniteTransition = rememberInfiniteTransition(label = "inningsPulse")
     val pulseAlpha by infiniteTransition.animateFloat(
@@ -603,7 +608,7 @@ fun InningsSummaryCard(
                 ) {
                     Text(
                         text = score,
-                        color = if (isCurrentInnings) colors.goldPrimary else colors.textPrimary,
+                        color = if (isCurrentInnings) hierarchy.secondary.primary else colors.textPrimary,
                         fontSize = 28.sp,
                         fontWeight = FontWeight.Black
                     )

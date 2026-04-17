@@ -28,6 +28,7 @@ import com.tanush.bouncer.ui.theme.*
 import kotlinx.coroutines.delay
 import kotlin.math.*
 import kotlin.random.Random
+import com.tanush.bouncer.ui.theme.GoldPrimary
 
 /**
  * Full-screen century explosion celebration overlay
@@ -41,6 +42,7 @@ fun CenturyExplosion(
     onDismiss: () -> Unit
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     var showContent by remember { mutableStateOf(false) }
     
     LaunchedEffect(isVisible) {
@@ -69,7 +71,7 @@ fun CenturyExplosion(
             
             // Radial glow effect
             RadialGlowEffect(
-                color = colors.goldPrimary,
+                color = hierarchy.secondary.primary,
                 modifier = Modifier.fillMaxSize()
             )
             
@@ -112,6 +114,7 @@ fun CenturyExplosion(
 
 @Composable
 private fun AnimatedCenturyNumber() {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "century")
     val scale by infiniteTransition.animateFloat(
@@ -146,7 +149,7 @@ private fun AnimatedCenturyNumber() {
             text = "100",
             fontSize = 120.sp,
             fontWeight = FontWeight.Black,
-            color = colors.goldPrimary.copy(alpha = glowAlpha * 0.3f),
+            color = hierarchy.secondary.primary.copy(alpha = glowAlpha * 0.3f),
             modifier = Modifier.blur(20.dp)
         )
         
@@ -158,10 +161,10 @@ private fun AnimatedCenturyNumber() {
             style = LocalTextStyle.current.copy(
                 brush = Brush.linearGradient(
                     colors = listOf(
-                        colors.goldLight,
-                        colors.goldPrimary,
-                        colors.goldPrimary,
-                        colors.goldPrimary
+                        hierarchy.secondary.secondary,
+                        hierarchy.secondary.primary,
+                        hierarchy.secondary.primary,
+                        hierarchy.secondary.primary
                     )
                 )
             )
@@ -171,6 +174,7 @@ private fun AnimatedCenturyNumber() {
 
 @Composable
 private fun StrikeRateBadge(strikeRate: Int) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     Box(
         contentAlignment = Alignment.Center,
@@ -178,20 +182,20 @@ private fun StrikeRateBadge(strikeRate: Int) {
             .background(
                 Brush.horizontalGradient(
                     colors = listOf(
-                        colors.goldPrimary.copy(alpha = 0.3f),
-                        colors.goldPrimary.copy(alpha = 0.3f)
+                        hierarchy.secondary.primary.copy(alpha = 0.3f),
+                        hierarchy.secondary.primary.copy(alpha = 0.3f)
                     )
                 ),
                 RoundedCornerShape(20.dp)
             )
-            .border(1.dp, colors.goldPrimary.copy(alpha = 0.5f), RoundedCornerShape(20.dp))
+            .border(1.dp, hierarchy.secondary.primary.copy(alpha = 0.5f), RoundedCornerShape(20.dp))
             .padding(horizontal = 20.dp, vertical = 8.dp)
     ) {
         Text(
             text = "SR: $strikeRate",
             fontSize = 14.sp,
             fontWeight = FontWeight.Bold,
-            color = colors.goldPrimary
+            color = hierarchy.secondary.primary
         )
     }
 }
@@ -391,6 +395,7 @@ fun MatchWinFireworks(
     isVisible: Boolean = true,
     onDismiss: () -> Unit
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     var showContent by remember { mutableStateOf(false) }
     
@@ -424,7 +429,7 @@ fun MatchWinFireworks(
             // Confetti
             ConfettiRain(
                 particleCount = 100,
-                colors = listOf(teamColor, colors.goldPrimary, Color.White),
+                colors = listOf(teamColor, hierarchy.secondary.primary, Color.White),
                 duration = 4500L,
                 isActive = showContent
             )
@@ -520,13 +525,14 @@ private fun FireworksDisplay(
     isActive: Boolean,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val fireworkColors = listOf(
         Color(0xFFFF6B6B),
         Color(0xFF4ECDC4),
         Color(0xFFFFE66D),
         Color(0xFFFF9FF3),
         Color(0xFF54A0FF),
-        GoldPrimary
+        hierarchy.secondary.primary
     )
     
     var fireworks by remember { mutableStateOf<List<FireworkState>>(emptyList()) }
@@ -645,6 +651,7 @@ fun RecordBreakerBanner(
 
 @Composable
 private fun RecordBannerCard(recordType: String, description: String) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "record")
     val shimmerOffset by infiniteTransition.animateFloat(
@@ -663,7 +670,7 @@ private fun RecordBannerCard(recordType: String, description: String) {
             .shadow(
                 elevation = 24.dp,
                 shape = RoundedCornerShape(20.dp),
-                spotColor = colors.goldPrimary.copy(alpha = 0.5f)
+                spotColor = hierarchy.secondary.primary.copy(alpha = 0.5f)
             ),
         colors = CardDefaults.cardColors(containerColor = colors.glassSurface),
         shape = RoundedCornerShape(20.dp),
@@ -671,9 +678,9 @@ private fun RecordBannerCard(recordType: String, description: String) {
             2.dp,
             Brush.linearGradient(
                 colors = listOf(
-                    colors.goldPrimary.copy(alpha = 0.8f),
-                    colors.goldPrimary.copy(alpha = 0.4f),
-                    colors.goldPrimary.copy(alpha = 0.8f)
+                    hierarchy.secondary.primary.copy(alpha = 0.8f),
+                    hierarchy.secondary.primary.copy(alpha = 0.4f),
+                    hierarchy.secondary.primary.copy(alpha = 0.8f)
                 ),
                 start = Offset(shimmerOffset * 400, 0f),
                 end = Offset(shimmerOffset * 400 + 400, 0f)
@@ -695,7 +702,7 @@ private fun RecordBannerCard(recordType: String, description: String) {
                     .background(
                         Brush.radialGradient(
                             colors = listOf(
-                                colors.goldPrimary.copy(alpha = 0.3f),
+                                hierarchy.secondary.primary.copy(alpha = 0.3f),
                                 Color.Transparent
                             )
                         ),
@@ -705,7 +712,7 @@ private fun RecordBannerCard(recordType: String, description: String) {
                 Icon(
                     imageVector = Icons.Default.Star,
                     contentDescription = null,
-                    tint = colors.goldPrimary,
+                    tint = hierarchy.secondary.primary,
                     modifier = Modifier.size(32.dp)
                 )
             }
@@ -718,7 +725,7 @@ private fun RecordBannerCard(recordType: String, description: String) {
                     text = "RECORD BROKEN!",
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
-                    color = colors.goldPrimary,
+                    color = hierarchy.secondary.primary,
                     letterSpacing = 1.sp
                 )
                 
@@ -870,10 +877,11 @@ fun MilestoneBadge(
     milestone: String,
     description: String,
     icon: @Composable () -> Unit = {
+        val hierarchy = BouncerDesignSystem.hierarchy
         Icon(
             imageVector = Icons.Default.Star,
             contentDescription = null,
-            tint = GoldPrimary,
+            tint = hierarchy.secondary.primary,
             modifier = Modifier.size(24.dp)
         )
     },

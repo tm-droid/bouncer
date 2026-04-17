@@ -58,6 +58,7 @@ fun CurrentBowlerCard(
     modifier: Modifier = Modifier,
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
 
     GlassCard(
         modifier = modifier
@@ -129,6 +130,7 @@ fun CurrentBowlerCard(
 
 @Composable
 private fun BowlerLiveDot(modifier: Modifier = Modifier) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val transition = rememberInfiniteTransition(label = "bowlerDot")
     val alpha by transition.animateFloat(
@@ -146,7 +148,7 @@ private fun BowlerLiveDot(modifier: Modifier = Modifier) {
             .size(BouncerDimens.liveDotSize)
             .alpha(alpha)
             .clip(CircleShape)
-            .background(BouncerDesignSystem.colors.goldPrimary),
+            .background(BouncerDesignSystem.hierarchy.secondary.primary),
     )
 }
 

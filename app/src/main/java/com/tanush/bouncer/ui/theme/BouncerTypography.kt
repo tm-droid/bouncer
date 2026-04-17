@@ -160,6 +160,22 @@ data class BouncerTypography(
     val tabularNumbers: TextStyle
         get() = bodyMedium.copy(fontFeatureSettings = "tnum")
 
+    /** Convenience: monospace numbers at any body size */
+    val numberLarge: TextStyle
+        get() = headlineLarge.copy(fontFeatureSettings = "tnum")
+    val numberMedium: TextStyle
+        get() = bodyMedium.copy(fontFeatureSettings = "tnum")
+    val numberSmall: TextStyle
+        get() = bodySmall.copy(fontFeatureSettings = "tnum")
+
+    /** Run-rate / strike-rate display — semibold tabular figures */
+    val runRate: TextStyle
+        get() = bodyMedium.copy(fontWeight = FontWeight.SemiBold, fontFeatureSettings = "tnum")
+
+    /** Bowling/batting figures (e.g. "3/24", "56(42)") */
+    val figureStat: TextStyle
+        get() = titleMedium.copy(fontFeatureSettings = "tnum")
+
     companion object {
         val tabularBody: TextStyle = BouncerTypographyTokens.bodyMedium.copy(fontFeatureSettings = "tnum")
         val overDisplay: TextStyle = BouncerTypographyTokens.bodySmall.copy(
@@ -173,6 +189,14 @@ data class BouncerTypography(
         val scoreDisplay: TextStyle = BouncerTypography().scoreDisplay
         val heroGradient: TextStyle = BouncerTypographyTokens.displayLarge
         val surfaceGradient: TextStyle = BouncerTypographyTokens.bodyLarge
+        val numberLarge: TextStyle = BouncerTypographyTokens.headlineLarge.copy(fontFeatureSettings = "tnum")
+        val numberMedium: TextStyle = BouncerTypographyTokens.bodyMedium.copy(fontFeatureSettings = "tnum")
+        val numberSmall: TextStyle = BouncerTypographyTokens.bodySmall.copy(fontFeatureSettings = "tnum")
+        val runRate: TextStyle = BouncerTypographyTokens.bodyMedium.copy(
+            fontWeight = FontWeight.SemiBold,
+            fontFeatureSettings = "tnum"
+        )
+        val figureStat: TextStyle = BouncerTypographyTokens.titleMedium.copy(fontFeatureSettings = "tnum")
     }
 }
 

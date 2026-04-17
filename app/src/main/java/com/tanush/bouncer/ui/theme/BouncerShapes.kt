@@ -176,8 +176,8 @@ val MatchCardShape = RoundedCornerShape(16.dp)
 /** Scorecard item corners. */
 val ScoreCardShape = RoundedCornerShape(12.dp)
 
-/** Fully rounded chips. */
-val ChipShape = RoundedCornerShape(20.dp)
+/** Chip shape — uses pill-like rounding for filter chips. */
+val ChipShape = RoundedCornerShape(BouncerTokenScales.radius.chip)
 
 /** Bottom sheet — rounded top corners only. */
 val BottomSheetShape = RoundedCornerShape(

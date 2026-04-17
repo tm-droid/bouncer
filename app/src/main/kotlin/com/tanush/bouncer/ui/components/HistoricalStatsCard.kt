@@ -83,6 +83,7 @@ fun HistoricalStatsCard(
     modifier: Modifier = Modifier
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val infiniteTransition = rememberInfiniteTransition(label = "history")
     
     // Subtle shimmer
@@ -107,7 +108,7 @@ fun HistoricalStatsCard(
             .shadow(
                 elevation = 12.dp,
                 shape = RoundedCornerShape(20.dp),
-                spotColor = colors.goldPrimary.copy(alpha = 0.2f)
+                spotColor = hierarchy.secondary.primary.copy(alpha = 0.2f)
             ),
         shape = RoundedCornerShape(20.dp),
         color = Color.White.copy(alpha = 0.05f)
@@ -125,7 +126,7 @@ fun HistoricalStatsCard(
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 1.5.sp,
-                    color = colors.goldPrimary
+                    color = hierarchy.secondary.primary
                 )
                 Text(
                     text = "Historical Statistics",
@@ -222,6 +223,7 @@ private fun TeamHistoryInfo(
     isLeading: Boolean,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     Column(
         modifier = modifier,
@@ -239,7 +241,7 @@ private fun TeamHistoryInfo(
                         .background(
                             brush = Brush.radialGradient(
                                 colors = listOf(
-                                    colors.goldPrimary.copy(alpha = 0.3f),
+                                    hierarchy.secondary.primary.copy(alpha = 0.3f),
                                     Color.Transparent
                                 )
                             ),
@@ -261,7 +263,7 @@ private fun TeamHistoryInfo(
                         .background(colors.glassBorder.copy(alpha = 0.1f))
                         .border(
                             width = if (isLeading) 2.dp else 1.dp,
-                            color = if (isLeading) colors.goldPrimary else colors.glassBorder.copy(alpha = 0.3f),
+                            color = if (isLeading) hierarchy.secondary.primary else colors.glassBorder.copy(alpha = 0.3f),
                             shape = CircleShape
                         )
                         .padding(4.dp),
@@ -272,12 +274,12 @@ private fun TeamHistoryInfo(
                     modifier = Modifier
                         .size(48.dp)
                         .background(
-                            color = if (isLeading) colors.goldPrimary.copy(alpha = 0.1f) else colors.glassBorder.copy(alpha = 0.1f),
+                            color = if (isLeading) hierarchy.secondary.primary.copy(alpha = 0.1f) else colors.glassBorder.copy(alpha = 0.1f),
                             shape = CircleShape
                         )
                         .border(
                             width = if (isLeading) 2.dp else 1.dp,
-                            color = if (isLeading) colors.goldPrimary else colors.glassBorder.copy(alpha = 0.3f),
+                            color = if (isLeading) hierarchy.secondary.primary else colors.glassBorder.copy(alpha = 0.3f),
                             shape = CircleShape
                         ),
                     contentAlignment = Alignment.Center
@@ -286,7 +288,7 @@ private fun TeamHistoryInfo(
                         text = name.take(2).uppercase(),
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,
-                        color = if (isLeading) colors.goldPrimary else colors.textSecondary
+                        color = if (isLeading) hierarchy.secondary.primary else colors.textSecondary
                     )
                 }
             }
@@ -308,7 +310,7 @@ private fun TeamHistoryInfo(
                 text = "$wins",
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold,
-                color = if (isLeading) colors.goldPrimary else colors.textPrimary
+                color = if (isLeading) hierarchy.secondary.primary else colors.textPrimary
             )
             Text(
                 text = "wins (${winRate.toInt()}%)",
@@ -329,6 +331,7 @@ private fun WinRatioBar(
     team2Name: String,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val team1Ratio = if (totalMatches > 0) team1Wins.toFloat() / totalMatches else 0f
     val team2Ratio = if (totalMatches > 0) team2Wins.toFloat() / totalMatches else 0f
@@ -364,7 +367,7 @@ private fun WinRatioBar(
                         .fillMaxWidth(animatedTeam1)
                         .background(
                             brush = Brush.horizontalGradient(
-                                colors = listOf(colors.goldPrimary, colors.goldDark)
+                                colors = listOf(hierarchy.secondary.primary, hierarchy.secondary.primary)
                             )
                         )
                 )
@@ -391,7 +394,7 @@ private fun WinRatioBar(
                 text = "${team1Name.take(3)} $team1Wins",
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Medium,
-                color = colors.goldPrimary
+                color = hierarchy.secondary.primary
             )
             if (noResults > 0) {
                 Text(
@@ -454,6 +457,7 @@ private fun RecentMatchChip(
     team2Name: String,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val isTeam1Win = match.winner?.contains(team1Name, ignoreCase = true) == true
     val isTeam2Win = match.winner?.contains(team2Name, ignoreCase = true) == true
@@ -461,7 +465,7 @@ private fun RecentMatchChip(
     
     val chipColor = when {
         isNoResult -> colors.glassBorder
-        isTeam1Win -> colors.goldPrimary
+        isTeam1Win -> hierarchy.secondary.primary
         isTeam2Win -> colors.statusInfo
         else -> colors.glassBorder
     }
@@ -560,6 +564,7 @@ private fun FormatStatItem(
     team2Name: String,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val team1Leading = stats.team1Wins > stats.team2Wins
     
@@ -590,7 +595,7 @@ private fun FormatStatItem(
                     text = "${stats.team1Wins}",
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
-                    color = if (team1Leading) colors.goldPrimary else colors.textSecondary
+                    color = if (team1Leading) hierarchy.secondary.primary else colors.textSecondary
                 )
                 Text(
                     text = "-",
@@ -621,18 +626,19 @@ private fun VenueHistorySection(
     team2Name: String,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
-        color = colors.goldPrimary.copy(alpha = 0.05f)
+        color = hierarchy.secondary.primary.copy(alpha = 0.05f)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .border(
                     width = 1.dp,
-                    color = colors.goldPrimary.copy(alpha = 0.2f),
+                    color = hierarchy.secondary.primary.copy(alpha = 0.2f),
                     shape = RoundedCornerShape(12.dp)
                 )
                 .padding(12.dp),
@@ -666,7 +672,7 @@ private fun VenueHistorySection(
                         text = "${venueStats.team1Wins}",
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
-                        color = colors.goldPrimary
+                        color = hierarchy.secondary.primary
                     )
                     Text(
                         text = team1Name.take(3),

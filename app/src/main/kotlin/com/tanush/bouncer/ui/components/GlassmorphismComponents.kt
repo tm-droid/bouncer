@@ -74,7 +74,7 @@ fun Modifier.noiseOverlay(
  * Modifier extension that draws a subtle radial gold gradient behind content,
  * matching the `bg-bloom` ambient glow effect from the mockup design system.
  *
- * @param glowColor Base gold color for the bloom (if null, uses BouncerDesignSystem.colors.goldDark)
+ * @param glowColor Base gold color for the bloom (if null, uses BouncerDesignSystem.GoldPrimary)
  * @param alpha Intensity of the glow (0–1)
  * @param radiusFraction Radius of bloom relative to container diagonal
  * @param centerX Horizontal center (0–1)
@@ -129,9 +129,10 @@ fun GlassCard(
     modifier: Modifier = Modifier,
     cornerRadius: Dp = 14.dp,
     importance: BouncerImportance = BouncerImportance.STANDARD,
-    glowColor: Color = BouncerDesignSystem.colors.goldPrimary,
+    glowColor: Color = BouncerDesignSystem.hierarchy.secondary.primary,
     content: @Composable ColumnScope.() -> Unit
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val infiniteTransition = rememberInfiniteTransition(label = "glassCard")
     
     // Subtle shimmer for CRITICAL cards — slower & lower opacity for premium feel
@@ -157,15 +158,15 @@ fun GlassCard(
                 BouncerDesignSystem.colors.glassBorder.copy(alpha = 0.3f)
             )
         )
-        BouncerImportance.STANDARD -> Brush.linearGradient(
+        BouncerImportance.STANDARD -> Brush.verticalGradient(
             colors = listOf(
-                GlassBorder,
-                GlassBackground
+                hierarchy.dominant.glassBorderHighlight,
+                Color.Transparent
             )
         )
-        BouncerImportance.MINIMAL -> Brush.linearGradient(
+        BouncerImportance.MINIMAL -> Brush.verticalGradient(
             colors = listOf(
-                GlassBackground,
+                hierarchy.dominant.glassBorder,
                 Color.Transparent
             )
         )
@@ -236,11 +237,12 @@ fun GlassCard(
 fun GlassSurface(
     modifier: Modifier = Modifier,
     importance: BouncerImportance = BouncerImportance.STANDARD,
-    glowColor: Color = BouncerDesignSystem.colors.goldPrimary,
+    glowColor: Color = BouncerDesignSystem.hierarchy.secondary.primary,
     glowIntensity: Float = 0.1f,
     cornerRadius: Dp = 10.dp,
     content: @Composable BoxScope.() -> Unit
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     Box(
         modifier = modifier
             .shadow(
@@ -250,14 +252,14 @@ fun GlassSurface(
                 ambientColor = Color.Black.copy(alpha = 0.1f)
             )
             .clip(RoundedCornerShape(cornerRadius))
-            .background(if (importance == BouncerImportance.MINIMAL) Color.Transparent else GlassBackground)
+            .background(if (importance == BouncerImportance.MINIMAL) Color.Transparent else hierarchy.dominant.glassBackground)
             .border(
                 width = if (importance == BouncerImportance.CRITICAL) 1.dp else 0.5.dp,
                 brush = Brush.verticalGradient(
                     colors = when (importance) {
-                        BouncerImportance.CRITICAL -> listOf(GlassBorderHighlight, Color.Transparent)
-                        BouncerImportance.STANDARD -> listOf(GlassBackground, Color.Transparent)
-                        BouncerImportance.MINIMAL -> listOf(GlassBackground, Color.Transparent)
+                        BouncerImportance.CRITICAL -> listOf(hierarchy.dominant.glassBorderHighlight, Color.Transparent)
+                        BouncerImportance.STANDARD -> listOf(hierarchy.dominant.glassBorder, Color.Transparent)
+                        BouncerImportance.MINIMAL -> listOf(hierarchy.dominant.glassBackground, Color.Transparent)
                     }
                 ),
                 shape = RoundedCornerShape(cornerRadius)
@@ -273,9 +275,10 @@ fun GlassSurface(
 fun AnimatedScoreDisplay(
     score: String,
     modifier: Modifier = Modifier,
-    color: Color = BouncerDesignSystem.colors.goldPrimary,
+    color: Color = BouncerDesignSystem.hierarchy.secondary.primary,
     fontSize: Int = 28
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     AnimatedContent(
         targetState = score,
         transitionSpec = {
@@ -317,11 +320,12 @@ fun StatCard(
     title: String,
     value: String,
     modifier: Modifier = Modifier,
-    color: Color = BouncerDesignSystem.colors.goldPrimary,
+    color: Color = BouncerDesignSystem.hierarchy.secondary.primary,
     importance: BouncerImportance = BouncerImportance.STANDARD,
     icon: @Composable (() -> Unit)? = null
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     GlassSurface(
         modifier = modifier,
         cornerRadius = 8.dp,
@@ -361,9 +365,10 @@ fun StatCard(
 @Composable
 fun PulsingGlowCircle(
     modifier: Modifier = Modifier,
-    color: Color = BouncerDesignSystem.colors.goldPrimary,
+    color: Color = BouncerDesignSystem.hierarchy.secondary.primary,
     content: @Composable BoxScope.() -> Unit
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val infiniteTransition = rememberInfiniteTransition(label = "pulseGlow")
     val alpha by infiniteTransition.animateFloat(
         initialValue = 0.3f,
@@ -499,6 +504,7 @@ fun GradientShimmerText(
     fontSize: Int = 20,
     fontWeight: FontWeight = FontWeight.Bold
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     Text(
         text = text,
@@ -507,9 +513,9 @@ fun GradientShimmerText(
         style = LocalTextStyle.current.copy(
             brush = Brush.linearGradient(
                 colors = listOf(
-                    colors.goldLight,
-                    colors.goldPrimary,
-                    colors.goldLight
+                    hierarchy.secondary.secondary,
+                    hierarchy.secondary.primary,
+                    hierarchy.secondary.secondary
                 )
             )
         ),
@@ -530,9 +536,10 @@ fun GradientShimmerText(
 @Composable
 fun GlassHero(
     modifier: Modifier = Modifier,
-    glowColor: Color = BouncerDesignSystem.colors.goldPrimary,
+    glowColor: Color = BouncerDesignSystem.hierarchy.secondary.primary,
     content: @Composable ColumnScope.() -> Unit
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val cornerRadius = 20.dp
     val shape = RoundedCornerShape(cornerRadius)
 
@@ -612,9 +619,10 @@ fun GlassHero(
 fun GlassContainerLarge(
     modifier: Modifier = Modifier,
     scrollable: Boolean = true,
-    glowColor: Color = BouncerDesignSystem.colors.goldPrimary,
+    glowColor: Color = BouncerDesignSystem.hierarchy.secondary.primary,
     content: @Composable ColumnScope.() -> Unit
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val cornerRadius = 16.dp
     val shape = RoundedCornerShape(cornerRadius)
     val scrollState = rememberScrollState()
@@ -724,10 +732,11 @@ fun FrostedGlassCard(
     modifier: Modifier = Modifier,
     cornerRadius: Dp = 20.dp,
     blurRadius: Dp = 16.dp,
-    borderGlow: Color = BouncerDesignSystem.colors.goldPrimary,
+    borderGlow: Color = BouncerDesignSystem.hierarchy.secondary.primary,
     importance: BouncerImportance = BouncerImportance.STANDARD,
     content: @Composable ColumnScope.() -> Unit
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val infiniteTransition = rememberInfiniteTransition(label = "frostedGlass")
     
     val borderAlpha by if (importance == BouncerImportance.CRITICAL) {
@@ -880,11 +889,12 @@ fun TeamGlassCard(
 @Composable
 fun NeonGlowBox(
     modifier: Modifier = Modifier,
-    glowColor: Color = BouncerDesignSystem.colors.goldPrimary,
+    glowColor: Color = BouncerDesignSystem.hierarchy.secondary.primary,
     cornerRadius: Dp = 12.dp,
     pulseEnabled: Boolean = true,
     content: @Composable BoxScope.() -> Unit
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val infiniteTransition = rememberInfiniteTransition(label = "neonGlow")
     
     val glowAlpha by if (pulseEnabled) {
@@ -949,12 +959,13 @@ fun EventHighlightBar(
     eventType: EventHighlightType = EventHighlightType.NEUTRAL,
     animated: Boolean = true
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val color = when (eventType) {
         EventHighlightType.WICKET -> colors.statusLive
         EventHighlightType.SIX -> colors.statusWarning
         EventHighlightType.FOUR -> colors.statusSuccess
-        EventHighlightType.MILESTONE -> colors.goldPrimary
+        EventHighlightType.MILESTONE -> hierarchy.secondary.primary
         EventHighlightType.NEUTRAL -> colors.textTertiary
     }
     
@@ -1008,10 +1019,11 @@ fun PhaseIndicator(
     modifier: Modifier = Modifier,
     showLabel: Boolean = true
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val color = when (phase) {
         InningsPhaseType.POWERPLAY -> colors.statusSuccess
-        InningsPhaseType.MIDDLE_OVERS -> colors.goldPrimary
+        InningsPhaseType.MIDDLE_OVERS -> hierarchy.secondary.primary
         InningsPhaseType.DEATH_OVERS -> colors.statusLive
         InningsPhaseType.SUPER_OVER -> colors.statusWarning
     }

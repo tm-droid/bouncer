@@ -76,6 +76,7 @@ fun HeadToHeadCard(
     modifier: Modifier = Modifier,
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val animatedProgress = remember { Animatable(0f) }
 
     LaunchedEffect(stats) {
@@ -113,7 +114,7 @@ fun HeadToHeadCard(
                             .clip(CircleShape)
                             .background(
                                 Brush.linearGradient(
-                                    colors = listOf(GoldPrimary, GoldDark),
+                                    colors = listOf(hierarchy.secondary.primary, hierarchy.secondary.primary),
                                 ),
                             ),
                         contentAlignment = Alignment.Center,
@@ -131,7 +132,7 @@ fun HeadToHeadCard(
                     Column {
                         Text(
                             text = "HEAD TO HEAD",
-                            color = colors.goldLight,
+                            color = hierarchy.secondary.secondary,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.5.sp,
@@ -191,7 +192,7 @@ fun HeadToHeadCard(
                 ) {
                     Text(
                         text = "VS",
-                        color = colors.goldDark,
+                        color = hierarchy.secondary.primary,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
                     )
@@ -353,7 +354,7 @@ fun HeadToHeadCard(
                                     )
                                     Text(
                                         text = match.format,
-                                        color = colors.goldDark,
+                                        color = hierarchy.secondary.primary,
                                         fontSize = 10.sp,
                                     )
                                 }
@@ -405,7 +406,7 @@ fun HeadToHeadCard(
                         .background(
                             Brush.horizontalGradient(
                                 colors = listOf(
-                                    colors.goldPrimary.copy(alpha = 0.2f),
+                                    hierarchy.secondary.primary.copy(alpha = 0.2f),
                                     Color.Transparent,
                                 ),
                             ),
@@ -417,7 +418,7 @@ fun HeadToHeadCard(
                     Column {
                         Text(
                             text = "AT THIS VENUE",
-                            color = colors.goldLight,
+                            color = hierarchy.secondary.secondary,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.sp,

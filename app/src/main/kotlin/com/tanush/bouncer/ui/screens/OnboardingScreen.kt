@@ -1,6 +1,9 @@
 package com.tanush.bouncer.ui.screens
 
 import android.content.Context
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -14,6 +17,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -34,14 +38,22 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.tanush.bouncer.ui.components.glass.GlassBloomBackground
 import com.tanush.bouncer.ui.components.glass.GlassCard
@@ -98,6 +110,7 @@ fun OnboardingScreen(
 ) {
     val context = LocalContext.current
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val typography = BouncerDesignSystem.typography
     val dimens = BouncerDesignSystem.dimens
     val scope = rememberCoroutineScope()
@@ -237,9 +250,35 @@ private fun OnboardingPage(
     data: OnboardingPageData,
     isPrimary: Boolean
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val typography = BouncerDesignSystem.typography
     val dimens = BouncerDesignSystem.dimens
+
+    // Staggered entrance animation
+    var visible by remember { mutableStateOf(false) }
+    LaunchedEffect(isPrimary) { visible = isPrimary }
+
+    val iconScale by animateFloatAsState(
+        targetValue = if (visible) 1f else 0.5f,
+        animationSpec = spring(dampingRatio = 0.6f, stiffness = 300f),
+        label = "onboardIconScale"
+    )
+    val titleAlpha by animateFloatAsState(
+        targetValue = if (visible) 1f else 0f,
+        animationSpec = tween(400, delayMillis = 150),
+        label = "onboardTitleAlpha"
+    )
+    val titleOffsetY by animateFloatAsState(
+        targetValue = if (visible) 0f else 12f,
+        animationSpec = tween(400, delayMillis = 150),
+        label = "onboardTitleY"
+    )
+    val bodyAlpha by animateFloatAsState(
+        targetValue = if (visible) 1f else 0f,
+        animationSpec = tween(400, delayMillis = 300),
+        label = "onboardBodyAlpha"
+    )
 
     Column(
         modifier = Modifier
@@ -249,7 +288,12 @@ private fun OnboardingPage(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         GlassCard(
-            modifier = Modifier.size(dimens.xxxl + dimens.md),
+            modifier = Modifier
+                .size(dimens.xxxl + dimens.md)
+                .graphicsLayer {
+                    scaleX = iconScale
+                    scaleY = iconScale
+                },
             useGoldBorder = isPrimary,
             contentPadding = PaddingValues(0.dp)
         ) {
@@ -257,7 +301,7 @@ private fun OnboardingPage(
                 Icon(
                     imageVector = data.icon,
                     contentDescription = null,
-                    tint = colors.goldPrimary,
+                    tint = hierarchy.secondary.primary,
                     modifier = Modifier.size(dimens.lg)
                 )
             }
@@ -269,7 +313,10 @@ private fun OnboardingPage(
             text = data.title,
             style = typography.headingLarge,
             color = colors.textPrimary,
-            textAlign = TextAlign.Center
+            textAlign = TextAlign.Center,
+            modifier = Modifier
+                .alpha(titleAlpha)
+                .offset { IntOffset(0, titleOffsetY.dp.roundToPx()) }
         )
 
         Spacer(modifier = Modifier.height(dimens.sm))
@@ -278,13 +325,16 @@ private fun OnboardingPage(
             text = data.description,
             style = typography.bodyMedium,
             color = colors.textSecondary,
-            textAlign = TextAlign.Center
+            textAlign = TextAlign.Center,
+            modifier = Modifier.alpha(bodyAlpha)
         )
 
         Spacer(modifier = Modifier.height(dimens.lg))
 
         GlassCard(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .alpha(bodyAlpha),
             useGoldBorder = false,
             contentPadding = PaddingValues(dimens.md)
         ) {
@@ -297,7 +347,7 @@ private fun OnboardingPage(
                         Box(
                             modifier = Modifier
                                 .size(dimens.xs)
-                                .background(colors.goldPrimary, RoundedCornerShape(dimens.radius.pill))
+                                .background(hierarchy.secondary.primary, RoundedCornerShape(dimens.radius.pill))
                         )
                         Text(
                             text = highlight,

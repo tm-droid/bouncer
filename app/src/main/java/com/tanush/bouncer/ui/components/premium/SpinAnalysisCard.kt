@@ -98,6 +98,7 @@ fun SpinAnalysisCard(
     modifier: Modifier = Modifier,
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val animatedProgress = remember { Animatable(0f) }
 
     val infiniteTransition = rememberInfiniteTransition(label = "spin")
@@ -168,7 +169,7 @@ fun SpinAnalysisCard(
                     Column {
                         Text(
                             text = "SPIN ANALYSIS",
-                            color = colors.goldLight,
+                            color = hierarchy.secondary.secondary,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.5.sp,

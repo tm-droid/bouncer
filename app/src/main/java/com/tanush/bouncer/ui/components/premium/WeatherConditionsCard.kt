@@ -70,6 +70,7 @@ fun WeatherConditionsCard(
     modifier: Modifier = Modifier,
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val infiniteTransition = rememberInfiniteTransition(label = "weather")
 
     val cloudOffset by infiniteTransition.animateFloat(
@@ -120,7 +121,7 @@ fun WeatherConditionsCard(
                 Column {
                     Text(
                         text = "MATCH CONDITIONS",
-                        color = colors.goldLight,
+                        color = hierarchy.secondary.secondary,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 1.5.sp,
@@ -299,7 +300,7 @@ fun WeatherConditionsCard(
             ) {
                 Text(
                     text = "PLAYING CONDITIONS IMPACT",
-                    color = colors.goldLight,
+                    color = hierarchy.secondary.secondary,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 1.sp,

@@ -59,6 +59,7 @@ fun RequiredRateCard(
 ) {
     val animatedProgress = remember { Animatable(0f) }
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
 
     val infiniteTransition = rememberInfiniteTransition(label = "rate")
     val urgencyPulse by infiniteTransition.animateFloat(
@@ -139,7 +140,7 @@ fun RequiredRateCard(
                     Column {
                         Text(
                             text = "REQUIRED RATE",
-                            color = colors.goldLight,
+                            color = hierarchy.secondary.secondary,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.5.sp,

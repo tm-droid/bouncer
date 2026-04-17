@@ -98,6 +98,7 @@ fun PartnershipAnalysisCard(
                 .padding(20.dp)
         ) {
             val colors = BouncerDesignSystem.colors
+            val hierarchy = BouncerDesignSystem.hierarchy
 
             // Header
             Row(
@@ -109,7 +110,7 @@ fun PartnershipAnalysisCard(
                     Icon(
                         imageVector = Icons.Filled.Groups,
                         contentDescription = null,
-                        tint = colors.goldPrimary,
+                        tint = hierarchy.secondary.primary,
                         modifier = Modifier.size(24.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
@@ -123,12 +124,12 @@ fun PartnershipAnalysisCard(
                 
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Surface(
-                        color = colors.goldPrimary.copy(alpha = 0.2f),
+                        color = hierarchy.secondary.primary.copy(alpha = 0.2f),
                         shape = RoundedCornerShape(8.dp)
                     ) {
                         Text(
                             text = "#${partnership.partnershipNumber}",
-                            color = colors.goldPrimary,
+                            color = hierarchy.secondary.primary,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
@@ -171,7 +172,7 @@ fun PartnershipAnalysisCard(
                             for (i in 0 until 4) {
                                 val startAngle = i * 90f
                                 drawArc(
-                                    color = colors.goldPrimary.copy(alpha = 0.3f),
+                                    color = hierarchy.secondary.primary.copy(alpha = 0.3f),
                                     startAngle = startAngle,
                                     sweepAngle = 45f,
                                     useCenter = false,
@@ -187,7 +188,7 @@ fun PartnershipAnalysisCard(
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
                             text = "${partnership.totalRuns}",
-                            color = colors.goldPrimary,
+                            color = hierarchy.secondary.primary,
                             fontSize = 42.sp,
                             fontWeight = FontWeight.Black
                         )
@@ -216,7 +217,7 @@ fun PartnershipAnalysisCard(
                     )
                     Text(
                         text = partnership.batsman2Name.split(" ").lastOrNull() ?: partnership.batsman2Name,
-                        color = colors.goldPrimary,
+                        color = hierarchy.secondary.primary,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Medium
                     )
@@ -264,7 +265,7 @@ fun PartnershipAnalysisCard(
                             .weight((1f - batsman1Contribution - (partnership.extras.toFloat() / partnership.totalRuns.coerceAtLeast(1))).coerceAtLeast(0.01f))
                             .background(
                                 Brush.horizontalGradient(
-                                    colors = listOf(colors.goldPrimary, colors.goldPrimary.copy(alpha = 0.7f))
+                                    colors = listOf(hierarchy.secondary.primary, hierarchy.secondary.primary.copy(alpha = 0.7f))
                                 )
                             ),
                         contentAlignment = Alignment.Center
@@ -303,7 +304,7 @@ fun PartnershipAnalysisCard(
                     name = partnership.batsman2Name,
                     runs = partnership.batsman2Runs,
                     balls = partnership.batsman2Balls,
-                    color = colors.goldPrimary,
+                    color = hierarchy.secondary.primary,
                     imageUrl = partnership.batsman2ImageUrl,
                     modifier = Modifier.weight(1f)
                 )
@@ -329,7 +330,7 @@ fun PartnershipAnalysisCard(
                 PartnershipStatBox(
                     label = "SIXES",
                     value = "${partnership.sixes}",
-                    color = colors.goldPrimary
+                    color = hierarchy.secondary.primary
                 )
                 PartnershipStatBox(
                     label = "EXTRAS",

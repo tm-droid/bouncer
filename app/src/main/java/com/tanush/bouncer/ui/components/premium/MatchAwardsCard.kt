@@ -78,6 +78,7 @@ fun MatchAwardsCard(
     modifier: Modifier = Modifier,
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val infiniteTransition = rememberInfiniteTransition(label = "awards")
 
     val trophyScale by infiniteTransition.animateFloat(
@@ -117,8 +118,8 @@ fun MatchAwardsCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 12.dp),
     ) {
         Box {
-            val goldDarkC = colors.goldDark
-            val goldPrimaryC = colors.goldPrimary
+            val goldDarkC = hierarchy.secondary.primary
+            val goldPrimaryC = hierarchy.secondary.primary
             // Premium shimmer background
             Canvas(modifier = Modifier.fillMaxSize()) {
                 val shimmerBrush = Brush.linearGradient(
@@ -147,7 +148,7 @@ fun MatchAwardsCard(
                     Icon(
                         imageVector = Icons.Default.EmojiEvents,
                         contentDescription = null,
-                        tint = colors.goldDark,
+                        tint = hierarchy.secondary.primary,
                         modifier = Modifier
                             .size(28.dp)
                             .scale(trophyScale),
@@ -157,7 +158,7 @@ fun MatchAwardsCard(
 
                     Text(
                         text = "MATCH AWARDS",
-                        color = colors.goldDark,
+                        color = hierarchy.secondary.primary,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 2.sp,
@@ -168,7 +169,7 @@ fun MatchAwardsCard(
                     Icon(
                         imageVector = Icons.Default.EmojiEvents,
                         contentDescription = null,
-                        tint = colors.goldDark,
+                        tint = hierarchy.secondary.primary,
                         modifier = Modifier
                             .size(28.dp)
                             .scale(trophyScale),
@@ -185,8 +186,8 @@ fun MatchAwardsCard(
                         .background(
                             Brush.verticalGradient(
                                 colors = listOf(
-                                    colors.goldPrimary.copy(alpha = 0.3f),
-                                    colors.goldDark.copy(alpha = 0.15f),
+                                    hierarchy.secondary.primary.copy(alpha = 0.3f),
+                                    hierarchy.secondary.primary.copy(alpha = 0.15f),
                                     Color.Transparent,
                                 ),
                             ),
@@ -203,7 +204,7 @@ fun MatchAwardsCard(
                                 Icon(
                                     imageVector = Icons.Default.Star,
                                     contentDescription = null,
-                                    tint = colors.goldDark.copy(alpha = if (index == 1) sparkleAlpha else 0.5f),
+                                    tint = hierarchy.secondary.primary.copy(alpha = if (index == 1) sparkleAlpha else 0.5f),
                                     modifier = Modifier.size(if (index == 1) 24.dp else 16.dp),
                                 )
                             }
@@ -213,7 +214,7 @@ fun MatchAwardsCard(
 
                         Text(
                             text = playerOfMatch.title,
-                            color = colors.goldDark,
+                            color = hierarchy.secondary.primary,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 2.sp,
@@ -230,8 +231,8 @@ fun MatchAwardsCard(
                                     .background(
                                         Brush.radialGradient(
                                             colors = listOf(
-                                                colors.goldDark.copy(alpha = 0.5f),
-                                                colors.goldPrimary.copy(alpha = 0.3f),
+                                                hierarchy.secondary.primary.copy(alpha = 0.5f),
+                                                hierarchy.secondary.primary.copy(alpha = 0.3f),
                                                 Color.Transparent,
                                             ),
                                         ),
@@ -255,7 +256,7 @@ fun MatchAwardsCard(
                                     .clip(CircleShape)
                                     .background(
                                         Brush.radialGradient(
-                                            colors = listOf(colors.goldDark, colors.goldPrimary),
+                                            colors = listOf(hierarchy.secondary.primary, hierarchy.secondary.primary),
                                         ),
                                     ),
                                 contentAlignment = Alignment.Center,
@@ -293,8 +294,8 @@ fun MatchAwardsCard(
                                 .background(
                                     Brush.horizontalGradient(
                                         colors = listOf(
-                                            colors.goldPrimary.copy(alpha = 0.4f),
-                                            colors.goldDark.copy(alpha = 0.4f),
+                                            hierarchy.secondary.primary.copy(alpha = 0.4f),
+                                            hierarchy.secondary.primary.copy(alpha = 0.4f),
                                         ),
                                     ),
                                 )
@@ -347,6 +348,7 @@ private fun OtherAwardRow(
     award: MatchAward,
     modifier: Modifier = Modifier,
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     Row(
         modifier = modifier
@@ -397,7 +399,7 @@ private fun OtherAwardRow(
         Column(horizontalAlignment = Alignment.End) {
             Text(
                 text = award.stats,
-                color = colors.goldDark,
+                color = hierarchy.secondary.primary,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
             )

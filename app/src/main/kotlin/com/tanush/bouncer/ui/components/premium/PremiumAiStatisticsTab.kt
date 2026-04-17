@@ -41,6 +41,7 @@ import com.tanush.bouncer.ui.theme.*
  */
 @Composable
 fun PremiumAiStatisticsTab(matchId: String) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val scrollState = rememberScrollState()
     
     Column(
@@ -71,6 +72,7 @@ fun PremiumAiStatisticsTab(matchId: String) {
 
 @Composable
 private fun AiImpactHero() {
+    val hierarchy = BouncerDesignSystem.hierarchy
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -96,7 +98,7 @@ private fun AiImpactHero() {
         Canvas(modifier = Modifier.size(240.dp)) {
             // High-fidelity background glow
             drawCircle(
-                brush = Brush.radialGradient(listOf(GoldPrimary.copy(alpha = 0.2f), Color.Transparent)),
+                brush = Brush.radialGradient(listOf(hierarchy.secondary.primary.copy(alpha = 0.2f), Color.Transparent)),
                 radius = 120.dp.toPx()
             )
             
@@ -106,7 +108,7 @@ private fun AiImpactHero() {
             }) {
                 // Technical Grid Rings
                 drawCircle(
-                    color = GoldPrimary.copy(alpha = 0.15f),
+                    color = hierarchy.secondary.primary.copy(alpha = 0.15f),
                     style = Stroke(width = 2.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(20f, 15f))),
                     radius = 105.dp.toPx()
                 )
@@ -122,7 +124,7 @@ private fun AiImpactHero() {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
                 "BOUNCER AI IMPACT SCORE",
-                color = GoldPrimary,
+                color = hierarchy.secondary.primary,
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Black,
                 letterSpacing = 2.5.sp
@@ -152,6 +154,7 @@ private fun AiImpactHero() {
 
 @Composable
 private fun InsightPill(text: String) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -169,7 +172,7 @@ private fun InsightPill(text: String) {
         contentAlignment = Alignment.Center
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            Icon(Icons.Default.AutoAwesome, null, tint = GoldPrimary, modifier = Modifier.size(20.dp))
+            Icon(Icons.Default.AutoAwesome, null, tint = hierarchy.secondary.primary, modifier = Modifier.size(20.dp))
             Text(
                 text = text.uppercase(), 
                 color = TextPrimary, 
@@ -184,12 +187,13 @@ private fun InsightPill(text: String) {
 
 @Composable
 private fun ValueAddedChart() {
+    val hierarchy = BouncerDesignSystem.hierarchy
     Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Bottom) {
             Column {
                 Text(
                     "ANALYTIC CONTRIBUTION", 
-                    color = GoldPrimary, 
+                    color = hierarchy.secondary.primary, 
                     fontSize = 10.sp, 
                     fontWeight = FontWeight.Black, 
                     letterSpacing = 2.sp
@@ -203,7 +207,7 @@ private fun ValueAddedChart() {
             }
             Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text("+42", color = TextPrimary, fontSize = 32.sp, fontWeight = FontWeight.Black)
-                Text("PTS", color = GoldPrimary, fontSize = 12.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(bottom = 6.dp))
+                Text("PTS", color = hierarchy.secondary.primary, fontSize = 12.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(bottom = 6.dp))
             }
         }
 
@@ -257,15 +261,15 @@ private fun ValueAddedChart() {
                                 .clip(RoundedCornerShape(6.dp))
                                 .background(
                                     if (isProjected) Brush.verticalGradient(listOf(TextMuted, Color.Transparent))
-                                    else Brush.verticalGradient(listOf(GoldPrimary, GoldPrimary.copy(alpha = 0.2f)))
+                                    else Brush.verticalGradient(listOf(hierarchy.secondary.primary, hierarchy.secondary.primary.copy(alpha = 0.2f)))
                                 )
                                 .then(
-                                    if (isHighlighted) Modifier.shadow(16.dp, CircleShape, spotColor = GoldPrimary.copy(alpha = 0.4f)) else Modifier
+                                    if (isHighlighted) Modifier.shadow(16.dp, CircleShape, spotColor = hierarchy.secondary.primary.copy(alpha = 0.4f)) else Modifier
                                 )
                         )
                         Text(
                             text = "${10 + index * 5}",
-                            color = if (isHighlighted) GoldPrimary else TextMuted,
+                            color = if (isHighlighted) hierarchy.secondary.primary else TextMuted,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Black
                         )
@@ -278,6 +282,7 @@ private fun ValueAddedChart() {
 
 @Composable
 private fun DuelMetricsRow() {
+    val hierarchy = BouncerDesignSystem.hierarchy
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
         DuelCard(
             modifier = Modifier.weight(1f),
@@ -285,7 +290,7 @@ private fun DuelMetricsRow() {
             name = "PRIMARY TARGET",
             value = "82.4",
             subLabel = "PRESSURE",
-            color = GoldPrimary
+            color = hierarchy.secondary.primary
         )
         DuelCard(
             modifier = Modifier.weight(1f),
@@ -344,6 +349,7 @@ private fun DuelCard(modifier: Modifier, label: String, name: String, value: Str
 
 @Composable
 private fun PredictiveInsightCard() {
+    val hierarchy = BouncerDesignSystem.hierarchy
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -354,16 +360,16 @@ private fun PredictiveInsightCard() {
         Column(modifier = Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Icon(Icons.Default.Psychology, null, tint = GoldPrimary, modifier = Modifier.size(22.dp))
+                    Icon(Icons.Default.Psychology, null, tint = hierarchy.secondary.primary, modifier = Modifier.size(22.dp))
                     Text("BOUNCER PREDICTIVE ENGINE", color = TextPrimary, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.5.sp)
                 }
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(8.dp))
-                        .background(GoldPrimary.copy(alpha = 0.15f))
+                        .background(hierarchy.secondary.primary.copy(alpha = 0.15f))
                         .padding(horizontal = 12.dp, vertical = 6.dp)
                 ) {
-                    Text("CONFIDENCE: 92%", color = GoldPrimary, fontSize = 9.sp, fontWeight = FontWeight.Black)
+                    Text("CONFIDENCE: 92%", color = hierarchy.secondary.primary, fontSize = 9.sp, fontWeight = FontWeight.Black)
                 }
             }
             

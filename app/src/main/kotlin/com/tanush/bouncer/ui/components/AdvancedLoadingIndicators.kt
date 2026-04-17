@@ -24,12 +24,14 @@ import androidx.compose.ui.unit.dp
 import com.tanush.bouncer.ui.theme.*
 import kotlin.math.cos
 import kotlin.math.sin
+import com.tanush.bouncer.ui.theme.GoldPrimary
 
 @Composable
 fun CustomPullRefreshIndicator(
     refreshing: Boolean,
     progress: Float
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val infiniteTransition = rememberInfiniteTransition(label = "refresh")
     
     val rotation by infiniteTransition.animateFloat(
@@ -69,8 +71,8 @@ fun CustomPullRefreshIndicator(
                         drawArc(
                             brush = Brush.sweepGradient(
                                 colors = listOf(
-                                    GoldDark.copy(alpha = shimmer),
-                                    GoldPrimary,
+                                    hierarchy.secondary.primary.copy(alpha = shimmer),
+                                    hierarchy.secondary.primary,
                                     Color.Transparent
                                 )
                             ),
@@ -90,9 +92,9 @@ fun CustomPullRefreshIndicator(
                 drawArc(
                     brush = Brush.sweepGradient(
                         colors = listOf(
-                            GoldLight,
-                            GoldPrimary,
-                            GoldDark
+                            hierarchy.secondary.secondary,
+                            hierarchy.secondary.primary,
+                            hierarchy.secondary.primary
                         )
                     ),
                     startAngle = -90f,
@@ -107,7 +109,7 @@ fun CustomPullRefreshIndicator(
             
             // Center dot
             drawCircle(
-                color = GoldDark.copy(alpha = if (refreshing) shimmer else 0.8f),
+                color = hierarchy.secondary.primary.copy(alpha = if (refreshing) shimmer else 0.8f),
                 radius = 4.dp.toPx(),
                 center = Offset(centerX, centerY)
             )
@@ -119,6 +121,7 @@ fun CustomPullRefreshIndicator(
 fun WaveLoadingIndicator(
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val infiniteTransition = rememberInfiniteTransition(label = "wave")
     
     val phase by infiniteTransition.animateFloat(
@@ -148,11 +151,11 @@ fun WaveLoadingIndicator(
             path = path,
             brush = Brush.horizontalGradient(
                 colors = listOf(
-                    GoldLight,
-                    GoldPrimary,
-                    GoldDark,
-                    GoldPrimary,
-                    GoldLight
+                    hierarchy.secondary.secondary,
+                    hierarchy.secondary.primary,
+                    hierarchy.secondary.primary,
+                    hierarchy.secondary.primary,
+                    hierarchy.secondary.secondary
                 )
             ),
             style = Stroke(
@@ -168,6 +171,7 @@ fun DotsLoadingIndicator(
     modifier: Modifier = Modifier,
     dotCount: Int = 3
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     Canvas(modifier = modifier.size(width = 60.dp, height = 20.dp)) {
         val dotRadius = 6.dp.toPx()
         val spacing = (size.width - dotRadius * 2 * dotCount) / (dotCount + 1)
@@ -182,7 +186,7 @@ fun DotsLoadingIndicator(
             val alpha = 0.3f + 0.7f * kotlin.math.abs(kotlin.math.sin((phase * Math.PI * 2).toFloat()))
             
             drawCircle(
-                color = GoldDark.copy(alpha = alpha),
+                color = hierarchy.secondary.primary.copy(alpha = alpha),
                 radius = dotRadius * scale,
                 center = Offset(x, y)
             )
@@ -193,8 +197,9 @@ fun DotsLoadingIndicator(
 @Composable
 fun PulsingRing(
     modifier: Modifier = Modifier,
-    color: Color = GoldDark
+    color: Color = GoldPrimary
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val infiniteTransition = rememberInfiniteTransition(label = "ring")
     
     val scale by infiniteTransition.animateFloat(

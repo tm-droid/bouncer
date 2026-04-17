@@ -41,6 +41,7 @@ import com.tanush.bouncer.ui.theme.*
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
+import com.tanush.bouncer.ui.theme.GoldPrimary
 
 /**
  * Enhanced player card with premium styling
@@ -59,6 +60,7 @@ fun PremiumPlayerCard(
 ) {
     var isHovered by remember { mutableStateOf(false) }
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     
     val infiniteTransition = rememberInfiniteTransition(label = "playerCard")
     val borderGlow by infiniteTransition.animateFloat(
@@ -94,9 +96,9 @@ fun PremiumPlayerCard(
             2.dp, 
             Brush.linearGradient(
                 colors = listOf(
-                    colors.goldPrimary.copy(alpha = borderGlow),
-                    colors.goldDark,
-                    colors.goldPrimary.copy(alpha = borderGlow)
+                    GoldPrimary.copy(alpha = borderGlow),
+                    GoldPrimary,
+                    GoldPrimary.copy(alpha = borderGlow)
                 )
             )
         ) else null
@@ -174,7 +176,7 @@ fun PremiumPlayerCard(
                             .align(Alignment.TopEnd)
                             .background(
                                 Brush.linearGradient(
-                                    colors = listOf(colors.goldPrimary, colors.goldDark)
+                                    colors = listOf(GoldPrimary, GoldPrimary)
                                 ),
                                 CircleShape
                             )
@@ -413,6 +415,7 @@ fun BatsmanPerformanceCard(
     isRetired: Boolean = false,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val infiniteTransition = rememberInfiniteTransition(label = "batsman")
     val strikePulse by infiniteTransition.animateFloat(
         initialValue = 0.5f,
@@ -482,9 +485,9 @@ fun BatsmanPerformanceCard(
                 // Status badges
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     if (runs >= 100) {
-                        MilestoneBadge("100", colors.goldPrimary)
+                        MilestoneBadge("100", hierarchy.secondary.primary)
                     } else if (runs >= 50) {
-                        MilestoneBadge("50", colors.goldPrimary)
+                        MilestoneBadge("50", hierarchy.secondary.primary)
                     }
                     
                     if (isRetired) {
@@ -514,7 +517,7 @@ fun BatsmanPerformanceCard(
                         text = "$runs",
                         fontSize = 28.sp,
                         fontWeight = FontWeight.Black,
-                        color = colors.goldPrimary
+                        color = hierarchy.secondary.primary
                     )
                     Text(
                         text = "($balls)",
@@ -532,7 +535,7 @@ fun BatsmanPerformanceCard(
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
                         color = when {
-                            strikeRate >= 150 -> colors.goldPrimary
+                            strikeRate >= 150 -> hierarchy.secondary.primary
                             strikeRate >= 100 -> colors.statusInfo
                             strikeRate >= 80 -> colors.textSecondary
                             else -> colors.ballDot
@@ -550,7 +553,7 @@ fun BatsmanPerformanceCard(
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     BoundaryCounter(count = fours, label = "4s", color = colors.statusInfo)
-                    BoundaryCounter(count = sixes, label = "6s", color = colors.goldPrimary)
+                    BoundaryCounter(count = sixes, label = "6s", color = hierarchy.secondary.primary)
                 }
             }
             
@@ -644,6 +647,7 @@ fun BowlerPerformanceCard(
     isBowling: Boolean = false,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val infiniteTransition = rememberInfiniteTransition(label = "bowler")
     val bowlingPulse by infiniteTransition.animateFloat(
         initialValue = 0.5f,
@@ -727,7 +731,7 @@ fun BowlerPerformanceCard(
                 
                 // Wickets badges
                 if (wickets >= 5) {
-                    MilestoneBadge("5W", colors.goldPrimary)
+                    MilestoneBadge("5W", hierarchy.secondary.primary)
                 } else if (wickets >= 3) {
                     MilestoneBadge("${wickets}W", colors.statusInfo)
                 }
@@ -744,7 +748,7 @@ fun BowlerPerformanceCard(
                         text = "$wickets/$runs",
                         fontSize = 24.sp,
                         fontWeight = FontWeight.Black,
-                        color = colors.goldPrimary
+                        color = hierarchy.secondary.primary
                     )
                     Text(
                         text = "($overs ov)",
@@ -810,6 +814,7 @@ fun PartnershipCard(
     partnershipOvers: String? = null,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val totalRuns = batsman1Runs + batsman2Runs
     val batsman1Percentage = if (partnershipRuns > 0) (batsman1Runs.toFloat() / partnershipRuns) else 0.5f
     
@@ -824,7 +829,7 @@ fun PartnershipCard(
         modifier = modifier.shadow(
             elevation = 12.dp,
             shape = RoundedCornerShape(20.dp),
-            spotColor = colors.goldPrimary.copy(alpha = 0.15f)
+            spotColor = hierarchy.secondary.primary.copy(alpha = 0.15f)
         ),
         shape = RoundedCornerShape(20.dp),
         color = colors.glassSurface
@@ -852,7 +857,7 @@ fun PartnershipCard(
                         text = "$partnershipRuns runs",
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Black,
-                        color = colors.goldPrimary
+                        color = hierarchy.secondary.primary
                     )
                     Text(
                         text = partnershipOvers ?: "$partnershipBalls balls",
@@ -877,7 +882,7 @@ fun PartnershipCard(
                             .fillMaxWidth(animatedPercentage)
                             .background(
                                 Brush.horizontalGradient(
-                                    colors = listOf(colors.goldPrimary, colors.goldPrimary)
+                                    colors = listOf(hierarchy.secondary.primary, hierarchy.secondary.primary)
                                 )
                             )
                     )
@@ -905,7 +910,7 @@ fun PartnershipCard(
                             text = "$batsman1Runs",
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Black,
-                            color = colors.goldPrimary
+                            color = hierarchy.secondary.primary
                         )
                         Text(
                             text = "($batsman1Balls)",
@@ -931,7 +936,7 @@ fun PartnershipCard(
                             text = "$batsman2Runs",
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Black,
-                            color = colors.goldPrimary
+                            color = hierarchy.secondary.primary
                         )
                         Text(
                             text = "($batsman2Balls)",

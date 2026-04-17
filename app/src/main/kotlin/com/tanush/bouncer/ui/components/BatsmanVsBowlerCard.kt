@@ -92,6 +92,7 @@ fun BatsmanVsBowlerCard(
     val batsmanAdvantage = matchupInfo.strikeRate > 100f && matchupInfo.dismissals == 0
     val bowlerAdvantage = matchupInfo.strikeRate < 80f || matchupInfo.dismissals >= 2
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -115,7 +116,7 @@ fun BatsmanVsBowlerCard(
                         drawLine(
                             brush = Brush.linearGradient(
                                 colors = listOf(
-                                    GoldPrimary.copy(alpha = 0.4f * glowAlpha),
+                                    hierarchy.secondary.primary.copy(alpha = 0.4f * glowAlpha),
                                     Color.Transparent
                                 ),
                                 start = center,
@@ -150,7 +151,7 @@ fun BatsmanVsBowlerCard(
                         Icon(
                             imageVector = Icons.Filled.Gavel,
                             contentDescription = null,
-                            tint = colors.goldPrimary,
+                            tint = hierarchy.secondary.primary,
                             modifier = Modifier.size(24.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
@@ -276,12 +277,12 @@ fun BatsmanVsBowlerCard(
                             modifier = Modifier
                                 .size(50.dp)
                                 .clip(CircleShape)
-                                .background(colors.goldPrimary.copy(alpha = 0.2f)),
+                                .background(hierarchy.secondary.primary.copy(alpha = 0.2f)),
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
                                 text = "VS",
-                                color = colors.goldPrimary,
+                                color = hierarchy.secondary.primary,
                                 fontSize = 16.sp,
                                 fontWeight = FontWeight.Black
                             )
@@ -403,7 +404,7 @@ fun BatsmanVsBowlerCard(
                             MatchupStatColumn(
                                 label = "S/R",
                                 value = String.format("%.1f", matchupInfo.strikeRate),
-                                color = colors.goldPrimary
+                                color = hierarchy.secondary.primary
                             )
                         }
                     }
@@ -424,7 +425,7 @@ fun BatsmanVsBowlerCard(
                     BoundaryBox(
                         label = "6s",
                         value = matchupInfo.sixes,
-                        color = colors.goldPrimary
+                        color = hierarchy.secondary.primary
                     )
                     BoundaryBox(
                         label = "Dots",
@@ -492,7 +493,7 @@ fun BatsmanVsBowlerCard(
                     val advantageColor = when {
                         batsmanAdvantage -> colors.statusSuccess
                         bowlerAdvantage -> colors.statusLive
-                        else -> colors.goldPrimary
+                        else -> hierarchy.secondary.primary
                     }
                     
                     Surface(

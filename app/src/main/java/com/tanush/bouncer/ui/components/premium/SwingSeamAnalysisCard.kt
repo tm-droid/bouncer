@@ -80,6 +80,7 @@ fun SwingSeamAnalysisCard(
     modifier: Modifier = Modifier,
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val animatedProgress = remember { Animatable(0f) }
 
     LaunchedEffect(movementData) {
@@ -117,7 +118,7 @@ fun SwingSeamAnalysisCard(
                             .clip(CircleShape)
                             .background(
                                 Brush.linearGradient(
-                                    colors = listOf(colors.goldDark, colors.goldPrimary),
+                                    colors = listOf(hierarchy.secondary.primary, hierarchy.secondary.primary),
                                 ),
                             ),
                         contentAlignment = Alignment.Center,
@@ -135,7 +136,7 @@ fun SwingSeamAnalysisCard(
                     Column {
                         Text(
                             text = "SWING & SEAM",
-                            color = colors.goldLight,
+                            color = hierarchy.secondary.secondary,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.5.sp,
@@ -153,7 +154,7 @@ fun SwingSeamAnalysisCard(
                 Column(horizontalAlignment = Alignment.End) {
                     Text(
                         text = "${movementData.size}",
-                        color = colors.goldDark,
+                        color = hierarchy.secondary.primary,
                         fontSize = 24.sp,
                         fontWeight = FontWeight.Bold,
                     )
@@ -168,7 +169,7 @@ fun SwingSeamAnalysisCard(
             Spacer(modifier = Modifier.height(20.dp))
 
             // Capture color for Canvas scope
-            val goldDark = colors.goldDark
+            val goldDark = hierarchy.secondary.primary
             val statusInfoColor = colors.statusInfo
             val statusLiveColor = colors.statusLive
 

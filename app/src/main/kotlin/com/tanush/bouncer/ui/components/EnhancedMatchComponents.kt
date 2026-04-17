@@ -45,6 +45,8 @@ import com.tanush.bouncer.utils.rememberHapticFeedback
 import com.tanush.bouncer.utils.toDisplayString
 import kotlinx.coroutines.delay
 import kotlin.math.abs
+import com.tanush.bouncer.ui.theme.GoldPrimary
+import com.tanush.bouncer.ui.theme.GoldLight
 
 /**
  * ExpandableMatchCard with tap-to-expand mini scorecard preview
@@ -58,6 +60,7 @@ fun ExpandableMatchCardV2(
     initiallyExpanded: Boolean = false
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     var isExpanded by remember { mutableStateOf(initiallyExpanded) }
     val haptic = rememberHapticFeedback()
     
@@ -93,12 +96,12 @@ fun ExpandableMatchCardV2(
             .shadow(
                 elevation = cardElevation,
                 shape = RoundedCornerShape(24.dp),
-                spotColor = if (isLive) colors.statusInfo.copy(alpha = 0.4f) else colors.goldPrimary.copy(alpha = 0.3f)
+                spotColor = if (isLive) colors.statusInfo.copy(alpha = 0.4f) else GoldPrimary.copy(alpha = 0.3f)
             )
             .clip(RoundedCornerShape(24.dp))
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
-                indication = ripple(color = colors.goldPrimary.copy(alpha = 0.2f))
+                indication = ripple(color = GoldPrimary.copy(alpha = 0.2f))
             ) {
                 haptic.click()
                 isExpanded = !isExpanded
@@ -120,7 +123,7 @@ fun ExpandableMatchCardV2(
             ) {
                 Text(
                     text = match.matchTitle.substringBefore(",").trim().uppercase(),
-                    color = colors.goldLight.copy(alpha = 0.8f),
+                    color = GoldLight.copy(alpha = 0.8f),
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Black,
                     letterSpacing = 1.sp,
@@ -164,7 +167,7 @@ fun ExpandableMatchCardV2(
                     )
                     Text(
                         text = scoreInfo1.toDisplayString(),
-                        color = colors.goldPrimary,
+                        color = GoldPrimary,
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Black
                     )
@@ -198,7 +201,7 @@ fun ExpandableMatchCardV2(
                     )
                     Text(
                         text = scoreInfo2.toDisplayString(),
-                        color = colors.goldPrimary,
+                        color = GoldPrimary,
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Black
                     )
@@ -280,13 +283,13 @@ fun ExpandableMatchCardV2(
                     ) {
                         Text(
                             text = "View Full Scorecard",
-                            color = colors.goldPrimary,
+                            color = GoldPrimary,
                             fontWeight = FontWeight.Bold
                         )
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                             contentDescription = null,
-                            tint = colors.goldPrimary,
+                            tint = GoldPrimary,
                             modifier = Modifier.size(18.dp)
                         )
                     }
@@ -302,6 +305,7 @@ private fun MiniPlayerRow(
     stat: String,
     isHighlighted: Boolean = false
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     Row(
         modifier = Modifier
@@ -321,7 +325,7 @@ private fun MiniPlayerRow(
         )
         Text(
             text = stat,
-            color = if (isHighlighted) colors.goldPrimary else colors.textSecondary,
+            color = if (isHighlighted) hierarchy.secondary.primary else colors.textSecondary,
             fontSize = 13.sp,
             fontWeight = FontWeight.Bold
         )
@@ -379,6 +383,7 @@ fun LiveCommentaryPeek(
     modifier: Modifier = Modifier,
     maxVisibleItems: Int = 3
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val scrollState = rememberScrollState()
     val infiniteTransition = rememberInfiniteTransition(label = "commentaryPeek")
@@ -411,7 +416,7 @@ fun LiveCommentaryPeek(
             Brush.horizontalGradient(
                 colors = listOf(
                     Color.Transparent,
-                    colors.goldPrimary.copy(alpha = shimmer * 0.3f),
+                    hierarchy.secondary.primary.copy(alpha = shimmer * 0.3f),
                     Color.Transparent
                 )
             )
@@ -428,7 +433,7 @@ fun LiveCommentaryPeek(
             ) {
                 Text(
                     text = "COMMENTARY",
-                    color = colors.goldPrimary,
+                    color = hierarchy.secondary.primary,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Black,
                     letterSpacing = 1.sp
@@ -500,6 +505,7 @@ fun TeamMomentumIndicator(
     momentumValue: Float, // -1 to 1, negative = team1, positive = team2
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val haptic = rememberHapticFeedback()
     val animatedMomentum by animateFloatAsState(
@@ -554,13 +560,13 @@ fun TeamMomentumIndicator(
             ) {
                 Text(
                     text = team1Name.take(3).uppercase(),
-                    color = if (animatedMomentum < 0) colors.goldPrimary else colors.textSecondary,
+                    color = if (animatedMomentum < 0) hierarchy.secondary.primary else colors.textSecondary,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
                     text = team2Name.take(3).uppercase(),
-                    color = if (animatedMomentum > 0) colors.goldPrimary else colors.textSecondary,
+                    color = if (animatedMomentum > 0) hierarchy.secondary.primary else colors.textSecondary,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -674,6 +680,7 @@ fun WeatherPitchOverlay(
     windSpeed: String? = null,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val weatherIcon = when (weather.lowercase()) {
         "sunny", "clear" -> Icons.Default.WbSunny
@@ -684,10 +691,10 @@ fun WeatherPitchOverlay(
     }
     
     val weatherColor = when (weather.lowercase()) {
-        "sunny", "clear" -> colors.goldPrimary
+        "sunny", "clear" -> hierarchy.secondary.primary
         "cloudy", "overcast" -> colors.textSecondary
         "rainy", "rain" -> colors.statusInfo
-        else -> colors.goldPrimary
+        else -> hierarchy.secondary.primary
     }
     
     val pitchColor = when (pitchType.lowercase()) {
@@ -860,9 +867,9 @@ fun MatchCountdown(
             1.dp,
             Brush.linearGradient(
                 colors = listOf(
-                    colors.goldPrimary.copy(alpha = 0.3f),
-                    colors.goldPrimary.copy(alpha = 0.1f),
-                    colors.goldPrimary.copy(alpha = 0.3f)
+                    GoldPrimary.copy(alpha = 0.3f),
+                    GoldPrimary.copy(alpha = 0.1f),
+                    GoldPrimary.copy(alpha = 0.3f)
                 )
             )
         )
@@ -950,6 +957,7 @@ private fun CountdownUnit(
     pulse: Float = 1f,
     highlight: Boolean = false
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     Column(
         horizontalAlignment = Alignment.CenterHorizontally
@@ -962,19 +970,19 @@ private fun CountdownUnit(
                     scaleY = pulse
                 }
                 .background(
-                    if (highlight) colors.goldPrimary.copy(alpha = 0.2f) else GlassSurface,
+                    if (highlight) hierarchy.secondary.primary.copy(alpha = 0.2f) else GlassSurface,
                     RoundedCornerShape(12.dp)
                 )
                 .border(
                     1.dp,
-                    if (highlight) colors.goldPrimary.copy(alpha = 0.5f) else colors.glassBorder.copy(alpha = 0.3f),
+                    if (highlight) hierarchy.secondary.primary.copy(alpha = 0.5f) else colors.glassBorder.copy(alpha = 0.3f),
                     RoundedCornerShape(12.dp)
                 ),
             contentAlignment = Alignment.Center
         ) {
             Text(
                 text = String.format("%02d", value),
-                color = if (highlight) colors.goldPrimary else colors.textPrimary,
+                color = if (highlight) hierarchy.secondary.primary else colors.textPrimary,
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Black
             )
@@ -992,6 +1000,7 @@ private fun CountdownUnit(
 
 @Composable
 private fun CountdownSeparator() {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "separator")
     val alpha by infiniteTransition.animateFloat(
@@ -1012,13 +1021,13 @@ private fun CountdownSeparator() {
             modifier = Modifier
                 .size(4.dp)
                 .graphicsLayer { this.alpha = alpha }
-                .background(colors.goldPrimary, CircleShape)
+                .background(hierarchy.secondary.primary, CircleShape)
         )
         Box(
             modifier = Modifier
                 .size(4.dp)
                 .graphicsLayer { this.alpha = alpha }
-                .background(colors.goldPrimary, CircleShape)
+                .background(hierarchy.secondary.primary, CircleShape)
         )
     }
 }
@@ -1088,6 +1097,7 @@ fun RecentBallsTimeline(
     modifier: Modifier = Modifier,
     showOverMarkers: Boolean = true
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val scrollState = rememberScrollState()
     
@@ -1117,7 +1127,7 @@ fun RecentBallsTimeline(
                             Brush.verticalGradient(
                                 colors = listOf(
                                     Color.Transparent,
-                                    colors.goldPrimary.copy(alpha = 0.5f),
+                                    hierarchy.secondary.primary.copy(alpha = 0.5f),
                                     Color.Transparent
                                 )
                             )
@@ -1138,10 +1148,11 @@ private fun TimelineBall(
     ball: String,
     isLatest: Boolean = false
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val (bgColor, textColor) = when {
         ball.contains("W", ignoreCase = true) -> colors.statusLive to Color.White
-        ball == "6" -> colors.goldPrimary to colors.backgroundBase
+        ball == "6" -> hierarchy.secondary.primary to colors.backgroundBase
         ball == "4" -> colors.statusInfo to colors.backgroundBase
         ball == "0" || ball == "." -> DotBall to colors.textMuted
         ball.contains("WD") || ball.contains("NB") -> colors.statusWarning to colors.backgroundBase
@@ -1176,7 +1187,7 @@ private fun TimelineBall(
             .background(bgColor, CircleShape)
             .border(
                 if (isLatest) 2.dp else 0.5.dp,
-                if (isLatest) colors.goldPrimary else GlassBorder,
+                if (isLatest) hierarchy.secondary.primary else GlassBorder,
                 CircleShape
             ),
         contentAlignment = Alignment.Center

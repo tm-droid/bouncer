@@ -66,6 +66,7 @@ fun DeathOversAnalysisCard(
     modifier: Modifier = Modifier,
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val infiniteTransition = rememberInfiniteTransition(label = "death")
 
     val warningPulse by infiniteTransition.animateFloat(
@@ -164,7 +165,7 @@ fun DeathOversAnalysisCard(
                     Column(horizontalAlignment = Alignment.End) {
                         Text(
                             text = "$totalDeathRuns/$totalDeathWickets",
-                            color = colors.goldDark,
+                            color = hierarchy.secondary.primary,
                             fontSize = 24.sp,
                             fontWeight = FontWeight.Bold,
                         )
@@ -238,6 +239,7 @@ private fun DeathOverRow(
     progress: Float,
     index: Int,
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val delayedProgress = ((progress - index * 0.15f) / 0.85f).coerceIn(0f, 1f)
 
@@ -287,7 +289,7 @@ private fun DeathOverRow(
             color = when {
                 overData.wickets >= 2 -> colors.statusLive
                 overData.totalRuns >= 15 -> colors.statusSuccess
-                else -> colors.goldDark
+                else -> hierarchy.secondary.primary
             },
             fontSize = 14.sp,
             fontWeight = FontWeight.Bold,

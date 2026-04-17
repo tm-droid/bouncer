@@ -38,13 +38,14 @@ import com.tanush.bouncer.ui.theme.*
 import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 import kotlinx.coroutines.delay
 import io.sentry.Sentry
+import com.tanush.bouncer.ui.theme.GoldPrimary
 
 // Achievement category for grouping
 enum class AchievementCategory(val title: String, val color: @Composable () -> Color) {
     BATTING("BATTING", { Color(0xFF4FC3F7) }),
     BOWLING("BOWLING", { Color(0xFF81C784) }),
     TEAM("TEAM", { Color(0xFFFFB74D) }),
-    SPECIAL("SPECIAL", { BouncerDesignSystem.colors.goldPrimary })
+    SPECIAL("SPECIAL", { GoldPrimary })
 }
 
 private fun Achievement.category(): AchievementCategory {
@@ -77,6 +78,7 @@ fun AchievementsScreen(
     onBackClick: () -> Unit
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val context = LocalContext.current
     val achievements = remember { 
         Achievement.all.map { it.copy(unlocked = unlockedAchievements.contains(it.id)) }
@@ -123,7 +125,7 @@ fun AchievementsScreen(
                         }, "Share Achievements")
                         context.startActivity(shareIntent)
                     }) {
-                        Icon(Icons.Default.IosShare, "Share", tint = colors.goldPrimary)
+                        Icon(Icons.Default.IosShare, "Share", tint = hierarchy.secondary.primary)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
@@ -444,6 +446,7 @@ private fun EliteMedalCard(achievement: Achievement, accentColor: Color) {
 
 @Composable
 private fun CareerRadarChartCard() {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     GlassCard(
         modifier = Modifier.fillMaxWidth(),
@@ -474,7 +477,7 @@ private fun CareerRadarChartCard() {
                 }
                 Column(horizontalAlignment = Alignment.End) {
                     Text("POTENTIAL", color = colors.textTertiary, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                    Text("+15% Growth", color = colors.goldPrimary, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                    Text("+15% Growth", color = hierarchy.secondary.primary, fontSize = 14.sp, fontWeight = FontWeight.Medium)
                 }
             }
         }

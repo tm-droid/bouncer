@@ -90,7 +90,8 @@ fun StadiumAtmosphereCard(
     modifier: Modifier = Modifier
 ) {
     val colors = BouncerDesignSystem.colors
-    val goldPrimary = colors.goldPrimary
+    val hierarchy = BouncerDesignSystem.hierarchy
+    val goldPrimary = hierarchy.secondary.primary
     val infiniteTransition = rememberInfiniteTransition(label = "stadium")
     
     // Crowd wave effect
@@ -382,9 +383,10 @@ private fun AttendanceCard(
     attendance: Int?,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
-    val goldPrimary = colors.goldPrimary
-    val goldDark = colors.goldDark
+    val goldPrimary = hierarchy.secondary.primary
+    val goldDark = hierarchy.secondary.primary
     val fillPercentage = if (capacity != null && attendance != null) {
         (attendance.toFloat() / capacity * 100).toInt()
     } else null
@@ -472,6 +474,7 @@ private fun PitchReportCard(
     pitchReport: StadiumPitchReport,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val pitchColor = when (pitchReport.type) {
         StadiumPitchType.GREEN -> colors.statusSuccess
@@ -479,7 +482,7 @@ private fun PitchReportCard(
         StadiumPitchType.FLAT -> colors.statusInfo
         StadiumPitchType.DUSTY -> Color(0xFF8B7355)
         StadiumPitchType.CRACKED -> colors.statusLive
-        StadiumPitchType.SPORTING -> colors.goldPrimary
+        StadiumPitchType.SPORTING -> hierarchy.secondary.primary
     }
     
     val pitchEmoji = when (pitchReport.type) {
@@ -596,6 +599,7 @@ private fun VenueStatItem(
     value: String,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     Surface(
         modifier = modifier,
@@ -613,7 +617,7 @@ private fun VenueStatItem(
                 text = value,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
-                color = colors.goldPrimary
+                color = hierarchy.secondary.primary
             )
             Text(
                 text = label,

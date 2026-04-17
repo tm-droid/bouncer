@@ -42,6 +42,7 @@ fun GlassyMatchView(
     aiCommentary: String? = null // iOS-inspired: Display latest AI fused commentary
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val team1 = match.teams.firstOrNull()
     val team2 = match.teams.getOrNull(1)
 
@@ -104,7 +105,7 @@ fun GlassyMatchView(
             ) {
                 Text(
                     text = match.matchTitle.uppercase(),
-                    color = colors.goldPrimary.copy(alpha = 0.8f),
+                    color = hierarchy.secondary.primary.copy(alpha = 0.8f),
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Black,
                     letterSpacing = 2.sp
@@ -165,7 +166,7 @@ fun GlassyMatchView(
                     Box(
                         modifier = Modifier
                             .size(6.dp)
-                            .background(colors.goldPrimary.copy(alpha = 0.4f), CircleShape)
+                            .background(hierarchy.secondary.primary.copy(alpha = 0.4f), CircleShape)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
@@ -219,6 +220,7 @@ fun GlassyMatchView(
 
 @Composable
 fun TeamSleekInfo(team: CricketMatch.Team?, isRightAligned: Boolean = false, color: Color) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -240,7 +242,7 @@ fun TeamSleekInfo(team: CricketMatch.Team?, isRightAligned: Boolean = false, col
             )
             Text(
                 text = team?.score?.ifEmpty { "Y.T.B" } ?: "---",
-                color = if (team?.isBatting == true) colors.goldPrimary else colors.textSecondary,
+                color = if (team?.isBatting == true) hierarchy.secondary.primary else colors.textSecondary,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = (-0.2).sp

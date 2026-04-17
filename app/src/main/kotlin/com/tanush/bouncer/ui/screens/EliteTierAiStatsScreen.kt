@@ -44,6 +44,7 @@ fun EliteTierAiStatsScreen(
     onBackClick: () -> Unit
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     Scaffold(
         containerColor = colors.backgroundBase,
         topBar = { EliteStatsTopBar(match, onBackClick) }
@@ -109,6 +110,7 @@ fun EliteTierAiStatsContent(match: CricketMatch) {
 
 @Composable
 private fun AiImpactHero(rotation: Float, scoreText: String = "50.0", trendText: String = "+0.0 vs Avg") {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     Box(
         modifier = Modifier
@@ -119,12 +121,12 @@ private fun AiImpactHero(rotation: Float, scoreText: String = "50.0", trendText:
         // Rotating Ring System
         Canvas(modifier = Modifier.size(200.dp)) {
             drawCircle(
-                color = colors.goldPrimary.copy(alpha = 0.1f),
+                color = hierarchy.secondary.primary.copy(alpha = 0.1f),
                 radius = size.minDimension / 2,
                 style = Stroke(width = 1.dp.toPx())
             )
             drawArc(
-                color = colors.goldPrimary.copy(alpha = 0.3f),
+                color = hierarchy.secondary.primary.copy(alpha = 0.3f),
                 startAngle = rotation,
                 sweepAngle = 90f,
                 useCenter = false,
@@ -138,7 +140,7 @@ private fun AiImpactHero(rotation: Float, scoreText: String = "50.0", trendText:
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
                 "CURRENT AI IMPACT SCORE", 
-                color = colors.goldPrimary.copy(alpha = 0.6f), 
+                color = hierarchy.secondary.primary.copy(alpha = 0.6f), 
                 fontSize = 11.sp, 
                 fontWeight = FontWeight.Bold, 
                 letterSpacing = 2.sp
@@ -148,10 +150,10 @@ private fun AiImpactHero(rotation: Float, scoreText: String = "50.0", trendText:
                 color = colors.textPrimary, 
                 fontSize = 64.sp, 
                 fontWeight = FontWeight.Black,
-                modifier = Modifier.shadow(20.dp, spotColor = colors.goldPrimary.copy(alpha = 0.3f))
+                modifier = Modifier.shadow(20.dp, spotColor = hierarchy.secondary.primary.copy(alpha = 0.3f))
             )
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Icon(Icons.AutoMirrored.Filled.TrendingUp, null, tint = colors.goldPrimary, modifier = Modifier.size(14.dp))
+                Icon(Icons.AutoMirrored.Filled.TrendingUp, null, tint = hierarchy.secondary.primary, modifier = Modifier.size(14.dp))
                 Text(trendText, color = colors.textSecondary, fontSize = 12.sp, fontWeight = FontWeight.Medium)
             }
         }
@@ -160,20 +162,21 @@ private fun AiImpactHero(rotation: Float, scoreText: String = "50.0", trendText:
 
 @Composable
 private fun EliteInsightPill(match: CricketMatch) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     Box(
         modifier = Modifier
             .padding(horizontal = 24.dp)
             .fillMaxWidth()
             .clip(CircleShape)
-            .background(Brush.horizontalGradient(listOf(Color.Transparent, colors.goldPrimary.copy(alpha = 0.2f), Color.Transparent)))
+            .background(Brush.horizontalGradient(listOf(Color.Transparent, hierarchy.secondary.primary.copy(alpha = 0.2f), Color.Transparent)))
             .padding(1.dp)
             .clip(CircleShape)
             .background(colors.glassSurface)
             .padding(horizontal = 20.dp, vertical = 12.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center, modifier = Modifier.fillMaxWidth()) {
-            Icon(Icons.Default.AutoAwesome, null, tint = colors.goldPrimary, modifier = Modifier.size(16.dp))
+            Icon(Icons.Default.AutoAwesome, null, tint = hierarchy.secondary.primary, modifier = Modifier.size(16.dp))
             Spacer(modifier = Modifier.width(12.dp))
             val striker = match.scrapedBatsmen?.find { it.isStriker }
             val insightText = if (striker != null) {
@@ -193,6 +196,7 @@ private fun EliteInsightPill(match: CricketMatch) {
 
 @Composable
 private fun ValueAddedChartSection(match: CricketMatch) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val crr = match.score?.currentRunRate?.toFloatOrNull() ?: 6.0f
     val totalRuns = match.teams.firstOrNull { it.isBatting }?.score?.split("/")?.firstOrNull()?.toIntOrNull() ?: 0
@@ -213,8 +217,8 @@ private fun ValueAddedChartSection(match: CricketMatch) {
                 Text("Run contribution per over", color = colors.textSecondary, fontSize = 12.sp)
             }
             Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text("+${String.format("%.0f", avgPerOver)}", color = colors.goldPrimary, fontSize = 24.sp, fontWeight = FontWeight.Bold)
-                Text("RPO", color = colors.goldPrimary.copy(alpha = 0.6f), fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 4.dp))
+                Text("+${String.format("%.0f", avgPerOver)}", color = hierarchy.secondary.primary, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                Text("RPO", color = hierarchy.secondary.primary.copy(alpha = 0.6f), fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 4.dp))
             }
         }
 
@@ -232,6 +236,7 @@ private fun ValueAddedChartSection(match: CricketMatch) {
 
 @Composable
 private fun EliteDuelMetricsRow(match: CricketMatch) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val striker = match.scrapedBatsmen?.find { it.isStriker }
     val bowler = match.currentBowler
@@ -243,7 +248,7 @@ private fun EliteDuelMetricsRow(match: CricketMatch) {
             name = striker?.name ?: "No batter",
             value = striker?.runs ?: "--",
             unit = "Runs",
-            color = colors.goldPrimary,
+            color = hierarchy.secondary.primary,
             modifier = Modifier.weight(1f),
             currentRunRate = crr,
             requiredRunRate = rrr
@@ -289,6 +294,7 @@ private fun DuelPlayerCard(label: String, name: String, value: String, unit: Str
 
 @Composable
 private fun ElitePredictiveModule(match: CricketMatch) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val prob = (match.calculateHeuristicProbability() / 100.0).toFloat().coerceIn(0.05f, 0.95f)
     val team1Acronym = match.teams.getOrNull(0)?.acronym ?: "T1"
@@ -314,7 +320,7 @@ private fun ElitePredictiveModule(match: CricketMatch) {
         importance = BouncerImportance.CRITICAL
     ) {
         Box(modifier = Modifier.fillMaxWidth()) {
-            Box(modifier = Modifier.align(Alignment.CenterStart).width(2.dp).fillMaxHeight().background(colors.goldPrimary))
+            Box(modifier = Modifier.align(Alignment.CenterStart).width(2.dp).fillMaxHeight().background(hierarchy.secondary.primary))
             
             Column(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(16.dp)) {
                 val bowler = match.currentBowler
@@ -327,11 +333,11 @@ private fun ElitePredictiveModule(match: CricketMatch) {
                 val wicketProb = ((1f - prob) * 20).toInt().coerceIn(2, 35)
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Icon(Icons.Default.Psychology, null, tint = colors.goldPrimary, modifier = Modifier.size(18.dp))
+                        Icon(Icons.Default.Psychology, null, tint = hierarchy.secondary.primary, modifier = Modifier.size(18.dp))
                         Text("AI PREDICTION", color = colors.textPrimary, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
                     }
-                    Surface(color = colors.goldPrimary.copy(alpha = 0.1f), shape = RoundedCornerShape(4.dp), border = BorderStroke(0.5.dp, colors.goldPrimary.copy(alpha = 0.2f))) {
-                        Text("Confidence: ${confidenceVal}%", color = colors.goldPrimary, fontSize = 9.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp))
+                    Surface(color = hierarchy.secondary.primary.copy(alpha = 0.1f), shape = RoundedCornerShape(4.dp), border = BorderStroke(0.5.dp, hierarchy.secondary.primary.copy(alpha = 0.2f))) {
+                        Text("Confidence: ${confidenceVal}%", color = hierarchy.secondary.primary, fontSize = 9.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp))
                     }
                 }
                 

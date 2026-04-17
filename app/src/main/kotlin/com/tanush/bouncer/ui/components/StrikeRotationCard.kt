@@ -58,6 +58,7 @@ fun StrikeRotationCard(
     modifier: Modifier = Modifier
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val infiniteTransition = rememberInfiniteTransition(label = "rotation")
     
     // Rotation animation
@@ -84,7 +85,7 @@ fun StrikeRotationCard(
     
     val rotationColor = when {
         data.rotationRate >= 70 -> colors.statusSuccess
-        data.rotationRate >= 50 -> colors.goldPrimary
+        data.rotationRate >= 50 -> hierarchy.secondary.primary
         data.rotationRate >= 30 -> colors.statusWarning
         else -> colors.statusLive
     }
@@ -116,7 +117,7 @@ fun StrikeRotationCard(
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 1.5.sp,
-                        color = colors.goldPrimary
+                        color = hierarchy.secondary.primary
                     )
                     Text(
                         text = "Partnership Analysis",
@@ -188,8 +189,8 @@ fun StrikeRotationCard(
                         drawCircle(
                             brush = Brush.radialGradient(
                                 colors = listOf(
-                                    colors.goldPrimary,
-                                    colors.goldPrimary.copy(alpha = 0.5f)
+                                    hierarchy.secondary.primary,
+                                    hierarchy.secondary.primary.copy(alpha = 0.5f)
                                 ),
                                 center = Offset(arrowX, arrowY),
                                 radius = 12.dp.toPx()
@@ -206,7 +207,7 @@ fun StrikeRotationCard(
                             val trailY = centerY + (arrowRadius * sin(trailRadian)).toFloat()
                             
                             drawCircle(
-                                color = colors.goldPrimary.copy(alpha = 0.3f - (i * 0.08f)),
+                                color = hierarchy.secondary.primary.copy(alpha = 0.3f - (i * 0.08f)),
                                 radius = (8 - i * 2).dp.toPx(),
                                 center = Offset(trailX, trailY)
                             )
@@ -303,7 +304,7 @@ fun StrikeRotationCard(
                 RunTypeItem(
                     label = "2s",
                     count = data.twos,
-                    color = colors.goldPrimary,
+                    color = hierarchy.secondary.primary,
                     modifier = Modifier.weight(1f)
                 )
                 RunTypeItem(
@@ -315,7 +316,7 @@ fun StrikeRotationCard(
                 RunTypeItem(
                     label = "4/6",
                     count = data.boundaries,
-                    color = colors.goldPrimary,
+                    color = hierarchy.secondary.primary,
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -429,10 +430,11 @@ fun CompactStrikeRotation(
     rotationRate: Float,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val color = when {
         rotationRate >= 70 -> colors.statusSuccess
-        rotationRate >= 50 -> colors.goldPrimary
+        rotationRate >= 50 -> hierarchy.secondary.primary
         rotationRate >= 30 -> colors.statusWarning
         else -> colors.statusLive
     }

@@ -83,6 +83,7 @@ fun TeamFormCard(
     modifier: Modifier = Modifier,
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val animatedProgress = remember { Animatable(0f) }
 
     LaunchedEffect(recentMatches) {
@@ -119,7 +120,7 @@ fun TeamFormCard(
                             .clip(CircleShape)
                             .background(
                                 Brush.linearGradient(
-                                    colors = listOf(colors.goldDark, colors.goldPrimary),
+                                    colors = listOf(hierarchy.secondary.primary, hierarchy.secondary.primary),
                                 ),
                             ),
                         contentAlignment = Alignment.Center,
@@ -137,7 +138,7 @@ fun TeamFormCard(
                     Column {
                         Text(
                             text = "TEAM FORM",
-                            color = colors.goldLight,
+                            color = hierarchy.secondary.secondary,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.5.sp,
@@ -155,7 +156,7 @@ fun TeamFormCard(
                 Column(horizontalAlignment = Alignment.End) {
                     Text(
                         text = "${(winPercentage * animatedProgress.value).toInt()}%",
-                        color = colors.goldDark,
+                        color = hierarchy.secondary.primary,
                         fontSize = 24.sp,
                         fontWeight = FontWeight.Bold,
                     )
@@ -339,7 +340,7 @@ fun TeamFormCard(
                                 )
                                 Text(
                                     text = match.format,
-                                    color = colors.goldDark,
+                                    color = hierarchy.secondary.primary,
                                     fontSize = 10.sp,
                                 )
                             }

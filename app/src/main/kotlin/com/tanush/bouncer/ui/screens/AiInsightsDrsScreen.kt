@@ -47,6 +47,7 @@ fun AiInsightsDrsScreen(
 ) {
     val scrollState = rememberScrollState()
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val context = LocalContext.current
     
     Scaffold(
@@ -55,9 +56,9 @@ fun AiInsightsDrsScreen(
             TopAppBar(
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.SportsCricket, null, tint = colors.goldPrimary)
+                        Icon(Icons.Default.SportsCricket, null, tint = hierarchy.secondary.primary)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("BOUNCER", color = colors.goldPrimary, fontWeight = FontWeight.Black, letterSpacing = 2.sp)
+                        Text("BOUNCER", color = hierarchy.secondary.primary, fontWeight = FontWeight.Black, letterSpacing = 2.sp)
                     }
                 },
                 navigationIcon = {
@@ -228,6 +229,7 @@ private fun DrsMetricsRow(label: String, value: String, valueColor: Color) {
 
 @Composable
 private fun VerdictModule(isOut: Boolean, hasReview: Boolean = true) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     Column(
         modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
@@ -235,7 +237,7 @@ private fun VerdictModule(isOut: Boolean, hasReview: Boolean = true) {
     ) {
         Text(
             text = if (!hasReview) "NO REVIEW" else if (isOut) "OUT" else "NOT OUT",
-            color = if (hasReview) colors.goldPrimary else colors.textMuted,
+            color = if (hasReview) hierarchy.secondary.primary else colors.textMuted,
             fontSize = 56.sp,
             fontWeight = FontWeight.Black,
             fontStyle = FontStyle.Italic,
@@ -276,13 +278,14 @@ private fun DeliveryMetricsSection(match: CricketMatch) {
 
 @Composable
 private fun MetricCard(icon: ImageVector, label: String, value: String, unit: String) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     GlassCard(
         modifier = Modifier.width(140.dp)
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(16.dp)) {
             Box(modifier = Modifier.size(32.dp).background(colors.glassSurface, CircleShape), contentAlignment = Alignment.Center) {
-                Icon(icon, null, tint = colors.goldPrimary, modifier = Modifier.size(18.dp))
+                Icon(icon, null, tint = hierarchy.secondary.primary, modifier = Modifier.size(18.dp))
             }
             Text(label, color = colors.textSecondary, fontSize = 11.sp)
             Row(verticalAlignment = Alignment.Bottom) {
@@ -298,6 +301,7 @@ private fun MetricCard(icon: ImageVector, label: String, value: String, unit: St
 
 @Composable
 private fun PitchMapMiniCard(match: CricketMatch) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     GlassCard(
         modifier = Modifier.fillMaxWidth()
@@ -323,7 +327,7 @@ private fun PitchMapMiniCard(match: CricketMatch) {
                         bowler.economy?.toDoubleOrNull()?.let { it > 8.0 } == true -> "Full & Wide"
                         else -> "Good Length"
                     }
-                    Text(pitchLabel, color = colors.goldPrimary, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                    Text(pitchLabel, color = hierarchy.secondary.primary, fontSize = 11.sp, fontWeight = FontWeight.Medium)
                 }
             }
             Icon(Icons.Default.ChevronRight, null, tint = colors.textMuted)

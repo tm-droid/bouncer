@@ -38,6 +38,7 @@ fun PremiumLoadingScreen(
     loadingMessage: String = "Loading elite analytics..."
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val infiniteTransition = rememberInfiniteTransition(label = "loading")
     
     val ballRotation by infiniteTransition.animateFloat(
@@ -61,7 +62,7 @@ fun PremiumLoadingScreen(
     )
     
     // Capture colors for Canvas/drawBehind scopes
-    val goldPrimaryColor = colors.goldPrimary
+    val goldPrimaryColor = hierarchy.secondary.primary
     
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -127,7 +128,7 @@ fun PremiumLoadingScreen(
                                 scaleX = logoPulse
                                 scaleY = logoPulse
                             },
-                        tint = colors.goldPrimary
+                        tint = hierarchy.secondary.primary
                     )
                 }
                 
@@ -138,7 +139,7 @@ fun PremiumLoadingScreen(
                     fontSize = 42.sp,
                     fontWeight = FontWeight.Black,
                     letterSpacing = 6.sp,
-                    color = colors.goldDark,
+                    color = hierarchy.secondary.primary,
                     modifier = Modifier.graphicsLayer { alpha = logoPulse }
                 )
                 
@@ -181,7 +182,7 @@ fun PremiumLoadingScreen(
                                         translationX = (progressWidth * 180).dp.toPx() 
                                     } else Modifier
                                 )
-                                .background(colors.goldPrimary)
+                                .background(hierarchy.secondary.primary)
                         )
                     }
                     

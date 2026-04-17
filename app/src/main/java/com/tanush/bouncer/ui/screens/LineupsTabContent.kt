@@ -55,6 +55,7 @@ fun LineupsContent(
     modifier: Modifier = Modifier
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val dimens = BouncerDesignSystem.dimens
 
     val team1Color = TeamPrimaryColors.getTeamColor(team1Code)
@@ -84,7 +85,7 @@ fun LineupsContent(
                 Text(
                     text = "FIELD STRATEGY",
                     style = BouncerDesignSystem.typography.labelSmall.copy(fontSize = 10.sp),
-                    color = colors.goldPrimary,
+                    color = hierarchy.secondary.primary,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 1.5.sp,
                     modifier = Modifier.padding(bottom = 12.dp)
@@ -280,6 +281,7 @@ private fun SplitPlayerTile(
     isLeft: Boolean,
     isBench: Boolean = false
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val typography = BouncerDesignSystem.typography
 
@@ -345,7 +347,7 @@ private fun SplitPlayerTile(
                         Text(
                             text = player.role.take(10),
                             style = typography.labelSmall.copy(fontSize = 8.sp),
-                            color = colors.goldPrimary.copy(alpha = 0.5f),
+                            color = hierarchy.secondary.primary.copy(alpha = 0.5f),
                             maxLines = 1
                         )
                     }
@@ -364,7 +366,7 @@ private fun SplitPlayerTile(
                         Text(
                             text = player.role.take(10),
                             style = typography.labelSmall.copy(fontSize = 8.sp),
-                            color = colors.goldPrimary.copy(alpha = 0.5f),
+                            color = hierarchy.secondary.primary.copy(alpha = 0.5f),
                             textAlign = TextAlign.End,
                             maxLines = 1
                         )
@@ -465,6 +467,7 @@ private fun PlayerTile(
     isBench: Boolean,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val typography = BouncerDesignSystem.typography
     
@@ -502,7 +505,7 @@ private fun PlayerTile(
                 Text(
                     text = player.role.take(3).uppercase(),
                     style = typography.labelSmall.copy(fontSize = 8.sp),
-                    color = colors.goldPrimary.copy(alpha = 0.6f),
+                    color = hierarchy.secondary.primary.copy(alpha = 0.6f),
                     textAlign = TextAlign.Center
                 )
             }

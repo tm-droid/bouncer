@@ -45,6 +45,7 @@ fun ExecutiveBoxScreen(
     onBackClick: () -> Unit
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val matchProb = (match.calculateHeuristicProbability() / 100.0).toFloat().coerceIn(0.05f, 0.95f)
     // Simulation States
     var baseProbability by remember { mutableFloatStateOf(matchProb) }
@@ -104,7 +105,7 @@ fun ExecutiveBoxScreen(
                             isSimulating = false
                             lastSimResult = null
                         }) {
-                            Text("RESET TO LIVE FEED", color = colors.goldPrimary, fontSize = 10.sp, fontWeight = FontWeight.Black)
+                            Text("RESET TO LIVE FEED", color = hierarchy.secondary.primary, fontSize = 10.sp, fontWeight = FontWeight.Black)
                         }
                     }
                 }
@@ -194,6 +195,7 @@ fun ExecutiveBoxScreen(
 
 @Composable
 private fun TacticalSimulationConsole(onSimulate: (MatchSimulator.SimulatedEvent) -> Unit) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(
@@ -206,7 +208,7 @@ private fun TacticalSimulationConsole(onSimulate: (MatchSimulator.SimulatedEvent
         
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             SimButton(Modifier.weight(1f), "WICKET", Icons.Default.Gavel, colors.statusLive) { onSimulate(MatchSimulator.SimulatedEvent.WICKET) }
-            SimButton(Modifier.weight(1f), "SIX", Icons.Default.FlashOn, colors.goldPrimary) { onSimulate(MatchSimulator.SimulatedEvent.SIX) }
+            SimButton(Modifier.weight(1f), "SIX", Icons.Default.FlashOn, hierarchy.secondary.primary) { onSimulate(MatchSimulator.SimulatedEvent.SIX) }
             SimButton(Modifier.weight(1f), "DOT", Icons.Default.Block, colors.textTertiary) { onSimulate(MatchSimulator.SimulatedEvent.DOT) }
         }
     }
@@ -268,6 +270,7 @@ private fun SimulationImpactCard(result: MatchSimulator.SimResult) {
 
 @Composable
 private fun StrategyBriefingCard(match: CricketMatch) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val team1 = match.teams.getOrNull(0)?.name ?: "Team 1"
     val team2 = match.teams.getOrNull(1)?.name ?: "Team 2"
@@ -288,8 +291,8 @@ private fun StrategyBriefingCard(match: CricketMatch) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Icon(Icons.Default.AutoAwesome, null, tint = colors.goldPrimary, modifier = Modifier.size(18.dp))
-                    Text("STRATEGY BRIEFING", color = colors.goldPrimary, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.2.sp)
+                    Icon(Icons.Default.AutoAwesome, null, tint = hierarchy.secondary.primary, modifier = Modifier.size(18.dp))
+                    Text("STRATEGY BRIEFING", color = hierarchy.secondary.primary, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.2.sp)
                 }
                 Box(modifier = Modifier.clip(RoundedCornerShape(4.dp)).background(colors.statusSuccess.copy(alpha = 0.15f)).padding(horizontal = 8.dp, vertical = 4.dp)) {
                     Text("OPTIMIZED", color = colors.statusSuccess, fontSize = 8.sp, fontWeight = FontWeight.Black)
@@ -313,6 +316,7 @@ enum class EventType { MOMENTUM, IMPACT }
 
 @Composable
 private fun TelemetryEventItem(time: String, title: String, body: String, type: EventType) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     GlassCard(
         modifier = Modifier.fillMaxWidth(),
@@ -330,7 +334,7 @@ private fun TelemetryEventItem(time: String, title: String, body: String, type: 
                 modifier = Modifier.fillMaxHeight(), // FIX OVERLAP: Allow column to span full height
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text(time, color = colors.goldPrimary, fontSize = 10.sp, fontWeight = FontWeight.Black)
+                Text(time, color = hierarchy.secondary.primary, fontSize = 10.sp, fontWeight = FontWeight.Black)
                 Box(
                     modifier = Modifier
                         .width(1.dp)
@@ -362,6 +366,7 @@ private fun TelemetryEventItem(time: String, title: String, body: String, type: 
 
 @Composable
 private fun ResourceCard(modifier: Modifier, label: String, value: String, icon: ImageVector) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     GlassSurface(
         modifier = modifier,
@@ -369,7 +374,7 @@ private fun ResourceCard(modifier: Modifier, label: String, value: String, icon:
         importance = BouncerImportance.STANDARD
     ) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Icon(icon, null, tint = colors.goldPrimary.copy(alpha = 0.6f), modifier = Modifier.size(18.dp))
+            Icon(icon, null, tint = hierarchy.secondary.primary.copy(alpha = 0.6f), modifier = Modifier.size(18.dp))
             Column {
                 Text(label, color = colors.textTertiary, fontSize = 9.sp, fontWeight = FontWeight.Black)
                 Text(value, color = colors.textPrimary, fontSize = 18.sp, fontWeight = FontWeight.Black)

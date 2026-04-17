@@ -42,7 +42,7 @@ import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.ui.theme.BoundaryFour
 import com.tanush.bouncer.ui.theme.ChartBlue
 import com.tanush.bouncer.ui.theme.LiveBlue
-import com.tanush.bouncer.ui.theme.GoldDark
+import com.tanush.bouncer.ui.theme.GoldPrimary
 import com.tanush.bouncer.ui.theme.GoldLight
 import com.tanush.bouncer.ui.theme.GoldPrimary
 import com.tanush.bouncer.ui.theme.WarningYellow
@@ -95,6 +95,7 @@ fun SuperOverCard(
     modifier: Modifier = Modifier,
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val infiniteTransition = rememberInfiniteTransition(label = "superover")
 
     val flashPulse by infiniteTransition.animateFloat(
@@ -213,7 +214,7 @@ fun SuperOverCard(
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
                         text = "VS",
-                        color = GoldPrimary,
+                        color = hierarchy.secondary.primary,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Black,
                     )
@@ -275,8 +276,8 @@ fun SuperOverCard(
                         .background(
                             Brush.linearGradient(
                                 colors = listOf(
-                                    GoldDark.copy(alpha = 0.3f),
-                                    GoldPrimary.copy(alpha = 0.2f),
+                                    hierarchy.secondary.primary.copy(alpha = 0.3f),
+                                    hierarchy.secondary.primary.copy(alpha = 0.2f),
                                 ),
                             ),
                         )
@@ -287,13 +288,13 @@ fun SuperOverCard(
                         Icon(
                             imageVector = Icons.Default.EmojiEvents,
                             contentDescription = "Trophy",
-                            tint = GoldLight,
+                            tint = hierarchy.secondary.secondary,
                             modifier = Modifier.size(32.dp),
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
                             text = "${superOverData.winner} WINS!",
-                            color = GoldLight,
+                            color = hierarchy.secondary.secondary,
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Black,
                         )
@@ -342,6 +343,7 @@ private fun SuperOverTeamScore(
     isWinner: Boolean,
     flashPulse: Float,
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -349,7 +351,7 @@ private fun SuperOverTeamScore(
             .clip(RoundedCornerShape(12.dp))
             .background(
                 when {
-                    isWinner -> GoldDark.copy(alpha = 0.2f)
+                    isWinner -> hierarchy.secondary.primary.copy(alpha = 0.2f)
                     isBatting -> colors.statusInfo.copy(alpha = 0.1f * flashPulse)
                     else -> Color.Transparent
                 },
@@ -358,7 +360,7 @@ private fun SuperOverTeamScore(
     ) {
         Text(
             text = teamName,
-            color = if (isWinner) GoldLight else colors.textPrimary,
+            color = if (isWinner) hierarchy.secondary.secondary else colors.textPrimary,
             fontSize = 14.sp,
             fontWeight = FontWeight.Bold,
         )
@@ -368,7 +370,7 @@ private fun SuperOverTeamScore(
         Row(verticalAlignment = Alignment.Bottom) {
             Text(
                 text = "$score",
-                color = if (isWinner) GoldPrimary else colors.textPrimary,
+                color = if (isWinner) hierarchy.secondary.primary else colors.textPrimary,
                 fontSize = 36.sp,
                 fontWeight = FontWeight.Black,
             )
@@ -392,7 +394,7 @@ private fun SuperOverTeamScore(
             Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = "WINNER",
-                color = GoldPrimary,
+                color = hierarchy.secondary.primary,
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Bold,
             )

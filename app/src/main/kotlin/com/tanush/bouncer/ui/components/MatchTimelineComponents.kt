@@ -99,15 +99,16 @@ private fun TimelineItem(
     pulseOffset: Float
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val eventColor = when (event.type) {
         TimelineEvent.EventType.WICKET -> colors.statusLive
         TimelineEvent.EventType.SIX -> colors.statusWarning
         TimelineEvent.EventType.FOUR -> colors.statusInfo
-        TimelineEvent.EventType.FIFTY, TimelineEvent.EventType.HUNDRED -> colors.goldPrimary
+        TimelineEvent.EventType.FIFTY, TimelineEvent.EventType.HUNDRED -> hierarchy.secondary.primary
         TimelineEvent.EventType.HAT_TRICK -> colors.statusInfo
         TimelineEvent.EventType.INNINGS_START, TimelineEvent.EventType.INNINGS_END -> colors.statusInfo
         TimelineEvent.EventType.MATCH_START, TimelineEvent.EventType.MATCH_END -> colors.statusSuccess
-        TimelineEvent.EventType.MILESTONE -> colors.goldDark
+        TimelineEvent.EventType.MILESTONE -> hierarchy.secondary.primary
         TimelineEvent.EventType.OTHER -> colors.textTertiary
     }
     
@@ -275,7 +276,7 @@ fun PlayerSpotlightCard(
     imageUrl: String?,
     stats: List<TimelinePlayerStat>,
     modifier: Modifier = Modifier,
-    accentColor: Color = BouncerDesignSystem.colors.goldPrimary,
+    accentColor: Color = BouncerDesignSystem.hierarchy.secondary.primary,
     onClick: () -> Unit = {}
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "spotlight")
@@ -472,10 +473,11 @@ fun HeadToHeadCard(
     team1Wins: Int,
     team2Wins: Int,
     draws: Int,
-    team1Color: Color = BouncerDesignSystem.colors.goldPrimary,
+    team1Color: Color = BouncerDesignSystem.hierarchy.secondary.primary,
     team2Color: Color = BouncerDesignSystem.colors.statusInfo,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val totalMatches = team1Wins + team2Wins + draws
     val team1Percentage = if (totalMatches > 0) team1Wins.toFloat() / totalMatches else 0f
@@ -496,7 +498,7 @@ fun HeadToHeadCard(
         modifier = modifier.shadow(
             elevation = 12.dp,
             shape = RoundedCornerShape(20.dp),
-            spotColor = colors.goldPrimary.copy(alpha = 0.15f)
+            spotColor = hierarchy.secondary.primary.copy(alpha = 0.15f)
         ),
         shape = RoundedCornerShape(20.dp),
         color = GlassSurface
@@ -511,7 +513,7 @@ fun HeadToHeadCard(
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 1.5.sp,
-                color = colors.goldPrimary
+                color = hierarchy.secondary.primary
             )
             
             // Teams comparison
@@ -688,8 +690,9 @@ fun RunMeter(
     currentRuns: Int,
     targetRuns: Int,
     modifier: Modifier = Modifier,
-    accentColor: Color = BouncerDesignSystem.colors.goldPrimary
+    accentColor: Color = BouncerDesignSystem.hierarchy.secondary.primary
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val progress = (currentRuns.toFloat() / targetRuns).coerceIn(0f, 1f)
     

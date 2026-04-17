@@ -49,6 +49,7 @@ fun PremiumEmptyState(
     modifier: Modifier = Modifier
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val infiniteTransition = rememberInfiniteTransition(label = "empty")
     
     val iconFloat by infiniteTransition.animateFloat(
@@ -91,7 +92,7 @@ fun PremiumEmptyState(
                     .size(100.dp)
                     .blur(24.dp)
                     .alpha(glowAlpha)
-                    .background(colors.goldDark, CircleShape)
+                    .background(hierarchy.secondary.primary, CircleShape)
             )
             
             // Icon container
@@ -102,7 +103,7 @@ fun PremiumEmptyState(
                     .background(
                         brush = Brush.radialGradient(
                             colors = listOf(
-                                colors.goldDark.copy(alpha = 0.2f),
+                                hierarchy.secondary.primary.copy(alpha = 0.2f),
                                 GlassSurface
                             )
                         )
@@ -110,7 +111,7 @@ fun PremiumEmptyState(
                     .border(
                         width = 2.dp,
                         brush = Brush.linearGradient(
-                            colors = listOf(colors.goldDark, colors.goldLight.copy(alpha = 0.5f))
+                            colors = listOf(hierarchy.secondary.primary, hierarchy.secondary.secondary.copy(alpha = 0.5f))
                         ),
                         shape = CircleShape
                     ),
@@ -119,7 +120,7 @@ fun PremiumEmptyState(
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
-                    tint = colors.goldDark,
+                    tint = hierarchy.secondary.primary,
                     modifier = Modifier.size(40.dp)
                 )
             }
@@ -153,13 +154,13 @@ fun PremiumEmptyState(
                 onClick = onAction,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = colors.goldDark.copy(alpha = 0.2f),
-                    contentColor = colors.goldDark
+                    contentColor = hierarchy.secondary.primary
                 ),
                 shape = RoundedCornerShape(12.dp),
                 modifier = Modifier
                     .border(
                         width = 1.dp,
-                        color = colors.goldDark,
+                        color = hierarchy.secondary.primary,
                         shape = RoundedCornerShape(12.dp)
                     )
             ) {
@@ -439,6 +440,7 @@ fun NoMatchesState(
     message: String = "No matches scheduled",
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "noMatches")
     
@@ -482,7 +484,7 @@ fun NoMatchesState(
                     .size(80.dp)
                     .blur(20.dp)
                     .alpha(0.3f)
-                    .background(colors.goldDark, CircleShape)
+                    .background(hierarchy.secondary.primary, CircleShape)
             )
             
             // Ball
@@ -550,6 +552,7 @@ fun NoSearchResultsState(
     onClearSearch: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     Column(
         modifier = modifier
@@ -565,7 +568,7 @@ fun NoSearchResultsState(
                 .background(GlassSurface)
                 .border(
                     width = 1.dp,
-                    color = colors.goldDark.copy(alpha = 0.3f),
+                    color = hierarchy.secondary.primary.copy(alpha = 0.3f),
                     shape = CircleShape
                 ),
             contentAlignment = Alignment.Center
@@ -573,7 +576,7 @@ fun NoSearchResultsState(
             Icon(
                 imageVector = Icons.Default.SearchOff,
                 contentDescription = null,
-                tint = colors.goldDark.copy(alpha = 0.6f),
+                tint = hierarchy.secondary.primary.copy(alpha = 0.6f),
                 modifier = Modifier.size(40.dp)
             )
         }
@@ -602,12 +605,12 @@ fun NoSearchResultsState(
             onClick = onClearSearch,
             colors = ButtonDefaults.buttonColors(
                 containerColor = colors.goldDark.copy(alpha = 0.2f),
-                contentColor = colors.goldDark
+                contentColor = hierarchy.secondary.primary
             ),
             shape = RoundedCornerShape(12.dp),
             modifier = Modifier.border(
                 width = 1.dp,
-                color = colors.goldDark,
+                color = hierarchy.secondary.primary,
                 shape = RoundedCornerShape(12.dp)
             )
         ) {
@@ -625,6 +628,7 @@ fun ComingSoonState(
     feature: String,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "comingSoon")
     
@@ -650,7 +654,7 @@ fun ComingSoonState(
             contentAlignment = Alignment.Center
         ) {
             // Sparkle effects
-            val goldLight = colors.goldLight
+            val goldLight = hierarchy.secondary.secondary
             Canvas(modifier = Modifier.size(100.dp)) {
                 val points = listOf(
                     Offset(size.width * 0.2f, size.height * 0.3f),
@@ -693,7 +697,7 @@ fun ComingSoonState(
                     .background(
                         brush = Brush.radialGradient(
                             colors = listOf(
-                                colors.goldDark.copy(alpha = 0.2f),
+                                hierarchy.secondary.primary.copy(alpha = 0.2f),
                                 GlassSurface
                             )
                         )
@@ -701,7 +705,7 @@ fun ComingSoonState(
                     .border(
                         width = 2.dp,
                         brush = Brush.linearGradient(
-                            colors = listOf(colors.goldDark, colors.goldLight)
+                            colors = listOf(hierarchy.secondary.primary, hierarchy.secondary.secondary)
                         ),
                         shape = CircleShape
                     ),
@@ -710,7 +714,7 @@ fun ComingSoonState(
                 Icon(
                     imageVector = Icons.Default.AutoAwesome,
                     contentDescription = null,
-                    tint = colors.goldDark,
+                    tint = hierarchy.secondary.primary,
                     modifier = Modifier.size(36.dp)
                 )
             }
@@ -722,7 +726,7 @@ fun ComingSoonState(
         ) {
             Text(
                 text = "Coming Soon",
-                color = colors.goldDark,
+                color = hierarchy.secondary.primary,
                 fontSize = 22.sp,
                 fontWeight = FontWeight.Bold
             )

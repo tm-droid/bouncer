@@ -8,6 +8,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.models.CricketMatch
@@ -38,6 +39,7 @@ fun MatchScoreRow(
             text = score,
             color = if (emphasized) (teamTint ?: TextSecondary) else TextSecondary,
             fontWeight = if (emphasized) FontWeight.Black else FontWeight.Bold,
+            fontFamily = FontFamily.Monospace,
             fontSize = 28.sp
         )
     }

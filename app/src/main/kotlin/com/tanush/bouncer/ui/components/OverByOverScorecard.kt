@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.ui.theme.*
 import io.sentry.Sentry
+import com.tanush.bouncer.ui.theme.GoldPrimary
 
 /**
  * A single ball's result in an over
@@ -101,11 +102,12 @@ private fun getBallText(ball: BallResult): String {
 fun OverByOverScorecard(
     overs: List<OverSummary>,
     teamName: String,
-    teamColor: Color = BouncerDesignSystem.colors.goldPrimary,
+    teamColor: Color = BouncerDesignSystem.hierarchy.secondary.primary,
     modifier: Modifier = Modifier,
     onOverClick: ((OverSummary) -> Unit)? = null
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val listState = rememberLazyListState()
     
     val infiniteTransition = rememberInfiniteTransition(label = "scorecardShimmer")
@@ -125,7 +127,7 @@ fun OverByOverScorecard(
             .shadow(
                 elevation = 20.dp,
                 shape = RoundedCornerShape(28.dp),
-                spotColor = colors.goldPrimary.copy(alpha = 0.15f)
+                spotColor = hierarchy.secondary.primary.copy(alpha = 0.15f)
             ),
         colors = CardDefaults.cardColors(containerColor = GlassSurface),
         shape = RoundedCornerShape(28.dp),
@@ -133,9 +135,9 @@ fun OverByOverScorecard(
             0.5.dp,
             Brush.linearGradient(
                 colors = listOf(
-                    colors.goldLight.copy(alpha = 0.2f * shimmerOffset),
-                    colors.goldPrimary.copy(alpha = 0.15f),
-                    colors.goldLight.copy(alpha = 0.2f * (1 - shimmerOffset))
+                    hierarchy.secondary.secondary.copy(alpha = 0.2f * shimmerOffset),
+                    hierarchy.secondary.primary.copy(alpha = 0.15f),
+                    hierarchy.secondary.secondary.copy(alpha = 0.2f * (1 - shimmerOffset))
                 ),
                 start = Offset(shimmerOffset * 400, 0f),
                 end = Offset(shimmerOffset * 400 + 200, 100f)
@@ -156,7 +158,7 @@ fun OverByOverScorecard(
                     Icon(
                         Icons.Default.Timeline,
                         contentDescription = null,
-                        tint = colors.goldPrimary,
+                        tint = hierarchy.secondary.primary,
                         modifier = Modifier.size(20.dp)
                     )
                     Text(
@@ -166,7 +168,7 @@ fun OverByOverScorecard(
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.sp,
                             brush = Brush.verticalGradient(
-                                colors = listOf(Color.White, colors.goldPrimary, colors.goldDark)
+                                colors = listOf(Color.White, hierarchy.secondary.primary, hierarchy.secondary.primary)
                             )
                         )
                     )
@@ -220,23 +222,24 @@ private fun OverCard(
     teamColor: Color,
     onClick: (() -> Unit)?
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val hasWicket = over.wickets > 0
     val hasBoundary = over.balls.any { it.runs >= 4 }
     
     val cardColor = when {
-        hasWicket -> colors.goldPrimary.copy(alpha = 0.1f)
-        over.runs >= 12 -> colors.goldPrimary.copy(alpha = 0.1f)
+        hasWicket -> hierarchy.secondary.primary.copy(alpha = 0.1f)
+        over.runs >= 12 -> hierarchy.secondary.primary.copy(alpha = 0.1f)
         over.runs >= 8 -> StatusInfo.copy(alpha = 0.1f)
         over.runs == 0 -> SuccessGreen.copy(alpha = 0.08f) // Maiden
         else -> GlassSurface
     }
     
     val borderColor = when {
-        hasWicket -> colors.goldPrimary.copy(alpha = 0.3f)
-        over.runs >= 12 -> colors.goldPrimary.copy(alpha = 0.3f)
+        hasWicket -> hierarchy.secondary.primary.copy(alpha = 0.3f)
+        over.runs >= 12 -> hierarchy.secondary.primary.copy(alpha = 0.3f)
         over.runs == 0 -> SuccessGreen.copy(alpha = 0.3f)
-        else -> colors.goldPrimary.copy(alpha = 0.15f)
+        else -> hierarchy.secondary.primary.copy(alpha = 0.15f)
     }
     
     Surface(
@@ -268,7 +271,7 @@ private fun OverCard(
                 Surface(
                     shape = CircleShape,
                     color = when {
-                        over.runs >= 12 -> colors.goldPrimary.copy(alpha = 0.2f)
+                        over.runs >= 12 -> hierarchy.secondary.primary.copy(alpha = 0.2f)
                         over.runs >= 8 -> StatusInfo.copy(alpha = 0.2f)
                         over.runs == 0 -> SuccessGreen.copy(alpha = 0.2f)
                         else -> teamColor.copy(alpha = 0.15f)
@@ -277,7 +280,7 @@ private fun OverCard(
                     Text(
                         text = over.runs.toString(),
                         color = when {
-                            over.runs >= 12 -> colors.goldPrimary
+                            over.runs >= 12 -> hierarchy.secondary.primary
                             over.runs >= 8 -> StatusInfo
                             over.runs == 0 -> SuccessGreen
                             else -> teamColor
@@ -354,6 +357,7 @@ private fun BallRow(balls: List<BallResult>) {
  */
 @Composable
 private fun BallChip(ball: BallResult) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val color = getBallColor(ball)
     val text = getBallText(ball)
@@ -383,7 +387,7 @@ private fun BallChip(ball: BallResult) {
         modifier = Modifier
             .size(32.dp)
             .then(
-                if (isWicket) Modifier.shadow(4.dp, CircleShape, spotColor = colors.goldPrimary.copy(alpha = 0.3f * wicketPulseAlpha))
+                if (isWicket) Modifier.shadow(4.dp, CircleShape, spotColor = hierarchy.secondary.primary.copy(alpha = 0.3f * wicketPulseAlpha))
                 else Modifier
             )
     ) {
@@ -481,10 +485,11 @@ fun CompactBallIndicator(
     result: String,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val color = when {
-        result == "W" -> colors.goldPrimary
-        result == "6" -> colors.goldPrimary
+        result == "W" -> hierarchy.secondary.primary
+        result == "6" -> hierarchy.secondary.primary
         result == "4" -> StatusInfo
         result == "WD" || result == "NB" -> WarningOrange
         result == "0" || result == "." -> colors.textMuted
@@ -517,6 +522,7 @@ fun RecentOversStrip(
     count: Int = 5,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val recentOvers = overs.takeLast(count)
     
@@ -524,7 +530,7 @@ fun RecentOversStrip(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
         color = GlassSurface,
-        border = BorderStroke(0.5.dp, colors.goldPrimary.copy(alpha = 0.12f))
+        border = BorderStroke(0.5.dp, hierarchy.secondary.primary.copy(alpha = 0.12f))
     ) {
         Row(
             modifier = Modifier
@@ -546,8 +552,8 @@ fun RecentOversStrip(
                 recentOvers.forEach { over ->
                     val hasWicket = over.wickets > 0
                     val color = when {
-                        hasWicket -> colors.goldPrimary
-                        over.runs >= 10 -> colors.goldPrimary
+                        hasWicket -> hierarchy.secondary.primary
+                        over.runs >= 10 -> hierarchy.secondary.primary
                         over.runs >= 6 -> StatusInfo
                         over.runs == 0 -> SuccessGreen
                         else -> colors.textSecondary

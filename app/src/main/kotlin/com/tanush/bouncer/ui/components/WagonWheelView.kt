@@ -58,9 +58,10 @@ fun WagonWheelView(
     showStats: Boolean = true
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     // Capture colors for Canvas scopes (non-composable)
-    val goldPrimaryColor = colors.goldPrimary
-    val goldDarkColor = colors.goldDark
+    val goldPrimaryColor = hierarchy.secondary.primary
+    val goldDarkColor = hierarchy.secondary.primary
     val glassBorderColor = colors.glassBorder
     val statusWarningColor = colors.statusWarning
     val statusLiveColor = colors.statusLive
@@ -98,7 +99,7 @@ fun WagonWheelView(
             .shadow(
                 elevation = 16.dp,
                 shape = RoundedCornerShape(24.dp),
-                spotColor = colors.goldPrimary.copy(alpha = 0.12f),
+                spotColor = hierarchy.secondary.primary.copy(alpha = 0.12f),
                 ambientColor = Color.Black.copy(alpha = 0.25f)
             ),
         shape = RoundedCornerShape(24.dp),
@@ -127,7 +128,7 @@ fun WagonWheelView(
                         text = batsmanName,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Medium,
-                        color = colors.goldPrimary
+                        color = hierarchy.secondary.primary
                     )
                 }
                 
@@ -158,11 +159,11 @@ fun WagonWheelView(
                         2.dp,
                         Brush.sweepGradient(
                             colors = listOf(
-                                colors.goldPrimary.copy(alpha = 0.3f),
+                                hierarchy.secondary.primary.copy(alpha = 0.3f),
                                 colors.glassBorder,
-                                colors.goldPrimary.copy(alpha = 0.5f),
+                                hierarchy.secondary.primary.copy(alpha = 0.5f),
                                 colors.glassBorder,
-                                colors.goldPrimary.copy(alpha = 0.3f)
+                                hierarchy.secondary.primary.copy(alpha = 0.3f)
                             )
                         ),
                         CircleShape

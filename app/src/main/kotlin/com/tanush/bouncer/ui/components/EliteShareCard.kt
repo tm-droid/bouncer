@@ -45,6 +45,8 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
 import io.sentry.Sentry
+import com.tanush.bouncer.ui.theme.GoldPrimary
+import com.tanush.bouncer.ui.theme.GoldLight
 
 /**
  * EliteShareCard - Premium Social Media Share Image Generator
@@ -94,6 +96,7 @@ fun EliteShareCardPreview(
     onShareClick: () -> Unit = {}
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val infiniteTransition = rememberInfiniteTransition(label = "shareCard")
     val shimmerOffset by infiniteTransition.animateFloat(
         initialValue = -500f,
@@ -110,7 +113,7 @@ fun EliteShareCardPreview(
             .shadow(
                 elevation = 16.dp,
                 shape = RoundedCornerShape(20.dp),
-                spotColor = colors.goldPrimary.copy(alpha = 0.3f)
+                spotColor = GoldPrimary.copy(alpha = 0.3f)
             )
             .clip(RoundedCornerShape(20.dp))
             .background(
@@ -126,9 +129,9 @@ fun EliteShareCardPreview(
                 width = 1.5.dp,
                 brush = Brush.linearGradient(
                     colors = listOf(
-                        colors.goldPrimary.copy(alpha = 0.5f),
-                        colors.goldLight.copy(alpha = 0.2f),
-                        colors.goldPrimary.copy(alpha = 0.5f)
+                        GoldPrimary.copy(alpha = 0.5f),
+                        GoldLight.copy(alpha = 0.2f),
+                        GoldPrimary.copy(alpha = 0.5f)
                     )
                 ),
                 shape = RoundedCornerShape(20.dp)
@@ -200,20 +203,20 @@ fun EliteShareCardPreview(
                             .background(
                                 Brush.radialGradient(
                                     colors = listOf(
-                                        colors.goldPrimary.copy(alpha = 0.3f),
+                                        GoldPrimary.copy(alpha = 0.3f),
                                         Color.Transparent
                                     )
                                 ),
                                 CircleShape
                             )
-                            .border(2.dp, colors.goldPrimary.copy(alpha = 0.5f), CircleShape),
+                            .border(2.dp, GoldPrimary.copy(alpha = 0.5f), CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
                             text = data.team1Name.take(3).uppercase(),
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Black,
-                            color = colors.goldPrimary
+                            color = GoldPrimary
                         )
                     }
                     
@@ -231,7 +234,7 @@ fun EliteShareCardPreview(
                         text = data.team1Score,
                         fontSize = 28.sp,
                         fontWeight = FontWeight.Black,
-                        color = colors.goldPrimary
+                        color = GoldPrimary
                     )
                 }
                 
@@ -334,14 +337,14 @@ fun EliteShareCardPreview(
                         .background(
                             Brush.horizontalGradient(
                                 colors = listOf(
-                                    colors.goldPrimary.copy(alpha = 0.1f),
-                                    colors.goldPrimary.copy(alpha = 0.2f),
-                                    colors.goldPrimary.copy(alpha = 0.1f)
+                                    GoldPrimary.copy(alpha = 0.1f),
+                                    GoldPrimary.copy(alpha = 0.2f),
+                                    GoldPrimary.copy(alpha = 0.1f)
                                 )
                             ),
                             RoundedCornerShape(12.dp)
                         )
-                        .border(1.dp, colors.goldPrimary.copy(alpha = 0.3f), RoundedCornerShape(12.dp))
+                        .border(1.dp, GoldPrimary.copy(alpha = 0.3f), RoundedCornerShape(12.dp))
                         .padding(16.dp)
                 ) {
                     Column(
@@ -352,7 +355,7 @@ fun EliteShareCardPreview(
                             text = "KEY PERFORMER",
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
-                            color = colors.goldLight,
+                            color = GoldLight,
                             letterSpacing = 1.5.sp
                         )
                         Spacer(modifier = Modifier.height(8.dp))
@@ -360,7 +363,7 @@ fun EliteShareCardPreview(
                             text = player,
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
-                            color = colors.goldPrimary
+                            color = GoldPrimary
                         )
                         data.keyPlayerStat?.let { stat ->
                             Text(
@@ -396,7 +399,7 @@ fun EliteShareCardPreview(
                     text = "BOUNCER",
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Black,
-                    color = colors.goldPrimary,
+                    color = GoldPrimary,
                     letterSpacing = 4.sp,
                     modifier = Modifier.padding(horizontal = 16.dp)
                 )
@@ -451,6 +454,7 @@ private fun WinProbabilityShareBar(
     team1Name: String,
     team2Name: String
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
@@ -461,7 +465,7 @@ private fun WinProbabilityShareBar(
                 text = "${(probability * 100).toInt()}%",
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
-                color = if (probability > 0.5f) colors.statusSuccess else colors.goldPrimary
+                color = if (probability > 0.5f) colors.statusSuccess else hierarchy.secondary.primary
             )
             Text(
                 text = "WIN PROBABILITY",
@@ -495,7 +499,7 @@ private fun WinProbabilityShareBar(
                         .fillMaxHeight()
                         .background(
                             Brush.horizontalGradient(
-                                colors = listOf(colors.goldDark, colors.goldPrimary)
+                                colors = listOf(hierarchy.secondary.primary, hierarchy.secondary.primary)
                             )
                         )
                 )

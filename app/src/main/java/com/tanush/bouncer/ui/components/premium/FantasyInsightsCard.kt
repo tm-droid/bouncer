@@ -44,6 +44,7 @@ fun FantasyInsightsCard(
     topPicks: List<FantasyPlayer> = emptyList()
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val picks = if (topPicks.isEmpty()) {
         listOf(
             FantasyPlayer("Virat Kohli", 145, 0.88f, "BAT", true),
@@ -116,7 +117,7 @@ fun FantasyInsightsCard(
                     .padding(12.dp)
             ) {
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Star, null, tint = colors.goldPrimary, modifier = Modifier.size(14.dp))
+                    Icon(Icons.Default.Star, null, tint = hierarchy.secondary.primary, modifier = Modifier.size(14.dp))
                     Text(
                         "Kohli averages 64.2 against Starc at this venue. Ideal captaincy choice.",
                         color = TextSecondary,
@@ -131,6 +132,7 @@ fun FantasyInsightsCard(
 
 @Composable
 private fun FantasyPlayerRow(player: FantasyPlayer) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -154,7 +156,7 @@ private fun FantasyPlayerRow(player: FantasyPlayer) {
                         Box(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(4.dp))
-                                .background(colors.goldPrimary)
+                                .background(hierarchy.secondary.primary)
                                 .padding(horizontal = 4.dp, vertical = 1.dp)
                         ) {
                             Text("C", color = Color.Black, fontSize = 8.sp, fontWeight = FontWeight.Black)

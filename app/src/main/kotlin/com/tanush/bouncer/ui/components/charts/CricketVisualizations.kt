@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.ui.theme.*
 import kotlin.math.*
 import io.sentry.Sentry
+import com.tanush.bouncer.ui.theme.GoldPrimary
 
 /**
  * Shot data for wagon wheel visualization
@@ -59,6 +60,7 @@ fun EnhancedWagonWheel(
     onSectorSelected: ((String, List<EnhancedShotData>) -> Unit)? = null,
     onShotSelected: ((EnhancedShotData) -> Unit)? = null
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     var selectedSector by remember { mutableStateOf<String?>(null) }
     var selectedShot by remember { mutableStateOf<EnhancedShotData?>(null) }
     
@@ -90,7 +92,7 @@ fun EnhancedWagonWheel(
             .shadow(
                 elevation = 16.dp,
                 shape = RoundedCornerShape(24.dp),
-                spotColor = GoldPrimary.copy(alpha = 0.1f)
+                spotColor = hierarchy.secondary.primary.copy(alpha = 0.1f)
             ),
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(containerColor = GlassSurface)
@@ -116,7 +118,7 @@ fun EnhancedWagonWheel(
                     Text(
                         text = batsmanName,
                         fontSize = 12.sp,
-                        color = GoldPrimary
+                        color = hierarchy.secondary.primary
                     )
                 }
                 
@@ -126,7 +128,7 @@ fun EnhancedWagonWheel(
                         StatBadge(count.toString(), "4s", StatusInfo)
                     }
                     shots.filter { it.runs == 6 }.size.let { count ->
-                        StatBadge(count.toString(), "6s", GoldPrimary)
+                        StatBadge(count.toString(), "6s", hierarchy.secondary.primary)
                     }
                 }
             }
@@ -143,9 +145,9 @@ fun EnhancedWagonWheel(
                         2.dp,
                         Brush.sweepGradient(
                             colors = listOf(
-                                GoldPrimary.copy(alpha = 0.4f),
+                                hierarchy.secondary.primary.copy(alpha = 0.4f),
                                 GlassBorder,
-                                GoldPrimary.copy(alpha = 0.6f),
+                                hierarchy.secondary.primary.copy(alpha = 0.6f),
                                 GlassBorder
                             )
                         ),
@@ -260,7 +262,7 @@ fun EnhancedWagonWheel(
                     
                     // Boundary circle
                     drawCircle(
-                        color = GoldPrimary.copy(alpha = 0.6f),
+                        color = hierarchy.secondary.primary.copy(alpha = 0.6f),
                         radius = maxRadius,
                         center = Offset(centerX, centerY),
                         style = Stroke(width = 2.dp.toPx())
@@ -293,7 +295,7 @@ fun EnhancedWagonWheel(
                         // Velocity-based color interpolation
                         val velocityColor = when {
                             shot.isWicket -> StatusLive
-                            shot.runs == 6 -> GoldPrimary
+                            shot.runs == 6 -> hierarchy.secondary.primary
                             shot.runs == 4 -> StatusInfo
                             else -> Color(
                                 red = lerp(StatusInfo.red, ChartOrange.red, shot.velocity),
@@ -367,7 +369,7 @@ fun EnhancedWagonWheel(
                         
                         if (isSelected) {
                             drawCircle(
-                                color = GoldPrimary,
+                                color = hierarchy.secondary.primary,
                                 radius = dotRadius * pulseScale + 4.dp.toPx(),
                                 center = Offset(endX, endY),
                                 style = Stroke(width = 2.dp.toPx())
@@ -387,7 +389,7 @@ fun EnhancedWagonWheel(
                     // Center batsman indicator
                     drawCircle(
                         brush = Brush.radialGradient(
-                            colors = listOf(GoldPrimary, GoldPrimary),
+                            colors = listOf(hierarchy.secondary.primary, hierarchy.secondary.primary),
                             center = Offset(centerX, centerY)
                         ),
                         radius = 10.dp.toPx(),
@@ -407,6 +409,7 @@ fun EnhancedWagonWheel(
 
 @Composable
 private fun SelectedShotInfo(shot: EnhancedShotData) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -440,7 +443,7 @@ private fun SelectedShotInfo(shot: EnhancedShotData) {
                     .background(
                         when {
                             shot.isWicket -> StatusLive
-                            shot.runs == 6 -> GoldPrimary
+                            shot.runs == 6 -> hierarchy.secondary.primary
                             shot.runs == 4 -> StatusInfo
                             else -> StatusInfo
                         }.copy(alpha = 0.2f),
@@ -459,7 +462,7 @@ private fun SelectedShotInfo(shot: EnhancedShotData) {
                     fontWeight = FontWeight.Bold,
                     color = when {
                         shot.isWicket -> StatusLive
-                        shot.runs == 6 -> GoldPrimary
+                        shot.runs == 6 -> hierarchy.secondary.primary
                         shot.runs == 4 -> StatusInfo
                         else -> StatusInfo
                     }
@@ -960,6 +963,7 @@ private fun OverComparisonCard(
     team1Color: Color,
     team2Color: Color
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -971,7 +975,7 @@ private fun OverComparisonCard(
         Text(
             text = "Over $over",
             fontWeight = FontWeight.Bold,
-            color = GoldPrimary,
+            color = hierarchy.secondary.primary,
             fontSize = 14.sp
         )
         
@@ -1010,6 +1014,7 @@ fun WinProbabilityGaugeAnimated(
     confidenceBand: Float = 0.1f,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val animatedProbability by animateFloatAsState(
         targetValue = team1Probability.coerceIn(0f, 1f),
         animationSpec = spring(
@@ -1045,7 +1050,7 @@ fun WinProbabilityGaugeAnimated(
         ) {
             Text(
                 text = "WIN PROBABILITY",
-                color = GoldPrimary,
+                color = hierarchy.secondary.primary,
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Black,
                 letterSpacing = 1.5.sp

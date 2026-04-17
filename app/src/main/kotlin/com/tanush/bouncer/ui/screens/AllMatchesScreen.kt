@@ -35,6 +35,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.ui.components.EmptyStateView
 import com.tanush.bouncer.ui.components.PremiumMatchListCard
 import com.tanush.bouncer.ui.components.core.MatchCardSkeleton
@@ -44,6 +45,7 @@ import com.tanush.bouncer.ui.theme.*
 import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 import com.tanush.bouncer.viewmodels.LoadingState
 import com.tanush.bouncer.viewmodels.LiveActivityViewModel
+import com.tanush.bouncer.ui.theme.GoldPrimary
 
 private val ALL_MATCH_STATUS_FILTERS = listOf("Live", "Upcoming", "Recent")
 private val ALL_MATCH_FORMAT_FILTERS = listOf("All", "T20", "ODI", "Test")
@@ -60,6 +62,7 @@ private fun GoldGradientDivider(
     modifier: Modifier = Modifier
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     Box(
         modifier = modifier
             .fillMaxWidth()
@@ -68,9 +71,9 @@ private fun GoldGradientDivider(
             .background(
                 Brush.horizontalGradient(
                     0.0f to Color.Transparent,
-                    0.3f to colors.goldPrimary.copy(alpha = 0.4f),
-                    0.5f to colors.goldPrimary.copy(alpha = 0.6f),
-                    0.7f to colors.goldPrimary.copy(alpha = 0.4f),
+                    0.3f to hierarchy.secondary.primary.copy(alpha = 0.4f),
+                    0.5f to hierarchy.secondary.primary.copy(alpha = 0.6f),
+                    0.7f to hierarchy.secondary.primary.copy(alpha = 0.4f),
                     1.0f to Color.Transparent
                 )
             )
@@ -87,6 +90,7 @@ private fun SectionHeader(
     showLiveDot: Boolean = false,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     Row(
         modifier = modifier
@@ -115,7 +119,7 @@ private fun SectionHeader(
         }
         Text(
             text = title.uppercase(),
-            color = colors.goldPrimary,
+            color = hierarchy.secondary.primary,
             fontSize = 11.sp,
             fontWeight = FontWeight.Bold,
             letterSpacing = 2.sp,
@@ -168,11 +172,11 @@ private fun GlassFilterPill(
         contentAlignment = Alignment.Center
     ) {
         Text(
-            text = text.uppercase(),
+            text = text,
             color = textColor,
             fontSize = 12.sp,
             fontWeight = FontWeight.Bold,
-            letterSpacing = 1.sp
+            letterSpacing = 0.5.sp
         )
     }
 }
@@ -186,10 +190,11 @@ private fun GlassSearchBar(
     onQueryChange: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     var isFocused by remember { mutableStateOf(false) }
     val borderColor by animateColorAsState(
-        targetValue = if (isFocused) colors.goldPrimary.copy(alpha = 0.6f) else colors.glassBorder,
+        targetValue = if (isFocused) hierarchy.secondary.primary.copy(alpha = 0.6f) else colors.glassBorder,
         animationSpec = tween(250),
         label = "searchBorder"
     )
@@ -202,7 +207,7 @@ private fun GlassSearchBar(
             color = colors.textPrimary,
             fontSize = 14.sp
         ),
-        cursorBrush = SolidColor(colors.goldPrimary),
+        cursorBrush = SolidColor(hierarchy.secondary.primary),
         modifier = modifier
             .fillMaxWidth()
             .height(BouncerDesignSystem.dimens.minTouchTarget)
@@ -221,7 +226,7 @@ private fun GlassSearchBar(
                 Icon(
                     Icons.Default.Search,
                     contentDescription = "Search",
-                    tint = if (isFocused) colors.goldPrimary else colors.textTertiary,
+                    tint = if (isFocused) hierarchy.secondary.primary else colors.textTertiary,
                     modifier = Modifier.size(20.dp)
                 )
                 Box(modifier = Modifier.weight(1f)) {
@@ -300,7 +305,7 @@ fun AllMatchesScreen(
                     Column(verticalArrangement = Arrangement.spacedBy(dimens.xxs)) {
                         Text(
                             text = "All Matches",
-                            color = colors.goldPrimary,
+                            color = GoldPrimary,
                             style = typography.headingLarge
                         )
                         Text(
@@ -317,12 +322,12 @@ fun AllMatchesScreen(
                             .padding(start = dimens.sm)
                             .clip(CircleShape)
                             .background(colors.glassSurface)
-                            .border(1.dp, colors.goldPrimary.copy(alpha = 0.2f), CircleShape)
+                            .border(1.dp, GoldPrimary.copy(alpha = 0.2f), CircleShape)
                     ) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back",
-                            tint = colors.goldPrimary
+                            tint = GoldPrimary
                         )
                     }
                 },
@@ -332,12 +337,12 @@ fun AllMatchesScreen(
                         modifier = Modifier
                             .clip(CircleShape)
                             .background(colors.glassSurface)
-                            .border(1.dp, colors.goldPrimary.copy(alpha = 0.2f), CircleShape)
+                            .border(1.dp, GoldPrimary.copy(alpha = 0.2f), CircleShape)
                     ) {
                         Icon(
                             Icons.Default.Refresh,
                             contentDescription = "Refresh",
-                            tint = colors.goldPrimary
+                            tint = GoldPrimary
                         )
                     }
                 },
@@ -357,7 +362,7 @@ fun AllMatchesScreen(
                     drawCircle(
                         brush = Brush.radialGradient(
                             colors = listOf(
-                                colors.goldPrimary.copy(alpha = 0.08f),
+                                GoldPrimary.copy(alpha = 0.08f),
                                 Color.Transparent
                             ),
                             center = Offset(size.width / 2f, 0f),

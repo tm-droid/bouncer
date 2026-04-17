@@ -77,6 +77,7 @@ fun TournamentStandingsCard(
     modifier: Modifier = Modifier,
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val animatedProgress = remember { Animatable(0f) }
 
     LaunchedEffect(standings) {
@@ -110,7 +111,7 @@ fun TournamentStandingsCard(
                             .clip(CircleShape)
                             .background(
                                 Brush.linearGradient(
-                                    colors = listOf(colors.goldDark, colors.goldPrimary),
+                                    colors = listOf(hierarchy.secondary.primary, hierarchy.secondary.primary),
                                 ),
                             ),
                         contentAlignment = Alignment.Center,
@@ -128,7 +129,7 @@ fun TournamentStandingsCard(
                     Column {
                         Text(
                             text = "POINTS TABLE",
-                            color = colors.goldLight,
+                            color = hierarchy.secondary.secondary,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.5.sp,
@@ -224,7 +225,7 @@ fun TournamentStandingsCard(
                             .clip(RoundedCornerShape(8.dp))
                             .background(
                                 when {
-                                    isHighlighted -> colors.goldPrimary.copy(alpha = 0.2f)
+                                    isHighlighted -> hierarchy.secondary.primary.copy(alpha = 0.2f)
                                     isQualifyingPosition -> colors.statusSuccess.copy(alpha = 0.05f)
                                     else -> Color(0xFF2D2D44).copy(alpha = 0.5f)
                                 },
@@ -239,7 +240,7 @@ fun TournamentStandingsCard(
                                 .clip(CircleShape)
                                 .background(
                                     when (team.position) {
-                                        1 -> colors.goldDark
+                                        1 -> hierarchy.secondary.primary
                                         2 -> Color(0xFFC0C0C0)
                                         3 -> Color(0xFFCD7F32)
                                         in 1..4 -> colors.statusSuccess.copy(alpha = 0.3f)
@@ -262,7 +263,7 @@ fun TournamentStandingsCard(
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = team.teamCode,
-                                color = if (isHighlighted) colors.goldDark else colors.textPrimary,
+                                color = if (isHighlighted) hierarchy.secondary.primary else colors.textPrimary,
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Bold,
                             )
@@ -320,7 +321,7 @@ fun TournamentStandingsCard(
 
                         Text(
                             text = "${team.points}",
-                            color = colors.goldDark,
+                            color = hierarchy.secondary.primary,
                             fontSize = 15.sp,
                             fontWeight = FontWeight.Bold,
                             modifier = Modifier.width(36.dp),

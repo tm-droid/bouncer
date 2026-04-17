@@ -56,6 +56,7 @@ fun CatchDroppedCard(
     modifier: Modifier = Modifier,
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val infiniteTransition = rememberInfiniteTransition(label = "catch")
 
     val glowAlpha by infiniteTransition.animateFloat(
@@ -123,7 +124,7 @@ fun CatchDroppedCard(
                     Column {
                         Text(
                             text = "FIELDING REVIEW",
-                            color = colors.goldDark,
+                            color = hierarchy.secondary.primary,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.5.sp,
@@ -184,7 +185,7 @@ fun CatchDroppedCard(
                 CatchStatColumn(
                     value = "${catchSuccess.toInt()}%",
                     label = "Success Rate",
-                    color = colors.goldDark,
+                    color = hierarchy.secondary.primary,
                 )
             }
 
@@ -211,13 +212,14 @@ private fun CatchSuccessRing(
     progress: Float,
     glowAlpha: Float,
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     Box(
         modifier = Modifier.size(60.dp),
         contentAlignment = Alignment.Center,
     ) {
         val statusSuccessC = colors.statusSuccess
-        val goldDarkC = colors.goldDark
+        val goldDarkC = hierarchy.secondary.primary
         Canvas(modifier = Modifier.fillMaxSize()) {
             val strokeWidth = 6.dp.toPx()
             val radius = (size.minDimension - strokeWidth) / 2
@@ -286,6 +288,7 @@ private fun CatchEventRow(
     progress: Float,
     index: Int,
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val delayedProgress = ((progress - index * 0.1f) / 0.9f).coerceIn(0f, 1f)
 
@@ -349,7 +352,7 @@ private fun CatchEventRow(
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = catchEvent.catchType,
-                    color = colors.goldDark,
+                    color = hierarchy.secondary.primary,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Medium,
                 )

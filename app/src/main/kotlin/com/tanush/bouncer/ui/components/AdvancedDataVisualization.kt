@@ -31,6 +31,7 @@ import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.sin
+import com.tanush.bouncer.ui.theme.GoldPrimary
 
 /**
  * Premium win probability dial with animated needle
@@ -50,6 +51,7 @@ fun WinProbabilityDial(
         label = "probability"
     )
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     
     val infiniteTransition = rememberInfiniteTransition(label = "dial")
     val glowPulse by infiniteTransition.animateFloat(
@@ -67,7 +69,7 @@ fun WinProbabilityDial(
             .shadow(
                 elevation = 16.dp,
                 shape = RoundedCornerShape(24.dp),
-                spotColor = colors.goldPrimary.copy(alpha = 0.2f)
+                spotColor = hierarchy.secondary.primary.copy(alpha = 0.2f)
             ),
         shape = RoundedCornerShape(24.dp),
         color = colors.glassSurface
@@ -85,7 +87,7 @@ fun WinProbabilityDial(
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 1.5.sp,
-                color = colors.goldPrimary
+                color = hierarchy.secondary.primary
             )
             
             // Dial
@@ -236,6 +238,7 @@ fun OverComparisonChart(
     team2Color: Color = StatusInfo,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val maxRuns = maxOf(team1Runs.maxOrNull() ?: 0, team2Runs.maxOrNull() ?: 0, 12)
     var selectedOver by remember { mutableStateOf<Int?>(null) }
     val colors = BouncerDesignSystem.colors
@@ -244,7 +247,7 @@ fun OverComparisonChart(
         modifier = modifier.shadow(
             elevation = 12.dp,
             shape = RoundedCornerShape(20.dp),
-            spotColor = colors.goldPrimary.copy(alpha = 0.15f)
+            spotColor = hierarchy.secondary.primary.copy(alpha = 0.15f)
         ),
         shape = RoundedCornerShape(20.dp),
         color = colors.glassSurface
@@ -266,7 +269,7 @@ fun OverComparisonChart(
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 1.5.sp,
-                    color = colors.goldPrimary
+                    color = hierarchy.secondary.primary
                 )
                 
                 // Legend
@@ -420,12 +423,13 @@ fun BoundaryDistributionChart(
     triples: Int,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val total = fours + sixes + dots + singles + doubles + triples
     if (total == 0) return
     val colors = BouncerDesignSystem.colors
     
     val data = listOf(
-        ChartSegment("6s", sixes, colors.goldPrimary),
+        ChartSegment("6s", sixes, hierarchy.secondary.primary),
         ChartSegment("4s", fours, colors.statusInfo),
         ChartSegment("3s", triples, colors.statusInfo),
         ChartSegment("2s", doubles, colors.statusInfo),
@@ -450,7 +454,7 @@ fun BoundaryDistributionChart(
         modifier = modifier.shadow(
             elevation = 12.dp,
             shape = RoundedCornerShape(20.dp),
-            spotColor = colors.goldPrimary.copy(alpha = 0.15f)
+            spotColor = hierarchy.secondary.primary.copy(alpha = 0.15f)
         ),
         shape = RoundedCornerShape(20.dp),
         color = colors.glassSurface
@@ -466,7 +470,7 @@ fun BoundaryDistributionChart(
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 1.5.sp,
-                color = colors.goldPrimary
+                color = hierarchy.secondary.primary
             )
             
             Row(
@@ -572,6 +576,7 @@ fun InningsProgressTracker(
     projectedScore: Int?,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val progress = (currentOver / totalOvers).coerceIn(0f, 1f)
     val colors = BouncerDesignSystem.colors
     
@@ -596,7 +601,7 @@ fun InningsProgressTracker(
         modifier = modifier.shadow(
             elevation = 12.dp,
             shape = RoundedCornerShape(20.dp),
-            spotColor = colors.goldPrimary.copy(alpha = 0.15f)
+            spotColor = hierarchy.secondary.primary.copy(alpha = 0.15f)
         ),
         shape = RoundedCornerShape(20.dp),
         color = colors.glassSurface
@@ -617,19 +622,19 @@ fun InningsProgressTracker(
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 1.5.sp,
-                    color = colors.goldPrimary
+                    color = hierarchy.secondary.primary
                 )
                 
                 if (projectedScore != null) {
                     Surface(
                         shape = RoundedCornerShape(8.dp),
-                        color = colors.goldPrimary.copy(alpha = 0.12f)
+                        color = hierarchy.secondary.primary.copy(alpha = 0.12f)
                     ) {
                         Text(
                             text = "Projected: $projectedScore",
                             fontSize = 11.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = colors.goldPrimary,
+                            color = hierarchy.secondary.primary,
                             modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
                         )
                     }
@@ -662,9 +667,9 @@ fun InningsProgressTracker(
                         .background(
                             Brush.horizontalGradient(
                                 colors = listOf(
-                                    colors.goldDark,
-                                    colors.goldPrimary,
-                                    colors.goldLight
+                                    hierarchy.secondary.primary,
+                                    hierarchy.secondary.primary,
+                                    hierarchy.secondary.secondary
                                 )
                             )
                         )
@@ -681,14 +686,14 @@ fun InningsProgressTracker(
                             drawCircle(
                                 brush = Brush.radialGradient(
                                     colors = listOf(
-                                        colors.goldPrimary.copy(alpha = 0.5f),
+                                        hierarchy.secondary.primary.copy(alpha = 0.5f),
                                         Color.Transparent
                                     )
                                 ),
                                 radius = size.maxDimension
                             )
                         }
-                        .background(colors.goldPrimary, CircleShape)
+                        .background(hierarchy.secondary.primary, CircleShape)
                         .border(2.dp, colors.textPrimary, CircleShape),
                     contentAlignment = Alignment.Center
                 ) {

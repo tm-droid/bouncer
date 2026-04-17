@@ -45,11 +45,12 @@ fun SearchBar(
     placeholder: String = "Search matches...",
     enabled: Boolean = true
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val haptic = rememberHapticFeedback()
     var isFocused by remember { mutableStateOf(false) }
     
     val borderColor by animateColorAsState(
-        targetValue = if (isFocused) GoldPrimary else GlassBorder,
+        targetValue = if (isFocused) hierarchy.secondary.primary else GlassBorder,
         animationSpec = tween(300),
         label = "searchBorder"
     )
@@ -71,7 +72,7 @@ fun SearchBar(
             .shadow(
                 elevation = if (isFocused) 8.dp else 2.dp,
                 shape = RoundedCornerShape(16.dp),
-                spotColor = if (isFocused) GoldPrimary.copy(alpha = 0.3f) else Color.Black.copy(
+                spotColor = if (isFocused) hierarchy.secondary.primary.copy(alpha = 0.3f) else Color.Black.copy(
                     alpha = 0.1f
                 )
             )
@@ -90,7 +91,7 @@ fun SearchBar(
         Icon(
             imageVector = Icons.Default.Search,
             contentDescription = "Search",
-            tint = if (isFocused) GoldPrimary.copy(alpha = shimmer) else TextSecondary,
+            tint = if (isFocused) hierarchy.secondary.primary.copy(alpha = shimmer) else TextSecondary,
             modifier = Modifier.size(22.dp)
         )
         
@@ -119,7 +120,7 @@ fun SearchBar(
                 ),
                 singleLine = true,
                 enabled = enabled,
-                cursorBrush = SolidColor(GoldPrimary),
+                cursorBrush = SolidColor(hierarchy.secondary.primary),
                 keyboardOptions = KeyboardOptions(
                     imeAction = ImeAction.Search
                 ),
@@ -190,6 +191,7 @@ private fun FilterChip(
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val scale by animateFloatAsState(
         targetValue = if (isSelected) 1.05f else 1f,
         animationSpec = spring(
@@ -213,8 +215,8 @@ private fun FilterChip(
                 brush = if (isSelected) {
                     Brush.linearGradient(
                         colors = listOf(
-                            GoldPrimary,
-                            GoldPrimary
+                            hierarchy.secondary.primary,
+                            hierarchy.secondary.primary
                         )
                     )
                 } else {
@@ -249,6 +251,7 @@ fun SortButton(
     onSortChange: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     var expanded by remember { mutableStateOf(false) }
     val haptic = rememberHapticFeedback()
     
@@ -259,8 +262,8 @@ fun SortButton(
                 .background(
                     Brush.horizontalGradient(
                         colors = listOf(
-                            GoldPrimary.copy(alpha = 0.2f),
-                            GoldPrimary.copy(alpha = 0.15f)
+                            hierarchy.secondary.primary.copy(alpha = 0.2f),
+                            hierarchy.secondary.primary.copy(alpha = 0.15f)
                         )
                     ),
                     RoundedCornerShape(12.dp)
@@ -276,12 +279,12 @@ fun SortButton(
             Icon(
                 imageVector = Icons.Default.Search,
                 contentDescription = "Sort",
-                tint = GoldPrimary,
+                tint = hierarchy.secondary.primary,
                 modifier = Modifier.size(18.dp)
             )
             Text(
                 text = currentSort,
-                color = GoldPrimary,
+                color = hierarchy.secondary.primary,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 0.3.sp
@@ -302,7 +305,7 @@ fun SortButton(
                     text = {
                         Text(
                             text = option,
-                            color = if (option == currentSort) GoldPrimary else MaterialTheme.colorScheme.onSurface,
+                            color = if (option == currentSort) hierarchy.secondary.primary else MaterialTheme.colorScheme.onSurface,
                             fontWeight = if (option == currentSort) FontWeight.Bold else FontWeight.Normal
                         )
                     },
@@ -313,7 +316,7 @@ fun SortButton(
                     },
                     modifier = Modifier.background(
                         if (option == currentSort)
-                            GoldPrimary.copy(alpha = 0.1f)
+                            hierarchy.secondary.primary.copy(alpha = 0.1f)
                         else
                             Color.Transparent
                     )

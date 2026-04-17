@@ -118,8 +118,9 @@ fun SeriesAwardsCard(
 
     var selectedCategory by remember { mutableIntStateOf(0) }
     val colors = BouncerDesignSystem.colors
-    val goldDark = colors.goldDark
-    val goldPrimary = colors.goldPrimary
+    val hierarchy = BouncerDesignSystem.hierarchy
+    val goldDark = hierarchy.secondary.primary
+    val goldPrimary = hierarchy.secondary.primary
 
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -237,6 +238,7 @@ private fun AwardCard(
     award: SeriesAwardData,
     modifier: Modifier = Modifier,
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     Column(
         modifier = modifier
@@ -245,8 +247,8 @@ private fun AwardCard(
             .background(
                 Brush.verticalGradient(
                     colors = listOf(
-                        colors.goldDark.copy(alpha = 0.2f),
-                        colors.goldPrimary.copy(alpha = 0.1f),
+                        hierarchy.secondary.primary.copy(alpha = 0.2f),
+                        hierarchy.secondary.primary.copy(alpha = 0.1f),
                     ),
                 ),
             )
@@ -255,7 +257,7 @@ private fun AwardCard(
     ) {
         Text(
             text = award.title,
-            color = colors.goldDark,
+            color = hierarchy.secondary.primary,
             fontSize = 9.sp,
             fontWeight = FontWeight.Bold,
             letterSpacing = 1.sp,
@@ -267,7 +269,7 @@ private fun AwardCard(
             modifier = Modifier
                 .size(60.dp)
                 .clip(CircleShape)
-                .background(colors.goldDark.copy(alpha = 0.2f)),
+                .background(hierarchy.secondary.primary.copy(alpha = 0.2f)),
             contentAlignment = Alignment.Center,
         ) {
             CoilImage(
@@ -298,7 +300,7 @@ private fun AwardCard(
 
         Text(
             text = award.stats,
-            color = colors.goldDark,
+            color = hierarchy.secondary.primary,
             fontSize = 14.sp,
             fontWeight = FontWeight.Bold,
         )
@@ -318,13 +320,14 @@ private fun CategoryTab(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(20.dp))
             .background(
                 if (isSelected) {
-                    colors.goldDark.copy(alpha = 0.2f)
+                    hierarchy.secondary.primary.copy(alpha = 0.2f)
                 } else {
                     colors.glassSurface
                 },
@@ -345,9 +348,10 @@ private fun LeaderRow(
     entry: LeaderEntry,
     modifier: Modifier = Modifier,
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val rankColor = when (entry.rank) {
-        1 -> colors.goldDark
+        1 -> hierarchy.secondary.primary
         2 -> Color(0xFFC0C0C0)
         3 -> Color(0xFFCD7F32)
         else -> Color.White.copy(alpha = 0.6f)
@@ -412,7 +416,7 @@ private fun LeaderRow(
 
         Text(
             text = entry.statValue,
-            color = if (entry.rank == 1) colors.goldDark else colors.textPrimary,
+            color = if (entry.rank == 1) hierarchy.secondary.primary else colors.textPrimary,
             fontSize = 16.sp,
             fontWeight = FontWeight.Bold,
         )

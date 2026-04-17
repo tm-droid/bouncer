@@ -63,6 +63,7 @@ fun FieldPlacementCard(
     modifier: Modifier = Modifier
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val infiniteTransition = rememberInfiniteTransition(label = "field_animation")
     
     val pulseAlpha by infiniteTransition.animateFloat(
@@ -88,11 +89,11 @@ fun FieldPlacementCard(
     val formationColor = when (fieldInfo.formation) {
         FormationType.ATTACKING -> colors.statusLive
         FormationType.DEFENSIVE -> colors.statusInfo
-        FormationType.POWERPLAY -> colors.goldPrimary
+        FormationType.POWERPLAY -> hierarchy.secondary.primary
         FormationType.DEATH_OVERS -> colors.statusWarning
         FormationType.SPINNER -> Color(0xFFE040FB)
         FormationType.PACER -> colors.statusSuccess
-        FormationType.STANDARD -> colors.goldPrimary
+        FormationType.STANDARD -> hierarchy.secondary.primary
     }
     
     Card(
@@ -118,7 +119,7 @@ fun FieldPlacementCard(
                     Icon(
                         imageVector = Icons.Filled.Map,
                         contentDescription = null,
-                        tint = colors.goldPrimary,
+                        tint = hierarchy.secondary.primary,
                         modifier = Modifier.size(24.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
@@ -269,12 +270,12 @@ fun FieldPlacementCard(
                     
                     // Batsman position (center)
                     drawCircle(
-                        color = colors.goldPrimary,
+                        color = hierarchy.secondary.primary,
                         radius = 8f,
                         center = center
                     )
                     drawCircle(
-                        color = colors.goldPrimary,
+                        color = hierarchy.secondary.primary,
                         radius = 5f,
                         center = center
                     )
@@ -341,7 +342,7 @@ fun FieldPlacementCard(
                         val dist = sqrt((it.x - 0.5f).pow(2) + (it.y - 0.5f).pow(2))
                         dist < 0.225f // Approximately 30 yard circle
                     }}",
-                    color = colors.goldPrimary
+                    color = hierarchy.secondary.primary
                 )
             }
             
@@ -360,7 +361,7 @@ fun FieldPlacementCard(
                 StrategyIndicator(
                     label = "Saving Boundary",
                     isActive = fieldInfo.savingBoundary,
-                    activeColor = colors.goldPrimary
+                    activeColor = hierarchy.secondary.primary
                 )
                 StrategyIndicator(
                     label = "Bowler Friendly",

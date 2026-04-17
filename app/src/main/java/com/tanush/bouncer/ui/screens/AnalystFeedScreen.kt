@@ -49,6 +49,7 @@ fun AnalystFeedScreen(
     modifier: Modifier = Modifier
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val typography = BouncerDesignSystem.typography
     val dimens = BouncerDesignSystem.dimens
 
@@ -101,7 +102,7 @@ fun AnalystFeedScreen(
                             Text(
                                 text = "ANALYST FEED",
                                 style = typography.headingSmall,
-                                color = colors.goldPrimary,
+                                color = hierarchy.secondary.primary,
                                 letterSpacing = 2.sp,
                                 modifier = Modifier.weight(1f)
                             )
@@ -250,6 +251,7 @@ private fun SectionHeader(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     showLiveDot: Boolean = false
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val typography = BouncerDesignSystem.typography
 
@@ -263,13 +265,13 @@ private fun SectionHeader(
         Icon(
             imageVector = icon,
             contentDescription = null,
-            tint = colors.goldPrimary,
+            tint = hierarchy.secondary.primary,
             modifier = Modifier.size(BouncerDesignSystem.dimens.iconSize.md)
         )
         Text(
             text = title,
             style = typography.labelMedium,
-            color = colors.goldPrimary,
+            color = hierarchy.secondary.primary,
             fontWeight = FontWeight.Bold,
             letterSpacing = 1.5.sp
         )
@@ -383,6 +385,7 @@ private fun LiveAnalysisCard(
     onClick: () -> Unit,
     isRefreshing: Boolean = false
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val typography = BouncerDesignSystem.typography
     val dimens = BouncerDesignSystem.dimens
@@ -565,7 +568,7 @@ private fun LiveAnalysisCard(
                 Text(
                     text = match.currentStatus,
                     style = typography.bodySmall,
-                    color = colors.goldPrimary.copy(alpha = 0.8f),
+                    color = hierarchy.secondary.primary.copy(alpha = 0.8f),
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -580,6 +583,7 @@ private fun LiveAnalysisCard(
 
 @Composable
 private fun MatchTypeBadge(matchType: String) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val typography = BouncerDesignSystem.typography
     val shape = RoundedCornerShape(BouncerDesignSystem.dimens.radius.sm)
@@ -587,7 +591,7 @@ private fun MatchTypeBadge(matchType: String) {
     Box(
         modifier = Modifier
             .clip(shape)
-            .background(colors.goldPrimary.copy(alpha = 0.15f))
+            .background(hierarchy.secondary.primary.copy(alpha = 0.15f))
             .padding(
                 horizontal = BouncerDesignSystem.dimens.spacing.sm,
                 vertical = BouncerDesignSystem.dimens.spacing.xs
@@ -597,7 +601,7 @@ private fun MatchTypeBadge(matchType: String) {
         Text(
             text = matchType.uppercase(),
             style = typography.labelSmall,
-            color = colors.goldPrimary,
+            color = hierarchy.secondary.primary,
             fontWeight = FontWeight.Bold,
             letterSpacing = 0.5.sp
         )
@@ -614,6 +618,7 @@ private fun UpcomingMatchCard(
     onClick: () -> Unit,
     isRefreshing: Boolean = false
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val typography = BouncerDesignSystem.typography
     val dimens = BouncerDesignSystem.dimens
@@ -690,7 +695,7 @@ private fun UpcomingMatchCard(
                     Icon(
                         imageVector = Icons.Filled.Schedule,
                         contentDescription = null,
-                        tint = colors.goldPrimary.copy(alpha = 0.6f),
+                        tint = hierarchy.secondary.primary.copy(alpha = 0.6f),
                         modifier = Modifier.size(BouncerDesignSystem.dimens.iconSize.sm)
                     )
                     Text(
@@ -710,7 +715,7 @@ private fun UpcomingMatchCard(
                         Icon(
                             imageVector = Icons.Filled.Stadium,
                             contentDescription = null,
-                            tint = colors.goldPrimary.copy(alpha = 0.6f),
+                            tint = hierarchy.secondary.primary.copy(alpha = 0.6f),
                             modifier = Modifier.size(BouncerDesignSystem.dimens.iconSize.sm)
                         )
                         Text(

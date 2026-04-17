@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.ui.components.CoilImage
 import com.tanush.bouncer.ui.theme.*
+import com.tanush.bouncer.ui.theme.GoldPrimary
 
 /**
  * Premium team profile card with stats and animations
@@ -51,6 +52,7 @@ fun PremiumTeamCard(
 ) {
     var isPressed by remember { mutableStateOf(false) }
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     
     val infiniteTransition = rememberInfiniteTransition(label = "teamCard")
     
@@ -88,11 +90,11 @@ fun PremiumTeamCard(
             .shadow(
                 elevation = if (isFavorite) 20.dp else 12.dp,
                 shape = RoundedCornerShape(24.dp),
-                spotColor = if (isFavorite) colors.goldPrimary.copy(alpha = 0.25f) else Color.Transparent
+                spotColor = if (isFavorite) GoldPrimary.copy(alpha = 0.25f) else Color.Transparent
             )
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
-                indication = ripple(color = colors.goldPrimary.copy(alpha = 0.1f)),
+                indication = ripple(color = GoldPrimary.copy(alpha = 0.1f)),
                 onClick = onClick
             ),
         shape = RoundedCornerShape(24.dp),
@@ -102,9 +104,9 @@ fun PremiumTeamCard(
                 2.dp,
                 Brush.linearGradient(
                     colors = listOf(
-                        colors.goldPrimary.copy(alpha = 0.6f),
-                        colors.goldPrimary,
-                        colors.goldPrimary.copy(alpha = 0.6f)
+                        GoldPrimary.copy(alpha = 0.6f),
+                        GoldPrimary,
+                        GoldPrimary.copy(alpha = 0.6f)
                     )
                 )
             )
@@ -228,7 +230,7 @@ fun PremiumTeamCard(
                         QuickStat(label = "Matches", value = "${teamStats.matchesPlayed}")
                         QuickStat(label = "Won", value = "${teamStats.wins}", valueColor = colors.statusSuccess)
                         QuickStat(label = "Lost", value = "${teamStats.losses}", valueColor = colors.statusLive)
-                        QuickStat(label = "Win %", value = "${teamStats.winPercentage}%", valueColor = colors.goldPrimary)
+                        QuickStat(label = "Win %", value = "${teamStats.winPercentage}%", valueColor = GoldPrimary)
                     }
                 }
             }
@@ -261,6 +263,7 @@ private fun TeamLogoLarge(
     name: String,
     isFavorite: Boolean
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val infiniteTransition = rememberInfiniteTransition(label = "logo")
     val colors = BouncerDesignSystem.colors
 
@@ -283,7 +286,7 @@ private fun TeamLogoLarge(
                         drawCircle(
                             brush = Brush.radialGradient(
                                 colors = listOf(
-                                    colors.goldPrimary.copy(alpha = glowPulse * 0.4f),
+                                    hierarchy.secondary.primary.copy(alpha = glowPulse * 0.4f),
                                     Color.Transparent
                                 )
                             ),
@@ -296,7 +299,7 @@ private fun TeamLogoLarge(
                 width = if (isFavorite) 2.dp else 1.dp,
                 brush = if (isFavorite) {
                     Brush.linearGradient(
-                        colors = listOf(colors.goldPrimary, colors.goldPrimary)
+                        colors = listOf(hierarchy.secondary.primary, hierarchy.secondary.primary)
                     )
                 } else {
                     Brush.linearGradient(
@@ -323,7 +326,7 @@ private fun TeamLogoLarge(
                 text = name.take(3).uppercase(),
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Black,
-                color = colors.goldPrimary
+                color = hierarchy.secondary.primary
             )
         }
     }
@@ -427,7 +430,7 @@ fun FavoriteTeamChip(
                         drawRoundRect(
                             brush = Brush.radialGradient(
                                 colors = listOf(
-                                    colors.goldPrimary.copy(alpha = glowPulse * 0.3f),
+                                    GoldPrimary.copy(alpha = glowPulse * 0.3f),
                                     Color.Transparent
                                 )
                             ),
@@ -445,7 +448,7 @@ fun FavoriteTeamChip(
         shape = RoundedCornerShape(24.dp),
         color = if (isSelected) colors.glassBorderHighlight else colors.glassSurface,
         border = if (isSelected) {
-            BorderStroke(1.5.dp, colors.goldPrimary.copy(alpha = 0.6f))
+            BorderStroke(1.5.dp, GoldPrimary.copy(alpha = 0.6f))
         } else {
             BorderStroke(1.dp, colors.glassBorder.copy(alpha = 0.3f))
         }
@@ -482,7 +485,7 @@ fun FavoriteTeamChip(
                         text = teamName.take(2).uppercase(),
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Black,
-                        color = colors.goldPrimary
+                        color = GoldPrimary
                     )
                 }
             }
@@ -551,6 +554,7 @@ private fun TeamSelectorChip(
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val scale by animateFloatAsState(
         targetValue = if (isSelected) 1.05f else 1f,
         animationSpec = spring(stiffness = Spring.StiffnessHigh),
@@ -573,7 +577,7 @@ private fun TeamSelectorChip(
         shape = RoundedCornerShape(16.dp),
         color = if (isSelected) colors.glassBorderHighlight else colors.glassSurface,
         border = if (isSelected) {
-            BorderStroke(1.5.dp, colors.goldPrimary)
+            BorderStroke(1.5.dp, hierarchy.secondary.primary)
         } else null
     ) {
         Column(
@@ -637,6 +641,7 @@ fun TeamVsTeamCard(
     team2Stats: VersusStats,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
 
     Surface(
@@ -645,7 +650,7 @@ fun TeamVsTeamCard(
             .shadow(
                 elevation = 16.dp,
                 shape = RoundedCornerShape(24.dp),
-                spotColor = colors.goldPrimary.copy(alpha = 0.15f)
+                spotColor = hierarchy.secondary.primary.copy(alpha = 0.15f)
             ),
         shape = RoundedCornerShape(24.dp),
         color = colors.glassSurface
@@ -668,7 +673,7 @@ fun TeamVsTeamCard(
                         text = team1.shortName ?: team1.name,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,
-                        color = colors.goldPrimary
+                        color = hierarchy.secondary.primary
                     )
                 }
                 
@@ -715,6 +720,7 @@ private fun VersusStatRow(
     value1: Int,
     value2: Int
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val total = value1 + value2
     val ratio1 = if (total > 0) value1.toFloat() / total else 0.5f
     
@@ -734,7 +740,7 @@ private fun VersusStatRow(
                 text = "$value1",
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
-                color = if (value1 > value2) colors.goldPrimary else colors.textSecondary
+                color = if (value1 > value2) hierarchy.secondary.primary else colors.textSecondary
             )
             Text(
                 text = label,
@@ -745,7 +751,7 @@ private fun VersusStatRow(
                 text = "$value2",
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
-                color = if (value2 > value1) colors.goldPrimary else colors.textSecondary
+                color = if (value2 > value1) hierarchy.secondary.primary else colors.textSecondary
             )
         }
         
@@ -764,7 +770,7 @@ private fun VersusStatRow(
                         .fillMaxWidth(animatedRatio)
                         .background(
                             Brush.horizontalGradient(
-                                colors = listOf(colors.goldPrimary, colors.goldPrimary)
+                                colors = listOf(hierarchy.secondary.primary, hierarchy.secondary.primary)
                             )
                         )
                 )

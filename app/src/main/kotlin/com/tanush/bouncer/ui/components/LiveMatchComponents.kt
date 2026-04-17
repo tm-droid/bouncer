@@ -45,6 +45,7 @@ fun AnimatedRecentBallsRow(
     showTitle: Boolean = true
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
     
@@ -88,13 +89,13 @@ fun AnimatedRecentBallsRow(
                     exit = fadeOut(tween(300)) + scaleOut(tween(200))
                 ) {
                     Surface(
-                        color = colors.goldDark.copy(alpha = 0.15f),
+                        color = hierarchy.secondary.primary.copy(alpha = 0.15f),
                         shape = RoundedCornerShape(6.dp)
                     ) {
                         Text(
                             "NEW",
                             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                            color = colors.goldDark,
+                            color = hierarchy.secondary.primary,
                             fontSize = 8.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.sp
@@ -129,6 +130,7 @@ private fun AnimatedBallCircle(
     isNewest: Boolean,
     index: Int
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val infiniteTransition = rememberInfiniteTransition(label = "ballGlow")
     
     // Entry animation
@@ -156,8 +158,8 @@ private fun AnimatedBallCircle(
     
     val (bgColor, textColor, glowColor) = when (ball) {
         "W" -> Triple(StatusInfo, Color.White, StatusInfo)
-        "4" -> Triple(GoldPrimary, BackgroundBase, GoldPrimary)
-        "6" -> Triple(GoldPrimary, BackgroundBase, GoldPrimary)
+        "4" -> Triple(hierarchy.secondary.primary, BackgroundBase, hierarchy.secondary.primary)
+        "6" -> Triple(hierarchy.secondary.primary, BackgroundBase, hierarchy.secondary.primary)
         "WD" -> Triple(Color(0xFFF59E0B), BackgroundBase, Color(0xFFF59E0B))
         "NB" -> Triple(Color(0xFFF59E0B), BackgroundBase, Color(0xFFF59E0B))
         else -> Triple(Color.White.copy(alpha = 0.08f), TextSecondary, Color.Transparent)
@@ -204,7 +206,7 @@ private fun AnimatedBallCircle(
                 .then(
                     if (isNewest) Modifier.border(
                         2.dp,
-                        GoldDark,
+                        hierarchy.secondary.primary,
                         CircleShape
                     ) else if (!isSpecialBall) Modifier.border(
                         0.5.dp,
@@ -234,6 +236,7 @@ fun AnimatedRunRate(
     requiredRunRate: Float?,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "runRate")
     
@@ -274,7 +277,7 @@ fun AnimatedRunRate(
     }
     
     val isOnTrack = requiredRunRate == null || currentRunRate >= requiredRunRate
-    val trendColor = if (isOnTrack) GoldPrimary else StatusInfo
+    val trendColor = if (isOnTrack) hierarchy.secondary.primary else StatusInfo
 
     Row(
         modifier = modifier
@@ -297,7 +300,7 @@ fun AnimatedRunRate(
             )
             Text(
                 String.format("%.2f", displayedCRR),
-                color = colors.goldDark,
+                color = hierarchy.secondary.primary,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = (-0.5).sp
@@ -421,6 +424,7 @@ fun PartnershipDisplay(
     batsman2: String,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     var displayedRuns by remember { mutableStateOf(0) }
     
@@ -461,7 +465,7 @@ fun PartnershipDisplay(
             ) {
                 Text(
                     "$displayedRuns",
-                    color = colors.goldDark,
+                    color = hierarchy.secondary.primary,
                     fontSize = 28.sp,
                     fontWeight = FontWeight.Black,
                     letterSpacing = (-1).sp
@@ -494,7 +498,7 @@ fun PartnershipDisplay(
                         .height(2.dp)
                         .background(
                             Brush.horizontalGradient(
-                                colors = listOf(Color.Transparent, colors.goldDark.copy(alpha = 0.4f), Color.Transparent)
+                                colors = listOf(Color.Transparent, hierarchy.secondary.primary.copy(alpha = 0.4f), Color.Transparent)
                             ),
                             RoundedCornerShape(50)
                         )

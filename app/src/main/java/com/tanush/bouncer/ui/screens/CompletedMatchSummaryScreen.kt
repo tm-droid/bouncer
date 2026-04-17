@@ -58,6 +58,7 @@ fun CompletedMatchSummaryScreen(
     modifier: Modifier = Modifier
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val typography = BouncerDesignSystem.typography
 
     val team1 = match.teams.getOrNull(0)
@@ -99,7 +100,7 @@ fun CompletedMatchSummaryScreen(
                     Text(
                         text = "MATCH SUMMARY",
                         style = typography.headingMedium,
-                        color = colors.goldPrimary,
+                        color = hierarchy.secondary.primary,
                         fontWeight = FontWeight.Bold
                     )
                 }
@@ -153,7 +154,7 @@ fun CompletedMatchSummaryScreen(
                         Text(
                             text = match.currentStatus.ifBlank { match.status },
                             style = typography.bodyMedium,
-                            color = colors.goldPrimary,
+                            color = hierarchy.secondary.primary,
                             fontWeight = FontWeight.SemiBold,
                             textAlign = TextAlign.Center,
                             modifier = Modifier.fillMaxWidth()
@@ -210,13 +211,13 @@ fun CompletedMatchSummaryScreen(
                             Text(
                                 text = extractPotmStat(match),
                                 style = typography.bodySmall,
-                                color = colors.goldPrimary
+                                color = hierarchy.secondary.primary
                             )
                         }
                         Icon(
                             imageVector = Icons.Default.EmojiEvents,
                             contentDescription = null,
-                            tint = colors.goldPrimary,
+                            tint = hierarchy.secondary.primary,
                             modifier = Modifier.size(28.dp)
                         )
                     }
@@ -345,6 +346,7 @@ private fun SectionHeader(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     title: String
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val typography = BouncerDesignSystem.typography
 
@@ -355,13 +357,13 @@ private fun SectionHeader(
         Icon(
             imageVector = icon,
             contentDescription = null,
-            tint = colors.goldPrimary,
+            tint = hierarchy.secondary.primary,
             modifier = Modifier.size(18.dp)
         )
         Text(
             text = title,
             style = typography.labelMedium,
-            color = colors.goldPrimary,
+            color = hierarchy.secondary.primary,
             fontWeight = FontWeight.Bold
         )
     }
@@ -372,6 +374,7 @@ private fun TimelineEntry(
     time: String,
     description: String
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val typography = BouncerDesignSystem.typography
 
@@ -386,7 +389,7 @@ private fun TimelineEntry(
                 modifier = Modifier
                     .size(10.dp)
                     .clip(CircleShape)
-                    .background(colors.goldPrimary)
+                    .background(hierarchy.secondary.primary)
             )
             // Time
             Text(

@@ -27,6 +27,7 @@ import kotlinx.coroutines.delay
 import kotlin.math.PI
 import kotlin.math.sin
 import io.sentry.Sentry
+import com.tanush.bouncer.ui.theme.GoldPrimary
 
 // ==========================================
 // BOUNCER - Advanced Animated Transitions
@@ -295,6 +296,7 @@ fun WaveAnimation(
     waveColor: Color = GoldPrimary,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val infiniteTransition = rememberInfiniteTransition(label = "wave_animation")
     
     Row(
@@ -424,6 +426,7 @@ fun CounterAnimation(
     suffix: String = ""
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     var previousValue by remember { mutableIntStateOf(targetValue) }
     var isAnimating by remember { mutableStateOf(false) }
     
@@ -452,7 +455,7 @@ fun CounterAnimation(
     )
     
     val textColorAnimated by animateColorAsState(
-        targetValue = if (isAnimating) colors.goldPrimary else textColor,
+        targetValue = if (isAnimating) hierarchy.secondary.primary else textColor,
         animationSpec = tween(AnimationDuration.normal),
         label = "counter_color"
     )
@@ -481,6 +484,7 @@ fun ScoreCounterAnimation(
     wicketsColor: Color = StatusLive,
     fontSize: Float = 36f
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     var previousRuns by remember { mutableIntStateOf(runs) }
     var previousWickets by remember { mutableIntStateOf(wickets) }
@@ -534,7 +538,7 @@ fun ScoreCounterAnimation(
         Text(
             text = animatedRuns.toString(),
             modifier = Modifier.scale(runsScale),
-            color = if (isRunsAnimating) colors.goldPrimary else runsColor,
+            color = if (isRunsAnimating) hierarchy.secondary.primary else runsColor,
             fontSize = fontSize.sp,
             fontWeight = FontWeight.Black,
             letterSpacing = (-1).sp

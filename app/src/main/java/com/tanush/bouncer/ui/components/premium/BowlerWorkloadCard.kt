@@ -56,6 +56,7 @@ fun BowlerWorkloadCard(
     modifier: Modifier = Modifier,
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val animatedProgress = remember { Animatable(0f) }
 
     LaunchedEffect(bowlers) {
@@ -97,7 +98,7 @@ fun BowlerWorkloadCard(
                             .clip(CircleShape)
                             .background(
                                 Brush.linearGradient(
-                                    colors = listOf(colors.goldDark, colors.goldPrimary),
+                                    colors = listOf(hierarchy.secondary.primary, hierarchy.secondary.primary),
                                 ),
                             ),
                         contentAlignment = Alignment.Center,
@@ -115,7 +116,7 @@ fun BowlerWorkloadCard(
                     Column {
                         Text(
                             text = "BOWLER WORKLOAD",
-                            color = colors.goldLight,
+                            color = hierarchy.secondary.secondary,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.5.sp,
@@ -132,7 +133,7 @@ fun BowlerWorkloadCard(
                 Column(horizontalAlignment = Alignment.End) {
                     Text(
                         text = String.format("%.1f", totalOversBowled),
-                        color = colors.goldDark,
+                        color = hierarchy.secondary.primary,
                         fontSize = 24.sp,
                         fontWeight = FontWeight.Bold,
                     )

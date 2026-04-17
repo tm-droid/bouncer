@@ -162,5 +162,26 @@ object BouncerMotion {
                     animationSpec = Specs.Scale
                 )
             }
+
+        /** Tab switch: crossfade with subtle scale (0.97→1.0) — no slide */
+        fun tabEnter(): EnterTransition =
+            if (reducedMotionEnabled) {
+                fadeIn(Specs.ReducedFadeIn)
+            } else {
+                fadeIn(Specs.FadeIn) + scaleIn(
+                    initialScale = 0.97f,
+                    animationSpec = Specs.Scale
+                )
+            }
+
+        fun tabExit(): ExitTransition =
+            if (reducedMotionEnabled) {
+                fadeOut(Specs.ReducedFadeOut)
+            } else {
+                fadeOut(Specs.FadeOut) + scaleOut(
+                    targetScale = 0.97f,
+                    animationSpec = Specs.Scale
+                )
+            }
     }
 }

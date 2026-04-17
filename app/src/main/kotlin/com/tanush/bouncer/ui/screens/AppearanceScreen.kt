@@ -44,6 +44,7 @@ fun AppearanceScreen(
     onBackgroundSkinChanged: (BackgroundSkinType) -> Unit
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val typography = BouncerDesignSystem.typography
     val dimens = BouncerDesignSystem.dimens
 
@@ -149,9 +150,10 @@ private fun ThemeVariantCard(
     selected: Boolean,
     onClick: () -> Unit
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val typography = BouncerDesignSystem.typography
-    val accent = if (selected) colors.goldPrimary else colors.textSecondary
+    val accent = if (selected) hierarchy.secondary.primary else colors.textSecondary
 
     GlassCard(
         modifier = Modifier
@@ -186,9 +188,10 @@ private fun BackgroundSkinCard(
     selected: Boolean,
     onClick: () -> Unit
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val typography = BouncerDesignSystem.typography
-    val accent = if (selected) colors.goldPrimary else colors.textSecondary
+    val accent = if (selected) hierarchy.secondary.primary else colors.textSecondary
 
     GlassCard(
         modifier = Modifier
@@ -215,7 +218,7 @@ private fun BackgroundSkinCard(
                     Icon(
                         imageVector = Icons.Default.Star,
                         contentDescription = "Premium skin",
-                        tint = colors.goldPrimary,
+                        tint = hierarchy.secondary.primary,
                         modifier = Modifier.size(16.dp)
                     )
                 }

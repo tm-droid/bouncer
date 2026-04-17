@@ -20,10 +20,11 @@ import kotlin.random.Random
 fun FloatingParticleSystem(
     modifier: Modifier = Modifier,
     particleCount: Int = 25,
-    baseColor: Color = BouncerDesignSystem.colors.goldPrimary,
+    baseColor: Color = BouncerDesignSystem.hierarchy.secondary.primary,
     secondaryColor: Color = BouncerDesignSystem.colors.statusInfo,
     speed: Float = 1f
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val particles = remember {
         List(particleCount) {
             FloatingParticle(
@@ -99,8 +100,9 @@ private data class FloatingParticle(
 fun ShootingStarsEffect(
     modifier: Modifier = Modifier,
     starCount: Int = 3,
-    color: Color = BouncerDesignSystem.colors.goldLight
+    color: Color = BouncerDesignSystem.hierarchy.secondary.secondary
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val stars = remember {
         List(starCount) {
             ShootingStar(
@@ -207,10 +209,11 @@ private fun AnimatedShootingStar(
 @Composable
 fun AmbientWaveBackground(
     modifier: Modifier = Modifier,
-    waveColor: Color = BouncerDesignSystem.colors.goldPrimary,
+    waveColor: Color = BouncerDesignSystem.hierarchy.secondary.primary,
     waveCount: Int = 3,
     intensity: Float = 0.08f
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val infiniteTransition = rememberInfiniteTransition(label = "waves")
     val phase by infiniteTransition.animateFloat(
         initialValue = 0f,
@@ -266,10 +269,11 @@ fun AmbientWaveBackground(
 fun AmbientOrbsBackground(
     modifier: Modifier = Modifier,
     orbCount: Int = 4,
-    primaryColor: Color = BouncerDesignSystem.colors.goldPrimary,
+    primaryColor: Color = BouncerDesignSystem.hierarchy.secondary.primary,
     secondaryColor: Color = BouncerDesignSystem.colors.statusInfo,
     tertiaryColor: Color = BouncerDesignSystem.colors.statusInfo
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val orbs = remember {
         List(orbCount) {
             AmbientOrb(
@@ -341,9 +345,10 @@ private data class AmbientOrb(
 @Composable
 fun CricketSeamPattern(
     modifier: Modifier = Modifier,
-    color: Color = BouncerDesignSystem.colors.goldPrimary.copy(alpha = 0.05f),
+    color: Color = BouncerDesignSystem.hierarchy.secondary.primary.copy(alpha = 0.05f),
     seamCount: Int = 8
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val infiniteTransition = rememberInfiniteTransition(label = "seam")
     val rotation by infiniteTransition.animateFloat(
         initialValue = 0f,
@@ -399,10 +404,11 @@ fun PremiumAnimatedBackground(
     showParticles: Boolean = true,
     showOrbs: Boolean = true,
     showSeam: Boolean = false,
-    particleColor: Color = BouncerDesignSystem.colors.goldPrimary,
+    particleColor: Color = BouncerDesignSystem.hierarchy.secondary.primary,
     orbIntensity: Float = 0.5f
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     Box(
         modifier = modifier
             .fillMaxSize()

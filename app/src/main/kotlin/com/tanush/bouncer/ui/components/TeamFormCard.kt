@@ -29,6 +29,7 @@ import coil.request.ImageRequest
 import com.tanush.bouncer.managers.TeamLogoManager
 import com.tanush.bouncer.ui.theme.*
 import io.sentry.Sentry
+import com.tanush.bouncer.ui.theme.GoldPrimary
 
 /**
  * Result of a recent match (for form tracking)
@@ -92,7 +93,7 @@ fun TeamFormCard(
     teamName: String,
     teamLogo: String?,
     recentMatches: List<RecentMatchEntry>,
-    teamColor: Color = GoldDark,
+    teamColor: Color = GoldPrimary,
     modifier: Modifier = Modifier,
     onMatchClick: ((RecentMatchEntry) -> Unit)? = null
 ) {
@@ -101,6 +102,7 @@ fun TeamFormCard(
     } else 0
     
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     Box(
         modifier = modifier
             .fillMaxWidth()
@@ -108,7 +110,7 @@ fun TeamFormCard(
             .background(GlassSurface)
             .border(
                 0.5.dp,
-                Brush.linearGradient(listOf(colors.goldPrimary.copy(alpha = 0.3f), colors.glassSurface)),
+                Brush.linearGradient(listOf(hierarchy.secondary.primary.copy(alpha = 0.3f), colors.glassSurface)),
                 RoundedCornerShape(28.dp)
             )
             .padding(24.dp)
@@ -147,7 +149,7 @@ fun TeamFormCard(
                         )
                         Text(
                             text = "HISTORICAL FORM ANALYSIS",
-                            color = colors.goldDark,
+                            color = hierarchy.secondary.primary,
                             fontSize = 9.sp,
                             fontWeight = FontWeight.Black,
                             letterSpacing = 1.5.sp

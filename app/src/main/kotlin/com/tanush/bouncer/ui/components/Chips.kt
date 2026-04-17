@@ -57,6 +57,7 @@ fun StatusChip(
     onClick: () -> Unit
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val haptic = rememberHapticFeedback()
     
     val animatedElevation by animateFloatAsState(
@@ -82,9 +83,9 @@ fun StatusChip(
     val backgroundBrush = if (isSelected) {
         Brush.linearGradient(
             colors = listOf(
-                colors.goldLight.copy(alpha = shimmerAlpha),
-                colors.goldPrimary,
-                colors.goldPrimary
+                hierarchy.secondary.secondary.copy(alpha = shimmerAlpha),
+                hierarchy.secondary.primary,
+                hierarchy.secondary.primary
             )
         )
     } else {
@@ -121,8 +122,8 @@ fun StatusChip(
                     Brush.linearGradient(
                         colors = listOf(
                             TextSecondary,
-                            colors.goldLight.copy(alpha = 0.5f),
-                            colors.goldPrimary.copy(alpha = 0.2f)
+                            hierarchy.secondary.secondary.copy(alpha = 0.5f),
+                            hierarchy.secondary.primary.copy(alpha = 0.2f)
                         )
                     ), 
                     CircleShape

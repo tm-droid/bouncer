@@ -16,7 +16,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.HelpCenter
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Code
@@ -61,6 +61,7 @@ fun MoreScreen(
     onNewsClick: () -> Unit = {}
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val typography = BouncerDesignSystem.typography
     val dimens = BouncerDesignSystem.dimens
 
@@ -74,7 +75,7 @@ fun MoreScreen(
 
     val settingsItems = listOf(
         MoreItemData(Icons.Default.Settings, "Settings", "Preferences and notifications", onSettingsClick),
-        MoreItemData(Icons.AutoMirrored.Filled.HelpCenter, "About Bouncer", "Version, licenses and credits", onAboutClick),
+        MoreItemData(Icons.Default.Info, "About Bouncer", "Version, licenses and credits", onAboutClick),
         MoreItemData(Icons.Default.Code, "Developer Tools", "Diagnostics and debug utilities", onDevToolsClick)
     )
 
@@ -184,6 +185,7 @@ private fun MoreMenuItem(
     subtitle: String,
     onClick: () -> Unit
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val typography = BouncerDesignSystem.typography
     val dimens = BouncerDesignSystem.dimens
@@ -205,12 +207,12 @@ private fun MoreMenuItem(
             contentAlignment = Alignment.Center,
             modifier = Modifier
                 .size(dimens.md + dimens.sm)
-                .background(colors.goldPrimary.copy(alpha = 0.14f), RoundedCornerShape(dimens.radius.sm))
+                .background(hierarchy.secondary.primary.copy(alpha = 0.14f), RoundedCornerShape(dimens.radius.sm))
         ) {
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                tint = colors.goldPrimary,
+                tint = hierarchy.secondary.primary,
                 modifier = Modifier.size(dimens.sm + dimens.xs)
             )
         }

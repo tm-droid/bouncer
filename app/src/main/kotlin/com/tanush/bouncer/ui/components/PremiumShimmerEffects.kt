@@ -26,9 +26,10 @@ import kotlin.math.sin
 @Composable
 fun Modifier.premiumShimmer(
     durationMillis: Int = 1500,
-    color: Color = BouncerDesignSystem.colors.goldPrimary,
+    color: Color = BouncerDesignSystem.hierarchy.secondary.primary,
     enabled: Boolean = true
 ): Modifier {
+    val hierarchy = BouncerDesignSystem.hierarchy
     if (!enabled) return this
     
     val transition = rememberInfiniteTransition(label = "shimmer")
@@ -65,12 +66,13 @@ fun Modifier.premiumShimmer(
  */
 @Composable
 fun Modifier.radialPulseGlow(
-    color: Color = BouncerDesignSystem.colors.goldPrimary,
+    color: Color = BouncerDesignSystem.hierarchy.secondary.primary,
     baseAlpha: Float = 0.15f,
     pulseAlpha: Float = 0.35f,
     durationMillis: Int = 2000,
     enabled: Boolean = true
 ): Modifier {
+    val hierarchy = BouncerDesignSystem.hierarchy
     if (!enabled) return this
     
     val transition = rememberInfiniteTransition(label = "pulseGlow")
@@ -108,15 +110,16 @@ fun Modifier.radialPulseGlow(
 fun Modifier.animatedBorder(
     borderWidth: Dp = 1.dp,
     colors: List<Color> = listOf(
-        BouncerDesignSystem.colors.goldLight.copy(alpha = 0.5f),
-        BouncerDesignSystem.colors.goldPrimary.copy(alpha = 0.8f),
-        BouncerDesignSystem.colors.goldDark.copy(alpha = 0.3f),
+        BouncerDesignSystem.hierarchy.secondary.secondary.copy(alpha = 0.5f),
+        BouncerDesignSystem.hierarchy.secondary.primary.copy(alpha = 0.8f),
+        BouncerDesignSystem.hierarchy.secondary.primary.copy(alpha = 0.3f),
         Color.Transparent,
-        BouncerDesignSystem.colors.goldLight.copy(alpha = 0.5f)
+        BouncerDesignSystem.hierarchy.secondary.secondary.copy(alpha = 0.5f)
     ),
     shape: Shape = RoundedCornerShape(20.dp),
     durationMillis: Int = 3000
 ): Modifier {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val transition = rememberInfiniteTransition(label = "borderAnimation")
     val angle by transition.animateFloat(
         initialValue = 0f,
@@ -144,8 +147,9 @@ fun Modifier.animatedBorder(
 fun SparkleOverlay(
     modifier: Modifier = Modifier,
     particleCount: Int = 15,
-    color: Color = BouncerDesignSystem.colors.goldLight
+    color: Color = BouncerDesignSystem.hierarchy.secondary.secondary
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val particles = remember {
         List(particleCount) {
             SparkleParticle(
@@ -242,8 +246,9 @@ fun PremiumSkeleton(
     modifier: Modifier = Modifier,
     shape: Shape = RoundedCornerShape(12.dp),
     baseColor: Color = Surface1,
-    shimmerColor: Color = BouncerDesignSystem.colors.goldPrimary.copy(alpha = 0.15f)
+    shimmerColor: Color = BouncerDesignSystem.hierarchy.secondary.primary.copy(alpha = 0.15f)
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val transition = rememberInfiniteTransition(label = "skeleton")
     val translateX by transition.animateFloat(
         initialValue = -300f,
@@ -286,10 +291,11 @@ fun PremiumCircularProgress(
     progress: Float,
     modifier: Modifier = Modifier,
     trackColor: Color = BouncerDesignSystem.colors.glassBorder,
-    progressColor: Color = BouncerDesignSystem.colors.goldPrimary,
+    progressColor: Color = BouncerDesignSystem.hierarchy.secondary.primary,
     strokeWidth: Dp = 4.dp,
     size: Dp = 48.dp
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val animatedProgress by animateFloatAsState(
         targetValue = progress,
         animationSpec = tween(durationMillis = 500, easing = FastOutSlowInEasing),
@@ -368,11 +374,12 @@ fun PremiumCircularProgress(
  */
 @Composable
 fun Modifier.breathingGlow(
-    color: Color = BouncerDesignSystem.colors.goldPrimary,
+    color: Color = BouncerDesignSystem.hierarchy.secondary.primary,
     minAlpha: Float = 0.05f,
     maxAlpha: Float = 0.2f,
     durationMillis: Int = 3000
 ): Modifier {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val transition = rememberInfiniteTransition(label = "breathing")
     val alpha by transition.animateFloat(
         initialValue = minAlpha,
@@ -407,7 +414,8 @@ fun Modifier.luxuryShine(
     durationMillis: Int = 4000,
     enabled: Boolean = true
 ): Modifier {
-    val goldPrimary = BouncerDesignSystem.colors.goldPrimary
+    val hierarchy = BouncerDesignSystem.hierarchy
+    val goldPrimary = BouncerDesignSystem.hierarchy.secondary.primary
     if (!enabled) return this
     
     val transition = rememberInfiniteTransition(label = "shine")
@@ -448,10 +456,11 @@ fun Modifier.luxuryShine(
  */
 @Composable
 fun Modifier.edgeGlow(
-    color: Color = BouncerDesignSystem.colors.goldPrimary,
+    color: Color = BouncerDesignSystem.hierarchy.secondary.primary,
     intensity: Float = 0.2f,
     spread: Dp = 30.dp
 ): Modifier {
+    val hierarchy = BouncerDesignSystem.hierarchy
     return this.drawBehind {
         val spreadPx = spread.toPx()
         

@@ -84,8 +84,9 @@ fun TrophyDisplay(
     )
     
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val trophyColor = when (trophyType) {
-        TrophyType.GOLD -> colors.goldDark
+        TrophyType.GOLD -> hierarchy.secondary.primary
         TrophyType.SILVER -> Color(0xFFC0C0C0)
         TrophyType.BRONZE -> Color(0xFFCD7F32)
         TrophyType.PLATINUM -> Color(0xFFE5E4E2)
@@ -193,6 +194,7 @@ fun CelebrationOverlay(
     message: String,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     if (!isVisible) return
     
     val colors = BouncerDesignSystem.colors
@@ -203,9 +205,9 @@ fun CelebrationOverlay(
                 y = Random.nextFloat() - 0.5f,
                 size = Random.nextFloat() * 8f + 4f,
                 color = listOf(
-                    colors.goldDark,
-                    colors.goldLight,
-                    colors.goldPrimary,
+                    hierarchy.secondary.primary,
+                    hierarchy.secondary.secondary,
+                    hierarchy.secondary.primary,
                     Color.White
                 ).random(),
                 speedY = Random.nextFloat() * 0.02f + 0.01f,
@@ -273,7 +275,7 @@ fun CelebrationOverlay(
             Icon(
                 imageVector = Icons.Default.EmojiEvents,
                 contentDescription = null,
-                tint = colors.goldDark,
+                tint = hierarchy.secondary.primary,
                 modifier = Modifier.size(64.dp)
             )
             
@@ -306,6 +308,7 @@ fun MilestoneCard(
     isCompleted: Boolean = false,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "milestone")
     
@@ -336,8 +339,8 @@ fun MilestoneCard(
                 brush = if (isCompleted) {
                     Brush.linearGradient(
                         colors = listOf(
-                            colors.goldPrimary.copy(alpha = 0.2f),
-                            colors.goldDark.copy(alpha = 0.1f)
+                            hierarchy.secondary.primary.copy(alpha = 0.2f),
+                            hierarchy.secondary.primary.copy(alpha = 0.1f)
                         )
                     )
                 } else {
@@ -350,13 +353,13 @@ fun MilestoneCard(
                 width = if (isCompleted) 2.dp else 1.dp,
                 brush = if (isCompleted) {
                     Brush.linearGradient(
-                        colors = listOf(colors.goldPrimary, colors.goldDark, colors.goldLight)
+                        colors = listOf(hierarchy.secondary.primary, hierarchy.secondary.primary, hierarchy.secondary.secondary)
                     )
                 } else {
                     Brush.linearGradient(
                         colors = listOf(
-                            colors.goldDark.copy(alpha = 0.3f),
-                            colors.goldLight.copy(alpha = 0.1f)
+                            hierarchy.secondary.primary.copy(alpha = 0.3f),
+                            hierarchy.secondary.secondary.copy(alpha = 0.1f)
                         )
                     )
                 },
@@ -380,7 +383,7 @@ fun MilestoneCard(
                             .size(64.dp)
                             .blur(12.dp)
                             .alpha(glowAlpha)
-                            .background(colors.goldDark, CircleShape)
+                            .background(hierarchy.secondary.primary, CircleShape)
                     )
                 }
                 
@@ -389,11 +392,11 @@ fun MilestoneCard(
                         .size(48.dp)
                         .clip(CircleShape)
                         .background(
-                            if (isCompleted) colors.goldDark.copy(alpha = 0.2f) else GlassSurface
+                            if (isCompleted) hierarchy.secondary.primary.copy(alpha = 0.2f) else GlassSurface
                         )
                         .border(
                             width = 2.dp,
-                            color = if (isCompleted) colors.goldDark else colors.goldDark.copy(alpha = 0.3f),
+                            color = if (isCompleted) hierarchy.secondary.primary else hierarchy.secondary.primary.copy(alpha = 0.3f),
                             shape = CircleShape
                         ),
                     contentAlignment = Alignment.Center
@@ -401,7 +404,7 @@ fun MilestoneCard(
                     Icon(
                         imageVector = if (isCompleted) Icons.Default.Verified else icon,
                         contentDescription = null,
-                        tint = if (isCompleted) colors.goldDark else TextSecondary,
+                        tint = if (isCompleted) hierarchy.secondary.primary else TextSecondary,
                         modifier = Modifier.size(24.dp)
                     )
                 }
@@ -414,7 +417,7 @@ fun MilestoneCard(
             ) {
                 Text(
                     text = milestone,
-                    color = if (isCompleted) colors.goldDark else TextPrimary,
+                    color = if (isCompleted) hierarchy.secondary.primary else TextPrimary,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -431,7 +434,7 @@ fun MilestoneCard(
                         .fillMaxWidth()
                         .height(6.dp)
                         .clip(RoundedCornerShape(3.dp))
-                        .background(colors.goldDark.copy(alpha = 0.2f))
+                        .background(hierarchy.secondary.primary.copy(alpha = 0.2f))
                 ) {
                     Box(
                         modifier = Modifier
@@ -440,7 +443,7 @@ fun MilestoneCard(
                             .clip(RoundedCornerShape(3.dp))
                             .background(
                                 brush = Brush.horizontalGradient(
-                                    colors = listOf(colors.goldPrimary, colors.goldDark)
+                                    colors = listOf(hierarchy.secondary.primary, hierarchy.secondary.primary)
                                 )
                             )
                     )
@@ -448,7 +451,7 @@ fun MilestoneCard(
                 
                 Text(
                     text = "${(animatedProgress * 100).toInt()}% Complete",
-                    color = colors.goldDark.copy(alpha = 0.8f),
+                    color = hierarchy.secondary.primary.copy(alpha = 0.8f),
                     fontSize = 11.sp
                 )
             }
@@ -463,6 +466,7 @@ fun StreakCounter(
     unit: String = "days",
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "streak")
     
@@ -588,7 +592,7 @@ fun StreakCounter(
         ) {
             Text(
                 text = "$maxStreak $unit",
-                color = colors.goldDark,
+                color = hierarchy.secondary.primary,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold
             )
@@ -609,11 +613,12 @@ fun BadgeDisplay(
     tier: Int = 1,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val tierColor = when (tier) {
         1 -> Color(0xFFCD7F32) // Bronze
         2 -> Color(0xFFC0C0C0) // Silver
-        3 -> colors.goldDark // Gold
+        3 -> hierarchy.secondary.primary // Gold
         else -> Color(0xFFB9F2FF) // Diamond
     }
     
@@ -710,6 +715,7 @@ fun XPProgressBar(
     level: Int,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val progress = (currentXP.toFloat() / maxXP).coerceIn(0f, 1f)
     
@@ -747,15 +753,15 @@ fun XPProgressBar(
                 .background(
                     brush = Brush.radialGradient(
                         colors = listOf(
-                            colors.goldDark.copy(alpha = 0.3f),
-                            colors.goldPrimary.copy(alpha = 0.1f)
+                            hierarchy.secondary.primary.copy(alpha = 0.3f),
+                            hierarchy.secondary.primary.copy(alpha = 0.1f)
                         )
                     )
                 )
                 .border(
                     width = 2.dp,
                     brush = Brush.linearGradient(
-                        colors = listOf(colors.goldPrimary, colors.goldDark)
+                        colors = listOf(hierarchy.secondary.primary, hierarchy.secondary.primary)
                     ),
                     shape = CircleShape
                 ),
@@ -766,13 +772,13 @@ fun XPProgressBar(
             ) {
                 Text(
                     text = "LVL",
-                    color = colors.goldDark.copy(alpha = 0.7f),
+                    color = hierarchy.secondary.primary.copy(alpha = 0.7f),
                     fontSize = 8.sp,
                     fontWeight = FontWeight.Medium
                 )
                 Text(
                     text = "$level",
-                    color = colors.goldDark,
+                    color = hierarchy.secondary.primary,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -795,7 +801,7 @@ fun XPProgressBar(
                 )
                 Text(
                     text = "$currentXP / $maxXP XP",
-                    color = colors.goldDark,
+                    color = hierarchy.secondary.primary,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Medium
                 )
@@ -807,7 +813,7 @@ fun XPProgressBar(
                     .fillMaxWidth()
                     .height(12.dp)
                     .clip(RoundedCornerShape(6.dp))
-                    .background(colors.goldDark.copy(alpha = 0.15f))
+                    .background(hierarchy.secondary.primary.copy(alpha = 0.15f))
             ) {
                 // Progress fill
                 Box(
@@ -817,7 +823,7 @@ fun XPProgressBar(
                         .clip(RoundedCornerShape(6.dp))
                         .background(
                             brush = Brush.horizontalGradient(
-                                colors = listOf(colors.goldPrimary, colors.goldDark, colors.goldLight)
+                                colors = listOf(hierarchy.secondary.primary, hierarchy.secondary.primary, hierarchy.secondary.secondary)
                             )
                         )
                 )

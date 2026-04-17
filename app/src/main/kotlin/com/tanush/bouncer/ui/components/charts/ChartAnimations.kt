@@ -31,6 +31,7 @@ import com.tanush.bouncer.ui.theme.*
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
+import com.tanush.bouncer.ui.theme.GoldPrimary
 
 /**
  * Animation state holder for chart animations
@@ -58,6 +59,7 @@ fun LineDrawAnimation(
     showGlow: Boolean = true,
     onAnimationComplete: (() -> Unit)? = null
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     var animationState by remember { mutableStateOf(ChartAnimationState()) }
     
     val animatedProgress by animateFloatAsState(
@@ -197,6 +199,7 @@ fun BarExpandAnimation(
     staggerDelay: Int = 50,
     onBarTap: ((Int) -> Unit)? = null
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val maxValue = values.maxOrNull() ?: 1f
     var selectedIndex by remember { mutableStateOf(-1) }
     
@@ -268,8 +271,8 @@ fun BarExpandAnimation(
             drawRoundRect(
                 brush = Brush.verticalGradient(
                     colors = listOf(
-                        if (index == selectedIndex) GoldPrimary else barColor,
-                        (if (index == selectedIndex) GoldPrimary else barColor).copy(alpha = 0.7f)
+                        if (index == selectedIndex) hierarchy.secondary.primary else barColor,
+                        (if (index == selectedIndex) hierarchy.secondary.primary else barColor).copy(alpha = 0.7f)
                     )
                 ),
                 topLeft = Offset(scaledX, scaledY),
@@ -522,6 +525,7 @@ fun DataPointPopup(
     color: Color = GoldPrimary,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val alpha by animateFloatAsState(
         targetValue = if (isVisible) 1f else 0f,
         animationSpec = tween(200),

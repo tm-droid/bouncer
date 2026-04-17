@@ -97,7 +97,7 @@ fun ScorecardTab_Extracted(scorecard: Scorecard?) {
                             Text(
                                 inning.teamName.uppercase(),
                                 color = if (selectedInnings == index) Gold400 else TextSecondary,
-                                fontWeight = FontWeight.Bold,
+                                fontWeight = if (selectedInnings == index) FontWeight.Bold else FontWeight.Medium,
                                 fontSize = 12.sp,
                                 maxLines = 1
                             )

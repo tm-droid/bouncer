@@ -67,6 +67,7 @@ private fun MicroStatCard(
     modifier: Modifier = Modifier
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(12.dp))
@@ -93,7 +94,7 @@ private fun MicroStatCard(
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
-                    tint = if (isPrimary) colors.goldDark else Color.White.copy(alpha = 0.4f),
+                    tint = if (isPrimary) hierarchy.secondary.primary else Color.White.copy(alpha = 0.4f),
                     modifier = Modifier.size(14.dp)
                 )
             }
@@ -114,7 +115,7 @@ private fun MicroStatCard(
                 Row(verticalAlignment = Alignment.Bottom) {
                     Text(
                         text = value,
-                        color = if (isPrimary) colors.goldDark else Color.White.copy(alpha = 0.9f),
+                        color = if (isPrimary) hierarchy.secondary.primary else Color.White.copy(alpha = 0.9f),
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Bold
                     )

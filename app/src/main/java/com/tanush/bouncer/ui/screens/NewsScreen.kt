@@ -47,6 +47,7 @@ import com.tanush.bouncer.ui.components.glass.GlassSecondaryButton
 import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 import com.tanush.bouncer.ui.theme.staggeredFadeIn
 import com.tanush.bouncer.viewmodels.NewsViewModel
+import com.tanush.bouncer.ui.theme.GoldPrimary
 
 private val categoryChips = listOf("All", "Latest", "Spotlight", "Trending")
 
@@ -63,6 +64,7 @@ fun NewsScreen(
     modifier: Modifier = Modifier
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val typography = BouncerDesignSystem.typography
     val dimens = BouncerDesignSystem.dimens
 
@@ -117,7 +119,7 @@ fun NewsScreen(
                     Text(
                         text = "News",
                         style = typography.headingLarge,
-                        color = colors.goldPrimary
+                        color = GoldPrimary
                     )
                     Text(
                         text = "${filteredArticles.size} stories",
@@ -178,7 +180,7 @@ fun NewsScreen(
                                                 .height(16.dp)
                                                 .clip(RoundedCornerShape(dimens.radius.xs))
                                                 .background(
-                                                    colors.goldPrimary.copy(alpha = 0.12f)
+                                                    GoldPrimary.copy(alpha = 0.12f)
                                                 )
                                         )
                                         Spacer(modifier = Modifier.height(dimens.sm))
@@ -300,6 +302,7 @@ private fun HeroArticleCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val typography = BouncerDesignSystem.typography
     val dimens = BouncerDesignSystem.dimens
@@ -411,7 +414,7 @@ private fun HeroArticleCard(
                     fontWeight = FontWeight.Bold,
                     letterSpacing = typography.labelMedium.letterSpacing
                 ),
-                color = colors.goldPrimary
+                color = hierarchy.secondary.primary
             )
             Spacer(modifier = Modifier.height(dimens.xs))
             
@@ -458,7 +461,7 @@ private fun HeroArticleCard(
                     Text(
                         text = article.source,
                         style = typography.labelSmall,
-                        color = colors.goldSubtle
+                        color = hierarchy.secondary.tint
                     )
                 }
             }
@@ -476,6 +479,7 @@ private fun RegularArticleCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val typography = BouncerDesignSystem.typography
     val dimens = BouncerDesignSystem.dimens
@@ -537,7 +541,7 @@ private fun RegularArticleCard(
                     Icon(
                         imageVector = Icons.Outlined.SportsCricket,
                         contentDescription = null,
-                        tint = BouncerDesignSystem.colors.goldPrimary,
+                        tint = BouncerDesignSystem.hierarchy.secondary.primary,
                         modifier = Modifier.size(28.dp)
                     )
                 }
@@ -588,7 +592,7 @@ private fun RegularArticleCard(
                         style = typography.labelSmall.copy(
                             fontWeight = FontWeight.Medium
                         ),
-                        color = colors.goldSubtle
+                        color = hierarchy.secondary.tint
                     )
                 }
             }
@@ -606,11 +610,12 @@ private fun CategoryTag(
     isLive: Boolean,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val typography = BouncerDesignSystem.typography
 
-    val bgColor = if (isLive) colors.statusLive.copy(alpha = 0.15f) else colors.goldPrimary.copy(alpha = 0.12f)
-    val textColor = if (isLive) colors.statusLive else colors.goldPrimary
+    val bgColor = if (isLive) colors.statusLive.copy(alpha = 0.15f) else hierarchy.secondary.primary.copy(alpha = 0.12f)
+    val textColor = if (isLive) colors.statusLive else hierarchy.secondary.primary
 
     Box(
         modifier = modifier

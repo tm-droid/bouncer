@@ -87,6 +87,7 @@ fun BoundaryMapCard(
     val textMeasurer = rememberTextMeasurer()
 
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
 
     Surface(
         modifier = modifier
@@ -94,7 +95,7 @@ fun BoundaryMapCard(
             .shadow(
                 elevation = 12.dp,
                 shape = RoundedCornerShape(20.dp),
-                spotColor = colors.goldPrimary.copy(alpha = 0.2f)
+                spotColor = hierarchy.secondary.primary.copy(alpha = 0.2f)
             ),
         shape = RoundedCornerShape(20.dp),
         color = colors.glassSurface
@@ -115,7 +116,7 @@ fun BoundaryMapCard(
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 1.5.sp,
-                        color = colors.goldPrimary
+                        color = hierarchy.secondary.primary
                     )
                     data.playerName?.let {
                         Text(
@@ -268,7 +269,7 @@ fun BoundaryMapCard(
                         val x = centerX + (cos(radianAngle) * distance).toFloat()
                         val y = centerY + (sin(radianAngle) * distance).toFloat()
                         
-                        val boundaryColor = if (boundary.isSix) colors.goldPrimary else colors.statusInfo
+                        val boundaryColor = if (boundary.isSix) hierarchy.secondary.primary else colors.statusInfo
                         val glowIntensity = if (boundary.isSix) sixGlow else 0.7f
                         
                         // Glow effect
@@ -309,8 +310,8 @@ fun BoundaryMapCard(
                             drawLine(
                                 brush = Brush.linearGradient(
                                     colors = listOf(
-                                        colors.goldPrimary.copy(alpha = 0.1f),
-                                        colors.goldPrimary.copy(alpha = 0.5f)
+                                        hierarchy.secondary.primary.copy(alpha = 0.1f),
+                                        hierarchy.secondary.primary.copy(alpha = 0.5f)
                                     ),
                                     start = Offset(x, y),
                                     end = Offset(lineEndX, lineEndY)
@@ -332,7 +333,7 @@ fun BoundaryMapCard(
             ) {
                 BoundaryLegend(color = colors.statusInfo, label = "Fours")
                 Spacer(modifier = Modifier.width(24.dp))
-                BoundaryLegend(color = colors.goldPrimary, label = "Sixes")
+                BoundaryLegend(color = hierarchy.secondary.primary, label = "Sixes")
             }
             
             // Zone distribution
@@ -350,7 +351,8 @@ private fun BoundaryCountBadge(
     isSix: Boolean,
     modifier: Modifier = Modifier
 ) {
-    val color = if (isSix) GoldPrimary else StatusInfo
+    val hierarchy = BouncerDesignSystem.hierarchy
+    val color = if (isSix) hierarchy.secondary.primary else StatusInfo
     
     Surface(
         modifier = modifier,
@@ -483,6 +485,7 @@ private fun ZoneItem(
     percentage: Int,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     Surface(
         modifier = modifier,
@@ -500,7 +503,7 @@ private fun ZoneItem(
                 text = "$percentage%",
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
-                color = colors.goldPrimary
+                color = hierarchy.secondary.primary
             )
             Text(
                 text = zoneName,

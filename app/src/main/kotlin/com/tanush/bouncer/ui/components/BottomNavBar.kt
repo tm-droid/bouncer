@@ -203,9 +203,13 @@ private fun RowScope.BottomNavItem(
     onClick: () -> Unit
 ) {
     // ── Icon scale: 1.1x when active, 1.0x inactive ──
+    // Bouncy overshoot spring (0.6 damping) for playful feel
     val iconScale by animateFloatAsState(
         targetValue = if (isSelected) 1.1f else 1f,
-        animationSpec = BouncerMotion.Springs.medium(),
+        animationSpec = spring(
+            dampingRatio = 0.6f,
+            stiffness = Spring.StiffnessMedium
+        ),
         label = "iconScale_${destination.route}"
     )
 
@@ -286,7 +290,7 @@ private fun RowScope.BottomNavItem(
                 contentDescription = null,
                 tint = iconColor,
                 modifier = Modifier
-                    .size(22.dp)
+                    .size(24.dp)
                     .graphicsLayer {
                         scaleX = iconScale
                         scaleY = iconScale

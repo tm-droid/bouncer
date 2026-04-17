@@ -69,6 +69,7 @@ fun GlassSearchBar(
     enabled: Boolean = true
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val typography = BouncerDesignSystem.typography
     val dimens = BouncerDesignSystem.dimens
     
@@ -87,7 +88,7 @@ fun GlassSearchBar(
     
     val borderColor by animateColorAsState(
         targetValue = if (isFocused) {
-            colors.goldPrimary.copy(alpha = 0.6f)
+            hierarchy.secondary.primary.copy(alpha = 0.6f)
         } else {
             Color.White.copy(alpha = 0.12f)
         },
@@ -110,7 +111,7 @@ fun GlassSearchBar(
         Icon(
             imageVector = Icons.Default.Search,
             contentDescription = "Search",
-            tint = if (isFocused) colors.goldPrimary else colors.textTertiary,
+            tint = if (isFocused) hierarchy.secondary.primary else colors.textTertiary,
             modifier = Modifier.size(dimens.iconSize.md)
         )
         
@@ -125,7 +126,7 @@ fun GlassSearchBar(
             ),
             singleLine = true,
             interactionSource = interactionSource,
-            cursorBrush = SolidColor(colors.goldPrimary),
+            cursorBrush = SolidColor(hierarchy.secondary.primary),
             keyboardOptions = KeyboardOptions(
                 capitalization = KeyboardCapitalization.Words,
                 imeAction = ImeAction.Search
@@ -180,6 +181,7 @@ fun GlassSearchBarCompact(
     onSearch: ((String) -> Unit)? = null,
     enabled: Boolean = true
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val typography = BouncerDesignSystem.typography
     
@@ -198,7 +200,7 @@ fun GlassSearchBarCompact(
     
     val borderColor by animateColorAsState(
         targetValue = if (isFocused) {
-            colors.goldPrimary.copy(alpha = 0.4f)
+            hierarchy.secondary.primary.copy(alpha = 0.4f)
         } else {
             colors.glassBorder
         },
@@ -233,7 +235,7 @@ fun GlassSearchBarCompact(
             ),
             singleLine = true,
             interactionSource = interactionSource,
-            cursorBrush = SolidColor(colors.goldPrimary),
+            cursorBrush = SolidColor(hierarchy.secondary.primary),
             keyboardOptions = KeyboardOptions(
                 imeAction = ImeAction.Search
             ),
@@ -280,6 +282,7 @@ fun GlassDropdown(
     label: String? = null,
     enabled: Boolean = true
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val typography = BouncerDesignSystem.typography
     
@@ -296,7 +299,7 @@ fun GlassDropdown(
     
     val borderColor by animateColorAsState(
         targetValue = if (expanded) {
-            colors.goldPrimary.copy(alpha = 0.4f)
+            hierarchy.secondary.primary.copy(alpha = 0.4f)
         } else {
             colors.glassBorder
         },
@@ -333,7 +336,7 @@ fun GlassDropdown(
                         if (enabled) {
                             Modifier.clickable(
                                 interactionSource = remember { MutableInteractionSource() },
-                                indication = ripple(color = colors.goldPrimary)
+                                indication = ripple(color = hierarchy.secondary.primary)
                             ) { expanded = true }
                         } else {
                             Modifier
@@ -429,6 +432,7 @@ fun GlassTextField(
     singleLine: Boolean = true,
     keyboardType: KeyboardType = KeyboardType.Text
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val typography = BouncerDesignSystem.typography
     
@@ -448,7 +452,7 @@ fun GlassTextField(
     val borderColor by animateColorAsState(
         targetValue = when {
             isError -> colors.statusLive.copy(alpha = 0.5f)
-            isFocused -> colors.goldPrimary.copy(alpha = 0.4f)
+            isFocused -> hierarchy.secondary.primary.copy(alpha = 0.4f)
             else -> colors.glassBorder
         },
         label = "border_color"
@@ -484,7 +488,7 @@ fun GlassTextField(
                     imageVector = leadingIcon,
                     contentDescription = null,
                     tint = if (isFocused || value.isNotEmpty()) {
-                        colors.goldPrimary
+                        hierarchy.secondary.primary
                     } else {
                         colors.textMuted
                     },
@@ -503,7 +507,7 @@ fun GlassTextField(
                 ),
                 singleLine = singleLine,
                 interactionSource = interactionSource,
-                cursorBrush = SolidColor(colors.goldPrimary),
+                cursorBrush = SolidColor(hierarchy.secondary.primary),
                 keyboardOptions = KeyboardOptions(
                     keyboardType = keyboardType
                 ),
@@ -579,6 +583,7 @@ fun GlassNumberField(
     maxValue: Int = Int.MAX_VALUE,
     step: Int = 1
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val typography = BouncerDesignSystem.typography
     
@@ -608,7 +613,7 @@ fun GlassNumberField(
                     .clickable(
                         enabled = value > minValue,
                         interactionSource = remember { MutableInteractionSource() },
-                        indication = ripple(color = colors.goldPrimary)
+                        indication = ripple(color = hierarchy.secondary.primary)
                     ) {
                         onValueChange((value - step).coerceAtLeast(minValue))
                     },
@@ -639,7 +644,7 @@ fun GlassNumberField(
                     .clickable(
                         enabled = value < maxValue,
                         interactionSource = remember { MutableInteractionSource() },
-                        indication = ripple(color = colors.goldPrimary)
+                        indication = ripple(color = hierarchy.secondary.primary)
                     ) {
                         onValueChange((value + step).coerceAtMost(maxValue))
                     },

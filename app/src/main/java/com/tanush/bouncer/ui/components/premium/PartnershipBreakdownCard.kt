@@ -71,6 +71,7 @@ fun PartnershipBreakdownCard(
     modifier: Modifier = Modifier,
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val infiniteTransition = rememberInfiniteTransition(label = "partnership")
 
     val activeGlow by infiniteTransition.animateFloat(
@@ -137,7 +138,7 @@ fun PartnershipBreakdownCard(
                     Column {
                         Text(
                             text = "PARTNERSHIPS",
-                            color = colors.goldDark,
+                            color = hierarchy.secondary.primary,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.5.sp,
@@ -154,7 +155,7 @@ fun PartnershipBreakdownCard(
                 Column(horizontalAlignment = Alignment.End) {
                     Text(
                         text = "$totalRuns",
-                        color = colors.goldDark,
+                        color = hierarchy.secondary.primary,
                         fontSize = 24.sp,
                         fontWeight = FontWeight.Bold,
                     )
@@ -191,7 +192,7 @@ fun PartnershipBreakdownCard(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(12.dp))
-                        .background(colors.goldDark.copy(alpha = 0.1f))
+                        .background(hierarchy.secondary.primary.copy(alpha = 0.1f))
                         .padding(12.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
@@ -199,7 +200,7 @@ fun PartnershipBreakdownCard(
                     Column {
                         Text(
                             text = "BEST PARTNERSHIP",
-                            color = colors.goldDark,
+                            color = hierarchy.secondary.primary,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.sp,
@@ -215,7 +216,7 @@ fun PartnershipBreakdownCard(
                     Column(horizontalAlignment = Alignment.End) {
                         Text(
                             text = "${best.totalRuns} (${best.totalBalls})",
-                            color = colors.goldDark,
+                            color = hierarchy.secondary.primary,
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
                         )
@@ -239,6 +240,7 @@ private fun PartnershipRow(
     activeGlow: Float,
     index: Int,
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val delayedProgress = ((progress - index * 0.08f) / 0.92f).coerceIn(0f, 1f)
     val barWidth = (partnership.totalRuns.toFloat() / maxRuns * delayedProgress)
@@ -271,7 +273,7 @@ private fun PartnershipRow(
                         .size(24.dp)
                         .clip(CircleShape)
                         .background(
-                            if (partnership.isActive) colors.goldDark else colors.glassBorder,
+                            if (partnership.isActive) hierarchy.secondary.primary else colors.glassBorder,
                         ),
                     contentAlignment = Alignment.Center,
                 ) {
@@ -308,7 +310,7 @@ private fun PartnershipRow(
 
             Text(
                 text = "${partnership.totalRuns} (${partnership.totalBalls})",
-                color = if (partnership.isActive) colors.goldDark else colors.textPrimary,
+                color = if (partnership.isActive) hierarchy.secondary.primary else colors.textPrimary,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
             )
@@ -333,7 +335,7 @@ private fun PartnershipRow(
                         .background(
                             Brush.horizontalGradient(
                                 colors = listOf(
-                                    colors.goldDark.copy(alpha = activeGlow * 0.3f),
+                                    hierarchy.secondary.primary.copy(alpha = activeGlow * 0.3f),
                                     Color.Transparent,
                                 ),
                             ),

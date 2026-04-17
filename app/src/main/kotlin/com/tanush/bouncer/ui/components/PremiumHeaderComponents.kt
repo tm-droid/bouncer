@@ -26,6 +26,7 @@ import com.tanush.bouncer.ui.theme.*
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
+import com.tanush.bouncer.ui.theme.GoldPrimary
 
 /**
  * Premium animated header with parallax effects and luxury styling
@@ -39,6 +40,7 @@ fun PremiumAnimatedHeader(
     modifier: Modifier = Modifier
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val infiniteTransition = rememberInfiniteTransition(label = "header")
     
     val shimmerOffset by infiniteTransition.animateFloat(
@@ -83,7 +85,7 @@ fun PremiumAnimatedHeader(
                 drawCircle(
                     brush = Brush.radialGradient(
                         colors = listOf(
-                            colors.goldPrimary.copy(alpha = 0.05f * glowPulse),
+                            hierarchy.secondary.primary.copy(alpha = 0.05f * glowPulse),
                             Color.Transparent
                         ),
                         center = Offset(size.width * 0.8f, size.height * 0.3f),
@@ -115,9 +117,9 @@ fun PremiumAnimatedHeader(
                 brush = Brush.linearGradient(
                     colors = listOf(
                         Color.Transparent,
-                        colors.goldPrimary.copy(alpha = 0.3f * glowPulse),
-                        colors.goldLight.copy(alpha = 0.5f * glowPulse),
-                        colors.goldPrimary.copy(alpha = 0.3f * glowPulse),
+                        hierarchy.secondary.primary.copy(alpha = 0.3f * glowPulse),
+                        hierarchy.secondary.secondary.copy(alpha = 0.5f * glowPulse),
+                        hierarchy.secondary.primary.copy(alpha = 0.3f * glowPulse),
                         Color.Transparent
                     ),
                     start = Offset(shimmerOffset * size.width * 2 - size.width * 0.5f, 0f),
@@ -258,6 +260,7 @@ fun PremiumSectionHeader(
     icon: @Composable (() -> Unit)? = null,
     action: @Composable (() -> Unit)? = null
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val infiniteTransition = rememberInfiniteTransition(label = "sectionHeader")
     val colors = BouncerDesignSystem.colors
     val shimmerOffset by infiniteTransition.animateFloat(
@@ -285,9 +288,9 @@ fun PremiumSectionHeader(
                 .background(
                     Brush.verticalGradient(
                         colors = listOf(
-                            colors.goldLight.copy(alpha = 0.5f + shimmerOffset * 0.3f),
-                            colors.goldPrimary,
-                            colors.goldDark.copy(alpha = 0.7f)
+                            hierarchy.secondary.secondary.copy(alpha = 0.5f + shimmerOffset * 0.3f),
+                            hierarchy.secondary.primary,
+                            hierarchy.secondary.primary.copy(alpha = 0.7f)
                         )
                     )
                 )
@@ -307,7 +310,7 @@ fun PremiumSectionHeader(
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 1.5.sp,
-                    color = colors.goldPrimary
+                    color = hierarchy.secondary.primary
                 )
             }
             
@@ -339,6 +342,7 @@ fun PremiumStatCard(
     trendValue: String? = null,
     accentColor: Color = GoldPrimary
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val infiniteTransition = rememberInfiniteTransition(label = "statCard")
     val glowAlpha by infiniteTransition.animateFloat(
         initialValue = 0.1f,
@@ -523,6 +527,7 @@ private fun CountdownUnit(
     label: String,
     isAnimated: Boolean = false
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "countdown")
     val pulse by infiniteTransition.animateFloat(
@@ -553,7 +558,7 @@ private fun CountdownUnit(
                 text = value.toString().padStart(2, '0'),
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Black,
-                color = colors.goldPrimary,
+                color = hierarchy.secondary.primary,
                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
             )
         }
@@ -570,6 +575,7 @@ private fun CountdownUnit(
 
 @Composable
 private fun CountdownSeparator() {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "separator")
     val alpha by infiniteTransition.animateFloat(
@@ -586,7 +592,7 @@ private fun CountdownSeparator() {
         text = ":",
         fontSize = 20.sp,
         fontWeight = FontWeight.Bold,
-        color = colors.goldPrimary.copy(alpha = alpha),
+        color = hierarchy.secondary.primary.copy(alpha = alpha),
         modifier = Modifier.padding(bottom = 16.dp)
     )
 }

@@ -84,6 +84,7 @@ fun SpeedTrackerCard(
     modifier: Modifier = Modifier,
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val infiniteTransition = rememberInfiniteTransition(label = "speed")
 
     val needlePulse by infiniteTransition.animateFloat(
@@ -121,7 +122,7 @@ fun SpeedTrackerCard(
     // Speed categories
     val speedColor = when {
         speedData.currentSpeed >= 145 -> colors.statusLive
-        speedData.currentSpeed >= 135 -> colors.goldDark
+        speedData.currentSpeed >= 135 -> hierarchy.secondary.primary
         speedData.currentSpeed >= 125 -> colors.statusInfo
         else -> colors.statusSuccess
     }
@@ -252,7 +253,7 @@ fun SpeedTrackerCard(
                                 colors = listOf(
                                     colors.statusSuccess,
                                     colors.statusInfo,
-                                    colors.goldDark,
+                                    hierarchy.secondary.primary,
                                     colors.statusLive,
                                 ),
                                 center = Offset(centerX, centerY),
@@ -347,7 +348,7 @@ fun SpeedTrackerCard(
                     SpeedStatItem(
                         label = "Avg",
                         value = "${speedData.avgSpeed.toInt()} km/h",
-                        color = colors.goldDark,
+                        color = hierarchy.secondary.primary,
                     )
 
                     SpeedStatItem(

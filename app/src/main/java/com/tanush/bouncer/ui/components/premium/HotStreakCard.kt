@@ -59,6 +59,7 @@ fun HotStreakCard(
     modifier: Modifier = Modifier,
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val infiniteTransition = rememberInfiniteTransition(label = "hotstreak")
     val glowAlpha by infiniteTransition.animateFloat(
         initialValue = 0.02f,
@@ -99,14 +100,14 @@ fun HotStreakCard(
                     Box(
                         modifier = Modifier
                             .size(32.dp)
-                            .background(colors.goldPrimary.copy(alpha = 0.05f), CircleShape)
+                            .background(hierarchy.secondary.primary.copy(alpha = 0.05f), CircleShape)
                             .border(0.5.dp, GoldHairline.copy(alpha = 0.2f), CircleShape),
                         contentAlignment = Alignment.Center,
                     ) {
                         Icon(
                             Icons.Default.LocalFireDepartment,
                             contentDescription = null,
-                            tint = colors.goldPrimary.copy(alpha = 0.8f),
+                            tint = hierarchy.secondary.primary.copy(alpha = 0.8f),
                             modifier = Modifier.size(16.dp),
                         )
                     }
@@ -134,21 +135,21 @@ fun HotStreakCard(
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(6.dp))
-                        .background(colors.goldPrimary.copy(alpha = 0.1f))
+                        .background(hierarchy.secondary.primary.copy(alpha = 0.1f))
                         .border(0.5.dp, GoldHairline.copy(alpha = 0.15f), RoundedCornerShape(6.dp))
                         .padding(horizontal = 10.dp, vertical = 4.dp),
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
                             text = "${streakData.streakLength}",
-                            color = colors.goldPrimary,
+                            color = hierarchy.secondary.primary,
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Black,
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
                             text = "GAMES",
-                            color = colors.goldPrimary.copy(alpha = 0.6f),
+                            color = hierarchy.secondary.primary.copy(alpha = 0.6f),
                             fontSize = 7.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -234,11 +235,12 @@ private fun PerformanceChip(
     performance: StreakPerformance,
     modifier: Modifier = Modifier,
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     Column(
         modifier = modifier
             .clip(RoundedCornerShape(6.dp))
-            .background(if (performance.isHighlight) colors.goldPrimary.copy(alpha = 0.08f) else Color.White.copy(alpha = 0.05f))
+            .background(if (performance.isHighlight) hierarchy.secondary.primary.copy(alpha = 0.08f) else Color.White.copy(alpha = 0.05f))
             .border(
                 0.5.dp, 
                 if (performance.isHighlight) GoldHairline.copy(alpha = 0.2f) else Color.White.copy(alpha = 0.05f), 
@@ -258,7 +260,7 @@ private fun PerformanceChip(
 
         Text(
             text = performance.performance,
-            color = if (performance.isHighlight) colors.goldPrimary else TextPrimary,
+            color = if (performance.isHighlight) hierarchy.secondary.primary else TextPrimary,
             fontSize = 11.sp,
             fontWeight = FontWeight.Black,
         )

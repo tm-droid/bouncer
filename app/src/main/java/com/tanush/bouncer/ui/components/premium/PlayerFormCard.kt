@@ -64,6 +64,7 @@ fun PlayerFormCard(
     modifier: Modifier = Modifier,
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val animatedProgress = remember { Animatable(0f) }
 
     LaunchedEffect(batters, bowlers) {
@@ -212,6 +213,7 @@ private fun BatterFormRow(
     progress: Float,
     index: Int,
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val delayedProgress = ((progress - index * 0.1f) / 0.9f).coerceIn(0f, 1f)
 
@@ -263,7 +265,7 @@ private fun BatterFormRow(
                                 .background(
                                     when {
                                         score >= 50 -> colors.statusSuccess.copy(alpha = 0.15f)
-                                        score >= 30 -> colors.goldPrimary.copy(alpha = 0.15f)
+                                        score >= 30 -> hierarchy.secondary.primary.copy(alpha = 0.15f)
                                         else -> colors.glassSurface
                                     },
                                 )
@@ -271,7 +273,7 @@ private fun BatterFormRow(
                                     0.5.dp,
                                     when {
                                         score >= 50 -> colors.statusSuccess.copy(alpha = 0.3f)
-                                        score >= 30 -> colors.goldPrimary.copy(alpha = 0.3f)
+                                        score >= 30 -> hierarchy.secondary.primary.copy(alpha = 0.3f)
                                         else -> colors.glassSurface
                                     },
                                     RoundedCornerShape(4.dp)
@@ -416,9 +418,10 @@ private fun FormRatingRing(
     rating: Float,
     progress: Float,
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     // Capture color for Canvas scope
-    val goldPrimary = colors.goldPrimary
+    val goldPrimary = hierarchy.secondary.primary
     
     Box(
         modifier = Modifier.size(36.dp),

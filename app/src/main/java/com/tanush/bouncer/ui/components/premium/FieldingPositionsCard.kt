@@ -79,6 +79,7 @@ fun FieldingPositionsCard(
     modifier: Modifier = Modifier,
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val animatedProgress = remember { Animatable(0f) }
 
     val infiniteTransition = rememberInfiniteTransition(label = "fielding")
@@ -141,7 +142,7 @@ fun FieldingPositionsCard(
                     Column {
                         Text(
                             text = "FIELDING POSITIONS",
-                            color = colors.goldLight,
+                            color = hierarchy.secondary.secondary,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.5.sp,
@@ -182,7 +183,7 @@ fun FieldingPositionsCard(
                 val statusWarningC = colors.statusWarning
                 val statusLiveC = colors.statusLive
                 val statusInfoC = colors.statusInfo
-                val goldDarkC = colors.goldDark
+                val goldDarkC = hierarchy.secondary.primary
                 Canvas(modifier = Modifier.fillMaxSize()) {
                     val centerX = size.width / 2
                     val centerY = size.height / 2

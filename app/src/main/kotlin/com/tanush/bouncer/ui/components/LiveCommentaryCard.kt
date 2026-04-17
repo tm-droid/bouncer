@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.ui.theme.*
 import kotlinx.coroutines.delay
 import io.sentry.Sentry
+import com.tanush.bouncer.ui.theme.GoldPrimary
 
 /**
  * Data class for a single commentary ball
@@ -57,6 +58,7 @@ fun LiveCommentaryCard(
     maxHeight: Int = 400,
     showOverHeader: Boolean = true
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val listState = rememberLazyListState()
     var newBallAnimation by remember { mutableStateOf(false) }
     var previousCommentarySize by remember { mutableIntStateOf(commentary.size) }
@@ -100,12 +102,12 @@ fun LiveCommentaryCard(
             .shadow(
                 elevation = 16.dp,
                 shape = RoundedCornerShape(24.dp),
-                spotColor = GoldPrimary.copy(alpha = 0.12f),
+                spotColor = hierarchy.secondary.primary.copy(alpha = 0.12f),
                 ambientColor = Color.Black.copy(alpha = 0.25f)
             ),
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(containerColor = GlassSurface),
-        border = BorderStroke(0.5.dp, GoldPrimary.copy(alpha = 0.15f))
+        border = BorderStroke(0.5.dp, hierarchy.secondary.primary.copy(alpha = 0.15f))
     ) {
         Column(
             modifier = Modifier
@@ -129,7 +131,7 @@ fun LiveCommentaryCard(
                             fontWeight = FontWeight.Bold,
                             letterSpacing = (-0.3).sp,
                             brush = Brush.verticalGradient(
-                                colors = listOf(Color.White, GoldPrimary, GoldDark)
+                                colors = listOf(Color.White, hierarchy.secondary.primary, hierarchy.secondary.primary)
                             )
                         )
                     )
@@ -262,6 +264,7 @@ private fun RecentBallsStrip(
     balls: List<CommentaryBall>,
     shimmerOffset: Float
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -269,7 +272,7 @@ private fun RecentBallsStrip(
                 GlassSurface,
                 RoundedCornerShape(12.dp)
             )
-            .border(0.5.dp, GoldPrimary.copy(alpha = 0.1f), RoundedCornerShape(12.dp))
+            .border(0.5.dp, hierarchy.secondary.primary.copy(alpha = 0.1f), RoundedCornerShape(12.dp))
             .padding(12.dp),
         horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -301,6 +304,7 @@ private fun BallBadge(
     shimmerOffset: Float
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val color = getBallColor(result)
     val size = if (isLatest) 36.dp else 32.dp
     val isWicket = result == "W"
@@ -328,9 +332,9 @@ private fun BallBadge(
                         2.dp,
                         Brush.linearGradient(
                             colors = listOf(
-                                colors.goldLight.copy(alpha = 0.8f),
-                                GoldPrimary.copy(alpha = 0.6f),
-                                colors.goldLight.copy(alpha = 0.8f)
+                                hierarchy.secondary.secondary.copy(alpha = 0.8f),
+                                hierarchy.secondary.primary.copy(alpha = 0.6f),
+                                hierarchy.secondary.secondary.copy(alpha = 0.8f)
                             )
                         ),
                         CircleShape
@@ -339,10 +343,10 @@ private fun BallBadge(
                     Modifier
                         .border(
                             1.5.dp,
-                            GoldPrimary.copy(alpha = 0.8f * wicketPulseAlpha),
+                            hierarchy.secondary.primary.copy(alpha = 0.8f * wicketPulseAlpha),
                             CircleShape
                         )
-                        .shadow(4.dp, CircleShape, spotColor = GoldPrimary.copy(alpha = 0.3f * wicketPulseAlpha))
+                        .shadow(4.dp, CircleShape, spotColor = hierarchy.secondary.primary.copy(alpha = 0.3f * wicketPulseAlpha))
                 } else Modifier
             )
             .background(
@@ -386,6 +390,7 @@ private fun OverHeader(
     runs: Int,
     wickets: Int
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     Row(
         modifier = Modifier
@@ -401,7 +406,7 @@ private fun OverHeader(
             Box(
                 modifier = Modifier
                     .background(
-                        colors.goldPrimary.copy(alpha = 0.15f),
+                        hierarchy.secondary.primary.copy(alpha = 0.15f),
                         RoundedCornerShape(6.dp)
                     )
                     .padding(horizontal = 8.dp, vertical = 4.dp)
@@ -410,7 +415,7 @@ private fun OverHeader(
                     text = "Over $over",
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
-                    color = colors.goldPrimary
+                    color = hierarchy.secondary.primary
                 )
             }
         }
@@ -436,7 +441,7 @@ private fun OverHeader(
     }
     
     HorizontalDivider(
-        color = GoldPrimary.copy(alpha = 0.12f),
+        color = hierarchy.secondary.primary.copy(alpha = 0.12f),
         thickness = 0.5.dp
     )
 }
@@ -447,6 +452,7 @@ private fun CommentaryBallItem(
     isNew: Boolean,
     shimmerOffset: Float
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val enterTransition = remember { MutableTransitionState(false) }
     LaunchedEffect(Unit) {
         enterTransition.targetState = true
@@ -520,7 +526,7 @@ private fun CommentaryBallItem(
                             )
                             .then(
                                 if (ball.result == "W") Modifier.border(
-                                    1.dp, GoldPrimary.copy(alpha = 0.6f), CircleShape
+                                    1.dp, hierarchy.secondary.primary.copy(alpha = 0.6f), CircleShape
                                 ) else Modifier
                             ),
                         contentAlignment = Alignment.Center
@@ -561,7 +567,7 @@ private fun CommentaryBallItem(
                                     text = it,
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.SemiBold,
-                                    color = GoldPrimary
+                                    color = hierarchy.secondary.primary
                                 )
                             }
                         }

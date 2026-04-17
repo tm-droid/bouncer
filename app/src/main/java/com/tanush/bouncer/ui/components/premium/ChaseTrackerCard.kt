@@ -83,6 +83,7 @@ fun ChaseTrackerCard(
     val isOnTrack = currentRate >= requiredRate
 
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val statusSuccessC = colors.statusSuccess
     val statusLiveC = colors.statusLive
 
@@ -155,7 +156,7 @@ fun ChaseTrackerCard(
                         Column {
                             Text(
                                 text = "CHASE TRACKER",
-                                color = colors.goldDark,
+                                color = hierarchy.secondary.primary,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
                                 letterSpacing = 1.5.sp,
@@ -254,7 +255,7 @@ fun ChaseTrackerCard(
                     ChaseStatItem(
                         label = "Wickets",
                         value = "${10 - wicketsLost}",
-                        color = colors.goldDark,
+                        color = hierarchy.secondary.primary,
                     )
                 }
 
@@ -293,11 +294,12 @@ private fun ChaseProgressRing(
     isOnTrack: Boolean,
     modifier: Modifier = Modifier,
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val statusSuccessC2 = colors.statusSuccess
     val statusLiveC2 = colors.statusLive
     val statusWarningC2 = colors.statusWarning
-    val goldDarkC2 = colors.goldDark
+    val goldDarkC2 = hierarchy.secondary.primary
     Canvas(modifier = modifier) {
         val strokeWidth = 12.dp.toPx()
         val radius = (size.minDimension - strokeWidth) / 2
@@ -314,7 +316,7 @@ private fun ChaseProgressRing(
         drawArc(
             brush = Brush.sweepGradient(
                 colors = if (isOnTrack) {
-                    listOf(statusSuccessC2, colors.goldDark, statusSuccessC2)
+                    listOf(statusSuccessC2, hierarchy.secondary.primary, statusSuccessC2)
                 } else {
                     listOf(statusLiveC2, statusWarningC2, statusLiveC2)
                 },

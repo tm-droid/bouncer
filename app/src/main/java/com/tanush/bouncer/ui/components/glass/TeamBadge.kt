@@ -117,6 +117,7 @@ fun TeamLogoCircle(
 ) {
     val teamColor = TeamPrimaryColors.getTeamColor(teamCode)
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     
     Box(
         modifier = modifier
@@ -342,6 +343,7 @@ fun MatchStatusBadge(
     status: MatchStatus,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val typography = BouncerDesignSystem.typography
     
@@ -353,9 +355,9 @@ fun MatchStatusBadge(
             "LIVE"
         )
         MatchStatus.UPCOMING -> Quadruple(
-            colors.goldPrimary.copy(alpha = 0.2f),
-            colors.goldPrimary.copy(alpha = 0.3f),
-            colors.goldPrimary,
+            hierarchy.secondary.primary.copy(alpha = 0.2f),
+            hierarchy.secondary.primary.copy(alpha = 0.3f),
+            hierarchy.secondary.primary,
             "UPCOMING"
         )
         MatchStatus.COMPLETED -> Quadruple(
@@ -377,9 +379,9 @@ fun MatchStatusBadge(
             "ABANDONED"
         )
         MatchStatus.INNINGS_BREAK -> Quadruple(
-            colors.goldPrimary.copy(alpha = 0.15f),
-            colors.goldPrimary.copy(alpha = 0.2f),
-            colors.goldPrimary.copy(alpha = 0.8f),
+            hierarchy.secondary.primary.copy(alpha = 0.15f),
+            hierarchy.secondary.primary.copy(alpha = 0.2f),
+            hierarchy.secondary.primary.copy(alpha = 0.8f),
             "INNINGS BREAK"
         )
         MatchStatus.STUMPS -> Quadruple(

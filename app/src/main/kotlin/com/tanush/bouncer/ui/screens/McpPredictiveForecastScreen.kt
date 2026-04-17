@@ -49,6 +49,7 @@ fun McpPredictiveForecastScreen(
     onBackClick: () -> Unit
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val scrollState = rememberScrollState()
     
     // Derived from mockup data
@@ -92,12 +93,12 @@ fun McpPredictiveForecastScreen(
                                 animationSpec = infiniteRepeatable(tween(1000), RepeatMode.Reverse),
                                 label = "alpha"
                             )
-                            Box(modifier = Modifier.size(6.dp).alpha(alpha).background(colors.goldPrimary, CircleShape).shadow(4.dp, spotColor = colors.goldPrimary))
+                            Box(modifier = Modifier.size(6.dp).alpha(alpha).background(hierarchy.secondary.primary, CircleShape).shadow(4.dp, spotColor = hierarchy.secondary.primary))
                             Text(
                                 "LIVE CONNECTION",
                                 fontSize = 9.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = colors.goldPrimary
+                                color = hierarchy.secondary.primary
                             )
                         }
                     }
@@ -153,8 +154,8 @@ fun McpPredictiveForecastScreen(
                             fontWeight = FontWeight.Black
                         )
                         TextButton(onClick = {}) {
-                            Text("View History", color = colors.goldPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                            Icon(Icons.Default.ChevronRight, null, tint = colors.goldPrimary, modifier = Modifier.size(16.dp))
+                            Text("View History", color = hierarchy.secondary.primary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            Icon(Icons.Default.ChevronRight, null, tint = hierarchy.secondary.primary, modifier = Modifier.size(16.dp))
                         }
                     }
                     
@@ -211,7 +212,7 @@ fun McpPredictiveForecastScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(56.dp)
-                        .shadow(20.dp, spotColor = colors.goldPrimary.copy(alpha = 0.3f)),
+                        .shadow(20.dp, spotColor = hierarchy.secondary.primary.copy(alpha = 0.3f)),
                     colors = ButtonDefaults.buttonColors(containerColor = colors.goldPrimary),
                     shape = RoundedCornerShape(12.dp)
                 ) {
@@ -227,6 +228,7 @@ fun McpPredictiveForecastScreen(
 
 @Composable
 private fun EliteForecastHero(match: CricketMatch) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val battingTeam = match.teams.firstOrNull { it.isBatting } ?: match.teams.firstOrNull()
     val striker = match.scrapedBatsmen?.find { it.isStriker } ?: match.scrapedBatsmen?.firstOrNull()
@@ -263,7 +265,7 @@ private fun EliteForecastHero(match: CricketMatch) {
             val currentOversFloat = (battingTeam?.overs ?: "0").toFloatOrNull() ?: 0f
             val matchProgress = (currentOversFloat / totalOvers).coerceIn(0.01f, 1f)
             Box(modifier = Modifier.fillMaxWidth().height(2.dp).clip(CircleShape).background(GlassSurface)) {
-                Box(modifier = Modifier.fillMaxWidth(matchProgress).fillMaxHeight().background(colors.goldPrimary))
+                Box(modifier = Modifier.fillMaxWidth(matchProgress).fillMaxHeight().background(hierarchy.secondary.primary))
             }
 
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -291,6 +293,7 @@ private fun EliteForecastHero(match: CricketMatch) {
 
 @Composable
 private fun EliteEngineConfidenceCard(modifier: Modifier, confidence: Float, trend: String) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     Surface(
         modifier = modifier.height(130.dp),
@@ -301,7 +304,7 @@ private fun EliteEngineConfidenceCard(modifier: Modifier, confidence: Float, tre
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.SpaceBetween) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text("ENGINE\nCONFIDENCE", color = colors.textSecondary, fontSize = 10.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
-                Icon(Icons.Default.Psychology, null, tint = colors.goldPrimary, modifier = Modifier.size(20.dp))
+                Icon(Icons.Default.Psychology, null, tint = hierarchy.secondary.primary, modifier = Modifier.size(20.dp))
             }
             Column {
                 Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -310,7 +313,7 @@ private fun EliteEngineConfidenceCard(modifier: Modifier, confidence: Float, tre
                 }
                 Spacer(modifier = Modifier.height(8.dp))
                 Box(modifier = Modifier.fillMaxWidth().height(2.dp).background(GlassSurface)) {
-                    Box(modifier = Modifier.fillMaxWidth(confidence).fillMaxHeight().background(colors.goldPrimary))
+                    Box(modifier = Modifier.fillMaxWidth(confidence).fillMaxHeight().background(hierarchy.secondary.primary))
                 }
             }
         }
@@ -351,6 +354,7 @@ private fun PitchTelemetryItem(label: String, value: String, color: Color) {
 
 @Composable
 private fun EliteActiveFieldMap() {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     Surface(
         modifier = Modifier.fillMaxWidth().height(140.dp),
@@ -360,7 +364,7 @@ private fun EliteActiveFieldMap() {
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             Canvas(modifier = Modifier.fillMaxSize()) {
-                drawCircle(color = colors.goldPrimary.copy(alpha = 0.03f), radius = size.maxDimension / 2, center = Offset(size.width, size.height / 2))
+                drawCircle(color = hierarchy.secondary.primary.copy(alpha = 0.03f), radius = size.maxDimension / 2, center = Offset(size.width, size.height / 2))
             }
             Row(
                 modifier = Modifier.fillMaxSize().padding(24.dp),

@@ -35,6 +35,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.min
+import com.tanush.bouncer.ui.theme.GoldPrimary
 
 /**
  * FlipDigitScore with flip animation for digit changes
@@ -49,6 +50,7 @@ fun FlipDigitScore(
     showAnimation: Boolean = true
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val scoreString = score.toString().padStart(3, '0')
     var previousScore by remember { mutableStateOf(score) }
     var isFlipping by remember { mutableStateOf(false) }
@@ -106,6 +108,7 @@ private fun FlipDigit(
     isFlipping: Boolean,
     size: Dp
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val rotation by animateFloatAsState(
         targetValue = if (isFlipping) 180f else 0f,
@@ -126,14 +129,14 @@ private fun FlipDigit(
             )
             .border(
                 0.5.dp,
-                colors.goldPrimary.copy(alpha = 0.3f),
+                hierarchy.secondary.primary.copy(alpha = 0.3f),
                 RoundedCornerShape(8.dp)
             ),
         contentAlignment = Alignment.Center
     ) {
         Text(
             text = if (rotation > 90f) previousDigit.toString() else currentDigit.toString(),
-            color = colors.goldPrimary,
+            color = hierarchy.secondary.primary,
             fontSize = (size.value * 0.6).sp,
             fontWeight = FontWeight.Black,
             modifier = Modifier.graphicsLayer {
@@ -155,6 +158,7 @@ fun AnimatedScoreDisplay(
     teamName: String = "",
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "scoreDisplay")
     
@@ -187,7 +191,7 @@ fun AnimatedScoreDisplay(
                         Brush.horizontalGradient(
                             colors = listOf(
                                 Color.Transparent,
-                                colors.goldPrimary.copy(alpha = 0.05f),
+                                hierarchy.secondary.primary.copy(alpha = 0.05f),
                                 Color.Transparent
                             ),
                             startX = shimmer * 1000f - 200f,
@@ -341,6 +345,7 @@ private fun PartnershipItem(
     partnershipNumber: Int,
     isHighlight: Boolean = false
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val runRate = if (partnership.balls > 0) 
         (partnership.runs.toFloat() / partnership.balls * 6).let { String.format("%.2f", it) }
@@ -349,9 +354,9 @@ private fun PartnershipItem(
     Surface(
         modifier = Modifier.width(180.dp),
         shape = RoundedCornerShape(12.dp),
-        color = if (isHighlight) colors.goldPrimary.copy(alpha = 0.1f) else GlassSurface,
+        color = if (isHighlight) hierarchy.secondary.primary.copy(alpha = 0.1f) else GlassSurface,
         border = if (isHighlight) 
-            androidx.compose.foundation.BorderStroke(1.dp, colors.goldPrimary.copy(alpha = 0.3f))
+            androidx.compose.foundation.BorderStroke(1.dp, hierarchy.secondary.primary.copy(alpha = 0.3f))
         else null
     ) {
         Column(
@@ -375,7 +380,7 @@ private fun PartnershipItem(
                 ) {
                     Text(
                         text = "${partnership.runs}",
-                        color = if (isHighlight) colors.goldPrimary else colors.textPrimary,
+                        color = if (isHighlight) hierarchy.secondary.primary else colors.textPrimary,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Black
                     )
@@ -459,6 +464,7 @@ fun StrikeRateSparkline(
     lineColor: Color = GoldPrimary,
     showCurrentValue: Boolean = true
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     if (strikeRates.isEmpty()) return
     
@@ -582,6 +588,7 @@ fun BatsmanMiniCard(
     recentScores: List<Int> = emptyList(),
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val strikeRate = if (balls > 0) (runs * 100.0 / balls) else 0.0
     
@@ -603,7 +610,7 @@ fun BatsmanMiniCard(
         border = if (isOnStrike) 
             androidx.compose.foundation.BorderStroke(
                 2.dp, 
-                colors.goldPrimary.copy(alpha = strikeGlow)
+                hierarchy.secondary.primary.copy(alpha = strikeGlow)
             ) 
         else null
     ) {
@@ -622,7 +629,7 @@ fun BatsmanMiniCard(
                         .clip(CircleShape)
                         .background(GlassSurface)
                         .then(
-                            if (isOnStrike) Modifier.shadow(8.dp, CircleShape, spotColor = colors.goldPrimary.copy(alpha = strikeGlow))
+                            if (isOnStrike) Modifier.shadow(8.dp, CircleShape, spotColor = hierarchy.secondary.primary.copy(alpha = strikeGlow))
                             else Modifier
                         ),
                     contentAlignment = Alignment.Center
@@ -637,7 +644,7 @@ fun BatsmanMiniCard(
                     } else {
                         Text(
                             text = name.split(" ").mapNotNull { it.firstOrNull()?.uppercase() }.take(2).joinToString(""),
-                            color = if (isOnStrike) colors.goldPrimary else colors.textSecondary,
+                            color = if (isOnStrike) hierarchy.secondary.primary else colors.textSecondary,
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -650,7 +657,7 @@ fun BatsmanMiniCard(
                         modifier = Modifier
                             .size(12.dp)
                             .align(Alignment.BottomEnd)
-                            .background(colors.goldPrimary, CircleShape)
+                            .background(hierarchy.secondary.primary, CircleShape)
                             .border(1.5.dp, GlassSurface, CircleShape)
                     )
                 }
@@ -674,7 +681,7 @@ fun BatsmanMiniCard(
                     if (isOnStrike) {
                         Text(
                             text = "*",
-                            color = colors.goldPrimary,
+                            color = hierarchy.secondary.primary,
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Black
                         )
@@ -707,7 +714,7 @@ fun BatsmanMiniCard(
                     Text(
                         text = "$runs",
                         color = when {
-                            runs >= 100 -> colors.goldPrimary
+                            runs >= 100 -> hierarchy.secondary.primary
                             runs >= 50 -> colors.statusSuccess
                             else -> colors.textPrimary
                         },
@@ -735,7 +742,7 @@ fun BatsmanMiniCard(
                     if (sixes > 0) {
                         Text(
                             text = "${sixes}x6",
-                            color = colors.goldPrimary,
+                            color = hierarchy.secondary.primary,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -800,6 +807,7 @@ fun BowlerMiniCard(
     economyHistory: List<Float> = emptyList(),
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val economy = run {
         val oversFloat = overs.toFloatOrNull() ?: 0f
@@ -898,7 +906,7 @@ fun BowlerMiniCard(
                     Text(
                         text = "$wickets",
                         color = when {
-                            wickets >= 5 -> colors.goldPrimary
+                            wickets >= 5 -> hierarchy.secondary.primary
                             wickets >= 3 -> colors.statusSuccess
                             else -> colors.textPrimary
                         },
@@ -919,7 +927,7 @@ fun BowlerMiniCard(
                     if (maidens > 0) {
                         Text(
                             text = "M:$maidens",
-                            color = colors.goldPrimary,
+                            color = hierarchy.secondary.primary,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -996,6 +1004,7 @@ fun OverSummaryRow(
     bowlerName: String = "",
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     Surface(
         modifier = modifier.fillMaxWidth(),
@@ -1041,7 +1050,7 @@ fun OverSummaryRow(
             ) {
                 Text(
                     text = "$runs",
-                    color = colors.goldPrimary,
+                    color = hierarchy.secondary.primary,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Black
                 )
@@ -1067,10 +1076,11 @@ fun OverSummaryRow(
 
 @Composable
 private fun MicroBallChip(ball: String) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val (bgColor, textColor) = when {
         ball.contains("W", ignoreCase = true) -> colors.statusLive to Color.White
-        ball == "6" -> colors.goldPrimary to colors.backgroundBase
+        ball == "6" -> hierarchy.secondary.primary to colors.backgroundBase
         ball == "4" -> colors.statusInfo to colors.backgroundBase
         ball == "0" || ball == "." -> DotBall to colors.textMuted
         else -> GlassSurface to colors.textPrimary

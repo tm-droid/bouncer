@@ -42,6 +42,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 
 enum class ChipState {
     NORMAL,
@@ -56,6 +57,7 @@ private val GoldAccent = Color(0xFFD4AF37)
 
 @Composable
 private fun chipShimmerBrush(): Brush {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val transition = rememberInfiniteTransition(label = "chip_shimmer")
     val translate by transition.animateFloat(
         initialValue = 0f,
@@ -69,7 +71,7 @@ private fun chipShimmerBrush(): Brush {
     return Brush.linearGradient(
         colors = listOf(
             Color(0xFF1E1E1E),
-            GoldAccent.copy(alpha = 0.12f),
+            hierarchy.secondary.primary.copy(alpha = 0.12f),
             Color(0xFF1E1E1E)
         ),
         start = Offset(translate - 200f, 0f),
@@ -96,6 +98,7 @@ fun PremiumChip(
     onClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val backgroundColor: Color
     val borderColor: Color
     val textColor: Color
@@ -110,8 +113,8 @@ fun PremiumChip(
         }
         ChipState.ACTIVE -> {
             backgroundColor = Color(0xFF2A2205)
-            borderColor = GoldAccent
-            textColor = GoldAccent
+            borderColor = hierarchy.secondary.primary
+            textColor = hierarchy.secondary.primary
             isClickable = true
         }
         ChipState.LOADING -> {

@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.ui.components.CoilImage
 import com.tanush.bouncer.ui.theme.*
+import com.tanush.bouncer.ui.theme.GoldPrimary
 
 /**
  * Premium glass card with blur effect
@@ -46,6 +47,7 @@ fun PremiumGlassCard(
     accentColor: Color = GoldPrimary,
     content: @Composable () -> Unit
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val infiniteTransition = rememberInfiniteTransition(label = "glassCard")
     val shimmerOffset by infiniteTransition.animateFloat(
         initialValue = 0f,
@@ -119,6 +121,7 @@ fun PremiumFeatureCard(
     onClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     var isPressed by remember { mutableStateOf(false) }
     
     val scale by animateFloatAsState(
@@ -209,6 +212,7 @@ fun PremiumStatCard(
     accentColor: Color = GoldPrimary,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val infiniteTransition = rememberInfiniteTransition(label = "statCard")
     val glowAlpha by infiniteTransition.animateFloat(
         initialValue = 0.3f,
@@ -324,6 +328,7 @@ fun PremiumInfoCard(
     icon: ImageVector? = null,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     PremiumGlassCard(modifier = modifier) {
         Column(
             modifier = Modifier.padding(20.dp),
@@ -338,7 +343,7 @@ fun PremiumInfoCard(
                     Icon(
                         imageVector = icon,
                         contentDescription = null,
-                        tint = GoldPrimary,
+                        tint = hierarchy.secondary.primary,
                         modifier = Modifier.size(20.dp)
                     )
                 }
@@ -360,7 +365,7 @@ fun PremiumInfoCard(
                     .background(
                         Brush.horizontalGradient(
                             colors = listOf(
-                                GoldPrimary.copy(alpha = 0.3f),
+                                hierarchy.secondary.primary.copy(alpha = 0.3f),
                                 Color.Transparent
                             )
                         )
@@ -404,6 +409,7 @@ fun PremiumProfileCard(
     onClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val infiniteTransition = rememberInfiniteTransition(label = "profileCard")
     val borderAlpha by infiniteTransition.animateFloat(
         initialValue = 0.4f,
@@ -433,8 +439,8 @@ fun PremiumProfileCard(
                         2.dp,
                         Brush.linearGradient(
                             colors = listOf(
-                                GoldLight.copy(alpha = borderAlpha),
-                                GoldPrimary.copy(alpha = borderAlpha * 0.5f)
+                                hierarchy.secondary.secondary.copy(alpha = borderAlpha),
+                                hierarchy.secondary.primary.copy(alpha = borderAlpha * 0.5f)
                             )
                         ),
                         CircleShape
@@ -459,7 +465,7 @@ fun PremiumProfileCard(
                             text = name.take(2).uppercase(),
                             fontSize = 24.sp,
                             fontWeight = FontWeight.Bold,
-                            color = GoldPrimary
+                            color = hierarchy.secondary.primary
                         )
                     }
                 }
@@ -502,7 +508,7 @@ fun PremiumProfileCard(
                                 text = value,
                                 fontSize = 20.sp,
                                 fontWeight = FontWeight.Black,
-                                color = GoldPrimary
+                                color = hierarchy.secondary.primary
                             )
                             Text(
                                 text = label,
@@ -531,6 +537,7 @@ fun PremiumStatBar(
     height: Dp = 8.dp,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val progress = (value / maxValue).coerceIn(0f, 1f)
     
     val animatedProgress by animateFloatAsState(
@@ -689,6 +696,7 @@ fun PremiumCountdownCard(
     title: String = "Starts In",
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val infiniteTransition = rememberInfiniteTransition(label = "countdown")
     val pulseScale by infiniteTransition.animateFloat(
         initialValue = 1f,
@@ -728,7 +736,7 @@ fun PremiumCountdownCard(
                     text = ":",
                     fontSize = 24.sp,
                     fontWeight = FontWeight.Bold,
-                    color = GoldPrimary.copy(alpha = 0.5f),
+                    color = hierarchy.secondary.primary.copy(alpha = 0.5f),
                     modifier = Modifier.graphicsLayer { scaleX = pulseScale; scaleY = pulseScale }
                 )
                 
@@ -738,7 +746,7 @@ fun PremiumCountdownCard(
                     text = ":",
                     fontSize = 24.sp,
                     fontWeight = FontWeight.Bold,
-                    color = GoldPrimary.copy(alpha = 0.5f),
+                    color = hierarchy.secondary.primary.copy(alpha = 0.5f),
                     modifier = Modifier.graphicsLayer { scaleX = pulseScale; scaleY = pulseScale }
                 )
                 
@@ -748,7 +756,7 @@ fun PremiumCountdownCard(
                     text = ":",
                     fontSize = 24.sp,
                     fontWeight = FontWeight.Bold,
-                    color = GoldPrimary.copy(alpha = 0.5f),
+                    color = hierarchy.secondary.primary.copy(alpha = 0.5f),
                     modifier = Modifier.graphicsLayer { scaleX = pulseScale; scaleY = pulseScale }
                 )
                 
@@ -764,6 +772,7 @@ private fun TimeUnit(
     label: String,
     isAnimated: Boolean = false
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val displayValue = value.toString().padStart(2, '0')
     
     val infiniteTransition = rememberInfiniteTransition(label = "timeUnit")
@@ -784,7 +793,7 @@ private fun TimeUnit(
             modifier = Modifier
                 .graphicsLayer { scaleX = scale; scaleY = scale }
                 .background(
-                    GoldPrimary.copy(alpha = 0.15f),
+                    hierarchy.secondary.primary.copy(alpha = 0.15f),
                     RoundedCornerShape(12.dp)
                 )
                 .padding(horizontal = 12.dp, vertical = 8.dp)
@@ -793,7 +802,7 @@ private fun TimeUnit(
                 text = displayValue,
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Black,
-                color = GoldLight
+                color = hierarchy.secondary.secondary
             )
         }
         

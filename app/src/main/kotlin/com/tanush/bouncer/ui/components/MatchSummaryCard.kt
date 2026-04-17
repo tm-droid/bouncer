@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.ui.components.CoilImage
 import com.tanush.bouncer.ui.theme.*
 import io.sentry.Sentry
+import com.tanush.bouncer.ui.theme.GoldPrimary
 
 /**
  * Match summary data
@@ -100,6 +101,7 @@ fun MatchSummaryCard(
     )
     
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     
     Card(
         modifier = modifier
@@ -107,7 +109,7 @@ fun MatchSummaryCard(
             .shadow(
                 elevation = 24.dp,
                 shape = RoundedCornerShape(28.dp),
-                spotColor = if (summary.isLive) colors.statusSuccess.copy(alpha = 0.2f) else colors.goldDark.copy(alpha = 0.15f)
+                spotColor = if (summary.isLive) colors.statusSuccess.copy(alpha = 0.2f) else hierarchy.secondary.primary.copy(alpha = 0.15f)
             ),
         colors = CardDefaults.cardColors(containerColor = colors.glassSurface),
         shape = RoundedCornerShape(28.dp),
@@ -287,6 +289,7 @@ private fun ScoresSection(team1: TeamSummary, team2: TeamSummary) {
  */
 @Composable
 private fun TeamScoreColumn(team: TeamSummary, alignment: Alignment.Horizontal) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     Column(
         horizontalAlignment = alignment
@@ -326,7 +329,7 @@ private fun TeamScoreColumn(team: TeamSummary, alignment: Alignment.Horizontal) 
         // Score
         Text(
             text = team.score,
-            color = colors.goldDark,
+            color = hierarchy.secondary.primary,
             fontSize = 22.sp,
             fontWeight = FontWeight.Black
         )
@@ -350,6 +353,7 @@ private fun TeamScoreColumn(team: TeamSummary, alignment: Alignment.Horizontal) 
  */
 @Composable
 private fun TeamLogo(logoUrl: String?, teamName: String) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     if (logoUrl != null) {
         CoilImage(
@@ -359,19 +363,19 @@ private fun TeamLogo(logoUrl: String?, teamName: String) {
             modifier = Modifier
                 .size(40.dp)
                 .clip(CircleShape)
-                .border(2.dp, colors.goldDark.copy(alpha = 0.3f), CircleShape)
+                .border(2.dp, hierarchy.secondary.primary.copy(alpha = 0.3f), CircleShape)
         )
     } else {
         Surface(
             shape = CircleShape,
-            color = colors.goldDark.copy(alpha = 0.15f),
-            border = BorderStroke(1.dp, colors.goldDark.copy(alpha = 0.3f)),
+            color = hierarchy.secondary.primary.copy(alpha = 0.15f),
+            border = BorderStroke(1.dp, hierarchy.secondary.primary.copy(alpha = 0.3f)),
             modifier = Modifier.size(40.dp)
         ) {
             Box(contentAlignment = Alignment.Center) {
                 Text(
                     text = teamName.take(2).uppercase(),
-                    color = colors.goldDark,
+                    color = hierarchy.secondary.primary,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -390,15 +394,16 @@ private fun ResultStatus(
     currentStatus: String?,
     winningTeam: String?
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     Surface(
         shape = RoundedCornerShape(10.dp),
-        color = if (isLive) colors.statusSuccess.copy(alpha = 0.1f) else colors.goldDark.copy(alpha = 0.1f),
+        color = if (isLive) colors.statusSuccess.copy(alpha = 0.1f) else hierarchy.secondary.primary.copy(alpha = 0.1f),
         modifier = Modifier.fillMaxWidth()
     ) {
         Text(
             text = if (isLive) currentStatus ?: result else result,
-            color = if (isLive) colors.statusSuccess else colors.goldDark,
+            color = if (isLive) colors.statusSuccess else hierarchy.secondary.primary,
             fontSize = 12.sp,
             fontWeight = FontWeight.SemiBold,
             textAlign = TextAlign.Center,
@@ -414,6 +419,7 @@ private fun ResultStatus(
  */
 @Composable
 private fun TopPerformers(team1: TeamSummary, team2: TeamSummary) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -434,7 +440,7 @@ private fun TopPerformers(team1: TeamSummary, team2: TeamSummary) {
                     Icon(
                         Icons.Default.SportsCricket,
                         contentDescription = null,
-                        tint = colors.goldDark,
+                        tint = hierarchy.secondary.primary,
                         modifier = Modifier.size(14.dp)
                     )
                     Text(
@@ -502,6 +508,7 @@ private fun TopPerformers(team1: TeamSummary, team2: TeamSummary) {
  */
 @Composable
 private fun PerformerRow(name: String, stat: String, team: String) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     Row(
         modifier = Modifier
@@ -527,7 +534,7 @@ private fun PerformerRow(name: String, stat: String, team: String) {
         }
         Text(
             text = stat,
-            color = colors.goldDark,
+            color = hierarchy.secondary.primary,
             fontSize = 11.sp,
             fontWeight = FontWeight.Bold
         )
@@ -539,11 +546,12 @@ private fun PerformerRow(name: String, stat: String, team: String) {
  */
 @Composable
 private fun PlayerOfMatchSection(pom: PlayerOfMatch) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     Surface(
         shape = RoundedCornerShape(12.dp),
-        color = colors.goldDark.copy(alpha = 0.1f),
-        border = BorderStroke(0.5.dp, colors.goldDark.copy(alpha = 0.3f)),
+        color = hierarchy.secondary.primary.copy(alpha = 0.1f),
+        border = BorderStroke(0.5.dp, hierarchy.secondary.primary.copy(alpha = 0.3f)),
         modifier = Modifier.fillMaxWidth()
     ) {
         Row(
@@ -554,14 +562,14 @@ private fun PlayerOfMatchSection(pom: PlayerOfMatch) {
             // Medal icon
             Surface(
                 shape = CircleShape,
-                color = colors.goldDark.copy(alpha = 0.2f),
+                color = hierarchy.secondary.primary.copy(alpha = 0.2f),
                 modifier = Modifier.size(40.dp)
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
                         Icons.Default.EmojiEvents,
                         contentDescription = null,
-                        tint = colors.goldDark,
+                        tint = hierarchy.secondary.primary,
                         modifier = Modifier.size(20.dp)
                     )
                 }
@@ -570,7 +578,7 @@ private fun PlayerOfMatchSection(pom: PlayerOfMatch) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = "PLAYER OF THE MATCH",
-                    color = colors.goldDark,
+                    color = hierarchy.secondary.primary,
                     fontSize = 9.sp,
                     letterSpacing = 0.5.sp
                 )
@@ -648,7 +656,7 @@ private fun getMomentColor(type: SummaryMomentType): Color {
     try {
         return when (type) {
             SummaryMomentType.WICKET -> StatusLive
-            SummaryMomentType.MILESTONE -> GoldDark
+            SummaryMomentType.MILESTONE -> GoldPrimary
             SummaryMomentType.POWERPLAY -> StatusInfo
             SummaryMomentType.BOUNDARY_SPREE -> StatusSuccess
             SummaryMomentType.COLLAPSE -> StatusWarning
@@ -692,6 +700,7 @@ fun MiniMatchSummary(
     isLive: Boolean = false,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     Surface(
         shape = RoundedCornerShape(12.dp),
@@ -705,7 +714,7 @@ fun MiniMatchSummary(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(text = team1Name, color = colors.textPrimary, fontSize = 11.sp, fontWeight = FontWeight.Medium)
-                Text(text = team1Score, color = colors.goldDark, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                Text(text = team1Score, color = hierarchy.secondary.primary, fontSize = 11.sp, fontWeight = FontWeight.Bold)
             }
             Spacer(modifier = Modifier.height(4.dp))
             Row(
@@ -713,7 +722,7 @@ fun MiniMatchSummary(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(text = team2Name, color = colors.textPrimary, fontSize = 11.sp, fontWeight = FontWeight.Medium)
-                Text(text = team2Score, color = colors.goldDark, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                Text(text = team2Score, color = hierarchy.secondary.primary, fontSize = 11.sp, fontWeight = FontWeight.Bold)
             }
             Spacer(modifier = Modifier.height(6.dp))
             Text(

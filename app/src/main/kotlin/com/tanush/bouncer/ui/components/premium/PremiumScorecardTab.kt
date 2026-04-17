@@ -35,9 +35,10 @@ fun PremiumScorecardTab(
     scorecard: Scorecard?,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     if (scorecard == null) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator(color = GoldPrimary)
+            CircularProgressIndicator(color = hierarchy.secondary.primary)
         }
         return
     }
@@ -67,7 +68,7 @@ fun PremiumScorecardTab(
                 } else {
                     "CRR: $currentRunRate"
                 },
-                color = GoldPrimary,
+                color = hierarchy.secondary.primary,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Medium,
                 letterSpacing = 1.sp
@@ -116,7 +117,7 @@ fun PremiumScorecardTab(
             item { 
                 Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(modifier = Modifier.width(2.dp).height(16.dp).background(GoldPrimary))
+                        Box(modifier = Modifier.width(2.dp).height(16.dp).background(hierarchy.secondary.primary))
                         Spacer(modifier = Modifier.width(8.dp))
                         Text("Batting", color = TextPrimary, fontSize = 18.sp, fontWeight = FontWeight.Bold)
                     }
@@ -157,13 +158,14 @@ fun PremiumScorecardTab(
 
 @Composable
 private fun SectionHeader(title: String) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(modifier = Modifier.width(2.dp).height(16.dp).background(GoldPrimary))
+        Box(modifier = Modifier.width(2.dp).height(16.dp).background(hierarchy.secondary.primary))
         Spacer(modifier = Modifier.width(8.dp))
         Text(title, color = TextPrimary, fontSize = 18.sp, fontWeight = FontWeight.Bold)
     }
@@ -171,6 +173,7 @@ private fun SectionHeader(title: String) {
 
 @Composable
 private fun BattingTableHeader() {
+    val hierarchy = BouncerDesignSystem.hierarchy
     Row(
         modifier = Modifier
             .padding(horizontal = 16.dp)
@@ -185,12 +188,13 @@ private fun BattingTableHeader() {
         Text("B", modifier = Modifier.weight(1f), textAlign = TextAlign.Center, color = TextMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
         Text("4s", modifier = Modifier.weight(1f), textAlign = TextAlign.Center, color = TextMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
         Text("6s", modifier = Modifier.weight(1f), textAlign = TextAlign.Center, color = TextMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-        Text("SR", modifier = Modifier.weight(1.2f), textAlign = TextAlign.End, color = GoldPrimary, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+        Text("SR", modifier = Modifier.weight(1.2f), textAlign = TextAlign.End, color = hierarchy.secondary.primary, fontSize = 10.sp, fontWeight = FontWeight.Bold)
     }
 }
 
 @Composable
 private fun BattingRow(batsman: BatsmanStats) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val isNotOut = batsman.dismissal.lowercase().contains("not out") || batsman.dismissal.isEmpty()
     
     Box(
@@ -203,7 +207,7 @@ private fun BattingRow(batsman: BatsmanStats) {
     ) {
         if (isNotOut) {
             Box(modifier = Modifier.matchParentSize().drawBehind {
-                drawRect(GoldPrimary, size = Size(2.dp.toPx(), size.height))
+                drawRect(hierarchy.secondary.primary, size = Size(2.dp.toPx(), size.height))
             })
         }
         
@@ -228,13 +232,14 @@ private fun BattingRow(batsman: BatsmanStats) {
             Text(batsman.balls, modifier = Modifier.weight(1f), textAlign = TextAlign.Center, color = TextMuted, fontSize = 12.sp)
             Text(batsman.fours, modifier = Modifier.weight(1f), textAlign = TextAlign.Center, color = TextMuted, fontSize = 12.sp)
             Text(batsman.sixes, modifier = Modifier.weight(1f), textAlign = TextAlign.Center, color = TextMuted, fontSize = 12.sp)
-            Text(batsman.strikeRate, modifier = Modifier.weight(1.2f), textAlign = TextAlign.End, color = GoldPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+            Text(batsman.strikeRate, modifier = Modifier.weight(1.2f), textAlign = TextAlign.End, color = hierarchy.secondary.primary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
         }
     }
 }
 
 @Composable
 private fun ExtrasRow(extras: String, innings: Innings?) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val crr = calculateCurrentRunRate(innings)
     Row(
         modifier = Modifier
@@ -246,7 +251,7 @@ private fun ExtrasRow(extras: String, innings: Innings?) {
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Text("Extras: $extras", color = TextMuted, fontSize = 12.sp)
-        Text("CRR $crr", color = GoldPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+        Text("CRR $crr", color = hierarchy.secondary.primary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
     }
 }
 
@@ -323,6 +328,7 @@ private fun calculateRequiredRunRate(scorecard: Scorecard, currentInningsIndex: 
 
 @Composable
 private fun FallOfWicketsCarousel(fow: List<String>) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     LazyRow(
         contentPadding = PaddingValues(horizontal = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -342,7 +348,7 @@ private fun FallOfWicketsCarousel(fow: List<String>) {
             ) {
                 Column {
                     Text("Wicket", color = TextMuted, fontSize = 10.sp)
-                    Text(score, color = GoldPrimary, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                    Text(score, color = hierarchy.secondary.primary, fontSize = 18.sp, fontWeight = FontWeight.Bold)
                     Text(detail, color = TextSecondary, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
@@ -372,6 +378,7 @@ private fun BowlingTableHeader() {
 
 @Composable
 private fun BowlingRow(bowler: BowlerStats) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     Row(
         modifier = Modifier
             .padding(horizontal = 16.dp)
@@ -399,13 +406,13 @@ private fun BowlingRow(bowler: BowlerStats) {
                     lineTo(size.width * 0.9f, size.height * 0.8f)
                     lineTo(size.width, size.height * 0.5f)
                 }
-                drawPath(path, GoldPrimary, style = Stroke(width = 1.5.dp.toPx()))
+                drawPath(path, hierarchy.secondary.primary, style = Stroke(width = 1.5.dp.toPx()))
             }
         }
         Text(bowler.overs, modifier = Modifier.weight(1f), textAlign = TextAlign.Center, color = TextPrimary, fontSize = 13.sp)
         Text(bowler.maidens, modifier = Modifier.weight(1f), textAlign = TextAlign.Center, color = TextMuted, fontSize = 12.sp)
         Text(bowler.runs, modifier = Modifier.weight(1f), textAlign = TextAlign.Center, color = TextMuted, fontSize = 12.sp)
         Text(bowler.wickets, modifier = Modifier.weight(1f), textAlign = TextAlign.Center, color = TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-        Text(bowler.economy, modifier = Modifier.weight(1.2f), textAlign = TextAlign.End, color = GoldPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+        Text(bowler.economy, modifier = Modifier.weight(1.2f), textAlign = TextAlign.End, color = hierarchy.secondary.primary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
     }
 }

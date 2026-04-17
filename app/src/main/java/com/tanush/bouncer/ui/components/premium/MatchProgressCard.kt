@@ -77,6 +77,7 @@ fun MatchProgressCard(
     modifier: Modifier = Modifier,
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val infiniteTransition = rememberInfiniteTransition(label = "progress")
 
     val clockPulse by infiniteTransition.animateFloat(
@@ -145,7 +146,7 @@ fun MatchProgressCard(
                     Column {
                         Text(
                             text = "MATCH PROGRESS",
-                            color = colors.goldDark,
+                            color = hierarchy.secondary.primary,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.5.sp,
@@ -163,7 +164,7 @@ fun MatchProgressCard(
                 Column(horizontalAlignment = Alignment.End) {
                     Text(
                         text = progressInfo.estimatedTimeRemaining,
-                        color = colors.goldDark,
+                        color = hierarchy.secondary.primary,
                         fontSize = 22.sp,
                         fontWeight = FontWeight.Bold,
                     )
@@ -234,7 +235,7 @@ fun MatchProgressCard(
                 TimeStatColumn(
                     label = "Total Time",
                     value = progressInfo.totalMatchTime,
-                    color = colors.goldDark,
+                    color = hierarchy.secondary.primary,
                 )
 
                 Box(
@@ -288,10 +289,11 @@ private fun MatchProgressVisualization(
     oversBowled: Float,
     modifier: Modifier = Modifier,
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val statusInfoC = colors.statusInfo
-    val goldDarkC = colors.goldDark
-    val goldPrimaryC = colors.goldPrimary
+    val goldDarkC = hierarchy.secondary.primary
+    val goldPrimaryC = hierarchy.secondary.primary
     val statusSuccessC = colors.statusSuccess
     Canvas(modifier = modifier) {
         val barHeight = 20.dp.toPx()
@@ -374,6 +376,7 @@ private fun BreakChip(
     breakInfo: MatchBreakInfo,
     modifier: Modifier = Modifier,
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     Box(
         modifier = modifier
@@ -381,7 +384,7 @@ private fun BreakChip(
             .background(
                 if (breakInfo.breakActive) {
                     Brush.horizontalGradient(
-                        colors = listOf(colors.goldDark.copy(alpha = 0.2f), colors.goldPrimary.copy(alpha = 0.2f)),
+                        colors = listOf(hierarchy.secondary.primary.copy(alpha = 0.2f), hierarchy.secondary.primary.copy(alpha = 0.2f)),
                     )
                 } else {
                     Brush.horizontalGradient(
@@ -395,7 +398,7 @@ private fun BreakChip(
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
                 text = breakInfo.breakType,
-                color = if (breakInfo.breakActive) colors.goldDark else colors.textSecondary,
+                color = if (breakInfo.breakActive) hierarchy.secondary.primary else colors.textSecondary,
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Medium,
             )

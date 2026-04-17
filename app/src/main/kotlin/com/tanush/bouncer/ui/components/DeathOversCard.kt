@@ -77,6 +77,7 @@ fun DeathOversCard(
     )
     
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     
     val rrColor = when {
         deathInfo.runRate >= 12f -> colors.statusSuccess
@@ -367,7 +368,7 @@ fun DeathOversCard(
                     DeathStatBox(
                         label = "SIXES",
                         value = "${deathInfo.sixes}",
-                        color = colors.goldPrimary
+                        color = hierarchy.secondary.primary
                     )
                     DeathStatBox(
                         label = "DOTS",

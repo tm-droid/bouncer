@@ -166,6 +166,7 @@ fun BouncerHomeScreen(
     showBottomNav: Boolean = true
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val dimens = BouncerDesignSystem.dimens
     val context = androidx.compose.ui.platform.LocalContext.current
     val pullToRefreshState = rememberPullToRefreshState()
@@ -390,6 +391,7 @@ private fun HomeHeader(
     showUpdateBadge: Boolean,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val typography = BouncerDesignSystem.typography
     val dimens = BouncerDesignSystem.dimens
@@ -409,7 +411,7 @@ private fun HomeHeader(
             modifier = Modifier.drawBehind {
                 // Subtle gold underline accent
                 drawLine(
-                    color = colors.goldPrimary.copy(alpha = 0.6f),
+                    color = hierarchy.secondary.primary.copy(alpha = 0.6f),
                     start = Offset(0f, size.height),
                     end = Offset(size.width * 0.6f, size.height),
                     strokeWidth = dimens.xxs.toPx()
@@ -432,7 +434,7 @@ private fun HomeHeader(
                     Icon(
                         imageVector = Icons.Outlined.Notifications,
                         contentDescription = stringResource(R.string.cd_notifications),
-                        tint = colors.goldPrimary.copy(alpha = 0.8f),
+                        tint = hierarchy.secondary.primary.copy(alpha = 0.8f),
                         modifier = Modifier.size(BouncerDesignSystem.dimens.iconSize.md)
                     )
 
@@ -540,6 +542,7 @@ private fun PageIndicatorDot(
     isSelected: Boolean,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val dimens = BouncerDesignSystem.dimens
     val width = if (isSelected) dimens.md else dimens.statusDotSmall
@@ -554,7 +557,7 @@ private fun PageIndicatorDot(
             .then(
                 if (isSelected) Modifier.drawBehind {
                     drawCircle(
-                        color = colors.goldPrimary.copy(alpha = 0.4f),
+                        color = hierarchy.secondary.primary.copy(alpha = 0.4f),
                         radius = size.maxDimension
                     )
                 } else Modifier
@@ -568,6 +571,7 @@ private fun LiveMatchCarouselCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val typography = BouncerDesignSystem.typography
     val dimens = BouncerDesignSystem.dimens
@@ -683,14 +687,14 @@ private fun LiveMatchCarouselCard(
                         Text(
                             text = battingTeam?.score?.split("/")?.getOrNull(0) ?: "-",
                             style = typography.scoreSecondary,
-                            color = colors.goldPrimary,
+                            color = hierarchy.secondary.primary,
                             fontWeight = FontWeight.Black
                         )
                         if (battingTeam?.score?.contains("/") == true) {
                             Text(
                                 text = "/" + battingTeam.score.split("/").getOrNull(1),
                                 style = typography.headingSmall,
-                                color = colors.goldPrimary.copy(alpha = 0.5f),
+                                color = hierarchy.secondary.primary.copy(alpha = 0.5f),
                                 modifier = Modifier.padding(bottom = dimens.statusDotSmall)
                             )
                         }
@@ -725,10 +729,10 @@ private fun LiveMatchCarouselCard(
                         modifier = Modifier
                             .fillMaxWidth((match.winProbability.toFloat() / 100f).coerceIn(0f, 1f))
                             .fillMaxHeight()
-                            .background(colors.goldPrimary)
+                            .background(hierarchy.secondary.primary)
                             .drawBehind {
                                 drawRect(
-                                    color = colors.goldPrimary.copy(alpha = 0.5f),
+                                    color = hierarchy.secondary.primary.copy(alpha = 0.5f),
                                     size = size
                                 )
                             }
@@ -752,7 +756,7 @@ private fun LiveMatchCarouselCard(
                     Text(
                         text = "${(team1?.acronym ?: "TM1")}: ${match.winProbability.toInt()}%",
                         style = typography.labelSmall,
-                        color = colors.goldPrimary,
+                        color = hierarchy.secondary.primary,
                         fontWeight = FontWeight.Bold
                     )
                 }
@@ -852,6 +856,7 @@ private fun MatchFormatBadge(
     matchType: String,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val dimens = BouncerDesignSystem.dimens
     val formatText = when (matchType.uppercase()) {
@@ -864,10 +869,10 @@ private fun MatchFormatBadge(
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(BouncerDesignSystem.dimens.radius.pill))
-            .background(colors.goldPrimary.copy(alpha = 0.15f))
+            .background(hierarchy.secondary.primary.copy(alpha = 0.15f))
             .border(
                 width = dimens.borderWidth,
-                color = colors.goldPrimary.copy(alpha = 0.3f),
+                color = hierarchy.secondary.primary.copy(alpha = 0.3f),
                 shape = RoundedCornerShape(BouncerDesignSystem.dimens.radius.pill)
             )
             .padding(
@@ -879,13 +884,14 @@ private fun MatchFormatBadge(
             text = formatText,
             style = BouncerDesignSystem.typography.labelSmall.copy(letterSpacing = BouncerDesignSystem.typography.labelMedium.letterSpacing),
             fontWeight = FontWeight.Bold,
-            color = colors.goldPrimary
+            color = hierarchy.secondary.primary
         )
     }
 }
 
 @Composable
 private fun SectionDivider(modifier: Modifier = Modifier) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     Box(
         modifier = modifier
@@ -903,7 +909,7 @@ private fun SectionDivider(modifier: Modifier = Modifier) {
                     Brush.horizontalGradient(
                         colors = listOf(
                             Color.Transparent,
-                            colors.goldPrimary.copy(alpha = 0.15f),
+                            hierarchy.secondary.primary.copy(alpha = 0.15f),
                             Color.Transparent
                         )
                     )
@@ -920,6 +926,7 @@ private fun SectionDivider(modifier: Modifier = Modifier) {
 private fun TrendingNewsSection(
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val typography = BouncerDesignSystem.typography
     val dimens = BouncerDesignSystem.dimens
@@ -994,7 +1001,7 @@ private fun TrendingNewsSection(
                             modifier = Modifier
                                 .padding(start = dimens.cardPaddingCompact, top = dimens.cardPaddingCompact)
                                 .clip(RoundedCornerShape(percent = 50))
-                                .background(colors.goldPrimary)
+                                .background(hierarchy.secondary.primary)
                                 .padding(horizontal = dimens.sm, vertical = dimens.xs)
                                 .align(Alignment.Start)
                         ) {
@@ -1085,14 +1092,14 @@ private fun TrendingNewsSection(
                                     .padding(bottom = dimens.statusDotSmall)
                                     .clip(RoundedCornerShape(dimens.radius.xs))
                                     .background(colors.glassOverlay.copy(alpha = 0.5f))
-                                    .border(dimens.dividerThickness, colors.goldPrimary.copy(alpha = 0.3f), RoundedCornerShape(dimens.radius.xs))
+                                    .border(dimens.dividerThickness, hierarchy.secondary.primary.copy(alpha = 0.3f), RoundedCornerShape(dimens.radius.xs))
                                     .padding(horizontal = dimens.statusDotSmall, vertical = dimens.xxs)
                             ) {
                                 Text(
                                     text = secondaryArticle.storyType.uppercase().ifBlank { "NEWS" },
                                     style = typography.labelSmall.copy(letterSpacing = typography.labelSmall.letterSpacing / 2),
                                     fontWeight = FontWeight.Bold,
-                                    color = colors.goldPrimary
+                                    color = hierarchy.secondary.primary
                                 )
                             }
 
@@ -1108,7 +1115,7 @@ private fun TrendingNewsSection(
                             Text(
                                 text = secondaryArticle.timeAgo,
                                 style = typography.labelSmall,
-                                color = colors.goldPrimary.copy(alpha = 0.8f),
+                                color = hierarchy.secondary.primary.copy(alpha = 0.8f),
                                 modifier = Modifier.padding(top = dimens.xs)
                             )
                         }
@@ -1142,6 +1149,7 @@ private fun SectionHeader(
     actionText: String? = null,
     onActionClick: (() -> Unit)? = null
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val typography = BouncerDesignSystem.typography
     val dimens = BouncerDesignSystem.dimens
@@ -1162,10 +1170,10 @@ private fun SectionHeader(
                         .width(BouncerDesignSystem.dimens.xxs)
                         .height(BouncerDesignSystem.dimens.spacing.md)
                         .clip(RoundedCornerShape(BouncerDesignSystem.dimens.xxs))
-                        .background(colors.goldPrimary)
+                        .background(hierarchy.secondary.primary)
                         .drawBehind {
                             drawRect(
-                                color = colors.goldPrimary.copy(alpha = 0.5f),
+                                color = hierarchy.secondary.primary.copy(alpha = 0.5f),
                                 size = size
                             )
                         }
@@ -1184,7 +1192,7 @@ private fun SectionHeader(
                 Text(
                     text = actionText,
                     style = typography.labelSmall,
-                    color = colors.goldPrimary.copy(alpha = 0.7f),
+                    color = hierarchy.secondary.primary.copy(alpha = 0.7f),
                     modifier = Modifier.clickable(onClick = onActionClick)
                 )
             }
@@ -1197,7 +1205,7 @@ private fun SectionHeader(
                 .width(40.dp)
                 .height(dimens.focusBorderWidth)
                 .clip(RoundedCornerShape(1.dp))
-                .background(colors.goldPrimary.copy(alpha = 0.5f))
+                .background(hierarchy.secondary.primary.copy(alpha = 0.5f))
         )
     }
 }
@@ -1213,6 +1221,7 @@ private fun UpcomingMatchCard(
     modifier: Modifier = Modifier,
     isRefreshing: Boolean = false
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val typography = BouncerDesignSystem.typography
     val dimens = BouncerDesignSystem.dimens
@@ -1287,13 +1296,13 @@ private fun UpcomingMatchCard(
                 modifier = Modifier
                     .clip(RoundedCornerShape(6.dp))
                     .background(Color.Black.copy(alpha = 0.4f))
-                    .border(1.dp, colors.goldPrimary.copy(alpha = 0.2f), RoundedCornerShape(6.dp))
+                    .border(1.dp, hierarchy.secondary.primary.copy(alpha = 0.2f), RoundedCornerShape(6.dp))
                     .padding(horizontal = 10.dp, vertical = 6.dp)
             ) {
                 Text(
                     text = match.matchTime.ifEmpty { "TBD" },
                     style = typography.labelSmall,
-                    color = colors.goldPrimary,
+                    color = hierarchy.secondary.primary,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 1.sp
                 )

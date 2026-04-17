@@ -58,6 +58,7 @@ fun MatchInsightsCard(
     modifier: Modifier = Modifier,
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val animatedProgress = remember { Animatable(0f) }
 
     val infiniteTransition = rememberInfiniteTransition(label = "insight")
@@ -123,7 +124,7 @@ fun MatchInsightsCard(
                     Column {
                         Text(
                             text = "MATCH INSIGHTS",
-                            color = colors.goldLight,
+                            color = hierarchy.secondary.secondary,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.5.sp,
@@ -162,8 +163,8 @@ fun MatchInsightsCard(
                     .background(
                         Brush.horizontalGradient(
                             colors = listOf(
-                                colors.goldPrimary.copy(alpha = 0.3f),
-                                colors.goldDark.copy(alpha = 0.1f),
+                                hierarchy.secondary.primary.copy(alpha = 0.3f),
+                                hierarchy.secondary.primary.copy(alpha = 0.1f),
                             ),
                         ),
                     )
@@ -173,7 +174,7 @@ fun MatchInsightsCard(
                     Icon(
                         imageVector = Icons.Default.Lightbulb,
                         contentDescription = "Insight",
-                        tint = colors.goldLight,
+                        tint = hierarchy.secondary.secondary,
                         modifier = Modifier.size(24.dp),
                     )
 
@@ -182,7 +183,7 @@ fun MatchInsightsCard(
                     Column {
                         Text(
                             text = "KEY INSIGHT",
-                            color = colors.goldLight,
+                            color = hierarchy.secondary.secondary,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.sp,
@@ -242,6 +243,7 @@ private fun InsightGridItem(
     progress: Float,
     modifier: Modifier = Modifier,
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val trendColor = when (insight.trend) {
         InsightTrend.POSITIVE -> colors.statusSuccess
@@ -274,7 +276,7 @@ private fun InsightGridItem(
                 text = typeLabel,
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Bold,
-                color = colors.goldPrimary,
+                color = hierarchy.secondary.primary,
                 letterSpacing = 1.sp,
             )
 
@@ -320,6 +322,7 @@ private fun PhaseAnalysisRow(
     currentPhase: String,
     progress: Float,
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     Column(
         modifier = Modifier
@@ -357,7 +360,7 @@ private fun PhaseAnalysisRow(
                             .background(
                                 if (isActive) {
                                     Brush.linearGradient(
-                                        colors = listOf(colors.goldDark, colors.goldPrimary),
+                                        colors = listOf(hierarchy.secondary.primary, hierarchy.secondary.primary),
                                     )
                                 } else {
                                     Brush.linearGradient(
@@ -384,7 +387,7 @@ private fun PhaseAnalysisRow(
 
                     Text(
                         text = phase,
-                        color = if (isActive) colors.goldLight else colors.textTertiary,
+                        color = if (isActive) hierarchy.secondary.secondary else colors.textTertiary,
                         fontSize = 10.sp,
                         fontWeight = if (isActive) FontWeight.Bold else FontWeight.Normal,
                     )
@@ -408,7 +411,7 @@ private fun PhaseAnalysisRow(
                         .weight(0.3f)
                         .background(
                             if (currentPhase.contains("Powerplay")) {
-                                colors.goldDark
+                                hierarchy.secondary.primary
                             } else if (progress > 0.3f) {
                                 colors.statusSuccess.copy(alpha = 0.5f)
                             } else {
@@ -423,7 +426,7 @@ private fun PhaseAnalysisRow(
                         .weight(0.4f)
                         .background(
                             if (currentPhase.contains("Middle")) {
-                                colors.goldDark
+                                hierarchy.secondary.primary
                             } else if (progress > 0.7f) {
                                 colors.statusSuccess.copy(alpha = 0.5f)
                             } else {
@@ -438,7 +441,7 @@ private fun PhaseAnalysisRow(
                         .weight(0.3f)
                         .background(
                             if (currentPhase.contains("Death") || currentPhase.contains("Final")) {
-                                colors.goldDark
+                                hierarchy.secondary.primary
                             } else {
                                 colors.glassSurface
                             },

@@ -69,6 +69,7 @@ fun BowlerMilestoneCard(
     modifier: Modifier = Modifier
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val infiniteTransition = rememberInfiniteTransition(label = "bowler_milestone_animation")
     
     val flameRotation by infiniteTransition.animateFloat(
@@ -110,7 +111,7 @@ fun BowlerMilestoneCard(
     val milestoneColor = when (milestoneInfo.milestone) {
         BowlerMilestoneType.FIVE_WICKETS -> Color(0xFFFF6B6B)
         BowlerMilestoneType.SIX_WICKETS -> Color(0xFFFF8E3C)
-        BowlerMilestoneType.SEVEN_WICKETS -> colors.goldPrimary
+        BowlerMilestoneType.SEVEN_WICKETS -> hierarchy.secondary.primary
         BowlerMilestoneType.EIGHT_WICKETS -> colors.statusSuccess
         BowlerMilestoneType.NINE_WICKETS -> colors.statusInfo
         BowlerMilestoneType.TEN_WICKETS -> Color(0xFFE040FB)

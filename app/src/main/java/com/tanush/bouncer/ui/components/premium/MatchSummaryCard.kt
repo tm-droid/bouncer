@@ -89,6 +89,7 @@ fun MatchSummaryCard(
     modifier: Modifier = Modifier,
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val infiniteTransition = rememberInfiniteTransition(label = "summary")
 
     val trophyRotation by infiniteTransition.animateFloat(
@@ -127,8 +128,8 @@ fun MatchSummaryCard(
     ) {
         Box {
             // Capture colors for Canvas scopes
-            val goldPrimaryColor = colors.goldPrimary
-            val goldDarkColor = colors.goldDark
+            val goldPrimaryColor = hierarchy.secondary.primary
+            val goldDarkColor = hierarchy.secondary.primary
 
             // Victory gradient background
             if (winningTeam != null) {
@@ -203,7 +204,7 @@ fun MatchSummaryCard(
                             Icon(
                                 imageVector = Icons.Default.EmojiEvents,
                                 contentDescription = null,
-                                tint = colors.goldDark,
+                                tint = hierarchy.secondary.primary,
                                 modifier = Modifier.size(40.dp),
                             )
                         }
@@ -231,7 +232,7 @@ fun MatchSummaryCard(
                     ) {
                         Text(
                             text = "VS",
-                            color = colors.goldDark,
+                            color = hierarchy.secondary.primary,
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Bold,
                         )
@@ -255,9 +256,9 @@ fun MatchSummaryCard(
                         .background(
                             Brush.horizontalGradient(
                                 colors = listOf(
-                                    colors.goldPrimary.copy(alpha = 0.3f),
-                                    colors.goldDark.copy(alpha = 0.2f),
-                                    colors.goldPrimary.copy(alpha = 0.3f),
+                                    hierarchy.secondary.primary.copy(alpha = 0.3f),
+                                    hierarchy.secondary.primary.copy(alpha = 0.2f),
+                                    hierarchy.secondary.primary.copy(alpha = 0.3f),
                                 ),
                             ),
                         )
@@ -267,7 +268,7 @@ fun MatchSummaryCard(
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
                             text = matchResult,
-                            color = colors.goldDark,
+                            color = hierarchy.secondary.primary,
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
                             textAlign = TextAlign.Center,
@@ -288,7 +289,7 @@ fun MatchSummaryCard(
                 if (topPerformers.isNotEmpty()) {
                     Text(
                         text = "TOP PERFORMERS",
-                        color = colors.goldDark,
+                        color = hierarchy.secondary.primary,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 1.5.sp,
@@ -329,9 +330,10 @@ private fun TeamSummaryColumn(
     isWinner: Boolean,
     progress: Float,
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
-    val goldDark = colors.goldDark
-    val goldPrimary = colors.goldPrimary
+    val goldDark = hierarchy.secondary.primary
+    val goldPrimary = hierarchy.secondary.primary
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier.graphicsLayer {
@@ -400,7 +402,7 @@ private fun TeamSummaryColumn(
 
         Text(
             text = team.shortName,
-            color = if (isWinner) colors.goldDark else colors.textPrimary,
+            color = if (isWinner) hierarchy.secondary.primary else colors.textPrimary,
             fontSize = 14.sp,
             fontWeight = FontWeight.Bold,
         )
@@ -442,6 +444,7 @@ private fun TopPerformerCard(
     performer: TopPerformer,
     modifier: Modifier = Modifier,
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     Box(
         modifier = modifier
@@ -506,7 +509,7 @@ private fun TopPerformerCard(
 
             Text(
                 text = performer.stat,
-                color = colors.goldDark,
+                color = hierarchy.secondary.primary,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
             )

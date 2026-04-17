@@ -93,7 +93,8 @@ private fun PremiumTab(
     onClick: () -> Unit
 ) {
     val colors = BouncerDesignSystem.colors
-    val goldPrimaryColor = colors.goldPrimary
+    val hierarchy = BouncerDesignSystem.hierarchy
+    val goldPrimaryColor = hierarchy.secondary.primary
     val scale by animateFloatAsState(
         targetValue = if (isSelected) 1f else 0.95f,
         animationSpec = spring(
@@ -218,6 +219,7 @@ private fun SelectableChip(
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "chip_${chip.id}")
     val shimmerOffset by infiniteTransition.animateFloat(
@@ -268,7 +270,7 @@ private fun SelectableChip(
         shape = RoundedCornerShape(14.dp),
         color = backgroundColor,
         border = if (isSelected) {
-            BorderStroke(1.dp, colors.goldPrimary.copy(alpha = 0.5f))
+            BorderStroke(1.dp, hierarchy.secondary.primary.copy(alpha = 0.5f))
         } else {
             BorderStroke(1.dp, colors.glassBorder.copy(alpha = 0.3f))
         }
@@ -391,9 +393,10 @@ fun InfoTooltip(
     title: String,
     message: String,
     icon: ImageVector = Icons.Default.Info,
-    accentColor: Color = BouncerDesignSystem.colors.goldPrimary,
+    accentColor: Color = BouncerDesignSystem.hierarchy.secondary.primary,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     Surface(
         modifier = modifier.shadow(
@@ -461,13 +464,14 @@ fun NotificationBanner(
     onDismiss: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val (backgroundColor, accentColor, icon) = when (type) {
         BannerType.INFO -> Triple(LiveBlue.copy(alpha = 0.12f), LiveBlue, Icons.Default.Info)
         BannerType.SUCCESS -> Triple(colors.statusSuccess.copy(alpha = 0.12f), colors.statusSuccess, Icons.Default.CheckCircle)
         BannerType.WARNING -> Triple(WarningOrange.copy(alpha = 0.12f), WarningOrange, Icons.Default.Warning)
         BannerType.ERROR -> Triple(colors.statusLive.copy(alpha = 0.12f), colors.statusLive, Icons.Default.Error)
-        BannerType.CELEBRATION -> Triple(colors.goldPrimary.copy(alpha = 0.12f), colors.goldPrimary, Icons.Default.Celebration)
+        BannerType.CELEBRATION -> Triple(hierarchy.secondary.primary.copy(alpha = 0.12f), hierarchy.secondary.primary, Icons.Default.Celebration)
     }
     
     val infiniteTransition = rememberInfiniteTransition(label = "banner")
@@ -564,10 +568,11 @@ enum class BannerType {
 @Composable
 fun AnimatedBadge(
     text: String,
-    color: Color = BouncerDesignSystem.colors.goldPrimary,
+    color: Color = BouncerDesignSystem.hierarchy.secondary.primary,
     animate: Boolean = true,
     modifier: Modifier = Modifier
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "badge")
     val scale by infiniteTransition.animateFloat(

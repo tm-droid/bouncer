@@ -52,6 +52,7 @@ fun IntelligenceFeedScreen(
     onBackClick: () -> Unit
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
 
     // Derive alerts from real match data
     val vmEvents by liveActivityViewModel?.probabilityEvents?.collectAsState()
@@ -166,6 +167,7 @@ fun IntelligenceFeedScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ActivityFeedHeader(onBackClick: () -> Unit) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
 
     Column(
@@ -182,12 +184,12 @@ private fun ActivityFeedHeader(onBackClick: () -> Unit) {
                 PulsingBadge(text = "Live")
             }
             Surface(
-                color = colors.goldPrimary.copy(alpha = 0.05f),
+                color = hierarchy.secondary.primary.copy(alpha = 0.05f),
                 shape = CircleShape,
-                border = BorderStroke(0.5.dp, colors.goldPrimary.copy(alpha = 0.2f)),
+                border = BorderStroke(0.5.dp, hierarchy.secondary.primary.copy(alpha = 0.2f)),
                 onClick = {}
             ) {
-                Text("Clear", color = colors.goldPrimary, fontSize = 11.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp))
+                Text("Clear", color = hierarchy.secondary.primary, fontSize = 11.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp))
             }
         }
         Spacer(modifier = Modifier.height(12.dp))
@@ -202,10 +204,11 @@ private fun ActivityFeedHeader(onBackClick: () -> Unit) {
 
 @Composable
 private fun ActivityAlertCard(alert: ActivityAlert) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val (accentColor, icon) = when (alert.type) {
         AlertType.WICKET -> colors.statusLive to Icons.Default.Warning
-        AlertType.MILESTONE -> colors.goldPrimary to Icons.Default.MilitaryTech
+        AlertType.MILESTONE -> hierarchy.secondary.primary to Icons.Default.MilitaryTech
         AlertType.INFO -> colors.statusInfo to Icons.Default.CloudSync
         AlertType.WARNING -> colors.statusWarning to Icons.Default.Warning
     }
@@ -249,7 +252,7 @@ private fun ActivityAlertCard(alert: ActivityAlert) {
 
                 Text(
                     text = alert.value,
-                    color = if (alert.type == AlertType.MILESTONE) colors.goldPrimary else colors.textPrimary,
+                    color = if (alert.type == AlertType.MILESTONE) hierarchy.secondary.primary else colors.textPrimary,
                     fontSize = 24.sp,
                     fontWeight = FontWeight.Black
                 )

@@ -224,6 +224,31 @@ object BrandGradients {
                 WarningOrange
             )
         )
+    
+    // ========================================
+    // Team / Secondary (30%) Brand Gradients
+    // ========================================
+    
+    /**
+     * Team primary gradient — for section headers & card accents.
+     * Part of the 30% secondary layer.
+     */
+    fun teamAccent(teamPrimary: Color, teamSecondary: Color): Brush =
+        Brush.horizontalGradient(
+            colors = listOf(teamPrimary, teamSecondary, teamPrimary.copy(alpha = 0.7f))
+        )
+    
+    /**
+     * Team surface gradient — subtle background for cards when team context is active.
+     */
+    fun teamSurface(teamPrimary: Color, alpha: Float = 0.08f): Brush =
+        Brush.verticalGradient(
+            colors = listOf(
+                teamPrimary.copy(alpha = alpha),
+                teamPrimary.copy(alpha = alpha * 0.3f),
+                Color.Transparent
+            )
+        )
 }
 
 // ==========================================

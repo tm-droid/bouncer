@@ -54,18 +54,19 @@ fun MatchPhasesCard(
     phases: List<MatchPhaseData>,
     team1Name: String,
     team2Name: String,
-    team1Color: Color = BouncerDesignSystem.colors.goldPrimary,
+    team1Color: Color = BouncerDesignSystem.hierarchy.secondary.primary,
     team2Color: Color = BouncerDesignSystem.colors.statusInfo,
     modifier: Modifier = Modifier
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     Card(
         modifier = modifier
             .fillMaxWidth()
             .shadow(
                 elevation = 24.dp,
                 shape = RoundedCornerShape(28.dp),
-                spotColor = colors.goldPrimary.copy(alpha = 0.15f)
+                spotColor = hierarchy.secondary.primary.copy(alpha = 0.15f)
             ),
         colors = CardDefaults.cardColors(containerColor = GlassSurface),
         shape = RoundedCornerShape(28.dp),
@@ -85,7 +86,7 @@ fun MatchPhasesCard(
                     Icon(
                         Icons.Default.Timeline,
                         contentDescription = null,
-                        tint = colors.goldPrimary,
+                        tint = hierarchy.secondary.primary,
                         modifier = Modifier.size(20.dp)
                     )
                     Text(
@@ -169,6 +170,7 @@ private fun PhaseRow(
     team2Color: Color,
     isLast: Boolean
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "phase")
     
@@ -355,12 +357,12 @@ private fun PhaseRow(
                         Icon(
                             Icons.Default.Star,
                             contentDescription = null,
-                            tint = colors.goldPrimary,
+                            tint = hierarchy.secondary.primary,
                             modifier = Modifier.size(12.dp)
                         )
                         Text(
                             text = event,
-                            color = colors.goldPrimary,
+                            color = hierarchy.secondary.primary,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Medium
                         )

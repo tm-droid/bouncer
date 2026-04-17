@@ -70,6 +70,7 @@ fun UmpireInfoCard(
     modifier: Modifier = Modifier,
 ) {
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val infiniteTransition = rememberInfiniteTransition(label = "umpire")
 
     val shimmerOffset by infiniteTransition.animateFloat(
@@ -93,7 +94,7 @@ fun UmpireInfoCard(
                 val shimmerBrush = Brush.linearGradient(
                     colors = listOf(
                         Color.Transparent,
-                        colors.goldDark.copy(alpha = 0.08f),
+                        hierarchy.secondary.primary.copy(alpha = 0.08f),
                         Color.Transparent,
                     ),
                     start = Offset(size.width * shimmerOffset, 0f),
@@ -116,7 +117,7 @@ fun UmpireInfoCard(
                     Icon(
                         imageVector = Icons.Default.Gavel,
                         contentDescription = null,
-                        tint = colors.goldDark,
+                        tint = hierarchy.secondary.primary,
                         modifier = Modifier.size(24.dp),
                     )
 
@@ -124,7 +125,7 @@ fun UmpireInfoCard(
 
                     Text(
                         text = "MATCH OFFICIALS",
-                        color = colors.goldDark,
+                        color = hierarchy.secondary.primary,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 2.sp,
@@ -174,6 +175,7 @@ private fun UmpireCard(
     umpire: UmpireInfo,
     modifier: Modifier = Modifier,
 ) {
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     Column(
         modifier = modifier
@@ -187,7 +189,7 @@ private fun UmpireCard(
             modifier = Modifier
                 .size(60.dp)
                 .clip(CircleShape)
-                .background(colors.goldDark.copy(alpha = 0.1f)),
+                .background(hierarchy.secondary.primary.copy(alpha = 0.1f)),
             contentAlignment = Alignment.Center,
         ) {
             CoilImage(
@@ -211,7 +213,7 @@ private fun UmpireCard(
 
         Text(
             text = umpire.role,
-            color = colors.goldDark,
+            color = hierarchy.secondary.primary,
             fontSize = 10.sp,
         )
 
