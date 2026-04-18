@@ -9,12 +9,14 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.tanush.bouncer.models.CricketMatch
-import com.tanush.bouncer.ui.HomeScreen
+import com.tanush.bouncer.ui.HomeScreenV2
+import com.tanush.bouncer.ui.MatchDetailViewV2
 import com.tanush.bouncer.ui.devtools.DevToolsScreen
 import com.tanush.bouncer.ui.screens.*
-import com.tanush.bouncer.ui.theme.BackgroundSkinType
+import com.tanush.bouncer.ui.screens.news.NewsDetailScreenV2
+import com.tanush.bouncer.ui.screens.news.NewsScreenV2
 import com.tanush.bouncer.ui.theme.BouncerMotion
-import com.tanush.bouncer.ui.theme.ThemeVariant
+import com.tanush.bouncer.ui.theme.v2.ThemeModeV2
 import com.tanush.bouncer.viewmodels.LiveActivityViewModel
 import com.tanush.bouncer.viewmodels.NewsViewModel
 
@@ -42,6 +44,8 @@ fun BouncerNavHost(
     newsViewModel: NewsViewModel,
     onMatchClick: (CricketMatch) -> Unit,
     onArTrackingClick: () -> Unit,
+    themeMode: ThemeModeV2 = ThemeModeV2.System,
+    onThemeModeChanged: (ThemeModeV2) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     NavHost(
@@ -54,10 +58,10 @@ fun BouncerNavHost(
         popExitTransition = { BouncerMotion.Transitions.horizontalPopExit() }
     ) {
         // Primary tabs
-        primaryTabDestinations(navController, liveActivityViewModel, onMatchClick)
+        primaryTabDestinations(navController, liveActivityViewModel, newsViewModel, onMatchClick)
 
         // Secondary screens from More tab
-        moreChildDestinations(navController, newsViewModel, onArTrackingClick)
+        moreChildDestinations(navController, newsViewModel, onArTrackingClick, themeMode, onThemeModeChanged)
 
         // Parameterized screens
         parameterizedDestinations(navController, newsViewModel)
@@ -71,6 +75,7 @@ fun BouncerNavHost(
 private fun NavGraphBuilder.primaryTabDestinations(
     navController: NavHostController,
     liveActivityViewModel: LiveActivityViewModel,
+    newsViewModel: NewsViewModel,
     onMatchClick: (CricketMatch) -> Unit
 ) {
     // Home Tab
@@ -81,7 +86,7 @@ private fun NavGraphBuilder.primaryTabDestinations(
         popEnterTransition = { BouncerMotion.Transitions.tabEnter() },
         popExitTransition = { BouncerMotion.Transitions.tabExit() }
     ) {
-        HomeScreen(
+        HomeScreenV2(
             viewModel = liveActivityViewModel,
             onMatchClick = onMatchClick,
             onMoreMatchesClick = {
@@ -89,6 +94,12 @@ private fun NavGraphBuilder.primaryTabDestinations(
             },
             onAchievementsClick = {
                 navController.navigateForward(BouncerScreen.Stats.route)
+            },
+            onSettingsClick = {
+                navController.navigateForward(BouncerScreen.Settings.route)
+            },
+            onNewsClick = {
+                navController.navigateToTab(BouncerScreen.News.route)
             }
         )
     }
@@ -101,16 +112,30 @@ private fun NavGraphBuilder.primaryTabDestinations(
         popEnterTransition = { BouncerMotion.Transitions.tabEnter() },
         popExitTransition = { BouncerMotion.Transitions.tabExit() }
     ) {
-        AllMatchesScreen(
+        AllMatchesScreenV2(
             viewModel = liveActivityViewModel,
-            onBackClick = {
-                navController.navigateToTab(BouncerScreen.Home.route)
-            },
             onMatchClick = onMatchClick
         )
     }
 
-    // Favourites Tab
+    // News Tab (primary tab in V2)
+    composable(
+        BouncerScreen.News.route,
+        enterTransition = { BouncerMotion.Transitions.tabEnter() },
+        exitTransition = { BouncerMotion.Transitions.tabExit() },
+        popEnterTransition = { BouncerMotion.Transitions.tabEnter() },
+        popExitTransition = { BouncerMotion.Transitions.tabExit() }
+    ) {
+        NewsScreenV2(
+            viewModel = newsViewModel,
+            onArticleClick = { article ->
+                newsViewModel.selectArticle(article)
+                navController.navigateForward(BouncerScreen.NewsDetail.createRoute(article.id.toString()))
+            }
+        )
+    }
+
+    // Favourites (route kept for deep links, no longer primary tab)
     composable(
         BouncerScreen.Favorites.route,
         enterTransition = { BouncerMotion.Transitions.tabEnter() },
@@ -122,14 +147,11 @@ private fun NavGraphBuilder.primaryTabDestinations(
             onBackClick = {
                 navController.navigateToTab(BouncerScreen.Home.route)
             },
-            onTeamClick = { teamName ->
-                // Team detail navigation (future)
-                // navController.navigate(BouncerScreen.Squad.createRoute(teamName))
-            }
+            onTeamClick = { }
         )
     }
 
-    // Stats/Trophy Room Tab -> Stats Hub
+    // Stats Hub
     composable(
         BouncerScreen.Stats.route,
         enterTransition = { BouncerMotion.Transitions.tabEnter() },
@@ -137,7 +159,7 @@ private fun NavGraphBuilder.primaryTabDestinations(
         popEnterTransition = { BouncerMotion.Transitions.tabEnter() },
         popExitTransition = { BouncerMotion.Transitions.tabExit() }
     ) {
-        StatsHubScreen(
+        StatsHubScreenV2(
             onBackClick = {
                 if (!navController.popBackStack()) {
                     navController.navigateToTab(BouncerScreen.Home.route)
@@ -163,7 +185,7 @@ private fun NavGraphBuilder.primaryTabDestinations(
         popEnterTransition = { BouncerMotion.Transitions.tabEnter() },
         popExitTransition = { BouncerMotion.Transitions.tabExit() }
     ) {
-        MoreScreen(
+        MoreScreenV2(
             onSettingsClick = {
                 navController.navigateForward(BouncerScreen.Settings.route)
             },
@@ -186,7 +208,10 @@ private fun NavGraphBuilder.primaryTabDestinations(
                 navController.navigateForward(BouncerScreen.DevTools.route)
             },
             onNewsClick = {
-                navController.navigateForward(BouncerScreen.News.route)
+                navController.navigateToTab(BouncerScreen.News.route)
+            },
+            onAppearanceClick = {
+                navController.navigateForward(BouncerScreen.Appearance.route)
             }
         )
     }
@@ -199,11 +224,13 @@ private fun NavGraphBuilder.primaryTabDestinations(
 private fun NavGraphBuilder.moreChildDestinations(
     navController: NavHostController,
     newsViewModel: NewsViewModel,
-    onArTrackingClick: () -> Unit
+    onArTrackingClick: () -> Unit,
+    themeMode: ThemeModeV2,
+    onThemeModeChanged: (ThemeModeV2) -> Unit
 ) {
     // Settings
     composable(BouncerScreen.Settings.route) {
-        SettingsScreen(
+        SettingsScreenV2(
             onBackClick = { navController.popBackStack() },
             onFavoritesClick = {
                 navController.navigateToTab(BouncerScreen.Favorites.route)
@@ -220,78 +247,60 @@ private fun NavGraphBuilder.moreChildDestinations(
         )
     }
 
-    // Appearance customization
+    // Appearance customization (V2 — Light/Dark/System)
     composable(BouncerScreen.Appearance.route) {
-        val selectedVariant by remember { mutableStateOf(ThemeVariant.Dark) }
-        val selectedSkin by remember { mutableStateOf(BackgroundSkinType.MIDNIGHT_GRADIENT) }
-        AppearanceScreen(
+        AppearanceScreenV2(
             onBackClick = { navController.popBackStack() },
-            currentThemeVariant = selectedVariant,
-            currentBackgroundSkin = selectedSkin,
-            onThemeVariantChanged = { },
-            onBackgroundSkinChanged = { }
+            currentMode = themeMode,
+            onModeChanged = onThemeModeChanged
         )
     }
 
     // About
     composable(BouncerScreen.About.route) {
-        AboutScreen(
+        AboutScreenV2(
             onBackClick = { navController.popBackStack() }
         )
     }
 
-    // DevTools
+    // DevTools (unchanged — not redesigned)
     composable(BouncerScreen.DevTools.route) {
         DevToolsScreen(
             onBackClick = { navController.popBackStack() }
         )
     }
 
-    // News List
-    composable(BouncerScreen.News.route) {
-        NewsScreen(
-            onBackClick = { navController.popBackStack() },
-            newsViewModel = newsViewModel,
-            onArticleClick = { article ->
-                newsViewModel.selectArticle(article)
-                navController.navigateForward(BouncerScreen.NewsDetail.createRoute(article.id.toString()))
-            }
-        )
-    }
-
-    // Achievements (standalone screen)
+    // Achievements
     composable(BouncerScreen.Achievements.route) {
-        // For now, pass empty set - this should be connected to a ViewModel
-        AchievementsScreen(
+        AchievementsScreenV2(
             unlockedAchievements = emptySet(),
             onBackClick = { navController.popBackStack() }
         )
     }
 
-    // Trophy Room (legacy access) - reachable from Stats Hub
+    // Trophy Room
     composable(BouncerScreen.Trophy.route) {
-        TrophyRoomScreen(
+        TrophyRoomScreenV2(
             onBackClick = { navController.popBackStack() }
         )
     }
 
-    // Extended Stats Overview (detailed analytics)
+    // Stats Overview (analytics)
     composable(BouncerScreen.StatsOverview.route) {
-        StatsOverviewScreen(onBackClick = { navController.popBackStack() })
+        StatsOverviewScreenV2(onBackClick = { navController.popBackStack() })
     }
 
     // AR Tracking (uses overlay pattern)
     composable(BouncerScreen.ArTracking.route) {
-        // Navigate back and trigger overlay
         LaunchedEffect(Unit) {
             navController.popBackStack()
             onArTrackingClick()
         }
     }
 
-    // Activity Feed / Intelligence
+    // Activity / Intelligence Feed
     composable(BouncerScreen.ActivityFeed.route) {
-        IntelligenceFeedScreen(
+        IntelligenceFeedScreenV2(
             onBackClick = { navController.popBackStack() }
         )
     }
@@ -313,20 +322,17 @@ private fun NavGraphBuilder.parameterizedDestinations(
         val articleId = backStackEntry.arguments?.getString(BouncerScreen.NewsDetail.ARG_ARTICLE_ID)
             ?.decodeUrlSafe() ?: return@composable
 
-        // Get article from ViewModel's selected state or fetch by ID
         val selectedArticle by newsViewModel.selectedArticle.collectAsState()
 
-        selectedArticle?.let { article ->
-            NewsDetailScreen(
-                article = article,
-                newsViewModel = newsViewModel,
-                onBackClick = {
+        selectedArticle?.let {
+            NewsDetailScreenV2(
+                viewModel = newsViewModel,
+                onBack = {
                     newsViewModel.clearSelectedArticle()
                     navController.popBackStack()
                 }
             )
         } ?: run {
-            // Article not in state - navigate back
             LaunchedEffect(Unit) {
                 navController.popBackStack()
             }
@@ -334,8 +340,6 @@ private fun NavGraphBuilder.parameterizedDestinations(
     }
 
     // Player Detail with player ID
-    // NOTE: The actual PlayerDetailScreen takes individual params (playerName, playerRole, etc.)
-    // In a full implementation, this would fetch player data from a ViewModel by ID
     composable(
         route = BouncerScreen.PlayerDetail.ROUTE_PATTERN,
         arguments = BouncerScreen.PlayerDetail.arguments
@@ -343,10 +347,8 @@ private fun NavGraphBuilder.parameterizedDestinations(
         val playerId = backStackEntry.arguments?.getString(BouncerScreen.PlayerDetail.ARG_PLAYER_ID)
             ?.decodeUrlSafe() ?: return@composable
 
-        // PlayerDetailScreen expects individual parameters - this is a placeholder
-        // In a full implementation, you would fetch player data from a ViewModel
-        PlayerDetailScreen(
-            playerName = playerId, // Using ID as name placeholder
+        PlayerDetailScreenV2(
+            playerName = playerId,
             playerRole = "Player",
             playerImageUrl = null,
             isCaptain = false,
@@ -357,8 +359,6 @@ private fun NavGraphBuilder.parameterizedDestinations(
 
     // NOTE: MatchInfoScreen and SquadScreen require CricketMatch objects, not just IDs.
     // These are currently handled via the modal overlay pattern in BouncerAppContent.
-    // To enable ID-based navigation, the screens would need to be refactored to
-    // accept an ID and load the match from a ViewModel/repository.
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════

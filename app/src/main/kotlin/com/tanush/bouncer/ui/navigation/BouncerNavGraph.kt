@@ -206,7 +206,7 @@ sealed class BouncerScreen(val route: String) {
         /**
          * All primary tab routes for bottom navigation.
          */
-        val primaryTabs = listOf(Home, Matches, Favorites, More)
+        val primaryTabs = listOf(Home, Matches, News, More)
 
         /**
          * Routes that should highlight the "More" tab when active.
@@ -219,7 +219,6 @@ sealed class BouncerScreen(val route: String) {
             Appearance.route,
             About.route,
             DevTools.route,
-            News.route,
             Achievements.route,
             ArTracking.route,
             ActivityFeed.route
@@ -229,8 +228,7 @@ sealed class BouncerScreen(val route: String) {
          * Check if a route is a child of the "More" tab.
          */
         fun isMoreChildRoute(route: String?): Boolean {
-            return route in moreChildRoutes ||
-                    route?.startsWith("news/") == true
+            return route in moreChildRoutes
         }
 
         /**
@@ -241,6 +239,7 @@ sealed class BouncerScreen(val route: String) {
             return when {
                 route == null -> Home.route
                 route in primaryTabs.map { it.route } -> route
+                route.startsWith("news/") -> News.route
                 isMoreChildRoute(route) -> More.route
                 route.startsWith("match/") || route.startsWith("match-info/") -> Matches.route
                 route.startsWith("player/") -> More.route

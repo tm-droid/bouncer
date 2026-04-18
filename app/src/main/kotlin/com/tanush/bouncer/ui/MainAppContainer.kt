@@ -1,13 +1,13 @@
 package com.tanush.bouncer.ui
 
 import android.net.Uri
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -15,13 +15,15 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.tanush.bouncer.models.CricketMatch
-import com.tanush.bouncer.ui.components.PremiumBottomNavBar
+import com.tanush.bouncer.ui.components.v2.BottomNavBarV2
 import com.tanush.bouncer.ui.navigation.BouncerNavHost
 import com.tanush.bouncer.ui.navigation.BouncerScreen
 import com.tanush.bouncer.ui.navigation.navigateForward
 import com.tanush.bouncer.ui.navigation.navigateToTab
 import com.tanush.bouncer.ui.screens.*
-import com.tanush.bouncer.ui.theme.*
+import com.tanush.bouncer.ui.theme.BouncerMotion
+import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
+import com.tanush.bouncer.ui.theme.v2.ThemeModeV2
 import com.tanush.bouncer.utils.PreferencesHelper
 import com.tanush.bouncer.viewmodels.LiveActivityViewModel
 import com.tanush.bouncer.viewmodels.NewsViewModel
@@ -42,6 +44,7 @@ fun BouncerAppContent(
     var currentMatch by remember { mutableStateOf<CricketMatch?>(null) }
     var showArTracking by remember { mutableStateOf(false) }
     val context = LocalContext.current
+    var themeMode by remember { mutableStateOf(ThemeModeV2.System) }
 
     LaunchedEffect(Unit) {
         BouncerMotion.applyReducedMotionPreference(
@@ -53,8 +56,15 @@ fun BouncerAppContent(
         )
     }
 
-    BouncerTheme {
-        Box(modifier = Modifier.fillMaxSize().background(BlackBackground)) {
+    BouncerThemeV2(themeMode = themeMode) {
+        BackHandler(enabled = currentMatch != null) { currentMatch = null }
+        BackHandler(enabled = showArTracking) { showArTracking = false }
+
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(BouncerThemeV2.colors.background)
+        ) {
             AnimatedContent(
                 targetState = currentMatch,
                 transitionSpec = {
@@ -69,10 +79,9 @@ fun BouncerAppContent(
                 label = "rootNavigation"
             ) { match ->
                 if (match != null) {
-                    MatchDetailView(
+                    MatchDetailViewV2(
                         match = match,
-                        onBackClick = { currentMatch = null },
-                        onArClick = { showArTracking = true }
+                        onBackClick = { currentMatch = null }
                     )
                 } else {
                     MainAppContainer(
@@ -80,7 +89,9 @@ fun BouncerAppContent(
                             currentMatch = clickedMatch
                         },
                         onArTrackingRequest = { showArTracking = true },
-                        externalDeepLinkUri = externalDeepLinkUri
+                        externalDeepLinkUri = externalDeepLinkUri,
+                        themeMode = themeMode,
+                        onThemeModeChanged = { themeMode = it }
                     )
                 }
             }
@@ -116,7 +127,9 @@ fun MainAppContainer(
     newsViewModel: NewsViewModel = viewModel(),
     onMatchClick: (CricketMatch) -> Unit,
     onArTrackingRequest: () -> Unit = {},
-    externalDeepLinkUri: String? = null
+    externalDeepLinkUri: String? = null,
+    themeMode: ThemeModeV2 = ThemeModeV2.System,
+    onThemeModeChanged: (ThemeModeV2) -> Unit = {}
 ) {
     // Navigation controller - survives configuration changes via rememberNavController
     val navController = rememberNavController()
@@ -128,9 +141,6 @@ fun MainAppContainer(
 
     // Determine if viewModel has live matches for badge
     val currentMatches by viewModel.currentMatches.collectAsState()
-    val hasLiveMatches = remember(currentMatches) {
-        currentMatches.any { it.isLive }
-    }
 
     LaunchedEffect(externalDeepLinkUri, currentMatches) {
         val incomingLink = externalDeepLinkUri?.takeIf { it.isNotBlank() } ?: return@LaunchedEffect
@@ -155,15 +165,7 @@ fun MainAppContainer(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    colors = listOf(
-                        BlackBackground,
-                        CardDarkBlue.copy(alpha = 0.2f),
-                        BlackBackground
-                    )
-                )
-            )
+            .background(BouncerThemeV2.colors.background)
     ) {
         // Content Area — NavHost handles all screen routing
         BouncerNavHost(
@@ -172,18 +174,19 @@ fun MainAppContainer(
             newsViewModel = newsViewModel,
             onMatchClick = onMatchClick,
             onArTrackingClick = onArTrackingRequest,
+            themeMode = themeMode,
+            onThemeModeChanged = onThemeModeChanged,
             modifier = Modifier
                 .fillMaxSize()
-                .padding(bottom = 80.dp)  // clearance for bottom nav bar
+                .padding(bottom = 80.dp)
         )
 
-        // ── Bottom Navigation Bar (v3.0) ──
-        PremiumBottomNavBar(
+        // Bottom Navigation Bar (V2)
+        BottomNavBarV2(
             currentRoute = bottomNavRoute,
-            onNavigate = { route ->
+            onTabSelected = { route ->
                 navController.navigateToTab(route)
             },
-            hasLiveMatches = hasLiveMatches,
             modifier = Modifier.align(Alignment.BottomCenter)
         )
     }
@@ -223,7 +226,7 @@ private fun handleExternalDeepLink(
         "settings" -> navController.navigateForward(BouncerScreen.Settings.route)
         "appearance" -> navController.navigateForward(BouncerScreen.Appearance.route)
         "about" -> navController.navigateForward(BouncerScreen.About.route)
-        "news" -> navController.navigateForward(BouncerScreen.News.route)
+        "news" -> navController.navigateToTab(BouncerScreen.News.route)
         "activity" -> navController.navigateForward(BouncerScreen.ActivityFeed.route)
         "ar", "ar-tracking" -> navController.navigateForward(BouncerScreen.ArTracking.route)
         "match" -> {
