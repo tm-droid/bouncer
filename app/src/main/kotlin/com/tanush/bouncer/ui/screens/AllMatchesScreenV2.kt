@@ -51,7 +51,7 @@ fun AllMatchesScreenV2(
     // Status chips
     val statusOptions = listOf("Live", "Upcoming", "Recent")
     // Format chips
-    val formatOptions = listOf("All", "T20", "ODI", "Test")
+    val formatOptions = listOf("All", "T20", "ODI", "Test", "First Class")
 
     // Apply local format filter
     val filteredMatches = if (selectedFormat == "All") {

@@ -35,14 +35,23 @@ fun determineMatchStatus(match: CricketMatch): MatchStatusType {
     if (match.isLive) return MatchStatusType.Live
     val statusLower = match.status.lowercase()
     val currentLower = match.currentStatus.lowercase()
+    val infoLower = match.info.lowercase().trim()
+
+    // Check Cricbuzz state field for in-progress indicators (multi-day matches at breaks)
+    if (infoLower in listOf("in progress", "stump", "stumps", "tea", "lunch",
+            "dinner", "innings break", "toss", "rain delay", "bad light")) {
+        return MatchStatusType.Live
+    }
+
     // Completed indicators
     if (currentLower.contains("won") || currentLower.contains("draw") ||
         currentLower.contains("no result") || currentLower.contains("tied") ||
-        statusLower.contains("result") || statusLower.contains("complete")
+        statusLower.contains("result") || statusLower.contains("complete") ||
+        infoLower == "complete"
     ) return MatchStatusType.Completed
     // Upcoming indicators
     if (statusLower.contains("upcoming") || statusLower.contains("scheduled") ||
-        statusLower.contains("preview")
+        statusLower.contains("preview") || infoLower == "preview"
     ) return MatchStatusType.Upcoming
     // If the match has scores, it's not upcoming
     val hasScores = match.teams.any { it.score.isNotBlank() }

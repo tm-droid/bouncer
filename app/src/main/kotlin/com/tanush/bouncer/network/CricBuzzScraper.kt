@@ -226,6 +226,26 @@ class CricBuzzScraper {
             val team2 = info.getAsJsonObject("team2").get("teamName").asString
             val status = info.get("status").asString
             val state = info.get("state")?.asString ?: "Live"
+
+            // Extract match format and series info from Cricbuzz JSON
+            val matchFormat = info.get("matchFormat")?.asString ?: ""
+            val matchDesc = info.get("matchDesc")?.asString ?: ""
+            val seriesName = info.get("seriesName")?.asString ?: ""
+            val seriesId = info.get("seriesId")?.asString ?: ""
+
+            // Extract venue
+            val venue = try {
+                val venueInfo = info.getAsJsonObject("venueInfo")
+                val ground = venueInfo?.get("ground")?.asString ?: ""
+                val city = venueInfo?.get("city")?.asString ?: ""
+                if (ground.isNotBlank() && city.isNotBlank()) "$ground, $city"
+                else ground.ifBlank { city }
+            } catch (_: Exception) { "" }
+
+            val matchType = mapMatchFormat(matchFormat).ifBlank {
+                determineMatchType("$team1 vs $team2 $matchDesc")
+            }
+            val competitionType = classifyCompetitionType(seriesName, matchDesc)
             
             // Try to extract score if available in current Next.js structure
             var team1Score = ""
@@ -303,25 +323,65 @@ class CricBuzzScraper {
 
             return CricketMatch(
                 id = matchId,
-                seriesId = "",
+                seriesId = seriesId,
                 matchTitle = "$team1 vs $team2",
-                matchType = determineMatchType("$team1 vs $team2"),
+                matchType = matchType,
                 status = status,
                 teams = teams,
-                venue = "",
+                venue = venue,
                 date = "Today",
                 matchTime = "",
                 score = matchScore,
                 currentStatus = status,
                 info = state,
-                category = "Other",
+                category = competitionType,
                 gender = "Men",
-                competitionType = "Other"
+                competitionType = competitionType
             )
         } catch (e: Exception) {
             Log.d(TAG, "Failed to parse match from element", e)
             return null
         }
+    }
+
+    /**
+     * Map Cricbuzz matchFormat codes to user-friendly labels.
+     */
+    private fun mapMatchFormat(format: String): String = when (format.uppercase()) {
+        "TEST" -> "Test"
+        "ODI" -> "ODI"
+        "T20", "T20I" -> "T20"
+        "FC" -> "First Class"
+        "LIST_A" -> "List A"
+        else -> ""
+    }
+
+    /**
+     * Classify competition type from series name.
+     */
+    private fun classifyCompetitionType(seriesName: String, matchDesc: String): String {
+        val combined = "$seriesName $matchDesc".lowercase()
+        val internationalKeywords = listOf(
+            "tour of", "world cup", "champions trophy", "asia cup",
+            "icc ", "tri-series", "tri series", "bilateral",
+            // Match description patterns like "1st Test", "2nd ODI", "3rd T20I"
+            "\\d+(?:st|nd|rd|th) test", "\\d+(?:st|nd|rd|th) odi", "\\d+(?:st|nd|rd|th) t20i"
+        )
+        val leagueKeywords = listOf(
+            "ipl", "bbl", "big bash", "psl", "cpl", "caribbean premier",
+            "sa20", "lpl", "bpl", "ilt20", "mlc", "major league cricket",
+            "the hundred", "hundred", "vitality blast", "t20 blast",
+            "syed mushtaq ali", "vijay hazare"
+        )
+
+        if (internationalKeywords.any { keyword ->
+            if (keyword.contains("\\d")) Regex(keyword).containsMatchIn(combined)
+            else combined.contains(keyword)
+        }) return "International"
+
+        if (leagueKeywords.any { combined.contains(it) }) return "League"
+
+        return "Domestic"
     }
 
     data class MatchDetails(
@@ -541,7 +601,10 @@ class CricBuzzScraper {
             t.contains("test") -> "Test"
             t.contains("odi") -> "ODI"
             t.contains("t20") -> "T20"
-            else -> "Limited Overs"
+            t.contains("first class") || t.contains("county") || t.contains("ranji") ||
+                t.contains("sheffield shield") || t.contains("plunket shield") -> "First Class"
+            t.contains("list a") -> "List A"
+            else -> "Other"
         }
     }
 

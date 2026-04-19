@@ -41,6 +41,7 @@ fun NewsScreenV2(
     val articles by viewModel.articles.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val isRefreshing by viewModel.isRefreshing.collectAsState()
+    val error by viewModel.error.collectAsState()
 
     val colors = BouncerThemeV2.colors
     val typography = BouncerThemeV2.typography
@@ -73,13 +74,20 @@ fun NewsScreenV2(
                     return@LazyColumn
                 }
 
-                // Empty
+                // Empty or error state
                 if (articles.isEmpty() && !isLoading) {
                     item(key = "empty") {
-                        EmptyStateV2(
-                            title = "No news yet",
-                            subtitle = "Pull to refresh for the latest cricket headlines",
-                        )
+                        if (error != null) {
+                            EmptyStateV2(
+                                title = "Couldn't load news",
+                                subtitle = error ?: "Something went wrong. Pull to refresh to try again.",
+                            )
+                        } else {
+                            EmptyStateV2(
+                                title = "No news yet",
+                                subtitle = "Pull to refresh for the latest cricket headlines",
+                            )
+                        }
                     }
                     return@LazyColumn
                 }

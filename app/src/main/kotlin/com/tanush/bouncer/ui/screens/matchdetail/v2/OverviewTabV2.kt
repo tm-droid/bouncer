@@ -58,7 +58,8 @@ fun OverviewTabV2(
         verticalArrangement = Arrangement.spacedBy(spacing.md),
     ) {
         // Quick stats row
-        if (currentRunRate != null || requiredRunRate != null || match.winProbability > 0) {
+        val showWinPct = match.isLive && match.winProbability > 0 && match.winProbability != 50.0
+        if (currentRunRate != null || requiredRunRate != null || showWinPct) {
             item(key = "quick_stats") {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -70,7 +71,7 @@ fun OverviewTabV2(
                     requiredRunRate?.let {
                         QuickStatCard(label = "RRR", value = it, modifier = Modifier.weight(1f))
                     }
-                    if (match.winProbability > 0) {
+                    if (showWinPct) {
                         QuickStatCard(
                             label = "Win %",
                             value = "${match.winProbability.toInt()}%",
@@ -154,8 +155,8 @@ fun OverviewTabV2(
             }
         }
 
-        // Win Probability bar
-        if (match.winProbability > 0 && match.teams.size >= 2) {
+        // Win Probability bar — only show for live matches with meaningful data
+        if (match.isLive && match.winProbability > 0 && match.winProbability != 50.0 && match.teams.size >= 2) {
             item(key = "win_prob_header") {
                 SectionHeaderV2(title = "Win Probability")
             }
