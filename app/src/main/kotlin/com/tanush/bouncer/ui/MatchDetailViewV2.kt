@@ -88,7 +88,7 @@ fun MatchDetailViewV2(
     val typography = BouncerThemeV2.typography
     val spacing = BouncerThemeV2.spacing
 
-    val tabTitles = listOf("Overview", "Scorecard", "Commentary", "Timeline", "Info")
+    val tabTitles = listOf("Overview", "Scorecard", "Commentary", "Highlights", "Info")
     val pagerState = rememberPagerState(pageCount = { tabTitles.size })
     val scope = rememberCoroutineScope()
 
@@ -124,6 +124,16 @@ fun MatchDetailViewV2(
 
     // Polling loop
     LaunchedEffect(match.id) {
+        // One-time initial seed: fetch all currently visible commentary before the polling loop starts
+        try {
+            val url = "https://www.cricbuzz.com/live-cricket-scores/${match.id}"
+            val allLines = scraper.fetchLiveCommentary(url)
+            if (allLines.isNotEmpty()) {
+                commentaryManager.seedHistory(allLines)
+                commentary = commentaryManager.getSeededHistory()
+            }
+        } catch (_: Exception) { }
+
         while (true) {
             try {
                 val details = scraper.fetchBallByBallAndBatsmen(match.id)
@@ -180,6 +190,22 @@ fun MatchDetailViewV2(
     val score2 = liveTeam2Score.ifBlank { team2?.score ?: "" }
     val overs1 = liveTeam1Overs.ifBlank { team1?.overs ?: "" }
     val overs2 = liveTeam2Overs.ifBlank { team2?.overs ?: "" }
+
+    // Derive a match copy with live team scores so Overview tab (win probability, isUpcoming, etc.)
+    // always reflects the most recent data rather than the initial cached snapshot.
+    val liveMatch = if (match.teams.size >= 2) {
+        match.copy(
+            teams = match.teams.mapIndexed { i, team ->
+                when (i) {
+                    0 -> team.copy(score = score1.ifBlank { team.score }, overs = overs1.ifBlank { team.overs })
+                    1 -> team.copy(score = score2.ifBlank { team.score }, overs = overs2.ifBlank { team.overs })
+                    else -> team
+                }
+            },
+        )
+    } else {
+        match
+    }
 
     Scaffold(
         topBar = {
@@ -283,7 +309,7 @@ fun MatchDetailViewV2(
             ) { page ->
                 when (page) {
                     0 -> OverviewTabV2(
-                        match = match,
+                        match = liveMatch,
                         batsmen = batsmen,
                         bowler = bowler,
                         recentBalls = recentBalls,

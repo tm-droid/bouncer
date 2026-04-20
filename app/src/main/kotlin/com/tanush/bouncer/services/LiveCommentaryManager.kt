@@ -291,6 +291,29 @@ class LiveCommentaryManager(
         }
     }
 
+    /**
+     * Pre-populate aiCommentaryHistory with historical lines fetched before the polling loop starts.
+     * Existing entries are not duplicated; newer/longer entries for the same ball replace older ones.
+     */
+    fun seedHistory(lines: List<String>) {
+        for (line in lines.filter { it.length > 5 }) {
+            if (aiCommentaryHistory.lastOrNull() == line) continue
+            val ballNum = extractBallNumber(line.trimStart())
+            if (ballNum != null) {
+                val idx = aiCommentaryHistory.indexOfLast { extractBallNumber(it.trimStart()) == ballNum }
+                if (idx >= 0) {
+                    if (line.length >= aiCommentaryHistory[idx].length) aiCommentaryHistory[idx] = line
+                } else {
+                    aiCommentaryHistory.add(line)
+                }
+            } else {
+                if (!aiCommentaryHistory.contains(line)) aiCommentaryHistory.add(line)
+            }
+        }
+    }
+
+    fun getSeededHistory(): List<String> = aiCommentaryHistory.toList().reversed()
+
     fun getMappedCricinfoId(cricbuzzId: String): String? = cricinfo.getMappedCricinfoId(cricbuzzId)
     fun getHistory(): List<String> = commentaryHistory
     fun isBallByBallCommentary(snippet: String): Boolean = scorer.isBallByBallCommentary(snippet)
