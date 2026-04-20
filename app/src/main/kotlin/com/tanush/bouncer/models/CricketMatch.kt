@@ -31,53 +31,97 @@ data class CricketMatch(
                 currentStatus.lowercase().contains("opted to") || 
                 currentStatus.lowercase().contains("need")
 
+    val isCompleted: Boolean
+        get() {
+            val s = currentStatus.lowercase()
+            val st = status.lowercase()
+            return s.contains("won") || s.contains("drawn") || s.contains("tied") ||
+                s.contains("no result") || st.contains("complete") ||
+                st.contains("won") || st.contains("drawn") || st.contains("tied") || st.contains("no result")
+        }
+
     /**
-     * Heuristic calculation of win probability based on current match situation.
-     * Used as a fallback when Monte Carlo simulation is not available.
+     * Heuristic calculation of win probability for Team 1.
+     * Handles all match states: completed, live, stumps/break, and upcoming.
      */
     fun calculateHeuristicProbability(): Double {
-        if (!isLive) return 50.0
-        
-        val matchScore = score ?: return 50.0
-        
-        // Extract required data
-        val reqRR = matchScore.requiredRunRate?.toDoubleOrNull() ?: return 50.0
-        val currentRR = matchScore.currentRunRate?.toDoubleOrNull() ?: 6.0
-        
-        // Parse overs to get balls remaining
-        // Format: "15.2" or "15"
-        val oversParts = matchScore.overs?.split(".") ?: return 50.0
-        val oversDone = oversParts[0].toIntOrNull() ?: 0
-        val ballsDoneInOver = if (oversParts.size > 1) oversParts[1].toIntOrNull() ?: 0 else 0
-        val totalBallsDone = (oversDone * 6) + ballsDoneInOver
-        
-        // Assume T20 if not specified
-        val totalBalls = if (matchType.contains("ODI")) 300 else 120
-        val ballsRemaining = (totalBalls - totalBallsDone).coerceAtLeast(1)
-        
-        // Estimate wickets in hand
-        val battingTeam = teams.find { it.isBatting }
-        val scoreText = battingTeam?.score ?: ""
-        // Format: "142/3"
-        val wicketsLost = scoreText.split("/").getOrNull(1)?.toIntOrNull() ?: 0
-        val wicketsInHand = (10 - wicketsLost).coerceIn(0, 10)
-        
-        // Base probability starts at 50%
-        var prob = 50.0
-        
-        // Impact of RRR vs CRR
-        val rrGap = currentRR - reqRR
-        prob += rrGap * 5.0 // Each 1.0 difference in RR shifts prob by 5%
-        
-        // Impact of wickets
-        prob += (wicketsInHand - 5) * 4.0 // Having more than 5 wickets helps
-        
-        // Impact of balls remaining (pressure)
-        if (reqRR > 10.0) {
-            prob -= (120 - ballsRemaining) / 12.0 // Pressure increases as balls decrease
+        // Completed matches: parse result to determine winner
+        if (isCompleted) {
+            val statusLower = currentStatus.lowercase()
+            val statusAlt = status.lowercase()
+            val combined = "$statusLower $statusAlt"
+            if (combined.contains("drawn") || combined.contains("tied") || combined.contains("no result")) {
+                return 50.0
+            }
+            // "Team X won by..."
+            val team1Name = teams.getOrNull(0)?.name?.lowercase() ?: ""
+            val team1Acronym = teams.getOrNull(0)?.acronym?.lowercase() ?: ""
+            return when {
+                (team1Name.isNotBlank() && combined.contains(team1Name)) || 
+                    (team1Acronym.isNotBlank() && combined.contains(team1Acronym)) -> 100.0
+                else -> 0.0 // Team 2 won
+            }
         }
-        
-        return prob.coerceIn(5.0, 95.0)
+
+        // For matches at stumps/break: calculate based on current match situation
+        val matchScore = score
+        val battingTeam = teams.find { it.isBatting }
+        val isChasing = matchScore?.requiredRunRate != null
+
+        // If no score data at all, return 50 (truly unknown)
+        if (matchScore == null && battingTeam == null) return 50.0
+
+        // If chasing, use RRR-based calculation
+        if (isChasing) {
+            val reqRR = matchScore?.requiredRunRate?.toDoubleOrNull() ?: return 50.0
+            val currentRR = matchScore.currentRunRate?.toDoubleOrNull() ?: 6.0
+
+            val oversParts = matchScore.overs?.split(".") ?: return 50.0
+            val oversDone = oversParts[0].toIntOrNull() ?: 0
+            val ballsDoneInOver = if (oversParts.size > 1) oversParts[1].toIntOrNull() ?: 0 else 0
+            val totalBallsDone = (oversDone * 6) + ballsDoneInOver
+
+            val totalBalls = when {
+                matchType.contains("ODI", ignoreCase = true) -> 300
+                matchType.contains("T20", ignoreCase = true) || matchType.contains("Twenty20", ignoreCase = true) -> 120
+                else -> 120
+            }
+            val ballsRemaining = (totalBalls - totalBallsDone).coerceAtLeast(1)
+
+            val scoreText = battingTeam?.score ?: ""
+            val wicketsLost = scoreText.split("/").getOrNull(1)?.toIntOrNull() ?: 0
+            val wicketsInHand = (10 - wicketsLost).coerceIn(0, 10)
+
+            var prob = 50.0
+            // Moderate RR gap impact (capped at 3% per run, not 5%)
+            val rrGap = currentRR - reqRR
+            prob += (rrGap * 3.0).coerceIn(-25.0, 25.0)
+            // Wickets impact (2.5% per wicket difference from 5)
+            prob += (wicketsInHand - 5) * 2.5
+            // Pressure from overs remaining
+            val oversRatio = ballsRemaining.toDouble() / totalBalls
+            if (reqRR > 9.0) {
+                prob -= ((1.0 - oversRatio) * 15.0) // max -15% pressure late in innings
+            }
+
+            return prob.coerceIn(5.0, 95.0)
+        }
+
+        // For Test matches (first innings) or matches without chase data
+        // Use wickets and runs position as heuristic
+        val scoreText = battingTeam?.score ?: ""
+        val parts = scoreText.split("/")
+        val runs = parts.getOrNull(0)?.toIntOrNull()
+        val wickets = parts.getOrNull(1)?.toIntOrNull()
+        if (runs != null && wickets != null) {
+            // Simple: more runs = stronger, more wickets lost = weaker
+            var prob = 50.0
+            prob += (runs / 50.0).coerceAtMost(10.0)  // max +10 for big scores
+            prob -= wickets * 2.0  // -2% per wicket lost
+            return prob.coerceIn(25.0, 75.0) // First innings: keep range modest
+        }
+
+        return 50.0
     }
 
     data class Team(

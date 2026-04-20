@@ -5,8 +5,8 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="#0F1115"
-    android:padding="16dp">
+    android:background="@drawable/bg_widget_premium_root"
+    android:padding="18dp">
 
     <!-- Header: Match Type & Actions -->
     <LinearLayout
@@ -22,7 +22,7 @@
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:gravity="center_vertical"
-            android:background="#1AEF4444"
+            android:background="@drawable/bg_widget_live_badge"
             android:paddingTop="4dp"
             android:paddingBottom="4dp"
             android:paddingStart="8dp"
@@ -41,7 +41,7 @@
                 android:text="LIVE"
                 android:textSize="9sp"
                 android:textStyle="bold"
-                android:textColor="#FF3B30"
+                android:textColor="@color/error_red"
                 android:letterSpacing="0.15" />
         </LinearLayout>
 
@@ -53,27 +53,31 @@
             android:layout_weight="1"
             android:text="T20I"
             android:textSize="10sp"
-            android:textColor="#64748B"
+            android:textColor="@color/text_tertiary"
             android:letterSpacing="0.1"
             android:layout_marginStart="8dp" />
 
         <!-- Refresh Button -->
         <ImageView
             android:id="@+id/refresh_button"
-            android:layout_width="24dp"
-            android:layout_height="24dp"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
             android:src="@android:drawable/ic_popup_sync"
             android:contentDescription="Refresh"
-            android:padding="4dp" />
+            android:background="@drawable/bg_widget_action_chip"
+            android:tint="@color/shiny_gold_light"
+            android:padding="6dp" />
 
         <!-- Next Match Button -->
         <ImageView
             android:id="@+id/next_match_button"
-            android:layout_width="24dp"
-            android:layout_height="24dp"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
             android:src="@android:drawable/ic_media_next"
             android:contentDescription="Next Match"
-            android:padding="4dp"
+            android:background="@drawable/bg_widget_action_chip"
+            android:tint="@color/shiny_gold_light"
+            android:padding="6dp"
             android:layout_marginStart="8dp" />
     </LinearLayout>
 
@@ -90,7 +94,10 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:orientation="vertical">
+            android:orientation="vertical"
+            android:background="@drawable/bg_widget_surface"
+            android:padding="12dp"
+            android:layout_marginEnd="6dp">
 
             <TextView
                 android:id="@+id/team1_name"
@@ -99,7 +106,7 @@
                 android:text="INDIA"
                 android:textSize="13sp"
                 android:textStyle="bold"
-                android:textColor="#FFD700"
+                android:textColor="@color/shiny_gold_deep"
                 android:letterSpacing="0.05" />
 
             <TextView
@@ -109,7 +116,7 @@
                 android:text="185/4 (18.3)"
                 android:textSize="18sp"
                 android:textStyle="bold"
-                android:textColor="#FFFFFF"
+                android:textColor="@color/text_primary"
                 android:layout_marginTop="4dp" />
         </LinearLayout>
 
@@ -119,7 +126,7 @@
             android:layout_height="wrap_content"
             android:text="vs"
             android:textSize="12sp"
-            android:textColor="#64748B"
+            android:textColor="@color/text_tertiary"
             android:paddingStart="12dp"
             android:paddingEnd="12dp" />
 
@@ -129,7 +136,10 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:orientation="vertical"
-            android:gravity="end">
+            android:gravity="end"
+            android:background="@drawable/bg_widget_surface"
+            android:padding="12dp"
+            android:layout_marginStart="6dp">
 
             <TextView
                 android:id="@+id/team2_name"
@@ -138,7 +148,7 @@
                 android:text="AUSTRALIA"
                 android:textSize="13sp"
                 android:textStyle="bold"
-                android:textColor="#94A3B8"
+                android:textColor="@color/text_secondary"
                 android:letterSpacing="0.05" />
 
             <TextView
@@ -147,7 +157,7 @@
                 android:layout_height="wrap_content"
                 android:text="Target: 201"
                 android:textSize="14sp"
-                android:textColor="#94A3B8"
+                android:textColor="@color/text_secondary"
                 android:layout_marginTop="4dp"
                 android:visibility="gone" />
         </LinearLayout>
@@ -168,7 +178,7 @@
             android:layout_height="wrap_content"
             android:text="LAST 6"
             android:textSize="8sp"
-            android:textColor="#64748B"
+            android:textColor="@color/text_tertiary"
             android:letterSpacing="0.1" />
 
         <LinearLayout
@@ -190,7 +200,7 @@
                 android:textStyle="bold"
                 android:textColor="#FFFFFF"
                 android:gravity="center"
-                android:background="#1A1A1A"
+                android:background="@drawable/bg_widget_ball_neutral"
                 android:layout_marginEnd="4dp" />
 
             <!-- Ball 2 -->
@@ -203,7 +213,7 @@
                 android:textStyle="bold"
                 android:textColor="#FFFFFF"
                 android:gravity="center"
-                android:background="#22C55E"
+                android:background="@drawable/bg_widget_ball_four"
                 android:layout_marginEnd="4dp" />
 
             <!-- Ball 3 -->
@@ -214,9 +224,9 @@
                 android:text="0"
                 android:textSize="11sp"
                 android:textStyle="bold"
-                android:textColor="#64748B"
+                android:textColor="@color/text_tertiary"
                 android:gravity="center"
-                android:background="#1A1A1A"
+                android:background="@drawable/bg_widget_ball_neutral"
                 android:layout_marginEnd="4dp" />
 
             <!-- Ball 4 -->
@@ -229,7 +239,7 @@
                 android:textStyle="bold"
                 android:textColor="#FFFFFF"
                 android:gravity="center"
-                android:background="#EF4444"
+                android:background="@drawable/bg_widget_ball_wicket"
                 android:layout_marginEnd="4dp" />
 
             <!-- Ball 5 -->
@@ -242,7 +252,7 @@
                 android:textStyle="bold"
                 android:textColor="#FFFFFF"
                 android:gravity="center"
-                android:background="#1A1A1A"
+                android:background="@drawable/bg_widget_ball_neutral"
                 android:layout_marginEnd="4dp" />
 
             <!-- Ball 6 (Last ball with emphasis) -->
@@ -255,7 +265,7 @@
                 android:textStyle="bold"
                 android:textColor="#FFFFFF"
                 android:gravity="center"
-                android:background="#8B5CF6" />
+                android:background="@drawable/bg_widget_ball_six" />
         </LinearLayout>
     </LinearLayout>
 
@@ -266,7 +276,7 @@
         android:layout_height="wrap_content"
         android:text="India need 16 runs from 9 balls"
         android:textSize="11sp"
-        android:textColor="#94A3B8"
+        android:textColor="@color/text_secondary"
         android:layout_marginTop="10dp"
         android:maxLines="2"
         android:ellipsize="end" />
@@ -291,7 +301,7 @@
                 android:text="65%"
                 android:textSize="14sp"
                 android:textStyle="bold"
-                android:textColor="#22C55E" />
+                android:textColor="@color/shiny_gold_deep" />
 
             <TextView
                 android:layout_width="0dp"
@@ -299,7 +309,7 @@
                 android:layout_weight="1"
                 android:text="WIN PROB"
                 android:textSize="9sp"
-                android:textColor="#64748B"
+                android:textColor="@color/text_tertiary"
                 android:gravity="end"
                 android:letterSpacing="0.1" />
         </LinearLayout>
@@ -311,7 +321,7 @@
             android:layout_height="8dp"
             android:layout_marginTop="6dp"
             android:scaleType="fitXY"
-            android:background="#141414" />
+            android:background="@drawable/bg_widget_probability_track" />
     </LinearLayout>
 
 </LinearLayout>

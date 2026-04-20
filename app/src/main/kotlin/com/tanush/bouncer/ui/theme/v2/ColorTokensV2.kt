@@ -6,18 +6,17 @@ import androidx.compose.ui.graphics.Color
 
 /**
  * Complete light + dark color palettes for Bouncer V2.
- * Primary brand: professional deep teal — smart, clean, inspired by
- * Cricbuzz's green and ESPN Cricinfo's blue.
+ * Primary brand: premium warm gold — prestigious, bold, and distinct.
  */
 
 // ─── Raw palette ──────────────────────────────────────────
 
-// Teal brand — professional, sophisticated
-val Teal700 = Color(0xFF00796B)
-val Teal800 = Color(0xFF00695C)
-val Teal300 = Color(0xFF4DB6AC)
-val TealContainer = Color(0xFFE0F2F1)
-val TealContainerDark = Color(0xFF004D40)
+// Gold brand — premium, prestigious
+val Gold700 = Color(0xFFE0B74F)
+val Gold800 = Color(0xFFAF8327)
+val Gold300 = Color(0xFFF3DB93)
+val GoldContainer = Color(0xFFFDF3C0)
+val GoldContainerDark = Color(0xFF34270D)
 
 // Neutrals — light
 val White = Color(0xFFFFFFFF)
@@ -30,12 +29,12 @@ val Gray500 = Color(0xFF6B7280)
 val Gray900 = Color(0xFF1A1A1A)
 
 // Neutrals — dark
-val DarkBg = Color(0xFF121212)
-val DarkSurface = Color(0xFF1E1E1E)
-val DarkSurfaceVariant = Color(0xFF2A2A2A)
-val DarkBorder = Color(0xFF374151)
-val DarkTextPrimary = Color(0xFFF9FAFB)
-val DarkTextSecondary = Color(0xFF9CA3AF)
+val DarkBg = Color(0xFF0C1015)
+val DarkSurface = Color(0xFF161C26)
+val DarkSurfaceVariant = Color(0xFF202834)
+val DarkBorder = Color(0xFF2B3442)
+val DarkTextPrimary = Color(0xFFFCF7ED)
+val DarkTextSecondary = Color(0xFFC1B08D)
 
 // Semantic
 val LiveRed = Color(0xFFDC2626)
@@ -89,10 +88,10 @@ data class BouncerColorsV2(
 )
 
 val LightColors = BouncerColorsV2(
-    primary = Teal700,
-    primaryDark = Teal800,
-    primaryContainer = TealContainer,
-    onPrimary = White,
+    primary = Gold700,
+    primaryDark = Gold800,
+    primaryContainer = GoldContainer,
+    onPrimary = DarkBg,
 
     background = Gray50,
     surface = White,
@@ -110,7 +109,7 @@ val LightColors = BouncerColorsV2(
     scheduled = ScheduledGray,
     error = LiveRed,
 
-    topBar = Teal800,
+    topBar = Gold800,
     onTopBar = White,
 
     scrim = ScrimDark,
@@ -120,9 +119,9 @@ val LightColors = BouncerColorsV2(
 )
 
 val DarkColors = BouncerColorsV2(
-    primary = Teal300,
-    primaryDark = Teal700,
-    primaryContainer = TealContainerDark,
+    primary = Gold300,
+    primaryDark = Gold700,
+    primaryContainer = GoldContainerDark,
     onPrimary = Gray900,
 
     background = DarkBg,
@@ -141,7 +140,7 @@ val DarkColors = BouncerColorsV2(
     scheduled = ScheduledGray,
     error = LiveRedDark,
 
-    topBar = DarkSurface,
+    topBar = Color(0xFF131923),
     onTopBar = DarkTextPrimary,
 
     scrim = ScrimDark,

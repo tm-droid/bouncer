@@ -60,17 +60,7 @@ class CountdownWidget : GlanceAppWidget() {
 
     companion object {
         internal const val PREF_NAME = "bouncer_countdown_widget"
-        
-        // Premium Bouncer Colors
-        private val BlackBackground = Color(0xFF0F1115)
-        private val CardSurface = Color(0xFF1C2028)
-        private val ShinyGoldDeep = Color(0xFFD4AF37)
-        private val GoldBright = Color(0xFFFFD700)
-        private val TextPrimary = Color(0xFFF9FAFB)
-        private val TextSecondary = Color(0xFF94A3B8)
-        private val AccentPurple = Color(0xFF8B5CF6)
-        private val AccentCyan = Color(0xFF06B6D4)
-        
+
         /**
          * Update countdown widget with next scheduled match data
          */
@@ -238,8 +228,8 @@ class CountdownWidget : GlanceAppWidget() {
         Box(
             modifier = GlanceModifier
                 .fillMaxSize()
-                .background(BlackBackground)
-                .cornerRadius(16.dp)
+                .background(WidgetColorScheme.background)
+                .cornerRadius(WidgetTheme.radiusLarge)
                 .clickable(clickAction)
         ) {
             if (team1Name != null && team2Name != null && startTimeMillis > 0) {
@@ -283,14 +273,14 @@ class CountdownWidget : GlanceAppWidget() {
             ) {
                 Box(
                     modifier = GlanceModifier
-                        .background(if (isStartingSoon) AccentCyan else AccentPurple)
-                        .cornerRadius(4.dp)
+                        .background(if (isStartingSoon) WidgetColorScheme.primary else WidgetColorScheme.primaryContainer)
+                        .cornerRadius(WidgetTheme.radiusSmall)
                         .padding(horizontal = 6.dp, vertical = 2.dp)
                 ) {
                     Text(
                         text = if (isStartingSoon) "SOON" else "UPCOMING",
                         style = TextStyle(
-                            color = ColorProvider(TextPrimary),
+                            color = if (isStartingSoon) WidgetColorScheme.textOnPrimary else WidgetColorScheme.primary,
                             fontSize = 9.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -302,7 +292,7 @@ class CountdownWidget : GlanceAppWidget() {
                 Text(
                     text = matchType,
                     style = TextStyle(
-                        color = ColorProvider(TextSecondary),
+                        color = WidgetColorScheme.textSecondary,
                         fontSize = 10.sp
                     )
                 )
@@ -321,7 +311,7 @@ class CountdownWidget : GlanceAppWidget() {
                     Text(
                         text = countdownValue,
                         style = TextStyle(
-                            color = ColorProvider(if (isStartingSoon) GoldBright else ShinyGoldDeep),
+                            color = WidgetColorScheme.primary,
                             fontSize = 24.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -329,7 +319,7 @@ class CountdownWidget : GlanceAppWidget() {
                     Text(
                         text = countdownLabel,
                         style = TextStyle(
-                            color = ColorProvider(TextSecondary),
+                            color = WidgetColorScheme.textSecondary,
                             fontSize = 10.sp
                         )
                     )
@@ -342,8 +332,8 @@ class CountdownWidget : GlanceAppWidget() {
             Row(
                 modifier = GlanceModifier
                     .fillMaxWidth()
-                    .background(CardSurface)
-                    .cornerRadius(8.dp)
+                    .background(WidgetColorScheme.surfaceElevated)
+                    .cornerRadius(WidgetTheme.radiusMedium)
                     .padding(horizontal = 12.dp, vertical = 8.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalAlignment = Alignment.CenterVertically
@@ -351,7 +341,7 @@ class CountdownWidget : GlanceAppWidget() {
                 Text(
                     text = team1Name.take(4).uppercase(),
                     style = TextStyle(
-                        color = ColorProvider(ShinyGoldDeep),
+                        color = WidgetColorScheme.primary,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -362,7 +352,7 @@ class CountdownWidget : GlanceAppWidget() {
                 Text(
                     text = "VS",
                     style = TextStyle(
-                        color = ColorProvider(TextSecondary),
+                        color = WidgetColorScheme.textSecondary,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -373,7 +363,7 @@ class CountdownWidget : GlanceAppWidget() {
                 Text(
                     text = team2Name.take(4).uppercase(),
                     style = TextStyle(
-                        color = ColorProvider(ShinyGoldDeep),
+                        color = WidgetColorScheme.primary,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -387,7 +377,21 @@ class CountdownWidget : GlanceAppWidget() {
                 Text(
                     text = matchTitle.take(30),
                     style = TextStyle(
-                        color = ColorProvider(TextSecondary),
+                        color = WidgetColorScheme.textSecondary,
+                        fontSize = 9.sp,
+                        textAlign = TextAlign.Center
+                    ),
+                    modifier = GlanceModifier.fillMaxWidth()
+                )
+            }
+
+            if (venue.isNotEmpty()) {
+                Spacer(modifier = GlanceModifier.height(4.dp))
+
+                Text(
+                    text = venue.take(28),
+                    style = TextStyle(
+                        color = WidgetColorScheme.textTertiary,
                         fontSize = 9.sp,
                         textAlign = TextAlign.Center
                     ),
@@ -418,7 +422,7 @@ class CountdownWidget : GlanceAppWidget() {
             Text(
                 text = "No upcoming matches",
                 style = TextStyle(
-                    color = ColorProvider(TextPrimary),
+                    color = WidgetColorScheme.textPrimary,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Medium
                 )
@@ -429,7 +433,7 @@ class CountdownWidget : GlanceAppWidget() {
             Text(
                 text = "Check the app for schedule",
                 style = TextStyle(
-                    color = ColorProvider(TextSecondary),
+                    color = WidgetColorScheme.textSecondary,
                     fontSize = 10.sp
                 )
             )

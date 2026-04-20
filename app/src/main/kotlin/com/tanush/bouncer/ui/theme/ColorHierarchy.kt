@@ -49,7 +49,7 @@ data class DominantColors(
     val textMuted: Color,
     val glassBackground: Color,
     val glassBorder: Color,
-    val glassBorderHighlight: Color = Color.White.copy(alpha = 0.16f)
+    val glassBorderHighlight: Color = Color(0xFFD4AF37).copy(alpha = 0.14f)
 )
 
 // =============================================================================

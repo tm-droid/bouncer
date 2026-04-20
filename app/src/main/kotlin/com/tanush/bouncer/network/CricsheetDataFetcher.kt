@@ -185,6 +185,7 @@ class CricsheetDataFetcher(private val context: Context? = null) {
             response.info.dates.firstOrNull()?.let { dateFormat.parse(it) } ?: Date()
         } catch (e: Exception) {
             Log.w(TAG, "Failed to parse date, using current date", e)
+            Sentry.captureException(e)
             Date()
         }
         
@@ -341,6 +342,7 @@ class CricsheetDataFetcher(private val context: Context? = null) {
                             parsedCount++
                         } catch (e: Exception) {
                             Log.w(TAG, "Failed to parse ${entry.name}", e)
+                            Sentry.captureException(e)
                             failedCount++
                         }
                         

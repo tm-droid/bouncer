@@ -307,7 +307,7 @@ fun BouncerAppRoot(
             .drawWithCache {
                 // Subtle grid pattern — cached to avoid recalculating every frame
                 val gridSpacing = 60.dp.toPx()
-                val gridColor = Color.White.copy(alpha = 0.005f)
+                val gridColor = Gold400.copy(alpha = 0.008f)
                 val xCount = (size.width / gridSpacing).toInt()
                 val yCount = (size.height / gridSpacing).toInt()
                 onDrawBehind {
@@ -330,15 +330,16 @@ fun BouncerAppRoot(
                 }
             }
     ) {
-        // Subtle atmospheric top-ambient glow — very restrained
+        // Gold-forward ambient glow to keep the whole shell feeling premium.
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(350.dp)
+                .height(420.dp)
                 .background(
                     Brush.verticalGradient(
                         colors = listOf(
-                            Gold400.copy(alpha = 0.015f),
+                            Gold400.copy(alpha = 0.024f),
+                            Gold400.copy(alpha = 0.05f),
                             Color.Transparent
                         )
                     )

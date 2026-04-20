@@ -1,27 +1,41 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- BOUNCER PREMIUM PALETTE -->
-    <color name="black_background">#0F1115</color>
-    <color name="card_surface">#1C2028</color>
-    <color name="card_surface_light">#252A34</color>
-    <color name="shiny_gold_deep">#D4AF37</color>
-    <color name="shiny_gold_light">#F9E498</color>
-    <color name="shiny_gold_mid">#E6C35C</color>
-    <color name="shiny_gold_dark">#997A24</color>
-    <color name="shiny_gold_bronze">#CD7F32</color>
+    <color name="black_background">#0C1015</color>
+    <color name="card_surface">#161C26</color>
+    <color name="card_surface_light">#202834</color>
+    <color name="shiny_gold_deep">#E0B74F</color>
+    <color name="shiny_gold_light">#F3DB93</color>
+    <color name="shiny_gold_mid">#EBC968</color>
+    <color name="shiny_gold_dark">#AF8327</color>
+    <color name="shiny_gold_bronze">#CD8A33</color>
 
     <!-- SYSTEM -->
-    <color name="text_primary">#F9FAFB</color>
-    <color name="text_secondary">#B0B0B0</color>
-    <color name="text_tertiary">#666666</color>
+    <color name="text_primary">#FCF7ED</color>
+    <color name="text_secondary">#C1B08D</color>
+    <color name="text_tertiary">#8D7E61</color>
     <color name="live_blue">#007AFF</color>
     <color name="live_blue_bright">#4DA3FF</color>
-    <color name="success_green">#4CAF50</color>
-    <color name="warning_orange">#FF9800</color>
-    <color name="error_red">#FF3B30</color>
-    <color name="error_red_muted">#4D1A1A</color>
-    <color name="card_border">#2A2A3A</color>
-    <color name="card_dark_blue">#0D1117</color>
+    <color name="success_green">#34C759</color>
+    <color name="warning_orange">#F4B740</color>
+    <color name="error_red">#FF5A4E</color>
+    <color name="error_red_muted">#401614</color>
+    <color name="card_border">#33F3DB93</color>
+    <color name="card_dark_blue">#121823</color>
+
+    <!-- WIDGET SURFACES -->
+    <color name="widget_surface_alt">#2B3442</color>
+    <color name="widget_gold_container">#34270D</color>
+    <color name="widget_border_accent">#47E0B74F</color>
+    <color name="widget_action_chip">#1B2330</color>
+    <color name="widget_live_badge_bg">#401614</color>
+    <color name="widget_live_badge_stroke">#66FF5A4E</color>
+    <color name="widget_probability_track">#1A202A</color>
+    <color name="widget_ball_neutral">#313B49</color>
+    <color name="widget_ball_six">#9B7BFF</color>
+    <color name="widget_ball_four">#34C759</color>
+    <color name="widget_ball_wicket">#FF5A4E</color>
+    <color name="widget_ball_extra">#F4B740</color>
 
     <!-- LEGACY COMPAT -->
     <color name="black">#FF000000</color>

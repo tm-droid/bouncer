@@ -190,11 +190,13 @@ class CricBuzzScraper {
                                 matches.addAll(findMatchesInJson(data))
                             } catch (e: Exception) {
                                 Log.d(TAG, "Failed to parse inner JSON segment", e)
+                                Sentry.captureException(e)
                             }
                         }
                     }
                 } catch (e: Exception) {
                     Log.d(TAG, "Failed to parse NextJS data segment", e)
+                    Sentry.captureException(e)
                 }
                 startIndex = endIdx + 1
             } else {
@@ -240,7 +242,10 @@ class CricBuzzScraper {
                 val city = venueInfo?.get("city")?.asString ?: ""
                 if (ground.isNotBlank() && city.isNotBlank()) "$ground, $city"
                 else ground.ifBlank { city }
-            } catch (_: Exception) { "" }
+            } catch (e: Exception) {
+                Sentry.captureException(e)
+                ""
+            }
 
             val matchType = mapMatchFormat(matchFormat).ifBlank {
                 determineMatchType("$team1 vs $team2 $matchDesc")
@@ -340,6 +345,7 @@ class CricBuzzScraper {
             )
         } catch (e: Exception) {
             Log.d(TAG, "Failed to parse match from element", e)
+            Sentry.captureException(e)
             return null
         }
     }
@@ -440,6 +446,7 @@ class CricBuzzScraper {
                             ))
                         } catch (e: Exception) {
                             Log.w(TAG, "Error parsing batsman stats for $name: ${e.message}")
+                            Sentry.captureException(e)
                         }
                     }
                 }
@@ -464,6 +471,7 @@ class CricBuzzScraper {
                             )
                         } catch (e: Exception) {
                             Log.w(TAG, "Error parsing bowler stats for $name: ${e.message}")
+                            Sentry.captureException(e)
                         }
                         break
                     }
@@ -648,6 +656,7 @@ class CricBuzzScraper {
                                 ))
                             } catch (e: Exception) {
                                 Log.w(TAG, "Error parsing scorecard batsman: $name", e)
+                                Sentry.captureException(e)
                             }
                         }
                     }
@@ -672,6 +681,7 @@ class CricBuzzScraper {
                                 ))
                             } catch (e: Exception) {
                                 Log.w(TAG, "Error parsing scorecard bowler: $name", e)
+                                Sentry.captureException(e)
                             }
                         }
                     }

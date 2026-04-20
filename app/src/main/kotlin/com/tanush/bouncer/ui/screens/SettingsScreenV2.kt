@@ -70,6 +70,9 @@ fun SettingsScreenV2(
     var autoRefresh by remember {
         mutableStateOf(PreferencesHelper.getBoolean(context, PreferencesHelper.KEY_AUTO_REFRESH, true))
     }
+    var refreshIntervalSeconds by remember {
+        mutableStateOf(PreferencesHelper.getInt(context, PreferencesHelper.KEY_REFRESH_INTERVAL, 10))
+    }
     var showProbability by remember {
         mutableStateOf(PreferencesHelper.getBoolean(context, PreferencesHelper.KEY_SHOW_WIN_PROBABILITY, true))
     }
@@ -169,6 +172,23 @@ fun SettingsScreenV2(
                         subtitle = "Automatically update scores every 10 seconds",
                         trailing = SettingsTrailing.Toggle(autoRefresh),
                         onClick = { togglePref(PreferencesHelper.KEY_AUTO_REFRESH, autoRefresh) { autoRefresh = it } },
+                    )
+                    SettingsItemV2(
+                        icon = Icons.Default.Speed,
+                        title = "Refresh Interval",
+                        subtitle = "Score update frequency: ${refreshIntervalSeconds}s",
+                        trailing = SettingsTrailing.Value("${refreshIntervalSeconds}s"),
+                        onClick = {
+                            // Cycle through 5s → 10s → 15s → 30s
+                            val next = when (refreshIntervalSeconds) {
+                                5 -> 10
+                                10 -> 15
+                                15 -> 30
+                                else -> 5
+                            }
+                            PreferencesHelper.setInt(context, PreferencesHelper.KEY_REFRESH_INTERVAL, next)
+                            refreshIntervalSeconds = next
+                        },
                     )
                     SettingsItemV2(
                         title = "Win Probability",

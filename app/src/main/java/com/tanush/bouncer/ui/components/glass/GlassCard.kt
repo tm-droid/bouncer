@@ -70,9 +70,9 @@ fun GlassCard(
     } else {
         Brush.verticalGradient(
             colors = listOf(
-                Color.White.copy(alpha = borderOpacity * 3.0f), // Top highlight
-                Color.White.copy(alpha = borderOpacity * 1.0f), // Middle
-                Color.White.copy(alpha = borderOpacity * 0.5f)  // Bottom fade
+                colors.goldLight.copy(alpha = borderOpacity * 0.95f),
+                Color.White.copy(alpha = borderOpacity * 0.6f),
+                colors.goldDark.copy(alpha = borderOpacity * 0.55f)
             )
         )
     }

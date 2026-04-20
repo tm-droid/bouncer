@@ -149,7 +149,7 @@ sealed class BackgroundSkin(
             Offset(0.5f, 0f),
             Offset(0.8f, 0f)
         ),
-        val lightColor: Color = Color.White,
+        val lightColor: Color = Color(0xFFFCF0D0),
         val lightAlpha: Float = 0.08f
     ) : BackgroundSkin(config)
     
@@ -323,7 +323,7 @@ private fun MidnightGradientBackground(
                 .drawBehind {
                     drawRect(
                         brush = Brush.radialGradient(
-                            0.0f to Color(0xFF1A1A1A),
+                            0.0f to Color(0xFF1C1A16),
                             0.6f to palette.backgroundBase,
                             1.0f to Color.Black,
                             center = Offset(size.width / 2f, size.height * skin.centerOffset),
@@ -354,7 +354,7 @@ private fun MidnightGradientBackground(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.White.copy(alpha = 0.04f))
+                .background(Color(0xFFD4AF37).copy(alpha = 0.025f))
         )
     }
 }

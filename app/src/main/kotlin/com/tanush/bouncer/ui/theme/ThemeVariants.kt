@@ -106,34 +106,34 @@ data class VariantColorPalette(
  * Dark variant palette - Standard premium dark theme.
  */
 val DarkVariantPalette = VariantColorPalette(
-    backgroundBase = Color(0xFF0F1115),
-    backgroundElevated = Color(0xFF1A1A1A),
-    backgroundRecessed = Color(0xFF040406),
-    surface1 = Color(0xFF1C2028),
-    surface2 = Color(0xFF252A34),
-    surface3 = Color(0xFF323945),
-    surfaceBright = Color(0xFF3D4451),
-    goldSubtle = Color(0xFF2D2510),
-    glassBackground = Color.White.copy(alpha = 0.08f),
-    glassBorder = Color.White.copy(alpha = 0.12f),
-    glassBorderHighlight = Color.White.copy(alpha = 0.16f)
+    backgroundBase = BackgroundBase,
+    backgroundElevated = BackgroundElevated,
+    backgroundRecessed = Color(0xFF05070A),
+    surface1 = Surface1,
+    surface2 = Surface2,
+    surface3 = Surface3,
+    surfaceBright = Color(0xFF364151),
+    goldSubtle = GoldSubtle,
+    glassBackground = GoldPrimary.copy(alpha = 0.08f),
+    glassBorder = GoldLight.copy(alpha = 0.16f),
+    glassBorderHighlight = GoldPrimary.copy(alpha = 0.24f)
 )
 
 /**
  * Midnight variant palette - Deep blues for immersive viewing.
  */
 val MidnightVariantPalette = VariantColorPalette(
-    backgroundBase = Color(0xFF080B12),
-    backgroundElevated = Color(0xFF0D1420),
-    backgroundRecessed = Color(0xFF030508),
-    surface1 = Color(0xFF121A2B),
-    surface2 = Color(0xFF1A2438),
-    surface3 = Color(0xFF253048),
-    surfaceBright = Color(0xFF2E3A54),
-    goldSubtle = Color(0xFF1A1D10),
-    glassBackground = Color(0xFF60A5FA).copy(alpha = 0.05f),
-    glassBorder = Color(0xFF60A5FA).copy(alpha = 0.10f),
-    glassBorderHighlight = Color(0xFF60A5FA).copy(alpha = 0.15f)
+    backgroundBase = Color(0xFF081018),
+    backgroundElevated = Color(0xFF101827),
+    backgroundRecessed = Color(0xFF04070C),
+    surface1 = Color(0xFF121C2B),
+    surface2 = Color(0xFF1A2638),
+    surface3 = Color(0xFF253349),
+    surfaceBright = Color(0xFF314259),
+    goldSubtle = GoldSubtle,
+    glassBackground = GoldPrimary.copy(alpha = 0.07f),
+    glassBorder = GoldLight.copy(alpha = 0.15f),
+    glassBorderHighlight = GoldPrimary.copy(alpha = 0.22f)
 )
 
 /**
@@ -143,14 +143,14 @@ val AMOLEDVariantPalette = VariantColorPalette(
     backgroundBase = Color.Black,
     backgroundElevated = Color(0xFF050505),
     backgroundRecessed = Color.Black,
-    surface1 = Color(0xFF0A0A0A),
-    surface2 = Color(0xFF121212),
-    surface3 = Color(0xFF1A1A1A),
-    surfaceBright = Color(0xFF222222),
-    goldSubtle = Color(0xFF1A1508),
-    glassBackground = Color.White.copy(alpha = 0.06f),
-    glassBorder = Color.White.copy(alpha = 0.10f),
-    glassBorderHighlight = Color.White.copy(alpha = 0.14f)
+    surface1 = Color(0xFF0B0B0B),
+    surface2 = Color(0xFF141414),
+    surface3 = Color(0xFF1C1C1C),
+    surfaceBright = Color(0xFF262626),
+    goldSubtle = Color(0xFF241B08),
+    glassBackground = GoldPrimary.copy(alpha = 0.06f),
+    glassBorder = GoldLight.copy(alpha = 0.14f),
+    glassBorderHighlight = GoldPrimary.copy(alpha = 0.20f)
 )
 
 // =============================================================================

@@ -7,11 +7,13 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -22,6 +24,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.appwidget.GlanceAppWidgetManager
+import com.tanush.bouncer.ui.components.glass.GlassBloomBackground
+import com.tanush.bouncer.ui.components.glass.GlassCard
+import com.tanush.bouncer.ui.theme.BouncerDesignSystem
+import com.tanush.bouncer.ui.theme.BouncerTheme
 import io.sentry.Breadcrumb
 import io.sentry.Sentry
 import io.sentry.SentryLevel
@@ -53,14 +59,6 @@ class WidgetConfigurationActivity : ComponentActivity() {
     
     private var appWidgetId = AppWidgetManager.INVALID_APPWIDGET_ID
     
-    // Premium Bouncer Colors
-    private val BlackBackground = Color(0xFF0F1115)
-    private val CardSurface = Color(0xFF1C2028)
-    private val ShinyGoldDeep = Color(0xFFD4AF37)
-    private val TextPrimary = Color(0xFFF9FAFB)
-    private val TextSecondary = Color(0xFF94A3B8)
-    private val LiveRed = Color(0xFFFF3B30)
-    
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
@@ -91,22 +89,22 @@ class WidgetConfigurationActivity : ComponentActivity() {
         })
         
         setContent {
-            WidgetConfigurationContent()
+            BouncerTheme {
+                WidgetConfigurationContent()
+            }
         }
     }
     
     @Composable
     private fun WidgetConfigurationContent() {
+        val colors = BouncerDesignSystem.colors
         val scope = rememberCoroutineScope()
         val availableMatches = remember { loadAvailableMatches() }
         var selectedMatchId by remember { 
             mutableStateOf(BouncerGlanceWidget.getSelectedMatchId(this@WidgetConfigurationActivity, appWidgetId))
         }
         
-        Surface(
-            modifier = Modifier.fillMaxSize(),
-            color = BlackBackground
-        ) {
+        GlassBloomBackground(modifier = Modifier.fillMaxSize()) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -115,7 +113,7 @@ class WidgetConfigurationActivity : ComponentActivity() {
                 // Header
                 Text(
                     text = "Select Match",
-                    color = TextPrimary,
+                    color = colors.textPrimary,
                     fontSize = 24.sp,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(bottom = 8.dp)
@@ -123,7 +121,7 @@ class WidgetConfigurationActivity : ComponentActivity() {
                 
                 Text(
                     text = "Choose which match to display on this widget",
-                    color = TextSecondary,
+                    color = colors.textSecondary,
                     fontSize = 14.sp,
                     modifier = Modifier.padding(bottom = 24.dp)
                 )
@@ -159,68 +157,78 @@ class WidgetConfigurationActivity : ComponentActivity() {
                             .fillMaxWidth()
                             .height(56.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = ShinyGoldDeep
+                            containerColor = colors.goldPrimary,
+                            contentColor = colors.backgroundBase,
+                            disabledContainerColor = colors.goldSubtle,
+                            disabledContentColor = colors.textSecondary
                         ),
                         shape = RoundedCornerShape(12.dp),
                         enabled = selectedMatchId != null
                     ) {
                         Text(
                             text = "Confirm Selection",
-                            color = Color.Black,
                             fontWeight = FontWeight.Bold,
                             fontSize = 16.sp
                         )
                     }
                 }
             }
-        }
+        }        
     }
     
     @Composable
     private fun NoMatchesAvailable() {
+        val colors = BouncerDesignSystem.colors
         val scope = rememberCoroutineScope()
-        Column(
+        Box(
             modifier = Modifier.fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+            contentAlignment = Alignment.Center
         ) {
-            Text(
-                text = "🏏",
-                fontSize = 48.sp
-            )
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            Text(
-                text = "No Matches Available",
-                color = TextPrimary,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Medium
-            )
-            
-            Spacer(modifier = Modifier.height(8.dp))
-            
-            Text(
-                text = "Check back when matches are scheduled",
-                color = TextSecondary,
-                fontSize = 14.sp
-            )
-            
-            Spacer(modifier = Modifier.height(24.dp))
-            
-            OutlinedButton(
-                onClick = { 
-                    // Use default (any available match)
-                    scope.launch { confirmSelection(null) }
-                },
-                colors = ButtonDefaults.outlinedButtonColors(
-                    contentColor = ShinyGoldDeep
-                ),
-                border = ButtonDefaults.outlinedButtonBorder(enabled = true).copy(
-                    brush = androidx.compose.ui.graphics.SolidColor(ShinyGoldDeep)
-                )
+            GlassCard(
+                modifier = Modifier.fillMaxWidth(),
+                useGoldBorder = false,
+                contentPadding = PaddingValues(24.dp)
             ) {
-                Text("Use Default")
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "🏏",
+                        fontSize = 48.sp
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Text(
+                        text = "No Matches Available",
+                        color = colors.textPrimary,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Text(
+                        text = "Check back when matches are scheduled",
+                        color = colors.textSecondary,
+                        fontSize = 14.sp
+                    )
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    OutlinedButton(
+                        onClick = {
+                            scope.launch { confirmSelection(null) }
+                        },
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = colors.goldPrimary
+                        ),
+                        border = BorderStroke(1.dp, colors.goldPrimary.copy(alpha = 0.45f))
+                    ) {
+                        Text("Use Default")
+                    }
+                }
             }
         }
     }
@@ -231,13 +239,14 @@ class WidgetConfigurationActivity : ComponentActivity() {
         isSelected: Boolean,
         onSelect: () -> Unit
     ) {
-        Box(
+        val colors = BouncerDesignSystem.colors
+        GlassCard(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(12.dp))
-                .background(if (isSelected) ShinyGoldDeep.copy(alpha = 0.2f) else CardSurface)
-                .clickable { onSelect() }
-                .padding(16.dp)
+                .clickable { onSelect() },
+            shape = RoundedCornerShape(12.dp),
+            useGoldBorder = isSelected,
+            contentPadding = PaddingValues(16.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -247,12 +256,13 @@ class WidgetConfigurationActivity : ComponentActivity() {
                 if (match.isLive) {
                     Box(
                         modifier = Modifier
-                            .background(LiveRed, RoundedCornerShape(4.dp))
+                            .background(colors.statusLive.copy(alpha = 0.18f), RoundedCornerShape(4.dp))
+                            .border(1.dp, colors.statusLive.copy(alpha = 0.35f), RoundedCornerShape(4.dp))
                             .padding(horizontal = 6.dp, vertical = 2.dp)
                     ) {
                         Text(
                             text = "LIVE",
-                            color = Color.White,
+                            color = colors.statusLive,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -268,13 +278,13 @@ class WidgetConfigurationActivity : ComponentActivity() {
                     ) {
                         Text(
                             text = match.team1Name,
-                            color = if (isSelected) ShinyGoldDeep else TextPrimary,
+                            color = if (isSelected) colors.goldPrimary else colors.textPrimary,
                             fontWeight = FontWeight.Bold,
                             fontSize = 14.sp
                         )
                         Text(
                             text = match.team1Score,
-                            color = TextPrimary,
+                            color = colors.textPrimary,
                             fontSize = 14.sp
                         )
                     }
@@ -287,13 +297,13 @@ class WidgetConfigurationActivity : ComponentActivity() {
                     ) {
                         Text(
                             text = match.team2Name,
-                            color = if (isSelected) ShinyGoldDeep else TextPrimary,
+                            color = if (isSelected) colors.goldPrimary else colors.textPrimary,
                             fontWeight = FontWeight.Bold,
                             fontSize = 14.sp
                         )
                         Text(
                             text = match.team2Score,
-                            color = TextPrimary,
+                            color = colors.textPrimary,
                             fontSize = 14.sp
                         )
                     }
@@ -303,7 +313,7 @@ class WidgetConfigurationActivity : ComponentActivity() {
                     // Status
                     Text(
                         text = match.status,
-                        color = TextSecondary,
+                        color = colors.textSecondary,
                         fontSize = 12.sp
                     )
                 }
@@ -314,12 +324,12 @@ class WidgetConfigurationActivity : ComponentActivity() {
                     Box(
                         modifier = Modifier
                             .size(24.dp)
-                            .background(ShinyGoldDeep, RoundedCornerShape(12.dp)),
+                            .background(colors.goldPrimary, RoundedCornerShape(12.dp)),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
                             text = "✓",
-                            color = Color.Black,
+                            color = colors.backgroundBase,
                             fontWeight = FontWeight.Bold,
                             fontSize = 14.sp
                         )

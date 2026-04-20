@@ -5,7 +5,7 @@ package com.tanush.bouncer.network
  * Avoids duplication of URL strings across ViewModels and scrapers.
  */
 object CricBuzzUrls {
-    private const val BASE = "https://www.cricbuzz.com"
+    internal const val BASE = "https://www.cricbuzz.com"
 
     const val LIVE_SCORES = "$BASE/cricket-match/live-scores"
     const val RECENT_MATCHES = "$BASE/cricket-match/live-scores/recent-matches"

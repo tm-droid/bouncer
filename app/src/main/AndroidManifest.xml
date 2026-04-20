@@ -7,6 +7,9 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
 
     <application
         android:name=".BouncerApp"
@@ -23,6 +26,8 @@
         <activity
             android:name=".BouncerActivity"
             android:exported="true"
+            android:supportsPictureInPicture="true"
+            android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation"
             android:theme="@style/Theme.Bouncer">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -103,11 +108,45 @@
         
         <receiver android:name=".ui.widgets.WidgetUpdateReceiver" android:exported="false" />
 
+        <!-- Restart polling & widget refresh after device reboot -->
+        <receiver android:name=".services.BootCompletedReceiver"
+                  android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Notification action: mute a specific match -->
+        <receiver android:name=".services.MuteMatchReceiver"
+                  android:exported="false" />
+
         <service
             android:name=".services.LiveActivityService"
             android:enabled="true"
             android:exported="false"
             android:foregroundServiceType="dataSync" />
+
+        <!-- Firebase Cloud Messaging service -->
+        <service
+            android:name=".services.BouncerFirebaseMessagingService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
+
+        <!-- Android Auto car app service -->
+        <service
+            android:name=".auto.BouncerCarAppService"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="androidx.car.app.CarAppService" />
+                <category android:name="androidx.car.app.category.IOT" />
+            </intent-filter>
+            <meta-data
+                android:name="com.google.android.gms.car.application"
+                android:resource="@xml/automotive_app_desc" />
+        </service>
 
         <provider
             android:name="androidx.core.content.FileProvider"

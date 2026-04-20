@@ -3,6 +3,7 @@ package com.tanush.bouncer.ui.widgets
 import android.content.Context
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
@@ -35,117 +36,167 @@ import io.sentry.Sentry
 /**
  * Widget color scheme supporting light and dark modes
  */
+object WidgetBrandPalette {
+    val background = Color(0xFF0C1015)
+    val surface = Color(0xFF161C26)
+    val surfaceElevated = Color(0xFF202834)
+    val surfaceHighest = Color(0xFF2B3442)
+    val primary = Color(0xFFE0B74F)
+    val primaryDim = Color(0xFFAF8327)
+    val primaryContainer = Color(0xFF34270D)
+    val textPrimary = Color(0xFFFCF7ED)
+    val textSecondary = Color(0xFFC1B08D)
+    val textTertiary = Color(0xFF8D7E61)
+    val textOnPrimary = Color(0xFF130F08)
+    val success = Color(0xFF34C759)
+    val error = Color(0xFFFF5A4E)
+    val warning = Color(0xFFF4B740)
+    val live = Color(0xFFFF453A)
+    val wicket = Color(0xFFFF5A4E)
+    val six = Color(0xFF9B7BFF)
+    val four = Color(0xFF34C759)
+    val dotBall = Color(0xFF3B4452)
+    val border = Color(0x1FF3DB93)
+    val borderAccent = primary.copy(alpha = 0.28f)
+    val actionChip = Color(0xFF1B2330)
+    val liveBadgeBackground = Color(0xFF401614)
+    val progressTrack = Color(0xFF1A202A)
+}
+
 object WidgetColorScheme {
     // Core Backgrounds
     val background = ColorProvider(
-        day = Color(0xFFF8F9FA),
-        night = Color(0xFF050505)
+        day = WidgetBrandPalette.background,
+        night = WidgetBrandPalette.background
     )
     
     val surface = ColorProvider(
-        day = Color(0xFFFFFFFF),
-        night = Color(0xFF0F0F0F)
+        day = WidgetBrandPalette.surface,
+        night = WidgetBrandPalette.surface
     )
     
     val surfaceElevated = ColorProvider(
-        day = Color(0xFFF0F0F0),
-        night = Color(0xFF141414)
+        day = WidgetBrandPalette.surfaceElevated,
+        night = WidgetBrandPalette.surfaceElevated
     )
     
     val surfaceHighest = ColorProvider(
-        day = Color(0xFFE8E8E8),
-        night = Color(0xFF1A1A1A)
+        day = WidgetBrandPalette.surfaceHighest,
+        night = WidgetBrandPalette.surfaceHighest
     )
     
     // Primary Gold Accent
     val primary = ColorProvider(
-        day = Color(0xFFB39800),
-        night = Color(0xFFFFD700)
+        day = WidgetBrandPalette.primary,
+        night = WidgetBrandPalette.primary
     )
     
     val primaryDim = ColorProvider(
-        day = Color(0xFF8B7500),
-        night = Color(0xFFB39800)
+        day = WidgetBrandPalette.primaryDim,
+        night = WidgetBrandPalette.primaryDim
     )
     
     val primaryContainer = ColorProvider(
-        day = Color(0xFFFFF4C4),
-        night = Color(0xFF2A2000)
+        day = WidgetBrandPalette.primaryContainer,
+        night = WidgetBrandPalette.primaryContainer
     )
     
     // Text Colors
     val textPrimary = ColorProvider(
-        day = Color(0xFF1A1A1A),
-        night = Color(0xFFFFFFFF)
+        day = WidgetBrandPalette.textPrimary,
+        night = WidgetBrandPalette.textPrimary
     )
     
     val textSecondary = ColorProvider(
-        day = Color(0xFF64748B),
-        night = Color(0xFF94A3B8)
+        day = WidgetBrandPalette.textSecondary,
+        night = WidgetBrandPalette.textSecondary
     )
     
     val textTertiary = ColorProvider(
-        day = Color(0xFF94A3B8),
-        night = Color(0xFF64748B)
+        day = WidgetBrandPalette.textTertiary,
+        night = WidgetBrandPalette.textTertiary
     )
     
     val textOnPrimary = ColorProvider(
-        day = Color(0xFF1A1A1A),
-        night = Color(0xFF1A1A1A)
+        day = WidgetBrandPalette.textOnPrimary,
+        night = WidgetBrandPalette.textOnPrimary
     )
     
     // Semantic Colors
     val success = ColorProvider(
-        day = Color(0xFF16A34A),
-        night = Color(0xFF22C55E)
+        day = WidgetBrandPalette.success,
+        night = WidgetBrandPalette.success
     )
     
     val error = ColorProvider(
-        day = Color(0xFFDC2626),
-        night = Color(0xFFEF4444)
+        day = WidgetBrandPalette.error,
+        night = WidgetBrandPalette.error
     )
     
     val warning = ColorProvider(
-        day = Color(0xFFD97706),
-        night = Color(0xFFFACC15)
+        day = WidgetBrandPalette.warning,
+        night = WidgetBrandPalette.warning
     )
     
     val live = ColorProvider(
-        day = Color(0xFFDC2626),
-        night = Color(0xFFFF3B30)
+        day = WidgetBrandPalette.live,
+        night = WidgetBrandPalette.live
     )
     
     // Event Colors
     val wicket = ColorProvider(
-        day = Color(0xFFDC2626),
-        night = Color(0xFFFF3B30)
+        day = WidgetBrandPalette.wicket,
+        night = WidgetBrandPalette.wicket
     )
     
     val six = ColorProvider(
-        day = Color(0xFF7C3AED),
-        night = Color(0xFF8B5CF6)
+        day = WidgetBrandPalette.six,
+        night = WidgetBrandPalette.six
     )
     
     val four = ColorProvider(
-        day = Color(0xFF16A34A),
-        night = Color(0xFF22C55E)
+        day = WidgetBrandPalette.four,
+        night = WidgetBrandPalette.four
     )
     
     val dotBall = ColorProvider(
-        day = Color(0xFFD1D5DB),
-        night = Color(0xFF454545)
+        day = WidgetBrandPalette.dotBall,
+        night = WidgetBrandPalette.dotBall
     )
     
     // Border Colors
     val border = ColorProvider(
-        day = Color(0xFFE5E7EB),
-        night = Color(0x14FFFFFF)
+        day = WidgetBrandPalette.border,
+        night = WidgetBrandPalette.border
     )
     
     val borderAccent = ColorProvider(
-        day = Color(0xFFB39800),
-        night = Color(0x33FFD700)
+        day = WidgetBrandPalette.borderAccent,
+        night = WidgetBrandPalette.borderAccent
     )
+}
+
+object WidgetRemoteViewsColors {
+    val background = WidgetBrandPalette.background.toArgb()
+    val surface = WidgetBrandPalette.surface.toArgb()
+    val surfaceElevated = WidgetBrandPalette.surfaceElevated.toArgb()
+    val primary = WidgetBrandPalette.primary.toArgb()
+    val primaryDim = WidgetBrandPalette.primaryDim.toArgb()
+    val primaryLight = Color(0xFFF3DB93).toArgb()
+    val primaryContainer = WidgetBrandPalette.primaryContainer.toArgb()
+    val textPrimary = WidgetBrandPalette.textPrimary.toArgb()
+    val textSecondary = WidgetBrandPalette.textSecondary.toArgb()
+    val textTertiary = WidgetBrandPalette.textTertiary.toArgb()
+    val textOnPrimary = WidgetBrandPalette.textOnPrimary.toArgb()
+    val success = WidgetBrandPalette.success.toArgb()
+    val error = WidgetBrandPalette.error.toArgb()
+    val warning = WidgetBrandPalette.warning.toArgb()
+    val live = WidgetBrandPalette.live.toArgb()
+    val wicket = WidgetBrandPalette.wicket.toArgb()
+    val six = WidgetBrandPalette.six.toArgb()
+    val four = WidgetBrandPalette.four.toArgb()
+    val dotBall = WidgetBrandPalette.dotBall.toArgb()
+    val progressTrack = WidgetBrandPalette.progressTrack.toArgb()
 }
 
 // ===========================================

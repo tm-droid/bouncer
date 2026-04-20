@@ -6,6 +6,7 @@ import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -44,7 +45,7 @@ fun BouncerAppContent(
     var currentMatch by remember { mutableStateOf<CricketMatch?>(null) }
     var showArTracking by remember { mutableStateOf(false) }
     val context = LocalContext.current
-    var themeMode by remember { mutableStateOf(ThemeModeV2.System) }
+    var themeMode by remember { mutableStateOf(ThemeModeV2.Dark) }
 
     LaunchedEffect(Unit) {
         BouncerMotion.applyReducedMotionPreference(
@@ -65,34 +66,45 @@ fun BouncerAppContent(
                 .fillMaxSize()
                 .background(BouncerThemeV2.colors.background)
         ) {
-            AnimatedContent(
-                targetState = currentMatch,
-                transitionSpec = {
-                    if (targetState != null) {
-                        BouncerMotion.Transitions.verticalEnter(offsetDivisor = 10)
-                            .togetherWith(fadeOut(BouncerMotion.Specs.FadeOut))
+            SharedTransitionLayout {
+                AnimatedContent(
+                    targetState = currentMatch,
+                    transitionSpec = {
+                        if (targetState != null) {
+                            BouncerMotion.Transitions.verticalEnter(offsetDivisor = 10)
+                                .togetherWith(fadeOut(BouncerMotion.Specs.FadeOut))
+                        } else {
+                            fadeIn(BouncerMotion.Specs.FadeIn) togetherWith
+                                BouncerMotion.Transitions.verticalExit(offsetDivisor = 10)
+                        }
+                    },
+                    label = "rootNavigation"
+                ) { match ->
+                    if (match != null) {
+                        Box(
+                            modifier = Modifier
+                                .sharedBounds(
+                                    sharedContentState = rememberSharedContentState(key = "match_container_${match.id}"),
+                                    animatedVisibilityScope = this@AnimatedContent
+                                )
+                                .graphicsLayer { clip = true }
+                        ) {
+                            MatchDetailViewV2(
+                                match = match,
+                                onBackClick = { currentMatch = null }
+                            )
+                        }
                     } else {
-                        fadeIn(BouncerMotion.Specs.FadeIn) togetherWith
-                            BouncerMotion.Transitions.verticalExit(offsetDivisor = 10)
+                        MainAppContainer(
+                            onMatchClick = { clickedMatch ->
+                                currentMatch = clickedMatch
+                            },
+                            onArTrackingRequest = { showArTracking = true },
+                            externalDeepLinkUri = externalDeepLinkUri,
+                            themeMode = themeMode,
+                            onThemeModeChanged = { themeMode = it }
+                        )
                     }
-                },
-                label = "rootNavigation"
-            ) { match ->
-                if (match != null) {
-                    MatchDetailViewV2(
-                        match = match,
-                        onBackClick = { currentMatch = null }
-                    )
-                } else {
-                    MainAppContainer(
-                        onMatchClick = { clickedMatch ->
-                            currentMatch = clickedMatch
-                        },
-                        onArTrackingRequest = { showArTracking = true },
-                        externalDeepLinkUri = externalDeepLinkUri,
-                        themeMode = themeMode,
-                        onThemeModeChanged = { themeMode = it }
-                    )
                 }
             }
 
@@ -128,7 +140,7 @@ fun MainAppContainer(
     onMatchClick: (CricketMatch) -> Unit,
     onArTrackingRequest: () -> Unit = {},
     externalDeepLinkUri: String? = null,
-    themeMode: ThemeModeV2 = ThemeModeV2.System,
+    themeMode: ThemeModeV2 = ThemeModeV2.Dark,
     onThemeModeChanged: (ThemeModeV2) -> Unit = {}
 ) {
     // Navigation controller - survives configuration changes via rememberNavController

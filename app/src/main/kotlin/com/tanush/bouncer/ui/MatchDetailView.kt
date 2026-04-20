@@ -1241,33 +1241,7 @@ fun EliteAiInsightsTab(match: CricketMatch) {
             val team1 = match.teams.getOrNull(0)
             val team2 = match.teams.getOrNull(1)
             if (team1 != null && team2 != null) {
-                val prob = match.calculateHeuristicProbability() / 100.0
-                // Derive implied H2H from current match probability as proxy
-                val t1Wins = (prob * 10).toInt().coerceIn(1, 9)
-                val t2Wins = 10 - t1Wins
-                val totalMatches = t1Wins + t2Wins
-                HeadToHeadPremiumCard(
-                    team1 = TeamComparisonData(
-                        teamName = team1.name,
-                        teamAcronym = team1.acronym,
-                        wins = t1Wins,
-                        losses = t2Wins,
-                        draws = 0,
-                        primaryColor = ChartBlue,
-                        recentForm = listOf(prob > 0.5, prob > 0.4, prob > 0.6, prob > 0.3, prob > 0.5)
-                    ),
-                    team2 = TeamComparisonData(
-                        teamName = team2.name,
-                        teamAcronym = team2.acronym,
-                        wins = t2Wins,
-                        losses = t1Wins,
-                        draws = 0,
-                        primaryColor = WicketRed,
-                        recentForm = listOf(prob < 0.5, prob < 0.6, prob < 0.4, prob < 0.7, prob < 0.5)
-                    ),
-                    format = match.matchType.ifBlank { "T20" },
-                    totalMatches = totalMatches
-                )
+                // Note: Real H2H data not available — section removed to avoid misleading stats
             }
         }
         
@@ -1279,17 +1253,18 @@ fun EliteAiInsightsTab(match: CricketMatch) {
                 val prob = (match.calculateHeuristicProbability() / 100.0).toFloat()
                 val crr = match.score?.currentRunRate?.toFloatOrNull() ?: 6.0f
                 val rrr = match.score?.requiredRunRate?.toFloatOrNull() ?: 6.0f
-                val crrNorm = (crr / (crr + rrr) * 100f).coerceIn(20f, 80f)
+                val crrTotal = crr + rrr
+                val crrPct = if (crrTotal > 0f) (crr / crrTotal * 100f).coerceIn(10f, 90f) else 50f
                 TacticalMatrixCard(
                     team1Name = team1.acronym,
                     team2Name = team2.acronym,
                     team1Color = ChartBlue,
                     team2Color = StatusSuccess,
                     metrics = listOf(
-                        TacticalMetric("Current Run Rate", crrNorm, 100f - crrNorm),
+                        TacticalMetric("Current Run Rate", crrPct, 100f - crrPct),
                         TacticalMetric("Win Probability", prob * 100f, (1f - prob) * 100f),
-                        TacticalMetric("Batting Momentum", (prob * 100f * 0.9f + 10f).coerceIn(20f, 80f), (100f - prob * 100f * 0.9f - 10f).coerceIn(20f, 80f)),
-                        TacticalMetric("Pressure Index", ((1f - prob) * 100f).coerceIn(20f, 80f), (prob * 100f).coerceIn(20f, 80f))
+                        TacticalMetric("Batting Momentum", prob * 100f, (1f - prob) * 100f),
+                        TacticalMetric("Pressure Index", (1f - prob) * 100f, prob * 100f)
                     )
                 )
             }

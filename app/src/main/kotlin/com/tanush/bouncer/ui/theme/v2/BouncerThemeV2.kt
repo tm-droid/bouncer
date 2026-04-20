@@ -21,11 +21,11 @@ import androidx.compose.runtime.staticCompositionLocalOf
 
 enum class ThemeModeV2 { Light, Dark, System }
 
-val LocalThemeModeV2 = staticCompositionLocalOf { ThemeModeV2.System }
+val LocalThemeModeV2 = staticCompositionLocalOf { ThemeModeV2.Dark }
 
 @Composable
 fun BouncerThemeV2(
-    themeMode: ThemeModeV2 = ThemeModeV2.System,
+    themeMode: ThemeModeV2 = ThemeModeV2.Dark,
     content: @Composable () -> Unit,
 ) {
     val isDark = when (themeMode) {

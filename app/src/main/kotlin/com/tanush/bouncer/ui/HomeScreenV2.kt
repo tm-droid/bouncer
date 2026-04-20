@@ -11,6 +11,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -46,6 +47,7 @@ fun HomeScreenV2(
     onAchievementsClick: () -> Unit,
     onSettingsClick: () -> Unit = {},
     onNewsClick: () -> Unit = {},
+    onSearchClick: () -> Unit = {},
 ) {
     val selectedStatus by viewModel.selectedStatus.collectAsState()
     val selectedCompetitionType by viewModel.selectedCompetitionType.collectAsState()
@@ -76,6 +78,9 @@ fun HomeScreenV2(
             BouncerTopBarV2(
                 title = "BOUNCER",
                 actions = {
+                    IconButton(onClick = onSearchClick) {
+                        Icon(Icons.Default.Search, contentDescription = "Search")
+                    }
                     IconButton(onClick = onSettingsClick) {
                         Icon(Icons.Default.Settings, contentDescription = "Settings")
                     }

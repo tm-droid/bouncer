@@ -25,9 +25,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.tanush.bouncer.models.CricketMatch
+import com.tanush.bouncer.models.Scorecard
 import com.tanush.bouncer.models.ScrapedBatsman
 import com.tanush.bouncer.models.ScrapedBowler
 import com.tanush.bouncer.ui.components.v2.BouncerCard
+import com.tanush.bouncer.ui.components.v2.RecentBallsStripV2
 import com.tanush.bouncer.ui.components.v2.SectionHeaderV2
 import com.tanush.bouncer.ui.components.v2.StatRowV2
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
@@ -44,10 +46,19 @@ fun OverviewTabV2(
     commentary: List<String>,
     currentRunRate: String?,
     requiredRunRate: String?,
+    scorecard: Scorecard? = null,
 ) {
     val colors = BouncerThemeV2.colors
     val typography = BouncerThemeV2.typography
     val spacing = BouncerThemeV2.spacing
+
+    val isMatchActive = match.isLive || match.currentStatus.lowercase().let {
+        it.contains("stumps") || it.contains("break") || it.contains("rain") || it.contains("delay")
+    }
+    val isCompleted = match.currentStatus.lowercase().let {
+        it.contains("won") || it.contains("drawn") || it.contains("tied") || it.contains("no result")
+    } || match.status.lowercase().contains("complete")
+    val isUpcoming = !isMatchActive && !isCompleted && match.teams.all { it.score.isBlank() || it.score == "0/0" }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -57,9 +68,32 @@ fun OverviewTabV2(
         ),
         verticalArrangement = Arrangement.spacedBy(spacing.md),
     ) {
-        // Quick stats row
-        val showWinPct = match.isLive && match.winProbability > 0 && match.winProbability != 50.0
-        if (currentRunRate != null || requiredRunRate != null || showWinPct) {
+        // Match situation card for stumps/break/completed
+        if (!match.isLive && match.currentStatus.isNotBlank() && !isUpcoming) {
+            item(key = "match_situation") {
+                BouncerCard {
+                    Column(modifier = Modifier.padding(spacing.md)) {
+                        Text(
+                            text = "Match Status",
+                            style = typography.labelMedium,
+                            color = colors.textSecondary,
+                        )
+                        Spacer(Modifier.height(spacing.xs))
+                        Text(
+                            text = match.currentStatus,
+                            style = typography.titleSmall,
+                            color = if (isCompleted) colors.win else colors.primary,
+                            fontWeight = FontWeight.Bold,
+                        )
+                    }
+                }
+            }
+        }
+
+        // Quick stats row — show for any match with data
+        val heuristicProb = match.calculateHeuristicProbability()
+        val hasWinPct = heuristicProb != 50.0
+        if (currentRunRate != null || requiredRunRate != null || hasWinPct) {
             item(key = "quick_stats") {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -71,12 +105,29 @@ fun OverviewTabV2(
                     requiredRunRate?.let {
                         QuickStatCard(label = "RRR", value = it, modifier = Modifier.weight(1f))
                     }
-                    if (showWinPct) {
+                    if (hasWinPct) {
                         QuickStatCard(
                             label = "Win %",
-                            value = "${match.winProbability.toInt()}%",
+                            value = "${heuristicProb.toInt()}%",
                             modifier = Modifier.weight(1f),
                         )
+                    }
+                }
+            }
+        }
+
+        // Recent balls strip
+        if (recentBalls.isNotEmpty()) {
+            item(key = "recent_balls") {
+                BouncerCard {
+                    Column(modifier = Modifier.padding(spacing.md)) {
+                        Text(
+                            text = "This Over",
+                            style = typography.labelMedium,
+                            color = colors.textSecondary,
+                        )
+                        Spacer(Modifier.height(spacing.xs))
+                        RecentBallsStripV2(balls = recentBalls.takeLast(6))
                     }
                 }
             }
@@ -95,7 +146,7 @@ fun OverviewTabV2(
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Text(
-                                text = bat.name + if (bat.isStriker) "*" else "",
+                                text = bat.name + if (bat.isStriker) " *" else "",
                                 style = typography.titleSmall,
                                 color = colors.onSurface,
                                 fontWeight = if (bat.isStriker) FontWeight.Bold else FontWeight.Normal,
@@ -114,6 +165,56 @@ fun OverviewTabV2(
                             style = typography.bodySmall,
                             color = colors.textSecondary,
                         )
+                    }
+                }
+            }
+        } else if ((isMatchActive || isCompleted) && scorecard != null && scorecard.innings.isNotEmpty()) {
+            // Fallback: show top batsmen from latest innings when live data unavailable
+            val latestInnings = scorecard.innings.last()
+            val notOutBatsmen = latestInnings.batsmen.filter {
+                it.dismissal.lowercase().contains("not out") || it.dismissal.lowercase().contains("batting")
+            }.take(2)
+            val topBatsmen = notOutBatsmen.ifEmpty { latestInnings.batsmen.takeLast(2) }
+            if (topBatsmen.isNotEmpty()) {
+                item(key = "crease_header") {
+                    SectionHeaderV2(title = if (notOutBatsmen.isNotEmpty()) "At the Crease" else "Last Batsmen")
+                }
+                items(topBatsmen.size, key = { "scbat_$it" }) { idx ->
+                    val bat = topBatsmen[idx]
+                    BouncerCard {
+                        Column(modifier = Modifier.padding(spacing.md)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Text(
+                                    text = bat.name,
+                                    style = typography.titleSmall,
+                                    color = colors.onSurface,
+                                    modifier = Modifier.weight(1f),
+                                )
+                                Text(
+                                    text = "${bat.runs} (${bat.balls})",
+                                    style = typography.scoreMedium,
+                                    color = colors.onSurface,
+                                    fontWeight = FontWeight.Bold,
+                                )
+                            }
+                            Spacer(Modifier.height(spacing.xs))
+                            val details = buildString {
+                                append("SR: ${bat.strikeRate}")
+                                if (bat.fours != "0") append(" • 4s: ${bat.fours}")
+                                if (bat.sixes != "0") append(" • 6s: ${bat.sixes}")
+                                if (bat.dismissal.isNotBlank() && !bat.dismissal.lowercase().contains("not out")) {
+                                    append(" • ${bat.dismissal}")
+                                }
+                            }
+                            Text(
+                                text = details,
+                                style = typography.bodySmall,
+                                color = colors.textSecondary,
+                            )
+                        }
                     }
                 }
             }
@@ -144,19 +245,73 @@ fun OverviewTabV2(
                                 fontWeight = FontWeight.Bold,
                             )
                         }
-                        Spacer(Modifier.height(spacing.xs))
-                        Text(
-                            text = "Econ: ${bowler.economy}",
-                            style = typography.bodySmall,
-                            color = colors.textSecondary,
-                        )
+                        val econ = bowler.economy.takeIf { it.isNotBlank() }
+                            ?: run {
+                                val o = bowler.overs.toDoubleOrNull() ?: 0.0
+                                val r = bowler.runs.toDoubleOrNull() ?: 0.0
+                                if (o > 0) String.format("%.2f", r / o) else null
+                            }
+                        if (econ != null) {
+                            Spacer(Modifier.height(spacing.xs))
+                            Text(
+                                text = "Econ: $econ",
+                                style = typography.bodySmall,
+                                color = colors.textSecondary,
+                            )
+                        }
+                    }
+                }
+            }
+        } else if ((isMatchActive || isCompleted) && scorecard != null && scorecard.innings.isNotEmpty()) {
+            // Fallback: show top bowler from latest innings
+            val latestInnings = scorecard.innings.last()
+            val topBowler = latestInnings.bowlers.maxByOrNull { it.wickets.toIntOrNull() ?: 0 }
+            if (topBowler != null) {
+                item(key = "bowler_header") {
+                    SectionHeaderV2(title = "Best Bowler")
+                }
+                item(key = "bowler") {
+                    BouncerCard {
+                        Column(modifier = Modifier.padding(spacing.md)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Text(
+                                    text = topBowler.name,
+                                    style = typography.titleSmall,
+                                    color = colors.onSurface,
+                                    modifier = Modifier.weight(1f),
+                                )
+                                Text(
+                                    text = "${topBowler.overs}-${topBowler.maidens}-${topBowler.runs}-${topBowler.wickets}",
+                                    style = typography.scoreMedium,
+                                    color = colors.onSurface,
+                                    fontWeight = FontWeight.Bold,
+                                )
+                            }
+                            val econVal = topBowler.economy.takeIf { it.isNotBlank() }
+                                ?: run {
+                                    val o = topBowler.overs.toDoubleOrNull() ?: 0.0
+                                    val r = topBowler.runs.toDoubleOrNull() ?: 0.0
+                                    if (o > 0) String.format("%.2f", r / o) else null
+                                }
+                            if (econVal != null) {
+                                Spacer(Modifier.height(spacing.xs))
+                                Text(
+                                    text = "Econ: $econVal",
+                                    style = typography.bodySmall,
+                                    color = colors.textSecondary,
+                                )
+                            }
+                        }
                     }
                 }
             }
         }
 
-        // Win Probability bar — only show for live matches with meaningful data
-        if (match.isLive && match.winProbability > 0 && match.winProbability != 50.0 && match.teams.size >= 2) {
+        // Win Probability bar — show for any match with meaningful probability data
+        if (heuristicProb != 50.0 && match.teams.size >= 2) {
             item(key = "win_prob_header") {
                 SectionHeaderV2(title = "Win Probability")
             }
@@ -165,7 +320,7 @@ fun OverviewTabV2(
                     Column(modifier = Modifier.padding(spacing.md)) {
                         val team1 = match.teams[0]
                         val team2 = match.teams[1]
-                        val prob = (match.winProbability.toFloat() / 100f).coerceIn(0f, 1f)
+                        val prob = (heuristicProb.toFloat() / 100f).coerceIn(0f, 1f)
 
                         WinProbRow(teamName = team1.acronym.ifBlank { team1.name }, probability = prob)
                         Spacer(Modifier.height(spacing.sm))
@@ -175,22 +330,112 @@ fun OverviewTabV2(
             }
         }
 
-        // Recent Commentary
-        if (commentary.isNotEmpty() && commentary.first() != "Loading commentary...") {
+        // Scorecard Summary for completed/stumps matches
+        if (batsmen.isEmpty() && scorecard != null && scorecard.innings.isNotEmpty()) {
+            val uniqueInnings = scorecard.innings.distinctBy { "${it.teamName}_${it.score}_${it.overs}" }
+            item(key = "scorecard_summary_header") {
+                SectionHeaderV2(title = "Innings Summary")
+            }
+            items(uniqueInnings.size, key = { "inn_summary_$it" }) { idx ->
+                val inn = uniqueInnings[idx]
+                BouncerCard {
+                    Column(modifier = Modifier.padding(spacing.md)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                text = inn.teamName,
+                                style = typography.titleSmall,
+                                color = colors.onSurface,
+                                modifier = Modifier.weight(1f),
+                            )
+                            Text(
+                                text = "${inn.score} (${inn.overs})",
+                                style = typography.scoreMedium,
+                                color = colors.onSurface,
+                                fontWeight = FontWeight.Bold,
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        // Recent Commentary (skip for upcoming matches — no meaningful commentary yet)
+        val meaningfulCommentary = deduplicateByBall(
+            commentary
+                .map { it.trimEnd('/').trim() }
+                .filter { it.isNotBlank() && it.length > 2 && it != "Loading commentary..." }
+        )
+        val hasCommentary = !isUpcoming && meaningfulCommentary.isNotEmpty()
+        if (hasCommentary) {
             item(key = "commentary_header") {
                 SectionHeaderV2(title = "Recent Commentary")
             }
-            val previewLines = commentary.take(5)
+            val previewLines = meaningfulCommentary.take(5)
             items(previewLines.size, key = { idx -> "overview_comm_$idx" }) { idx ->
-                val line = previewLines[idx].replace(Regex("^\\[AI Fused\\]\\s*"), "").trim()
-                Text(
-                    text = line,
-                    style = typography.bodySmall,
-                    color = colors.onSurface,
-                    modifier = Modifier.padding(vertical = spacing.xxs),
-                )
+                val line = previewLines[idx].replace(Regex("^\\[AI Fused\\]\\s*"), "").trimEnd('/').trim()
+                BouncerCard {
+                    Text(
+                        text = line,
+                        style = typography.bodySmall,
+                        color = colors.onSurface,
+                        modifier = Modifier.padding(spacing.md),
+                    )
+                }
+            }
+        } else if (!isUpcoming) {
+            item(key = "no_commentary") {
+                val msg = when {
+                    match.currentStatus.lowercase().contains("stumps") -> "Commentary paused — Stumps"
+                    match.currentStatus.lowercase().contains("break") -> "Commentary paused — Session break"
+                    match.currentStatus.lowercase().contains("rain") -> "Commentary paused — Rain delay"
+                    isCompleted -> "Match completed"
+                    else -> "Waiting for commentary..."
+                }
+                BouncerCard {
+                    Text(
+                        text = msg,
+                        style = typography.bodySmall,
+                        color = colors.textSecondary,
+                        modifier = Modifier.padding(spacing.md),
+                    )
+                }
             }
         }
+
+        // Upcoming match info
+        if (isUpcoming) {
+            item(key = "upcoming_info") {
+                BouncerCard {
+                    Column(modifier = Modifier.padding(spacing.md)) {
+                        Text(
+                            text = "Match Preview",
+                            style = typography.labelMedium,
+                            color = colors.textSecondary,
+                        )
+                        Spacer(Modifier.height(spacing.xs))
+                        if (match.matchTime.isNotBlank()) {
+                            Text(
+                                text = "Starts at ${match.matchTime}",
+                                style = typography.titleSmall,
+                                color = colors.onSurface,
+                                fontWeight = FontWeight.Bold,
+                            )
+                            Spacer(Modifier.height(spacing.xs))
+                        }
+                        Text(
+                            text = "${match.matchType} • ${match.venue}",
+                            style = typography.bodySmall,
+                            color = colors.textSecondary,
+                        )
+                    }
+                }
+            }
+        }
+
+        item(key = "bottom") { Spacer(Modifier.height(spacing.xxl)) }
     }
 }
 
@@ -252,4 +497,57 @@ private fun WinProbRow(teamName: String, probability: Float) {
             fontWeight = FontWeight.Bold,
         )
     }
+}
+
+/** Deduplicate commentary by ball number — keeps the longest entry per delivery.
+ *  CricBuzz progressively updates the same ball (short → full detail) so we may
+ *  receive 2-3 versions of the same delivery. We also get duplicates from CricInfo fusion. */
+private fun deduplicateByBall(lines: List<String>): List<String> {
+    val ballPattern = Regex("^\\s*(\\d+\\.\\d+)")
+    val normalized = lines.map {
+        it.replace('\u00A0', ' ').replace(Regex("[\\s\\p{Zs}]+"), " ").trim()
+    }.filter { it.isNotBlank() }
+    // Pass 1: group by ball number, keep longest (most complete progressive update)
+    val bestByBall = mutableMapOf<String, String>()
+    for (line in normalized) {
+        val m = ballPattern.find(line.trimStart())
+        if (m != null) {
+            val ball = m.groupValues[1]
+            val existing = bestByBall[ball]
+            if (existing == null || line.length > existing.length) {
+                bestByBall[ball] = line
+            }
+        }
+    }
+    val seen = mutableSetOf<String>()
+    val pass1 = normalized.mapNotNull { line ->
+        val m = ballPattern.find(line.trimStart())
+        if (m != null) {
+            val ball = m.groupValues[1]
+            if (ball !in seen) {
+                seen.add(ball)
+                bestByBall[ball]
+            } else null
+        } else {
+            val key = line.lowercase()
+            if (key !in seen) { seen.add(key); line } else null
+        }
+    }
+    // Pass 2: case-insensitive prefix dedup for progressive updates
+    val toRemove = mutableSetOf<Int>()
+    for (i in pass1.indices) {
+        if (i in toRemove) continue
+        val ai = pass1[i].lowercase().replace(Regex("^[\\d.\\s]+"), "").replace(Regex("^\\d+\\s+"), "")
+        for (j in i + 1 until pass1.size) {
+            if (j in toRemove) continue
+            val bj = pass1[j].lowercase().replace(Regex("^[\\d.\\s]+"), "").replace(Regex("^\\d+\\s+"), "")
+            val shorter = if (ai.length <= bj.length) ai else bj
+            val longer = if (ai.length <= bj.length) bj else ai
+            val prefixLen = (shorter.length * 0.4).toInt().coerceAtLeast(15)
+            if (shorter.length >= 15 && longer.startsWith(shorter.take(prefixLen))) {
+                toRemove.add(if (ai.length <= bj.length) i else j)
+            }
+        }
+    }
+    return pass1.filterIndexed { idx, _ -> idx !in toRemove }
 }

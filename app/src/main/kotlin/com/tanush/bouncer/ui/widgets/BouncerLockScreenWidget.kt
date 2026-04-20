@@ -43,14 +43,7 @@ class BouncerLockScreenWidget : GlanceAppWidget() {
 
     companion object {
         private const val PREF_NAME = "bouncer_lock_widget"
-        
-        // Premium Colors - optimized for lock screen visibility
-        private val BlackBackground = Color(0xFF0A0C10)
-        private val ShinyGoldDeep = Color(0xFFD4AF37)
-        private val TextPrimary = Color(0xFFFFFFFF)
-        private val TextSecondary = Color(0xFF94A3B8)
-        private val LiveRed = Color(0xFFFF3B30)
-        
+
         fun updateLockWidgetData(
             context: Context,
             team1Abbr: String,
@@ -99,8 +92,8 @@ class BouncerLockScreenWidget : GlanceAppWidget() {
         Box(
             modifier = GlanceModifier
                 .fillMaxSize()
-                .background(BlackBackground)
-                .cornerRadius(12.dp)
+                .background(WidgetColorScheme.background)
+                .cornerRadius(WidgetTheme.radiusMedium)
                 .clickable(actionStartActivity<BouncerActivity>())
         ) {
             if (team1Abbr != null && team2Abbr != null) {
@@ -128,6 +121,8 @@ class BouncerLockScreenWidget : GlanceAppWidget() {
         Row(
             modifier = GlanceModifier
                 .fillMaxWidth()
+                .background(WidgetColorScheme.surfaceElevated)
+                .cornerRadius(WidgetTheme.radiusMedium)
                 .padding(horizontal = 12.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalAlignment = Alignment.CenterHorizontally
@@ -136,7 +131,7 @@ class BouncerLockScreenWidget : GlanceAppWidget() {
             Text(
                 text = team1Abbr,
                 style = TextStyle(
-                    color = ColorProvider(ShinyGoldDeep),
+                    color = WidgetColorScheme.primary,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -147,7 +142,7 @@ class BouncerLockScreenWidget : GlanceAppWidget() {
             Text(
                 text = team1Score,
                 style = TextStyle(
-                    color = ColorProvider(TextPrimary),
+                    color = WidgetColorScheme.textPrimary,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Medium
                 )
@@ -159,7 +154,7 @@ class BouncerLockScreenWidget : GlanceAppWidget() {
             Text(
                 text = "vs",
                 style = TextStyle(
-                    color = ColorProvider(TextSecondary),
+                    color = WidgetColorScheme.textSecondary,
                     fontSize = 11.sp
                 )
             )
@@ -170,7 +165,7 @@ class BouncerLockScreenWidget : GlanceAppWidget() {
             Text(
                 text = team2Abbr,
                 style = TextStyle(
-                    color = ColorProvider(ShinyGoldDeep),
+                    color = WidgetColorScheme.primary,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -181,7 +176,7 @@ class BouncerLockScreenWidget : GlanceAppWidget() {
             Text(
                 text = team2Score,
                 style = TextStyle(
-                    color = ColorProvider(TextPrimary),
+                    color = WidgetColorScheme.textPrimary,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Medium
                 )
@@ -190,25 +185,22 @@ class BouncerLockScreenWidget : GlanceAppWidget() {
             // Live indicator
             if (isLive) {
                 Spacer(modifier = GlanceModifier.width(8.dp))
-                
-                Text(
-                    text = "•",
-                    style = TextStyle(
-                        color = ColorProvider(LiveRed),
-                        fontSize = 14.sp
+
+                Box(
+                    modifier = GlanceModifier
+                        .background(WidgetColorScheme.live)
+                        .cornerRadius(WidgetTheme.radiusSmall)
+                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                ) {
+                    Text(
+                        text = "LIVE",
+                        style = TextStyle(
+                            color = WidgetColorScheme.textPrimary,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold
+                        )
                     )
-                )
-                
-                Spacer(modifier = GlanceModifier.width(4.dp))
-                
-                Text(
-                    text = "LIVE",
-                    style = TextStyle(
-                        color = ColorProvider(LiveRed),
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                )
+                }
             }
         }
     }
@@ -232,7 +224,7 @@ class BouncerLockScreenWidget : GlanceAppWidget() {
             Text(
                 text = "No live matches",
                 style = TextStyle(
-                    color = ColorProvider(TextSecondary),
+                    color = WidgetColorScheme.textSecondary,
                     fontSize = 12.sp
                 )
             )

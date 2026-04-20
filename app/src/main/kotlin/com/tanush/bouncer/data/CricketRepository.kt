@@ -1,6 +1,9 @@
 package com.tanush.bouncer.data
 
+import android.content.Context
 import android.util.Log
+import com.tanush.bouncer.data.local.BouncerDatabase
+import com.tanush.bouncer.data.local.entities.MatchEntity
 import com.tanush.bouncer.network.RetrofitClient
 import com.tanush.bouncer.network.models.SanwebMatchResponse
 import com.tanush.bouncer.network.models.SanwebMatchesListResponse
@@ -8,6 +11,9 @@ import io.sentry.Breadcrumb
 import io.sentry.Sentry
 import io.sentry.SentryLogLevel
 import io.sentry.SentryLevel
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.flow.flow
 
 object CricketRepository {
     private const val TAG = "CricketRepository"
@@ -168,6 +174,90 @@ object CricketRepository {
             Sentry.captureException(t)
             Sentry.metrics().count("repository.getMatchCommentary.error", 1.0)
             Result.failure(t)
+        }
+    }
+
+    /**
+     * Cache-first match score fetch. Returns cached data first, then refreshes from network.
+     * Fields not available in [SanwebMatchResponse] are preserved from the existing cache entry.
+     */
+    fun getMatchScoreCached(context: Context, matchId: String): Flow<MatchEntity?> = flow {
+        val db = BouncerDatabase.getInstance(context)
+        val dao = db.matchDao()
+
+        // Emit cached data first
+        val cached = dao.getMatch(matchId).firstOrNull()
+        if (cached != null) {
+            emit(cached)
+        }
+
+        // Fetch fresh from network and cache it
+        try {
+            val result = getMatchScore(matchId)
+            result.getOrNull()?.let { response ->
+                val entity = MatchEntity(
+                    matchId = matchId,
+                    seriesId = cached?.seriesId ?: "",
+                    matchTitle = response.title,
+                    matchType = cached?.matchType ?: "",
+                    status = response.update,
+                    venue = cached?.venue ?: "",
+                    date = cached?.date ?: "",
+                    matchTime = cached?.matchTime ?: "",
+                    currentStatus = response.update,
+                    info = response.livescore,
+                    team1Name = cached?.team1Name ?: "",
+                    team1Score = response.livescore,
+                    team2Name = cached?.team2Name ?: "",
+                    team2Score = null,
+                    lastUpdated = System.currentTimeMillis()
+                )
+                dao.upsertMatch(entity)
+                emit(entity)
+            }
+        } catch (e: Exception) {
+            Sentry.addBreadcrumb(Breadcrumb().apply {
+                category = "cache"
+                message = "Network fetch failed, using cached data"
+                level = SentryLevel.WARNING
+                setData("matchId", matchId)
+            })
+            Sentry.captureException(e)
+            // Already emitted cached data above; if no cache, emit null
+            if (cached == null) emit(null)
+        }
+    }
+
+    /**
+     * Observe cached matches reactively.
+     */
+    fun observeCachedMatches(context: Context): Flow<List<MatchEntity>> {
+        val db = BouncerDatabase.getInstance(context)
+        return db.matchDao().getAllMatches()
+    }
+
+    /**
+     * Cache a match entity from external sources (e.g., polling worker, WebSocket).
+     */
+    suspend fun cacheMatch(context: Context, entity: MatchEntity) {
+        try {
+            val db = BouncerDatabase.getInstance(context)
+            db.matchDao().upsertMatch(entity)
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+        }
+    }
+
+    /**
+     * Purge stale cache entries (older than 24 hours).
+     */
+    suspend fun purgeStaleCache(context: Context) {
+        try {
+            val db = BouncerDatabase.getInstance(context)
+            val cutoff = System.currentTimeMillis() - 24 * 60 * 60 * 1000L
+            db.matchDao().deleteOlderThan(cutoff)
+        } catch (e: Exception) {
+            Sentry.captureException(e)
         }
     }
 }

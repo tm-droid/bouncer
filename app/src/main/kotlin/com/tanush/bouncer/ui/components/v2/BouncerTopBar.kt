@@ -51,9 +51,9 @@ fun BouncerTopBarV2(
         actions = actions,
         colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
             containerColor = colors.topBar,
-            titleContentColor = colors.onTopBar,
-            navigationIconContentColor = colors.onTopBar,
-            actionIconContentColor = colors.onTopBar,
+            titleContentColor = colors.primary,
+            navigationIconContentColor = colors.textSecondary,
+            actionIconContentColor = colors.textSecondary,
         ),
     )
 }

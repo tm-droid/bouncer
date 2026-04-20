@@ -207,8 +207,24 @@ class LiveCommentaryManager(
      */
     private fun updateHistory(resultValue: String, matchId: String? = null) {
         if (aiCommentaryHistory.lastOrNull() == resultValue) return
-        
-        aiCommentaryHistory.add(resultValue)
+
+        // CricBuzz sends progressive updates for the same ball (short → full).
+        // Replace any earlier entry for the same ball number with the newer (longer) text.
+        val ballNum = extractBallNumber(resultValue.trimStart())
+        if (ballNum != null) {
+            val idx = aiCommentaryHistory.indexOfLast { extractBallNumber(it.trimStart()) == ballNum }
+            if (idx >= 0) {
+                if (resultValue.length >= aiCommentaryHistory[idx].length) {
+                    aiCommentaryHistory[idx] = resultValue
+                }
+                // Whether we replaced or kept the longer one, skip adding a duplicate
+                // (still fall through to notification logic below)
+            } else {
+                aiCommentaryHistory.add(resultValue)
+            }
+        } else {
+            aiCommentaryHistory.add(resultValue)
+        }
         
         // Notification Logic - MAGIC PRECISION
         try {

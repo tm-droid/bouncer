@@ -52,11 +52,60 @@ sealed class BouncerScreen(val route: String) {
     /** News listing screen */
     data object News : BouncerScreen("news")
 
+    /** Search screen */
+    data object Search : BouncerScreen("search")
+
     /** Achievements gallery screen */
     data object Achievements : BouncerScreen("achievements")
 
     /** Trophy room (legacy access) */
     data object Trophy : BouncerScreen("trophy-room")
+
+    /** Series list screen */
+    data object SeriesList : BouncerScreen("series")
+
+    /**
+     * Series detail screen with series ID argument.
+     */
+    data class SeriesDetail(val seriesId: String) : BouncerScreen("series/$seriesId") {
+        companion object {
+            const val ROUTE_PATTERN = "series/{seriesId}"
+            const val ARG_SERIES_ID = "seriesId"
+
+            fun createRoute(seriesId: String): String = "series/${seriesId.encodeUrlSafe()}"
+
+            val arguments = listOf(
+                navArgument(ARG_SERIES_ID) {
+                    type = NavType.StringType
+                    nullable = false
+                }
+            )
+        }
+    }
+
+    /**
+     * Points table screen with series ID argument.
+     */
+    data class PointsTable(val seriesId: String) : BouncerScreen("points-table/$seriesId") {
+        companion object {
+            const val ROUTE_PATTERN = "points-table/{seriesId}"
+            const val ARG_SERIES_ID = "seriesId"
+
+            fun createRoute(seriesId: String): String = "points-table/${seriesId.encodeUrlSafe()}"
+
+            val arguments = listOf(
+                navArgument(ARG_SERIES_ID) {
+                    type = NavType.StringType
+                    nullable = false
+                }
+            )
+        }
+    }
+
+    /**
+     * Player comparison screen.
+     */
+    data object PlayerComparison : BouncerScreen("compare-players")
 
     /** Extended stats overview screen (analytics details) */
     data object StatsOverview : BouncerScreen("stats_overview")
@@ -221,7 +270,10 @@ sealed class BouncerScreen(val route: String) {
             DevTools.route,
             Achievements.route,
             ArTracking.route,
-            ActivityFeed.route
+            ActivityFeed.route,
+            Search.route,
+            SeriesList.route,
+            PlayerComparison.route,
         )
 
         /**
@@ -244,6 +296,8 @@ sealed class BouncerScreen(val route: String) {
                 route.startsWith("match/") || route.startsWith("match-info/") -> Matches.route
                 route.startsWith("player/") -> More.route
                 route.startsWith("squad/") -> Matches.route
+                route.startsWith("series/") -> More.route
+                route.startsWith("points-table/") -> More.route
                 else -> Home.route
             }
         }
@@ -259,6 +313,7 @@ object NavArgs {
     const val ARTICLE_ID = "articleId"
     const val PLAYER_ID = "playerId"
     const val TEAM_ID = "teamId"
+    const val SERIES_ID = "seriesId"
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════

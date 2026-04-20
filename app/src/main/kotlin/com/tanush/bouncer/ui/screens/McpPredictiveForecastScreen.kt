@@ -59,16 +59,22 @@ fun McpPredictiveForecastScreen(
     
     val predictions = remember(currentOver, match.scrapedBatsmen, match.currentBowler) {
         val prob = match.calculateHeuristicProbability()
-        val dotProb = (50 + (100 - prob) * 0.3).toInt().coerceIn(20, 85)
-        val wicketProb = ((100 - prob) * 0.4).toInt().coerceIn(5, 40)
-        val boundaryProb = (prob * 0.5).toInt().coerceIn(10, 70)
+        // Raw probabilities for each ball outcome
+        val rawDot = (50 + (100 - prob) * 0.3).coerceIn(20.0, 85.0)
+        val rawWicket = ((100 - prob) * 0.4).coerceIn(5.0, 40.0)
+        val rawBoundary = (prob * 0.5).coerceIn(10.0, 70.0)
+        val rawSingle = (100 - rawDot).coerceIn(15.0, 75.0)
+        val rawDouble = (rawDot * 0.7).coerceIn(15.0, 65.0)
+        // Normalize so all sum to 100%
+        val rawTotal = rawDot + rawSingle + rawWicket + rawDouble + rawDot + rawBoundary
+        fun norm(v: Double) = (v / rawTotal * 100).toInt().coerceAtLeast(1)
         listOf(
-            BallPrediction("${currentOver + 1}.1", dotProb, "Dot Ball"),
-            BallPrediction("${currentOver + 1}.2", (100 - dotProb).coerceIn(15, 75), "1 Run"),
-            BallPrediction("${currentOver + 1}.3", wicketProb, "Wicket", isCritical = wicketProb > 25),
-            BallPrediction("${currentOver + 1}.4", (dotProb * 0.7).toInt().coerceIn(15, 65), "2 Runs"),
-            BallPrediction("${currentOver + 1}.5", dotProb, "Dot"),
-            BallPrediction("${currentOver + 1}.6", boundaryProb, "Boundary")
+            BallPrediction("${currentOver + 1}.1", norm(rawDot), "Dot Ball"),
+            BallPrediction("${currentOver + 1}.2", norm(rawSingle), "1 Run"),
+            BallPrediction("${currentOver + 1}.3", norm(rawWicket), "Wicket", isCritical = rawWicket > 25),
+            BallPrediction("${currentOver + 1}.4", norm(rawDouble), "2 Runs"),
+            BallPrediction("${currentOver + 1}.5", norm(rawDot), "Dot"),
+            BallPrediction("${currentOver + 1}.6", norm(rawBoundary), "Boundary")
         )
     }
 

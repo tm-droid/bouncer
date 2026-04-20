@@ -23,10 +23,12 @@ object TeamLogoManager {
             Log.d(TAG, "Loaded ${logos.size} team logos")
         } catch (e: IOException) {
             Log.e(TAG, "Failed to load TeamLogos.json from assets", e)
+            Sentry.captureException(e)
             initError = e.message
             logos = emptyMap()
         } catch (e: Exception) {
             Log.e(TAG, "Unexpected error initializing TeamLogoManager", e)
+            Sentry.captureException(e)
             initError = e.message
             logos = emptyMap()
         }

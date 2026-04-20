@@ -51,17 +51,7 @@ class BouncerGlanceWidget : GlanceAppWidget() {
     companion object {
         internal const val PREF_NAME = "bouncer_glance_widget"
         private const val SELECTED_MATCH_KEY_PREFIX = "selected_match_id_"
-        
-        // Premium Bouncer Colors
-        private val BlackBackground = Color(0xFF0F1115)
-        private val CardSurface = Color(0xFF1C2028)
-        private val ShinyGoldDeep = Color(0xFFD4AF37)
-        private val GoldDark = Color(0xFFB08D26)
-        private val TextPrimary = Color(0xFFF9FAFB)
-        private val TextSecondary = Color(0xFF94A3B8)
-        private val LiveRed = Color(0xFFFF3B30)
-        private val SuccessGreen = Color(0xFF22C55E)
-        
+
         fun updateWidgetData(
             context: Context,
             team1Name: String,
@@ -138,8 +128,8 @@ class BouncerGlanceWidget : GlanceAppWidget() {
         Box(
             modifier = GlanceModifier
                 .fillMaxSize()
-                .background(BlackBackground)
-                .cornerRadius(16.dp)
+                .background(WidgetColorScheme.background)
+                .cornerRadius(WidgetTheme.radiusLarge)
                 .clickable(actionStartActivity<BouncerActivity>())
         ) {
             if (team1Name != null && team2Name != null) {
@@ -183,14 +173,14 @@ class BouncerGlanceWidget : GlanceAppWidget() {
                 if (isLive) {
                     Box(
                         modifier = GlanceModifier
-                            .background(LiveRed)
-                            .cornerRadius(4.dp)
+                            .background(WidgetColorScheme.live)
+                            .cornerRadius(WidgetTheme.radiusSmall)
                             .padding(horizontal = 6.dp, vertical = 2.dp)
                     ) {
                         Text(
                             text = "LIVE",
                             style = TextStyle(
-                                color = ColorProvider(TextPrimary),
+                                color = WidgetColorScheme.textPrimary,
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold
                             )
@@ -202,7 +192,7 @@ class BouncerGlanceWidget : GlanceAppWidget() {
                 Text(
                     text = matchStatus,
                     style = TextStyle(
-                        color = ColorProvider(if (isLive) LiveRed else TextSecondary),
+                        color = if (isLive) WidgetColorScheme.primary else WidgetColorScheme.textSecondary,
                         fontSize = 11.sp,
                         fontWeight = if (isLive) FontWeight.Medium else FontWeight.Normal
                     )
@@ -228,7 +218,7 @@ class BouncerGlanceWidget : GlanceAppWidget() {
                 Text(
                     text = "VS",
                     style = TextStyle(
-                        color = ColorProvider(TextSecondary),
+                        color = WidgetColorScheme.textSecondary,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -258,8 +248,8 @@ class BouncerGlanceWidget : GlanceAppWidget() {
         Row(
             modifier = GlanceModifier
                 .fillMaxWidth()
-                .background(CardSurface)
-                .cornerRadius(8.dp)
+                .background(if (isLeading) WidgetColorScheme.primaryContainer else WidgetColorScheme.surfaceElevated)
+                .cornerRadius(WidgetTheme.radiusMedium)
                 .padding(horizontal = 12.dp, vertical = 8.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalAlignment = Alignment.CenterVertically
@@ -267,7 +257,7 @@ class BouncerGlanceWidget : GlanceAppWidget() {
             Text(
                 text = teamName,
                 style = TextStyle(
-                    color = ColorProvider(if (isLeading) ShinyGoldDeep else TextPrimary),
+                    color = if (isLeading) WidgetColorScheme.primary else WidgetColorScheme.textPrimary,
                     fontSize = 14.sp,
                     fontWeight = if (isLeading) FontWeight.Bold else FontWeight.Medium
                 ),
@@ -279,7 +269,7 @@ class BouncerGlanceWidget : GlanceAppWidget() {
             Text(
                 text = score,
                 style = TextStyle(
-                    color = ColorProvider(if (isLeading) ShinyGoldDeep else TextPrimary),
+                    color = if (isLeading) WidgetColorScheme.primary else WidgetColorScheme.textPrimary,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -289,34 +279,23 @@ class BouncerGlanceWidget : GlanceAppWidget() {
 
     @Composable
     private fun WinProbabilityBar(probability: Float) {
-        Column(
-            modifier = GlanceModifier.fillMaxWidth()
+        Box(
+            modifier = GlanceModifier
+                .fillMaxWidth()
+                .background(WidgetColorScheme.primaryContainer)
+                .cornerRadius(WidgetTheme.radiusSmall)
+                .padding(horizontal = 10.dp, vertical = 6.dp)
         ) {
-            Row(
-                modifier = GlanceModifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    text = "${(probability * 100).toInt()}% win prob",
-                    style = TextStyle(
-                        color = ColorProvider(TextSecondary),
-                        fontSize = 10.sp
-                    )
-                )
-            }
-            
-            Spacer(modifier = GlanceModifier.height(4.dp))
-            
-            // Simple progress indicator using Box
-            Box(
-                modifier = GlanceModifier
-                    .fillMaxWidth()
-                    .height(4.dp)
-                    .background(CardSurface)
-                    .cornerRadius(2.dp)
-            ) {
-                // Empty progress bar for now
-            }
+            Text(
+                text = "${(probability * 100).toInt()}% projected win edge",
+                style = TextStyle(
+                    color = WidgetColorScheme.primary,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Medium,
+                    textAlign = TextAlign.Center
+                ),
+                modifier = GlanceModifier.fillMaxWidth()
+            )
         }
     }
 
@@ -341,7 +320,7 @@ class BouncerGlanceWidget : GlanceAppWidget() {
             Text(
                 text = "No live matches",
                 style = TextStyle(
-                    color = ColorProvider(TextPrimary),
+                    color = WidgetColorScheme.textPrimary,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Medium
                 )
@@ -352,7 +331,7 @@ class BouncerGlanceWidget : GlanceAppWidget() {
             Text(
                 text = "Check back soon",
                 style = TextStyle(
-                    color = ColorProvider(TextSecondary),
+                    color = WidgetColorScheme.textSecondary,
                     fontSize = 11.sp
                 )
             )

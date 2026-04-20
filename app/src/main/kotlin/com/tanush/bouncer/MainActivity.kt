@@ -32,6 +32,7 @@ import com.tanush.bouncer.viewmodels.LiveActivityViewModel
 import com.tanush.bouncer.viewmodels.LandingTab
 import com.tanush.bouncer.ui.components.InAppBanner
 import com.tanush.bouncer.ui.components.PremiumBottomNavBar
+import com.tanush.bouncer.ui.components.SentryErrorBoundary
 import com.tanush.bouncer.utils.PreferencesHelper
 
 /**
@@ -232,14 +233,16 @@ private fun MainAppContent(
                 enterTransition = { fadeIn(tween(AnimationDuration.moderate)) + slideInHorizontally(initialOffsetX = { -it / 8 }, animationSpec = tween(AnimationDuration.moderate, easing = FastOutSlowInEasing)) },
                 exitTransition = { fadeOut(tween(AnimationDuration.normal)) + slideOutHorizontally(targetOffsetX = { -it / 8 }, animationSpec = tween(AnimationDuration.normal, easing = FastOutSlowInEasing)) }
             ) { 
-                HomeScreen(
-                    viewModel = viewModel, 
-                    onMatchClick = { match -> navController.navigate("match/${match.id}") },
-                    onMoreMatchesClick = { navController.navigate("all_matches") },
-                    onAchievementsClick = { navController.navigate("achievements") },
-                    onDevToolsClick = { navController.navigate("devtools") },
-                    onIntelligenceFeedClick = { navController.navigate("activity") }
-                ) 
+                SentryErrorBoundary(screenName = "HomeScreen") {
+                    HomeScreen(
+                        viewModel = viewModel, 
+                        onMatchClick = { match -> navController.navigate("match/${match.id}") },
+                        onMoreMatchesClick = { navController.navigate("all_matches") },
+                        onAchievementsClick = { navController.navigate("achievements") },
+                        onDevToolsClick = { navController.navigate("devtools") },
+                        onIntelligenceFeedClick = { navController.navigate("activity") }
+                    )
+                }
             }
             
             composable(
@@ -254,15 +257,17 @@ private fun MainAppContent(
                 val matchId = backStackEntry.arguments?.getString("matchId")
                 val match = currentMatches.find { it.id == matchId }
                 if (match != null) { 
-                    MatchDetailView(
-                        match = match, 
-                        onBackClick = { navController.popBackStack() }, 
-                        onForecastClick = { navController.navigate("forecast/${match.id}") },
-                        onArClick = { navController.navigate("ar_tracking") },
-                        onOpenCommentary = { navController.navigate("match/${match.id}/commentary") },
-                        onOpenScorecard = { navController.navigate("match/${match.id}/scorecard") },
-                        onOpenAnalysis = { navController.navigate("match/${match.id}/analysis") }
-                    ) 
+                    SentryErrorBoundary(screenName = "MatchDetailView") {
+                        MatchDetailView(
+                            match = match, 
+                            onBackClick = { navController.popBackStack() }, 
+                            onForecastClick = { navController.navigate("forecast/${match.id}") },
+                            onArClick = { navController.navigate("ar_tracking") },
+                            onOpenCommentary = { navController.navigate("match/${match.id}/commentary") },
+                            onOpenScorecard = { navController.navigate("match/${match.id}/scorecard") },
+                            onOpenAnalysis = { navController.navigate("match/${match.id}/analysis") }
+                        )
+                    }
                 }
             }
             
@@ -358,7 +363,7 @@ private fun MainAppContent(
                 "all_matches",
                 enterTransition = { fadeIn(tween(AnimationDuration.moderate)) + slideInHorizontally(initialOffsetX = { it / 8 }, animationSpec = tween(AnimationDuration.moderate, easing = FastOutSlowInEasing)) },
                 exitTransition = { fadeOut(tween(AnimationDuration.normal)) + slideOutHorizontally(targetOffsetX = { it / 8 }, animationSpec = tween(AnimationDuration.normal, easing = FastOutSlowInEasing)) }
-            ) { AllMatchesScreen(onBackClick = { navController.popBackStack() }) }
+            ) { SentryErrorBoundary(screenName = "AllMatchesScreen") { AllMatchesScreen(onBackClick = { navController.popBackStack() }) } }
             composable(
                 "ar_tracking",
                 enterTransition = { fadeIn(tween(AnimationDuration.moderate)) + slideInVertically(initialOffsetY = { it / 6 }, animationSpec = tween(AnimationDuration.moderate, easing = FastOutSlowInEasing)) },

@@ -151,6 +151,7 @@ class CricInfoScraper {
         } catch (e: Exception) {
             Log.e(TAG, "Error checking commentary availability for matchId=$matchId: ${e.message}")
             recordFailure(e)
+            Sentry.captureException(e)
             Sentry.addBreadcrumb(Breadcrumb().apply {
                 category = "network.cricinfo"
                 message = "Error checking commentary availability"
@@ -212,6 +213,7 @@ class CricInfoScraper {
                 }
             } catch (e: Exception) {
                 Log.w(TAG, "Failed to parse __NEXT_DATA__ for commentary, falling back to selectors")
+                Sentry.captureException(e)
                 Sentry.addBreadcrumb(Breadcrumb().apply {
                     category = "data.parse"
                     message = "Failed to parse __NEXT_DATA__ JSON"
@@ -265,6 +267,7 @@ class CricInfoScraper {
         } catch (e: Exception) {
             Log.e(TAG, "Error fetching Cricinfo commentary from URL: $matchUrl: ${e.message}")
             recordFailure(e)
+            Sentry.captureException(e)
             Sentry.addBreadcrumb(Breadcrumb().apply {
                 category = "network.cricinfo"
                 message = "Error fetching commentary"
@@ -361,7 +364,8 @@ class CricInfoScraper {
             null
         } catch (e: Exception) {
             Log.e(TAG, "Error finding match: ${e.message}")
-            recordFailure(e) // Let circuit breaker decide when to report to Sentry
+            recordFailure(e)
+            Sentry.captureException(e)
 
             Sentry.addBreadcrumb(Breadcrumb().apply {
                 category = "network.cricinfo"
@@ -371,7 +375,6 @@ class CricInfoScraper {
                 setData("error", e.message ?: "Unknown error")
                 setData("consecutiveFailures", consecutiveFailures.get())
             })
-            // Don't call Sentry.captureException here — circuit breaker handles it
             null
         }
     }

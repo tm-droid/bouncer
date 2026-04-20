@@ -36,40 +36,40 @@ import androidx.compose.ui.graphics.Color
 // =============================================================================
 
 @Deprecated("Use BouncerColorTokens.backgroundBase instead", ReplaceWith("BouncerColorTokens.backgroundBase", "com.tanush.bouncer.ui.theme.BouncerColorTokens"))
-val BackgroundBase = Color(0xFF0F1115)
+val BackgroundBase = Color(0xFF0C1015)
 @Deprecated("Use BouncerColorTokens.backgroundElevated instead", ReplaceWith("BouncerColorTokens.backgroundElevated", "com.tanush.bouncer.ui.theme.BouncerColorTokens"))
-val BackgroundElevated = Color(0xFF1A1A1A)
+val BackgroundElevated = Color(0xFF171510)
 @Deprecated("Use BouncerColorTokens.surface1 instead", ReplaceWith("BouncerColorTokens.surface1", "com.tanush.bouncer.ui.theme.BouncerColorTokens"))
-val Surface1 = Color(0xFF1C2028)
+val Surface1 = Color(0xFF161C26)
 @Deprecated("Use BouncerColorTokens.surface2 instead", ReplaceWith("BouncerColorTokens.surface2", "com.tanush.bouncer.ui.theme.BouncerColorTokens"))
-val Surface2 = Color(0xFF252A34)
+val Surface2 = Color(0xFF202834)
 @Deprecated("Use BouncerColorTokens.surface3 instead", ReplaceWith("BouncerColorTokens.surface3", "com.tanush.bouncer.ui.theme.BouncerColorTokens"))
-val Surface3 = Color(0xFF323945)
+val Surface3 = Color(0xFF2B3442)
 
 // =============================================================================
 // Gold Accent Colors — Premium warm tones
 // =============================================================================
 
 @Deprecated("Use BouncerColorTokens.goldPrimary instead", ReplaceWith("BouncerColorTokens.goldPrimary", "com.tanush.bouncer.ui.theme.BouncerColorTokens"))
-val GoldPrimary = Color(0xFFD4AF37)
+val GoldPrimary = Color(0xFFE0B74F)
 @Deprecated("Use BouncerColorTokens.goldDark instead", ReplaceWith("BouncerColorTokens.goldDark", "com.tanush.bouncer.ui.theme.BouncerColorTokens"))
-val GoldDark = Color(0xFFB08D26)
+val GoldDark = Color(0xFFAF8327)
 @Deprecated("Use BouncerColorTokens.goldLight instead", ReplaceWith("BouncerColorTokens.goldLight", "com.tanush.bouncer.ui.theme.BouncerColorTokens"))
-val GoldLight = Color(0xFFE8C677)
+val GoldLight = Color(0xFFF3DB93)
 @Deprecated("Use BouncerColorTokens.goldSubtle instead", ReplaceWith("BouncerColorTokens.goldSubtle", "com.tanush.bouncer.ui.theme.BouncerColorTokens"))
-val GoldSubtle = Color(0xFF2D2510)
+val GoldSubtle = Color(0xFF34270D)
 @Deprecated("Use BouncerColorTokens.etchedGold instead", ReplaceWith("BouncerColorTokens.etchedGold", "com.tanush.bouncer.ui.theme.BouncerColorTokens"))
-val EtchedGold = Color(0xFFC4A456)  // Handcrafted metallic feel
+val EtchedGold = Color(0xFFE4C56F)  // Handcrafted metallic feel
 
 @Deprecated("Use BouncerColorTokens.goldGradientVertical instead", ReplaceWith("BouncerColorTokens.goldGradientVertical", "com.tanush.bouncer.ui.theme.BouncerColorTokens"))
 val GoldGradient = Brush.verticalGradient(
-    0.0f to Color.White,
-    0.6f to Color(0xFFD4AF37),
-    1.0f to Color(0xFFB08D26)
+    0.0f to Color(0xFFF8E7BC),
+    0.55f to GoldPrimary,
+    1.0f to GoldDark
 )
 @Deprecated("Use BouncerColorTokens.goldGradientHorizontal instead", ReplaceWith("BouncerColorTokens.goldGradientHorizontal", "com.tanush.bouncer.ui.theme.BouncerColorTokens"))
 val GoldGradientHorizontal = Brush.horizontalGradient(
-    colors = listOf(Color(0xFFFCD34D), GoldPrimary, GoldDark)
+    colors = listOf(Color(0xFFF7DF9A), GoldPrimary, GoldDark)
 )
 
 // =============================================================================
@@ -77,13 +77,13 @@ val GoldGradientHorizontal = Brush.horizontalGradient(
 // =============================================================================
 
 @Deprecated("Use BouncerColorTokens.textPrimary instead", ReplaceWith("BouncerColorTokens.textPrimary", "com.tanush.bouncer.ui.theme.BouncerColorTokens"))
-val TextPrimary = Color(0xFFF9FAFB)
+val TextPrimary = Color(0xFFFCF7ED)
 @Deprecated("Use BouncerColorTokens.textSecondary instead", ReplaceWith("BouncerColorTokens.textSecondary", "com.tanush.bouncer.ui.theme.BouncerColorTokens"))
-val TextSecondary = Color(0xFF9CA3AF)
+val TextSecondary = Color(0xFFC1B08D)
 @Deprecated("Use BouncerColorTokens.textTertiary instead", ReplaceWith("BouncerColorTokens.textTertiary", "com.tanush.bouncer.ui.theme.BouncerColorTokens"))
-val TextTertiary = Color(0xFF6B7280)
+val TextTertiary = Color(0xFF8D7E61)
 @Deprecated("Use BouncerColorTokens.textMuted instead", ReplaceWith("BouncerColorTokens.textMuted", "com.tanush.bouncer.ui.theme.BouncerColorTokens"))
-val TextMuted = Color(0xFF4B5563)
+val TextMuted = Color(0xFF665844)
 
 // =============================================================================
 // Status Colors — Clear semantic indicators
@@ -182,20 +182,20 @@ object TeamPrimaryColors {
 // =============================================================================
 
 object GlassOpacity {
-    const val BACKGROUND = 0.08f  // Futuristic light tint
-    const val BACKGROUND_HOVER = 0.10f
-    const val BACKGROUND_PRESSED = 0.12f
-    const val BORDER = 0.12f
-    const val BORDER_HIGHLIGHT = 0.16f
+    const val BACKGROUND = 0.06f
+    const val BACKGROUND_HOVER = 0.08f
+    const val BACKGROUND_PRESSED = 0.10f
+    const val BORDER = 0.18f
+    const val BORDER_HIGHLIGHT = 0.24f
     const val OVERLAY = 0.60f
     const val SCRIM = 0.80f
 }
 
-val GlassBackground = Color.White.copy(alpha = GlassOpacity.BACKGROUND)
-val GlassBackgroundHover = Color.White.copy(alpha = GlassOpacity.BACKGROUND_HOVER)
-val GlassBackgroundPressed = Color.White.copy(alpha = GlassOpacity.BACKGROUND_PRESSED)
-val GlassBorder = Color.White.copy(alpha = GlassOpacity.BORDER)
-val GlassBorderHighlight = Color.White.copy(alpha = GlassOpacity.BORDER_HIGHLIGHT)
+val GlassBackground = GoldLight.copy(alpha = GlassOpacity.BACKGROUND)
+val GlassBackgroundHover = GoldLight.copy(alpha = GlassOpacity.BACKGROUND_HOVER)
+val GlassBackgroundPressed = GoldPrimary.copy(alpha = GlassOpacity.BACKGROUND_PRESSED)
+val GlassBorder = GoldLight.copy(alpha = GlassOpacity.BORDER)
+val GlassBorderHighlight = GoldPrimary.copy(alpha = GlassOpacity.BORDER_HIGHLIGHT)
 val GlassOverlay = Color.Black.copy(alpha = GlassOpacity.OVERLAY)
 val GlassScrim = Color.Black.copy(alpha = GlassOpacity.SCRIM)
 
@@ -257,8 +257,8 @@ val Gold100 = Color(0xFFFFF8E7)
 val Gold200 = Color(0xFFFFE9B8)
 val Gold300 = Color(0xFFFFD780)
 val Gold400 = GoldPrimary
-val Gold500 = Color(0xFFB8912D)
-val Gold600 = Color(0xFF8C6E23)
+val Gold500 = Color(0xFFC69433)
+val Gold600 = Color(0xFF8F661C)
 val GoldAccentDeep = GoldPrimary
 val GoldAccentLight = GoldLight
 val GoldAccentDim = GoldDark
@@ -300,8 +300,8 @@ val ShortPitch = Color(0xFFFB923C)
 val Yorker = Color(0xFFF87171)
 
 // Glass (aliases)
-val GlassBorderLight = Color.White.copy(alpha = 0.04f)
-val GlassSurface = Color.White.copy(alpha = 0.08f)  // Futuristic light tint
+val GlassBorderLight = GoldLight.copy(alpha = 0.08f)
+val GlassSurface = GoldPrimary.copy(alpha = 0.10f)
 val GlassWhite = Color.White.copy(alpha = 0.10f)
 val GlassDark = Color.Black.copy(alpha = 0.20f)
 val GlassEtchedGold = EtchedGold.copy(alpha = 0.15f)
@@ -346,11 +346,11 @@ fun liveIndicatorColor(): Color = StatusLive
 // =============================================================================
 
 // Shiny Gold aliases for backward compatibility with older components
-val ShinyGoldDeep = GoldDark
+val ShinyGoldDeep = GoldPrimary
 val ShinyGoldLight = GoldLight
-val ShinyGoldMid = GoldPrimary
+val ShinyGoldMid = Gold500
 val ShinyGoldDark = GoldDark
-val ShinyGoldBronze = GoldDark
+val ShinyGoldBronze = GoldAccentBronze
 val ShinyGoldDim = GoldSubtle
 
 // Warning/Status

@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
@@ -16,8 +17,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
 import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 
@@ -136,6 +139,47 @@ fun HeroMatchCard(
                                 color = colors.textSecondary,
                             )
                         }
+                    }
+                }
+
+                // Win probability bar
+                val winProb = match.calculateHeuristicProbability()
+                if (winProb != 50.0 && match.teams.size >= 2) {
+                    Spacer(Modifier.height(spacing.md))
+                    HorizontalDivider(color = colors.divider)
+                    Spacer(Modifier.height(spacing.sm))
+                    val fraction = (winProb / 100.0).toFloat().coerceIn(0.05f, 0.95f)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = "${match.teams[0].acronym} ${winProb.toInt()}%",
+                            style = typography.bodySmall,
+                            color = colors.primary,
+                        )
+                        Spacer(Modifier.weight(1f))
+                        Text(
+                            text = "${(100 - winProb.toInt())}% ${match.teams[1].acronym}",
+                            style = typography.bodySmall,
+                            color = colors.textSecondary,
+                        )
+                    }
+                    Spacer(Modifier.height(4.dp))
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(6.dp)
+                            .clip(RoundedCornerShape(3.dp))
+                            .background(colors.surfaceVariant)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth(fraction)
+                                .height(6.dp)
+                                .clip(RoundedCornerShape(3.dp))
+                                .background(colors.primary)
+                        )
                     }
                 }
             }

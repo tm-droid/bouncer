@@ -18,6 +18,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Build
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Notifications
@@ -60,6 +61,7 @@ fun MoreScreenV2(
     onDevToolsClick: () -> Unit,
     onNewsClick: () -> Unit = {},
     onAppearanceClick: () -> Unit = {},
+    onSeriesClick: () -> Unit = {},
 ) {
     val colors = BouncerThemeV2.colors
     val typography = BouncerThemeV2.typography
@@ -73,6 +75,7 @@ fun MoreScreenV2(
         ExploreItem(Icons.Default.SportsCricket, "Achievements", onAchievementsClick),
         ExploreItem(Icons.Default.Timeline, "Activity", onActivityClick),
         ExploreItem(Icons.Default.ViewInAr, "AR Track", onArTrackingClick),
+        ExploreItem(Icons.Default.DateRange, "Series", onSeriesClick),
     )
 
     Scaffold(

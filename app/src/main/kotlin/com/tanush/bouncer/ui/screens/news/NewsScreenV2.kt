@@ -78,9 +78,16 @@ fun NewsScreenV2(
                 if (articles.isEmpty() && !isLoading) {
                     item(key = "empty") {
                         if (error != null) {
+                            val friendlyError = when {
+                                error!!.contains("403") -> "News source temporarily unavailable"
+                                error!!.contains("429") -> "Too many requests — try again in a moment"
+                                error!!.contains("timeout", ignoreCase = true) || error!!.contains("connect", ignoreCase = true) ->
+                                    "Network connection issue"
+                                else -> "Something went wrong"
+                            }
                             EmptyStateV2(
-                                title = "Couldn't load news",
-                                subtitle = error ?: "Something went wrong. Pull to refresh to try again.",
+                                title = friendlyError,
+                                subtitle = "Pull down to refresh and try again",
                             )
                         } else {
                             EmptyStateV2(

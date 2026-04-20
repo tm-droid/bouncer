@@ -44,7 +44,7 @@ fun BouncerNavHost(
     newsViewModel: NewsViewModel,
     onMatchClick: (CricketMatch) -> Unit,
     onArTrackingClick: () -> Unit,
-    themeMode: ThemeModeV2 = ThemeModeV2.System,
+    themeMode: ThemeModeV2 = ThemeModeV2.Dark,
     onThemeModeChanged: (ThemeModeV2) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
@@ -61,7 +61,7 @@ fun BouncerNavHost(
         primaryTabDestinations(navController, liveActivityViewModel, newsViewModel, onMatchClick)
 
         // Secondary screens from More tab
-        moreChildDestinations(navController, newsViewModel, onArTrackingClick, themeMode, onThemeModeChanged)
+        moreChildDestinations(navController, liveActivityViewModel, newsViewModel, onMatchClick, onArTrackingClick, themeMode, onThemeModeChanged)
 
         // Parameterized screens
         parameterizedDestinations(navController, newsViewModel)
@@ -100,6 +100,9 @@ private fun NavGraphBuilder.primaryTabDestinations(
             },
             onNewsClick = {
                 navController.navigateToTab(BouncerScreen.News.route)
+            },
+            onSearchClick = {
+                navController.navigateForward(BouncerScreen.Search.route)
             }
         )
     }
@@ -212,6 +215,9 @@ private fun NavGraphBuilder.primaryTabDestinations(
             },
             onAppearanceClick = {
                 navController.navigateForward(BouncerScreen.Appearance.route)
+            },
+            onSeriesClick = {
+                navController.navigateForward(BouncerScreen.SeriesList.route)
             }
         )
     }
@@ -223,11 +229,39 @@ private fun NavGraphBuilder.primaryTabDestinations(
 
 private fun NavGraphBuilder.moreChildDestinations(
     navController: NavHostController,
+    liveActivityViewModel: LiveActivityViewModel,
     newsViewModel: NewsViewModel,
+    onMatchClick: (CricketMatch) -> Unit,
     onArTrackingClick: () -> Unit,
     themeMode: ThemeModeV2,
     onThemeModeChanged: (ThemeModeV2) -> Unit
 ) {
+    // Search
+    composable(BouncerScreen.Search.route) {
+        val currentMatches by liveActivityViewModel.currentMatches.collectAsState()
+        val news by newsViewModel.articles.collectAsState()
+
+        SearchScreen(
+            matches = currentMatches,
+            news = news,
+            onMatchClick = { match ->
+                onMatchClick(match)
+            },
+            onPlayerClick = { playerName ->
+                navController.navigateForward(
+                    BouncerScreen.PlayerDetail.createRoute(playerName)
+                )
+            },
+            onNewsClick = { article ->
+                newsViewModel.selectArticle(article)
+                navController.navigateForward(
+                    BouncerScreen.NewsDetail.createRoute(article.id.toString())
+                )
+            },
+            onBackClick = { navController.popBackStack() }
+        )
+    }
+
     // Settings
     composable(BouncerScreen.Settings.route) {
         SettingsScreenV2(
@@ -304,6 +338,23 @@ private fun NavGraphBuilder.moreChildDestinations(
             onBackClick = { navController.popBackStack() }
         )
     }
+
+    // Series List
+    composable(BouncerScreen.SeriesList.route) {
+        SeriesListScreen(
+            onSeriesClick = { seriesId ->
+                navController.navigateForward(BouncerScreen.SeriesDetail.createRoute(seriesId))
+            },
+            onBackClick = { navController.popBackStack() }
+        )
+    }
+
+    // Player Comparison
+    composable(BouncerScreen.PlayerComparison.route) {
+        PlayerComparisonScreen(
+            onBackClick = { navController.popBackStack() }
+        )
+    }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -353,12 +404,44 @@ private fun NavGraphBuilder.parameterizedDestinations(
             playerImageUrl = null,
             isCaptain = false,
             isWicketKeeper = false,
-            onBackClick = { navController.popBackStack() }
+            onBackClick = { navController.popBackStack() },
+            onCompareClick = { navController.navigateForward(BouncerScreen.PlayerComparison.route) }
         )
     }
 
     // NOTE: MatchInfoScreen and SquadScreen require CricketMatch objects, not just IDs.
     // These are currently handled via the modal overlay pattern in BouncerAppContent.
+
+    // Series Detail with series ID
+    composable(
+        route = BouncerScreen.SeriesDetail.ROUTE_PATTERN,
+        arguments = BouncerScreen.SeriesDetail.arguments
+    ) { backStackEntry ->
+        val seriesId = backStackEntry.arguments?.getString(BouncerScreen.SeriesDetail.ARG_SERIES_ID)
+            ?.decodeUrlSafe() ?: return@composable
+
+        SeriesDetailScreen(
+            seriesId = seriesId,
+            onPointsTableClick = { id ->
+                navController.navigateForward(BouncerScreen.PointsTable.createRoute(id))
+            },
+            onBackClick = { navController.popBackStack() }
+        )
+    }
+
+    // Points Table with series ID
+    composable(
+        route = BouncerScreen.PointsTable.ROUTE_PATTERN,
+        arguments = BouncerScreen.PointsTable.arguments
+    ) { backStackEntry ->
+        val seriesId = backStackEntry.arguments?.getString(BouncerScreen.PointsTable.ARG_SERIES_ID)
+            ?.decodeUrlSafe() ?: return@composable
+
+        PointsTableScreen(
+            seriesId = seriesId,
+            onBackClick = { navController.popBackStack() }
+        )
+    }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════

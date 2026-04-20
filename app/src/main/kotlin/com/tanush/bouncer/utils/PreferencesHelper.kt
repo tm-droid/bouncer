@@ -23,6 +23,7 @@ object PreferencesHelper {
     const val KEY_AUTO_REFRESH = "auto_refresh"
     const val KEY_SHOW_WIN_PROBABILITY = "show_win_probability"
     const val KEY_REDUCED_MOTION = "reduced_motion"
+    const val KEY_REFRESH_INTERVAL = "refresh_interval"
 
     // Personalization defaults
     const val KEY_DEFAULT_LANDING = "default_landing"
@@ -56,6 +57,26 @@ object PreferencesHelper {
             
             val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             prefs.edit().putBoolean(key, value).apply()
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
+    }
+
+    fun getInt(context: Context, key: String, default: Int): Int {
+        try {
+            val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            return prefs.getInt(key, default)
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
+    }
+
+    fun setInt(context: Context, key: String, value: Int) {
+        try {
+            val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            prefs.edit().putInt(key, value).apply()
         } catch (e: Exception) {
             Sentry.captureException(e)
             throw e

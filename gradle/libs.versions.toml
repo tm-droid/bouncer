@@ -36,6 +36,22 @@ play-app-update = "2.1.0"
 # ── Glance ─────────────────────────────────────────────────────────────────────
 glance = "1.1.1"
 
+# ── Room ───────────────────────────────────────────────────────────────────────
+room = "2.7.1"
+ksp = "2.2.20-2.0.2"
+
+# ── Paging ────────────────────────────────────────────────────────────────────
+paging = "3.3.6"
+
+# ── Firebase ──────────────────────────────────────────────────────────────────
+firebase-bom = "33.7.0"
+
+# ── Debug ─────────────────────────────────────────────────────────────────────
+leakcanary = "2.14"
+
+# ── Car App ───────────────────────────────────────────────────────────────────
+car-app = "1.7.0"
+
 # ── Testing ────────────────────────────────────────────────────────────────────
 junit = "4.13.2"
 androidx-test-ext = "1.2.1"
@@ -86,7 +102,27 @@ glance-material3 = { module = "androidx.glance:glance-material3", version.ref = 
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }
 kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "kotlinx-coroutines" }
+kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "kotlinx-coroutines" }
 kotlin-logging-android = { module = "io.github.oshai:kotlin-logging-android", version.ref = "kotlin-logging" }
+
+# ── Room ───────────────────────────────────────────────────────────────────────
+room-runtime = { module = "androidx.room:room-runtime", version.ref = "room" }
+room-ktx = { module = "androidx.room:room-ktx", version.ref = "room" }
+room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }
+
+# ── Paging ────────────────────────────────────────────────────────────────────
+paging-runtime = { module = "androidx.paging:paging-runtime", version.ref = "paging" }
+paging-compose = { module = "androidx.paging:paging-compose", version.ref = "paging" }
+
+# ── Firebase ──────────────────────────────────────────────────────────────────
+firebase-bom-lib = { module = "com.google.firebase:firebase-bom", version.ref = "firebase-bom" }
+firebase-messaging = { module = "com.google.firebase:firebase-messaging-ktx" }
+
+# ── Debug ─────────────────────────────────────────────────────────────────────
+leakcanary = { module = "com.squareup.leakcanary:leakcanary-android", version.ref = "leakcanary" }
+
+# ── Car App ───────────────────────────────────────────────────────────────────
+car-app = { module = "androidx.car.app:app", version.ref = "car-app" }
 
 # ── Testing ────────────────────────────────────────────────────────────────────
 junit = { module = "junit:junit", version.ref = "junit" }
@@ -100,4 +136,5 @@ compose-ui-test-manifest = { module = "androidx.compose.ui:ui-test-manifest" }
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 sentry = { id = "io.sentry.android.gradle", version.ref = "sentry-gradle" }

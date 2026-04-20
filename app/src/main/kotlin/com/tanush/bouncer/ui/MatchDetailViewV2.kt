@@ -17,6 +17,9 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Alarm
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -51,15 +54,19 @@ import com.tanush.bouncer.models.ScrapedBatsman
 import com.tanush.bouncer.models.ScrapedBowler
 import com.tanush.bouncer.network.CricBuzzScraper
 import com.tanush.bouncer.services.LiveCommentaryManager
+import com.tanush.bouncer.ui.components.v2.MatchNotificationPrefsSheet
 import com.tanush.bouncer.ui.components.v2.MatchStatusType
 import com.tanush.bouncer.ui.components.v2.RecentBallsStripV2
+import com.tanush.bouncer.ui.components.v2.ReminderBottomSheet
 import com.tanush.bouncer.ui.components.v2.StatusBadgeV2
 import com.tanush.bouncer.ui.components.v2.determineMatchStatus
 import com.tanush.bouncer.ui.screens.matchdetail.v2.CommentaryTabV2
 import com.tanush.bouncer.ui.screens.matchdetail.v2.InfoTabV2
 import com.tanush.bouncer.ui.screens.matchdetail.v2.OverviewTabV2
 import com.tanush.bouncer.ui.screens.matchdetail.v2.ScorecardTabV2
+import com.tanush.bouncer.ui.screens.matchdetail.v2.MatchTimelineTab
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
+import com.tanush.bouncer.utils.ShareMatchCardHelper
 import io.sentry.Breadcrumb
 import io.sentry.Sentry
 import io.sentry.SentryLevel
@@ -81,7 +88,7 @@ fun MatchDetailViewV2(
     val typography = BouncerThemeV2.typography
     val spacing = BouncerThemeV2.spacing
 
-    val tabTitles = listOf("Overview", "Scorecard", "Commentary", "Info")
+    val tabTitles = listOf("Overview", "Scorecard", "Commentary", "Timeline", "Info")
     val pagerState = rememberPagerState(pageCount = { tabTitles.size })
     val scope = rememberCoroutineScope()
 
@@ -91,6 +98,8 @@ fun MatchDetailViewV2(
     var recentBalls by remember { mutableStateOf<List<String>>(emptyList()) }
     var scorecard by remember { mutableStateOf<Scorecard?>(null) }
     var commentary by remember { mutableStateOf(listOf("Loading commentary...")) }
+    var showReminderSheet by remember { mutableStateOf(false) }
+    var showNotifPrefsSheet by remember { mutableStateOf(false) }
 
     var liveTeam1Score by remember { mutableStateOf(match.teams.getOrNull(0)?.score ?: "") }
     var liveTeam2Score by remember { mutableStateOf(match.teams.getOrNull(1)?.score ?: "") }
@@ -186,6 +195,29 @@ fun MatchDetailViewV2(
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
+                actions = {
+                    IconButton(onClick = {
+                        ShareMatchCardHelper.shareMatchAsImage(
+                            context = context,
+                            team1 = team1?.name ?: "",
+                            team2 = team2?.name ?: "",
+                            score1 = score1,
+                            score2 = score2,
+                            overs1 = overs1,
+                            overs2 = overs2,
+                            status = match.status,
+                            matchTitle = match.matchTitle,
+                        )
+                    }) {
+                        Icon(Icons.Default.Share, "Share", tint = colors.onSurface)
+                    }
+                    IconButton(onClick = { showReminderSheet = true }) {
+                        Icon(Icons.Default.Alarm, "Reminder", tint = colors.onSurface)
+                    }
+                    IconButton(onClick = { showNotifPrefsSheet = true }) {
+                        Icon(Icons.Default.Notifications, "Notification Preferences", tint = colors.onSurface)
+                    }
+                },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
                     containerColor = colors.surface,
                     titleContentColor = colors.onSurface,
@@ -258,15 +290,35 @@ fun MatchDetailViewV2(
                         commentary = commentary,
                         currentRunRate = liveCurrentRunRate,
                         requiredRunRate = liveRequiredRunRate,
+                        scorecard = scorecard,
                     )
                     1 -> ScorecardTabV2(scorecard = scorecard)
                     2 -> CommentaryTabV2(
                         commentary = commentary,
                         recentBalls = recentBalls,
+                        matchStatus = match.currentStatus,
                     )
-                    3 -> InfoTabV2(match = match)
+                    3 -> MatchTimelineTab(commentary = commentary)
+                    4 -> InfoTabV2(match = match)
                 }
             }
+        }
+
+        if (showReminderSheet) {
+            ReminderBottomSheet(
+                matchId = match.id,
+                matchTitle = match.matchTitle,
+                matchStartTime = 0L, // Will be populated when available
+                onDismiss = { showReminderSheet = false },
+            )
+        }
+
+        if (showNotifPrefsSheet) {
+            MatchNotificationPrefsSheet(
+                matchId = match.id,
+                matchTitle = match.matchTitle,
+                onDismiss = { showNotifPrefsSheet = false },
+            )
         }
     }
 }

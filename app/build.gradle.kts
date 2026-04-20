@@ -4,6 +4,7 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+    id("com.google.devtools.ksp")
 
     id("io.sentry.android.gradle") version libs.versions.sentry.gradle.get()
 }
@@ -171,12 +172,30 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.kotlin.logging.android)
 
+    // Room (offline cache)
+    implementation(libs.room.runtime)
+    implementation(libs.room.ktx)
+    ksp(libs.room.compiler)
+
+    // Paging 3
+    implementation(libs.paging.runtime)
+    implementation(libs.paging.compose)
+
+    // Firebase (requires google-services.json from Firebase Console to activate)
+    implementation(platform(libs.firebase.bom.lib))
+    implementation(libs.firebase.messaging)
+
+    // Car App (Android Auto)
+    implementation(libs.car.app)
+
     // Testing
     testImplementation(libs.junit)
+    testImplementation(libs.kotlinx.coroutines.test)
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.espresso.core)
     debugImplementation(libs.compose.ui.tooling)
     debugImplementation(libs.compose.ui.test.manifest)
+    debugImplementation(libs.leakcanary)
 }
 
 sentry {
