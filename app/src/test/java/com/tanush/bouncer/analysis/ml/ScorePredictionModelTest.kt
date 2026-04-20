@@ -32,12 +32,13 @@ class ScorePredictionModelTest {
 
     @Test
     fun `default model has correct parameter count`() {
-        // Architecture: 16→32(ReLU)→16(ReLU)→2(Sigmoid)
-        // Layer 0: 16*32 weights + 32 biases = 544
-        // Layer 1: 32*16 weights + 16 biases = 528
-        // Layer 2: 16*2 weights + 2 biases = 34
-        // Total = 1106
-        val expected = (16 * 32 + 32) + (32 * 16 + 16) + (16 * 2 + 2)
+        // Architecture: 32→64(ReLU)→32(ReLU)→16(ReLU)→2(Sigmoid)
+        // Layer 0: 32*64 weights + 64 biases = 2112
+        // Layer 1: 64*32 weights + 32 biases = 2080
+        // Layer 2: 32*16 weights + 16 biases = 528
+        // Layer 3: 16*2 weights + 2 biases = 34
+        // Total = 4754
+        val expected = (32 * 64 + 64) + (64 * 32 + 32) + (32 * 16 + 16) + (16 * 2 + 2)
         assertEquals(expected, model.parameterCount())
     }
 
@@ -56,7 +57,7 @@ class ScorePredictionModelTest {
     fun `deterministic initialization with same seed`() {
         val model1 = ScorePredictionModel.create(seed = 99L)
         val model2 = ScorePredictionModel.create(seed = 99L)
-        val input = DoubleArray(16) { 0.5 }
+        val input = DoubleArray(FeatureExtractor.FEATURE_COUNT) { 0.5 }
 
         val out1 = model1.forward(input)
         val out2 = model2.forward(input)
@@ -68,7 +69,7 @@ class ScorePredictionModelTest {
     fun `different seeds produce different outputs`() {
         val model1 = ScorePredictionModel.create(seed = 1L)
         val model2 = ScorePredictionModel.create(seed = 2L)
-        val input = DoubleArray(16) { 0.5 }
+        val input = DoubleArray(FeatureExtractor.FEATURE_COUNT) { 0.5 }
 
         val out1 = model1.forward(input)
         val out2 = model2.forward(input)
@@ -84,7 +85,7 @@ class ScorePredictionModelTest {
 
     @Test
     fun `forward pass produces output of correct size`() {
-        val input = DoubleArray(16) { it.toDouble() / 16.0 }
+        val input = DoubleArray(FeatureExtractor.FEATURE_COUNT) { it.toDouble() / FeatureExtractor.FEATURE_COUNT.toDouble() }
         val output = model.forward(input)
         assertEquals("Output should have 2 elements (winProb, scorePred)", 2, output.size)
     }
@@ -92,12 +93,13 @@ class ScorePredictionModelTest {
     @Test
     fun `forward output is bounded by sigmoid activation`() {
         // Sigmoid output should always be in (0, 1)
+        val n = FeatureExtractor.FEATURE_COUNT
         val testInputs = listOf(
-            DoubleArray(16) { 0.0 },         // all zeros
-            DoubleArray(16) { 1.0 },         // all ones
-            DoubleArray(16) { 0.5 },         // all half
-            DoubleArray(16) { it / 15.0 },   // gradient
-            DoubleArray(16) { if (it % 2 == 0) 1.0 else 0.0 }  // alternating
+            DoubleArray(n) { 0.0 },         // all zeros
+            DoubleArray(n) { 1.0 },         // all ones
+            DoubleArray(n) { 0.5 },         // all half
+            DoubleArray(n) { it / (n - 1).toDouble() },   // gradient
+            DoubleArray(n) { if (it % 2 == 0) 1.0 else 0.0 }  // alternating
         )
 
         for ((idx, input) in testInputs.withIndex()) {
@@ -119,7 +121,7 @@ class ScorePredictionModelTest {
 
     @Test
     fun `forward pass handles extreme input values`() {
-        val extremeInput = DoubleArray(16) { 1000.0 }
+        val extremeInput = DoubleArray(FeatureExtractor.FEATURE_COUNT) { 1000.0 }
         val output = model.forward(extremeInput)
         // Should not produce NaN or Infinity
         for (v in output) {
@@ -130,7 +132,7 @@ class ScorePredictionModelTest {
 
     @Test
     fun `forward pass handles negative inputs`() {
-        val negInput = DoubleArray(16) { -1.0 }
+        val negInput = DoubleArray(FeatureExtractor.FEATURE_COUNT) { -1.0 }
         val output = model.forward(negInput)
         assertEquals(2, output.size)
         for (v in output) {
@@ -145,7 +147,7 @@ class ScorePredictionModelTest {
 
     @Test
     fun `forwardWithCache produces same output as forward`() {
-        val input = DoubleArray(16) { it.toDouble() / 16.0 }
+        val input = DoubleArray(FeatureExtractor.FEATURE_COUNT) { it.toDouble() / FeatureExtractor.FEATURE_COUNT.toDouble() }
         val directOutput = model.forward(input)
         val cache = model.forwardWithCache(input)
 
@@ -157,23 +159,23 @@ class ScorePredictionModelTest {
 
     @Test
     fun `forwardWithCache has correct number of pre-activations`() {
-        val input = DoubleArray(16) { 0.5 }
+        val input = DoubleArray(FeatureExtractor.FEATURE_COUNT) { 0.5 }
         val cache = model.forwardWithCache(input)
-        // 3 layers → 3 pre-activations
-        assertEquals(3, cache.preActivations.size)
+        // 4 layers → 4 pre-activations
+        assertEquals(4, cache.preActivations.size)
     }
 
     @Test
     fun `forwardWithCache has correct number of post-activations`() {
-        val input = DoubleArray(16) { 0.5 }
+        val input = DoubleArray(FeatureExtractor.FEATURE_COUNT) { 0.5 }
         val cache = model.forwardWithCache(input)
-        // 3 layers + 1 (input) = 4 post-activations
-        assertEquals(4, cache.postActivations.size)
+        // 4 layers + 1 (input) = 5 post-activations
+        assertEquals(5, cache.postActivations.size)
     }
 
     @Test
     fun `forwardWithCache stores input correctly`() {
-        val input = DoubleArray(16) { it * 0.1 }
+        val input = DoubleArray(FeatureExtractor.FEATURE_COUNT) { it * 0.1 }
         val cache = model.forwardWithCache(input)
         assertArrayEquals(input, cache.input, 1e-12)
     }
@@ -184,41 +186,46 @@ class ScorePredictionModelTest {
 
     @Test
     fun `backward pass produces correct number of layer gradients`() {
-        val input = DoubleArray(16) { 0.5 }
+        val input = DoubleArray(FeatureExtractor.FEATURE_COUNT) { 0.5 }
         val cache = model.forwardWithCache(input)
         val outputGrad = doubleArrayOf(0.1, -0.1) // 2 outputs
 
         val gradients = model.backward(cache, outputGrad)
-        assertEquals("Should have 3 layer gradients", 3, gradients.size)
+        assertEquals("Should have 4 layer gradients", 4, gradients.size)
     }
 
     @Test
     fun `backward gradients have correct shapes`() {
-        val input = DoubleArray(16) { 0.5 }
+        val input = DoubleArray(FeatureExtractor.FEATURE_COUNT) { 0.5 }
         val cache = model.forwardWithCache(input)
         val outputGrad = doubleArrayOf(1.0, -1.0)
 
         val gradients = model.backward(cache, outputGrad)
 
-        // Layer 0: 16→32 → weightGrad=[32][16], biasGrad=[32]
-        assertEquals(32, gradients[0].weightGradients.size)
-        assertEquals(16, gradients[0].weightGradients[0].size)
-        assertEquals(32, gradients[0].biasGradients.size)
+        // Layer 0: 32→64 → weightGrad=[64][32], biasGrad=[64]
+        assertEquals(64, gradients[0].weightGradients.size)
+        assertEquals(32, gradients[0].weightGradients[0].size)
+        assertEquals(64, gradients[0].biasGradients.size)
 
-        // Layer 1: 32→16 → weightGrad=[16][32], biasGrad=[16]
-        assertEquals(16, gradients[1].weightGradients.size)
-        assertEquals(32, gradients[1].weightGradients[0].size)
-        assertEquals(16, gradients[1].biasGradients.size)
+        // Layer 1: 64→32 → weightGrad=[32][64], biasGrad=[32]
+        assertEquals(32, gradients[1].weightGradients.size)
+        assertEquals(64, gradients[1].weightGradients[0].size)
+        assertEquals(32, gradients[1].biasGradients.size)
 
-        // Layer 2: 16→2 → weightGrad=[2][16], biasGrad=[2]
-        assertEquals(2, gradients[2].weightGradients.size)
-        assertEquals(16, gradients[2].weightGradients[0].size)
-        assertEquals(2, gradients[2].biasGradients.size)
+        // Layer 2: 32→16 → weightGrad=[16][32], biasGrad=[16]
+        assertEquals(16, gradients[2].weightGradients.size)
+        assertEquals(32, gradients[2].weightGradients[0].size)
+        assertEquals(16, gradients[2].biasGradients.size)
+
+        // Layer 3: 16→2 → weightGrad=[2][16], biasGrad=[2]
+        assertEquals(2, gradients[3].weightGradients.size)
+        assertEquals(16, gradients[3].weightGradients[0].size)
+        assertEquals(2, gradients[3].biasGradients.size)
     }
 
     @Test
     fun `backward gradients are non-zero for non-zero inputs`() {
-        val input = DoubleArray(16) { (it + 1.0) / 16.0 }
+        val input = DoubleArray(FeatureExtractor.FEATURE_COUNT) { (it + 1.0) / FeatureExtractor.FEATURE_COUNT.toDouble() }
         val cache = model.forwardWithCache(input)
         val outputGrad = doubleArrayOf(1.0, -1.0)
 
@@ -234,7 +241,7 @@ class ScorePredictionModelTest {
 
     @Test
     fun `backward gradients are finite`() {
-        val input = DoubleArray(16) { 0.5 }
+        val input = DoubleArray(FeatureExtractor.FEATURE_COUNT) { 0.5 }
         val cache = model.forwardWithCache(input)
         val outputGrad = doubleArrayOf(1.0, 1.0)
 
@@ -258,7 +265,7 @@ class ScorePredictionModelTest {
     @Test
     fun `model copy produces identical outputs`() {
         val copy = model.copy()
-        val input = DoubleArray(16) { it.toDouble() / 16.0 }
+        val input = DoubleArray(FeatureExtractor.FEATURE_COUNT) { it.toDouble() / FeatureExtractor.FEATURE_COUNT.toDouble() }
 
         val original = model.forward(input)
         val copied = copy.forward(input)
@@ -268,7 +275,7 @@ class ScorePredictionModelTest {
 
     @Test
     fun `model copy is independent — modifying copy does not affect original`() {
-        val input = DoubleArray(16) { 0.5 }
+        val input = DoubleArray(FeatureExtractor.FEATURE_COUNT) { 0.5 }
         val originalOutput = model.forward(input).copyOf()
 
         // Modify via gradient application
@@ -285,8 +292,8 @@ class ScorePredictionModelTest {
     fun `serializeWeights returns expected keys`() {
         val weights = model.serializeWeights()
         assertTrue(weights.containsKey("layerCount"))
-        assertEquals(3, weights["layerCount"])
-        for (i in 0..2) {
+        assertEquals(4, weights["layerCount"])
+        for (i in 0..3) {
             assertTrue(weights.containsKey("layer_${i}_weights"))
             assertTrue(weights.containsKey("layer_${i}_biases"))
             assertTrue(weights.containsKey("layer_${i}_inputSize"))
@@ -300,7 +307,7 @@ class ScorePredictionModelTest {
 
     @Test
     fun `applying gradients changes model output`() {
-        val input = DoubleArray(16) { 0.5 }
+        val input = DoubleArray(FeatureExtractor.FEATURE_COUNT) { 0.5 }
         val beforeOutput = model.forward(input).copyOf()
 
         val cache = model.forwardWithCache(input)

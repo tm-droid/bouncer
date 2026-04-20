@@ -241,7 +241,7 @@ class TrainingPipelineTest {
         val result = pipeline.train(model, data)
 
         // Best model should have lower or equal validation loss
-        val bestModelInput = DoubleArray(16) { 0.5 }
+        val bestModelInput = DoubleArray(FeatureExtractor.FEATURE_COUNT) { 0.5 }
         val bestOutput = result.bestModel.forward(bestModelInput)
 
         // Best model should produce valid output
@@ -389,7 +389,7 @@ class TrainingPipelineTest {
         val model = ScorePredictionModel.create()
         val data = listOf(
             TrainingSample(
-                features = DoubleArray(16) { 0.5 },
+                features = DoubleArray(FeatureExtractor.FEATURE_COUNT) { 0.5 },
                 winProbabilityLabel = 1.0,
                 scorePredictionLabel = 0.5,
                 matchId = "solo",

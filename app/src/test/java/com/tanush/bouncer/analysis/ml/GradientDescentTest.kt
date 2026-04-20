@@ -33,7 +33,7 @@ class GradientDescentTest {
         val sgd = SGD(learningRate = 0.01)
         assertEquals(0L, sgd.stepCount)
 
-        val input = DoubleArray(16) { 0.5 }
+        val input = DoubleArray(FeatureExtractor.FEATURE_COUNT) { 0.5 }
         val cache = model.forwardWithCache(input)
         val grads = model.backward(cache, doubleArrayOf(1.0, 1.0))
         sgd.step(model, grads)
@@ -44,7 +44,7 @@ class GradientDescentTest {
     @Test
     fun `SGD changes model output after step`() {
         val sgd = SGD(learningRate = 0.01, momentum = 0.0)
-        val input = DoubleArray(16) { 0.5 }
+        val input = DoubleArray(FeatureExtractor.FEATURE_COUNT) { 0.5 }
 
         val beforeOutput = model.forward(input).copyOf()
 
@@ -65,7 +65,7 @@ class GradientDescentTest {
         val sgdNoMom = SGD(learningRate = 0.01, momentum = 0.0)
         val sgdWithMom = SGD(learningRate = 0.01, momentum = 0.9)
 
-        val input = DoubleArray(16) { 0.5 }
+        val input = DoubleArray(FeatureExtractor.FEATURE_COUNT) { 0.5 }
         val target = doubleArrayOf(0.8, 0.3)
 
         var lossNoMom = Double.MAX_VALUE
@@ -95,7 +95,7 @@ class GradientDescentTest {
     @Test
     fun `SGD reset clears state`() {
         val sgd = SGD(learningRate = 0.01, momentum = 0.9)
-        val input = DoubleArray(16) { 0.5 }
+        val input = DoubleArray(FeatureExtractor.FEATURE_COUNT) { 0.5 }
 
         val cache = model.forwardWithCache(input)
         val grads = model.backward(cache, doubleArrayOf(1.0, 1.0))
@@ -121,7 +121,7 @@ class GradientDescentTest {
         val adam = Adam(learningRate = 0.001)
         assertEquals(0L, adam.stepCount)
 
-        val input = DoubleArray(16) { 0.5 }
+        val input = DoubleArray(FeatureExtractor.FEATURE_COUNT) { 0.5 }
         val cache = model.forwardWithCache(input)
         val grads = model.backward(cache, doubleArrayOf(0.5, -0.5))
         adam.step(model, grads)
@@ -132,7 +132,7 @@ class GradientDescentTest {
     @Test
     fun `Adam reduces loss over multiple steps`() {
         val adam = Adam(learningRate = 0.01)
-        val input = DoubleArray(16) { 0.5 }
+        val input = DoubleArray(FeatureExtractor.FEATURE_COUNT) { 0.5 }
         val target = doubleArrayOf(0.8, 0.3)
 
         val initialCache = model.forwardWithCache(input)
@@ -156,7 +156,7 @@ class GradientDescentTest {
     @Test
     fun `Adam converges on simple regression target`() {
         val adam = Adam(learningRate = 0.005)
-        val input = DoubleArray(16) { (it + 1.0) / 16.0 }
+        val input = DoubleArray(FeatureExtractor.FEATURE_COUNT) { (it + 1.0) / FeatureExtractor.FEATURE_COUNT.toDouble() }
         val target = doubleArrayOf(0.7, 0.4)
 
         var loss = Double.MAX_VALUE
@@ -174,7 +174,7 @@ class GradientDescentTest {
     @Test
     fun `Adam reset clears moment buffers`() {
         val adam = Adam()
-        val input = DoubleArray(16) { 0.5 }
+        val input = DoubleArray(FeatureExtractor.FEATURE_COUNT) { 0.5 }
         val cache = model.forwardWithCache(input)
         val grads = model.backward(cache, doubleArrayOf(1.0, 1.0))
         adam.step(model, grads)
@@ -191,7 +191,7 @@ class GradientDescentTest {
         assertEquals(0.001, adam.currentLearningRate, 1e-6)
 
         // After a step, bias correction adjusts the effective LR
-        val input = DoubleArray(16) { 0.5 }
+        val input = DoubleArray(FeatureExtractor.FEATURE_COUNT) { 0.5 }
         val cache = model.forwardWithCache(input)
         val grads = model.backward(cache, doubleArrayOf(1.0, 1.0))
         adam.step(model, grads)
@@ -313,7 +313,7 @@ class GradientDescentTest {
 
     @Test
     fun `clipByNorm does not clip when norm is below threshold`() {
-        val input = DoubleArray(16) { 0.01 }
+        val input = DoubleArray(FeatureExtractor.FEATURE_COUNT) { 0.01 }
         val cache = model.forwardWithCache(input)
         val grads = model.backward(cache, doubleArrayOf(0.01, 0.01))
 
@@ -327,7 +327,7 @@ class GradientDescentTest {
 
     @Test
     fun `clipByNorm clips when norm exceeds threshold`() {
-        val input = DoubleArray(16) { 1.0 }
+        val input = DoubleArray(FeatureExtractor.FEATURE_COUNT) { 1.0 }
         val cache = model.forwardWithCache(input)
         val grads = model.backward(cache, doubleArrayOf(100.0, 100.0))
 
@@ -347,7 +347,7 @@ class GradientDescentTest {
 
     @Test
     fun `clipByValue caps individual gradient elements`() {
-        val input = DoubleArray(16) { 1.0 }
+        val input = DoubleArray(FeatureExtractor.FEATURE_COUNT) { 1.0 }
         val cache = model.forwardWithCache(input)
         val grads = model.backward(cache, doubleArrayOf(50.0, -50.0))
 
@@ -375,7 +375,7 @@ class GradientDescentTest {
         val adam = Adam(learningRate = 0.005)
         val loss = LossFunction.MultiTask()
 
-        val input = DoubleArray(16) { (it + 1.0) / 16.0 }
+        val input = DoubleArray(FeatureExtractor.FEATURE_COUNT) { (it + 1.0) / FeatureExtractor.FEATURE_COUNT.toDouble() }
         val target = doubleArrayOf(1.0, 0.5) // win=true, score=0.5
 
         var currentLoss = Double.MAX_VALUE
@@ -395,7 +395,7 @@ class GradientDescentTest {
         val trainModel = ScorePredictionModel.create(seed = 50L)
         val sgd = SGD(learningRate = 0.01, momentum = 0.9, nesterov = true)
 
-        val input = DoubleArray(16) { 0.3 }
+        val input = DoubleArray(FeatureExtractor.FEATURE_COUNT) { 0.3 }
         val target = doubleArrayOf(0.9, 0.6)
 
         var currentLoss = Double.MAX_VALUE

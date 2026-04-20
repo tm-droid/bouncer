@@ -4,18 +4,30 @@ import android.content.Context
 import android.util.Log
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
+import com.google.gson.annotations.SerializedName
 import com.tanush.bouncer.models.CricsheetMatch
 import com.tanush.bouncer.models.CricsheetInnings
 import com.tanush.bouncer.models.CricsheetOver
 import com.tanush.bouncer.models.CricsheetBall
+import com.tanush.bouncer.models.CricsheetEvent
+import com.tanush.bouncer.models.CricsheetToss
+import com.tanush.bouncer.models.CricsheetOfficials
+import com.tanush.bouncer.models.CricsheetPowerplay
+import com.tanush.bouncer.models.CricsheetTarget
+import com.tanush.bouncer.models.CricsheetReview
+import com.tanush.bouncer.models.CricsheetWicketDetail
+import com.tanush.bouncer.models.CricsheetPerson
+import com.tanush.bouncer.models.CricsheetPlayerRegistry
 import com.tanush.bouncer.models.MatchResult
 import io.sentry.Breadcrumb
 import io.sentry.Sentry
 import io.sentry.SentryLevel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.io.BufferedReader
 import java.io.File
 import java.io.FileOutputStream
+import java.io.InputStreamReader
 import java.net.URL
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -111,10 +123,12 @@ class CricsheetDataFetcher(private val context: Context? = null) {
         }
     }
     
+    // MARK: - Cricsheet JSON Response Data Classes (full spec v1.1.0)
+    
     private data class CricsheetResponse(
         val meta: MatchMeta,
         val info: MatchInfo,
-        val innings: List<Innings>
+        val innings: List<InningsData>?
     )
 
     private data class MatchMeta(
@@ -125,88 +139,233 @@ class CricsheetDataFetcher(private val context: Context? = null) {
 
     private data class MatchInfo(
         val dates: List<String>,
-        val match_type: String,
-        val venue: String,
+        val match_type: String?,
+        val venue: String?,
         val teams: List<String>,
-        val outcome: Outcome?,
-        val gender: String,
+        val outcome: OutcomeData?,
+        val gender: String?,
         val overs: Int?,
         val player_of_match: List<String>?,
-        val umpires: List<String>?
+        val umpires: List<String>?,
+        // Newly captured fields
+        val city: String?,
+        val season: String?,
+        val balls_per_over: Int?,
+        val event: EventData?,
+        val toss: TossData?,
+        val players: Map<String, List<String>>?,
+        val registry: RegistryData?,
+        val officials: OfficialsData?,
+        val match_type_number: Int?,
+        val team_type: String?,
+        // Supersub / bowl_out
+        val supersubs: Map<String, String>?,
+        val bowl_out: List<Any>?
     )
 
-    private data class Outcome(
+    private data class OutcomeData(
         val winner: String?,
-        val by: By?,
-        val result: String?
+        val by: ByData?,
+        val result: String?,
+        val method: String?,          // "D/L", "VJD", etc.
+        val eliminator: String?,      // super over winner
+        val bowl_out: String?
     )
 
-    private data class By(
+    private data class ByData(
         val runs: Int?,
-        val wickets: Int?
+        val wickets: Int?,
+        val innings: Int?
+    )
+    
+    private data class EventData(
+        val name: String?,
+        val match_number: Int?,
+        val group: String?,
+        val stage: String?
+    )
+    
+    private data class TossData(
+        val winner: String?,
+        val decision: String?
+    )
+    
+    private data class RegistryData(
+        val people: Map<String, String>?   // player name → unique identifier
+    )
+    
+    private data class OfficialsData(
+        val umpires: List<String>?,
+        val match_referees: List<String>?,
+        val tv_umpires: List<String>?,
+        val reserve_umpires: List<String>?
     )
 
-    private data class Innings(
+    private data class InningsData(
         val team: String,
-        val overs: List<Over>
+        val overs: List<OverData>?,
+        val powerplays: List<PowerplayData>?,
+        val target: TargetData?,
+        val declared: Boolean?,
+        val forfeited: Boolean?,
+        val super_over: Boolean?,
+        val absent_hurt: List<String>?
+    )
+    
+    private data class PowerplayData(
+        val from: Double?,
+        val to: Double?,
+        val type: String?
+    )
+    
+    private data class TargetData(
+        val overs: Int?,
+        val runs: Int?
     )
 
-    private data class Over(
+    private data class OverData(
         val over: Int,
-        val deliveries: List<Delivery>
+        val deliveries: List<DeliveryData>
     )
 
-    private data class Delivery(
-        val runs: Runs,
-        val wickets: List<Wicket>?,
-        val extras: Extras?
+    private data class DeliveryData(
+        val batter: String?,
+        val bowler: String?,
+        val non_striker: String?,
+        val runs: RunsData,
+        val wickets: List<WicketData>?,
+        val extras: ExtrasData?,
+        val review: ReviewData?,
+        val replacements: Any?  // complex structure, parsed if needed
     )
     
-    private data class Runs(
+    private data class RunsData(
+        val batter: Int?,
+        val extras: Int?,
         val total: Int,
-        val extras: Int
+        val non_boundary: Boolean?
     )
 
-    private data class Wicket(
+    private data class WicketData(
         val kind: String,
-        val player_out: String
+        val player_out: String,
+        val fielders: List<FielderData>?
     )
     
-    private data class Extras(
+    private data class FielderData(
+        val name: String?,
+        val substitute: Boolean?
+    )
+    
+    private data class ExtrasData(
         val wides: Int?,
         val noballs: Int?,
         val legbyes: Int?,
-        val byes: Int?
+        val byes: Int?,
+        val penalty: Int?
+    )
+    
+    private data class ReviewData(
+        val by: String?,
+        val decision: String?,
+        val batter: String?,
+        val umpire: String?,
+        val umpires_call: Boolean?
     )
 
     private fun mapToCricsheetMatch(response: CricsheetResponse): CricsheetMatch {
-        // Parse the first date from the dates list
-        val matchDate = try {
-            response.info.dates.firstOrNull()?.let { dateFormat.parse(it) } ?: Date()
-        } catch (e: Exception) {
-            Log.w(TAG, "Failed to parse date, using current date", e)
-            Sentry.captureException(e)
-            Date()
+        val info = response.info
+        
+        // Parse all dates
+        val allDates = info.dates.mapNotNull { dateStr ->
+            try { dateFormat.parse(dateStr) } catch (_: Exception) { null }
+        }
+        val matchDate = allDates.firstOrNull() ?: Date()
+        
+        // Parse toss
+        val toss = info.toss?.let { t ->
+            if (t.winner != null && t.decision != null) {
+                CricsheetToss(winner = t.winner, decision = t.decision)
+            } else null
         }
         
-        // Calculate run rate for each innings
-        val mappedInnings = response.innings.map { innings ->
-            val totalRuns = innings.overs.flatMap { it.deliveries }.sumOf { it.runs.total }
-            val totalOvers = innings.overs.size.toDouble()
+        // Parse event
+        val event = info.event?.let { e ->
+            if (e.name != null) {
+                CricsheetEvent(
+                    name = e.name,
+                    matchNumber = e.match_number,
+                    group = e.group,
+                    stage = e.stage
+                )
+            } else null
+        }
+        
+        // Parse officials
+        val officials = info.officials?.let { o ->
+            CricsheetOfficials(
+                umpires = o.umpires ?: info.umpires ?: emptyList(),
+                matchReferees = o.match_referees ?: emptyList(),
+                tvUmpires = o.tv_umpires ?: emptyList(),
+                reserveUmpires = o.reserve_umpires ?: emptyList()
+            )
+        } ?: info.umpires?.let { u ->
+            CricsheetOfficials(umpires = u)
+        }
+        
+        // Parse player registry (name → identifier)
+        val registry = info.registry?.people ?: emptyMap()
+        
+        // Parse innings with all new fields
+        val mappedInnings = (response.innings ?: emptyList()).map { innings ->
+            val oversData = innings.overs ?: emptyList()
+            val totalRuns = oversData.flatMap { it.deliveries }.sumOf { it.runs.total }
+            val totalOvers = oversData.size.toDouble()
             val runRate = if (totalOvers > 0) totalRuns / totalOvers else 0.0
             
             CricsheetInnings(
                 team = innings.team,
-                overs = innings.overs.map { over ->
+                overs = oversData.map { over ->
                     CricsheetOver(
                         overNumber = over.over,
                         balls = over.deliveries.map { delivery ->
+                            val wicketDetails = delivery.wickets?.map { w ->
+                                CricsheetWicketDetail(
+                                    kind = w.kind,
+                                    playerOut = w.player_out,
+                                    fielders = w.fielders?.mapNotNull { it.name } ?: emptyList()
+                                )
+                            } ?: emptyList()
+                            
+                            val review = delivery.review?.let { r ->
+                                if (r.by != null && r.decision != null) {
+                                    CricsheetReview(
+                                        by = r.by,
+                                        decision = r.decision,
+                                        batter = r.batter,
+                                        umpire = r.umpire,
+                                        umpiresCall = r.umpires_call ?: false
+                                    )
+                                } else null
+                            }
+                            
+                            val batterRuns = delivery.runs.batter ?: 0
+                            val isBoundary = (batterRuns == 4 || batterRuns == 6) && 
+                                delivery.runs.non_boundary != true
+                            
                             CricsheetBall(
                                 runs = delivery.runs.total,
                                 isWicket = !delivery.wickets.isNullOrEmpty(),
                                 wicketType = delivery.wickets?.firstOrNull()?.kind,
-                                extras = delivery.runs.extras,
-                                extraType = determineExtraType(delivery.extras)
+                                extras = delivery.runs.extras ?: 0,
+                                extraType = determineExtraType(delivery.extras),
+                                batter = delivery.batter ?: "",
+                                bowler = delivery.bowler ?: "",
+                                nonStriker = delivery.non_striker ?: "",
+                                batterRuns = batterRuns,
+                                isBoundary = isBoundary,
+                                wicketDetails = wicketDetails,
+                                review = review
                             )
                         },
                         runs = over.deliveries.sumOf { it.runs.total },
@@ -214,32 +373,73 @@ class CricsheetDataFetcher(private val context: Context? = null) {
                     )
                 },
                 total = totalRuns,
-                wickets = innings.overs.flatMap { it.deliveries }.sumOf { it.wickets?.size ?: 0 },
-                runRate = runRate
+                wickets = oversData.flatMap { it.deliveries }.sumOf { it.wickets?.size ?: 0 },
+                runRate = runRate,
+                powerplays = innings.powerplays?.mapNotNull { pp ->
+                    if (pp.from != null && pp.to != null && pp.type != null) {
+                        CricsheetPowerplay(from = pp.from, to = pp.to, type = pp.type)
+                    } else null
+                } ?: emptyList(),
+                target = innings.target?.let { t ->
+                    CricsheetTarget(overs = t.overs, runs = t.runs)
+                },
+                declared = innings.declared ?: false,
+                forfeited = innings.forfeited ?: false,
+                superOver = innings.super_over ?: false,
+                absentHurt = innings.absent_hurt ?: emptyList()
             )
         }
         
+        // Build outcome with method/eliminator
+        val outcomeData = info.outcome
+        val outcome = CricsheetMatch.Outcome(
+            winner = outcomeData?.winner,
+            result = outcomeData?.result,
+            method = outcomeData?.method,
+            eliminator = outcomeData?.eliminator,
+            bowlOut = outcomeData?.bowl_out
+        )
+        
         return CricsheetMatch(
-            matchId = response.meta.data_version,
+            matchId = response.meta.data_version + "_" + (info.dates.firstOrNull() ?: "") + "_" + info.teams.joinToString("_"),
             date = matchDate,
-            venue = response.info.venue,
-            teams = CricsheetMatch.Teams(response.info.teams.getOrElse(0) { "" }, response.info.teams.getOrElse(1) { "" }),
+            venue = info.venue ?: "",
+            teams = CricsheetMatch.Teams(
+                info.teams.getOrElse(0) { "" },
+                info.teams.getOrElse(1) { "" }
+            ),
             innings = mappedInnings,
             result = MatchResult(
-                winner = response.info.outcome?.winner,
-                margin = response.info.outcome?.by?.runs ?: response.info.outcome?.by?.wickets ?: 0,
-                marginType = if (response.info.outcome?.by?.runs != null) "runs" else "wickets"
-            )
+                winner = outcomeData?.winner,
+                margin = outcomeData?.by?.runs ?: outcomeData?.by?.wickets ?: 0,
+                marginType = if (outcomeData?.by?.runs != null) "runs" else "wickets"
+            ),
+            outcome = outcome,
+            matchType = info.match_type ?: "",
+            gender = info.gender ?: "",
+            city = info.city,
+            season = info.season,
+            ballsPerOver = info.balls_per_over ?: 6,
+            event = event,
+            toss = toss,
+            players = info.players ?: emptyMap(),
+            registry = registry,
+            officials = officials,
+            playerOfMatch = info.player_of_match ?: emptyList(),
+            teamType = info.team_type ?: "",
+            dates = allDates,
+            oversLimit = info.overs
         )
     }
     
-    private fun determineExtraType(extras: Extras?): String? {
+    private fun determineExtraType(extras: ExtrasData?): String? {
         if (extras == null) return null
         return when {
             extras.wides != null && extras.wides > 0 -> "wide"
             extras.noballs != null && extras.noballs > 0 -> "noball"
             extras.legbyes != null && extras.legbyes > 0 -> "legbye"
             extras.byes != null && extras.byes > 0 -> "bye"
+            extras.penalty != null && extras.penalty > 0 -> "penalty"
             else -> null
         }
     }
@@ -391,8 +591,190 @@ class CricsheetDataFetcher(private val context: Context? = null) {
         return matches.filter { match ->
             val matchesSeries = seriesName == null || match.venue.contains(seriesName, ignoreCase = true)
             val matchesTeam = team == null || match.teams.batting == team || match.teams.bowling == team
-            // Additional event/series filtering can be added if metadata is available
-            matchesSeries && matchesTeam
+            val matchesEvent = event == null || match.event?.name?.contains(event, ignoreCase = true) == true
+            matchesSeries && matchesTeam && matchesEvent
+        }
+    }
+    
+    // MARK: - People Registry (people.csv)
+    
+    /**
+     * Downloads and parses Cricsheet's people.csv player registry.
+     * Provides unique IDs and cross-database keys for all known players.
+     */
+    suspend fun downloadPeopleRegistry(): CricsheetPlayerRegistry = withContext(Dispatchers.IO) {
+        val urlString = "https://cricsheet.org/register/people.csv"
+        
+        Sentry.addBreadcrumb(Breadcrumb().apply {
+            category = "network.cricsheet"
+            message = "Downloading people registry"
+            level = SentryLevel.INFO
+        })
+        
+        try {
+            // Check local cache first
+            val ctx = context
+            val cacheFile = ctx?.let { File(it.filesDir, "people_registry.csv") }
+            val cacheMaxAgeMs = 7 * 24 * 60 * 60 * 1000L // 7 days
+            
+            val csvText = if (cacheFile != null && cacheFile.exists() && 
+                (System.currentTimeMillis() - cacheFile.lastModified()) < cacheMaxAgeMs) {
+                Log.d(TAG, "Using cached people registry")
+                cacheFile.readText()
+            } else {
+                Log.d(TAG, "Downloading people registry from $urlString")
+                val text = URL(urlString).readText()
+                cacheFile?.writeText(text)
+                text
+            }
+            
+            val people = parsePeopleCsv(csvText)
+            
+            Sentry.addBreadcrumb(Breadcrumb().apply {
+                category = "network.cricsheet"
+                message = "Successfully loaded people registry"
+                level = SentryLevel.INFO
+                setData("playerCount", people.size)
+            })
+            
+            CricsheetPlayerRegistry(people)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to download people registry", e)
+            Sentry.captureException(e)
+            CricsheetPlayerRegistry()
+        }
+    }
+    
+    private fun parsePeopleCsv(csvText: String): List<CricsheetPerson> {
+        val lines = csvText.lines()
+        if (lines.size < 2) return emptyList()
+        
+        val header = lines[0].split(",").map { it.trim() }
+        val colIndex = header.withIndex().associate { (idx, name) -> name to idx }
+        
+        return lines.drop(1).mapNotNull { line ->
+            if (line.isBlank()) return@mapNotNull null
+            val cols = parseCsvLine(line)
+            
+            val identifier = cols.getOrNull(colIndex["identifier"] ?: -1)?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
+            val name = cols.getOrNull(colIndex["name"] ?: -1) ?: ""
+            val uniqueName = cols.getOrNull(colIndex["unique_name"] ?: -1) ?: name
+            
+            CricsheetPerson(
+                identifier = identifier,
+                name = name,
+                uniqueName = uniqueName,
+                keyCricbuzz = cols.getOrNull(colIndex["key_cricbuzz"] ?: -1)?.takeIf { it.isNotBlank() },
+                keyCricinfo = cols.getOrNull(colIndex["key_cricinfo"] ?: -1)?.takeIf { it.isNotBlank() },
+                keyCricinfoAlt = cols.getOrNull(colIndex["key_cricinfo_2"] ?: -1)?.takeIf { it.isNotBlank() },
+                keyBcci = cols.getOrNull(colIndex["key_bcci"] ?: -1)?.takeIf { it.isNotBlank() },
+                keyBigBash = cols.getOrNull(colIndex["key_bigbash"] ?: -1)?.takeIf { it.isNotBlank() },
+                keyCricHeroes = cols.getOrNull(colIndex["key_cricheroes"] ?: -1)?.takeIf { it.isNotBlank() },
+                keyCricHQ = cols.getOrNull(colIndex["key_crichq"] ?: -1)?.takeIf { it.isNotBlank() },
+                keyCricingIF = cols.getOrNull(colIndex["key_cricingif"] ?: -1)?.takeIf { it.isNotBlank() },
+                keyCricketArchive = cols.getOrNull(colIndex["key_cricketarchive"] ?: -1)?.takeIf { it.isNotBlank() },
+                keyNvPlay = cols.getOrNull(colIndex["key_nvplay"] ?: -1)?.takeIf { it.isNotBlank() },
+                keyOpta = cols.getOrNull(colIndex["key_opta"] ?: -1)?.takeIf { it.isNotBlank() },
+                keyPulse = cols.getOrNull(colIndex["key_pulse"] ?: -1)?.takeIf { it.isNotBlank() }
+            )
+        }
+    }
+    
+    /** Handles CSV fields that may be quoted with commas inside */
+    private fun parseCsvLine(line: String): List<String> {
+        val fields = mutableListOf<String>()
+        val current = StringBuilder()
+        var inQuotes = false
+        
+        for (ch in line) {
+            when {
+                ch == '"' -> inQuotes = !inQuotes
+                ch == ',' && !inQuotes -> {
+                    fields.add(current.toString().trim())
+                    current.clear()
+                }
+                else -> current.append(ch)
+            }
+        }
+        fields.add(current.toString().trim())
+        return fields
+    }
+    
+    // MARK: - Format-Specific & Incremental Downloads
+    
+    /**
+     * Downloads matches for a specific match type (e.g., "t20s", "odis", "tests").
+     */
+    suspend fun downloadByMatchType(type: String): List<CricsheetMatch> = withContext(Dispatchers.IO) {
+        val urlString = "https://cricsheet.org/downloads/${type}_json.zip"
+        downloadAndParseZip(urlString, "match_type_$type")
+    }
+    
+    /**
+     * Downloads matches for a specific competition (e.g., "ipl", "bbl", "psl", "cpl").
+     */
+    suspend fun downloadByCompetition(code: String): List<CricsheetMatch> = withContext(Dispatchers.IO) {
+        val urlString = "https://cricsheet.org/downloads/${code}_json.zip"
+        downloadAndParseZip(urlString, "competition_$code")
+    }
+    
+    /**
+     * Downloads recently added matches (within specified number of days: 2, 7, or 30).
+     */
+    suspend fun downloadRecentMatches(days: Int = 7): List<CricsheetMatch> = withContext(Dispatchers.IO) {
+        val urlString = "https://cricsheet.org/downloads/recently_added_${days}_json.zip"
+        downloadAndParseZip(urlString, "recent_${days}d")
+    }
+    
+    /**
+     * Downloads recently played matches (within specified number of days: 2, 7, or 30).
+     */
+    suspend fun downloadRecentlyPlayedMatches(days: Int = 7): List<CricsheetMatch> = withContext(Dispatchers.IO) {
+        val urlString = "https://cricsheet.org/downloads/recently_played_${days}_json.zip"
+        downloadAndParseZip(urlString, "recently_played_${days}d")
+    }
+    
+    /**
+     * Generic zip download + parse method used by format-specific and incremental downloads.
+     */
+    private suspend fun downloadAndParseZip(urlString: String, label: String): List<CricsheetMatch> {
+        Sentry.addBreadcrumb(Breadcrumb().apply {
+            category = "network.cricsheet"
+            message = "Downloading $label matches"
+            level = SentryLevel.INFO
+            setData("url", urlString)
+        })
+        
+        try {
+            val ctx = context ?: return emptyList()
+            val filesDir = ctx.filesDir
+            val zipPath = File(filesDir, "${label}_json.zip")
+            
+            Log.d(TAG, "Downloading $label matches from $urlString")
+            val connection = URL(urlString).openConnection()
+            connection.getInputStream().use { input ->
+                FileOutputStream(zipPath).use { output ->
+                    input.copyTo(output)
+                }
+            }
+            
+            val matches = unzipAndParseAllMatches(zipPath.absolutePath, filesDir.absolutePath)
+            zipPath.delete()
+            
+            Log.d(TAG, "Successfully parsed ${matches.size} $label matches")
+            
+            Sentry.addBreadcrumb(Breadcrumb().apply {
+                category = "network.cricsheet"
+                message = "Successfully downloaded $label matches"
+                level = SentryLevel.INFO
+                setData("matchCount", matches.size)
+            })
+            
+            return matches
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to download $label matches from $urlString", e)
+            Sentry.captureException(e)
+            return emptyList()
         }
     }
 }

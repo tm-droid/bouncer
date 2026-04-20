@@ -6,7 +6,10 @@ import android.util.Log
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.tanush.bouncer.analysis.MatchSituation
+import com.tanush.bouncer.analysis.MatchupAnalysis
+import com.tanush.bouncer.analysis.PlayerStatisticsEngine
 import com.tanush.bouncer.analysis.TeamStatistics
+import com.tanush.bouncer.analysis.VenueAnalysis
 import com.tanush.bouncer.models.CricsheetMatch
 import kotlin.math.*
 import io.sentry.Sentry
@@ -83,6 +86,9 @@ class ModelTrainer(private val context: Context? = null) {
     fun trainOnHistoricalData(
         matches: List<CricsheetMatch>,
         teamStats: Map<String, TeamStatistics> = emptyMap(),
+        playerStats: PlayerStatisticsEngine? = null,
+        matchupAnalysis: MatchupAnalysis? = null,
+        venueAnalysis: VenueAnalysis? = null,
         config: TrainingConfig = TrainingConfig(
             epochs = 100,
             batchSize = 32,
@@ -98,7 +104,7 @@ class ModelTrainer(private val context: Context? = null) {
         Log.d(TAG, "Starting training on ${matches.size} matches...")
 
         // Step 1: Generate training samples from historical data
-        val trainingSamples = generateTrainingData(matches, teamStats)
+        val trainingSamples = generateTrainingData(matches, teamStats, playerStats, matchupAnalysis, venueAnalysis)
         Log.d(TAG, "Generated ${trainingSamples.size} training samples")
 
         if (trainingSamples.isEmpty()) {
@@ -144,11 +150,17 @@ class ModelTrainer(private val context: Context? = null) {
      */
     fun quickTrain(
         matches: List<CricsheetMatch>,
-        teamStats: Map<String, TeamStatistics> = emptyMap()
+        teamStats: Map<String, TeamStatistics> = emptyMap(),
+        playerStats: PlayerStatisticsEngine? = null,
+        matchupAnalysis: MatchupAnalysis? = null,
+        venueAnalysis: VenueAnalysis? = null
     ): TrainingResult {
         return trainOnHistoricalData(
             matches = matches,
             teamStats = teamStats,
+            playerStats = playerStats,
+            matchupAnalysis = matchupAnalysis,
+            venueAnalysis = venueAnalysis,
             config = TrainingConfig(
                 epochs = 50,
                 batchSize = 16,
@@ -169,9 +181,12 @@ class ModelTrainer(private val context: Context? = null) {
     fun continueTrain(
         newMatches: List<CricsheetMatch>,
         teamStats: Map<String, TeamStatistics> = emptyMap(),
+        playerStats: PlayerStatisticsEngine? = null,
+        matchupAnalysis: MatchupAnalysis? = null,
+        venueAnalysis: VenueAnalysis? = null,
         epochs: Int = 20
     ): TrainingResult {
-        val samples = generateTrainingData(newMatches, teamStats)
+        val samples = generateTrainingData(newMatches, teamStats, playerStats, matchupAnalysis, venueAnalysis)
         if (samples.isEmpty()) return createEmptyResult()
 
         val config = TrainingConfig(
@@ -216,7 +231,8 @@ class ModelTrainer(private val context: Context? = null) {
         runsNeeded: Int = 0,
         ballsBowled: Int = 0,
         wicketsLost: Int = 0,
-        maxBalls: Int = 120
+        maxBalls: Int = 120,
+        enriched: FeatureExtractor.EnrichedContext = FeatureExtractor.EnrichedContext()
     ): PredictionOutput {
         // Extract features
         val features = FeatureExtractor.extractFeatures(
@@ -226,7 +242,8 @@ class ModelTrainer(private val context: Context? = null) {
             runsNeeded = runsNeeded,
             ballsBowled = ballsBowled,
             wicketsLost = wicketsLost,
-            maxBalls = maxBalls
+            maxBalls = maxBalls,
+            enriched = enriched
         )
 
         // Forward pass
@@ -288,7 +305,10 @@ class ModelTrainer(private val context: Context? = null) {
      */
     private fun generateTrainingData(
         matches: List<CricsheetMatch>,
-        teamStats: Map<String, TeamStatistics>
+        teamStats: Map<String, TeamStatistics>,
+        playerStats: PlayerStatisticsEngine? = null,
+        matchupAnalysis: MatchupAnalysis? = null,
+        venueAnalysis: VenueAnalysis? = null
     ): List<TrainingSample> {
         val allSamples = mutableListOf<TrainingSample>()
 
@@ -297,7 +317,10 @@ class ModelTrainer(private val context: Context? = null) {
                 val samples = FeatureExtractor.generateTrainingSamples(
                     match = match,
                     teamStats = teamStats,
-                    samplesPerMatch = 12
+                    samplesPerMatch = 12,
+                    playerStats = playerStats,
+                    matchupAnalysis = matchupAnalysis,
+                    venueAnalysis = venueAnalysis
                 )
                 allSamples.addAll(samples)
             } catch (e: Exception) {

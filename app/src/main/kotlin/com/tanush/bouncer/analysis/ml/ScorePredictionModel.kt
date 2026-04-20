@@ -8,7 +8,7 @@ import io.sentry.Sentry
  * Multi-layer perceptron (neural network) for cricket score prediction.
  *
  * Architecture:
- *   Input(16) → Dense(32, ReLU) → Dense(16, ReLU) → Dense(outputSize, Sigmoid)
+ *   Input(32) → Dense(64, ReLU) → Dense(32, ReLU) → Dense(16, ReLU) → Dense(outputSize, Sigmoid)
  *
  * Supports full forward pass and backpropagation for gradient-based training.
  * Weights are initialized with He initialization for ReLU layers and
@@ -183,7 +183,7 @@ class ScorePredictionModel private constructor(
         /**
          * Creates the default score prediction model architecture.
          *
-         * Architecture: 16 → 32 (ReLU) → 16 (ReLU) → 2 (Sigmoid)
+         * Architecture: 32 → 64 (ReLU) → 32 (ReLU) → 16 (ReLU) → 2 (Sigmoid)
          * Output[0] = win probability, Output[1] = normalized predicted score
          *
          * @param seed Random seed for reproducible weight initialization
@@ -193,11 +193,13 @@ class ScorePredictionModel private constructor(
                 val rng = Random(seed)
                 return ScorePredictionModel(
                     layers = listOf(
-                        DenseLayer.heInit(FeatureExtractor.FEATURE_COUNT, 32, rng),
+                        DenseLayer.heInit(FeatureExtractor.FEATURE_COUNT, 64, rng),
+                        DenseLayer.heInit(64, 32, rng),
                         DenseLayer.heInit(32, 16, rng),
                         DenseLayer.xavierInit(16, 2, rng) // output: [winProb, scoreNorm]
                     ),
                     activations = listOf(
+                        Activation.RELU,
                         Activation.RELU,
                         Activation.RELU,
                         Activation.SIGMOID
