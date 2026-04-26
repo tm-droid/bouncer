@@ -24,7 +24,7 @@ import androidx.glance.text.TextAlign
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 import androidx.work.*
-import com.tanush.bouncer.MainActivity
+import com.tanush.bouncer.BouncerActivity
 import io.sentry.Breadcrumb
 import io.sentry.Sentry
 import io.sentry.SentryLevel
@@ -222,7 +222,7 @@ class CountdownWidget : GlanceAppWidget() {
         val clickAction = if (!matchId.isNullOrEmpty()) {
             BouncerGlanceWidget.createMatchDeepLinkAction(context, matchId)
         } else {
-            actionStartActivity<MainActivity>()
+            actionStartActivity<BouncerActivity>()
         }
         
         Box(

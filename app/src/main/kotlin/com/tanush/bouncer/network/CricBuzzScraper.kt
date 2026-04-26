@@ -25,6 +25,43 @@ import com.tanush.bouncer.managers.TeamAcronymManager
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
 
+internal fun normalizeNextFlightPayload(rawPayload: String): String? {
+    var normalized = rawPayload.trim()
+    val colonIndex = normalized.indexOf(':')
+    if (colonIndex in 1..9) {
+        val prefix = normalized.take(colonIndex)
+        if (prefix.all { it.isDigit() || it.lowercaseChar() in 'a'..'f' }) {
+            normalized = normalized.substring(colonIndex + 1)
+        }
+    }
+
+    if (normalized.startsWith("I")) {
+        normalized = normalized.substring(1)
+    }
+
+    normalized = normalized.trim()
+    return normalized.takeIf { it.startsWith("{") || it.startsWith("[") }
+}
+
+internal fun unwrapNextFlightPayload(scriptContent: String): String? {
+    val jsonElement = try {
+        JsonParser.parseString(scriptContent)
+    } catch (_: Exception) {
+        return null
+    }
+
+    if (!jsonElement.isJsonArray) {
+        return null
+    }
+
+    val array = jsonElement.asJsonArray
+    if (array.size() <= 1 || !array[1].isJsonPrimitive || !array[1].asJsonPrimitive.isString) {
+        return null
+    }
+
+    return normalizeNextFlightPayload(array[1].asString)
+}
+
 class CricBuzzScraper {
 
     companion object {
@@ -32,6 +69,11 @@ class CricBuzzScraper {
         private const val USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
         private const val MAX_RETRIES = 3
         private const val INITIAL_BACKOFF_MS = 1000L
+        private const val DRIFT_ALARM_THRESHOLD = 3
+
+        // Counts consecutive successful-HTTP-but-empty-parse results across all fetches.
+        // Resets when any parse returns data. Shared across instances (singleton use pattern).
+        private val consecutiveEmptyParses = java.util.concurrent.atomic.AtomicInteger(0)
     }
 
     /**
@@ -62,7 +104,30 @@ class CricBuzzScraper {
 
                 val filteredMatches = filterMatches(matches, matchState)
                 Log.d(TAG, "Found ${matches.size} total matches, filtered down to ${filteredMatches.size} for state: $matchState")
-                
+
+                // Drift detection: HTTP 200 but parse returned 0 matches — CricBuzz may have
+                // changed their page structure. Fire a Sentry alarm after DRIFT_ALARM_THRESHOLD
+                // consecutive empty parses so we catch DOM changes same-day.
+                if (matches.isEmpty()) {
+                    val count = consecutiveEmptyParses.incrementAndGet()
+                    Sentry.addBreadcrumb(Breadcrumb().apply {
+                        category = "network.cricbuzz"
+                        message = "Parse returned 0 matches (consecutive: $count)"
+                        level = SentryLevel.WARNING
+                        setData("url", url)
+                        setData("matchState", matchState)
+                        setData("consecutiveEmpty", count)
+                    })
+                    if (count >= DRIFT_ALARM_THRESHOLD) {
+                        Sentry.captureMessage(
+                            "scrape_drift: CricBuzz returned 0 matches for $matchState ($count consecutive). DOM structure may have changed.",
+                            SentryLevel.WARNING
+                        )
+                    }
+                } else {
+                    consecutiveEmptyParses.set(0)
+                }
+
                 Sentry.addBreadcrumb(Breadcrumb().apply {
                     category = "network.cricbuzz"
                     message = "Successfully fetched live matches"
@@ -70,7 +135,7 @@ class CricBuzzScraper {
                     setData("totalMatches", matches.size)
                     setData("filteredMatches", filteredMatches.size)
                 })
-                
+
                 return@withContext filteredMatches
             } catch (e: SocketTimeoutException) {
                 lastException = e
@@ -88,10 +153,9 @@ class CricBuzzScraper {
                 Sentry.addBreadcrumb(Breadcrumb().apply {
                     category = "network.cricbuzz"
                     message = "No internet connection"
-                    level = SentryLevel.ERROR
+                    level = SentryLevel.WARNING
                     setData("url", url)
                 })
-                Sentry.captureException(e)
                 return@withContext emptyList()
             } catch (e: Exception) {
                 lastException = e
@@ -168,35 +232,14 @@ class CricBuzzScraper {
             
             if (endIdx != -1) {
                 val scriptContent = html.substring(openParenIdx + 1, endIdx)
-                try {
-                    val jsonElement = JsonParser.parseString(scriptContent)
-                    if (jsonElement.isJsonArray) {
-                        val array = jsonElement.asJsonArray
-                        if (array.size() > 1 && array[1].isJsonPrimitive && array[1].asJsonPrimitive.isString) {
-                            var innerJsonStr = array[1].asString
-                            
-                            val colonIndex = innerJsonStr.indexOf(':')
-                            if (colonIndex in 1..9) {
-                                val prefix = innerJsonStr.take(colonIndex)
-                                if (prefix.all { it.isDigit() || it in 'a'..'f' }) {
-                                    innerJsonStr = innerJsonStr.substring(colonIndex + 1)
-                                }
-                            }
-                            
-                            if (innerJsonStr.startsWith("I")) innerJsonStr = innerJsonStr.substring(1)
-                            
-                            try {
-                                val data = JsonParser.parseString(innerJsonStr)
-                                matches.addAll(findMatchesInJson(data))
-                            } catch (e: Exception) {
-                                Log.d(TAG, "Failed to parse inner JSON segment", e)
-                                Sentry.captureException(e)
-                            }
-                        }
+                val nextPayload = unwrapNextFlightPayload(scriptContent)
+                if (nextPayload != null) {
+                    try {
+                        val data = JsonParser.parseString(nextPayload)
+                        matches.addAll(findMatchesInJson(data))
+                    } catch (e: Exception) {
+                        Log.d(TAG, "Skipping unparseable Next.js data segment", e)
                     }
-                } catch (e: Exception) {
-                    Log.d(TAG, "Failed to parse NextJS data segment", e)
-                    Sentry.captureException(e)
                 }
                 startIndex = endIdx + 1
             } else {

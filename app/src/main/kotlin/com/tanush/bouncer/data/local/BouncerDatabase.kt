@@ -12,7 +12,7 @@ import com.tanush.bouncer.data.local.entities.MatchEntity
 @Database(
     entities = [MatchEntity::class, CommentaryEntity::class],
     version = 1,
-    exportSchema = false
+    exportSchema = true
 )
 abstract class BouncerDatabase : RoomDatabase() {
 
@@ -23,6 +23,9 @@ abstract class BouncerDatabase : RoomDatabase() {
         @Volatile
         private var INSTANCE: BouncerDatabase? = null
 
+        // Add new migrations here; Room will apply them in order on upgrade.
+        private val MIGRATIONS = arrayOf<androidx.room.migration.Migration>()
+
         fun getInstance(context: Context): BouncerDatabase {
             return INSTANCE ?: synchronized(this) {
                 INSTANCE ?: Room.databaseBuilder(
@@ -30,7 +33,7 @@ abstract class BouncerDatabase : RoomDatabase() {
                     BouncerDatabase::class.java,
                     "bouncer_db"
                 )
-                    .fallbackToDestructiveMigration()
+                    .addMigrations(*MIGRATIONS)
                     .build()
                     .also { INSTANCE = it }
             }

@@ -4,9 +4,8 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
-    id("com.google.devtools.ksp")
-
-    id("io.sentry.android.gradle") version libs.versions.sentry.gradle.get()
+    alias(libs.plugins.ksp)
+    alias(libs.plugins.sentry)
 }
 
 val localProperties = Properties()
@@ -115,6 +114,10 @@ composeCompiler {
         metricsDestination = dir
         reportsDestination = dir
     }
+}
+
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
 }
 
 dependencies {

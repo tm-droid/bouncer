@@ -58,6 +58,12 @@ class ScorePollingWorker(
                         level = SentryLevel.INFO
                     })
 
+                    // Adaptive polling: chain a 5-min follow-up while live matches exist.
+                    // When no live matches, the chain stops and 15-min periodic takes over.
+                    if (matchCount > 0) {
+                        enqueueLiveFollowUp(context)
+                    }
+
                     Result.success(
                         workDataOf("match_count" to matchCount)
                     )
@@ -150,10 +156,28 @@ class ScorePollingWorker(
         }
 
         /**
+         * Schedule a 5-minute one-time follow-up poll while a live match is active.
+         * Uses REPLACE so multiple rapid successes don't stack requests.
+         */
+        fun enqueueLiveFollowUp(context: Context) {
+            val request = OneTimeWorkRequestBuilder<ScorePollingWorker>()
+                .setConstraints(networkConstraints)
+                .addTag(TAG)
+                .setInitialDelay(5, TimeUnit.MINUTES)
+                .build()
+            WorkManager.getInstance(context).enqueueUniqueWork(
+                "score_polling_live_followup",
+                ExistingWorkPolicy.REPLACE,
+                request
+            )
+        }
+
+        /**
          * Cancel all score-polling work.
          */
         fun cancelAll(context: Context) {
             WorkManager.getInstance(context).cancelUniqueWork(UNIQUE_WORK_NAME)
+            WorkManager.getInstance(context).cancelUniqueWork("score_polling_live_followup")
             WorkManager.getInstance(context).cancelAllWorkByTag(ONE_TIME_WORK_TAG)
             Log.d(TAG, "All score polling work cancelled")
         }
