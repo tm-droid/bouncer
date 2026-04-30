@@ -11,6 +11,7 @@ import com.google.firebase.messaging.RemoteMessage
 import com.tanush.bouncer.BouncerActivity
 import com.tanush.bouncer.R
 import com.tanush.bouncer.ui.notifications.RichNotificationBuilder.CricketNotificationChannel
+import com.tanush.bouncer.ui.widgets.WidgetManager
 import io.sentry.Breadcrumb
 import io.sentry.Sentry
 import io.sentry.SentryLevel
@@ -95,6 +96,10 @@ class BouncerFirebaseMessagingService : FirebaseMessagingService() {
         if (MuteMatchReceiver.isMatchMuted(applicationContext, matchId)) {
             Log.d(TAG, "Match $matchId is muted – ignoring notification")
             return
+        }
+
+        if (type == TYPE_SCORE_UPDATE) {
+            WidgetManager.updateAllWidgets(applicationContext, match = null)
         }
 
         val channelId = resolveChannelId(type)

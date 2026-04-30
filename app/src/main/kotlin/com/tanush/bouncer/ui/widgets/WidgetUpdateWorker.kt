@@ -23,7 +23,7 @@ import kotlinx.coroutines.launch
  */
 object WidgetUpdateWorker {
 
-    private const val UPDATE_INTERVAL = 15 * 60 * 1000L // 15 minutes
+    private const val UPDATE_INTERVAL = 60 * 60 * 1000L // 1 hour fallback; FCM handles live updates
     private const val REQUEST_CODE = 1001
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     
