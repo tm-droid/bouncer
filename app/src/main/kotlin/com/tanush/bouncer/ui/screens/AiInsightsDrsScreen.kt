@@ -35,6 +35,8 @@ import com.tanush.bouncer.ui.components.GlassCard
 import com.tanush.bouncer.ui.components.BouncerImportance
 import com.tanush.bouncer.ui.theme.*
 import androidx.compose.ui.platform.LocalContext
+import com.tanush.bouncer.services.AICacheService
+import com.tanush.bouncer.services.CommentaryFusionService
 
 /**
  * Premium AI Insights & DRS Review Screen
@@ -49,7 +51,39 @@ fun AiInsightsDrsScreen(
     val colors = BouncerDesignSystem.colors
     val hierarchy = BouncerDesignSystem.hierarchy
     val context = LocalContext.current
-    
+
+    var aiVerdict by remember { mutableStateOf<String?>(null) }
+    var isLoadingAi by remember { mutableStateOf(false) }
+
+    LaunchedEffect(match.id) {
+        val cacheKey = "drs_verdict_${match.id}"
+        val cached = AICacheService.getCommentary(cacheKey)
+        if (cached != null) {
+            aiVerdict = cached
+            return@LaunchedEffect
+        }
+        isLoadingAi = true
+        try {
+            val bowler = match.currentBowler
+            val striker = match.scrapedBatsmen?.firstOrNull { it.isStriker }
+            val commentaryLines = buildList {
+                add("Match: ${match.teams.joinToString(" vs ") { it.name }}")
+                bowler?.let { b -> add("Bowler: ${b.name}, Economy: ${b.economy}, Wickets: ${b.wickets}") }
+                striker?.let { s -> add("Striker: ${s.name}, Strike Rate: ${s.strikeRate}") }
+                match.score?.recentBalls?.let { add("Recent balls: $it") }
+                add("Win probability: ${match.calculateHeuristicProbability().toInt()}%")
+            }
+            val over = match.score?.overs?.split(".")?.firstOrNull()?.toIntOrNull() ?: 0
+            val verdict = CommentaryFusionService().summarizeOversWithAI(commentaryLines, match.id, over)
+            AICacheService.setCommentary(verdict, cacheKey)
+            aiVerdict = verdict
+        } catch (_: Exception) {
+            // AI offline — heuristic fallback shown automatically
+        } finally {
+            isLoadingAi = false
+        }
+    }
+
     Scaffold(
         containerColor = colors.backgroundBase,
         topBar = {
@@ -84,7 +118,7 @@ fun AiInsightsDrsScreen(
             verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
             // AI Neural Banner
-            AiNeuralBanner(match)
+            AiNeuralBanner(match, aiVerdict, isLoadingAi)
 
             // DRS Visualization Card
             DrsVisualizationCard(match)
@@ -136,25 +170,31 @@ fun AiInsightsDrsScreen(
 }
 
 @Composable
-private fun AiNeuralBanner(match: CricketMatch) {
-    val colors = BouncerDesignSystem.colors
-
-    // Use AiAnalysisCard for the banner
+private fun AiNeuralBanner(match: CricketMatch, aiVerdict: String?, isLoadingAi: Boolean) {
     val bowler = match.currentBowler
     val striker = match.scrapedBatsmen?.firstOrNull { it.isStriker }
-    val bowlerEcon = bowler?.economy?.toDoubleOrNull()
-    val strikerSR = striker?.strikeRate?.toDoubleOrNull()
-    val analysisDesc = when {
-        bowlerEcon != null && bowlerEcon < 6.0 -> "${bowler.name} bowling tight (econ ${bowler.economy}). Pressure building on batting side."
-        strikerSR != null && strikerSR > 150.0 -> "${striker?.name} striking at ${striker?.strikeRate}. High boundary probability on current trajectory."
-        bowler != null -> "${bowler.name} has bowled ${bowler.overs} overs for ${bowler.wickets} wickets."
-        else -> "Awaiting delivery data for analysis."
+
+    val (desc, highlight, type) = when {
+        isLoadingAi -> Triple("AI analyzing match state…", "AI ANALYZING", AnalysisType.NEUTRAL)
+        aiVerdict != null -> Triple(aiVerdict, "AI VERDICT", AnalysisType.WARNING)
+        else -> {
+            val bowlerEcon = bowler?.economy?.toDoubleOrNull()
+            val strikerSR = striker?.strikeRate?.toDoubleOrNull()
+            val heuristic = when {
+                bowlerEcon != null && bowlerEcon < 6.0 -> "${bowler.name} bowling tight (econ ${bowler.economy}). Pressure building on batting side."
+                strikerSR != null && strikerSR > 150.0 -> "${striker?.name} striking at ${striker?.strikeRate}. High boundary probability on current trajectory."
+                bowler != null -> "${bowler.name} has bowled ${bowler.overs} overs for ${bowler.wickets} wickets."
+                else -> "Awaiting delivery data for analysis."
+            }
+            Triple(heuristic, "HEURISTIC", AnalysisType.WARNING)
+        }
     }
+
     AiAnalysisCard(
         title = "Match Critical Analysis",
-        description = analysisDesc,
-        highlightText = "AI ANALYSIS",
-        type = AnalysisType.WARNING,
+        description = desc,
+        highlightText = highlight,
+        type = type,
         modifier = Modifier.padding(0.dp)
     )
 }
