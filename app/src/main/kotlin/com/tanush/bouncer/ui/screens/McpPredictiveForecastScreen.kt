@@ -44,7 +44,7 @@ import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun McpPredictiveForecastScreen(
+fun PredictiveForecastScreen(
     match: CricketMatch,
     onBackClick: () -> Unit
 ) {

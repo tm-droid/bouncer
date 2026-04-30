@@ -243,11 +243,8 @@ private fun handleExternalDeepLink(
         "ar", "ar-tracking" -> navController.navigateForward(BouncerScreen.ArTracking.route)
         "match" -> {
             val deepLinkMatchId = pathSegments.getOrNull(1) ?: parsedUri.getQueryParameter("matchId")
-            val targetMatch = deepLinkMatchId?.let { id ->
-                availableMatches.firstOrNull { it.id == id }
-            }
-            if (targetMatch != null) {
-                onMatchClick(targetMatch)
+            if (deepLinkMatchId != null) {
+                navController.navigateForward(BouncerScreen.MatchDetail.createRoute(deepLinkMatchId))
             } else {
                 navController.navigateToTab(BouncerScreen.Matches.route)
             }

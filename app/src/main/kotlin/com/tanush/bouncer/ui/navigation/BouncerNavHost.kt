@@ -64,7 +64,7 @@ fun BouncerNavHost(
         moreChildDestinations(navController, liveActivityViewModel, newsViewModel, onMatchClick, onArTrackingClick, themeMode, onThemeModeChanged)
 
         // Parameterized screens
-        parameterizedDestinations(navController, newsViewModel)
+        parameterizedDestinations(navController, newsViewModel, liveActivityViewModel)
     }
 }
 
@@ -363,7 +363,8 @@ private fun NavGraphBuilder.moreChildDestinations(
 
 private fun NavGraphBuilder.parameterizedDestinations(
     navController: NavHostController,
-    newsViewModel: NewsViewModel
+    newsViewModel: NewsViewModel,
+    liveActivityViewModel: LiveActivityViewModel
 ) {
     // News Detail with article ID
     composable(
@@ -409,8 +410,28 @@ private fun NavGraphBuilder.parameterizedDestinations(
         )
     }
 
-    // NOTE: MatchInfoScreen and SquadScreen require CricketMatch objects, not just IDs.
-    // These are currently handled via the modal overlay pattern in BouncerAppContent.
+    // Match Detail with match ID — used by widget/notification deep links
+    composable(
+        route = BouncerScreen.MatchDetail.ROUTE_PATTERN,
+        arguments = BouncerScreen.MatchDetail.arguments
+    ) { backStackEntry ->
+        val matchId = backStackEntry.arguments?.getString(BouncerScreen.MatchDetail.ARG_MATCH_ID)
+            ?.decodeUrlSafe() ?: return@composable
+
+        val matches by liveActivityViewModel.currentMatches.collectAsState()
+        val match = matches.firstOrNull { it.id == matchId }
+
+        if (match != null) {
+            MatchDetailViewV2(
+                match = match,
+                onBackClick = { navController.popBackStack() }
+            )
+        } else {
+            LaunchedEffect(Unit) {
+                navController.navigateToTab(BouncerScreen.Matches.route)
+            }
+        }
+    }
 
     // Series Detail with series ID
     composable(
