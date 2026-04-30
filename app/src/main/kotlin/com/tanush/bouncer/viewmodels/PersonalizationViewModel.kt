@@ -24,6 +24,9 @@ class PersonalizationViewModel : ViewModel() {
     private val _defaultLanding = MutableStateFlow(LandingTab.HOME)
     val defaultLanding: StateFlow<LandingTab> = _defaultLanding
 
+    private val _favoriteTeams = MutableStateFlow<Set<String>>(emptySet())
+    val favoriteTeams: StateFlow<Set<String>> = _favoriteTeams
+
     fun load(context: Context) {
         // Read persisted preferences and populate state flows
         val tv = runCatching {
@@ -48,6 +51,14 @@ class PersonalizationViewModel : ViewModel() {
             }
         }.getOrDefault(LandingTab.HOME)
         _defaultLanding.value = dl
+
+        val teamsRaw = PreferencesHelper.getString(context, PreferencesHelper.KEY_ONBOARDING_TEAMS, "")
+        _favoriteTeams.value = if (teamsRaw.isBlank()) emptySet() else teamsRaw.split(",").toSet()
+    }
+
+    fun setFavoriteTeams(context: Context, teams: Set<String>) {
+        _favoriteTeams.value = teams
+        PreferencesHelper.setString(context, PreferencesHelper.KEY_ONBOARDING_TEAMS, teams.joinToString(","))
     }
 
     fun setThemeVariant(context: Context, variant: ThemeVariant) {
