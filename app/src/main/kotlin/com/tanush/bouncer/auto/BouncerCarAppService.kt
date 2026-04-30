@@ -17,5 +17,5 @@ class BouncerCarAppService : CarAppService() {
 class BouncerCarSession : Session() {
 
     override fun onCreateScreen(intent: Intent): Screen =
-        ScoreListScreen(carContext)
+        TabbedScoreScreen(carContext)
 }
