@@ -8,7 +8,7 @@ import com.tanush.bouncer.data.local.entities.SeriesCacheEntity
 
 @Dao
 interface SeriesCacheDao {
-    @Query("SELECT series_cache.* FROM series_fts JOIN series_cache ON series_fts.rowid = series_cache.rowid WHERE series_fts MATCH :query LIMIT 5")
+    @Query("SELECT * FROM series_cache WHERE seriesId IN (SELECT seriesId FROM series_fts WHERE series_fts MATCH :query) LIMIT 5")
     suspend fun searchSeries(query: String): List<SeriesCacheEntity>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)

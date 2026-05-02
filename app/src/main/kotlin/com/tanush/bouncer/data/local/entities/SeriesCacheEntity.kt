@@ -17,6 +17,7 @@ data class SeriesCacheEntity(
 @Fts4(contentEntity = SeriesCacheEntity::class)
 @Entity(tableName = "series_fts")
 data class SeriesFtsEntity(
+    val seriesId: String,
     val name: String,
     val category: String
 )

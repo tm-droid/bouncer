@@ -49,11 +49,23 @@ abstract class BouncerDatabase : RoomDatabase() {
         private val MIGRATION_1_2 = object : Migration(1, 2) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("CREATE TABLE IF NOT EXISTS player_cache (playerId TEXT NOT NULL PRIMARY KEY, name TEXT NOT NULL, country TEXT NOT NULL, role TEXT NOT NULL, teamName TEXT NOT NULL, statsJson TEXT NOT NULL, lastUpdated INTEGER NOT NULL)")
-                db.execSQL("CREATE VIRTUAL TABLE IF NOT EXISTS player_fts USING fts4(content=player_cache, name, country, role, teamName)")
+                db.execSQL("CREATE VIRTUAL TABLE IF NOT EXISTS player_fts USING fts4(content=player_cache, playerId, name, country, role, teamName)")
+                db.execSQL("CREATE TRIGGER IF NOT EXISTS player_cache_bu BEFORE UPDATE ON player_cache BEGIN DELETE FROM player_fts WHERE docid=old.rowid; END")
+                db.execSQL("CREATE TRIGGER IF NOT EXISTS player_cache_bd BEFORE DELETE ON player_cache BEGIN DELETE FROM player_fts WHERE docid=old.rowid; END")
+                db.execSQL("CREATE TRIGGER IF NOT EXISTS player_cache_au AFTER UPDATE ON player_cache BEGIN INSERT INTO player_fts(docid, playerId, name, country, role, teamName) VALUES(new.rowid, new.playerId, new.name, new.country, new.role, new.teamName); END")
+                db.execSQL("CREATE TRIGGER IF NOT EXISTS player_cache_ai AFTER INSERT ON player_cache BEGIN INSERT INTO player_fts(docid, playerId, name, country, role, teamName) VALUES(new.rowid, new.playerId, new.name, new.country, new.role, new.teamName); END")
                 db.execSQL("CREATE TABLE IF NOT EXISTS series_cache (seriesId TEXT NOT NULL PRIMARY KEY, name TEXT NOT NULL, category TEXT NOT NULL, startDate TEXT NOT NULL, endDate TEXT NOT NULL, lastUpdated INTEGER NOT NULL)")
-                db.execSQL("CREATE VIRTUAL TABLE IF NOT EXISTS series_fts USING fts4(content=series_cache, name, category)")
+                db.execSQL("CREATE VIRTUAL TABLE IF NOT EXISTS series_fts USING fts4(content=series_cache, seriesId, name, category)")
+                db.execSQL("CREATE TRIGGER IF NOT EXISTS series_cache_bu BEFORE UPDATE ON series_cache BEGIN DELETE FROM series_fts WHERE docid=old.rowid; END")
+                db.execSQL("CREATE TRIGGER IF NOT EXISTS series_cache_bd BEFORE DELETE ON series_cache BEGIN DELETE FROM series_fts WHERE docid=old.rowid; END")
+                db.execSQL("CREATE TRIGGER IF NOT EXISTS series_cache_au AFTER UPDATE ON series_cache BEGIN INSERT INTO series_fts(docid, seriesId, name, category) VALUES(new.rowid, new.seriesId, new.name, new.category); END")
+                db.execSQL("CREATE TRIGGER IF NOT EXISTS series_cache_ai AFTER INSERT ON series_cache BEGIN INSERT INTO series_fts(docid, seriesId, name, category) VALUES(new.rowid, new.seriesId, new.name, new.category); END")
                 db.execSQL("CREATE TABLE IF NOT EXISTS historical_match_cache (matchId TEXT NOT NULL PRIMARY KEY, matchTitle TEXT NOT NULL, teams TEXT NOT NULL, venue TEXT NOT NULL, city TEXT NOT NULL, date TEXT NOT NULL, season TEXT NOT NULL, matchType TEXT NOT NULL, playerOfMatch TEXT NOT NULL, lastUpdated INTEGER NOT NULL)")
-                db.execSQL("CREATE VIRTUAL TABLE IF NOT EXISTS historical_match_fts USING fts4(content=historical_match_cache, matchTitle, teams, venue, city, season, playerOfMatch)")
+                db.execSQL("CREATE VIRTUAL TABLE IF NOT EXISTS historical_match_fts USING fts4(content=historical_match_cache, matchId, matchTitle, teams, venue, city, season, playerOfMatch)")
+                db.execSQL("CREATE TRIGGER IF NOT EXISTS historical_match_cache_bu BEFORE UPDATE ON historical_match_cache BEGIN DELETE FROM historical_match_fts WHERE docid=old.rowid; END")
+                db.execSQL("CREATE TRIGGER IF NOT EXISTS historical_match_cache_bd BEFORE DELETE ON historical_match_cache BEGIN DELETE FROM historical_match_fts WHERE docid=old.rowid; END")
+                db.execSQL("CREATE TRIGGER IF NOT EXISTS historical_match_cache_au AFTER UPDATE ON historical_match_cache BEGIN INSERT INTO historical_match_fts(docid, matchId, matchTitle, teams, venue, city, season, playerOfMatch) VALUES(new.rowid, new.matchId, new.matchTitle, new.teams, new.venue, new.city, new.season, new.playerOfMatch); END")
+                db.execSQL("CREATE TRIGGER IF NOT EXISTS historical_match_cache_ai AFTER INSERT ON historical_match_cache BEGIN INSERT INTO historical_match_fts(docid, matchId, matchTitle, teams, venue, city, season, playerOfMatch) VALUES(new.rowid, new.matchId, new.matchTitle, new.teams, new.venue, new.city, new.season, new.playerOfMatch); END")
             }
         }
 

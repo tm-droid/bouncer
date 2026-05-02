@@ -21,6 +21,7 @@ data class HistoricalMatchCacheEntity(
 @Fts4(contentEntity = HistoricalMatchCacheEntity::class)
 @Entity(tableName = "historical_match_fts")
 data class HistoricalMatchFtsEntity(
+    val matchId: String,
     val matchTitle: String,
     val teams: String,
     val venue: String,

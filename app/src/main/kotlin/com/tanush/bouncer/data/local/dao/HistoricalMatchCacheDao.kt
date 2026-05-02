@@ -8,7 +8,7 @@ import com.tanush.bouncer.data.local.entities.HistoricalMatchCacheEntity
 
 @Dao
 interface HistoricalMatchCacheDao {
-    @Query("SELECT historical_match_cache.* FROM historical_match_fts JOIN historical_match_cache ON historical_match_fts.rowid = historical_match_cache.rowid WHERE historical_match_fts MATCH :query LIMIT 10")
+    @Query("SELECT * FROM historical_match_cache WHERE matchId IN (SELECT matchId FROM historical_match_fts WHERE historical_match_fts MATCH :query) LIMIT 10")
     suspend fun searchHistoricalMatches(query: String): List<HistoricalMatchCacheEntity>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)

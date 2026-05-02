@@ -18,6 +18,7 @@ data class PlayerCacheEntity(
 @Fts4(contentEntity = PlayerCacheEntity::class)
 @Entity(tableName = "player_fts")
 data class PlayerFtsEntity(
+    val playerId: String,
     val name: String,
     val country: String,
     val role: String,
