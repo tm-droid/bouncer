@@ -10,6 +10,7 @@ import com.tanush.bouncer.managers.TeamLogoManager
 import com.tanush.bouncer.managers.TeamAcronymManager
 import com.tanush.bouncer.services.MatchCacheService
 import com.tanush.bouncer.services.ScorePollingWorker
+import com.tanush.bouncer.services.SeriesSyncWorker
 import io.sentry.Breadcrumb
 import io.sentry.Sentry
 import io.sentry.SentryLogLevel
@@ -78,6 +79,9 @@ class BouncerApp : Application() {
         // ── Enqueue periodic score polling via WorkManager ───────────────
         initializeSafely("ScorePollingWorker") {
             ScorePollingWorker.enqueuePeriodicWork(this)
+        }
+        initializeSafely("SeriesSyncWorker") {
+            SeriesSyncWorker.enqueuePeriodicWork(this)
         }
 
         Sentry.addBreadcrumb(
