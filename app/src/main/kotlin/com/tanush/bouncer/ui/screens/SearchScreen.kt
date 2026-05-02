@@ -34,9 +34,12 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.ScrollableTabRow
+import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -52,6 +55,7 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.tanush.bouncer.data.SearchRepository
 import com.tanush.bouncer.models.CricketMatch
@@ -59,17 +63,17 @@ import com.tanush.bouncer.models.NewsArticleData
 import com.tanush.bouncer.ui.components.v2.MatchCardV2
 import com.tanush.bouncer.ui.components.v2.SectionHeaderV2
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
-import kotlinx.coroutines.delay
+import com.tanush.bouncer.viewmodels.SearchTab
+import com.tanush.bouncer.viewmodels.SearchViewModel
 
-/**
- * SearchScreen — Full-screen search with animated search bar and categorized results.
- */
 @Composable
 fun SearchScreen(
+    viewModel: SearchViewModel = viewModel(),
     matches: List<CricketMatch>,
     news: List<NewsArticleData>,
     onMatchClick: (CricketMatch) -> Unit,
     onPlayerClick: (String) -> Unit,
+    onSeriesClick: (String) -> Unit,
     onNewsClick: (NewsArticleData) -> Unit,
     onBackClick: () -> Unit,
 ) {
@@ -79,42 +83,50 @@ fun SearchScreen(
     val context = LocalContext.current
     val keyboardController = LocalSoftwareKeyboardController.current
 
-    var query by remember { mutableStateOf("") }
-    var results by remember { mutableStateOf(SearchRepository.SearchResults()) }
+    val query by viewModel.query.collectAsState()
+    val results by viewModel.results.collectAsState()
+    val selectedTab by viewModel.selectedTab.collectAsState()
     var recentQueries by remember { mutableStateOf(SearchRepository.getRecentQueries(context)) }
     val focusRequester = remember { FocusRequester() }
 
-    // Auto-focus search field
     LaunchedEffect(Unit) {
         focusRequester.requestFocus()
     }
 
-    // Debounced search
-    LaunchedEffect(query) {
-        if (query.length < 2) {
-            results = SearchRepository.SearchResults()
-            return@LaunchedEffect
-        }
-        delay(300) // debounce
-        val teamNames = matches.flatMap { m -> m.teams.map { it.name } }.distinct()
-        results = SearchRepository.search(query, matches, news, teamNames)
+    val displayResults = when (selectedTab) {
+        SearchTab.ALL -> results
+        SearchTab.MATCHES -> results.copy(
+            teams = emptyList(), players = emptyList(), news = emptyList(), series = emptyList()
+        )
+        SearchTab.PLAYERS -> results.copy(
+            matches = emptyList(), teams = emptyList(), news = emptyList(),
+            series = emptyList(), historicalMatches = emptyList()
+        )
+        SearchTab.TEAMS -> results.copy(
+            matches = emptyList(), players = emptyList(), news = emptyList(),
+            series = emptyList(), historicalMatches = emptyList()
+        )
+        SearchTab.TOURNAMENTS -> results.copy(
+            matches = emptyList(), teams = emptyList(), players = emptyList(),
+            news = emptyList(), historicalMatches = emptyList()
+        )
+        SearchTab.NEWS -> results.copy(
+            matches = emptyList(), teams = emptyList(), players = emptyList(),
+            series = emptyList(), historicalMatches = emptyList()
+        )
     }
 
     Scaffold(
         containerColor = colors.background,
         topBar = {
-            // Search bar as top bar
             SearchBarHeader(
                 query = query,
-                onQueryChange = { query = it },
-                onClear = {
-                    query = ""
-                    results = SearchRepository.SearchResults()
-                },
+                onQueryChange = { viewModel.onQueryChange(it, matches, news) },
+                onClear = { viewModel.onQueryChange("", matches, news) },
                 onBack = onBackClick,
                 onSearch = {
                     if (query.isNotBlank()) {
-                        SearchRepository.addRecentQuery(context, query)
+                        viewModel.onSearchSubmitted(context, query)
                         recentQueries = SearchRepository.getRecentQueries(context)
                         keyboardController?.hide()
                     }
@@ -123,167 +135,241 @@ fun SearchScreen(
             )
         },
     ) { innerPadding ->
-        LazyColumn(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding),
-            contentPadding = PaddingValues(vertical = spacing.md),
         ) {
-            // Suggestion banner
-            results.suggestion?.let { suggestion ->
-                item(key = "suggestion") {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { query = suggestion }
-                            .padding(horizontal = spacing.lg, vertical = spacing.sm),
-                    ) {
-                        Text("Did you mean: ", style = typography.bodyMedium, color = colors.textSecondary)
-                        Text(
-                            suggestion,
-                            style = typography.bodyMedium,
-                            color = colors.primary,
-                            fontWeight = FontWeight.Bold,
-                        )
-                    }
-                }
-            }
-
-            // Empty state — show recent/trending when no query
-            if (query.length < 2) {
-                // Recent searches
-                if (recentQueries.isNotEmpty()) {
-                    item(key = "recent_header") {
-                        SectionHeaderV2(
-                            title = "Recent Searches",
-                            action = "Clear",
-                            onAction = {
-                                SearchRepository.clearRecentQueries(context)
-                                recentQueries = emptyList()
+            if (query.length >= 2) {
+                ScrollableTabRow(
+                    selectedTabIndex = selectedTab.ordinal,
+                    containerColor = colors.background,
+                    contentColor = colors.primary,
+                    edgePadding = spacing.md,
+                ) {
+                    SearchTab.values().forEach { tab ->
+                        Tab(
+                            selected = selectedTab == tab,
+                            onClick = { viewModel.onTabSelected(tab) },
+                            text = {
+                                Text(
+                                    tab.name.lowercase().replaceFirstChar { it.uppercase() },
+                                    style = typography.labelMedium,
+                                )
                             },
                         )
                     }
-                    items(recentQueries, key = { "recent_$it" }) { q ->
+                }
+            }
+
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(vertical = spacing.md),
+            ) {
+                // Suggestion banner
+                displayResults.suggestion?.let { suggestion ->
+                    item(key = "suggestion") {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { viewModel.onQueryChange(suggestion, matches, news) }
+                                .padding(horizontal = spacing.lg, vertical = spacing.sm),
+                        ) {
+                            Text("Did you mean: ", style = typography.bodyMedium, color = colors.textSecondary)
+                            Text(
+                                suggestion,
+                                style = typography.bodyMedium,
+                                color = colors.primary,
+                                fontWeight = FontWeight.Bold,
+                            )
+                        }
+                    }
+                }
+
+                // Empty state — show recent/trending when no query
+                if (query.length < 2) {
+                    if (recentQueries.isNotEmpty()) {
+                        item(key = "recent_header") {
+                            SectionHeaderV2(
+                                title = "Recent Searches",
+                                action = "Clear",
+                                onAction = {
+                                    SearchRepository.clearRecentQueries(context)
+                                    recentQueries = emptyList()
+                                },
+                            )
+                        }
+                        items(recentQueries, key = { "recent_$it" }) { q ->
+                            SearchSuggestionRow(
+                                text = q,
+                                onClick = { viewModel.onQueryChange(q, matches, news) },
+                                icon = {
+                                    Icon(
+                                        Icons.Default.Search,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(18.dp),
+                                        tint = colors.textSecondary,
+                                    )
+                                },
+                            )
+                        }
+                        item(key = "recent_divider") {
+                            Spacer(Modifier.height(spacing.md))
+                        }
+                    }
+
+                    item(key = "trending_header") {
+                        SectionHeaderV2(title = "Trending")
+                    }
+                    items(SearchRepository.getTrendingSearches(), key = { "trend_$it" }) { trend ->
                         SearchSuggestionRow(
-                            text = q,
-                            onClick = { query = q },
-                            icon = { Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(18.dp), tint = colors.textSecondary) },
+                            text = trend,
+                            onClick = { viewModel.onQueryChange(trend, matches, news) },
+                            icon = {
+                                Icon(
+                                    Icons.Default.Star,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp),
+                                    tint = colors.primary,
+                                )
+                            },
                         )
                     }
-                    item(key = "recent_divider") {
-                        Spacer(Modifier.height(spacing.md))
+                    return@LazyColumn
+                }
+
+                // Empty results state
+                if (displayResults.isEmpty && query.length >= 2) {
+                    item(key = "no_results") {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(spacing.xxl),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                        ) {
+                            Text("No results found", style = typography.titleMedium, color = colors.onSurface)
+                            Spacer(Modifier.height(spacing.xs))
+                            Text(
+                                "Try a different search term",
+                                style = typography.bodyMedium,
+                                color = colors.textSecondary,
+                            )
+                        }
                     }
+                    return@LazyColumn
                 }
 
-                // Trending
-                item(key = "trending_header") {
-                    SectionHeaderV2(title = "Trending")
-                }
-                items(SearchRepository.getTrendingSearches(), key = { "trend_$it" }) { trend ->
-                    SearchSuggestionRow(
-                        text = trend,
-                        onClick = { query = trend },
-                        icon = { Icon(Icons.Default.Star, contentDescription = null, modifier = Modifier.size(18.dp), tint = colors.primary) },
-                    )
-                }
-                return@LazyColumn
-            }
-
-            // Search results — empty
-            if (results.isEmpty && query.length >= 2) {
-                item(key = "no_results") {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(spacing.xxl),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                    ) {
-                        Text("No results found", style = typography.titleMedium, color = colors.onSurface)
-                        Spacer(Modifier.height(spacing.xs))
-                        Text(
-                            "Try a different search term",
-                            style = typography.bodyMedium,
-                            color = colors.textSecondary,
+                // Match results
+                if (displayResults.matches.isNotEmpty()) {
+                    item(key = "matches_header") {
+                        SectionHeaderV2(title = "Matches (${displayResults.matches.size})")
+                    }
+                    items(displayResults.matches, key = { "m_${it.match.id}" }) { result ->
+                        MatchCardV2(
+                            match = result.match,
+                            onClick = {
+                                viewModel.onSearchSubmitted(context, query)
+                                onMatchClick(result.match)
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = spacing.lg, vertical = spacing.xs),
                         )
                     }
                 }
-                return@LazyColumn
-            }
 
-            // Match results
-            if (results.matches.isNotEmpty()) {
-                item(key = "matches_header") {
-                    SectionHeaderV2(title = "Matches (${results.matches.size})")
+                // Team results
+                if (displayResults.teams.isNotEmpty()) {
+                    item(key = "teams_header") {
+                        SectionHeaderV2(title = "Teams (${displayResults.teams.size})")
+                    }
+                    items(displayResults.teams, key = { "t_${it.teamName}" }) { result ->
+                        TeamSearchRow(
+                            teamName = result.teamName,
+                            acronym = result.teamAcronym,
+                            logoUrl = result.logoUrl,
+                            onClick = {
+                                viewModel.onSearchSubmitted(context, query)
+                                viewModel.onQueryChange(result.teamName, matches, news)
+                            },
+                        )
+                    }
                 }
-                items(results.matches, key = { "m_${it.match.id}" }) { result ->
-                    MatchCardV2(
-                        match = result.match,
-                        onClick = {
-                            SearchRepository.addRecentQuery(context, query)
-                            onMatchClick(result.match)
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = spacing.lg, vertical = spacing.xs),
-                    )
-                }
-            }
 
-            // Team results
-            if (results.teams.isNotEmpty()) {
-                item(key = "teams_header") {
-                    SectionHeaderV2(title = "Teams (${results.teams.size})")
+                // Player results
+                if (displayResults.players.isNotEmpty()) {
+                    item(key = "players_header") {
+                        SectionHeaderV2(title = "Players (${displayResults.players.size})")
+                    }
+                    items(displayResults.players, key = { "p_${it.playerName}" }) { result ->
+                        PlayerSearchRow(
+                            playerName = result.playerName,
+                            teamName = result.teamName,
+                            role = result.role,
+                            onClick = {
+                                viewModel.onSearchSubmitted(context, query)
+                                onPlayerClick(result.playerName)
+                            },
+                        )
+                    }
                 }
-                items(results.teams, key = { "t_${it.teamName}" }) { result ->
-                    TeamSearchRow(
-                        teamName = result.teamName,
-                        acronym = result.teamAcronym,
-                        logoUrl = result.logoUrl,
-                        onClick = {
-                            SearchRepository.addRecentQuery(context, query)
-                            query = result.teamName
-                        },
-                    )
-                }
-            }
 
-            // Player results
-            if (results.players.isNotEmpty()) {
-                item(key = "players_header") {
-                    SectionHeaderV2(title = "Players (${results.players.size})")
+                // News results
+                if (displayResults.news.isNotEmpty()) {
+                    item(key = "news_header") {
+                        SectionHeaderV2(title = "News (${displayResults.news.size})")
+                    }
+                    items(displayResults.news, key = { "n_${it.article.id}" }) { result ->
+                        NewsSearchRow(
+                            title = result.article.headline,
+                            source = result.article.source,
+                            onClick = {
+                                viewModel.onSearchSubmitted(context, query)
+                                onNewsClick(result.article)
+                            },
+                        )
+                    }
                 }
-                items(results.players, key = { "p_${it.playerName}" }) { result ->
-                    PlayerSearchRow(
-                        playerName = result.playerName,
-                        teamName = result.teamName,
-                        role = result.role,
-                        onClick = {
-                            SearchRepository.addRecentQuery(context, query)
-                            onPlayerClick(result.playerName)
-                        },
-                    )
-                }
-            }
 
-            // News results
-            if (results.news.isNotEmpty()) {
-                item(key = "news_header") {
-                    SectionHeaderV2(title = "News (${results.news.size})")
+                // Series / Tournament results
+                if (displayResults.series.isNotEmpty()) {
+                    item(key = "series_header") {
+                        SectionHeaderV2(title = "Tournaments (${displayResults.series.size})")
+                    }
+                    items(displayResults.series, key = { "s_${it.seriesId}" }) { result ->
+                        SeriesSearchRow(
+                            name = result.name,
+                            category = result.category,
+                            startDate = result.startDate,
+                            endDate = result.endDate,
+                            onClick = {
+                                viewModel.onSearchSubmitted(context, query)
+                                onSeriesClick(result.seriesId)
+                            },
+                        )
+                    }
                 }
-                items(results.news, key = { "n_${it.article.id}" }) { result ->
-                    NewsSearchRow(
-                        title = result.article.headline,
-                        source = result.article.source,
-                        onClick = {
-                            SearchRepository.addRecentQuery(context, query)
-                            onNewsClick(result.article)
-                        },
-                    )
-                }
-            }
 
-            // Bottom spacing
-            item(key = "bottom") { Spacer(Modifier.height(80.dp)) }
+                // Historical match results
+                if (displayResults.historicalMatches.isNotEmpty()) {
+                    item(key = "historical_header") {
+                        SectionHeaderV2(title = "Historical Matches (${displayResults.historicalMatches.size})")
+                    }
+                    items(displayResults.historicalMatches, key = { "h_${it.matchId}" }) { result ->
+                        HistoricalMatchSearchRow(
+                            matchTitle = result.matchTitle,
+                            teams = result.teams,
+                            venue = result.venue,
+                            date = result.date,
+                            season = result.season,
+                            matchType = result.matchType,
+                            onClick = { viewModel.onSearchSubmitted(context, query) },
+                        )
+                    }
+                }
+
+                item(key = "bottom") { Spacer(Modifier.height(80.dp)) }
+            }
         }
     }
 }
@@ -329,7 +415,7 @@ private fun SearchBarHeader(
                 Box(modifier = Modifier.weight(1f)) {
                     if (query.isEmpty()) {
                         Text(
-                            "Search matches, players, teams…",
+                            "Search matches, players, teams, tournaments…",
                             style = typography.bodyMedium,
                             color = colors.textSecondary,
                         )
@@ -473,6 +559,92 @@ private fun NewsSearchRow(
         Text(title, style = typography.bodyMedium, color = colors.onSurface, maxLines = 2)
         Spacer(Modifier.height(2.dp))
         Text(source, style = typography.bodySmall, color = colors.textSecondary)
+        HorizontalDivider(color = colors.divider, modifier = Modifier.padding(top = spacing.sm))
+    }
+}
+
+@Composable
+private fun SeriesSearchRow(
+    name: String,
+    category: String,
+    startDate: String,
+    endDate: String,
+    onClick: () -> Unit,
+) {
+    val colors = BouncerThemeV2.colors
+    val typography = BouncerThemeV2.typography
+    val spacing = BouncerThemeV2.spacing
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = spacing.lg, vertical = spacing.sm),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(32.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(colors.primaryContainer),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                category.take(1),
+                style = typography.labelSmall,
+                color = colors.primary,
+                fontWeight = FontWeight.Bold,
+            )
+        }
+        Spacer(Modifier.width(spacing.md))
+        Column {
+            Text(name, style = typography.bodyMedium, color = colors.onSurface, fontWeight = FontWeight.Medium, maxLines = 1)
+            val subtitle = if (startDate.isNotEmpty() && endDate.isNotEmpty()) "$startDate – $endDate" else category
+            Text(subtitle, style = typography.bodySmall, color = colors.textSecondary)
+        }
+    }
+}
+
+@Composable
+private fun HistoricalMatchSearchRow(
+    matchTitle: String,
+    teams: List<String>,
+    venue: String,
+    date: String,
+    season: String,
+    matchType: String,
+    onClick: () -> Unit,
+) {
+    val colors = BouncerThemeV2.colors
+    val typography = BouncerThemeV2.typography
+    val spacing = BouncerThemeV2.spacing
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = spacing.lg, vertical = spacing.sm),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                matchTitle,
+                style = typography.bodyMedium,
+                color = colors.onSurface,
+                fontWeight = FontWeight.Medium,
+                modifier = Modifier.weight(1f),
+                maxLines = 1,
+            )
+            Spacer(Modifier.width(spacing.xs))
+            Text(matchType, style = typography.labelSmall, color = colors.primary)
+        }
+        val meta = listOfNotNull(
+            venue.takeIf { it.isNotEmpty() },
+            season.takeIf { it.isNotEmpty() },
+            date.takeIf { it.isNotEmpty() },
+        ).joinToString(" · ")
+        if (meta.isNotEmpty()) {
+            Text(meta, style = typography.bodySmall, color = colors.textSecondary)
+        }
         HorizontalDivider(color = colors.divider, modifier = Modifier.padding(top = spacing.sm))
     }
 }

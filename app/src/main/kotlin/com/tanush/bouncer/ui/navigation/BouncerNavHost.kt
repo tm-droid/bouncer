@@ -252,6 +252,11 @@ private fun NavGraphBuilder.moreChildDestinations(
                     BouncerScreen.PlayerDetail.createRoute(playerName)
                 )
             },
+            onSeriesClick = { seriesId ->
+                navController.navigateForward(
+                    BouncerScreen.SeriesDetail.createRoute(seriesId)
+                )
+            },
             onNewsClick = { article ->
                 newsViewModel.selectArticle(article)
                 navController.navigateForward(
