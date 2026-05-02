@@ -62,7 +62,7 @@ class PlayerCacheWorker(
                 return Result.success()
             }
 
-            val profile = PlayerProfileScraper.scrapeProfile(firstResult.id) ?: run {
+            val profile = PlayerProfileScraper.scrapeProfile(firstResult.name) ?: run {
                 Log.d(TAG, "Could not scrape profile for '$playerName'")
                 Sentry.addBreadcrumb(Breadcrumb().apply {
                     category = "player_cache"
@@ -158,8 +158,9 @@ class PlayerCacheWorker(
                 .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS)
                 .build()
 
+            val playerId = playerName.lowercase().replace(" ", "_")
             WorkManager.getInstance(context).enqueueUniqueWork(
-                "player_cache_$playerName",
+                "player_cache_$playerId",
                 ExistingWorkPolicy.KEEP,
                 request
             )
