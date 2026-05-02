@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Transaction
 import com.tanush.bouncer.data.local.entities.PlayerCacheEntity
 
 @Dao
@@ -13,6 +14,10 @@ interface PlayerCacheDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(player: PlayerCacheEntity)
+
+    @Transaction
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertAll(players: List<PlayerCacheEntity>)
 
     @Query("SELECT lastUpdated FROM player_cache WHERE playerId = :id")
     suspend fun getLastUpdated(id: String): Long?

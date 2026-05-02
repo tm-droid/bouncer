@@ -15,8 +15,8 @@ data class PlayerCacheEntity(
     val lastUpdated: Long = System.currentTimeMillis()
 )
 
-@Fts4(contentEntity = PlayerCacheEntity::class)
 @Entity(tableName = "player_fts")
+@Fts4
 data class PlayerFtsEntity(
     val playerId: String,
     val name: String,

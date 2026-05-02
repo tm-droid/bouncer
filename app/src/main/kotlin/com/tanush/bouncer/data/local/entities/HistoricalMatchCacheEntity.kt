@@ -18,8 +18,8 @@ data class HistoricalMatchCacheEntity(
     val lastUpdated: Long = System.currentTimeMillis()
 )
 
-@Fts4(contentEntity = HistoricalMatchCacheEntity::class)
 @Entity(tableName = "historical_match_fts")
+@Fts4
 data class HistoricalMatchFtsEntity(
     val matchId: String,
     val matchTitle: String,
@@ -27,5 +27,6 @@ data class HistoricalMatchFtsEntity(
     val venue: String,
     val city: String,
     val season: String,
+    val matchType: String,
     val playerOfMatch: String
 )
