@@ -48,6 +48,26 @@ object SearchRepository {
             val article: NewsArticleData,
             override val relevanceScore: Double,
         ) : SearchResult()
+
+        data class SeriesResult(
+            val seriesId: String,
+            val name: String,
+            val category: String,
+            val startDate: String,
+            val endDate: String,
+            override val relevanceScore: Double,
+        ) : SearchResult()
+
+        data class HistoricalMatchResult(
+            val matchId: String,
+            val matchTitle: String,
+            val teams: List<String>,
+            val venue: String,
+            val date: String,
+            val season: String,
+            val matchType: String,
+            override val relevanceScore: Double,
+        ) : SearchResult()
     }
 
     data class SearchResults(
@@ -55,13 +75,16 @@ object SearchRepository {
         val teams: List<SearchResult.TeamResult> = emptyList(),
         val players: List<SearchResult.PlayerResult> = emptyList(),
         val news: List<SearchResult.NewsResult> = emptyList(),
+        val series: List<SearchResult.SeriesResult> = emptyList(),
+        val historicalMatches: List<SearchResult.HistoricalMatchResult> = emptyList(),
         val suggestion: String? = null,
     ) {
         val isEmpty: Boolean
             get() = matches.isEmpty() && teams.isEmpty() && players.isEmpty() && news.isEmpty()
+                        && series.isEmpty() && historicalMatches.isEmpty()
 
         val totalCount: Int
-            get() = matches.size + teams.size + players.size + news.size
+            get() = matches.size + teams.size + players.size + news.size + series.size + historicalMatches.size
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -94,6 +117,70 @@ object SearchRepository {
             news = newsResults.sortedByDescending { it.relevanceScore }.take(5),
             suggestion = suggestion,
         )
+    }
+
+    suspend fun searchFromDb(
+        query: String,
+        db: com.tanush.bouncer.data.local.BouncerDatabase,
+    ): Pair<List<SearchResult.SeriesResult>, List<SearchResult.HistoricalMatchResult>> = withContext(Dispatchers.IO) {
+        if (query.trim().length < 2) return@withContext Pair(emptyList(), emptyList())
+
+        // Build FTS query — wrap in quotes to search as a phrase, escape internal quotes
+        val ftsQuery = "\"${query.trim().replace("\"", "\"\"")}\""
+
+        val seriesResults = try {
+            db.seriesCacheDao().searchSeries(ftsQuery).map { entity ->
+                SearchResult.SeriesResult(
+                    seriesId = entity.seriesId,
+                    name = entity.name,
+                    category = entity.category,
+                    startDate = entity.startDate,
+                    endDate = entity.endDate,
+                    relevanceScore = 1.0,
+                )
+            }
+        } catch (e: Exception) {
+            emptyList()
+        }
+
+        val historicalResults = try {
+            db.historicalMatchCacheDao().searchHistoricalMatches(ftsQuery).map { entity ->
+                SearchResult.HistoricalMatchResult(
+                    matchId = entity.matchId,
+                    matchTitle = entity.matchTitle,
+                    teams = entity.teams.split(",").map { it.trim() }.filter { it.isNotEmpty() },
+                    venue = entity.venue,
+                    date = entity.date,
+                    season = entity.season,
+                    matchType = entity.matchType,
+                    relevanceScore = 1.0,
+                )
+            }
+        } catch (e: Exception) {
+            emptyList()
+        }
+
+        Pair(seriesResults, historicalResults)
+    }
+
+    suspend fun searchPlayersFromDb(
+        query: String,
+        db: com.tanush.bouncer.data.local.BouncerDatabase,
+    ): List<SearchResult.PlayerResult> = withContext(Dispatchers.IO) {
+        if (query.trim().length < 2) return@withContext emptyList()
+        val ftsQuery = "\"${query.trim().replace("\"", "\"\"")}\""
+        return@withContext try {
+            db.playerCacheDao().searchPlayers(ftsQuery).map { entity ->
+                SearchResult.PlayerResult(
+                    playerName = entity.name,
+                    teamName = entity.teamName,
+                    role = entity.role,
+                    relevanceScore = 1.0,
+                )
+            }
+        } catch (e: Exception) {
+            emptyList()
+        }
     }
 
     private fun searchMatches(query: String, matches: List<CricketMatch>): List<SearchResult.MatchResult> {
