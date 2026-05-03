@@ -1,6 +1,7 @@
 package com.tanush.bouncer.network
 
 import com.tanush.bouncer.models.CricbuzzNewsResponse
+import retrofit2.Response
 import retrofit2.http.GET
 import retrofit2.http.Header
 
@@ -13,5 +14,5 @@ interface CricbuzzNewsApi {
     suspend fun getNewsIndex(
         @Header("x-rapidapi-host") host: String = "cricbuzz-cricket.p.rapidapi.com",
         @Header("x-rapidapi-key") key: String = com.tanush.bouncer.BuildConfig.RAPIDAPI_KEY
-    ): CricbuzzNewsResponse
+    ): Response<CricbuzzNewsResponse>
 }

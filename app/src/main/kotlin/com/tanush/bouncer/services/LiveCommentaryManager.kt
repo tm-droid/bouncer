@@ -10,7 +10,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.launch
-import java.util.regex.Pattern
 import kotlin.math.max
 import kotlin.math.min
 
@@ -208,23 +207,7 @@ class LiveCommentaryManager(
     private fun updateHistory(resultValue: String, matchId: String? = null) {
         if (aiCommentaryHistory.lastOrNull() == resultValue) return
 
-        // CricBuzz sends progressive updates for the same ball (short → full).
-        // Replace any earlier entry for the same ball number with the newer (longer) text.
-        val ballNum = extractBallNumber(resultValue.trimStart())
-        if (ballNum != null) {
-            val idx = aiCommentaryHistory.indexOfLast { extractBallNumber(it.trimStart()) == ballNum }
-            if (idx >= 0) {
-                if (resultValue.length >= aiCommentaryHistory[idx].length) {
-                    aiCommentaryHistory[idx] = resultValue
-                }
-                // Whether we replaced or kept the longer one, skip adding a duplicate
-                // (still fall through to notification logic below)
-            } else {
-                aiCommentaryHistory.add(resultValue)
-            }
-        } else {
-            aiCommentaryHistory.add(resultValue)
-        }
+        CommentaryLineUtils.upsertLatestBallLine(aiCommentaryHistory, resultValue)
         
         // Notification Logic - MAGIC PRECISION
         try {
@@ -232,7 +215,7 @@ class LiveCommentaryManager(
             if (!scorer.isBallByBallCommentary(resultValue)) return
             
             // 2. Extract ball number (e.g., "18.5") to avoid duplicate notifications
-            val ballNum = extractBallNumber(resultValue)
+            val ballNum = CommentaryLineUtils.extractBallNumber(resultValue)
             val matchKey = matchId ?: "global"
             if (ballNum != null && lastNotifiedBallMap[matchKey] == ballNum) {
                 return // Already notified for this ball
@@ -268,12 +251,6 @@ class LiveCommentaryManager(
         }
     }
 
-    private fun extractBallNumber(text: String): String? {
-        val pattern = Pattern.compile("^(\\d{1,3}\\.\\d)")
-        val matcher = pattern.matcher(text)
-        return if (matcher.find()) matcher.group(1) else null
-    }
-
     private fun triggerAiInsight(commentary: String, matchId: String) {
         if (!aiInsightsEnabled) return
         val now = System.currentTimeMillis()
@@ -296,19 +273,8 @@ class LiveCommentaryManager(
      * Existing entries are not duplicated; newer/longer entries for the same ball replace older ones.
      */
     fun seedHistory(lines: List<String>) {
-        for (line in lines.filter { it.length > 5 }) {
-            if (aiCommentaryHistory.lastOrNull() == line) continue
-            val ballNum = extractBallNumber(line.trimStart())
-            if (ballNum != null) {
-                val idx = aiCommentaryHistory.indexOfLast { extractBallNumber(it.trimStart()) == ballNum }
-                if (idx >= 0) {
-                    if (line.length >= aiCommentaryHistory[idx].length) aiCommentaryHistory[idx] = line
-                } else {
-                    aiCommentaryHistory.add(line)
-                }
-            } else {
-                if (!aiCommentaryHistory.contains(line)) aiCommentaryHistory.add(line)
-            }
+        for (line in lines.reversed().filter { it.length > 5 }) {
+            CommentaryLineUtils.upsertLatestBallLine(aiCommentaryHistory, line)
         }
     }
 

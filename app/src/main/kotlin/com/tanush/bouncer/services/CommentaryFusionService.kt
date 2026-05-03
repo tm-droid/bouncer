@@ -14,18 +14,46 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.IOException
+import java.security.MessageDigest
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
 
 class CommentaryFusionService {
     // OpenRouter.ai settings
     private val apiUrl = "https://openrouter.ai/api/v1/chat/completions"
-    // Using free Gemma 3 12B via OpenRouter
-    private val model = "google/gemma-3-12b-it:free"
     // API key loaded from BuildConfig (set in local.properties)
     private val openRouterApiKey = BuildConfig.OPENROUTER_API_KEY
 
     private val client = com.tanush.bouncer.network.HttpClientProvider.sharedClient
+
+    private data class ModelRoute(
+        val agentName: String,
+        val modelIds: List<String>,
+        val temperature: Double? = null,
+        val maxTokens: Int = 512
+    )
+
+    // Keep a stable fallback in each route because some preferred free models are temporary.
+    private val fusionRoute = ModelRoute(
+        agentName = "openrouter_commentary_fusion",
+        modelIds = listOf(FUSION_PRIMARY_MODEL, STABLE_FALLBACK_MODEL),
+        temperature = 0.6,
+        maxTokens = 256
+    )
+
+    private val verificationRoute = ModelRoute(
+        agentName = "openrouter_commentary_verification",
+        modelIds = listOf(VERIFICATION_PRIMARY_MODEL, VERIFICATION_SECONDARY_MODEL, STABLE_FALLBACK_MODEL),
+        temperature = 0.0,
+        maxTokens = 16
+    )
+
+    private val summaryRoute = ModelRoute(
+        agentName = "openrouter_commentary_summary",
+        modelIds = listOf(SUMMARY_PRIMARY_MODEL, STABLE_FALLBACK_MODEL),
+        temperature = 0.4,
+        maxTokens = 256
+    )
 
     // ── Permanent failure detection ──────────────────────────────────────
     // A 402 "Insufficient credits" is a billing problem, not a transient
@@ -73,6 +101,16 @@ class CommentaryFusionService {
     }
 
     companion object {
+        private const val FUSION_PRIMARY_MODEL = "inclusionai/ling-2.6-1t:free"
+        private const val SUMMARY_PRIMARY_MODEL = "inclusionai/ling-2.6-1t:free"
+        private const val VERIFICATION_PRIMARY_MODEL = "tencent/hy3-preview:free"
+        private const val VERIFICATION_SECONDARY_MODEL = "openrouter/owl-alpha"
+        private const val STABLE_FALLBACK_MODEL = "google/gemma-3-12b-it:free"
+        private val leadingBallPrefixPattern = Regex("^\\d{1,3}\\.\\d\\s*[:,-]?\\s*")
+        private val commentaryLabelPattern = Regex("^(commentary|ball commentary|ai commentary)\\s*:\\s*", RegexOption.IGNORE_CASE)
+        private val comparisonNoisePattern = Regex("[^\\p{L}\\p{N}\\s]")
+        private val whitespacePattern = Regex("\\s+")
+
         const val FUSION_PROMPT_TEMPLATE = """
     You are a professional cricket commentator.
     Given the following ball-by-ball input and recent match context, write a single, natural-sounding commentary line for the current ball.
@@ -141,6 +179,69 @@ class CommentaryFusionService {
     - Otherwise, focus on clear, vivid, and accurate description of the current ball.
     - Avoid repetition and keep it concise.
     """
+
+        internal fun chooseDirectCommentary(snippet1: String, snippet2: String): String? {
+            val first = snippet1.trim()
+            val second = snippet2.trim()
+            if (first.isBlank() || second.isBlank()) return null
+
+            val ball1 = CommentaryLineUtils.extractBallNumber(first)
+            val ball2 = CommentaryLineUtils.extractBallNumber(second)
+            if (ball1 != null && ball2 != null && ball1 != ball2) return null
+
+            val normalizedFirst = normalizeForComparison(first)
+            val normalizedSecond = normalizeForComparison(second)
+            if (normalizedFirst.isBlank() || normalizedSecond.isBlank()) return null
+
+            if (normalizedFirst == normalizedSecond) {
+                return chooseFallbackCommentary(first, second)
+            }
+
+            val (longer, shorter) = if (normalizedFirst.length >= normalizedSecond.length) {
+                normalizedFirst to normalizedSecond
+            } else {
+                normalizedSecond to normalizedFirst
+            }
+            if (shorter.length >= 12 && longer.contains(shorter)) {
+                return chooseFallbackCommentary(first, second)
+            }
+
+            return null
+        }
+
+        internal fun chooseFallbackCommentary(snippet1: String, snippet2: String): String {
+            val first = snippet1.trim()
+            val second = snippet2.trim()
+            if (first.isBlank()) return second
+            if (second.isBlank()) return first
+
+            val firstNormalizedLength = normalizeForComparison(first).length
+            val secondNormalizedLength = normalizeForComparison(second).length
+            return when {
+                firstNormalizedLength > secondNormalizedLength -> first
+                secondNormalizedLength > firstNormalizedLength -> second
+                second.length > first.length -> second
+                else -> first
+            }
+        }
+
+        private fun normalizeForComparison(snippet: String): String {
+            return snippet
+                .trim()
+                .replace(commentaryLabelPattern, "")
+                .replace(leadingBallPrefixPattern, "")
+                .replace(comparisonNoisePattern, " ")
+                .replace(whitespacePattern, " ")
+                .lowercase()
+                .trim()
+        }
+
+        private fun cacheFingerprint(vararg parts: String): String {
+            val digest = MessageDigest.getInstance("SHA-256")
+            val input = parts.joinToString(separator = "\u0000")
+            return digest.digest(input.toByteArray(Charsets.UTF_8))
+                .joinToString(separator = "") { "%02x".format(it.toInt() and 0xff) }
+        }
     }
 
     // Rolling buffer of previous balls for each match
@@ -149,10 +250,7 @@ class CommentaryFusionService {
 
     fun addBallToBuffer(matchId: String, ball: String) {
         val buffer = previousBallsBuffer.getOrPut(matchId) { mutableListOf() }
-        buffer.add(ball)
-        if (buffer.size > maxBufferSize) {
-            buffer.removeAt(0)
-        }
+        CommentaryLineUtils.upsertLatestBallLine(buffer, ball, maxBufferSize)
     }
 
     fun getPreviousBalls(matchId: String): List<String> {
@@ -179,7 +277,7 @@ class CommentaryFusionService {
             .replace("{bowler}", bowler)
             .replace("{batsman}", batsman)
 
-        val verdict = callOpenRouter(model, verificationPrompt)
+        val verdict = callOpenRouter(verificationRoute, verificationPrompt)
         val passed = verdict?.trim()?.uppercase()?.startsWith("PASS") == true
         if (!passed) {
             Log.w("CommentaryFusionService", "Hallucination check FAILED — verdict: $verdict")
@@ -213,21 +311,32 @@ class CommentaryFusionService {
             setData("over", over)
             setData("ballNumber", ballNumber)
         })
-        
-        // Generate cache key based on context hash
-        val contextHash = (snippet1 + snippet2 + oversSummary).hashCode().toString()
-        val cacheKey = "ai_commentary:$matchId:$over:$contextHash"
-        
-        // Check cache first
-        val cached = AICacheService.getCommentary(cacheKey)
-        if (cached != null) {
-            return cached
-        }
 
         // Build previous balls context from rolling buffer
         val previousBalls = getPreviousBalls(matchId)
         val previousContext = if (previousBalls.isEmpty()) ""
             else "\nPrevious balls: ${previousBalls.joinToString(", ")}"
+        val cacheKey = "ai_commentary:$matchId:$over:${
+            cacheFingerprint(
+                snippet1,
+                snippet2,
+                oversSummary,
+                ballNumber,
+                bowler,
+                batsman,
+                scoreContext,
+                previousBalls.joinToString(" || ")
+            )
+        }"
+
+        chooseDirectCommentary(snippet1, snippet2)?.let { direct ->
+            return rememberFusionResult(matchId, cacheKey, direct)
+        }
+
+        val cached = AICacheService.getCommentary(cacheKey)
+        if (cached != null) {
+            return cached
+        }
 
         // Use single-source prompt when only one snippet is available
         val prompt = if (snippet1.isEmpty() || snippet2.isEmpty()) {
@@ -250,23 +359,19 @@ class CommentaryFusionService {
                 .replace("{previous_balls_context}", previousContext)
         }
 
-        val result = callOpenRouter(model, prompt)
-            ?: return "[AI Fused] $snippet1 / $snippet2" // Fallback if API fails
+        val result = callOpenRouter(fusionRoute, prompt)
+            ?: return rememberFusionResult(matchId, cacheKey, chooseFallbackCommentary(snippet1, snippet2))
 
         // Hallucination self-check: verify output against original sources
         val verified = verifyCommentary(result, snippet1, snippet2, ballNumber, bowler, batsman)
         if (!verified) {
             // Verification failed — fall back to best raw snippet
-            val fallback = snippet1.ifEmpty { snippet2 }
+            val fallback = chooseFallbackCommentary(snippet1, snippet2)
             Log.w("CommentaryFusionService", "Using raw snippet fallback after failed verification")
-            AICacheService.setCommentary(fallback, cacheKey)
-            return fallback
+            return rememberFusionResult(matchId, cacheKey, fallback)
         }
-        
-        // Cache the verified result
-        AICacheService.setCommentary(result, cacheKey)
-        
-        return result
+
+        return rememberFusionResult(matchId, cacheKey, result)
     }
 
     suspend fun summarizeOversWithAI(commentaryLines: List<String>, matchId: String, over: Int): String {
@@ -285,9 +390,7 @@ class CommentaryFusionService {
         val lines = commentaryLines.take(18)
         val context = lines.joinToString(" ")
         
-        // Generate cache key based on context hash
-        val contextHash = context.hashCode().toString()
-        val cacheKey = "ai_summary:$matchId:$over:$contextHash"
+        val cacheKey = "ai_summary:$matchId:$over:${cacheFingerprint(context, lines.size.toString())}"
         
         // Check cache first
         val cached = AICacheService.getCommentary(cacheKey)
@@ -304,7 +407,7 @@ class CommentaryFusionService {
         $numbered
         """
         
-        val result = callOpenRouter(model, prompt) ?: "[Summary unavailable]"
+        val result = callOpenRouter(summaryRoute, prompt) ?: "[Summary unavailable]"
         
         // Cache the result
         AICacheService.setCommentary(result, cacheKey)
@@ -312,24 +415,69 @@ class CommentaryFusionService {
         return result
     }
 
-    private suspend fun callOpenRouter(model: String, prompt: String): String? = withContext(Dispatchers.IO) {
+    private suspend fun rememberFusionResult(matchId: String, cacheKey: String, commentary: String): String {
+        val normalized = commentary.trim()
+        if (normalized.isNotBlank()) {
+            addBallToBuffer(matchId, normalized)
+            AICacheService.setCommentary(normalized, cacheKey)
+        }
+        return normalized
+    }
+
+    private suspend fun callOpenRouter(route: ModelRoute, prompt: String): String? {
+        route.modelIds.forEachIndexed { index, modelId ->
+            if (index > 0) {
+                Log.i("CommentaryFusionService", "Retrying ${route.agentName} with fallback model: $modelId")
+                Sentry.addBreadcrumb(Breadcrumb().apply {
+                    category = "service.commentary"
+                    message = "Retrying OpenRouter call with fallback model"
+                    level = SentryLevel.INFO
+                    setData("agentName", route.agentName)
+                    setData("model", modelId)
+                    setData("attempt", index + 1)
+                })
+            }
+
+            val result = callOpenRouter(
+                model = modelId,
+                prompt = prompt,
+                agentName = route.agentName,
+                temperature = route.temperature,
+                maxTokens = route.maxTokens
+            )
+            if (result != null) return result
+        }
+
+        return null
+    }
+
+    private suspend fun callOpenRouter(
+        model: String,
+        prompt: String,
+        agentName: String,
+        temperature: Double? = null,
+        maxTokens: Int = 512
+    ): String? = withContext(Dispatchers.IO) {
         // ── Short-circuit if API is known-broken ─────────────────────────
         if (isApiDisabled()) {
             Log.d("CommentaryFusionService", "API disabled (permanent failure) — returning null")
             return@withContext null
         }
 
-        SentryAiSpans.withAgentInvocation(agentName = "openrouter_commentary_fusion", model = model) { tx ->
+        SentryAiSpans.withAgentInvocation(agentName = agentName, model = model) { tx ->
             Log.d("CommentaryFusionService", "Using model: $model")
             tx.setData("gen_ai.request.model", model)
             tx.setData("gen_ai.request.provider", "openrouter")
             tx.setData("gen_ai.request.prompt_length", prompt.length)
+            temperature?.let { tx.setData("gen_ai.request.temperature", it) }
+            tx.setData("gen_ai.request.max_tokens", maxTokens)
 
             Sentry.addBreadcrumb(Breadcrumb().apply {
                 category = "service.commentary"
                 message = "Calling OpenRouter API"
                 level = SentryLevel.INFO
                 setData("model", model)
+                setData("agentName", agentName)
             })
 
             val jsonBody = JSONObject()
@@ -340,7 +488,8 @@ class CommentaryFusionService {
             messageObj.put("content", prompt)
             messagesArray.put(messageObj)
             jsonBody.put("messages", messagesArray)
-            jsonBody.put("max_tokens", 512)
+            jsonBody.put("max_tokens", maxTokens)
+            temperature?.let { jsonBody.put("temperature", it) }
 
             val requestBody = jsonBody.toString().toRequestBody("application/json; charset=utf-8".toMediaType())
 
@@ -361,7 +510,7 @@ class CommentaryFusionService {
                         Sentry.metrics().count("ai.request.error", 1.0)
                         Sentry.logger().warn("OpenRouter request failed: status=%s", code.toString())
 
-                        if (code in listOf(401, 402, 403)) {
+                        if (code == 401 || code == 402) {
                             markApiPermanentlyFailed(code, errorBody)
                             return@withAgentInvocation null
                         }

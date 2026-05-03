@@ -3,6 +3,7 @@ package com.tanush.bouncer.viewmodels
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.tanush.bouncer.BuildConfig
 import com.tanush.bouncer.models.NewsArticleData
 import com.tanush.bouncer.network.RetrofitClient
 import io.sentry.Breadcrumb
@@ -34,6 +35,13 @@ class NewsViewModel : ViewModel() {
         // Minimum interval between user-triggered refreshes
         private const val MIN_REFRESH_INTERVAL_MS = 5 * 60 * 1000L
         private const val USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+
+        private fun newsFetchMessageFor(statusCode: Int): String = when (statusCode) {
+            401, 403 -> "News is temporarily unavailable."
+            429 -> "News is temporarily rate limited. Please try again later."
+            in 500..599 -> "News service is unavailable. Please try again later."
+            else -> "Failed to load news."
+        }
     }
 
     private val _articles = MutableStateFlow<List<NewsArticleData>>(emptyList())
@@ -87,8 +95,47 @@ class NewsViewModel : ViewModel() {
                 }
                 _error.value = null
 
+                if (BuildConfig.RAPIDAPI_KEY.isBlank()) {
+                    Log.w(TAG, "Skipping news fetch because RAPIDAPI_KEY is empty")
+                    Sentry.addBreadcrumb(Breadcrumb().apply {
+                        category = "news.fetch"
+                        message = "Skipped news fetch because RapidAPI key is missing"
+                        level = SentryLevel.WARNING
+                    })
+                    Sentry.metrics().count("news.fetch.skipped.missing_key", 1.0)
+                    _error.value = "News is unavailable in this build."
+                    return@launch
+                }
+
                 val response = RetrofitClient.cricbuzzNewsApi.getNewsIndex()
-                val stories = response.storyList
+                if (!response.isSuccessful) {
+                    val statusCode = response.code()
+                    Log.w(TAG, "News API returned HTTP $statusCode")
+                    Sentry.addBreadcrumb(Breadcrumb().apply {
+                        category = "news.fetch"
+                        message = "News API returned a handled HTTP error"
+                        level = SentryLevel.WARNING
+                        setData("status_code", statusCode)
+                    })
+                    Sentry.metrics().count("news.fetch.http_error", 1.0)
+                    _error.value = newsFetchMessageFor(statusCode)
+                    return@launch
+                }
+
+                val responseBody = response.body()
+                if (responseBody == null) {
+                    Log.w(TAG, "News API returned an empty response body")
+                    Sentry.addBreadcrumb(Breadcrumb().apply {
+                        category = "news.fetch"
+                        message = "News API returned an empty body"
+                        level = SentryLevel.WARNING
+                    })
+                    Sentry.metrics().count("news.fetch.empty_body", 1.0)
+                    _error.value = "News is temporarily unavailable."
+                    return@launch
+                }
+
+                val stories = responseBody.storyList
                     .mapNotNull { it.story }
                     .mapIndexed { index, story ->
                         NewsArticleData.fromCricbuzzStory(story, isFirst = index == 0)

@@ -45,7 +45,9 @@ internal fun normalizeNextFlightPayload(rawPayload: String): String? {
 
 internal fun unwrapNextFlightPayload(scriptContent: String): String? {
     val jsonElement = try {
-        JsonParser.parseString(scriptContent)
+        val reader = com.google.gson.stream.JsonReader(java.io.StringReader(scriptContent))
+        reader.isLenient = true
+        JsonParser.parseReader(reader)
     } catch (_: Exception) {
         return null
     }
@@ -235,7 +237,9 @@ class CricBuzzScraper {
                 val nextPayload = unwrapNextFlightPayload(scriptContent)
                 if (nextPayload != null) {
                     try {
-                        val data = JsonParser.parseString(nextPayload)
+                        val reader = com.google.gson.stream.JsonReader(java.io.StringReader(nextPayload))
+                        reader.isLenient = true
+                        val data = JsonParser.parseReader(reader)
                         matches.addAll(findMatchesInJson(data))
                     } catch (e: Exception) {
                         Log.d(TAG, "Skipping unparseable Next.js data segment", e)
@@ -524,9 +528,13 @@ class CricBuzzScraper {
 
             val recentBalls = mutableListOf<String>()
             val overNumbers = mutableListOf<String>()
-            doc.select("div.cb-min-rcnt span").forEach { 
+            doc.select("div.cb-min-rcnt span").forEach {
                 val text = it.text().trim()
                 if (text.isNotEmpty()) recentBalls.add(text)
+            }
+            // Fallback: extract recent balls from Next.js RSC data when legacy selector returns nothing
+            if (recentBalls.isEmpty()) {
+                recentBalls.addAll(parseRecentBallsFromNextJs(doc.html()))
             }
             
             val score = doc.select("span.cb-font-20.text-bold").first()?.text() ?: 
@@ -604,7 +612,9 @@ class CricBuzzScraper {
     }
 
     /**
-     * Enhanced Commentary Extraction with multi-source fallback.
+     * Commentary extraction from Cricbuzz live scores page.
+     * Parses commText entries from the embedded Next.js RSC payload.
+     * Returns lines newest-first (highest timestamp first).
      */
     suspend fun fetchLiveCommentary(matchUrl: String): List<String> = withContext(Dispatchers.IO) {
         Sentry.addBreadcrumb(Breadcrumb().apply {
@@ -613,24 +623,36 @@ class CricBuzzScraper {
             level = SentryLevel.INFO
             setData("url", matchUrl)
         })
-        
+
         try {
             val doc = Jsoup.connect(matchUrl).userAgent(USER_AGENT).timeout(12000).get()
+            val html = doc.html()
+
+            // Primary: Next.js RSC payload contains commText entries
+            val nextJsLines = parseCommentaryFromNextJs(html)
+            if (nextJsLines.isNotEmpty()) {
+                Log.d(TAG, "Fetched ${nextJsLines.size} commentary lines from Next.js RSC data")
+                Sentry.addBreadcrumb(Breadcrumb().apply {
+                    category = "network.cricbuzz"
+                    message = "Successfully fetched commentary from Next.js RSC"
+                    level = SentryLevel.INFO
+                    setData("linesCount", nextJsLines.size)
+                })
+                return@withContext nextJsLines.filter { it.length > 5 }
+            }
+
+            // Fallback: legacy CSS selectors (kept for unexpected DOM rollbacks)
             val lines = mutableListOf<String>()
-            
             doc.select("p.cb-com-ln").forEach { lines.add(it.text().trim()) }
             doc.select("div.cb-col.cb-col-100.cb-com-ln").forEach { lines.add(it.text().trim()) }
-            doc.select("div.flex.gap-4.border-dotted").forEach { lines.add(it.text().trim()) }
 
-            Log.d(TAG, "Fetched ${lines.size} commentary lines from Cricbuzz")
-            
+            Log.d(TAG, "Fetched ${lines.size} commentary lines from legacy CSS selectors")
             Sentry.addBreadcrumb(Breadcrumb().apply {
                 category = "network.cricbuzz"
                 message = "Successfully fetched commentary"
                 level = SentryLevel.INFO
                 setData("linesCount", lines.size)
             })
-            
             lines.filter { it.length > 5 }.distinct()
         } catch (e: Exception) {
             Log.e(TAG, "Error fetching Cricbuzz commentary", e)
@@ -643,6 +665,134 @@ class CricBuzzScraper {
             })
             Sentry.captureException(e)
             emptyList()
+        }
+    }
+
+    /**
+     * Parses commentary entries from Cricbuzz's Next.js RSC payload.
+     * Cricbuzz embeds per-ball commentaryPageData.matchCommentary in the page.
+     * Each entry has commText + timestamp (ms). Returns newest-first.
+     */
+    private fun parseCommentaryFromNextJs(html: String): List<String> {
+        val results = mutableListOf<Pair<Long, String>>()
+        val startMarker = "self.__next_f.push("
+        var startIndex = 0
+
+        while (true) {
+            val idx = html.indexOf(startMarker, startIndex)
+            if (idx == -1) break
+            val openParenIdx = idx + startMarker.length - 1
+            var parenCount = 0
+            var inString = false
+            var escape = false
+            var endIdx = -1
+            for (i in openParenIdx until html.length) {
+                val char = html[i]
+                if (escape) { escape = false; continue }
+                if (char == '\\') { escape = true; continue }
+                if (char == '"') { inString = !inString; continue }
+                if (!inString) {
+                    if (char == '(') parenCount++
+                    else if (char == ')') { parenCount--; if (parenCount == 0) { endIdx = i; break } }
+                }
+            }
+            if (endIdx != -1) {
+                val scriptContent = html.substring(openParenIdx + 1, endIdx)
+                val nextPayload = unwrapNextFlightPayload(scriptContent)
+                if (nextPayload != null) {
+                    try {
+                        val reader = com.google.gson.stream.JsonReader(java.io.StringReader(nextPayload))
+                        reader.isLenient = true
+                        val data = JsonParser.parseReader(reader)
+                        findCommentaryInJson(data, results)
+                    } catch (_: Exception) { }
+                }
+                startIndex = endIdx + 1
+            } else {
+                startIndex = idx + 1
+            }
+        }
+
+        return results.sortedByDescending { it.first }.map { it.second }
+    }
+
+    /**
+     * Extracts recent balls for the current/last over from Cricbuzz Next.js RSC payload.
+     * Looks for overSeparator.overSummary (space-separated: "0 0 1 0 0 0 ").
+     * Returns empty list if not found.
+     */
+    private fun parseRecentBallsFromNextJs(html: String): List<String> {
+        val overData = mutableListOf<Pair<Long, String>>() // timestamp → overSummary
+        val startMarker = "self.__next_f.push("
+        var startIndex = 0
+
+        while (true) {
+            val idx = html.indexOf(startMarker, startIndex)
+            if (idx == -1) break
+            val openParenIdx = idx + startMarker.length - 1
+            var parenCount = 0; var inString = false; var escape = false; var endIdx = -1
+            for (i in openParenIdx until html.length) {
+                val char = html[i]
+                if (escape) { escape = false; continue }
+                if (char == '\\') { escape = true; continue }
+                if (char == '"') { inString = !inString; continue }
+                if (!inString) {
+                    if (char == '(') parenCount++
+                    else if (char == ')') { parenCount--; if (parenCount == 0) { endIdx = i; break } }
+                }
+            }
+            if (endIdx != -1) {
+                val scriptContent = html.substring(openParenIdx + 1, endIdx)
+                val nextPayload = unwrapNextFlightPayload(scriptContent)
+                if (nextPayload != null) {
+                    try {
+                        val reader = com.google.gson.stream.JsonReader(java.io.StringReader(nextPayload))
+                        reader.isLenient = true
+                        findOverSummaryInJson(JsonParser.parseReader(reader), overData)
+                    } catch (_: Exception) { }
+                }
+                startIndex = endIdx + 1
+            } else {
+                startIndex = idx + 1
+            }
+        }
+
+        if (overData.isEmpty()) return emptyList()
+        val latestSummary = overData.maxByOrNull { it.first }?.second ?: return emptyList()
+        return latestSummary.trim().split(" ").filter { it.isNotBlank() }
+    }
+
+    private fun findCommentaryInJson(element: JsonElement, results: MutableList<Pair<Long, String>>) {
+        if (element.isJsonObject) {
+            val obj = element.asJsonObject
+            if (obj.has("commText") && obj.has("timestamp")) {
+                try {
+                    val commText = obj.get("commText").asString
+                    val timestamp = obj.get("timestamp").asLong
+                    if (commText.isNotBlank()) results.add(timestamp to commText)
+                } catch (_: Exception) { }
+            }
+            obj.keySet().forEach { findCommentaryInJson(obj.get(it), results) }
+        } else if (element.isJsonArray) {
+            element.asJsonArray.forEach { findCommentaryInJson(it, results) }
+        }
+    }
+
+    private fun findOverSummaryInJson(element: JsonElement, results: MutableList<Pair<Long, String>>) {
+        if (element.isJsonObject) {
+            val obj = element.asJsonObject
+            // overSeparator objects contain overNumber, overSummary, and a timestamp key
+            if (obj.has("overSummary") && obj.has("overNumber")) {
+                try {
+                    val summary = obj.get("overSummary").asString
+                    // Timestamp may be in the parent; use overNumber as ordering proxy
+                    val orderKey = obj.get("overNumber").asLong
+                    if (summary.isNotBlank()) results.add(orderKey to summary)
+                } catch (_: Exception) { }
+            }
+            obj.keySet().forEach { findOverSummaryInJson(obj.get(it), results) }
+        } else if (element.isJsonArray) {
+            element.asJsonArray.forEach { findOverSummaryInJson(it, results) }
         }
     }
 
