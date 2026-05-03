@@ -1,12 +1,15 @@
 package com.tanush.bouncer.ui.screens.matchdetail.v2
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -15,6 +18,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
@@ -26,7 +30,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.tanush.bouncer.ui.components.v2.EmptyStateV2
 import com.tanush.bouncer.ui.components.v2.FilterChipRowV2
@@ -128,7 +134,7 @@ fun CommentaryTabV2(
 
             // Commentary lines — use index in key to avoid duplicate key crashes
             items(filteredCommentary.size, key = { idx -> "comm_${selectedFilter}_$idx" }) { idx ->
-                CommentaryLine(filteredCommentary[idx])
+                CommentaryLine(filteredCommentary[idx], modifier = Modifier.animateItem())
             }
 
             item(key = "bottom") { Spacer(Modifier.height(spacing.xxl)) }
@@ -137,7 +143,7 @@ fun CommentaryTabV2(
 }
 
 @Composable
-private fun CommentaryLine(line: String) {
+private fun CommentaryLine(line: String, modifier: Modifier = Modifier) {
     val colors = BouncerThemeV2.colors
     val typography = BouncerThemeV2.typography
     val spacing = BouncerThemeV2.spacing
@@ -158,65 +164,81 @@ private fun CommentaryLine(line: String) {
         upper.contains(", OUT,") || Regex("\\bCATCH\\b").containsMatchIn(wicketText) ||
         Regex("\\bBOWLED\\b").containsMatchIn(upper) || Regex("\\bLBW\\b").containsMatchIn(upper) ||
         Regex("\\bRUN OUT\\b").containsMatchIn(upper) || Regex("\\bSTUMPED\\b").containsMatchIn(upper)
-    val isBoundary = Regex("\\bFOUR\\b").containsMatchIn(upper) || Regex("\\bSIX\\b").containsMatchIn(upper)
+    val isSix = Regex("\\bSIX\\b").containsMatchIn(upper)
+    val isBoundary = Regex("\\bFOUR\\b").containsMatchIn(upper) || isSix
 
-    // Highlight background for key events
-    val bgColor = when {
-        isWicket -> colors.live.copy(alpha = 0.08f)
-        isBoundary -> colors.win.copy(alpha = 0.08f)
-        else -> androidx.compose.ui.graphics.Color.Transparent
+    val accentColor = when {
+        isWicket -> colors.live
+        isSix -> colors.primary
+        isBoundary -> colors.win
+        else -> Color.Transparent
     }
 
-    Column(
-        modifier = Modifier
+    var expanded by remember { mutableStateOf(false) }
+
+    Row(
+        modifier = modifier
             .fillMaxWidth()
-            .background(bgColor)
-            .padding(horizontal = spacing.lg, vertical = spacing.sm),
+            .height(IntrinsicSize.Min)
+            .clickable { expanded = !expanded },
     ) {
-        Row(verticalAlignment = Alignment.Top) {
-            // Over number badge
-            if (overNumber != null) {
-                Box(
-                    modifier = Modifier
-                        .size(width = 36.dp, height = 24.dp)
-                        .clip(RoundedCornerShape(4.dp))
-                        .background(colors.surfaceVariant),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        text = overNumber,
-                        style = typography.labelSmall,
-                        color = colors.onSurface,
-                        fontWeight = FontWeight.Bold,
-                    )
+        Box(
+            modifier = Modifier
+                .width(3.dp)
+                .fillMaxHeight()
+                .background(accentColor),
+        )
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(horizontal = spacing.lg, vertical = spacing.sm),
+        ) {
+            Row(verticalAlignment = Alignment.Top) {
+                // Over number badge
+                if (overNumber != null) {
+                    Box(
+                        modifier = Modifier
+                            .size(width = 36.dp, height = 24.dp)
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(colors.surfaceVariant),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = overNumber,
+                            style = typography.labelSmall,
+                            color = colors.onSurface,
+                            fontWeight = FontWeight.Bold,
+                        )
+                    }
+                    Spacer(Modifier.width(spacing.sm))
                 }
-                Spacer(Modifier.width(spacing.sm))
-            }
 
-            // Event badge
-            if (isWicket) {
-                EventPill(text = "W", color = colors.live)
-                Spacer(Modifier.width(spacing.sm))
-            } else if (isBoundary) {
-                val isSix = cleanLine.uppercase().contains("SIX")
-                EventPill(
-                    text = if (isSix) "6" else "4",
-                    color = if (isSix) BouncerThemeV2.colors.primary else BouncerThemeV2.colors.win,
+                // Event badge
+                if (isWicket) {
+                    EventPill(text = "W", color = colors.live)
+                    Spacer(Modifier.width(spacing.sm))
+                } else if (isBoundary) {
+                    EventPill(
+                        text = if (isSix) "6" else "4",
+                        color = if (isSix) BouncerThemeV2.colors.primary else BouncerThemeV2.colors.win,
+                    )
+                    Spacer(Modifier.width(spacing.sm))
+                }
+
+                Text(
+                    text = commentaryText,
+                    style = typography.bodySmall,
+                    color = colors.onSurface,
+                    modifier = Modifier.weight(1f),
+                    maxLines = if (expanded) Int.MAX_VALUE else 3,
+                    overflow = TextOverflow.Ellipsis,
                 )
-                Spacer(Modifier.width(spacing.sm))
             }
-
-            Text(
-                text = commentaryText,
-                style = typography.bodySmall,
-                color = colors.onSurface,
-                modifier = Modifier.weight(1f),
+            HorizontalDivider(
+                color = colors.divider,
+                modifier = Modifier.padding(top = spacing.sm),
             )
         }
-        HorizontalDivider(
-            color = colors.divider,
-            modifier = Modifier.padding(top = spacing.sm),
-        )
     }
 }
 
@@ -224,8 +246,8 @@ private fun CommentaryLine(line: String) {
 private fun EventPill(text: String, color: androidx.compose.ui.graphics.Color) {
     Box(
         modifier = Modifier
-            .size(24.dp)
-            .clip(RoundedCornerShape(4.dp))
+            .size(36.dp)
+            .clip(CircleShape)
             .background(color),
         contentAlignment = Alignment.Center,
     ) {

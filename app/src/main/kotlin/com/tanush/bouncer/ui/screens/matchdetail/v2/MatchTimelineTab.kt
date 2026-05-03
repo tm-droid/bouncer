@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -64,7 +65,7 @@ fun MatchTimelineTab(
             "Wickets" -> events.filter { it.type == TimelineEventType.WICKET }
             "Boundaries" -> events.filter { it.type == TimelineEventType.FOUR || it.type == TimelineEventType.SIX }
             "Milestones" -> events.filter { it.type == TimelineEventType.MILESTONE }
-            else -> events.filter { it.type != TimelineEventType.OVER_END }
+            else -> events
         }
     }
 
@@ -88,7 +89,11 @@ fun MatchTimelineTab(
                 items(filteredEvents.size, key = { "event_$it" }) { index ->
                     val event = filteredEvents[index]
                     val isLast = index == filteredEvents.lastIndex
-                    TimelineEventRow(event = event, isLast = isLast)
+                    if (event.type == TimelineEventType.OVER_END) {
+                        OverEndDivider(event = event, modifier = Modifier.animateItem())
+                    } else {
+                        TimelineEventRow(event = event, isLast = isLast, modifier = Modifier.animateItem())
+                    }
                 }
                 item { Spacer(Modifier.height(spacing.xxl)) }
             }
@@ -97,7 +102,7 @@ fun MatchTimelineTab(
 }
 
 @Composable
-private fun TimelineEventRow(event: TimelineEvent, isLast: Boolean) {
+private fun TimelineEventRow(event: TimelineEvent, isLast: Boolean, modifier: Modifier = Modifier) {
     val colors = BouncerThemeV2.colors
     val typography = BouncerThemeV2.typography
     val spacing = BouncerThemeV2.spacing
@@ -106,17 +111,17 @@ private fun TimelineEventRow(event: TimelineEvent, isLast: Boolean) {
         TimelineEventType.WICKET -> colors.live
         TimelineEventType.SIX -> colors.primary
         TimelineEventType.FOUR -> colors.win
-        TimelineEventType.MILESTONE -> colors.primaryContainer
+        TimelineEventType.MILESTONE -> Color(0xFF6650A4)
         TimelineEventType.OVER_END -> colors.divider
         else -> colors.textSecondary
     }
 
-    val dotSize = 12.dp
+    val dotSize = 20.dp
     val lineWidth = 2.dp
-    val timelineColumnWidth = 32.dp
+    val timelineColumnWidth = 40.dp
 
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .padding(vertical = spacing.xs),
     ) {
@@ -155,7 +160,7 @@ private fun TimelineEventRow(event: TimelineEvent, isLast: Boolean) {
                 .weight(1f)
                 .padding(bottom = spacing.xs),
             shape = RoundedCornerShape(spacing.sm),
-            color = colors.surfaceVariant.copy(alpha = 0.5f),
+            color = colors.surfaceVariant,
             tonalElevation = 0.dp,
         ) {
             Column(
@@ -164,7 +169,7 @@ private fun TimelineEventRow(event: TimelineEvent, isLast: Boolean) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = event.title,
-                        style = typography.labelLarge,
+                        style = typography.titleSmall,
                         fontWeight = FontWeight.Bold,
                         color = dotColor,
                         modifier = Modifier.weight(1f),
@@ -181,11 +186,34 @@ private fun TimelineEventRow(event: TimelineEvent, isLast: Boolean) {
                 Text(
                     text = event.description,
                     style = typography.bodySmall,
-                    color = colors.onSurface,
+                    color = colors.textSecondary,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun OverEndDivider(event: TimelineEvent, modifier: Modifier = Modifier) {
+    val colors = BouncerThemeV2.colors
+    val typography = BouncerThemeV2.typography
+    val spacing = BouncerThemeV2.spacing
+
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(vertical = spacing.xs),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        HorizontalDivider(modifier = Modifier.weight(1f), color = colors.divider)
+        Text(
+            text = event.title,
+            style = typography.labelSmall,
+            color = colors.textSecondary.copy(alpha = 0.5f),
+            modifier = Modifier.padding(horizontal = spacing.sm),
+        )
+        HorizontalDivider(modifier = Modifier.weight(1f), color = colors.divider)
     }
 }
