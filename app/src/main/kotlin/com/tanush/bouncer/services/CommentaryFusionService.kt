@@ -20,12 +20,39 @@ import java.util.concurrent.atomic.AtomicLong
 class CommentaryFusionService {
     // OpenRouter.ai settings
     private val apiUrl = "https://openrouter.ai/api/v1/chat/completions"
-    // Using free Gemma 3 12B via OpenRouter
-    private val model = "google/gemma-3-12b-it:free"
     // API key loaded from BuildConfig (set in local.properties)
     private val openRouterApiKey = BuildConfig.OPENROUTER_API_KEY
 
     private val client = com.tanush.bouncer.network.HttpClientProvider.sharedClient
+
+    private data class ModelRoute(
+        val agentName: String,
+        val modelIds: List<String>,
+        val temperature: Double? = null,
+        val maxTokens: Int = 512
+    )
+
+    // Keep a stable fallback in each route because some preferred free models are temporary.
+    private val fusionRoute = ModelRoute(
+        agentName = "openrouter_commentary_fusion",
+        modelIds = listOf(FUSION_PRIMARY_MODEL, STABLE_FALLBACK_MODEL),
+        temperature = 0.6,
+        maxTokens = 256
+    )
+
+    private val verificationRoute = ModelRoute(
+        agentName = "openrouter_commentary_verification",
+        modelIds = listOf(VERIFICATION_PRIMARY_MODEL, VERIFICATION_SECONDARY_MODEL, STABLE_FALLBACK_MODEL),
+        temperature = 0.0,
+        maxTokens = 16
+    )
+
+    private val summaryRoute = ModelRoute(
+        agentName = "openrouter_commentary_summary",
+        modelIds = listOf(SUMMARY_PRIMARY_MODEL, STABLE_FALLBACK_MODEL),
+        temperature = 0.4,
+        maxTokens = 256
+    )
 
     // ── Permanent failure detection ──────────────────────────────────────
     // A 402 "Insufficient credits" is a billing problem, not a transient
@@ -73,6 +100,12 @@ class CommentaryFusionService {
     }
 
     companion object {
+        private const val FUSION_PRIMARY_MODEL = "inclusionai/ling-2.6-1t:free"
+        private const val SUMMARY_PRIMARY_MODEL = "inclusionai/ling-2.6-1t:free"
+        private const val VERIFICATION_PRIMARY_MODEL = "tencent/hy3-preview:free"
+        private const val VERIFICATION_SECONDARY_MODEL = "openrouter/owl-alpha"
+        private const val STABLE_FALLBACK_MODEL = "google/gemma-3-12b-it:free"
+
         const val FUSION_PROMPT_TEMPLATE = """
     You are a professional cricket commentator.
     Given the following ball-by-ball input and recent match context, write a single, natural-sounding commentary line for the current ball.
@@ -179,7 +212,7 @@ class CommentaryFusionService {
             .replace("{bowler}", bowler)
             .replace("{batsman}", batsman)
 
-        val verdict = callOpenRouter(model, verificationPrompt)
+        val verdict = callOpenRouter(verificationRoute, verificationPrompt)
         val passed = verdict?.trim()?.uppercase()?.startsWith("PASS") == true
         if (!passed) {
             Log.w("CommentaryFusionService", "Hallucination check FAILED — verdict: $verdict")
@@ -250,7 +283,7 @@ class CommentaryFusionService {
                 .replace("{previous_balls_context}", previousContext)
         }
 
-        val result = callOpenRouter(model, prompt)
+            val result = callOpenRouter(fusionRoute, prompt)
             ?: return "[AI Fused] $snippet1 / $snippet2" // Fallback if API fails
 
         // Hallucination self-check: verify output against original sources
@@ -304,7 +337,7 @@ class CommentaryFusionService {
         $numbered
         """
         
-        val result = callOpenRouter(model, prompt) ?: "[Summary unavailable]"
+        val result = callOpenRouter(summaryRoute, prompt) ?: "[Summary unavailable]"
         
         // Cache the result
         AICacheService.setCommentary(result, cacheKey)
@@ -312,24 +345,60 @@ class CommentaryFusionService {
         return result
     }
 
-    private suspend fun callOpenRouter(model: String, prompt: String): String? = withContext(Dispatchers.IO) {
+    private suspend fun callOpenRouter(route: ModelRoute, prompt: String): String? {
+        route.modelIds.forEachIndexed { index, modelId ->
+            if (index > 0) {
+                Log.i("CommentaryFusionService", "Retrying ${route.agentName} with fallback model: $modelId")
+                Sentry.addBreadcrumb(Breadcrumb().apply {
+                    category = "service.commentary"
+                    message = "Retrying OpenRouter call with fallback model"
+                    level = SentryLevel.INFO
+                    setData("agentName", route.agentName)
+                    setData("model", modelId)
+                    setData("attempt", index + 1)
+                })
+            }
+
+            val result = callOpenRouter(
+                model = modelId,
+                prompt = prompt,
+                agentName = route.agentName,
+                temperature = route.temperature,
+                maxTokens = route.maxTokens
+            )
+            if (result != null) return result
+        }
+
+        return null
+    }
+
+    private suspend fun callOpenRouter(
+        model: String,
+        prompt: String,
+        agentName: String,
+        temperature: Double? = null,
+        maxTokens: Int = 512
+    ): String? = withContext(Dispatchers.IO) {
         // ── Short-circuit if API is known-broken ─────────────────────────
         if (isApiDisabled()) {
             Log.d("CommentaryFusionService", "API disabled (permanent failure) — returning null")
             return@withContext null
         }
 
-        SentryAiSpans.withAgentInvocation(agentName = "openrouter_commentary_fusion", model = model) { tx ->
+        SentryAiSpans.withAgentInvocation(agentName = agentName, model = model) { tx ->
             Log.d("CommentaryFusionService", "Using model: $model")
             tx.setData("gen_ai.request.model", model)
             tx.setData("gen_ai.request.provider", "openrouter")
             tx.setData("gen_ai.request.prompt_length", prompt.length)
+            temperature?.let { tx.setData("gen_ai.request.temperature", it) }
+            tx.setData("gen_ai.request.max_tokens", maxTokens)
 
             Sentry.addBreadcrumb(Breadcrumb().apply {
                 category = "service.commentary"
                 message = "Calling OpenRouter API"
                 level = SentryLevel.INFO
                 setData("model", model)
+                setData("agentName", agentName)
             })
 
             val jsonBody = JSONObject()
@@ -340,7 +409,8 @@ class CommentaryFusionService {
             messageObj.put("content", prompt)
             messagesArray.put(messageObj)
             jsonBody.put("messages", messagesArray)
-            jsonBody.put("max_tokens", 512)
+            jsonBody.put("max_tokens", maxTokens)
+            temperature?.let { jsonBody.put("temperature", it) }
 
             val requestBody = jsonBody.toString().toRequestBody("application/json; charset=utf-8".toMediaType())
 
@@ -361,7 +431,7 @@ class CommentaryFusionService {
                         Sentry.metrics().count("ai.request.error", 1.0)
                         Sentry.logger().warn("OpenRouter request failed: status=%s", code.toString())
 
-                        if (code in listOf(401, 402, 403)) {
+                        if (code == 401 || code == 402) {
                             markApiPermanentlyFailed(code, errorBody)
                             return@withAgentInvocation null
                         }

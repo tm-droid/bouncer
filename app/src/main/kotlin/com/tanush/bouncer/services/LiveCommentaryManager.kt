@@ -296,7 +296,7 @@ class LiveCommentaryManager(
      * Existing entries are not duplicated; newer/longer entries for the same ball replace older ones.
      */
     fun seedHistory(lines: List<String>) {
-        for (line in lines.filter { it.length > 5 }) {
+        for (line in lines.reversed().filter { it.length > 5 }) {
             if (aiCommentaryHistory.lastOrNull() == line) continue
             val ballNum = extractBallNumber(line.trimStart())
             if (ballNum != null) {

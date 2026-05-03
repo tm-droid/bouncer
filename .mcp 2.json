@@ -1,0 +1,19 @@
+{
+  "mcpServers": {
+    "android-dev": {
+      "type": "stdio",
+      "command": "uv",
+      "args": [
+        "run",
+        "--project",
+        "android-dev-mcp-server",
+        "android-dev-mcp-server/main.py",
+        "--mode",
+        "stdio",
+        "--temp-dir",
+        "build/tmp/android-dev-mcp-server"
+      ],
+      "env": {}
+    }
+  }
+}
