@@ -101,27 +101,35 @@ class LiveCommentaryManager(
         
         val last18Count = min(max(aiCommentaryHistory.size, 0), 18)
         val last18AI = if (last18Count > 0) aiCommentaryHistory.takeLast(last18Count) else emptyList()
-        val oversSummary = if (last18AI.isNotEmpty()) {
-            fusion.summarizeOversWithAI(last18AI, matchId, 0)
-        } else {
+        val oversSummary = try {
+            if (last18AI.isNotEmpty()) fusion.summarizeOversWithAI(last18AI, matchId, 0) else buzzLine
+        } catch (e: Exception) {
+            Log.w("LiveCommentaryManager", "summarizeOversWithAI failed, using raw line", e)
+            Sentry.captureException(e)
             buzzLine
         }
-        
+
         val comparison = scorer.compare(buzzLine, infoLine, keyNames, commentaryHistory)
         val resultValue = when (comparison) {
             CommentaryScorer.ComparisonResult.UseFirst -> buzzLine
             CommentaryScorer.ComparisonResult.UseSecond -> infoLine
-            CommentaryScorer.ComparisonResult.FuseBoth -> fusion.fuse(
-                snippet1 = buzzLine,
-                snippet2 = infoLine,
-                oversSummary = oversSummary,
-                matchId = matchId,
-                over = 0,
-                ballNumber = ballNumber,
-                bowler = bowlerName,
-                batsman = batsmanName,
-                scoreContext = scoreContext
-            )
+            CommentaryScorer.ComparisonResult.FuseBoth -> try {
+                fusion.fuse(
+                    snippet1 = buzzLine,
+                    snippet2 = infoLine,
+                    oversSummary = oversSummary,
+                    matchId = matchId,
+                    over = 0,
+                    ballNumber = ballNumber,
+                    bowler = bowlerName,
+                    batsman = batsmanName,
+                    scoreContext = scoreContext
+                )
+            } catch (e: Exception) {
+                Log.w("LiveCommentaryManager", "fusion.fuse failed, using raw snippet", e)
+                Sentry.captureException(e)
+                "$buzzLine / $infoLine"
+            }
         }
         
         if (commentaryHistory.isEmpty() || commentaryHistory.last() != resultValue) {
@@ -189,17 +197,23 @@ class LiveCommentaryManager(
             null 
         }
         
-        return fusion.fuse(
-            snippet1 = buzzLine, 
-            snippet2 = "", 
-            oversSummary = buzzLine, 
-            matchId = matchId, 
-            over = 0, 
-            ballNumber = details?.overNumbers?.lastOrNull() ?: "", 
-            bowler = details?.bowler?.name ?: "", 
-            batsman = details?.batsmen?.firstOrNull()?.name ?: "", 
-            scoreContext = details?.score ?: ""
-        )
+        return try {
+            fusion.fuse(
+                snippet1 = buzzLine,
+                snippet2 = "",
+                oversSummary = buzzLine,
+                matchId = matchId,
+                over = 0,
+                ballNumber = details?.overNumbers?.lastOrNull() ?: "",
+                bowler = details?.bowler?.name ?: "",
+                batsman = details?.batsmen?.firstOrNull()?.name ?: "",
+                scoreContext = details?.score ?: ""
+            )
+        } catch (e: Exception) {
+            Log.w("LiveCommentaryManager", "fusion.fuse failed, using raw snippet", e)
+            Sentry.captureException(e)
+            buzzLine
+        }
     }
     
     /**

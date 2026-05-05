@@ -4,6 +4,9 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tanush.bouncer.analysis.WinProbabilityCalculator
+import com.tanush.bouncer.managers.MatchSubscriptionManager
+import com.tanush.bouncer.managers.NotificationInboxManager
+import com.tanush.bouncer.managers.NotificationItem
 import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.network.CricBuzzScraper
 import com.tanush.bouncer.network.CricBuzzUrls
@@ -137,10 +140,24 @@ class LiveActivityViewModel : ViewModel() {
                         level = SentryLevel.INFO
                     })
                     _keyEvent.value = title to body
-                    
-                    // Also push event-specific alert notifications
-                    val manager = notificationManager ?: return@launch
+
                     val liveMatch = _currentMatches.value.firstOrNull { it.isLive } ?: return@launch
+
+                    // Always log to inbox for subscribed matches
+                    if (MatchSubscriptionManager.isSubscribed(liveMatch.id)) {
+                        NotificationInboxManager.add(
+                            NotificationItem(
+                                matchId = liveMatch.id,
+                                title = title,
+                                body = body,
+                                type = NotificationInboxManager.inferType(title),
+                            )
+                        )
+                    }
+
+                    // OS alert notifications only for subscribed matches
+                    if (!MatchSubscriptionManager.isSubscribed(liveMatch.id)) return@launch
+                    val manager = notificationManager ?: return@launch
                     when {
                         title.contains("Wicket", ignoreCase = true) -> manager.showWicketAlert(
                             match = liveMatch,

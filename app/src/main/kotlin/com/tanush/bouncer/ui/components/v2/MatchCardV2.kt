@@ -8,10 +8,17 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.NotificationsNone
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -27,12 +34,15 @@ fun MatchCardV2(
     match: CricketMatch,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    isSubscribed: Boolean = false,
+    onSubscribeToggle: (() -> Unit)? = null,
 ) {
     val colors = BouncerThemeV2.colors
     val typography = BouncerThemeV2.typography
     val spacing = BouncerThemeV2.spacing
 
-    val statusType = determineMatchStatus(match)
+    val statusType = remember(match) { determineMatchStatus(match) }
+    val winProb = remember(match) { match.calculateHeuristicProbability() }
 
     BouncerCard(
         modifier = modifier.fillMaxWidth(),
@@ -51,6 +61,19 @@ fun MatchCardV2(
                     modifier = Modifier.weight(1f),
                 )
                 StatusBadgeV2(statusType = statusType)
+                if (onSubscribeToggle != null) {
+                    IconButton(
+                        onClick = onSubscribeToggle,
+                        modifier = Modifier.size(32.dp).padding(start = 4.dp),
+                    ) {
+                        Icon(
+                            imageVector = if (isSubscribed) Icons.Default.Notifications else Icons.Default.NotificationsNone,
+                            contentDescription = if (isSubscribed) "Unsubscribe" else "Subscribe",
+                            tint = if (isSubscribed) colors.primary else colors.textSecondary,
+                            modifier = Modifier.size(18.dp),
+                        )
+                    }
+                }
             }
 
             Spacer(Modifier.height(spacing.md))
@@ -94,7 +117,6 @@ fun MatchCardV2(
             }
 
             // Win probability mini bar
-            val winProb = match.calculateHeuristicProbability()
             if (winProb != 50.0 && match.teams.size >= 2) {
                 Spacer(Modifier.height(spacing.sm))
                 val fraction = (winProb / 100.0).toFloat().coerceIn(0.05f, 0.95f)

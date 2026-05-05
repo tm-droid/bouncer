@@ -3,12 +3,14 @@ package com.tanush.bouncer.services
 import android.util.Log
 import com.tanush.bouncer.BuildConfig
 import com.tanush.bouncer.monitoring.SentryAiSpans
+import com.tanush.bouncer.network.HttpClientProvider
 import io.sentry.Breadcrumb
 import io.sentry.Sentry
 import io.sentry.SentryLevel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONArray
@@ -17,13 +19,11 @@ import java.io.IOException
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
 
-class CommentaryFusionService {
-    // OpenRouter.ai settings
-    private val apiUrl = "https://openrouter.ai/api/v1/chat/completions"
-    // API key loaded from BuildConfig (set in local.properties)
+class CommentaryFusionService(
+    private val client: OkHttpClient = HttpClientProvider.sharedClient,
+    private val apiUrl: String = "https://openrouter.ai/api/v1/chat/completions"
+) {
     private val openRouterApiKey = BuildConfig.OPENROUTER_API_KEY
-
-    private val client = com.tanush.bouncer.network.HttpClientProvider.sharedClient
 
     private data class ModelRoute(
         val agentName: String,
@@ -62,6 +62,9 @@ class CommentaryFusionService {
     private val apiPermanentlyFailed = AtomicBoolean(false)
     private val permanentFailureReportedAt = AtomicLong(0L)
     private val PERMANENT_FAILURE_RE_CHECK_MS = 600_000L // re-check every 10 min
+    private val apiRateLimitedUntil = AtomicLong(0L)
+    private val RATE_LIMIT_RE_CHECK_MS = 1_800_000L // re-check every 30 min
+    private val transientRetryPolicy = RetryPolicy(maxAttempts = 3, baseDelayMs = 1000L, multiplier = 2.0)
 
     /**
      * Returns true while the API is known to be in a permanent failure
@@ -69,15 +72,70 @@ class CommentaryFusionService {
      * periodic re-check so the app auto-recovers when credits are topped up.
      */
     private fun isApiDisabled(): Boolean {
+        val now = System.currentTimeMillis()
+
+        val rateLimitedUntil = apiRateLimitedUntil.get()
+        if (rateLimitedUntil > now) {
+            return true
+        }
+        if (rateLimitedUntil != 0L && apiRateLimitedUntil.compareAndSet(rateLimitedUntil, 0L)) {
+            Log.i("CommentaryFusionService", "Re-enabling API after rate-limit cool-down")
+        }
+
         if (!apiPermanentlyFailed.get()) return false
         // Allow a single re-check after the cool-down period
-        val now = System.currentTimeMillis()
         if (now - permanentFailureReportedAt.get() > PERMANENT_FAILURE_RE_CHECK_MS) {
             apiPermanentlyFailed.set(false)
             Log.i("CommentaryFusionService", "Re-enabling API after cool-down period")
             return false
         }
         return true
+    }
+
+    private fun markApiRateLimited(resetAtMs: Long?, errorBody: String?) {
+        val now = System.currentTimeMillis()
+        val requestedDisableUntil = when {
+            resetAtMs != null && resetAtMs > now -> resetAtMs.coerceAtMost(now + RATE_LIMIT_RE_CHECK_MS)
+            else -> now + RATE_LIMIT_RE_CHECK_MS
+        }
+
+        var previousDisableUntil = apiRateLimitedUntil.get()
+        while (requestedDisableUntil > previousDisableUntil) {
+            if (apiRateLimitedUntil.compareAndSet(previousDisableUntil, requestedDisableUntil)) {
+                val retryInMinutes = ((requestedDisableUntil - now) / 60_000L).coerceAtLeast(1L)
+                Log.w(
+                    "CommentaryFusionService",
+                    "API rate limited (HTTP 429) — disabling for ${retryInMinutes}m"
+                )
+
+                Sentry.addBreadcrumb(Breadcrumb().apply {
+                    category = "service.commentary"
+                    message = "OpenRouter API disabled — rate limited"
+                    level = SentryLevel.WARNING
+                    setData("errorBody", errorBody?.take(200) ?: "null")
+                    setData("rateLimitedUntil", requestedDisableUntil)
+                    setData("cooldownMs", requestedDisableUntil - now)
+                })
+                return
+            }
+            previousDisableUntil = apiRateLimitedUntil.get()
+        }
+    }
+
+    private fun extractRateLimitResetMs(errorBody: String?, resetHeader: String?): Long? {
+        val bodyReset = if (errorBody.isNullOrBlank()) null else {
+            runCatching {
+                JSONObject(errorBody)
+                    .optJSONObject("error")
+                    ?.optJSONObject("metadata")
+                    ?.optJSONObject("headers")
+                    ?.optString("X-RateLimit-Reset")
+                    ?.takeIf { it.isNotBlank() }
+                    ?.toLongOrNull()
+            }.getOrNull()
+        }
+
+        return resetHeader?.trim()?.toLongOrNull() ?: bodyReset
     }
 
     private fun markApiPermanentlyFailed(statusCode: Int, errorBody: String?) {
@@ -422,50 +480,84 @@ class CommentaryFusionService {
                 .build()
 
             try {
-                client.newCall(request).execute().use { response ->
-                    tx.setData("gen_ai.response.http_status", response.code)
-                    if (!response.isSuccessful) {
-                        val errorBody = response.body?.string()
-                        val code = response.code
-                        Log.e("CommentaryFusionService", "API call failed with code $code: $errorBody")
-                        Sentry.metrics().count("ai.request.error", 1.0)
-                        Sentry.logger().warn("OpenRouter request failed: status=%s", code.toString())
-
-                        if (code == 401 || code == 402) {
-                            markApiPermanentlyFailed(code, errorBody)
-                            return@withAgentInvocation null
-                        }
-
+                transientRetryPolicy.withRetry(
+                    isRetryable = { it is IOException },
+                    onRetry = { attempt, delayMs, cause ->
+                        Log.w("CommentaryFusionService", "Retry $attempt for $model after ${delayMs}ms: ${cause.message}")
                         Sentry.addBreadcrumb(Breadcrumb().apply {
                             category = "service.commentary"
-                            message = "OpenRouter API error"
-                            level = SentryLevel.ERROR
-                            setData("statusCode", code)
-                            setData("errorBody", errorBody?.take(200) ?: "null")
+                            message = "Retrying OpenRouter call after transient failure"
+                            level = SentryLevel.WARNING
+                            setData("model", model)
+                            setData("attempt", attempt)
+                            setData("delayMs", delayMs)
+                            setData("cause", cause.message ?: "unknown")
                         })
-                        return@withAgentInvocation null
                     }
+                ) {
+                    client.newCall(request).execute().use { response ->
+                        tx.setData("gen_ai.response.http_status", response.code)
+                        if (!response.isSuccessful) {
+                            val errorBody = response.body?.string()
+                            val code = response.code
+                            val resetHeader = response.header("X-RateLimit-Reset")
+                            Sentry.metrics().count("ai.request.error", 1.0)
+                            Sentry.logger().warn("OpenRouter request failed: status=%s", code.toString())
 
-                    val responseBody = response.body?.string()
-                    if (responseBody != null) {
-                        val jsonResponse = JSONObject(responseBody)
-                        val choices = jsonResponse.optJSONArray("choices")
-                        if (choices != null && choices.length() > 0) {
-                            val firstChoice = choices.getJSONObject(0)
-                            val messageObj = firstChoice.optJSONObject("message")
-                            val content = messageObj?.optString("content")
-                            if (content != null) {
-                                tx.setData("gen_ai.usage.output_chars", content.length)
-                                Sentry.metrics().count("ai.request.success", 1.0)
-                                Log.d("CommentaryFusionService", "AI response received.")
-                                return@withAgentInvocation content.trim()
+                            if (code == 401 || code == 402) {
+                                Log.e("CommentaryFusionService", "API call failed with code $code: $errorBody")
+                                markApiPermanentlyFailed(code, errorBody)
+                                return@withRetry null
+                            }
+
+                            if (code == 429) {
+                                Log.w("CommentaryFusionService", "API rate limited with code 429: $errorBody")
+                                markApiRateLimited(
+                                    resetAtMs = extractRateLimitResetMs(errorBody, resetHeader),
+                                    errorBody = errorBody
+                                )
+                                return@withRetry null
+                            }
+
+                            Log.e("CommentaryFusionService", "API call failed with code $code: $errorBody")
+                            // Transient server error — throw to trigger retry
+                            throw TransientApiException(code, errorBody?.take(200))
+                        }
+
+                        val responseBody = response.body?.string()
+                        if (responseBody != null) {
+                            val jsonResponse = JSONObject(responseBody)
+                            val choices = jsonResponse.optJSONArray("choices")
+                            if (choices != null && choices.length() > 0) {
+                                val firstChoice = choices.getJSONObject(0)
+                                val messageObj = firstChoice.optJSONObject("message")
+                                val content = messageObj?.optString("content")
+                                if (content != null) {
+                                    tx.setData("gen_ai.usage.output_chars", content.length)
+                                    Sentry.metrics().count("ai.request.success", 1.0)
+                                    Log.d("CommentaryFusionService", "AI response received.")
+                                    return@withRetry content.trim()
+                                }
                             }
                         }
+                        null
                     }
-                    null
                 }
+            } catch (e: TransientApiException) {
+                Log.e("CommentaryFusionService", "API failed after ${transientRetryPolicy.maxAttempts} retries: HTTP ${e.code}")
+                Sentry.addBreadcrumb(Breadcrumb().apply {
+                    category = "service.commentary"
+                    message = "OpenRouter transient failure exhausted retries"
+                    level = SentryLevel.ERROR
+                    setData("statusCode", e.code)
+                    setData("errorBody", e.body ?: "null")
+                    setData("attempts", transientRetryPolicy.maxAttempts)
+                })
+                Sentry.captureMessage("OpenRouter transient failure: HTTP ${e.code} after ${transientRetryPolicy.maxAttempts} attempts")
+                Sentry.metrics().count("ai.request.error", 1.0)
+                null
             } catch (e: IOException) {
-                Log.e("CommentaryFusionService", "API call failed", e)
+                Log.e("CommentaryFusionService", "API call failed after ${transientRetryPolicy.maxAttempts} retries", e)
                 if (e.message != "Canceled") {
                     Sentry.captureException(e)
                 }
@@ -480,3 +572,5 @@ class CommentaryFusionService {
         }
     }
 }
+
+internal class TransientApiException(val code: Int, val body: String?) : IOException("HTTP $code transient error")

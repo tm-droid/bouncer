@@ -1,6 +1,7 @@
 package com.tanush.bouncer.ui
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -13,14 +14,21 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.tanush.bouncer.managers.MatchSubscriptionManager
+import com.tanush.bouncer.managers.NotificationInboxManager
 import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.ui.components.v2.BouncerTopBarV2
 import com.tanush.bouncer.ui.components.v2.EmptyStateV2
@@ -48,29 +56,35 @@ fun HomeScreenV2(
     onSettingsClick: () -> Unit = {},
     onNewsClick: () -> Unit = {},
     onSearchClick: () -> Unit = {},
+    onNotificationsClick: () -> Unit = {},
 ) {
     val selectedStatus by viewModel.selectedStatus.collectAsState()
     val selectedCompetitionType by viewModel.selectedCompetitionType.collectAsState()
     val currentMatches by viewModel.currentMatches.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val isRefreshing by viewModel.isRefreshing.collectAsState()
+    val unreadCount by NotificationInboxManager.unreadCount.collectAsState()
+    val subscriptions by MatchSubscriptionManager.subscriptions.collectAsState()
 
     val spacing = BouncerThemeV2.spacing
 
-    // Featured match: first match in the list (hero card)
-    val featuredMatch = currentMatches.firstOrNull()
-    // All remaining matches after the hero
-    val remainingMatches = if (featuredMatch != null) currentMatches.drop(1) else emptyList()
-
-    // Status filter options with counts
-    val statusOptions = listOf("All", "Live", "Upcoming", "Recent")
-    val statusCounts = if (currentMatches.isNotEmpty()) {
-        mapOf(mapStatus(selectedStatus) to currentMatches.size)
-    } else {
-        emptyMap()
+    val featuredMatch by remember {
+        derivedStateOf { currentMatches.firstOrNull() }
+    }
+    val remainingMatches by remember {
+        derivedStateOf { if (featuredMatch != null) currentMatches.drop(1) else emptyList() }
+    }
+    val statusCounts by remember {
+        derivedStateOf {
+            if (currentMatches.isNotEmpty()) {
+                mapOf(mapStatus(selectedStatus) to currentMatches.size)
+            } else {
+                emptyMap()
+            }
+        }
     }
 
-    // Category filters
+    val statusOptions = listOf("All", "Live", "Upcoming", "Recent")
     val categoryOptions = listOf("All", "International", "League", "Domestic")
 
     Scaffold(
@@ -78,6 +92,17 @@ fun HomeScreenV2(
             BouncerTopBarV2(
                 title = "BOUNCER",
                 actions = {
+                    BadgedBox(
+                        badge = {
+                            if (unreadCount > 0) {
+                                Badge { Text(if (unreadCount > 9) "9+" else unreadCount.toString()) }
+                            }
+                        },
+                    ) {
+                        IconButton(onClick = onNotificationsClick) {
+                            Icon(Icons.Default.Notifications, contentDescription = "Notifications")
+                        }
+                    }
                     IconButton(onClick = onSearchClick) {
                         Icon(Icons.Default.Search, contentDescription = "Search")
                     }
@@ -166,12 +191,20 @@ fun HomeScreenV2(
                         )
                     }
                     items(remainingMatches, key = { "match_${it.id}" }) { match ->
+                        val handleMatchClick = remember(match) {
+                            { onMatchClick(match) }
+                        }
+                        val handleSubscribeToggle = remember(match) {
+                            { MatchSubscriptionManager.toggle(match.id) }
+                        }
                         MatchCardV2(
                             match = match,
-                            onClick = { onMatchClick(match) },
+                            onClick = handleMatchClick,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(horizontal = spacing.lg, vertical = spacing.xs),
+                            isSubscribed = match.id in subscriptions,
+                            onSubscribeToggle = handleSubscribeToggle,
                         )
                     }
                     item(key = "matches_spacer") {

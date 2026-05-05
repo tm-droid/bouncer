@@ -32,29 +32,48 @@ cp local.properties.template local.properties  # Edit with real keys
 ```
 app/src/main/kotlin/com/tanush/bouncer/
 ├── BouncerApp.kt       # App entry + startup sequence
-├── ui/                 # Compose screens and components
-├── viewmodels/         # MVVM ViewModels
-├── services/           # Business logic (FCM, analytics, CommentaryFusion)
-├── managers/           # Feature managers (Widget, TeamLogo, Analytics)
-├── network/            # API clients + Cricbuzz scraper
-├── data/               # Room DB, repositories, caching
+├── ui/
+│   ├── screens/        # Full-page Compose screens
+│   ├── components/     # Reusable composables
+│   ├── widgets/        # Glance home-screen widgets
+│   ├── navigation/     # BouncerNavHost.kt — single NavHost, all routes
+│   ├── theme/          # Material3 theme
+│   └── adaptive/       # Window-size-class layouts
+├── viewmodels/         # MVVM ViewModels (no Hilt — manual construction)
+├── services/           # FCM, CommentaryFusion, LiveCommentary, WebSocket, Workers
+├── managers/           # Singleton managers (TeamLogo, Acronym, Favourites, Widget)
+├── network/            # Retrofit + Jsoup scrapers (CricBuzz, CricInfo, Series, Squad)
+├── data/               # Room DB, repositories, AppResult<T> monad
 ├── models/             # Data models and entities
-├── analysis/           # Cricket analysis + ML models
-├── auto/               # Automation features
+├── analysis/           # Cricket analysis + ML models (score prediction, win probability)
+├── auto/               # Android Auto (BouncerCarAppService)
 ├── mcp/                # Model Context Protocol handlers
 ├── utils/              # Utility functions
-├── monitoring/         # Sentry integration
-└── logic/              # Core game logic
+├── monitoring/         # Sentry + SentryAiSpans
+└── logic/              # Match simulation + game logic
 ```
+
+**No dependency injection framework.** ViewModels are constructed manually; managers use `object` singletons initialized in `BouncerApp.onCreate`.
+
+**Error handling:** `AppResult<T>` monad (`data/AppResult.kt`) wraps success/failure. Use it for all repository return types.
+
+**Navigation:** Single `BouncerNavHost` with Compose Navigation. Deep link entry via `bouncer://match/{matchId}`.
+
+**Live data flow:** `LiveScoreWebSocketClient` → `LiveCommentaryManager` → `CommentaryFusionService` (OpenRouter LLM with fallback model chains) → UI via StateFlow.
+
+**Background workers:** `ScorePollingWorker`, `SeriesSyncWorker`, `PlayerCacheWorker` (WorkManager), `WidgetUpdateWorker` (Glance).
 
 ## Key Dependencies
 
-- **Jetpack Compose**: UI framework
-- **Sentry**: Error monitoring + performance tracking
+- **Jetpack Compose + Navigation**: UI framework + in-app routing
+- **Glance**: Home-screen app widgets
+- **Sentry**: Error monitoring + performance (AI spans via `SentryAiSpans`)
 - **Firebase Cloud Messaging (FCM)**: Push notifications
-- **Room**: Offline cache + local DB
-- **Retrofit + OkHttp**: REST APIs for Cricbuzz data
-- **Kotlin Symbol Processing (KSP)**: Code generation
+- **Room + Paging 3**: Offline cache + paginated queries
+- **Retrofit + OkHttp**: REST APIs; **Jsoup**: HTML scraping for Cricbuzz
+- **Ktor CIO**: WebSocket client for live score stream
+- **Kotlin Symbol Processing (KSP)**: Code generation for Room
+- **Android Auto**: `BouncerCarAppService` for car display
 
 ## Common Tasks & Skills
 

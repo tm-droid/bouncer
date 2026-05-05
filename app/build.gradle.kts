@@ -93,6 +93,12 @@ android {
         // baseline = file("lint-baseline.xml")
     }
 
+    testOptions {
+        unitTests {
+            isReturnDefaultValues = true
+        }
+    }
+
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
@@ -194,6 +200,8 @@ dependencies {
     // Testing
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
+    // Real org.json impl so unit tests don't hit the mocked Android stub
+    testImplementation("org.json:json:20240303")
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.espresso.core)
     debugImplementation(libs.compose.ui.tooling)

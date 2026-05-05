@@ -1,7 +1,10 @@
 package com.tanush.bouncer.models
 
+import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.Stable
 import com.google.gson.annotations.SerializedName
 
+@Stable
 data class CricketMatch(
     val id: String,
     val seriesId: String,
@@ -124,6 +127,7 @@ data class CricketMatch(
         return 50.0
     }
 
+    @Immutable
     data class Team(
         val name: String,
         val score: String,
@@ -134,6 +138,7 @@ data class CricketMatch(
         val overs: String = "0.0"
     )
 
+    @Immutable
     data class MatchScore(
         @SerializedName("inningsBreak") val currentInnings: String,
         @SerializedName("batsmanScores") val batsmen: List<BatsmanScore>,
@@ -146,6 +151,7 @@ data class CricketMatch(
         val recentBalls: String?
     )
 
+    @Immutable
     data class BatsmanScore(
         val name: String,
         val runs: Int,
@@ -155,6 +161,7 @@ data class CricketMatch(
         val strikeRate: Double
     )
 
+    @Immutable
     data class BowlerScore(
         val name: String,
         val overs: Double,

@@ -6,8 +6,13 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.util.Log
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
 import androidx.work.*
+import com.tanush.bouncer.R
 import com.tanush.bouncer.data.CricketRepository
+import com.tanush.bouncer.managers.MatchSubscriptionManager
+import com.tanush.bouncer.ui.notifications.RichNotificationBuilder
 import com.tanush.bouncer.ui.widgets.LiveMatchWidgetProvider
 import com.tanush.bouncer.ui.widgets.WidgetUpdateWorker
 import io.sentry.Breadcrumb
@@ -52,6 +57,9 @@ class ScorePollingWorker(
                         Intent(ACTION_SCORES_UPDATED).setPackage(context.packageName)
                     )
 
+                    // Background OS notifications for subscribed matches
+                    notifySubscribedMatches(matchesResponse.matches)
+
                     Sentry.addBreadcrumb(Breadcrumb().apply {
                         category = "score_polling"
                         message = "Poll succeeded – $matchCount live matches"
@@ -92,6 +100,42 @@ class ScorePollingWorker(
             .putInt("live_match_count", liveCount)
             .putLong("last_poll_epoch", System.currentTimeMillis())
             .apply()
+    }
+
+    private fun notifySubscribedMatches(matches: List<com.tanush.bouncer.network.models.SanwebMatchSummary>) {
+        val subscribed = MatchSubscriptionManager.subscriptions.value
+        if (subscribed.isEmpty()) return
+
+        val notifPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val notifManager = NotificationManagerCompat.from(context)
+
+        matches.filter { it.id in subscribed }.forEach { match ->
+            val lastStatus = notifPrefs.getString("last_status_${match.id}", null)
+            if (lastStatus == match.status) return@forEach
+
+            notifPrefs.edit().putString("last_status_${match.id}", match.status).apply()
+
+            val channelId = if (match.status.contains("won", ignoreCase = true) ||
+                match.status.contains("result", ignoreCase = true))
+                RichNotificationBuilder.CricketNotificationChannel.CHANNEL_MATCH_END
+            else
+                RichNotificationBuilder.CricketNotificationChannel.CHANNEL_LIVE_SCORE
+
+            val notification = NotificationCompat.Builder(context, channelId)
+                .setSmallIcon(R.drawable.ic_launcher_foreground)
+                .setContentTitle(match.title)
+                .setContentText(match.status)
+                .setAutoCancel(true)
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                .setGroup(RichNotificationBuilder.CricketNotificationChannel.GROUP_CRICKET)
+                .build()
+
+            try {
+                notifManager.notify(("bg_${match.id}").hashCode(), notification)
+            } catch (e: SecurityException) {
+                Log.w(TAG, "Notification permission not granted", e)
+            }
+        }
     }
 
     companion object {

@@ -6,8 +6,11 @@ import coil.ImageLoader
 import coil.disk.DiskCache
 import coil.memory.MemoryCache
 import com.tanush.bouncer.managers.FavouriteTeamsManager
+import com.tanush.bouncer.managers.MatchSubscriptionManager
 import com.tanush.bouncer.managers.TeamLogoManager
 import com.tanush.bouncer.managers.TeamAcronymManager
+import com.tanush.bouncer.data.local.BouncerDatabase
+import com.tanush.bouncer.services.AICacheService
 import com.tanush.bouncer.services.MatchCacheService
 import com.tanush.bouncer.services.ScorePollingWorker
 import com.tanush.bouncer.services.SeriesSyncWorker
@@ -51,7 +54,11 @@ class BouncerApp : Application() {
         initializeSafely("TeamLogoManager") { TeamLogoManager.initialize(this) }
         initializeSafely("TeamAcronymManager") { TeamAcronymManager.initialize(this) }
         initializeSafely("FavouriteTeamsManager") { FavouriteTeamsManager.initialize(this) }
+        initializeSafely("MatchSubscriptionManager") { MatchSubscriptionManager.initialize(this) }
         initializeSafely("MatchCacheService") { MatchCacheService.initDiskCache(this) }
+        initializeSafely("AICacheService") {
+            AICacheService.initialize(BouncerDatabase.getInstance(this).aiCacheDao())
+        }
 
         // ── Configure Coil ImageLoader ───────────────────────────────────
         initializeSafely("CoilImageLoader") {

@@ -6,11 +6,13 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
+import com.tanush.bouncer.data.local.dao.AICacheDao
 import com.tanush.bouncer.data.local.dao.CommentaryDao
 import com.tanush.bouncer.data.local.dao.HistoricalMatchCacheDao
 import com.tanush.bouncer.data.local.dao.MatchDao
 import com.tanush.bouncer.data.local.dao.PlayerCacheDao
 import com.tanush.bouncer.data.local.dao.SeriesCacheDao
+import com.tanush.bouncer.data.local.entities.AICommentaryCacheEntity
 import com.tanush.bouncer.data.local.entities.CommentaryEntity
 import com.tanush.bouncer.data.local.entities.HistoricalMatchCacheEntity
 import com.tanush.bouncer.data.local.entities.HistoricalMatchFtsEntity
@@ -29,9 +31,10 @@ import com.tanush.bouncer.data.local.entities.SeriesFtsEntity
         SeriesCacheEntity::class,
         SeriesFtsEntity::class,
         HistoricalMatchCacheEntity::class,
-        HistoricalMatchFtsEntity::class
+        HistoricalMatchFtsEntity::class,
+        AICommentaryCacheEntity::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = true
 )
 abstract class BouncerDatabase : RoomDatabase() {
@@ -41,6 +44,7 @@ abstract class BouncerDatabase : RoomDatabase() {
     abstract fun playerCacheDao(): PlayerCacheDao
     abstract fun seriesCacheDao(): SeriesCacheDao
     abstract fun historicalMatchCacheDao(): HistoricalMatchCacheDao
+    abstract fun aiCacheDao(): AICacheDao
 
     companion object {
         @Volatile
@@ -69,8 +73,14 @@ abstract class BouncerDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("CREATE TABLE IF NOT EXISTS ai_commentary_cache (cacheKey TEXT NOT NULL PRIMARY KEY, commentary TEXT NOT NULL, timestamp INTEGER NOT NULL)")
+            }
+        }
+
         // Add new migrations here; Room will apply them in order on upgrade.
-        private val MIGRATIONS = arrayOf<Migration>(MIGRATION_1_2)
+        private val MIGRATIONS = arrayOf<Migration>(MIGRATION_1_2, MIGRATION_2_3)
 
         fun getInstance(context: Context): BouncerDatabase {
             return INSTANCE ?: synchronized(this) {

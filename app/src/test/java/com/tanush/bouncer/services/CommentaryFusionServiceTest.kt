@@ -1,0 +1,400 @@
+package com.tanush.bouncer.services
+
+import com.tanush.bouncer.data.local.dao.AICacheDao
+import com.tanush.bouncer.data.local.entities.AICommentaryCacheEntity
+import kotlinx.coroutines.test.runTest
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import okhttp3.Protocol
+import okhttp3.Response
+import okhttp3.ResponseBody.Companion.toResponseBody
+import okio.Buffer
+import org.json.JSONObject
+import org.junit.Assert.*
+import org.junit.Before
+import org.junit.Test
+import java.io.IOException
+import java.util.concurrent.atomic.AtomicInteger
+
+class CommentaryFusionServiceTest {
+
+    private lateinit var fakeDao: FakeAICacheDaoForFusion
+
+    @Before
+    fun setup() = runTest {
+        fakeDao = FakeAICacheDaoForFusion()
+        AICacheService.initialize(fakeDao)
+        AICacheService.clearCache()
+    }
+
+    // ── Test helpers ────────────────────────────────────────────────────────
+
+    private fun serviceWith(client: OkHttpClient) = CommentaryFusionService(
+        client = client,
+        apiUrl = "https://fake.openrouter.test/api/v1/chat/completions"
+    )
+
+    private fun readRequestBodyJson(chain: okhttp3.Interceptor.Chain): JSONObject {
+        val buffer = Buffer()
+        chain.request().body?.writeTo(buffer)
+        return JSONObject(buffer.readUtf8())
+    }
+
+    /** Returns a valid OpenRouter response JSON wrapping [content]. */
+    private fun successBody(content: String): String =
+        """{"choices":[{"message":{"content":"$content"}}]}"""
+
+    private fun errorBody(): String = """{"error":{"message":"upstream error"}}"""
+
+    /**
+     * Builds a fake OkHttpClient whose interceptor calls [handler] with
+     * (callIndex starting at 1, request body JSON) and returns the result
+     * as an HTTP response.
+     */
+    private fun fakeClient(handler: (Int, JSONObject) -> Pair<Int, String>): OkHttpClient {
+        val callCount = AtomicInteger(0)
+        return OkHttpClient.Builder()
+            .addInterceptor { chain ->
+                val n = callCount.incrementAndGet()
+                val reqJson = readRequestBodyJson(chain)
+                val (status, body) = handler(n, reqJson)
+                Response.Builder()
+                    .request(chain.request())
+                    .protocol(Protocol.HTTP_1_1)
+                    .code(status)
+                    .message(if (status == 200) "OK" else "Error")
+                    .body(body.toResponseBody("application/json".toMediaType()))
+                    .build()
+            }
+            .build()
+    }
+
+    /** Client that throws an IOException for every call. */
+    private fun throwingClient(ex: Exception = IOException("Connection refused")): OkHttpClient =
+        OkHttpClient.Builder().addInterceptor { throw ex }.build()
+
+    // ── Default fuse params ──────────────────────────────────────────────────
+
+    private val snippet1 = "Kohli drives it through covers"
+    private val snippet2 = "Brilliant stroke play from Kohli"
+    private val matchId = "test_match_001"
+    private val over = 18
+    private val ballNumber = "18.5"
+    private val bowler = "Bumrah"
+    private val batsman = "Kohli"
+    private val scoreContext = "India 280/4 in 45.5 overs"
+    private val oversSummary = "Last 3 overs: 24 runs, 1 wicket"
+
+    private fun fuseCacheKey(): String {
+        val hash = (snippet1 + snippet2 + oversSummary).hashCode()
+        return "ai_commentary:$matchId:$over:$hash"
+    }
+
+    private suspend fun defaultFuse(service: CommentaryFusionService) = service.fuse(
+        snippet1 = snippet1,
+        snippet2 = snippet2,
+        oversSummary = oversSummary,
+        matchId = matchId,
+        over = over,
+        ballNumber = ballNumber,
+        bowler = bowler,
+        batsman = batsman,
+        scoreContext = scoreContext
+    )
+
+    // ── fuse() tests ─────────────────────────────────────────────────────────
+
+    @Test
+    fun `fuse happy path - returns AI commentary and caches result`() = runTest {
+        val aiOutput = "18.5: Kohli drives it elegantly through the covers for four!"
+        val service = serviceWith(fakeClient { n, _ ->
+            when (n) {
+                1 -> 200 to successBody(aiOutput) // fusion call
+                2 -> 200 to successBody("PASS")   // verification call
+                else -> 500 to errorBody()
+            }
+        })
+
+        val result = defaultFuse(service)
+
+        assertEquals(aiOutput, result)
+        assertEquals(aiOutput, AICacheService.getCommentary(fuseCacheKey()))
+    }
+
+    @Test
+    fun `fuse verification fails - falls back to raw snippet1`() = runTest {
+        val hallucinated = "18.5: Smith smashes it for six!"
+        val service = serviceWith(fakeClient { n, _ ->
+            when (n) {
+                1 -> 200 to successBody(hallucinated) // fusion
+                else -> 200 to successBody("FAIL")    // all verification models return FAIL
+            }
+        })
+
+        val result = defaultFuse(service)
+
+        assertEquals(snippet1, result)
+    }
+
+    @Test
+    fun `fuse cache hit - skips HTTP calls entirely`() = runTest {
+        AICacheService.setCommentary("Cached commentary", fuseCacheKey())
+
+        var httpCalls = 0
+        val service = serviceWith(fakeClient { _, _ ->
+            httpCalls++
+            200 to successBody("Should not be called")
+        })
+
+        val result = defaultFuse(service)
+
+        assertEquals("Cached commentary", result)
+        assertEquals(0, httpCalls)
+    }
+
+    @Test
+    fun `fuse 429 - blocks subsequent calls for rate-limit window`() = runTest {
+        var httpCalls = 0
+        val service = serviceWith(fakeClient { _, _ ->
+            httpCalls++
+            429 to """{"error":{"message":"Rate limited"}}"""
+        })
+
+        // First call hits 429; all fusion models short-circuit after first rate-limit signal.
+        val result1 = defaultFuse(service)
+        assertEquals("[AI Fused] $snippet1 / $snippet2", result1)
+
+        val callsAfterFirst = httpCalls
+
+        // Second call: isApiDisabled() == true → zero new HTTP calls.
+        val result2 = defaultFuse(service)
+        assertEquals("[AI Fused] $snippet1 / $snippet2", result2)
+        assertEquals(callsAfterFirst, httpCalls)
+    }
+
+    @Test
+    fun `fuse 401 - permanently disables API for cool-down window`() = runTest {
+        var httpCalls = 0
+        val service = serviceWith(fakeClient { _, _ ->
+            httpCalls++
+            401 to """{"error":{"message":"Unauthorized"}}"""
+        })
+
+        defaultFuse(service)
+        val callsAfterFirst = httpCalls
+
+        // Second call must not reach the network.
+        defaultFuse(service)
+        assertEquals(callsAfterFirst, httpCalls)
+    }
+
+    @Test
+    fun `fuse 402 - permanently disables API for cool-down window`() = runTest {
+        var httpCalls = 0
+        val service = serviceWith(fakeClient { _, _ ->
+            httpCalls++
+            402 to """{"error":{"message":"Insufficient credits"}}"""
+        })
+
+        defaultFuse(service)
+        val callsAfterFirst = httpCalls
+
+        defaultFuse(service)
+        assertEquals(callsAfterFirst, httpCalls)
+    }
+
+    @Test
+    fun `fuse model fallback - primary 500 then secondary succeeds`() = runTest {
+        val aiOutput = "18.5: Kohli punches it through covers!"
+        // fusionRoute: [inclusionai/ling-2.6-1t:free, google/gemma-3-12b-it:free]
+        // verificationRoute: [tencent/hy3-preview:free, openrouter/owl-alpha, google/gemma-3-12b-it:free]
+        // Fusion primary fails → fallback gemma used for fusion.
+        // Verification primary (tencent) succeeds immediately → gemma never used in verification.
+        val service = serviceWith(fakeClient { _, reqJson ->
+            when (reqJson.optString("model")) {
+                "inclusionai/ling-2.6-1t:free" -> 500 to errorBody()           // fusion primary: fail
+                "google/gemma-3-12b-it:free"   -> 200 to successBody(aiOutput) // fusion fallback: succeed
+                else                           -> 200 to successBody("PASS")   // all verification models
+            }
+        })
+
+        val result = defaultFuse(service)
+        assertEquals(aiOutput, result)
+    }
+
+    @Test
+    fun `fuse single source - uses single-source prompt when snippet2 is empty`() = runTest {
+        val aiOutput = "18.5: Kohli cuts hard to point boundary!"
+        val service = serviceWith(fakeClient { n, _ ->
+            when (n) {
+                1 -> 200 to successBody(aiOutput)
+                else -> 200 to successBody("PASS")
+            }
+        })
+
+        val result = service.fuse(
+            snippet1 = snippet1,
+            snippet2 = "",
+            oversSummary = oversSummary,
+            matchId = matchId,
+            over = over,
+            ballNumber = ballNumber,
+            bowler = bowler,
+            batsman = batsman,
+            scoreContext = scoreContext
+        )
+
+        assertEquals(aiOutput, result)
+    }
+
+    @Test
+    fun `fuse IO exception - returns static fallback string`() = runTest {
+        val service = serviceWith(throwingClient())
+
+        val result = defaultFuse(service)
+
+        assertEquals("[AI Fused] $snippet1 / $snippet2", result)
+    }
+
+    @Test
+    fun `fuse empty choices array - returns static fallback string`() = runTest {
+        val service = serviceWith(fakeClient { _, _ ->
+            200 to """{"choices":[]}"""
+        })
+
+        val result = defaultFuse(service)
+        assertEquals("[AI Fused] $snippet1 / $snippet2", result)
+    }
+
+    // ── summarizeOversWithAI() tests ─────────────────────────────────────────
+
+    @Test
+    fun `summarizeOversWithAI happy path - returns and caches summary`() = runTest {
+        val summary = "India dominated, scoring 34 runs in last 3 overs."
+        val lines = listOf("Kohli hits four", "Rohit blocks", "Bumrah bowled")
+        val service = serviceWith(fakeClient { _, _ -> 200 to successBody(summary) })
+
+        val result = service.summarizeOversWithAI(lines, matchId, over)
+
+        assertEquals(summary, result)
+        val cacheKey = "ai_summary:$matchId:$over:${lines.joinToString(" ").hashCode()}"
+        assertEquals(summary, AICacheService.getCommentary(cacheKey))
+    }
+
+    @Test
+    fun `summarizeOversWithAI empty lines - returns without HTTP call`() = runTest {
+        var httpCalls = 0
+        val service = serviceWith(fakeClient { _, _ ->
+            httpCalls++
+            200 to successBody("Should not be called")
+        })
+
+        val result = service.summarizeOversWithAI(emptyList(), matchId, over)
+
+        assertEquals("No recent commentary available.", result)
+        assertEquals(0, httpCalls)
+    }
+
+    @Test
+    fun `summarizeOversWithAI cache hit - skips HTTP call`() = runTest {
+        val lines = listOf("Ball 1", "Ball 2")
+        val cacheKey = "ai_summary:$matchId:$over:${lines.joinToString(" ").hashCode()}"
+        AICacheService.setCommentary("Cached summary", cacheKey)
+
+        var httpCalls = 0
+        val service = serviceWith(fakeClient { _, _ ->
+            httpCalls++
+            200 to successBody("Should not be called")
+        })
+
+        val result = service.summarizeOversWithAI(lines, matchId, over)
+
+        assertEquals("Cached summary", result)
+        assertEquals(0, httpCalls)
+    }
+
+    @Test
+    fun `summarizeOversWithAI API fails - returns fallback string`() = runTest {
+        val service = serviceWith(fakeClient { _, _ -> 500 to errorBody() })
+
+        val result = service.summarizeOversWithAI(listOf("Ball 1", "Ball 2"), matchId, over)
+
+        assertEquals("[Summary unavailable]", result)
+    }
+
+    @Test
+    fun `summarizeOversWithAI caps input at 18 balls`() = runTest {
+        var capturedLineCount = 0
+        val service = serviceWith(fakeClient { _, reqJson ->
+            val content = reqJson.optJSONArray("messages")
+                ?.optJSONObject(0)
+                ?.optString("content") ?: ""
+            capturedLineCount = content.lines()
+                .count { it.trim().matches(Regex("\\d+\\..*")) }
+            200 to successBody("Summary")
+        })
+
+        val lines = (1..25).map { "Ball $it commentary" }
+        service.summarizeOversWithAI(lines, matchId, over)
+
+        assertEquals(18, capturedLineCount)
+    }
+
+    // ── ball buffer tests ────────────────────────────────────────────────────
+
+    @Test
+    fun `addBallToBuffer and getPreviousBalls round-trip`() {
+        val svc = CommentaryFusionService()
+        svc.addBallToBuffer("m1", "Ball 1")
+        svc.addBallToBuffer("m1", "Ball 2")
+        assertEquals(listOf("Ball 1", "Ball 2"), svc.getPreviousBalls("m1"))
+    }
+
+    @Test
+    fun `ball buffer caps at 6 entries and evicts oldest`() {
+        val svc = CommentaryFusionService()
+        (1..8).forEach { svc.addBallToBuffer("m2", "Ball $it") }
+
+        val buf = svc.getPreviousBalls("m2")
+        assertEquals(6, buf.size)
+        assertEquals("Ball 3", buf.first())
+        assertEquals("Ball 8", buf.last())
+    }
+
+    @Test
+    fun `getPreviousBalls unknown match returns empty list`() {
+        val svc = CommentaryFusionService()
+        assertEquals(emptyList<String>(), svc.getPreviousBalls("no_such_match"))
+    }
+
+    @Test
+    fun `ball buffers are isolated per matchId`() {
+        val svc = CommentaryFusionService()
+        svc.addBallToBuffer("matchA", "A1")
+        svc.addBallToBuffer("matchB", "B1")
+
+        assertEquals(listOf("A1"), svc.getPreviousBalls("matchA"))
+        assertEquals(listOf("B1"), svc.getPreviousBalls("matchB"))
+    }
+}
+
+// ── Fake DAO ────────────────────────────────────────────────────────────────
+
+private class FakeAICacheDaoForFusion : AICacheDao {
+    val entries = mutableMapOf<String, AICommentaryCacheEntity>()
+
+    override suspend fun getCommentary(key: String, cutoffMs: Long): String? =
+        entries[key]?.takeIf { it.timestamp > cutoffMs }?.commentary
+
+    override suspend fun insert(entity: AICommentaryCacheEntity) {
+        entries[entity.cacheKey] = entity
+    }
+
+    override suspend fun deleteExpired(cutoffMs: Long) {
+        entries.entries.removeIf { it.value.timestamp < cutoffMs }
+    }
+
+    override suspend fun clearAll() {
+        entries.clear()
+    }
+}

@@ -1,0 +1,540 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 3,
+    "identityHash": "4c46fd9caa0d22dc3b4b1a1026de1361",
+    "entities": [
+      {
+        "tableName": "matches",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`matchId` TEXT NOT NULL, `seriesId` TEXT NOT NULL, `matchTitle` TEXT NOT NULL, `matchType` TEXT NOT NULL, `status` TEXT NOT NULL, `venue` TEXT NOT NULL, `date` TEXT NOT NULL, `matchTime` TEXT NOT NULL, `currentStatus` TEXT NOT NULL, `info` TEXT NOT NULL, `team1Name` TEXT NOT NULL, `team1Score` TEXT, `team2Name` TEXT NOT NULL, `team2Score` TEXT, `lastUpdated` INTEGER NOT NULL, PRIMARY KEY(`matchId`))",
+        "fields": [
+          {
+            "fieldPath": "matchId",
+            "columnName": "matchId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "seriesId",
+            "columnName": "seriesId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "matchTitle",
+            "columnName": "matchTitle",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "matchType",
+            "columnName": "matchType",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "status",
+            "columnName": "status",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "venue",
+            "columnName": "venue",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "date",
+            "columnName": "date",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "matchTime",
+            "columnName": "matchTime",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "currentStatus",
+            "columnName": "currentStatus",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "info",
+            "columnName": "info",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "team1Name",
+            "columnName": "team1Name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "team1Score",
+            "columnName": "team1Score",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "team2Name",
+            "columnName": "team2Name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "team2Score",
+            "columnName": "team2Score",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "lastUpdated",
+            "columnName": "lastUpdated",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "matchId"
+          ]
+        }
+      },
+      {
+        "tableName": "commentary",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`matchId` TEXT NOT NULL, `ballNumber` INTEGER NOT NULL, `overNumber` TEXT NOT NULL, `commentary` TEXT NOT NULL, `runs` INTEGER NOT NULL, `isWicket` INTEGER NOT NULL, `isBoundary` INTEGER NOT NULL, `timestamp` INTEGER NOT NULL, PRIMARY KEY(`matchId`, `ballNumber`))",
+        "fields": [
+          {
+            "fieldPath": "matchId",
+            "columnName": "matchId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "ballNumber",
+            "columnName": "ballNumber",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "overNumber",
+            "columnName": "overNumber",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "commentary",
+            "columnName": "commentary",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "runs",
+            "columnName": "runs",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isWicket",
+            "columnName": "isWicket",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isBoundary",
+            "columnName": "isBoundary",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "timestamp",
+            "columnName": "timestamp",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "matchId",
+            "ballNumber"
+          ]
+        }
+      },
+      {
+        "tableName": "player_cache",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`playerId` TEXT NOT NULL, `name` TEXT NOT NULL, `country` TEXT NOT NULL, `role` TEXT NOT NULL, `teamName` TEXT NOT NULL, `statsJson` TEXT NOT NULL, `lastUpdated` INTEGER NOT NULL, PRIMARY KEY(`playerId`))",
+        "fields": [
+          {
+            "fieldPath": "playerId",
+            "columnName": "playerId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "country",
+            "columnName": "country",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "role",
+            "columnName": "role",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "teamName",
+            "columnName": "teamName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "statsJson",
+            "columnName": "statsJson",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastUpdated",
+            "columnName": "lastUpdated",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "playerId"
+          ]
+        }
+      },
+      {
+        "tableName": "player_fts",
+        "createSql": "CREATE VIRTUAL TABLE IF NOT EXISTS `${TABLE_NAME}` USING FTS4(`playerId` TEXT NOT NULL, `name` TEXT NOT NULL, `country` TEXT NOT NULL, `role` TEXT NOT NULL, `teamName` TEXT NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "playerId",
+            "columnName": "playerId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "country",
+            "columnName": "country",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "role",
+            "columnName": "role",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "teamName",
+            "columnName": "teamName",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": []
+        },
+        "ftsVersion": "FTS4",
+        "ftsOptions": {
+          "tokenizer": "simple",
+          "tokenizerArgs": [],
+          "contentTable": "",
+          "languageIdColumnName": "",
+          "matchInfo": "FTS4",
+          "notIndexedColumns": [],
+          "prefixSizes": [],
+          "preferredOrder": "ASC"
+        },
+        "contentSyncTriggers": []
+      },
+      {
+        "tableName": "series_cache",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`seriesId` TEXT NOT NULL, `name` TEXT NOT NULL, `category` TEXT NOT NULL, `startDate` TEXT NOT NULL, `endDate` TEXT NOT NULL, `lastUpdated` INTEGER NOT NULL, PRIMARY KEY(`seriesId`))",
+        "fields": [
+          {
+            "fieldPath": "seriesId",
+            "columnName": "seriesId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "category",
+            "columnName": "category",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "startDate",
+            "columnName": "startDate",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "endDate",
+            "columnName": "endDate",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastUpdated",
+            "columnName": "lastUpdated",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "seriesId"
+          ]
+        }
+      },
+      {
+        "tableName": "series_fts",
+        "createSql": "CREATE VIRTUAL TABLE IF NOT EXISTS `${TABLE_NAME}` USING FTS4(`seriesId` TEXT NOT NULL, `name` TEXT NOT NULL, `category` TEXT NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "seriesId",
+            "columnName": "seriesId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "category",
+            "columnName": "category",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": []
+        },
+        "ftsVersion": "FTS4",
+        "ftsOptions": {
+          "tokenizer": "simple",
+          "tokenizerArgs": [],
+          "contentTable": "",
+          "languageIdColumnName": "",
+          "matchInfo": "FTS4",
+          "notIndexedColumns": [],
+          "prefixSizes": [],
+          "preferredOrder": "ASC"
+        },
+        "contentSyncTriggers": []
+      },
+      {
+        "tableName": "historical_match_cache",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`matchId` TEXT NOT NULL, `matchTitle` TEXT NOT NULL, `teams` TEXT NOT NULL, `venue` TEXT NOT NULL, `city` TEXT NOT NULL, `date` TEXT NOT NULL, `season` TEXT NOT NULL, `matchType` TEXT NOT NULL, `playerOfMatch` TEXT NOT NULL, `lastUpdated` INTEGER NOT NULL, PRIMARY KEY(`matchId`))",
+        "fields": [
+          {
+            "fieldPath": "matchId",
+            "columnName": "matchId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "matchTitle",
+            "columnName": "matchTitle",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "teams",
+            "columnName": "teams",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "venue",
+            "columnName": "venue",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "city",
+            "columnName": "city",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "date",
+            "columnName": "date",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "season",
+            "columnName": "season",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "matchType",
+            "columnName": "matchType",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "playerOfMatch",
+            "columnName": "playerOfMatch",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastUpdated",
+            "columnName": "lastUpdated",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "matchId"
+          ]
+        }
+      },
+      {
+        "tableName": "historical_match_fts",
+        "createSql": "CREATE VIRTUAL TABLE IF NOT EXISTS `${TABLE_NAME}` USING FTS4(`matchId` TEXT NOT NULL, `matchTitle` TEXT NOT NULL, `teams` TEXT NOT NULL, `venue` TEXT NOT NULL, `city` TEXT NOT NULL, `season` TEXT NOT NULL, `matchType` TEXT NOT NULL, `playerOfMatch` TEXT NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "matchId",
+            "columnName": "matchId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "matchTitle",
+            "columnName": "matchTitle",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "teams",
+            "columnName": "teams",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "venue",
+            "columnName": "venue",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "city",
+            "columnName": "city",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "season",
+            "columnName": "season",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "matchType",
+            "columnName": "matchType",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "playerOfMatch",
+            "columnName": "playerOfMatch",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": []
+        },
+        "ftsVersion": "FTS4",
+        "ftsOptions": {
+          "tokenizer": "simple",
+          "tokenizerArgs": [],
+          "contentTable": "",
+          "languageIdColumnName": "",
+          "matchInfo": "FTS4",
+          "notIndexedColumns": [],
+          "prefixSizes": [],
+          "preferredOrder": "ASC"
+        },
+        "contentSyncTriggers": []
+      },
+      {
+        "tableName": "ai_commentary_cache",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`cacheKey` TEXT NOT NULL, `commentary` TEXT NOT NULL, `timestamp` INTEGER NOT NULL, PRIMARY KEY(`cacheKey`))",
+        "fields": [
+          {
+            "fieldPath": "cacheKey",
+            "columnName": "cacheKey",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "commentary",
+            "columnName": "commentary",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "timestamp",
+            "columnName": "timestamp",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "cacheKey"
+          ]
+        }
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '4c46fd9caa0d22dc3b4b1a1026de1361')"
+    ]
+  }
+}

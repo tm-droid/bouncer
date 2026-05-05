@@ -116,6 +116,9 @@ sealed class BouncerScreen(val route: String) {
     /** Intelligence/Activity Feed screen */
     data object ActivityFeed : BouncerScreen("activity-feed")
 
+    /** In-app notification inbox */
+    data object Notifications : BouncerScreen("notifications")
+
     // ═══════════════════════════════════════════════════════════════════════════
     // Parameterized Screens (With Arguments)
     // ═══════════════════════════════════════════════════════════════════════════
@@ -274,6 +277,7 @@ sealed class BouncerScreen(val route: String) {
             Search.route,
             SeriesList.route,
             PlayerComparison.route,
+            Notifications.route,
         )
 
         /**

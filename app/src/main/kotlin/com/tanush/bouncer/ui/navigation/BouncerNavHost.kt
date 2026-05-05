@@ -15,6 +15,7 @@ import com.tanush.bouncer.ui.devtools.DevToolsScreen
 import com.tanush.bouncer.ui.screens.*
 import com.tanush.bouncer.ui.screens.news.NewsDetailScreenV2
 import com.tanush.bouncer.ui.screens.news.NewsScreenV2
+import com.tanush.bouncer.ui.screens.NotificationsScreen
 import com.tanush.bouncer.ui.theme.BouncerMotion
 import com.tanush.bouncer.ui.theme.v2.ThemeModeV2
 import com.tanush.bouncer.viewmodels.LiveActivityViewModel
@@ -103,7 +104,10 @@ private fun NavGraphBuilder.primaryTabDestinations(
             },
             onSearchClick = {
                 navController.navigateForward(BouncerScreen.Search.route)
-            }
+            },
+            onNotificationsClick = {
+                navController.navigateForward(BouncerScreen.Notifications.route)
+            },
         )
     }
 
@@ -359,6 +363,11 @@ private fun NavGraphBuilder.moreChildDestinations(
         PlayerComparisonScreen(
             onBackClick = { navController.popBackStack() }
         )
+    }
+
+    // Notification Inbox
+    composable(BouncerScreen.Notifications.route) {
+        NotificationsScreen(onBack = { navController.popBackStack() })
     }
 }
 
