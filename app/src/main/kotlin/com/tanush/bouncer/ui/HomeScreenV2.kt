@@ -170,11 +170,11 @@ fun HomeScreenV2(
                 }
 
                 // ── Hero featured match ──
-                if (featuredMatch != null) {
-                    item(key = "hero_${featuredMatch.id}") {
+                featuredMatch?.let { fm ->
+                    item(key = "hero_${fm.id}") {
                         HeroMatchCard(
-                            match = featuredMatch,
-                            onClick = { onMatchClick(featuredMatch) },
+                            match = fm,
+                            onClick = { onMatchClick(fm) },
                             modifier = Modifier.padding(horizontal = spacing.lg),
                         )
                         Spacer(Modifier.height(spacing.lg))
@@ -195,7 +195,7 @@ fun HomeScreenV2(
                             { onMatchClick(match) }
                         }
                         val handleSubscribeToggle = remember(match) {
-                            { MatchSubscriptionManager.toggle(match.id) }
+                            { MatchSubscriptionManager.toggle(match.id); Unit }
                         }
                         MatchCardV2(
                             match = match,
