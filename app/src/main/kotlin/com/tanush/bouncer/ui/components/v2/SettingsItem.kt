@@ -16,11 +16,16 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.dp
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
+import com.tanush.bouncer.utils.PreferencesManager
 
 /**
  * Settings list item — icon, title, subtitle, trailing widget (toggle/chevron/text).
@@ -45,8 +50,18 @@ fun SettingsItemV2(
     val colors = BouncerThemeV2.colors
     val typography = BouncerThemeV2.typography
     val spacing = BouncerThemeV2.spacing
+    val haptic = LocalHapticFeedback.current
+    val context = LocalContext.current
+    val hapticEnabled = remember { PreferencesManager.getInstance(context).hapticFeedbackEnabled }
 
-    val clickMod = if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier
+    val clickMod = if (onClick != null) {
+        Modifier.clickable(onClick = {
+            if (hapticEnabled) haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+            onClick()
+        })
+    } else {
+        Modifier
+    }
 
     Column {
         Row(

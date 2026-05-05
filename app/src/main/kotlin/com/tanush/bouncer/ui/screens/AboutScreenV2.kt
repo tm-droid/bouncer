@@ -1,5 +1,6 @@
 package com.tanush.bouncer.ui.screens
 
+import com.tanush.bouncer.BuildConfig
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -86,7 +87,7 @@ fun AboutScreenV2(onBackClick: () -> Unit) {
                 )
                 Spacer(Modifier.height(spacing.xs))
                 Text(
-                    text = "Version 3.0.0",
+                    text = "v${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
                     style = typography.bodyMedium,
                     color = colors.textSecondary,
                 )

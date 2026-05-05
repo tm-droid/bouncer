@@ -181,6 +181,22 @@ class NewsViewModel : ViewModel() {
     }
 
     /**
+     * Explicit refresh for pull-to-refresh UI.
+     */
+    fun refresh() {
+        viewModelScope.launch {
+            _isRefreshing.value = true
+            _error.value = null
+            try {
+                lastFetchTime = 0L  // bypass throttle guard
+                fetchNews()
+            } finally {
+                _isRefreshing.value = false
+            }
+        }
+    }
+
+    /**
      * Auto-refresh news every 4 hours (6 times per day).
      */
     private fun startAutoRefresh() {

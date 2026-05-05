@@ -2,6 +2,7 @@ package com.tanush.bouncer.ui
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -30,6 +31,8 @@ import androidx.compose.ui.unit.dp
 import com.tanush.bouncer.managers.MatchSubscriptionManager
 import com.tanush.bouncer.managers.NotificationInboxManager
 import com.tanush.bouncer.models.CricketMatch
+import com.tanush.bouncer.ui.components.NetworkStatusBanner
+import com.tanush.bouncer.ui.components.rememberIsOffline
 import com.tanush.bouncer.ui.components.v2.BouncerTopBarV2
 import com.tanush.bouncer.ui.components.v2.EmptyStateV2
 import com.tanush.bouncer.ui.components.v2.FilterChipRowV2
@@ -65,6 +68,7 @@ fun HomeScreenV2(
     val isRefreshing by viewModel.isRefreshing.collectAsState()
     val unreadCount by NotificationInboxManager.unreadCount.collectAsState()
     val subscriptions by MatchSubscriptionManager.subscriptions.collectAsState()
+    val isOffline = rememberIsOffline()
 
     val spacing = BouncerThemeV2.spacing
 
@@ -89,28 +93,31 @@ fun HomeScreenV2(
 
     Scaffold(
         topBar = {
-            BouncerTopBarV2(
-                title = "BOUNCER",
-                actions = {
-                    BadgedBox(
-                        badge = {
-                            if (unreadCount > 0) {
-                                Badge { Text(if (unreadCount > 9) "9+" else unreadCount.toString()) }
+            Column {
+                BouncerTopBarV2(
+                    title = "BOUNCER",
+                    actions = {
+                        BadgedBox(
+                            badge = {
+                                if (unreadCount > 0) {
+                                    Badge { Text(if (unreadCount > 9) "9+" else unreadCount.toString()) }
+                                }
+                            },
+                        ) {
+                            IconButton(onClick = onNotificationsClick) {
+                                Icon(Icons.Default.Notifications, contentDescription = "Notifications")
                             }
-                        },
-                    ) {
-                        IconButton(onClick = onNotificationsClick) {
-                            Icon(Icons.Default.Notifications, contentDescription = "Notifications")
                         }
-                    }
-                    IconButton(onClick = onSearchClick) {
-                        Icon(Icons.Default.Search, contentDescription = "Search")
-                    }
-                    IconButton(onClick = onSettingsClick) {
-                        Icon(Icons.Default.Settings, contentDescription = "Settings")
-                    }
-                },
-            )
+                        IconButton(onClick = onSearchClick) {
+                            Icon(Icons.Default.Search, contentDescription = "Search")
+                        }
+                        IconButton(onClick = onSettingsClick) {
+                            Icon(Icons.Default.Settings, contentDescription = "Settings")
+                        }
+                    },
+                )
+                NetworkStatusBanner(isOffline = isOffline)
+            }
         },
         containerColor = BouncerThemeV2.colors.background,
     ) { innerPadding ->

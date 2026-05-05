@@ -1,6 +1,7 @@
 package com.tanush.bouncer.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -19,6 +20,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.tanush.bouncer.models.CricketMatch
+import com.tanush.bouncer.ui.components.NetworkStatusBanner
+import com.tanush.bouncer.ui.components.rememberIsOffline
 import com.tanush.bouncer.ui.components.v2.BouncerTopBarV2
 import com.tanush.bouncer.ui.components.v2.EmptyStateV2
 import com.tanush.bouncer.ui.components.v2.FilterChipRowV2
@@ -42,6 +45,7 @@ fun AllMatchesScreenV2(
     val currentMatches by viewModel.currentMatches.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val isRefreshing by viewModel.isRefreshing.collectAsState()
+    val isOffline = rememberIsOffline()
 
     val spacing = BouncerThemeV2.spacing
 
@@ -65,7 +69,12 @@ fun AllMatchesScreenV2(
     // No grouping — card already displays match/series info
 
     Scaffold(
-        topBar = { BouncerTopBarV2(title = "Matches") },
+        topBar = {
+            Column {
+                BouncerTopBarV2(title = "Matches")
+                NetworkStatusBanner(isOffline = isOffline)
+            }
+        },
         containerColor = BouncerThemeV2.colors.background,
     ) { innerPadding ->
         PullRefreshWrapperV2(

@@ -11,6 +11,7 @@ import com.google.firebase.messaging.RemoteMessage
 import com.tanush.bouncer.BouncerActivity
 import com.tanush.bouncer.R
 import com.tanush.bouncer.ui.notifications.RichNotificationBuilder.CricketNotificationChannel
+import com.tanush.bouncer.ui.screens.NotificationPrefsManager
 import com.tanush.bouncer.ui.widgets.WidgetManager
 import io.sentry.Breadcrumb
 import io.sentry.Sentry
@@ -96,6 +97,24 @@ class BouncerFirebaseMessagingService : FirebaseMessagingService() {
         if (MuteMatchReceiver.isMatchMuted(applicationContext, matchId)) {
             Log.d(TAG, "Match $matchId is muted – ignoring notification")
             return
+        }
+
+        // Check quiet hours
+        val notifPrefs = NotificationPrefsManager.getInstance(applicationContext)
+        if (notifPrefs.isQuietHoursActive()) {
+            val allowThrough = type == TYPE_SCORE_UPDATE &&
+                notifPrefs.settings.value.allowLiveMatchAlertsDuringQuietHours
+            if (!allowThrough) {
+                Log.d(TAG, "Suppressing notification during quiet hours: type=$type matchId=$matchId")
+                Sentry.addBreadcrumb(Breadcrumb().apply {
+                    category = "fcm"
+                    message = "Notification suppressed: quiet hours active"
+                    level = SentryLevel.INFO
+                    setData("type", type)
+                    setData("match_id", matchId)
+                })
+                return
+            }
         }
 
         if (type == TYPE_SCORE_UPDATE) {

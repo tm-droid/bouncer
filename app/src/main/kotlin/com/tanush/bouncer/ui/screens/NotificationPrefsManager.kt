@@ -42,6 +42,17 @@ object NotificationPrefsManager {
         persist()
     }
 
+    fun isQuietHoursActive(): Boolean {
+        val s = _settings.value
+        if (!s.quietHoursEnabled) return false
+        val now = java.util.Calendar.getInstance()
+        val currentMinute = now.get(java.util.Calendar.HOUR_OF_DAY) * 60 + now.get(java.util.Calendar.MINUTE)
+        val start = s.quietHours.startMinuteOfDay
+        val end = s.quietHours.endMinuteOfDay
+        return if (start > end) currentMinute >= start || currentMinute < end
+               else currentMinute in start until end
+    }
+
     private fun load() {
         val p = prefs ?: return
         _settings.value = NotificationSettings(

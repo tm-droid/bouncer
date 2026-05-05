@@ -10,6 +10,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Notifications
@@ -17,20 +18,30 @@ import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Vibration
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import com.tanush.bouncer.services.MatchCacheService
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import com.tanush.bouncer.ui.components.v2.SectionHeaderV2
 import com.tanush.bouncer.ui.components.v2.SettingsItemV2
 import com.tanush.bouncer.ui.components.v2.SettingsTrailing
@@ -53,6 +64,12 @@ fun SettingsScreenV2(
     val typography = BouncerThemeV2.typography
     val spacing = BouncerThemeV2.spacing
     val context = LocalContext.current
+
+    // Cache clearing state
+    var showClearCacheDialog by remember { mutableStateOf(false) }
+    var cacheCleared by remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
 
     // Toggle states
     var liveNotifications by remember {
@@ -106,6 +123,7 @@ fun SettingsScreenV2(
             )
         },
         containerColor = colors.background,
+        snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(padding),
@@ -203,6 +221,13 @@ fun SettingsScreenV2(
                         onClick = { togglePref(PreferencesHelper.KEY_REDUCED_MOTION, reducedMotion) { reducedMotion = it } },
                     )
                     SettingsItemV2(
+                        icon = Icons.Default.Delete,
+                        title = "Clear App Cache",
+                        subtitle = "Remove cached match data",
+                        trailing = SettingsTrailing.Navigation,
+                        onClick = { showClearCacheDialog = true },
+                    )
+                    SettingsItemV2(
                         icon = Icons.Default.Favorite, title = "Favorite Teams",
                         trailing = SettingsTrailing.Navigation,
                         onClick = onFavoritesClick,
@@ -221,6 +246,38 @@ fun SettingsScreenV2(
                         onClick = onAboutClick,
                     )
                 }
+            }
+        }
+
+        // Clear cache confirmation dialog
+        if (showClearCacheDialog) {
+            AlertDialog(
+                onDismissRequest = { showClearCacheDialog = false },
+                title = { Text("Clear Cache?") },
+                text = { Text("This will remove all cached match data. The app will re-fetch on next load.") },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            showClearCacheDialog = false
+                            coroutineScope.launch {
+                                withContext(Dispatchers.IO) { context.cacheDir.deleteRecursively() }
+                                MatchCacheService.clearCache()
+                                cacheCleared = true
+                            }
+                        }
+                    ) { Text("Clear") }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showClearCacheDialog = false }) { Text("Cancel") }
+                }
+            )
+        }
+
+        // Show snackbar after cache is cleared
+        LaunchedEffect(cacheCleared) {
+            if (cacheCleared) {
+                snackbarHostState.showSnackbar("Cache cleared")
+                cacheCleared = false
             }
         }
     }

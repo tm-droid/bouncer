@@ -18,13 +18,20 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.dp
 import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
+import com.tanush.bouncer.utils.PreferencesManager
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 
 /**
  * Compact match card for lists — series header, two team rows, status line.
@@ -36,17 +43,30 @@ fun MatchCardV2(
     modifier: Modifier = Modifier,
     isSubscribed: Boolean = false,
     onSubscribeToggle: (() -> Unit)? = null,
+    onSetReminder: () -> Unit = {},
 ) {
     val colors = BouncerThemeV2.colors
     val typography = BouncerThemeV2.typography
     val spacing = BouncerThemeV2.spacing
+    val haptic = LocalHapticFeedback.current
+    val context = LocalContext.current
+    val hapticEnabled = remember { PreferencesManager.getInstance(context).hapticFeedbackEnabled }
+
+    var showContextMenu by remember { mutableStateOf(false) }
 
     val statusType = remember(match) { determineMatchStatus(match) }
     val winProb = remember(match) { match.calculateHeuristicProbability() }
 
     BouncerCard(
         modifier = modifier.fillMaxWidth(),
-        onClick = onClick,
+        onClick = {
+            if (hapticEnabled) haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+            onClick()
+        },
+        onLongClick = {
+            if (hapticEnabled) haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+            showContextMenu = true
+        },
     ) {
         Column(modifier = Modifier.padding(spacing.lg)) {
             // Series & format header row
@@ -154,5 +174,13 @@ fun MatchCardV2(
                 }
             }
         }
+    }
+
+    if (showContextMenu) {
+        MatchContextMenuSheet(
+            match = match,
+            onDismiss = { showContextMenu = false },
+            onSetReminder = onSetReminder
+        )
     }
 }

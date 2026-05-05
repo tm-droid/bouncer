@@ -7,6 +7,7 @@ import coil.disk.DiskCache
 import coil.memory.MemoryCache
 import com.tanush.bouncer.managers.FavouriteTeamsManager
 import com.tanush.bouncer.managers.MatchSubscriptionManager
+import com.tanush.bouncer.managers.NotificationInboxManager
 import com.tanush.bouncer.managers.TeamLogoManager
 import com.tanush.bouncer.managers.TeamAcronymManager
 import com.tanush.bouncer.data.local.BouncerDatabase
@@ -56,6 +57,7 @@ class BouncerApp : Application() {
         initializeSafely("FavouriteTeamsManager") { FavouriteTeamsManager.initialize(this) }
         initializeSafely("MatchSubscriptionManager") { MatchSubscriptionManager.initialize(this) }
         initializeSafely("MatchCacheService") { MatchCacheService.initDiskCache(this) }
+        initializeSafely("NotificationInboxManager") { NotificationInboxManager.initialize(this) }
         initializeSafely("AICacheService") {
             AICacheService.initialize(BouncerDatabase.getInstance(this).aiCacheDao())
         }

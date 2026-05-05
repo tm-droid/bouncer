@@ -9,8 +9,13 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
+import com.tanush.bouncer.utils.PreferencesManager
 
 /**
  * Horizontal scrollable row of selectable filter chips.
@@ -26,6 +31,9 @@ fun FilterChipRowV2(
     val colors = BouncerThemeV2.colors
     val typography = BouncerThemeV2.typography
     val spacing = BouncerThemeV2.spacing
+    val haptic = LocalHapticFeedback.current
+    val context = LocalContext.current
+    val hapticEnabled = remember { PreferencesManager.getInstance(context).hapticFeedbackEnabled }
 
     Row(
         modifier = modifier
@@ -43,7 +51,10 @@ fun FilterChipRowV2(
 
             FilterChip(
                 selected = isSelected,
-                onClick = { onItemSelected(item) },
+                onClick = {
+                    if (hapticEnabled) haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    onItemSelected(item)
+                },
                 label = {
                     Text(
                         text = label,

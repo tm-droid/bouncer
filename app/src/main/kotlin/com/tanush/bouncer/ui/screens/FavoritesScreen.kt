@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import kotlinx.coroutines.launch
 import com.tanush.bouncer.ui.components.CoilImage
 import com.tanush.bouncer.ui.components.glass.*
 import coil.request.ImageRequest
@@ -35,6 +36,7 @@ import com.tanush.bouncer.managers.FavouriteTeamsManager
 import com.tanush.bouncer.managers.TeamLogoManager
 import com.tanush.bouncer.ui.components.EmptyStateView
 import com.tanush.bouncer.ui.theme.BouncerDesignSystem
+import com.tanush.bouncer.utils.PreferencesManager
 import kotlin.math.roundToInt
 
 @Composable
@@ -46,14 +48,19 @@ fun FavoritesScreen(
     val hierarchy = BouncerDesignSystem.hierarchy
     val typography = BouncerDesignSystem.typography
     val dimens = BouncerDesignSystem.dimens
+    val context = LocalContext.current
 
     val favorites by FavouriteTeamsManager.favourites.collectAsState()
     var showAddTeamSheet by remember { mutableStateOf(false) }
     var isEditMode by remember { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
+    var lastRemovedTeam by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
 
     // Reorder state
     var reorderableFavorites by remember(favorites) { mutableStateOf(favorites.toList()) }
     val haptic = LocalHapticFeedback.current
+    val hapticEnabled = remember { PreferencesManager.getInstance(context).hapticFeedbackEnabled }
 
     val infiniteTransition = rememberInfiniteTransition(label = "favShimmer")
     val shimmerOffset by infiniteTransition.animateFloat(
@@ -178,7 +185,7 @@ fun FavoritesScreen(
                                     teamName = teamName,
                                     onMoveUp = {
                                         if (index > 0) {
-                                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                            if (hapticEnabled) haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                             reorderableFavorites = reorderableFavorites.toMutableList().apply {
                                                 add(index - 1, removeAt(index))
                                             }
@@ -186,13 +193,14 @@ fun FavoritesScreen(
                                     },
                                     onMoveDown = {
                                         if (index < reorderableFavorites.lastIndex) {
-                                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                            if (hapticEnabled) haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                             reorderableFavorites = reorderableFavorites.toMutableList().apply {
                                                 add(index + 1, removeAt(index))
                                             }
                                         }
                                     },
                                     onRemove = {
+                                        if (hapticEnabled) haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                         reorderableFavorites = reorderableFavorites.toMutableList().apply {
                                             removeAt(index)
                                         }
@@ -205,12 +213,47 @@ fun FavoritesScreen(
                             }
                         } else {
                             itemsIndexed(reorderableFavorites) { index, teamName ->
-                                FavoriteTeamListRow(
-                                    teamName = teamName,
-                                    position = index + 1,
-                                    onClick = { onTeamClick(teamName) },
-                                    onRemove = { FavouriteTeamsManager.remove(teamName) }
+                                val swipeState = rememberSwipeToDismissBoxState(
+                                    confirmValueChange = { value ->
+                                        if (value == SwipeToDismissBoxValue.EndToStart) {
+                                            lastRemovedTeam = teamName
+                                            FavouriteTeamsManager.remove(teamName)
+                                            scope.launch {
+                                                val result = snackbarHostState.showSnackbar(
+                                                    message = "$teamName removed",
+                                                    actionLabel = "Undo",
+                                                    duration = SnackbarDuration.Short
+                                                )
+                                                if (result == SnackbarResult.ActionPerformed) {
+                                                    lastRemovedTeam?.let { FavouriteTeamsManager.add(it) }
+                                                    lastRemovedTeam = null
+                                                }
+                                            }
+                                            true
+                                        } else false
+                                    }
                                 )
+                                SwipeToDismissBox(
+                                    state = swipeState,
+                                    enableDismissFromStartToEnd = false,
+                                    enableDismissFromEndToStart = true,
+                                    backgroundContent = {
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxSize()
+                                                .background(MaterialTheme.colorScheme.error)
+                                                .padding(end = 20.dp),
+                                            contentAlignment = Alignment.CenterEnd
+                                        ) { Icon(Icons.Default.Delete, contentDescription = "Remove", tint = Color.White) }
+                                    }
+                                ) {
+                                    FavoriteTeamListRow(
+                                        teamName = teamName,
+                                        position = index + 1,
+                                        onClick = { onTeamClick(teamName) },
+                                        onRemove = { FavouriteTeamsManager.remove(teamName) }
+                                    )
+                                }
                             }
                         }
 
@@ -243,6 +286,9 @@ fun FavoritesScreen(
                         .padding(end = dimens.lg, bottom = 116.dp)
                 )
             }
+
+            // Snackbar
+            SnackbarHost(snackbarHostState, modifier = Modifier.align(Alignment.BottomCenter))
         }
     }
 
@@ -579,6 +625,8 @@ private fun FavoriteTeamListRow(
     val dimens = BouncerDesignSystem.dimens
     val context = LocalContext.current
     val logoUrl = TeamLogoManager.getBestLogoUrl(teamName, null, 128, 128)
+    val haptic = LocalHapticFeedback.current
+    val hapticEnabled = remember { PreferencesManager.getInstance(context).hapticFeedbackEnabled }
     var showRemoveDialog by remember { mutableStateOf(false) }
 
     GlassCard(
@@ -674,6 +722,7 @@ private fun FavoriteTeamListRow(
                         GlassPrimaryButton(
                             text = "Remove",
                             onClick = {
+                                if (hapticEnabled) haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                 onRemove()
                                 showRemoveDialog = false
                             }

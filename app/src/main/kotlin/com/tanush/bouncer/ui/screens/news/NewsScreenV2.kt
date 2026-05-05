@@ -56,7 +56,7 @@ fun NewsScreenV2(
     ) { innerPadding ->
         PullRefreshWrapperV2(
             isRefreshing = isRefreshing,
-            onRefresh = { viewModel.refreshNews() },
+            onRefresh = { viewModel.refresh() },
             modifier = Modifier.padding(innerPadding),
         ) {
             LazyColumn(

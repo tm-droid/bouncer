@@ -1,10 +1,12 @@
 package com.tanush.bouncer.ui.components.v2
 
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 
 /**
@@ -14,16 +16,25 @@ import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 fun BouncerCard(
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
+    onLongClick: (() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val colors = BouncerThemeV2.colors
     val shapes = BouncerThemeV2.shapes
     val elevation = BouncerThemeV2.elevation
 
+    val longPressMod = if (onLongClick != null) {
+        Modifier.pointerInput(onLongClick) {
+            detectTapGestures(onLongPress = { onLongClick.invoke() })
+        }
+    } else {
+        Modifier
+    }
+
     if (onClick != null) {
         Card(
             onClick = onClick,
-            modifier = modifier,
+            modifier = modifier.then(longPressMod),
             shape = shapes.medium,
             colors = CardDefaults.cardColors(containerColor = colors.surface),
             elevation = CardDefaults.cardElevation(defaultElevation = elevation.card),
@@ -31,7 +42,7 @@ fun BouncerCard(
         )
     } else {
         Card(
-            modifier = modifier,
+            modifier = modifier.then(longPressMod),
             shape = shapes.medium,
             colors = CardDefaults.cardColors(containerColor = colors.surface),
             elevation = CardDefaults.cardElevation(defaultElevation = elevation.card),

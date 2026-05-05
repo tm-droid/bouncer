@@ -41,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import com.tanush.bouncer.models.Series
 import com.tanush.bouncer.network.SeriesScraper
 import com.tanush.bouncer.ui.components.v2.BouncerTopBarV2
+import com.tanush.bouncer.ui.components.v2.EmptyStateV2
 import com.tanush.bouncer.ui.components.v2.FilterChipRowV2
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 
@@ -93,7 +94,10 @@ fun SeriesListScreen(
             }
             allSeries.isEmpty() -> {
                 Box(modifier = Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
-                    Text("No series found", style = typography.bodyLarge, color = colors.textSecondary)
+                    EmptyStateV2(
+                        title = "No series found",
+                        subtitle = "Active cricket series will appear here",
+                    )
                 }
             }
             else -> {
