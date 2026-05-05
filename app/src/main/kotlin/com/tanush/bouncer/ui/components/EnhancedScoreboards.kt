@@ -37,6 +37,9 @@ import kotlin.math.abs
 import kotlin.math.min
 import com.tanush.bouncer.ui.theme.GoldPrimary
 
+private fun String.toPlayerInitials(): String =
+    split(" ").mapNotNull { it.firstOrNull()?.uppercase() }.take(2).joinToString("")
+
 /**
  * FlipDigitScore with flip animation for digit changes
  * Displays score with animated flip transition when digits change
@@ -50,7 +53,6 @@ fun FlipDigitScore(
     showAnimation: Boolean = true
 ) {
     val colors = BouncerDesignSystem.colors
-    val hierarchy = BouncerDesignSystem.hierarchy
     val scoreString = score.toString().padStart(3, '0')
     var previousScore by remember { mutableStateOf(score) }
     var isFlipping by remember { mutableStateOf(false) }
@@ -158,8 +160,8 @@ fun AnimatedScoreDisplay(
     teamName: String = "",
     modifier: Modifier = Modifier
 ) {
-    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     val infiniteTransition = rememberInfiniteTransition(label = "scoreDisplay")
     
     val shimmer by infiniteTransition.animateFloat(
@@ -347,8 +349,8 @@ private fun PartnershipItem(
 ) {
     val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
-    val runRate = if (partnership.balls > 0) 
-        (partnership.runs.toFloat() / partnership.balls * 6).let { String.format("%.2f", it) }
+    val runRate = if (partnership.balls > 0)
+        String.format("%.2f", partnership.runs.toFloat() / partnership.balls * 6)
     else "0.00"
     
     Surface(
@@ -606,7 +608,7 @@ fun BatsmanMiniCard(
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        color = if (isOut) GlassSurface else GlassSurface,
+        color = GlassSurface,
         border = if (isOnStrike) 
             androidx.compose.foundation.BorderStroke(
                 2.dp, 
@@ -643,14 +645,14 @@ fun BatsmanMiniCard(
                         )
                     } else {
                         Text(
-                            text = name.split(" ").mapNotNull { it.firstOrNull()?.uppercase() }.take(2).joinToString(""),
+                            text = name.toPlayerInitials(),
                             color = if (isOnStrike) hierarchy.secondary.primary else colors.textSecondary,
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold
                         )
                     }
                 }
-                
+
                 // Strike indicator dot
                 if (isOnStrike) {
                     Box(
@@ -809,10 +811,8 @@ fun BowlerMiniCard(
 ) {
     val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
-    val economy = run {
-        val oversFloat = overs.toFloatOrNull() ?: 0f
-        if (oversFloat > 0) runs / oversFloat else 0f
-    }
+    val oversFloat = overs.toFloatOrNull() ?: 0f
+    val economy = if (oversFloat > 0f) runs / oversFloat else 0f
     
     val infiniteTransition = rememberInfiniteTransition(label = "bowlerCard")
     val bowlerGlow by infiniteTransition.animateFloat(
@@ -861,7 +861,7 @@ fun BowlerMiniCard(
                     )
                 } else {
                     Text(
-                        text = name.split(" ").mapNotNull { it.firstOrNull()?.uppercase() }.take(2).joinToString(""),
+                        text = name.toPlayerInitials(),
                         color = if (isCurrentBowler) ChartCyan else colors.textSecondary,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold

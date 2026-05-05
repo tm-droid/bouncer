@@ -40,6 +40,9 @@ import com.tanush.bouncer.utils.rememberHapticFeedback
 import kotlin.math.*
 import com.tanush.bouncer.ui.theme.GoldPrimary
 
+private fun String.toPlayerInitials(): String =
+    split(" ").mapNotNull { it.firstOrNull()?.uppercase() }.take(2).joinToString("")
+
 /**
  * FlipCardPlayerStats - 3D flip card between front (photo) and back (stats)
  * Interactive player card with flip animation for detailed stats view
@@ -220,7 +223,7 @@ private fun FlipCardFront(
                         )
                     } else {
                         Text(
-                            text = playerName.split(" ").mapNotNull { it.firstOrNull()?.uppercase() }.take(2).joinToString(""),
+                            text = playerName.toPlayerInitials(),
                             color = hierarchy.secondary.primary,
                             fontSize = 32.sp,
                             fontWeight = FontWeight.Black
@@ -746,7 +749,7 @@ private fun PlayerComparisonHeader(
                 )
             } else {
                 Text(
-                    text = name.split(" ").mapNotNull { it.firstOrNull()?.uppercase() }.take(2).joinToString(""),
+                    text = name.toPlayerInitials(),
                     color = color,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold
@@ -1209,7 +1212,7 @@ fun PlayerCompactCard(
                     )
                 } else {
                     Text(
-                        text = name.split(" ").mapNotNull { it.firstOrNull()?.uppercase() }.take(2).joinToString(""),
+                        text = name.toPlayerInitials(),
                         color = teamColor,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold
@@ -1363,7 +1366,7 @@ fun PlayerMilestoneCard(
                         )
                     } else {
                         Text(
-                            text = playerName.split(" ").mapNotNull { it.firstOrNull()?.uppercase() }.take(2).joinToString(""),
+                            text = playerName.toPlayerInitials(),
                             color = hierarchy.secondary.primary,
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Black
