@@ -22,17 +22,14 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 /**
- * ViewModel for Cricbuzz News, fetching headlines from the RapidAPI endpoint
- * and scraping article body content from cricbuzz.com HTML.
- *
- * News is refreshed 6 times per day (every 4 hours).
+ * ViewModel for Cricbuzz News.
+ * Fetches headlines from RapidAPI and scrapes article bodies from cricbuzz.com.
+ * Auto-refreshes every 4 hours (6x/day).
  */
 class NewsViewModel : ViewModel() {
     companion object {
         private const val TAG = "NewsViewModel"
-        // Refresh every 4 hours = 6 times per day
         private const val REFRESH_INTERVAL_MS = 4 * 60 * 60 * 1000L
-        // Minimum interval between user-triggered refreshes
         private const val MIN_REFRESH_INTERVAL_MS = 5 * 60 * 1000L
         private const val USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 
@@ -56,11 +53,9 @@ class NewsViewModel : ViewModel() {
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
 
-    // Selected article for detail view
     private val _selectedArticle = MutableStateFlow<NewsArticleData?>(null)
     val selectedArticle: StateFlow<NewsArticleData?> = _selectedArticle.asStateFlow()
 
-    // Article body paragraphs (scraped from cricbuzz.com)
     private val _articleBody = MutableStateFlow<List<String>>(emptyList())
     val articleBody: StateFlow<List<String>> = _articleBody.asStateFlow()
 
@@ -75,9 +70,20 @@ class NewsViewModel : ViewModel() {
         startAutoRefresh()
     }
 
-    /**
-     * Fetch news from Cricbuzz RapidAPI endpoint.
-     */
+    private fun breadcrumb(
+        category: String,
+        message: String,
+        level: SentryLevel = SentryLevel.INFO,
+        data: Map<String, Any?> = emptyMap(),
+    ) {
+        Sentry.addBreadcrumb(Breadcrumb().apply {
+            this.category = category
+            this.message = message
+            this.level = level
+            data.forEach { (k, v) -> setData(k, v) }
+        })
+    }
+
     fun fetchNews() {
         val now = System.currentTimeMillis()
         if (_isLoading.value || _isRefreshing.value) return
@@ -88,20 +94,12 @@ class NewsViewModel : ViewModel() {
 
         viewModelScope.launch {
             try {
-                if (_articles.value.isEmpty()) {
-                    _isLoading.value = true
-                } else {
-                    _isRefreshing.value = true
-                }
+                if (_articles.value.isEmpty()) _isLoading.value = true else _isRefreshing.value = true
                 _error.value = null
 
                 if (BuildConfig.RAPIDAPI_KEY.isBlank()) {
                     Log.w(TAG, "Skipping news fetch because RAPIDAPI_KEY is empty")
-                    Sentry.addBreadcrumb(Breadcrumb().apply {
-                        category = "news.fetch"
-                        message = "Skipped news fetch because RapidAPI key is missing"
-                        level = SentryLevel.WARNING
-                    })
+                    breadcrumb("news.fetch", "Skipped news fetch because RapidAPI key is missing", SentryLevel.WARNING)
                     Sentry.metrics().count("news.fetch.skipped.missing_key", 1.0)
                     _error.value = "News is unavailable in this build."
                     return@launch
@@ -111,12 +109,12 @@ class NewsViewModel : ViewModel() {
                 if (!response.isSuccessful) {
                     val statusCode = response.code()
                     Log.w(TAG, "News API returned HTTP $statusCode")
-                    Sentry.addBreadcrumb(Breadcrumb().apply {
-                        category = "news.fetch"
-                        message = "News API returned a handled HTTP error"
-                        level = SentryLevel.WARNING
-                        setData("status_code", statusCode)
-                    })
+                    breadcrumb(
+                        category = "news.fetch",
+                        message = "News API returned a handled HTTP error",
+                        level = SentryLevel.WARNING,
+                        data = mapOf("status_code" to statusCode),
+                    )
                     Sentry.metrics().count("news.fetch.http_error", 1.0)
                     _error.value = newsFetchMessageFor(statusCode)
                     return@launch
@@ -125,11 +123,7 @@ class NewsViewModel : ViewModel() {
                 val responseBody = response.body()
                 if (responseBody == null) {
                     Log.w(TAG, "News API returned an empty response body")
-                    Sentry.addBreadcrumb(Breadcrumb().apply {
-                        category = "news.fetch"
-                        message = "News API returned an empty body"
-                        level = SentryLevel.WARNING
-                    })
+                    breadcrumb("news.fetch", "News API returned an empty body", SentryLevel.WARNING)
                     Sentry.metrics().count("news.fetch.empty_body", 1.0)
                     _error.value = "News is temporarily unavailable."
                     return@launch
@@ -151,12 +145,12 @@ class NewsViewModel : ViewModel() {
                 throw e
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to fetch news", e)
-                Sentry.addBreadcrumb(Breadcrumb().apply {
-                    category = "news.error"
-                    message = "Failed to fetch news articles"
-                    level = SentryLevel.ERROR
-                    setData("error_type", e.javaClass.simpleName)
-                })
+                breadcrumb(
+                    category = "news.error",
+                    message = "Failed to fetch news articles",
+                    level = SentryLevel.ERROR,
+                    data = mapOf("error_type" to e.javaClass.simpleName),
+                )
                 Sentry.captureException(e)
                 Sentry.metrics().count("news.fetch.error", 1.0)
                 _error.value = e.localizedMessage ?: "Failed to load news"
@@ -167,28 +161,18 @@ class NewsViewModel : ViewModel() {
         }
     }
 
-    /**
-     * Force refresh news (e.g., from pull-to-refresh).
-     */
     fun refreshNews() {
-        Sentry.addBreadcrumb(Breadcrumb().apply {
-            category = "user.action"
-            message = "Manual news refresh triggered"
-            level = SentryLevel.INFO
-        })
-        lastFetchTime = 0L // Reset cooldown
+        breadcrumb("user.action", "Manual news refresh triggered")
+        lastFetchTime = 0L
         fetchNews()
     }
 
-    /**
-     * Explicit refresh for pull-to-refresh UI.
-     */
     fun refresh() {
         viewModelScope.launch {
             _isRefreshing.value = true
             _error.value = null
             try {
-                lastFetchTime = 0L  // bypass throttle guard
+                lastFetchTime = 0L
                 fetchNews()
             } finally {
                 _isRefreshing.value = false
@@ -196,9 +180,6 @@ class NewsViewModel : ViewModel() {
         }
     }
 
-    /**
-     * Auto-refresh news every 4 hours (6 times per day).
-     */
     private fun startAutoRefresh() {
         pollingJob?.cancel()
         pollingJob = viewModelScope.launch {
@@ -212,45 +193,29 @@ class NewsViewModel : ViewModel() {
                     throw e
                 } catch (e: Exception) {
                     Log.e(TAG, "Error during auto-refresh", e)
-                    Sentry.addBreadcrumb(Breadcrumb().apply {
-                        category = "news.error"
-                        message = "Auto-refresh failed"
-                        level = SentryLevel.WARNING
-                    })
+                    breadcrumb("news.error", "Auto-refresh failed", SentryLevel.WARNING)
                     Sentry.captureException(e)
                 }
             }
         }
     }
 
-    /**
-     * Select an article to view in the detail screen.
-     * Begins scraping the article body from cricbuzz.com.
-     */
     fun selectArticle(article: NewsArticleData) {
-        Sentry.addBreadcrumb(Breadcrumb().apply {
-            category = "user.action"
-            message = "Article selected: ${article.headline.take(50)}"
-            level = SentryLevel.INFO
-            setData("article_id", article.id)
-        })
+        breadcrumb(
+            category = "user.action",
+            message = "Article selected: ${article.headline.take(50)}",
+            data = mapOf("article_id" to article.id),
+        )
         _selectedArticle.value = article
         _articleBody.value = emptyList()
         fetchArticleBody(article.articleUrl)
     }
 
-    /**
-     * Clear the selected article (go back from detail view).
-     */
     fun clearSelectedArticle() {
         _selectedArticle.value = null
         _articleBody.value = emptyList()
     }
 
-    /**
-     * Scrape article body paragraphs from cricbuzz.com HTML.
-     * Targets the div with class "flex flex-col gap-6 text-base" for article content.
-     */
     private fun fetchArticleBody(url: String) {
         viewModelScope.launch {
             _isLoadingArticle.value = true
@@ -261,23 +226,19 @@ class NewsViewModel : ViewModel() {
                         .timeout(15000)
                         .get()
 
-                    // Find the article body container
+                    // Cricbuzz article body uses Tailwind utility classes; selectFirst handles class-order variation.
                     val bodyContainer = doc.selectFirst("div.flex.flex-col.gap-6.text-base")
                         ?: doc.selectFirst("div[class*=flex][class*=flex-col][class*=gap-6][class*=text-base]")
 
                     if (bodyContainer != null) {
-                        // Get all children paragraphs
                         bodyContainer.children()
                             .map { it.text().trim() }
                             .filter { it.isNotBlank() }
                     } else {
-                        // Fallback: try getting <p> tags within article content
-                        val articleContent = doc.select("div.cb-nws-dtl-itms p, div.cb-nws-intr p, article p")
-                        if (articleContent.isNotEmpty()) {
-                            articleContent.map { it.text().trim() }.filter { it.isNotBlank() }
-                        } else {
-                            listOf("Unable to load article content. Please try again.")
-                        }
+                        val fallback = doc.select("div.cb-nws-dtl-itms p, div.cb-nws-intr p, article p")
+                            .map { it.text().trim() }
+                            .filter { it.isNotBlank() }
+                        fallback.ifEmpty { listOf("Unable to load article content. Please try again.") }
                     }
                 }
                 _articleBody.value = paragraphs
@@ -287,13 +248,12 @@ class NewsViewModel : ViewModel() {
                 throw e
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to scrape article body from $url", e)
-                Sentry.addBreadcrumb(Breadcrumb().apply {
-                    category = "scraping.error"
-                    message = "Failed to scrape article body"
-                    level = SentryLevel.ERROR
-                    setData("url", url)
-                    setData("error_type", e.javaClass.simpleName)
-                })
+                breadcrumb(
+                    category = "scraping.error",
+                    message = "Failed to scrape article body",
+                    level = SentryLevel.ERROR,
+                    data = mapOf("url" to url, "error_type" to e.javaClass.simpleName),
+                )
                 Sentry.captureException(e)
                 Sentry.metrics().count("news.article.scrape.error", 1.0)
                 Sentry.logger().error("Article scrape failed: %s", e.message ?: "unknown")
