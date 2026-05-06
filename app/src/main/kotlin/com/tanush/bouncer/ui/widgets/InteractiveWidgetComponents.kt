@@ -14,10 +14,7 @@ import androidx.glance.action.actionStartActivity
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.action.ActionCallback
 import androidx.glance.appwidget.action.actionRunCallback
-import androidx.glance.appwidget.action.actionSendBroadcast
 import androidx.glance.appwidget.cornerRadius
-import androidx.glance.appwidget.GlanceAppWidget
-import androidx.glance.appwidget.GlanceAppWidgetReceiver
 import androidx.glance.background
 import androidx.glance.layout.Alignment
 import androidx.glance.layout.Box
@@ -30,15 +27,11 @@ import androidx.glance.layout.height
 import androidx.glance.layout.padding
 import androidx.glance.layout.size
 import androidx.glance.layout.width
-import androidx.glance.layout.wrapContentHeight
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
-import androidx.glance.text.TextAlign
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 import com.tanush.bouncer.BouncerActivity
-import com.tanush.bouncer.R
-import io.sentry.Sentry
 
 /**
  * InteractiveWidgetComponents - Tappable and Interactive Widget Elements
@@ -75,14 +68,8 @@ class RefreshWidgetCallback : ActionCallback {
         glanceId: GlanceId,
         parameters: ActionParameters
     ) {
-        // Trigger widget refresh by sending broadcast
         val intent = Intent(context, LiveMatchWidgetProvider::class.java).apply {
-            try {
-                action = LiveMatchWidgetProvider.ACTION_REFRESH
-            } catch (e: Exception) {
-                Sentry.captureException(e)
-                throw e
-            }
+            action = LiveMatchWidgetProvider.ACTION_REFRESH
         }
         context.sendBroadcast(intent)
     }
@@ -98,17 +85,9 @@ class ToggleFavoriteCallback : ActionCallback {
         parameters: ActionParameters
     ) {
         val matchId = parameters[WidgetActionKeys.matchIdKey] ?: return
-        
-        // Toggle favorite in SharedPreferences
         val prefs = context.getSharedPreferences("widget_favorites", Context.MODE_PRIVATE)
         val favorites = prefs.getStringSet("favorites", mutableSetOf())?.toMutableSet() ?: mutableSetOf()
-        
-        if (favorites.contains(matchId)) {
-            favorites.remove(matchId)
-        } else {
-            favorites.add(matchId)
-        }
-        
+        if (matchId in favorites) favorites.remove(matchId) else favorites.add(matchId)
         prefs.edit().putStringSet("favorites", favorites).apply()
     }
 }
@@ -123,17 +102,9 @@ class ToggleMuteCallback : ActionCallback {
         parameters: ActionParameters
     ) {
         val matchId = parameters[WidgetActionKeys.matchIdKey] ?: return
-        
-        // Toggle mute in SharedPreferences
         val prefs = context.getSharedPreferences("widget_muted", Context.MODE_PRIVATE)
         val mutedMatches = prefs.getStringSet("muted", mutableSetOf())?.toMutableSet() ?: mutableSetOf()
-        
-        if (mutedMatches.contains(matchId)) {
-            mutedMatches.remove(matchId)
-        } else {
-            mutedMatches.add(matchId)
-        }
-        
+        if (matchId in mutedMatches) mutedMatches.remove(matchId) else mutedMatches.add(matchId)
         prefs.edit().putStringSet("muted", mutedMatches).apply()
     }
 }
@@ -148,12 +119,7 @@ class NextMatchCallback : ActionCallback {
         parameters: ActionParameters
     ) {
         val intent = Intent(context, LiveMatchWidgetProvider::class.java).apply {
-            try {
-                action = LiveMatchWidgetProvider.ACTION_NEXT_MATCH
-            } catch (e: Exception) {
-                Sentry.captureException(e)
-                throw e
-            }
+            action = LiveMatchWidgetProvider.ACTION_NEXT_MATCH
         }
         context.sendBroadcast(intent)
     }
@@ -187,16 +153,14 @@ fun TappableScoreArea(
             horizontalAlignment = Alignment.Horizontal.CenterHorizontally,
             verticalAlignment = Alignment.Vertical.CenterVertically
         ) {
-            // Team 1 Row
             TeamScoreRow(
                 teamName = team1Name,
                 score = team1Score,
                 isBatting = true
             )
-            
+
             Spacer(modifier = GlanceModifier.height(WidgetTheme.spacingSmall))
-            
-            // VS Divider
+
             Row(
                 modifier = GlanceModifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.Horizontal.CenterHorizontally
@@ -218,10 +182,9 @@ fun TappableScoreArea(
                         .background(WidgetColorScheme.border)
                 ) {}
             }
-            
+
             Spacer(modifier = GlanceModifier.height(WidgetTheme.spacingSmall))
-            
-            // Team 2 Row
+
             TeamScoreRow(
                 teamName = team2Name,
                 score = team2Score ?: "Yet to bat",
@@ -245,14 +208,11 @@ private fun TeamScoreRow(
         horizontalAlignment = Alignment.Horizontal.Start,
         verticalAlignment = Alignment.Vertical.CenterVertically
     ) {
-        // Team name
         Text(
             text = teamName,
             style = WidgetTypography.teamName,
             modifier = GlanceModifier.defaultWeight()
         )
-        
-        // Score
         Text(
             text = score,
             style = if (isBatting) WidgetTypography.scoreMedium else WidgetTypography.bodyMedium
@@ -280,7 +240,6 @@ fun QuickActionButtons(
         horizontalAlignment = Alignment.Horizontal.CenterHorizontally,
         verticalAlignment = Alignment.Vertical.CenterVertically
     ) {
-        // Mute Button
         QuickActionButton(
             icon = if (isMuted) "🔇" else "🔔",
             contentDescription = if (isMuted) "Unmute" else "Mute",
@@ -289,8 +248,6 @@ fun QuickActionButtons(
                 actionParametersOf(WidgetActionKeys.matchIdKey to matchId)
             )
         )
-        
-        // Favorite Button
         QuickActionButton(
             icon = if (isFavorite) "★" else "☆",
             contentDescription = if (isFavorite) "Remove from favorites" else "Add to favorites",
@@ -300,8 +257,6 @@ fun QuickActionButtons(
                 actionParametersOf(WidgetActionKeys.matchIdKey to matchId)
             )
         )
-        
-        // Share Button
         if (showShare) {
             QuickActionButton(
                 icon = "↗",
@@ -309,8 +264,6 @@ fun QuickActionButtons(
                 onClick = actionStartActivity<BouncerActivity>()
             )
         }
-        
-        // Refresh Button
         WidgetRefreshButton()
     }
 }
@@ -365,7 +318,6 @@ fun OversProgressBar(
         modifier = modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.Horizontal.Start
     ) {
-        // Overs text
         Row(
             modifier = GlanceModifier.fillMaxWidth(),
             horizontalAlignment = Alignment.Horizontal.Start
@@ -383,10 +335,9 @@ fun OversProgressBar(
                 )
             )
         }
-        
+
         Spacer(modifier = GlanceModifier.height(4.dp))
-        
-        // Progress bar background
+
         Box(
             modifier = GlanceModifier
                 .fillMaxWidth()
@@ -394,7 +345,6 @@ fun OversProgressBar(
                 .background(WidgetColorScheme.surfaceHighest)
                 .cornerRadius(WidgetTheme.radiusFull)
         ) {
-            // Progress fill
             Box(
                 modifier = GlanceModifier
                     .fillMaxHeight()
@@ -422,17 +372,15 @@ fun OversProgressBarEnhanced(
     Column(
         modifier = modifier.fillMaxWidth()
     ) {
-        // Team 1 progress
         InningsProgressRow(
             teamLabel = "1st",
             overs = team1Overs,
             totalOvers = totalOvers,
             color = team1Color
         )
-        
+
         Spacer(modifier = GlanceModifier.height(4.dp))
-        
-        // Team 2 progress (if available)
+
         team2Overs?.let { overs ->
             InningsProgressRow(
                 teamLabel = "2nd",
@@ -539,15 +487,12 @@ fun TeamLogoWithFallback(
     Row(
         verticalAlignment = Alignment.Vertical.CenterVertically
     ) {
-        // Logo circle
         TeamLogoWidget(
             teamName = teamName,
             teamAcronym = teamAcronym,
             teamColor = teamColor,
             size = size
         )
-        
-        // Batting indicator
         if (isBatting) {
             Box(
                 modifier = GlanceModifier
@@ -612,7 +557,6 @@ private fun LiveBadge(modifier: GlanceModifier = GlanceModifier) {
 
 @Composable
 private fun LiveDot(modifier: GlanceModifier = GlanceModifier) {
-    // Outer glow simulation
     Box(
         modifier = modifier
             .size(16.dp)
@@ -620,7 +564,6 @@ private fun LiveDot(modifier: GlanceModifier = GlanceModifier) {
             .cornerRadius(8.dp),
         contentAlignment = Alignment.Center
     ) {
-        // Inner dot
         Box(
             modifier = GlanceModifier
                 .size(10.dp)
@@ -757,8 +700,6 @@ fun RecentBallsStrip(
                 Spacer(modifier = GlanceModifier.width(4.dp))
             }
         }
-        
-        // Fill empty slots
         repeat(maxBalls - displayBalls.size) {
             Spacer(modifier = GlanceModifier.width(4.dp))
             EmptyBallSlot()
@@ -812,39 +753,27 @@ private fun EmptyBallSlot(
 /**
  * Get colors for ball type
  */
-private fun getBallColors(ball: String): Pair<ColorProvider, ColorProvider> {
-    try {
-        return when (ball.uppercase().trim()) {
-            "W" -> WidgetColorScheme.wicket to ColorProvider(Color.White)
-            "6" -> WidgetColorScheme.six to ColorProvider(Color.White)
-            "4" -> WidgetColorScheme.four to ColorProvider(Color.White)
-            "0", "•" -> WidgetColorScheme.dotBall to WidgetColorScheme.textTertiary
-            "NB", "WD", "LB", "B" -> WidgetColorScheme.warning to ColorProvider(Color.Black)
-            else -> WidgetColorScheme.surfaceHighest to WidgetColorScheme.textPrimary
-        }
-    } catch (e: Exception) {
-        Sentry.captureException(e)
-        throw e
+private fun getBallColors(ball: String): Pair<ColorProvider, ColorProvider> =
+    when (ball.uppercase().trim()) {
+        "W" -> WidgetColorScheme.wicket to ColorProvider(Color.White)
+        "6" -> WidgetColorScheme.six to ColorProvider(Color.White)
+        "4" -> WidgetColorScheme.four to ColorProvider(Color.White)
+        "0", "•" -> WidgetColorScheme.dotBall to WidgetColorScheme.textTertiary
+        "NB", "WD", "LB", "B" -> WidgetColorScheme.warning to ColorProvider(Color.Black)
+        else -> WidgetColorScheme.surfaceHighest to WidgetColorScheme.textPrimary
     }
-}
 
 /**
  * Format ball text for display
  */
-private fun formatBallText(ball: String): String {
-    try {
-        return when (ball.uppercase().trim()) {
-            "0" -> "•"
-            "NB" -> "nb"
-            "WD" -> "wd"
-            "LB" -> "lb"
-            else -> ball
-        }
-    } catch (e: Exception) {
-        Sentry.captureException(e)
-        throw e
+private fun formatBallText(ball: String): String =
+    when (ball.uppercase().trim()) {
+        "0" -> "•"
+        "NB" -> "nb"
+        "WD" -> "wd"
+        "LB" -> "lb"
+        else -> ball
     }
-}
 
 // ===========================================
 // WIN PROBABILITY DISPLAY
@@ -868,7 +797,6 @@ fun WinProbabilityIndicator(
     Column(
         modifier = modifier.fillMaxWidth()
     ) {
-        // Team labels and percentages
         Row(
             modifier = GlanceModifier.fillMaxWidth()
         ) {
@@ -892,15 +820,13 @@ fun WinProbabilityIndicator(
         }
         
         Spacer(modifier = GlanceModifier.height(4.dp))
-        
-        // Probability bar
+
         Row(
             modifier = GlanceModifier
                 .fillMaxWidth()
                 .height(8.dp)
                 .cornerRadius(4.dp)
         ) {
-            // Team 1 segment
             Box(
                 modifier = GlanceModifier
                     .fillMaxHeight()
@@ -908,8 +834,6 @@ fun WinProbabilityIndicator(
                     .background(team1Color)
                     .cornerRadius(4.dp)
             ) {}
-            
-            // Team 2 segment
             Box(
                 modifier = GlanceModifier
                     .fillMaxHeight()
@@ -1058,15 +982,11 @@ fun BattingPairWidget(
             .cornerRadius(WidgetTheme.radiusSmall)
             .padding(WidgetTheme.paddingSmall)
     ) {
-        // Striker
         BatsmanRow(
             batsman = striker,
             isStriker = true
         )
-        
         Spacer(modifier = GlanceModifier.height(4.dp))
-        
-        // Non-striker
         BatsmanRow(
             batsman = nonStriker,
             isStriker = false
@@ -1083,7 +1003,6 @@ private fun BatsmanRow(
         modifier = GlanceModifier.fillMaxWidth(),
         verticalAlignment = Alignment.Vertical.CenterVertically
     ) {
-        // Striker indicator
         if (isStriker) {
             Text(
                 text = "●",
@@ -1096,15 +1015,11 @@ private fun BatsmanRow(
         } else {
             Spacer(modifier = GlanceModifier.width(12.dp))
         }
-        
-        // Batsman name
         Text(
             text = batsman.name,
             style = WidgetTypography.bodySmall,
             modifier = GlanceModifier.defaultWeight()
         )
-        
-        // Runs
         Text(
             text = "${batsman.runs}",
             style = TextStyle(
@@ -1113,8 +1028,6 @@ private fun BatsmanRow(
                 color = WidgetColorScheme.textPrimary
             )
         )
-        
-        // Balls faced
         Text(
             text = "(${batsman.balls})",
             style = WidgetTypography.labelSmall,
@@ -1151,21 +1064,16 @@ fun CurrentBowlerWidget(
             .padding(horizontal = WidgetTheme.paddingSmall, vertical = 6.dp),
         verticalAlignment = Alignment.Vertical.CenterVertically
     ) {
-        // Bowler icon
         Text(
             text = "⚾",
             style = TextStyle(fontSize = 12.sp),
             modifier = GlanceModifier.padding(end = 6.dp)
         )
-        
-        // Bowler name
         Text(
             text = bowler.name,
             style = WidgetTypography.bodySmall,
             modifier = GlanceModifier.defaultWeight()
         )
-        
-        // Figures
         Text(
             text = "${bowler.wickets}/${bowler.runs}",
             style = TextStyle(
@@ -1174,8 +1082,6 @@ fun CurrentBowlerWidget(
                 color = WidgetColorScheme.textPrimary
             )
         )
-        
-        // Overs
         Text(
             text = " (${bowler.overs})",
             style = WidgetTypography.labelSmall
@@ -1213,7 +1119,6 @@ fun RunRateComparison(
         horizontalAlignment = Alignment.Horizontal.CenterHorizontally,
         verticalAlignment = Alignment.Vertical.CenterVertically
     ) {
-        // Current RR
         Column(
             horizontalAlignment = Alignment.Horizontal.CenterHorizontally,
             modifier = GlanceModifier.defaultWeight()
@@ -1231,8 +1136,7 @@ fun RunRateComparison(
                 )
             )
         }
-        
-        // Required RR (if applicable)
+
         requiredRunRate?.let { rrr ->
             Box(
                 modifier = GlanceModifier
@@ -1298,9 +1202,7 @@ fun MatchCountdown(
             horizontalAlignment = Alignment.Horizontal.CenterHorizontally,
             verticalAlignment = Alignment.Vertical.Bottom
         ) {
-            // Hours
             TimeUnit(value = hoursRemaining, label = "h")
-            
             Text(
                 text = ":",
                 style = TextStyle(
@@ -1310,8 +1212,6 @@ fun MatchCountdown(
                 ),
                 modifier = GlanceModifier.padding(horizontal = 4.dp)
             )
-            
-            // Minutes
             TimeUnit(value = minutesRemaining, label = "m")
         }
         
@@ -1376,7 +1276,6 @@ fun ScoreComparisonWidget(
             .cornerRadius(WidgetTheme.radiusMedium)
             .padding(WidgetTheme.paddingMedium)
     ) {
-        // Team comparison header
         Row(
             modifier = GlanceModifier.fillMaxWidth(),
             verticalAlignment = Alignment.Vertical.CenterVertically
@@ -1398,31 +1297,25 @@ fun ScoreComparisonWidget(
         }
         
         Spacer(modifier = GlanceModifier.height(8.dp))
-        
-        // Score comparison bar
+
         val maxScore = maxOf(team1Score, team2Score, targetScore ?: 0)
         val team1Progress = if (maxScore > 0) team1Score.toFloat() / maxScore else 0f
         val team2Progress = if (maxScore > 0) team2Score.toFloat() / maxScore else 0f
-        
-        // Team 1 bar
+
         ScoreProgressBar(
             score = team1Score,
             overs = team1Overs,
             progress = team1Progress,
             color = WidgetColorScheme.primary
         )
-        
         Spacer(modifier = GlanceModifier.height(4.dp))
-        
-        // Team 2 bar
         ScoreProgressBar(
             score = team2Score,
             overs = team2Overs,
             progress = team2Progress,
             color = WidgetColorScheme.textSecondary
         )
-        
-        // Target indicator
+
         targetScore?.let { target ->
             Spacer(modifier = GlanceModifier.height(4.dp))
             Text(
@@ -1600,50 +1493,40 @@ fun ExpandedMatchDetails(
             .clickable(onTap)
             .padding(WidgetTheme.paddingMedium)
     ) {
-        // Header with match type and venue
         Row(
             modifier = GlanceModifier.fillMaxWidth(),
             verticalAlignment = Alignment.Vertical.CenterVertically
         ) {
-            MatchStatusChip(
-                status = MatchStatus.LIVE
-            )
-            
+            MatchStatusChip(status = MatchStatus.LIVE)
             Spacer(modifier = GlanceModifier.width(8.dp))
-            
             Text(
                 text = matchType,
                 style = WidgetTypography.labelMedium,
                 modifier = GlanceModifier.defaultWeight()
             )
         }
-        
+
         Spacer(modifier = GlanceModifier.height(12.dp))
-        
-        // Teams and scores
+
         TeamScoreRow(
             teamName = team1Name,
             score = team1Score,
             isBatting = team2Score == null || team2Score == "-"
         )
-        
         Spacer(modifier = GlanceModifier.height(8.dp))
-        
         TeamScoreRow(
             teamName = team2Name,
             score = team2Score ?: "Yet to bat",
             isBatting = team2Score != null && team2Score != "-"
         )
-        
+
         Spacer(modifier = GlanceModifier.height(12.dp))
-        
-        // Overs progress
+
         OversProgressBar(
             currentOvers = currentOvers,
             totalOvers = totalOvers
         )
-        
-        // Batting pair (if available)
+
         if (striker != null && nonStriker != null) {
             Spacer(modifier = GlanceModifier.height(8.dp))
             BattingPairWidget(
@@ -1651,20 +1534,14 @@ fun ExpandedMatchDetails(
                 nonStriker = nonStriker
             )
         }
-        
-        // Current bowler (if available)
         currentBowler?.let {
             Spacer(modifier = GlanceModifier.height(4.dp))
             CurrentBowlerWidget(bowler = it)
         }
-        
-        // Recent balls
         if (recentBalls.isNotEmpty()) {
             Spacer(modifier = GlanceModifier.height(8.dp))
             RecentBallsStrip(balls = recentBalls)
         }
-        
-        // Win probability (if available)
         winProbability?.let { prob ->
             Spacer(modifier = GlanceModifier.height(8.dp))
             WinProbabilityIndicator(
@@ -1673,18 +1550,13 @@ fun ExpandedMatchDetails(
                 team1Probability = prob
             )
         }
-        
+
         Spacer(modifier = GlanceModifier.height(8.dp))
-        
-        // Status text
         Text(
             text = status,
             style = WidgetTypography.bodySmall
         )
-        
         Spacer(modifier = GlanceModifier.height(4.dp))
-        
-        // Venue
         Text(
             text = venue,
             style = WidgetTypography.labelSmall
