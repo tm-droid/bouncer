@@ -33,7 +33,6 @@ import com.tanush.bouncer.ui.theme.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
-import io.sentry.Sentry
 import com.tanush.bouncer.ui.theme.GoldPrimary
 
 // ==========================================
@@ -713,15 +712,8 @@ fun Modifier.shimmerEffect(
     shimmerColor: Color = Color.White,
     baseColor: Color = Color.White.copy(alpha = 0.08f)
 ): Modifier = composed {
-    if (!isLoading) {
-        try {
-            return@composed this
-        } catch (e: Exception) {
-            Sentry.captureException(e)
-            throw e
-        }
-    }
-    
+    if (!isLoading) return@composed this
+
     val infiniteTransition = rememberInfiniteTransition(label = "shimmer")
     val shimmerOffset by infiniteTransition.animateFloat(
         initialValue = -1f,

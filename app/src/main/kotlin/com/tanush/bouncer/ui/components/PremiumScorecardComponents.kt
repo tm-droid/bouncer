@@ -290,69 +290,40 @@ fun GoldGradientDivider(modifier: Modifier = Modifier) {
     )
 }
 
+// Column header text — single per-column source of truth used by ScorecardHeader/BowlingHeader.
+@Composable
+private fun RowScope.HeaderCell(
+    label: String,
+    modifier: Modifier,
+    textAlign: TextAlign = TextAlign.Center,
+    letterSpacing: androidx.compose.ui.unit.TextUnit = 0.5.sp
+) {
+    val hierarchy = BouncerDesignSystem.hierarchy
+    Text(
+        text = label,
+        fontSize = 10.sp,
+        fontWeight = FontWeight.Bold,
+        color = hierarchy.secondary.primary.copy(alpha = 0.6f),
+        letterSpacing = letterSpacing,
+        textAlign = textAlign,
+        modifier = modifier
+    )
+}
+
 @Composable
 private fun ScorecardHeader() {
-    val hierarchy = BouncerDesignSystem.hierarchy
-    val colors = BouncerDesignSystem.colors
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(
-            "BATTER",
-            fontSize = 10.sp,
-            fontWeight = FontWeight.Bold,
-            color = hierarchy.secondary.primary.copy(alpha = 0.6f),
-            letterSpacing = 1.sp,
-            modifier = Modifier.weight(1f)
-        )
-        Text(
-            "R",
-            fontSize = 10.sp,
-            fontWeight = FontWeight.Bold,
-            color = hierarchy.secondary.primary.copy(alpha = 0.6f),
-            letterSpacing = 0.5.sp,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.width(32.dp)
-        )
-        Text(
-            "B",
-            fontSize = 10.sp,
-            fontWeight = FontWeight.Bold,
-            color = hierarchy.secondary.primary.copy(alpha = 0.6f),
-            letterSpacing = 0.5.sp,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.width(32.dp)
-        )
-        Text(
-            "4s",
-            fontSize = 10.sp,
-            fontWeight = FontWeight.Bold,
-            color = hierarchy.secondary.primary.copy(alpha = 0.6f),
-            letterSpacing = 0.5.sp,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.width(28.dp)
-        )
-        Text(
-            "6s",
-            fontSize = 10.sp,
-            fontWeight = FontWeight.Bold,
-            color = hierarchy.secondary.primary.copy(alpha = 0.6f),
-            letterSpacing = 0.5.sp,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.width(28.dp)
-        )
-        Text(
-            "S/R",
-            fontSize = 10.sp,
-            fontWeight = FontWeight.Bold,
-            color = hierarchy.secondary.primary.copy(alpha = 0.6f),
-            letterSpacing = 0.5.sp,
-            textAlign = TextAlign.End,
-            modifier = Modifier.width(48.dp)
-        )
+        HeaderCell("BATTER", Modifier.weight(1f), TextAlign.Start, letterSpacing = 1.sp)
+        HeaderCell("R", Modifier.width(32.dp))
+        HeaderCell("B", Modifier.width(32.dp))
+        HeaderCell("4s", Modifier.width(28.dp))
+        HeaderCell("6s", Modifier.width(28.dp))
+        HeaderCell("S/R", Modifier.width(48.dp), TextAlign.End)
     }
 }
 
@@ -650,67 +621,18 @@ fun PremiumBowlingScorecard(
 
 @Composable
 private fun BowlingHeader() {
-    val hierarchy = BouncerDesignSystem.hierarchy
-    val colors = BouncerDesignSystem.colors
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(
-            "BOWLER",
-            fontSize = 10.sp,
-            fontWeight = FontWeight.Bold,
-            color = hierarchy.secondary.primary.copy(alpha = 0.6f),
-            letterSpacing = 1.sp,
-            modifier = Modifier.weight(1f)
-        )
-        Text(
-            "O",
-            fontSize = 10.sp,
-            fontWeight = FontWeight.Bold,
-            color = hierarchy.secondary.primary.copy(alpha = 0.6f),
-            letterSpacing = 0.5.sp,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.width(32.dp)
-        )
-        Text(
-            "M",
-            fontSize = 10.sp,
-            fontWeight = FontWeight.Bold,
-            color = hierarchy.secondary.primary.copy(alpha = 0.6f),
-            letterSpacing = 0.5.sp,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.width(28.dp)
-        )
-        Text(
-            "R",
-            fontSize = 10.sp,
-            fontWeight = FontWeight.Bold,
-            color = hierarchy.secondary.primary.copy(alpha = 0.6f),
-            letterSpacing = 0.5.sp,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.width(32.dp)
-        )
-        Text(
-            "W",
-            fontSize = 10.sp,
-            fontWeight = FontWeight.Bold,
-            color = hierarchy.secondary.primary.copy(alpha = 0.6f),
-            letterSpacing = 0.5.sp,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.width(28.dp)
-        )
-        Text(
-            "ECON",
-            fontSize = 10.sp,
-            fontWeight = FontWeight.Bold,
-            color = hierarchy.secondary.primary.copy(alpha = 0.6f),
-            letterSpacing = 0.5.sp,
-            textAlign = TextAlign.End,
-            modifier = Modifier.width(44.dp)
-        )
+        HeaderCell("BOWLER", Modifier.weight(1f), TextAlign.Start, letterSpacing = 1.sp)
+        HeaderCell("O", Modifier.width(32.dp))
+        HeaderCell("M", Modifier.width(28.dp))
+        HeaderCell("R", Modifier.width(32.dp))
+        HeaderCell("W", Modifier.width(28.dp))
+        HeaderCell("ECON", Modifier.width(44.dp), TextAlign.End)
     }
 }
 

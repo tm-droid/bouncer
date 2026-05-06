@@ -30,6 +30,44 @@ import kotlin.math.*
 import kotlin.random.Random
 import com.tanush.bouncer.ui.theme.GoldPrimary
 
+// Reusable scale-pulse spec used by hero-number celebrations (Century, Five-Wicket).
+@Composable
+private fun rememberHeroPulse(): Float {
+    val infiniteTransition = rememberInfiniteTransition(label = "heroPulse")
+    val scale by infiniteTransition.animateFloat(
+        initialValue = 0.95f,
+        targetValue = 1.05f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(800, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "heroPulseScale"
+    )
+    return scale
+}
+
+// Auto-dismiss helper: shows content for [visibleMillis], hides, then invokes [onDismiss]
+// after a 500ms exit delay. Centralises the show/hide/dismiss timing used by every
+// celebration overlay in this file.
+@Composable
+private fun rememberAutoDismissShow(
+    isVisible: Boolean,
+    visibleMillis: Long,
+    onDismiss: () -> Unit
+): MutableState<Boolean> {
+    val show = remember { mutableStateOf(false) }
+    LaunchedEffect(isVisible) {
+        if (isVisible) {
+            show.value = true
+            delay(visibleMillis)
+            show.value = false
+            delay(500L)
+            onDismiss()
+        }
+    }
+    return show
+}
+
 /**
  * Full-screen century explosion celebration overlay
  */
@@ -43,18 +81,9 @@ fun CenturyExplosion(
 ) {
     val colors = BouncerDesignSystem.colors
     val hierarchy = BouncerDesignSystem.hierarchy
-    var showContent by remember { mutableStateOf(false) }
-    
-    LaunchedEffect(isVisible) {
-        if (isVisible) {
-            showContent = true
-            delay(4000L)
-            showContent = false
-            delay(500L)
-            onDismiss()
-        }
-    }
-    
+    val showContentState = rememberAutoDismissShow(isVisible, 4000L, onDismiss)
+    val showContent = showContentState.value
+
     AnimatedVisibility(
         visible = showContent,
         enter = fadeIn(tween(200)) + scaleIn(tween(400), initialScale = 0.5f),
@@ -116,17 +145,9 @@ fun CenturyExplosion(
 private fun AnimatedCenturyNumber() {
     val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
+    val scale = rememberHeroPulse()
     val infiniteTransition = rememberInfiniteTransition(label = "century")
-    val scale by infiniteTransition.animateFloat(
-        initialValue = 0.95f,
-        targetValue = 1.05f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(800, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "centuryScale"
-    )
-    
+
     val glowAlpha by infiniteTransition.animateFloat(
         initialValue = 0.5f,
         targetValue = 1f,
@@ -250,18 +271,9 @@ fun FiveWicketHaulCelebration(
     onDismiss: () -> Unit
 ) {
     val colors = BouncerDesignSystem.colors
-    var showContent by remember { mutableStateOf(false) }
-    
-    LaunchedEffect(isVisible) {
-        if (isVisible) {
-            showContent = true
-            delay(4000L)
-            showContent = false
-            delay(500L)
-            onDismiss()
-        }
-    }
-    
+    val showContentState = rememberAutoDismissShow(isVisible, 4000L, onDismiss)
+    val showContent = showContentState.value
+
     AnimatedVisibility(
         visible = showContent,
         enter = fadeIn(tween(200)) + scaleIn(tween(400), initialScale = 0.5f),
@@ -314,17 +326,8 @@ fun FiveWicketHaulCelebration(
 
 @Composable
 private fun AnimatedWicketNumber(wickets: Int) {
-    val infiniteTransition = rememberInfiniteTransition(label = "wickets")
-    val scale by infiniteTransition.animateFloat(
-        initialValue = 0.95f,
-        targetValue = 1.05f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(800, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "wicketScale"
-    )
-    
+    val scale = rememberHeroPulse()
+
     Box(
         contentAlignment = Alignment.Center,
         modifier = Modifier.graphicsLayer { 
@@ -397,18 +400,9 @@ fun MatchWinFireworks(
 ) {
     val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
-    var showContent by remember { mutableStateOf(false) }
-    
-    LaunchedEffect(isVisible) {
-        if (isVisible) {
-            showContent = true
-            delay(5000L)
-            showContent = false
-            delay(500L)
-            onDismiss()
-        }
-    }
-    
+    val showContentState = rememberAutoDismissShow(isVisible, 5000L, onDismiss)
+    val showContent = showContentState.value
+
     AnimatedVisibility(
         visible = showContent,
         enter = fadeIn(tween(300)),
@@ -615,18 +609,9 @@ fun RecordBreakerBanner(
     isVisible: Boolean = true,
     onDismiss: () -> Unit
 ) {
-    var showBanner by remember { mutableStateOf(false) }
-    
-    LaunchedEffect(isVisible) {
-        if (isVisible) {
-            showBanner = true
-            delay(4000L)
-            showBanner = false
-            delay(500L)
-            onDismiss()
-        }
-    }
-    
+    val showBannerState = rememberAutoDismissShow(isVisible, 4000L, onDismiss)
+    val showBanner = showBannerState.value
+
     AnimatedVisibility(
         visible = showBanner,
         enter = slideInVertically(
@@ -889,8 +874,8 @@ fun MilestoneBadge(
     isVisible: Boolean = true,
     onDismiss: () -> Unit = {}
 ) {
+    // Slightly different exit delay (400ms) than other celebrations — kept inline for fidelity.
     var showBadge by remember { mutableStateOf(false) }
-    
     LaunchedEffect(isVisible) {
         if (isVisible) {
             showBadge = true
@@ -900,7 +885,7 @@ fun MilestoneBadge(
             onDismiss()
         }
     }
-    
+
     AnimatedVisibility(
         visible = showBadge,
         enter = scaleIn(

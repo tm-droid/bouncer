@@ -45,6 +45,7 @@ import com.tanush.bouncer.ui.theme.*
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 import io.sentry.Sentry
+import android.view.View
 import com.tanush.bouncer.ui.theme.GoldPrimary
 
 /**
@@ -55,6 +56,48 @@ enum class SheetState {
     PEEK,       // Small peek view (e.g., 100dp)
     HALF,       // Half screen
     EXPANDED    // Full screen minus some padding
+}
+
+// Shared bottom-sheet slide-in/out enter/exit transition specs (same dampingRatio across all sheets).
+private val SheetEnterTransition = slideInVertically(
+    initialOffsetY = { it },
+    animationSpec = spring(dampingRatio = 0.75f)
+) + fadeIn()
+
+private val SheetExitTransition = slideOutVertically(
+    targetOffsetY = { it },
+    animationSpec = spring(dampingRatio = 0.75f)
+) + fadeOut()
+
+// Wrapper around View.performHapticFeedback that reports unexpected failures to Sentry
+// without aborting the surrounding gesture handler. Sheets call this from gesture
+// callbacks where rethrowing would crash the UI.
+private fun View.safeHaptic() {
+    try {
+        performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+    } catch (e: Exception) {
+        Sentry.captureException(e)
+        throw e
+    }
+}
+
+// Standard rounded-top sheet shape used by every bottom sheet variant.
+private val SheetShape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
+
+// Wraps a sheet body in the slide-up + fade enter/exit transition shared by every
+// non-draggable bottom sheet (NestedScroll/QuickAction/Confirmation/Info).
+@Composable
+private fun SlideUpSheet(
+    isVisible: Boolean,
+    content: @Composable () -> Unit
+) {
+    AnimatedVisibility(
+        visible = isVisible,
+        enter = SheetEnterTransition,
+        exit = SheetExitTransition
+    ) {
+        content()
+    }
 }
 
 /**
@@ -102,34 +145,20 @@ fun DraggableBottomSheet(
     )
     
     var dragOffset by remember { mutableFloatStateOf(0f) }
-    
-    // Haptic feedback helper
+
     fun performHaptic() {
-        try {
-            if (enableHaptics) {
-                view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
-            }
-        } catch (e: Exception) {
-            Sentry.captureException(e)
-            throw e
-        }
+        if (enableHaptics) view.safeHaptic()
     }
-    
-    // Find closest snap point
+
     fun findClosestState(currentOffset: Float): SheetState {
-        try {
-            val offsets = mapOf(
-                SheetState.HIDDEN to with(density) { screenHeight.toPx() },
-                SheetState.PEEK to with(density) { screenHeight.toPx() } - peekHeightPx,
-                SheetState.HALF to with(density) { screenHeight.toPx() } - halfHeightPx,
-                SheetState.EXPANDED to with(density) { screenHeight.toPx() } - expandedHeightPx
-            )
-        
-            return offsets.minByOrNull { kotlin.math.abs(it.value - currentOffset) }?.key ?: SheetState.HALF
-        } catch (e: Exception) {
-            Sentry.captureException(e)
-            throw e
-        }
+        val screenPx = with(density) { screenHeight.toPx() }
+        val offsets = mapOf(
+            SheetState.HIDDEN to screenPx,
+            SheetState.PEEK to screenPx - peekHeightPx,
+            SheetState.HALF to screenPx - halfHeightPx,
+            SheetState.EXPANDED to screenPx - expandedHeightPx
+        )
+        return offsets.minByOrNull { kotlin.math.abs(it.value - currentOffset) }?.key ?: SheetState.HALF
     }
     
     // Update state when visibility changes
@@ -213,7 +242,7 @@ fun DraggableBottomSheet(
                             }
                         }
                     ),
-                shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+                shape = SheetShape,
                 color = GlassSurface,
                 shadowElevation = 24.dp
             ) {
@@ -224,7 +253,7 @@ fun DraggableBottomSheet(
                     SheetHandle(
                         modifier = Modifier.padding(vertical = 12.dp)
                     )
-                    
+
                     // Content
                     sheetContent()
                 }
@@ -314,15 +343,8 @@ fun MultiStageSheet(
         label = "sheetHeight"
     )
     
-    fun performHaptic() {
-        try {
-            view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
-        } catch (e: Exception) {
-            Sentry.captureException(e)
-            throw e
-        }
-    }
-    
+    fun performHaptic() = view.safeHaptic()
+
     LaunchedEffect(isVisible) {
         if (!isVisible) {
             currentState = SheetState.HIDDEN
@@ -387,7 +409,7 @@ fun MultiStageSheet(
                             }
                         )
                     },
-                shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+                shape = SheetShape,
                 color = GlassSurface,
                 shadowElevation = 24.dp
             ) {
@@ -642,15 +664,8 @@ fun NestedScrollSheet(
         label = "sheetHeight"
     )
     
-    fun performHaptic() {
-        try {
-            view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
-        } catch (e: Exception) {
-            Sentry.captureException(e)
-            throw e
-        }
-    }
-    
+    fun performHaptic() = view.safeHaptic()
+
     // Custom nested scroll connection
     val nestedScrollConnection = remember {
         object : NestedScrollConnection {
@@ -698,17 +713,7 @@ fun NestedScrollSheet(
         }
     }
     
-    AnimatedVisibility(
-        visible = isVisible,
-        enter = slideInVertically(
-            initialOffsetY = { it },
-            animationSpec = spring(dampingRatio = 0.75f)
-        ) + fadeIn(),
-        exit = slideOutVertically(
-            targetOffsetY = { it },
-            animationSpec = spring(dampingRatio = 0.75f)
-        ) + fadeOut()
-    ) {
+    SlideUpSheet(isVisible = isVisible) {
         Box(modifier = Modifier.fillMaxSize()) {
             // Backdrop
             BlurBackdrop(
@@ -718,7 +723,7 @@ fun NestedScrollSheet(
                     onDismiss()
                 }
             )
-            
+
             // Sheet
             Surface(
                 modifier = modifier
@@ -726,7 +731,7 @@ fun NestedScrollSheet(
                     .height(animatedHeight)
                     .align(Alignment.BottomCenter)
                     .nestedScroll(nestedScrollConnection),
-                shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+                shape = SheetShape,
                 color = GlassSurface,
                 shadowElevation = 24.dp
             ) {
@@ -800,27 +805,10 @@ fun QuickActionSheet(
 ) {
     val colors = BouncerDesignSystem.colors
     val view = LocalView.current
-    
-    fun performHaptic() {
-        try {
-            view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
-        } catch (e: Exception) {
-            Sentry.captureException(e)
-            throw e
-        }
-    }
-    
-    AnimatedVisibility(
-        visible = isVisible,
-        enter = slideInVertically(
-            initialOffsetY = { it },
-            animationSpec = spring(dampingRatio = 0.75f)
-        ) + fadeIn(),
-        exit = slideOutVertically(
-            targetOffsetY = { it },
-            animationSpec = spring(dampingRatio = 0.75f)
-        ) + fadeOut()
-    ) {
+
+    fun performHaptic() = view.safeHaptic()
+
+    SlideUpSheet(isVisible = isVisible) {
         Box(modifier = Modifier.fillMaxSize()) {
             BlurBackdrop(
                 isVisible = true,
@@ -829,12 +817,12 @@ fun QuickActionSheet(
                     onDismiss()
                 }
             )
-            
+
             Surface(
                 modifier = modifier
                     .fillMaxWidth()
                     .align(Alignment.BottomCenter),
-                shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+                shape = SheetShape,
                 color = GlassSurface,
                 shadowElevation = 24.dp
             ) {
@@ -844,7 +832,7 @@ fun QuickActionSheet(
                         .padding(20.dp)
                 ) {
                     SheetHandle(modifier = Modifier.padding(bottom = 12.dp))
-                    
+
                     Text(
                         text = title,
                         color = colors.textPrimary,
@@ -988,27 +976,10 @@ fun ConfirmationSheet(
 ) {
     val colors = BouncerDesignSystem.colors
     val view = LocalView.current
-    
-    fun performHaptic() {
-        try {
-            view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
-        } catch (e: Exception) {
-            Sentry.captureException(e)
-            throw e
-        }
-    }
-    
-    AnimatedVisibility(
-        visible = isVisible,
-        enter = slideInVertically(
-            initialOffsetY = { it },
-            animationSpec = spring(dampingRatio = 0.75f)
-        ) + fadeIn(),
-        exit = slideOutVertically(
-            targetOffsetY = { it },
-            animationSpec = spring(dampingRatio = 0.75f)
-        ) + fadeOut()
-    ) {
+
+    fun performHaptic() = view.safeHaptic()
+
+    SlideUpSheet(isVisible = isVisible) {
         Box(modifier = Modifier.fillMaxSize()) {
             BlurBackdrop(
                 isVisible = true,
@@ -1017,12 +988,12 @@ fun ConfirmationSheet(
                     onDismiss()
                 }
             )
-            
+
             Surface(
                 modifier = modifier
                     .fillMaxWidth()
                     .align(Alignment.BottomCenter),
-                shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+                shape = SheetShape,
                 color = GlassSurface,
                 shadowElevation = 24.dp
             ) {
@@ -1139,18 +1110,8 @@ fun InfoSheet(
 ) {
     val colors = BouncerDesignSystem.colors
     val view = LocalView.current
-    
-    AnimatedVisibility(
-        visible = isVisible,
-        enter = slideInVertically(
-            initialOffsetY = { it },
-            animationSpec = spring(dampingRatio = 0.75f)
-        ) + fadeIn(),
-        exit = slideOutVertically(
-            targetOffsetY = { it },
-            animationSpec = spring(dampingRatio = 0.75f)
-        ) + fadeOut()
-    ) {
+
+    SlideUpSheet(isVisible = isVisible) {
         Box(modifier = Modifier.fillMaxSize()) {
             BlurBackdrop(
                 isVisible = true,
@@ -1159,12 +1120,12 @@ fun InfoSheet(
                     onDismiss()
                 }
             )
-            
+
             Surface(
                 modifier = modifier
                     .fillMaxWidth()
                     .align(Alignment.BottomCenter),
-                shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+                shape = SheetShape,
                 color = GlassSurface,
                 shadowElevation = 24.dp
             ) {

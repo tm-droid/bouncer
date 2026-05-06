@@ -172,11 +172,7 @@ fun GlassCard(
         )
     }
 
-    val borderWidth = when (importance) {
-        BouncerImportance.CRITICAL -> 1.dp
-        BouncerImportance.STANDARD -> 0.5.dp
-        BouncerImportance.MINIMAL -> 0.5.dp
-    }
+    val borderWidth = if (importance == BouncerImportance.CRITICAL) 1.dp else 0.5.dp
 
     val elevation = when (importance) {
         BouncerImportance.CRITICAL -> 12.dp
@@ -192,13 +188,7 @@ fun GlassCard(
                 spotColor = if (importance == BouncerImportance.CRITICAL) glowColor.copy(alpha = 0.3f) else Color.Black,
                 ambientColor = Color.Black.copy(alpha = 0.2f)
             ),
-        colors = CardDefaults.cardColors(
-            containerColor = when (importance) {
-                BouncerImportance.CRITICAL -> GlassBackground
-                BouncerImportance.STANDARD -> GlassBackground
-                BouncerImportance.MINIMAL -> GlassBackground
-            }
-        ),
+        colors = CardDefaults.cardColors(containerColor = GlassBackground),
         shape = RoundedCornerShape(cornerRadius),
         border = BorderStroke(borderWidth, borderBrush)
     ) {
@@ -773,13 +763,7 @@ fun FrostedGlassCard(
         // Content layer with glass effect
         Card(
             modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(
-                containerColor = when (importance) {
-                    BouncerImportance.CRITICAL -> GlassBackground
-                    BouncerImportance.STANDARD -> GlassBackground
-                    BouncerImportance.MINIMAL -> GlassBackground
-                }
-            ),
+            colors = CardDefaults.cardColors(containerColor = GlassBackground),
             shape = RoundedCornerShape(cornerRadius),
             border = BorderStroke(
                 width = if (importance == BouncerImportance.CRITICAL) 1.5.dp else 1.dp,
