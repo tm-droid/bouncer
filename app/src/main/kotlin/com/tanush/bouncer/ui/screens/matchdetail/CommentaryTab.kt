@@ -31,8 +31,11 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.ui.theme.BorderWidth
@@ -45,6 +48,30 @@ import com.tanush.bouncer.ui.theme.StatusInfo
 import com.tanush.bouncer.ui.theme.StatusSuccess
 import com.tanush.bouncer.ui.theme.TextMuted
 import com.tanush.bouncer.ui.theme.TextPrimary
+
+private fun parseBoldTags(text: String): androidx.compose.ui.text.AnnotatedString {
+    return buildAnnotatedString {
+        val regex = Regex("<b>(.*?)</b>")
+        var lastIndex = 0
+
+        regex.findAll(text).forEach { match ->
+            // Add text before the bold tag
+            append(text.substring(lastIndex, match.range.first))
+
+            // Add bold text
+            withStyle(style = SpanStyle(fontWeight = FontWeight.Bold)) {
+                append(match.groupValues[1])
+            }
+
+            lastIndex = match.range.last + 1
+        }
+
+        // Add remaining text after the last bold tag
+        if (lastIndex < text.length) {
+            append(text.substring(lastIndex))
+        }
+    }
+}
 
 private data class CommentaryAction(
     val label: String,
@@ -176,7 +203,7 @@ fun CommentaryTab_Extracted(
                                 fontWeight = FontWeight.SemiBold
                             )
                             Text(
-                                text = line,
+                                text = parseBoldTags(line),
                                 color = TextPrimary,
                                 fontSize = 12.sp,
                                 maxLines = 2,
