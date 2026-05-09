@@ -11,7 +11,6 @@ import org.jsoup.Jsoup
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
 import java.util.regex.Pattern
-import kotlin.math.min
 
 class CricInfoScraper {
 
@@ -22,7 +21,6 @@ class CricInfoScraper {
         // Circuit breaker thresholds
         private const val CIRCUIT_BREAKER_FAILURE_THRESHOLD = 3
         private const val CIRCUIT_BREAKER_RESET_MS = 120_000L // 2 minutes cool-down
-        private const val MAX_BACKOFF_MS = 60_000L // Max 60s between retries
     }
 
     private val matchIdMap = mutableMapOf<String, String>() // cricbuzzId -> cricinfoId
@@ -379,11 +377,8 @@ class CricInfoScraper {
         }
     }
 
-    private fun fuzzyTeamMatch(team: String, text: String): Boolean {
-        if (team.length < 3) return false
-        val t = team.take(3)
-        return text.contains(t)
-    }
+    private fun fuzzyTeamMatch(team: String, text: String): Boolean =
+        team.length >= 3 && text.contains(team.take(3))
 
     private data class Candidate(val title: String, val normalized: String, val href: String, val score: Int)
 
@@ -397,16 +392,10 @@ class CricInfoScraper {
     }
 
     private fun extractCricinfoMatchId(url: String): String? {
-        val pattern = Pattern.compile("(\\d+)(?=/live-cricket-score)")
-        val matcher = pattern.matcher(url)
+        val matcher = Pattern.compile("(\\d+)(?=/live-cricket-score)").matcher(url)
         if (matcher.find()) return matcher.group(1)
-        
-        val comps = url.split("/")
-        for (comp in comps.reversed()) {
-            if (comp.all { it.isDigit() } && comp.length >= 5) {
-                return comp
-            }
-        }
-        return null
+
+        return url.split("/").asReversed()
+            .firstOrNull { it.length >= 5 && it.all { ch -> ch.isDigit() } }
     }
 }

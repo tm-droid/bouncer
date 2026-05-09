@@ -24,10 +24,8 @@ import io.sentry.Sentry
 import io.sentry.SentryLevel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.io.BufferedReader
 import java.io.File
 import java.io.FileOutputStream
-import java.io.InputStreamReader
 import java.net.URL
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -92,24 +90,9 @@ class CricsheetDataFetcher(private val context: Context? = null) {
         })
         
         return try {
-             // Cricsheet JSONs are usually a single match object per file if downloading individual matches,
-             // but the URL structure `${tournament}_${year}.json` suggests a collection or a specific file.
-             // Actually, Cricsheet provides zip files for tournaments. 
-             // The iOS code downloads `${tournament}_${year}.json`. 
-             // If that's a valid endpoint returning a list of matches or a single match, we handle it.
-             // Assuming it returns a list of matches based on the return type `[CricsheetMatch]`.
-             // But wait, the iOS code parses `CricsheetResponse` which has `info` and `innings`.
-             // This structure corresponds to a SINGLE match JSON from Cricsheet (version 0.9+).
-             // So `downloadMatchData` in iOS likely fetches a SINGLE match file, but the function signature implies it might be used for multiple?
-             // No, the URL is constructed as `${tournament}_${year}.json`. This looks like a specific file name convention used in the iOS app, 
-             // possibly pointing to a processed file or a specific match file.
-             // However, standard Cricsheet downloads are zips.
-             // If the user has a custom backend or specific URL pattern, I should stick to what the iOS code does.
-             // The iOS code parses `CricsheetResponse` which is a single match.
-             // And returns `[CricsheetMatch(...)]` (a list containing one match).
-         
-             val response = gson.fromJson(jsonString, CricsheetResponse::class.java)
-             listOf(mapToCricsheetMatch(response))
+            // URL pattern `${tournament}_${year}.json` returns a single-match Cricsheet response (v0.9+ schema)
+            val response = gson.fromJson(jsonString, CricsheetResponse::class.java)
+            listOf(mapToCricsheetMatch(response))
         } catch (e: Exception) {
             Log.e(TAG, "Failed to parse match data", e)
             Sentry.addBreadcrumb(Breadcrumb().apply {
@@ -282,23 +265,17 @@ class CricsheetDataFetcher(private val context: Context? = null) {
         }
         val matchDate = allDates.firstOrNull() ?: Date()
         
-        // Parse toss
-        val toss = info.toss?.let { t ->
-            if (t.winner != null && t.decision != null) {
-                CricsheetToss(winner = t.winner, decision = t.decision)
-            } else null
+        val toss = info.toss?.takeIf { it.winner != null && it.decision != null }?.let {
+            CricsheetToss(winner = it.winner!!, decision = it.decision!!)
         }
-        
-        // Parse event
-        val event = info.event?.let { e ->
-            if (e.name != null) {
-                CricsheetEvent(
-                    name = e.name,
-                    matchNumber = e.match_number,
-                    group = e.group,
-                    stage = e.stage
-                )
-            } else null
+
+        val event = info.event?.takeIf { it.name != null }?.let {
+            CricsheetEvent(
+                name = it.name!!,
+                matchNumber = it.match_number,
+                group = it.group,
+                stage = it.stage
+            )
         }
         
         // Parse officials
@@ -337,16 +314,14 @@ class CricsheetDataFetcher(private val context: Context? = null) {
                                 )
                             } ?: emptyList()
                             
-                            val review = delivery.review?.let { r ->
-                                if (r.by != null && r.decision != null) {
-                                    CricsheetReview(
-                                        by = r.by,
-                                        decision = r.decision,
-                                        batter = r.batter,
-                                        umpire = r.umpire,
-                                        umpiresCall = r.umpires_call ?: false
-                                    )
-                                } else null
+                            val review = delivery.review?.takeIf { it.by != null && it.decision != null }?.let {
+                                CricsheetReview(
+                                    by = it.by!!,
+                                    decision = it.decision!!,
+                                    batter = it.batter,
+                                    umpire = it.umpire,
+                                    umpiresCall = it.umpires_call ?: false
+                                )
                             }
                             
                             val batterRuns = delivery.runs.batter ?: 0
@@ -375,11 +350,11 @@ class CricsheetDataFetcher(private val context: Context? = null) {
                 total = totalRuns,
                 wickets = oversData.flatMap { it.deliveries }.sumOf { it.wickets?.size ?: 0 },
                 runRate = runRate,
-                powerplays = innings.powerplays?.mapNotNull { pp ->
+                powerplays = innings.powerplays.orEmpty().mapNotNull { pp ->
                     if (pp.from != null && pp.to != null && pp.type != null) {
                         CricsheetPowerplay(from = pp.from, to = pp.to, type = pp.type)
                     } else null
-                } ?: emptyList(),
+                },
                 target = innings.target?.let { t ->
                     CricsheetTarget(overs = t.overs, runs = t.runs)
                 },
@@ -435,11 +410,11 @@ class CricsheetDataFetcher(private val context: Context? = null) {
     private fun determineExtraType(extras: ExtrasData?): String? {
         if (extras == null) return null
         return when {
-            extras.wides != null && extras.wides > 0 -> "wide"
-            extras.noballs != null && extras.noballs > 0 -> "noball"
-            extras.legbyes != null && extras.legbyes > 0 -> "legbye"
-            extras.byes != null && extras.byes > 0 -> "bye"
-            extras.penalty != null && extras.penalty > 0 -> "penalty"
+            (extras.wides ?: 0) > 0 -> "wide"
+            (extras.noballs ?: 0) > 0 -> "noball"
+            (extras.legbyes ?: 0) > 0 -> "legbye"
+            (extras.byes ?: 0) > 0 -> "bye"
+            (extras.penalty ?: 0) > 0 -> "penalty"
             else -> null
         }
     }
@@ -587,13 +562,10 @@ class CricsheetDataFetcher(private val context: Context? = null) {
         seriesName: String? = null,
         team: String? = null,
         event: String? = null
-    ): List<CricsheetMatch> {
-        return matches.filter { match ->
-            val matchesSeries = seriesName == null || match.venue.contains(seriesName, ignoreCase = true)
-            val matchesTeam = team == null || match.teams.batting == team || match.teams.bowling == team
-            val matchesEvent = event == null || match.event?.name?.contains(event, ignoreCase = true) == true
-            matchesSeries && matchesTeam && matchesEvent
-        }
+    ): List<CricsheetMatch> = matches.filter { match ->
+        (seriesName == null || match.venue.contains(seriesName, ignoreCase = true)) &&
+            (team == null || match.teams.batting == team || match.teams.bowling == team) &&
+            (event == null || match.event?.name?.contains(event, ignoreCase = true) == true)
     }
     
     // MARK: - People Registry (people.csv)
@@ -648,34 +620,36 @@ class CricsheetDataFetcher(private val context: Context? = null) {
     private fun parsePeopleCsv(csvText: String): List<CricsheetPerson> {
         val lines = csvText.lines()
         if (lines.size < 2) return emptyList()
-        
-        val header = lines[0].split(",").map { it.trim() }
-        val colIndex = header.withIndex().associate { (idx, name) -> name to idx }
-        
+
+        val colIndex = lines[0].split(",").map { it.trim() }
+            .withIndex().associate { (idx, name) -> name to idx }
+
         return lines.drop(1).mapNotNull { line ->
             if (line.isBlank()) return@mapNotNull null
             val cols = parseCsvLine(line)
-            
-            val identifier = cols.getOrNull(colIndex["identifier"] ?: -1)?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
-            val name = cols.getOrNull(colIndex["name"] ?: -1) ?: ""
-            val uniqueName = cols.getOrNull(colIndex["unique_name"] ?: -1) ?: name
-            
+            fun col(key: String): String? = colIndex[key]?.let { cols.getOrNull(it) }
+            fun nonBlank(key: String): String? = col(key)?.takeIf { it.isNotBlank() }
+
+            val identifier = nonBlank("identifier") ?: return@mapNotNull null
+            val name = col("name") ?: ""
+            val uniqueName = col("unique_name") ?: name
+
             CricsheetPerson(
                 identifier = identifier,
                 name = name,
                 uniqueName = uniqueName,
-                keyCricbuzz = cols.getOrNull(colIndex["key_cricbuzz"] ?: -1)?.takeIf { it.isNotBlank() },
-                keyCricinfo = cols.getOrNull(colIndex["key_cricinfo"] ?: -1)?.takeIf { it.isNotBlank() },
-                keyCricinfoAlt = cols.getOrNull(colIndex["key_cricinfo_2"] ?: -1)?.takeIf { it.isNotBlank() },
-                keyBcci = cols.getOrNull(colIndex["key_bcci"] ?: -1)?.takeIf { it.isNotBlank() },
-                keyBigBash = cols.getOrNull(colIndex["key_bigbash"] ?: -1)?.takeIf { it.isNotBlank() },
-                keyCricHeroes = cols.getOrNull(colIndex["key_cricheroes"] ?: -1)?.takeIf { it.isNotBlank() },
-                keyCricHQ = cols.getOrNull(colIndex["key_crichq"] ?: -1)?.takeIf { it.isNotBlank() },
-                keyCricingIF = cols.getOrNull(colIndex["key_cricingif"] ?: -1)?.takeIf { it.isNotBlank() },
-                keyCricketArchive = cols.getOrNull(colIndex["key_cricketarchive"] ?: -1)?.takeIf { it.isNotBlank() },
-                keyNvPlay = cols.getOrNull(colIndex["key_nvplay"] ?: -1)?.takeIf { it.isNotBlank() },
-                keyOpta = cols.getOrNull(colIndex["key_opta"] ?: -1)?.takeIf { it.isNotBlank() },
-                keyPulse = cols.getOrNull(colIndex["key_pulse"] ?: -1)?.takeIf { it.isNotBlank() }
+                keyCricbuzz = nonBlank("key_cricbuzz"),
+                keyCricinfo = nonBlank("key_cricinfo"),
+                keyCricinfoAlt = nonBlank("key_cricinfo_2"),
+                keyBcci = nonBlank("key_bcci"),
+                keyBigBash = nonBlank("key_bigbash"),
+                keyCricHeroes = nonBlank("key_cricheroes"),
+                keyCricHQ = nonBlank("key_crichq"),
+                keyCricingIF = nonBlank("key_cricingif"),
+                keyCricketArchive = nonBlank("key_cricketarchive"),
+                keyNvPlay = nonBlank("key_nvplay"),
+                keyOpta = nonBlank("key_opta"),
+                keyPulse = nonBlank("key_pulse")
             )
         }
     }
