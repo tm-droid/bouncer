@@ -6,97 +6,74 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import io.sentry.Sentry
+import kotlin.properties.ReadWriteProperty
+import kotlin.reflect.KProperty
 
 class PreferencesManager(context: Context) {
     private val prefs: SharedPreferences = context.getSharedPreferences(
         "bouncer_preferences",
-        Context.MODE_PRIVATE
+        Context.MODE_PRIVATE,
     )
-    
+
+    private fun boolPref(key: String, default: Boolean) = object : ReadWriteProperty<Any?, Boolean> {
+        override fun getValue(thisRef: Any?, property: KProperty<*>): Boolean =
+            prefs.getBoolean(key, default)
+        override fun setValue(thisRef: Any?, property: KProperty<*>, value: Boolean) {
+            prefs.edit().putBoolean(key, value).apply()
+        }
+    }
+
+    private fun intPref(key: String, default: Int) = object : ReadWriteProperty<Any?, Int> {
+        override fun getValue(thisRef: Any?, property: KProperty<*>): Int =
+            prefs.getInt(key, default)
+        override fun setValue(thisRef: Any?, property: KProperty<*>, value: Int) {
+            prefs.edit().putInt(key, value).apply()
+        }
+    }
+
+    private fun stringPref(key: String, default: String) = object : ReadWriteProperty<Any?, String> {
+        override fun getValue(thisRef: Any?, property: KProperty<*>): String =
+            prefs.getString(key, default) ?: default
+        override fun setValue(thisRef: Any?, property: KProperty<*>, value: String) {
+            prefs.edit().putString(key, value).apply()
+        }
+    }
+
     // Theme preferences
-    var isDarkMode: Boolean
-        get() = prefs.getBoolean(KEY_DARK_MODE, true)
-        set(value) = prefs.edit().putBoolean(KEY_DARK_MODE, value).apply()
-    
-    var useSystemTheme: Boolean
-        get() = prefs.getBoolean(KEY_USE_SYSTEM_THEME, false)
-        set(value) = prefs.edit().putBoolean(KEY_USE_SYSTEM_THEME, value).apply()
-    
+    var isDarkMode: Boolean by boolPref(KEY_DARK_MODE, true)
+    var useSystemTheme: Boolean by boolPref(KEY_USE_SYSTEM_THEME, false)
+
     // Notifications
-    var notificationsEnabled: Boolean
-        get() = prefs.getBoolean(KEY_NOTIFICATIONS, true)
-        set(value) = prefs.edit().putBoolean(KEY_NOTIFICATIONS, value).apply()
-    
-    var liveMatchNotifications: Boolean
-        get() = prefs.getBoolean(KEY_LIVE_NOTIFICATIONS, true)
-        set(value) = prefs.edit().putBoolean(KEY_LIVE_NOTIFICATIONS, value).apply()
-    
-    var favouriteTeamNotifications: Boolean
-        get() = prefs.getBoolean(KEY_FAVOURITE_NOTIFICATIONS, true)
-        set(value) = prefs.edit().putBoolean(KEY_FAVOURITE_NOTIFICATIONS, value).apply()
-    
+    var notificationsEnabled: Boolean by boolPref(KEY_NOTIFICATIONS, true)
+    var liveMatchNotifications: Boolean by boolPref(KEY_LIVE_NOTIFICATIONS, true)
+    var favouriteTeamNotifications: Boolean by boolPref(KEY_FAVOURITE_NOTIFICATIONS, true)
+
     // App behavior
-    var hapticFeedbackEnabled: Boolean
-        get() = prefs.getBoolean(KEY_HAPTIC_FEEDBACK, true)
-        set(value) = prefs.edit().putBoolean(KEY_HAPTIC_FEEDBACK, value).apply()
-    
-    var animationsEnabled: Boolean
-        get() = prefs.getBoolean(KEY_ANIMATIONS, true)
-        set(value) = prefs.edit().putBoolean(KEY_ANIMATIONS, value).apply()
-    
-    var autoRefreshEnabled: Boolean
-        get() = prefs.getBoolean(KEY_AUTO_REFRESH, true)
-        set(value) = prefs.edit().putBoolean(KEY_AUTO_REFRESH, value).apply()
-    
-    var refreshInterval: Int
-        get() = prefs.getInt(KEY_REFRESH_INTERVAL, 30)
-        set(value) = prefs.edit().putInt(KEY_REFRESH_INTERVAL, value).apply()
-    
+    var hapticFeedbackEnabled: Boolean by boolPref(KEY_HAPTIC_FEEDBACK, true)
+    var animationsEnabled: Boolean by boolPref(KEY_ANIMATIONS, true)
+    var autoRefreshEnabled: Boolean by boolPref(KEY_AUTO_REFRESH, true)
+    var refreshInterval: Int by intPref(KEY_REFRESH_INTERVAL, 30)
+
     // Display preferences
-    var showMatchPredictions: Boolean
-        get() = prefs.getBoolean(KEY_SHOW_PREDICTIONS, true)
-        set(value) = prefs.edit().putBoolean(KEY_SHOW_PREDICTIONS, value).apply()
-    
-    var showDetailedStats: Boolean
-        get() = prefs.getBoolean(KEY_DETAILED_STATS, true)
-        set(value) = prefs.edit().putBoolean(KEY_DETAILED_STATS, value).apply()
-    
-    var compactMode: Boolean
-        get() = prefs.getBoolean(KEY_COMPACT_MODE, false)
-        set(value) = prefs.edit().putBoolean(KEY_COMPACT_MODE, value).apply()
-    
+    var showMatchPredictions: Boolean by boolPref(KEY_SHOW_PREDICTIONS, true)
+    var showDetailedStats: Boolean by boolPref(KEY_DETAILED_STATS, true)
+    var compactMode: Boolean by boolPref(KEY_COMPACT_MODE, false)
+
     // Filter preferences
-    var defaultFilter: String
-        get() = prefs.getString(KEY_DEFAULT_FILTER, "All") ?: "All"
-        set(value) = prefs.edit().putString(KEY_DEFAULT_FILTER, value).apply()
-    
-    var lastSelectedCategory: String
-        get() = prefs.getString(KEY_LAST_CATEGORY, "International") ?: "International"
-        set(value) = prefs.edit().putString(KEY_LAST_CATEGORY, value).apply()
-    
+    var defaultFilter: String by stringPref(KEY_DEFAULT_FILTER, "All")
+    var lastSelectedCategory: String by stringPref(KEY_LAST_CATEGORY, "International")
+
     // Data preferences
-    var cacheEnabled: Boolean
-        get() = prefs.getBoolean(KEY_CACHE_ENABLED, true)
-        set(value) = prefs.edit().putBoolean(KEY_CACHE_ENABLED, value).apply()
-    
-    var cacheExpiry: Int
-        get() = prefs.getInt(KEY_CACHE_EXPIRY, 300)
-        set(value) = prefs.edit().putInt(KEY_CACHE_EXPIRY, value).apply()
-    
-    var dataUsageWarning: Boolean
-        get() = prefs.getBoolean(KEY_DATA_WARNING, true)
-        set(value) = prefs.edit().putBoolean(KEY_DATA_WARNING, value).apply()
-    
+    var cacheEnabled: Boolean by boolPref(KEY_CACHE_ENABLED, true)
+    var cacheExpiry: Int by intPref(KEY_CACHE_EXPIRY, 300)
+    var dataUsageWarning: Boolean by boolPref(KEY_DATA_WARNING, true)
+
     // First launch
-    var isFirstLaunch: Boolean
-        get() = prefs.getBoolean(KEY_FIRST_LAUNCH, true)
-        set(value) = prefs.edit().putBoolean(KEY_FIRST_LAUNCH, value).apply()
-    
+    var isFirstLaunch: Boolean by boolPref(KEY_FIRST_LAUNCH, true)
+
     // App version for migration
-    var lastAppVersion: String
-        get() = prefs.getString(KEY_APP_VERSION, "1.0.0") ?: "1.0.0"
-        set(value) = prefs.edit().putString(KEY_APP_VERSION, value).apply()
-    
+    var lastAppVersion: String by stringPref(KEY_APP_VERSION, "1.0.0")
+
     fun clearAll() {
         try {
             prefs.edit().clear().apply()
@@ -105,10 +82,9 @@ class PreferencesManager(context: Context) {
             throw e
         }
     }
-    
+
     fun clearCache() {
         try {
-            // Clear only cache-related preferences
             prefs.edit()
                 .remove("cached_matches")
                 .remove("cached_timestamp")
@@ -118,9 +94,8 @@ class PreferencesManager(context: Context) {
             throw e
         }
     }
-    
+
     companion object {
-        // Keys
         private const val KEY_DARK_MODE = "dark_mode"
         private const val KEY_USE_SYSTEM_THEME = "use_system_theme"
         private const val KEY_NOTIFICATIONS = "notifications"
@@ -140,22 +115,14 @@ class PreferencesManager(context: Context) {
         private const val KEY_DATA_WARNING = "data_warning"
         private const val KEY_FIRST_LAUNCH = "first_launch"
         private const val KEY_APP_VERSION = "app_version"
-        
+
         @Volatile
         private var instance: PreferencesManager? = null
-        
-        fun getInstance(context: Context): PreferencesManager {
-            try {
-                return instance ?: synchronized(this) {
-                    instance ?: PreferencesManager(context.applicationContext).also {
-                        instance = it
-                    }
-                }
-            } catch (e: Exception) {
-                Sentry.captureException(e)
-                throw e
+
+        fun getInstance(context: Context): PreferencesManager =
+            instance ?: synchronized(this) {
+                instance ?: PreferencesManager(context.applicationContext).also { instance = it }
             }
-        }
     }
 }
 

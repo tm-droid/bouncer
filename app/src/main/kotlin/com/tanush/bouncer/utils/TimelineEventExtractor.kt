@@ -35,35 +35,33 @@ object TimelineEventExtractor {
         Regex("\\b(5.?wicket|five.?wicket|fifer|hat.?trick)\\b", RegexOption.IGNORE_CASE),
     )
 
+    private val aiFusedPrefix = Regex("^\\[AI Fused\\]\\s*")
+
+    private fun normalize(raw: String): String =
+        raw.replace(aiFusedPrefix, "").trim().trimEnd('/')
+
     /** Deduplicate commentary — CricBuzz sends progressive updates for the same ball. */
     private fun deduplicateByBall(lines: List<String>): List<String> {
         // Pass 1: group by ball number, keep longest entry per ball
         val ballGroups = mutableMapOf<String, String>()
-        val noBallLines = mutableListOf<String>()
         for (raw in lines) {
-            val line = raw.replace(Regex("^\\[AI Fused\\]\\s*"), "").trim().trimEnd('/')
+            val line = normalize(raw)
             if (line.isBlank()) continue
-            val m = ballNumberRegex.find(line.trimStart())
-            if (m != null) {
-                val key = m.groupValues[1]
-                val existing = ballGroups[key]
-                if (existing == null || line.length > existing.length) {
-                    ballGroups[key] = line
-                }
-            } else {
-                noBallLines.add(line)
+            val key = ballNumberRegex.find(line.trimStart())?.groupValues?.get(1) ?: continue
+            val existing = ballGroups[key]
+            if (existing == null || line.length > existing.length) {
+                ballGroups[key] = line
             }
         }
         val deduped = mutableListOf<String>()
         val seen = mutableSetOf<String>()
         for (raw in lines) {
-            val line = raw.replace(Regex("^\\[AI Fused\\]\\s*"), "").trim().trimEnd('/')
+            val line = normalize(raw)
             if (line.isBlank()) continue
-            val m = ballNumberRegex.find(line.trimStart())
-            if (m != null) {
-                val key = m.groupValues[1]
-                if (key !in seen) {
-                    seen.add(key)
+            val match = ballNumberRegex.find(line.trimStart())
+            if (match != null) {
+                val key = match.groupValues[1]
+                if (seen.add(key)) {
                     ballGroups[key]?.let { deduped.add(it) }
                 }
             } else {
@@ -111,53 +109,21 @@ object TimelineEventExtractor {
             val isOverEnd = endOfOverPattern.containsMatchIn(cleanLine)
 
             val desc = cleanLine.trimEnd('/').trim().take(120)
+            fun add(type: TimelineEventType, title: String) {
+                events.add(TimelineEvent(over = currentOver, type = type, title = title, description = desc))
+            }
 
             if (isWicket) {
-                events.add(TimelineEvent(
-                    over = currentOver,
-                    type = TimelineEventType.WICKET,
-                    title = "Wicket!",
-                    description = desc,
-                ))
+                add(TimelineEventType.WICKET, "Wicket!")
                 continue
             }
+            // Milestone is non-terminal: a six/four/over-end on the same line still emits.
+            if (isMilestone) add(TimelineEventType.MILESTONE, "Milestone")
 
-            if (isMilestone) {
-                events.add(TimelineEvent(
-                    over = currentOver,
-                    type = TimelineEventType.MILESTONE,
-                    title = "Milestone",
-                    description = desc,
-                ))
-            }
-
-            if (isSix) {
-                events.add(TimelineEvent(
-                    over = currentOver,
-                    type = TimelineEventType.SIX,
-                    title = "SIX!",
-                    description = desc,
-                ))
-                continue
-            }
-
-            if (isFour) {
-                events.add(TimelineEvent(
-                    over = currentOver,
-                    type = TimelineEventType.FOUR,
-                    title = "FOUR!",
-                    description = desc,
-                ))
-                continue
-            }
-
-            if (isOverEnd) {
-                events.add(TimelineEvent(
-                    over = currentOver,
-                    type = TimelineEventType.OVER_END,
-                    title = "End of Over",
-                    description = desc,
-                ))
+            when {
+                isSix -> add(TimelineEventType.SIX, "SIX!")
+                isFour -> add(TimelineEventType.FOUR, "FOUR!")
+                isOverEnd -> add(TimelineEventType.OVER_END, "End of Over")
             }
         }
 

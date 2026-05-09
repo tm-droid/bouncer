@@ -88,6 +88,31 @@ object ShareMatchCardHelper {
         }
     }
 
+    private val GOLD = 0xFFD4A843.toInt()
+    private val WHITE = 0xFFFFFFFF.toInt()
+    private val GREY = 0xFF888888.toInt()
+    private val DARK_BG = 0xFF1A1A2E.toInt()
+    private val DIVIDER = 0xFF333355.toInt()
+    private val BRAND = 0xFF555555.toInt()
+
+    private fun textPaint(
+        textColor: Int,
+        size: Float,
+        align: Paint.Align = Paint.Align.LEFT,
+        style: Int = Typeface.NORMAL,
+    ): Paint = Paint().apply {
+        color = textColor
+        textSize = size
+        isAntiAlias = true
+        textAlign = align
+        if (style != Typeface.NORMAL) typeface = Typeface.create(Typeface.DEFAULT, style)
+    }
+
+    private fun fillPaint(fillColor: Int, stroke: Float = 0f): Paint = Paint().apply {
+        color = fillColor
+        if (stroke > 0f) strokeWidth = stroke
+    }
+
     private fun generateMatchCardBitmap(
         team1: String, team2: String,
         score1: String, score2: String,
@@ -96,85 +121,35 @@ object ShareMatchCardHelper {
     ): Bitmap {
         val width = 720
         val height = 400
+        val rightX = (width - 40).toFloat()
+        val centerX = width / 2f
         val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
 
-        // Dark background
-        val bgPaint = Paint().apply { color = 0xFF1A1A2E.toInt() }
-        canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), bgPaint)
+        canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), fillPaint(DARK_BG))
+        canvas.drawRect(0f, 0f, width.toFloat(), 6f, fillPaint(GOLD))
 
-        // Gold accent bar at top
-        val accentPaint = Paint().apply { color = 0xFFD4A843.toInt() }
-        canvas.drawRect(0f, 0f, width.toFloat(), 6f, accentPaint)
+        canvas.drawText(matchTitle.take(40), centerX, 50f,
+            textPaint(GOLD, 28f, Paint.Align.CENTER, Typeface.BOLD))
 
-        // Title
-        val titlePaint = Paint().apply {
-            color = 0xFFD4A843.toInt()
-            textSize = 28f
-            isAntiAlias = true
-            typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-            textAlign = Paint.Align.CENTER
-        }
-        canvas.drawText(matchTitle.take(40), width / 2f, 50f, titlePaint)
+        val teamPaint = textPaint(WHITE, 36f, style = Typeface.BOLD)
+        val scorePaint = textPaint(GOLD, 48f, Paint.Align.RIGHT, Typeface.BOLD)
+        val oversPaint = textPaint(GREY, 22f, Paint.Align.RIGHT)
 
-        // Team 1
-        val teamPaint = Paint().apply {
-            color = 0xFFFFFFFF.toInt()
-            textSize = 36f
-            isAntiAlias = true
-            typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-        }
         canvas.drawText(team1.take(20), 40f, 130f, teamPaint)
+        canvas.drawText(score1, rightX, 130f, scorePaint)
+        if (overs1.isNotBlank()) canvas.drawText("($overs1)", rightX, 160f, oversPaint)
 
-        val scorePaint = Paint().apply {
-            color = 0xFFD4A843.toInt()
-            textSize = 48f
-            isAntiAlias = true
-            typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-            textAlign = Paint.Align.RIGHT
-        }
-        canvas.drawText(score1, (width - 40).toFloat(), 130f, scorePaint)
+        canvas.drawLine(40f, 185f, rightX, 185f, fillPaint(DIVIDER, stroke = 2f))
 
-        // Overs 1
-        val oversPaint = Paint().apply {
-            color = 0xFF888888.toInt()
-            textSize = 22f
-            isAntiAlias = true
-            textAlign = Paint.Align.RIGHT
-        }
-        if (overs1.isNotBlank()) {
-            canvas.drawText("($overs1)", (width - 40).toFloat(), 160f, oversPaint)
-        }
-
-        // Divider
-        val dividerPaint = Paint().apply { color = 0xFF333355.toInt(); strokeWidth = 2f }
-        canvas.drawLine(40f, 185f, (width - 40).toFloat(), 185f, dividerPaint)
-
-        // Team 2
         canvas.drawText(team2.take(20), 40f, 240f, teamPaint)
-        canvas.drawText(score2, (width - 40).toFloat(), 240f, scorePaint)
-        if (overs2.isNotBlank()) {
-            canvas.drawText("($overs2)", (width - 40).toFloat(), 270f, oversPaint)
-        }
+        canvas.drawText(score2, rightX, 240f, scorePaint)
+        if (overs2.isNotBlank()) canvas.drawText("($overs2)", rightX, 270f, oversPaint)
 
-        // Status
-        val statusPaint = Paint().apply {
-            color = 0xFFD4A843.toInt()
-            textSize = 24f
-            isAntiAlias = true
-            typeface = Typeface.create(Typeface.DEFAULT, Typeface.ITALIC)
-            textAlign = Paint.Align.CENTER
-        }
-        canvas.drawText(status.take(60), width / 2f, 330f, statusPaint)
-
-        // Branding
-        val brandPaint = Paint().apply {
-            color = 0xFF555555.toInt()
-            textSize = 18f
-            isAntiAlias = true
-            textAlign = Paint.Align.CENTER
-        }
-        canvas.drawText("Shared via Bouncer Cricket 🏏", width / 2f, 380f, brandPaint)
+        canvas.drawText(status.take(60), centerX, 330f,
+            textPaint(GOLD, 24f, Paint.Align.CENTER, Typeface.ITALIC))
+        canvas.drawText("Shared via Bouncer Cricket 🏏", centerX, 380f,
+            textPaint(BRAND, 18f, Paint.Align.CENTER))
 
         return bitmap
     }

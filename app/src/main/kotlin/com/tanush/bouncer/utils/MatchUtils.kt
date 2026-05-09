@@ -154,35 +154,38 @@ fun getMatchStatusInfo(status: String?, match: CricketMatch? = null): MatchStatu
     }
 }
 
+private val placeholderScores = setOf("Data Not Found", "-", "TBD")
+
+private fun parseRunsWickets(scorePart: String, separator: Char): Pair<Int, Int> {
+    val parts = scorePart.split(separator)
+    val r = parts.getOrNull(0)?.trim()?.toIntOrNull() ?: 0
+    val w = parts.getOrNull(1)?.trim()?.filter { it.isDigit() }?.toIntOrNull() ?: 0
+    return r to w
+}
+
 /**
  * Parse cricket score from various formats:
  * - "199/7" or "199-7"
- * - "199/7 (20.0)" or "199-7 (20.0)"  
+ * - "199/7 (20.0)" or "199-7 (20.0)"
  * - "199/7 (20.0 Ov)"
  * - "&amp; 123/4" for second innings
  * Returns ScoreInfo with rawScore as fallback for display
  */
 fun parseScore(score: String?): ScoreInfo {
     try {
-        // Handle null, blank, or placeholder values
-        if (score.isNullOrBlank() || score == "Data Not Found" || score == "-" || score == "TBD") {
+        if (score.isNullOrBlank() || score in placeholderScores) {
             return ScoreInfo(0, 0, "", score ?: "-", false)
         }
-    
-        // Clean the score string - handle HTML entities and second innings markers
+
         val cleanedScore = score
             .replace("&amp;", "&")
             .replace("& ", "")
             .replace("&", "")
             .trim()
-    
-        // If empty after cleaning, return with original as fallback
-        if (cleanedScore.isBlank()) {
-            return ScoreInfo(0, 0, "", score, false)
-        }
-    
+
+        if (cleanedScore.isBlank()) return ScoreInfo(0, 0, "", score, false)
+
         return try {
-            // Extract overs first (can be in parentheses or after "Ov")
             val overs = when {
                 cleanedScore.contains("(") && cleanedScore.contains(")") -> {
                     cleanedScore.substringAfter("(")
@@ -200,41 +203,25 @@ fun parseScore(score: String?): ScoreInfo {
                 }
                 else -> ""
             }
-        
-            // Extract the main score part (before overs)
+
             val scorePart = cleanedScore
                 .substringBefore("(")
                 .substringBefore(" Ov")
                 .substringBefore(" ov")
                 .trim()
-        
-            // Parse runs and wickets - handle both "/" and "-" separators
+
             val (runs, wickets) = when {
-                scorePart.contains("/") -> {
-                    val parts = scorePart.split("/")
-                    val r = parts.getOrNull(0)?.trim()?.toIntOrNull() ?: 0
-                    val w = parts.getOrNull(1)?.trim()?.filter { it.isDigit() }?.toIntOrNull() ?: 0
-                    Pair(r, w)
-                }
-                scorePart.contains("-") -> {
-                    val parts = scorePart.split("-")
-                    val r = parts.getOrNull(0)?.trim()?.toIntOrNull() ?: 0
-                    val w = parts.getOrNull(1)?.trim()?.filter { it.isDigit() }?.toIntOrNull() ?: 0
-                    Pair(r, w)
-                }
-                scorePart.all { it.isDigit() } -> {
-                    // Just runs, no wickets (e.g., "199")
-                    Pair(scorePart.toIntOrNull() ?: 0, 0)
-                }
-                else -> Pair(0, 0)
+                scorePart.contains("/") -> parseRunsWickets(scorePart, '/')
+                scorePart.contains("-") -> parseRunsWickets(scorePart, '-')
+                scorePart.all { it.isDigit() } -> (scorePart.toIntOrNull() ?: 0) to 0
+                else -> 0 to 0
             }
-        
-            // Consider valid if we got at least runs > 0 OR wickets > 0 (for cases like 0/1)
+
+            // Valid for "0/1"-style edge cases where runs==0 but a wicket was recorded
             val isValid = runs > 0 || wickets > 0 || cleanedScore.contains("/") || cleanedScore.contains("-")
-        
+
             ScoreInfo(runs, wickets, overs, score, isValid)
         } catch (e: Exception) {
-            // Return with original score as fallback
             ScoreInfo(0, 0, "", score, false)
         }
     } catch (e: Exception) {
@@ -277,25 +264,27 @@ fun ScoreInfo.toFullDisplayString(): String {
     }
 }
 
+// Order matters: "south africa" must precede "africa"-only checks; substring match preserved.
+private val teamColorMap: List<Pair<String, Color>> = listOf(
+    "india" to TeamIndia,
+    "australia" to TeamAustralia,
+    "england" to TeamEngland,
+    "pakistan" to TeamPakistan,
+    "south africa" to TeamSouthAfrica,
+    "new zealand" to TeamNewZealand,
+    "west indies" to TeamWestIndies,
+    "sri lanka" to TeamSriLanka,
+    "bangladesh" to TeamBangladesh,
+    "afghanistan" to Color(0xFF0045AD),
+    "ireland" to Color(0xFF009A44),
+    "scotland" to Color(0xFF003087),
+    "zimbabwe" to Color(0xFFD40000),
+)
+
 fun getTeamColor(teamName: String?): Color {
     try {
         val name = teamName?.lowercase() ?: return GoldDark
-        return when {
-            name.contains("india") -> TeamIndia
-            name.contains("australia") -> TeamAustralia
-            name.contains("england") -> TeamEngland
-            name.contains("pakistan") -> TeamPakistan
-            name.contains("south africa") -> TeamSouthAfrica
-            name.contains("new zealand") -> TeamNewZealand
-            name.contains("west indies") -> TeamWestIndies
-            name.contains("sri lanka") -> TeamSriLanka
-            name.contains("bangladesh") -> TeamBangladesh
-            name.contains("afghanistan") -> Color(0xFF0045AD)
-            name.contains("ireland") -> Color(0xFF009A44)
-            name.contains("scotland") -> Color(0xFF003087)
-            name.contains("zimbabwe") -> Color(0xFFD40000)
-            else -> GoldDark
-        }
+        return teamColorMap.firstOrNull { (key, _) -> name.contains(key) }?.second ?: GoldDark
     } catch (e: Exception) {
         Sentry.captureException(e)
         throw e
