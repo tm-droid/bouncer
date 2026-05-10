@@ -98,6 +98,7 @@ fun MatchDetailViewV2(
     var recentBalls by remember { mutableStateOf<List<String>>(emptyList()) }
     var scorecard by remember { mutableStateOf<Scorecard?>(null) }
     var commentary by remember { mutableStateOf(listOf("Loading commentary...")) }
+    var commentaryLoading by remember { mutableStateOf(true) }
     var showReminderSheet by remember { mutableStateOf(false) }
     var showNotifPrefsSheet by remember { mutableStateOf(false) }
 
@@ -132,7 +133,10 @@ fun MatchDetailViewV2(
                 commentaryManager.seedHistory(allLines)
                 commentary = commentaryManager.getSeededHistory()
             }
-        } catch (_: Exception) { }
+        } catch (_: Exception) {
+        } finally {
+            commentaryLoading = false
+        }
 
         while (true) {
             try {
@@ -323,6 +327,7 @@ fun MatchDetailViewV2(
                         commentary = commentary,
                         recentBalls = recentBalls,
                         matchStatus = match.currentStatus,
+                        isLoading = commentaryLoading,
                     )
                     3 -> MatchTimelineTab(commentary = commentary)
                     4 -> InfoTabV2(match = match)
