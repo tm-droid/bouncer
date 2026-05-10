@@ -137,7 +137,12 @@ fun MatchDetailViewV2(
                 commentaryManager.seedHistory(allLines)
                 commentary = commentaryManager.getSeededHistory()
             }
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            Sentry.addBreadcrumb(Breadcrumb().apply {
+                category = "match_detail_v2.seed"
+                message = "Commentary seed failed: ${e.message}"
+                level = SentryLevel.WARNING
+            })
         } finally {
             commentaryLoading = false
         }
