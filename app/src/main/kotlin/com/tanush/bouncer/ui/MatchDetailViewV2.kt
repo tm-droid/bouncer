@@ -111,7 +111,7 @@ fun MatchDetailViewV2(
     var liveRequiredRunRate by remember { mutableStateOf(match.score?.requiredRunRate) }
 
     val scraper = remember { CricBuzzScraper() }
-    val commentaryManager = remember { LiveCommentaryManager() }
+    val commentaryManager = remember(match.id) { LiveCommentaryManager() }
     DisposableEffect(match.id) {
         onDispose { commentaryManager.close() }
     }
