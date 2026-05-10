@@ -1,6 +1,9 @@
 package com.tanush.bouncer.ui.screens.matchdetail.v2
 
+import android.content.Intent
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,6 +19,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -26,31 +32,94 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.tanush.bouncer.models.TimelineEventType
 import com.tanush.bouncer.ui.components.v2.EmptyStateV2
 import com.tanush.bouncer.ui.components.v2.FilterChipRowV2
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
-import com.tanush.bouncer.models.TimelineEventType
 import com.tanush.bouncer.utils.TimelineEventExtractor
 
-/**
- * CommentaryTabV2 — Ball-by-ball commentary with colored event badges.
- */
+// ── Internal parsed ball model ──────────────────────────────────────────────
+
+private data class ParsedBall(
+    val overNumber: Float,
+    val ballText: String,
+    val runs: Int,
+    val isWicket: Boolean,
+    val isFour: Boolean,
+    val isSix: Boolean,
+    val isWide: Boolean,
+    val isNoBall: Boolean,
+)
+
+private val OVER_REGEX = Regex("^(\\d+\\.\\d+)\\s+(.*)", setOf(RegexOption.DOT_MATCHES_ALL))
+private val RUNS_REGEX = Regex("\\b(\\d+) runs?\\b")
+
+private fun String.parseBall(): ParsedBall {
+    val clean = replace(Regex("^\\[AI Fused\\]\\s*"), "").trimEnd('/').trim()
+    val m = OVER_REGEX.find(clean)
+    val overNumber = m?.groupValues?.get(1)?.toFloatOrNull() ?: 0f
+    val text = m?.groupValues?.get(2) ?: clean
+    val lower = text.lowercase()
+
+    val ballType = TimelineEventExtractor.detectBallType(clean)
+    val isWicket = ballType == TimelineEventType.WICKET
+    val isSix = ballType == TimelineEventType.SIX
+    val isFour = ballType == TimelineEventType.FOUR
+    val isWide = lower.contains("wide")
+    val isNoBall = lower.contains("no ball") || lower.contains("no-ball")
+
+    val runs = when {
+        isSix -> 6
+        isFour -> 4
+        isWicket -> 0
+        lower.contains("no run") -> 0
+        else -> RUNS_REGEX.find(lower)?.groupValues?.get(1)?.toIntOrNull() ?: 0
+    }
+
+    return ParsedBall(overNumber, text, runs, isWicket, isFour, isSix, isWide, isNoBall)
+}
+
+private fun ParsedBall.toBallString(): String = when {
+    isWicket -> "W"
+    isSix -> "6"
+    isFour -> "4"
+    isWide -> "WD"
+    isNoBall -> "NB"
+    runs == 0 -> "."
+    else -> runs.toString()
+}
+
+// ── Main composable ──────────────────────────────────────────────────────────
+
 @Composable
 fun CommentaryTabV2(
     commentary: List<String>,
     recentBalls: List<String>,
     matchStatus: String = "",
+    isLoading: Boolean = false,
 ) {
     val colors = BouncerThemeV2.colors
     val typography = BouncerThemeV2.typography
     val spacing = BouncerThemeV2.spacing
 
-    if (commentary.isEmpty() || (commentary.size == 1 && commentary.first().contains("Loading"))) {
+    if (isLoading) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator(color = colors.primary)
+        }
+        return
+    }
+
+    if (commentary.isEmpty()) {
         val statusLower = matchStatus.lowercase()
         val (title, subtitle) = when {
             statusLower.contains("stumps") -> "Stumps" to "Commentary will resume at start of play"
@@ -67,26 +136,26 @@ fun CommentaryTabV2(
     val filterOptions = listOf("All", "Wickets", "Boundaries", "Milestones")
 
     val filteredCommentary = remember(commentary, selectedFilter) {
-        // Clean and deduplicate commentary lines (group by ball number, keep longest)
         val cleaned = TimelineEventExtractor.deduplicateByBall(
             commentary
                 .map { it.replace(Regex("^\\[AI Fused\\]\\s*"), "").trimEnd('/').trim() }
                 .filter { it.isNotBlank() }
         )
-        if (selectedFilter == "All") {
-            cleaned
-        } else {
-            cleaned.filter { line ->
-                when (selectedFilter) {
-                    "Wickets" -> TimelineEventExtractor.detectBallType(line) == TimelineEventType.WICKET
-                    "Boundaries" -> TimelineEventExtractor.detectBallType(line).let {
-                        it == TimelineEventType.SIX || it == TimelineEventType.FOUR
-                    }
-                    "Milestones" -> TimelineEventExtractor.detectBallType(line) == TimelineEventType.MILESTONE
-                    else -> true
+        if (selectedFilter == "All") cleaned
+        else cleaned.filter { line ->
+            when (selectedFilter) {
+                "Wickets" -> TimelineEventExtractor.detectBallType(line) == TimelineEventType.WICKET
+                "Boundaries" -> TimelineEventExtractor.detectBallType(line).let {
+                    it == TimelineEventType.SIX || it == TimelineEventType.FOUR
                 }
+                "Milestones" -> TimelineEventExtractor.detectBallType(line) == TimelineEventType.MILESTONE
+                else -> true
             }
         }
+    }
+
+    val parsedBalls = remember(filteredCommentary) {
+        filteredCommentary.map { it.parseBall() }
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
@@ -101,7 +170,7 @@ fun CommentaryTabV2(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(vertical = spacing.md),
         ) {
-            // Recent balls overview strip
+            // Current over ball strip
             if (recentBalls.isNotEmpty() && selectedFilter == "All") {
                 item(key = "recent_strip") {
                     Column(modifier = Modifier.padding(horizontal = spacing.lg, vertical = spacing.sm)) {
@@ -117,9 +186,31 @@ fun CommentaryTabV2(
                 }
             }
 
-            // Commentary lines — use index in key to avoid duplicate key crashes
-            items(filteredCommentary.size, key = { idx -> "comm_${selectedFilter}_$idx" }) { idx ->
-                CommentaryLine(filteredCommentary[idx])
+            if (selectedFilter == "All") {
+                val (ballLines, nonBallLines) = parsedBalls.partition { it.overNumber > 0f }
+                val grouped = ballLines
+                    .groupBy { it.overNumber.toInt() }
+                    .toSortedMap(reverseOrder())
+
+                // Non-ball lines (session notes, weather updates) at top
+                items(nonBallLines.size, key = { "nonball_$it" }) { idx ->
+                    NonBallLine(nonBallLines[idx].ballText)
+                }
+
+                // Ball lines grouped by over with separator cards
+                grouped.forEach { (over, balls) ->
+                    item(key = "sep_$over") {
+                        OverSeparatorCard(overNumber = over, balls = balls)
+                    }
+                    items(balls.size, key = { "ball_${over}_$it" }) { idx ->
+                        CommentaryLine(balls[idx])
+                    }
+                }
+            } else {
+                // Filtered views: flat list without separators
+                items(parsedBalls.size, key = { "comm_${selectedFilter}_$it" }) { idx ->
+                    CommentaryLine(parsedBalls[idx])
+                }
             }
 
             item(key = "bottom") { Spacer(Modifier.height(spacing.xxl)) }
@@ -127,142 +218,252 @@ fun CommentaryTabV2(
     }
 }
 
-private fun parseBoldTags(text: String): androidx.compose.ui.text.AnnotatedString {
-    return buildAnnotatedString {
-        val regex = Regex("<b>(.*?)</b>")
-        var lastIndex = 0
-
-        regex.findAll(text).forEach { match ->
-            // Add text before the bold tag
-            append(text.substring(lastIndex, match.range.first))
-
-            // Add bold text
-            withStyle(style = SpanStyle(fontWeight = FontWeight.Bold)) {
-                append(match.groupValues[1])
-            }
-
-            lastIndex = match.range.last + 1
-        }
-
-        // Add remaining text after the last bold tag
-        if (lastIndex < text.length) {
-            append(text.substring(lastIndex))
-        }
-    }
-}
+// ── Over separator card ──────────────────────────────────────────────────────
 
 @Composable
-private fun CommentaryLine(line: String) {
+private fun OverSeparatorCard(overNumber: Int, balls: List<ParsedBall>) {
     val colors = BouncerThemeV2.colors
     val typography = BouncerThemeV2.typography
     val spacing = BouncerThemeV2.spacing
 
-    val cleanLine = line.replace(Regex("^\\[AI Fused\\]\\s*"), "").trimEnd('/').trim()
-
-    // Extract over number if present (e.g., "18.4" at start)
-    val overMatch = Regex("^(\\d+\\.\\d+)\\s+(.*)").find(cleanLine)
-    val overNumber = overMatch?.groupValues?.get(1)
-    val commentaryText = overMatch?.groupValues?.get(2) ?: cleanLine
-
-    val ballType = TimelineEventExtractor.detectBallType(cleanLine)
-    val isWicket = ballType == TimelineEventType.WICKET
-    val isBoundary = ballType == TimelineEventType.SIX || ballType == TimelineEventType.FOUR
-
-    // Highlight background for key events
-    val bgColor = when {
-        isWicket -> colors.live.copy(alpha = 0.08f)
-        isBoundary -> colors.win.copy(alpha = 0.08f)
-        else -> androidx.compose.ui.graphics.Color.Transparent
-    }
+    val totalRuns = balls.sumOf { it.runs }
+    val isMaiden = totalRuns == 0 && balls.isNotEmpty() && balls.none { it.isWide || it.isNoBall }
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(bgColor)
             .padding(horizontal = spacing.lg, vertical = spacing.sm),
     ) {
-        Row(verticalAlignment = Alignment.Top) {
-            // Over number badge
-            if (overNumber != null) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(spacing.xs),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 Box(
                     modifier = Modifier
-                        .size(width = 36.dp, height = 24.dp)
-                        .clip(RoundedCornerShape(4.dp))
-                        .background(colors.surfaceVariant),
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(colors.primary.copy(alpha = 0.15f))
+                        .padding(horizontal = spacing.sm, vertical = spacing.xs),
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(
-                        text = overNumber,
+                        text = "Over $overNumber",
                         style = typography.labelSmall,
-                        color = colors.onSurface,
+                        color = colors.primary,
                         fontWeight = FontWeight.Bold,
                     )
                 }
-                Spacer(Modifier.width(spacing.sm))
-            }
 
-            // Event badge
-            if (isWicket) {
-                EventPill(text = "W", color = colors.live)
-                Spacer(Modifier.width(spacing.sm))
-            } else if (isBoundary) {
-                val isSix = ballType == TimelineEventType.SIX
-                EventPill(
-                    text = if (isSix) "6" else "4",
-                    color = if (isSix) BouncerThemeV2.colors.primary else BouncerThemeV2.colors.win,
-                )
-                Spacer(Modifier.width(spacing.sm))
+                if (isMaiden) {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(MaidenTeal.copy(alpha = 0.2f))
+                            .padding(horizontal = spacing.sm, vertical = spacing.xs),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = "MAIDEN",
+                            style = typography.labelSmall,
+                            color = MaidenTeal,
+                            fontWeight = FontWeight.Bold,
+                        )
+                    }
+                }
             }
 
             Text(
-                text = parseBoldTags(commentaryText),
-                style = typography.bodySmall,
-                color = colors.onSurface,
-                modifier = Modifier.weight(1f),
+                text = "$totalRuns run${if (totalRuns != 1) "s" else ""}",
+                style = typography.labelSmall,
+                color = colors.textSecondary,
             )
         }
+
+        if (balls.isNotEmpty()) {
+            Spacer(Modifier.height(spacing.xs))
+            Row(horizontalArrangement = Arrangement.spacedBy(spacing.xs)) {
+                balls.forEach { ball ->
+                    BallBadge(ball.toBallString(), size = 22.dp)
+                }
+            }
+        }
+
         HorizontalDivider(
-            color = colors.divider,
+            color = colors.primary.copy(alpha = 0.12f),
             modifier = Modifier.padding(top = spacing.sm),
         )
     }
 }
 
+// ── Commentary row ───────────────────────────────────────────────────────────
+
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun EventPill(text: String, color: androidx.compose.ui.graphics.Color) {
+private fun CommentaryLine(ball: ParsedBall) {
+    val colors = BouncerThemeV2.colors
+    val typography = BouncerThemeV2.typography
+    val spacing = BouncerThemeV2.spacing
+    val clipboardManager = LocalClipboardManager.current
+    val context = LocalContext.current
+
+    var showMenu by remember { mutableStateOf(false) }
+
+    val bgColor = when {
+        ball.isWicket -> colors.live.copy(alpha = 0.08f)
+        ball.isSix || ball.isFour -> colors.win.copy(alpha = 0.08f)
+        else -> Color.Transparent
+    }
+
+    Box {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(bgColor)
+                .combinedClickable(
+                    onClick = {},
+                    onLongClick = { showMenu = true },
+                )
+                .padding(horizontal = spacing.lg, vertical = spacing.sm),
+        ) {
+            Row(verticalAlignment = Alignment.Top) {
+                if (ball.overNumber > 0f) {
+                    ResultPill(ball)
+                    Spacer(Modifier.width(spacing.xs))
+                    Box(
+                        modifier = Modifier
+                            .size(width = 36.dp, height = 24.dp)
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(colors.surfaceVariant),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = "%.1f".format(ball.overNumber),
+                            style = typography.labelSmall,
+                            color = colors.onSurface,
+                            fontWeight = FontWeight.Bold,
+                        )
+                    }
+                    Spacer(Modifier.width(spacing.sm))
+                }
+
+                Text(
+                    text = parseBoldTags(ball.ballText),
+                    style = typography.bodySmall,
+                    color = colors.onSurface,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+            HorizontalDivider(
+                color = colors.divider,
+                modifier = Modifier.padding(top = spacing.sm),
+            )
+        }
+
+        val shareText = buildShareText(ball)
+        DropdownMenu(
+            expanded = showMenu,
+            onDismissRequest = { showMenu = false },
+        ) {
+            DropdownMenuItem(
+                text = { Text("Copy text") },
+                onClick = {
+                    clipboardManager.setText(AnnotatedString(shareText))
+                    showMenu = false
+                },
+            )
+            DropdownMenuItem(
+                text = { Text("Share") },
+                onClick = {
+                    context.startActivity(
+                        Intent.createChooser(
+                            Intent(Intent.ACTION_SEND).apply {
+                                type = "text/plain"
+                                putExtra(Intent.EXTRA_TEXT, shareText)
+                            },
+                            null,
+                        )
+                    )
+                    showMenu = false
+                },
+            )
+        }
+    }
+}
+
+@Composable
+private fun NonBallLine(text: String) {
+    val colors = BouncerThemeV2.colors
+    val typography = BouncerThemeV2.typography
+    val spacing = BouncerThemeV2.spacing
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = spacing.lg, vertical = spacing.sm),
+    ) {
+        Text(
+            text = parseBoldTags(text),
+            style = typography.bodySmall,
+            color = colors.textSecondary,
+        )
+        HorizontalDivider(color = colors.divider, modifier = Modifier.padding(top = spacing.sm))
+    }
+}
+
+// ── Small composables ────────────────────────────────────────────────────────
+
+@Composable
+private fun ResultPill(ball: ParsedBall) {
+    val colors = BouncerThemeV2.colors
+
+    val (text, fg, bg) = when {
+        ball.isWicket -> Triple("W", colors.live, colors.live.copy(alpha = 0.2f))
+        ball.isSix -> Triple("6", colors.primary, colors.primary.copy(alpha = 0.2f))
+        ball.isFour -> Triple("4", colors.win, colors.win.copy(alpha = 0.2f))
+        ball.isWide -> Triple("WD", Color(0xFFF59E0B), Color(0xFFF59E0B).copy(alpha = 0.15f))
+        ball.isNoBall -> Triple("NB", Color(0xFFF97316), Color(0xFFF97316).copy(alpha = 0.15f))
+        ball.runs == 0 -> Triple("·", colors.onSurface.copy(alpha = 0.35f), colors.surfaceVariant)
+        else -> Triple(ball.runs.toString(), colors.onSurface.copy(alpha = 0.6f), colors.surfaceVariant)
+    }
+
     Box(
         modifier = Modifier
             .size(24.dp)
             .clip(RoundedCornerShape(4.dp))
-            .background(color),
+            .background(bg),
         contentAlignment = Alignment.Center,
     ) {
         Text(
             text = text,
             style = BouncerThemeV2.typography.labelSmall,
-            color = BouncerThemeV2.colors.onPrimary,
+            color = fg,
             fontWeight = FontWeight.Bold,
         )
     }
 }
 
 @Composable
-private fun BallBadge(ball: String) {
+private fun BallBadge(ball: String, size: Dp = 28.dp) {
     val colors = BouncerThemeV2.colors
     val b = ball.trim().uppercase()
     val (bg, fg) = when {
-        b == "W" -> colors.live to colors.onPrimary
-        b == "6" -> colors.primary to colors.onPrimary
-        b == "4" -> colors.win to colors.onPrimary
+        b == "W" -> colors.live.copy(alpha = 0.2f) to colors.live
+        b == "6" -> colors.primary.copy(alpha = 0.2f) to colors.primary
+        b == "4" -> colors.win.copy(alpha = 0.2f) to colors.win
         b.startsWith("WD") || b.startsWith("NB") || b.startsWith("LB") || b.startsWith("B") ->
-            BouncerThemeV2.colors.primaryContainer to colors.onSurface
+            Color(0xFFF59E0B).copy(alpha = 0.15f) to Color(0xFFF59E0B)
+        b == "." -> colors.surfaceVariant to colors.onSurface.copy(alpha = 0.3f)
         else -> colors.surfaceVariant to colors.onSurface
     }
 
     Box(
         modifier = Modifier
-            .size(28.dp)
-            .clip(RoundedCornerShape(6.dp))
+            .size(size)
+            .clip(RoundedCornerShape(if (size <= 22.dp) 4.dp else 6.dp))
             .background(bg),
         contentAlignment = Alignment.Center,
     ) {
@@ -272,5 +473,28 @@ private fun BallBadge(ball: String) {
             color = fg,
             fontWeight = FontWeight.Bold,
         )
+    }
+}
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+private val MaidenTeal = Color(0xFF0D9488)
+
+private fun buildShareText(ball: ParsedBall): String =
+    if (ball.overNumber > 0f) "Over ${"%.1f".format(ball.overNumber)}: ${ball.ballText}"
+    else ball.ballText
+
+private fun parseBoldTags(text: String): AnnotatedString {
+    return buildAnnotatedString {
+        val regex = Regex("<b>(.*?)</b>")
+        var lastIndex = 0
+        regex.findAll(text).forEach { match ->
+            append(text.substring(lastIndex, match.range.first))
+            withStyle(style = SpanStyle(fontWeight = FontWeight.Bold)) {
+                append(match.groupValues[1])
+            }
+            lastIndex = match.range.last + 1
+        }
+        if (lastIndex < text.length) append(text.substring(lastIndex))
     }
 }
