@@ -15,7 +15,7 @@ import java.util.concurrent.TimeUnit
 
 /**
  * WorkManager-based periodic worker that syncs active cricket series into the series_cache table.
- * Runs every 24 hours; skips if last sync was < 12 hours ago.
+ * Runs every 24 hours.
  */
 class SeriesSyncWorker(
     private val context: Context,
@@ -31,19 +31,6 @@ class SeriesSyncWorker(
 
         return try {
             val db = BouncerDatabase.getInstance(context)
-            val lastSync = db.seriesCacheDao().getLastSyncTime()
-            val now = System.currentTimeMillis()
-            val twelveHoursMs = 12L * 60 * 60 * 1000
-
-            if (lastSync != null && (now - lastSync) < twelveHoursMs) {
-                Log.d(TAG, "Skipping sync — last sync was ${(now - lastSync) / 1000 / 60} min ago")
-                Sentry.addBreadcrumb(Breadcrumb().apply {
-                    category = "series_sync"
-                    message = "Skipped — synced recently"
-                    level = SentryLevel.INFO
-                })
-                return Result.success()
-            }
 
             val series = SeriesScraper().fetchActiveSeries()
 
