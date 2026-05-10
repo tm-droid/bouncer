@@ -2,12 +2,15 @@
 
 ## Required Keys
 
-Four keys needed for full functionality:
+Seven keys needed for full functionality:
 
 1. **OPENROUTER_API_KEY** — OpenRouter LLM API (for CommentaryFusionService AI insights)
 2. **RAPIDAPI_KEY** — RapidAPI for Cricbuzz scraper + cricket data APIs
 3. **SENTRY_USER_AUTH_TOKEN** — Sentry CLI auth (source context uploads in release builds)
 4. **SENTRY_DSN** — Sentry ingest endpoint (error/performance tracking)
+5. **GROQ_API_KEY** — Groq (primary per-ball commentary provider in BallCommentaryService)
+6. **CEREBRAS_API_KEY** — Cerebras (fallback #1 per-ball commentary)
+7. **SAMBANOVA_API_KEY** — SambaNova (fallback #2 per-ball commentary)
 
 ## Loading Mechanism
 
@@ -44,6 +47,11 @@ export SENTRY_DSN=...
 - Build succeeds with empty keys (graceful degradation)
 - AI features (AiInsightsDrsScreen, CommentaryFusionService) fail at runtime if keys missing
 - Firebase/FCM requires google-services.json from Firebase Console (separate from keys above)
+
+## Runtime Key Access
+
+All keys accessed at runtime via `ApiKeys` object (`ApiKeys.kt`), never `BuildConfig` directly.
+Adding a new key: `buildConfigField` in `build.gradle.kts` → entry in `ApiKeys.kt` → placeholder in `local.properties.template`.
 
 ## Git Safety
 

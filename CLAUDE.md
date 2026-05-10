@@ -32,6 +32,7 @@ cp local.properties.template local.properties  # Edit with real keys
 ```
 app/src/main/kotlin/com/tanush/bouncer/
 ├── BouncerApp.kt       # App entry + startup sequence
+├── ApiKeys.kt          # Single source for all API key access — use this, not BuildConfig directly
 ├── ui/
 │   ├── screens/        # Full-page Compose screens
 │   ├── components/     # Reusable composables
@@ -44,6 +45,7 @@ app/src/main/kotlin/com/tanush/bouncer/
 ├── managers/           # Singleton managers (TeamLogo, Acronym, Favourites, Widget)
 ├── network/            # Retrofit + Jsoup scrapers (CricBuzz, CricInfo, Series, Squad)
 ├── data/               # Room DB, repositories, AppResult<T> monad
+│   └── remote/         # Appwrite sync objects (AppwriteAICache, AppwriteFavouritesSync)
 ├── models/             # Data models and entities
 ├── analysis/           # Cricket analysis + ML models (score prediction, win probability)
 ├── auto/               # Android Auto (BouncerCarAppService)
@@ -59,7 +61,9 @@ app/src/main/kotlin/com/tanush/bouncer/
 
 **Navigation:** Single `BouncerNavHost` with Compose Navigation. Deep link entry via `bouncer://match/{matchId}`.
 
-**Live data flow:** `LiveScoreWebSocketClient` → `LiveCommentaryManager` → `CommentaryFusionService` (OpenRouter LLM with fallback model chains) → UI via StateFlow.
+**Live data flow:** `LiveScoreWebSocketClient` → `LiveCommentaryManager` → `CommentaryFusionService` (OpenRouter, multi-model fallback) + `BallCommentaryService` (Groq → Cerebras → SambaNova per-ball) → UI via StateFlow.
+
+**API keys:** Always access via `ApiKeys` object (`ApiKeys.kt`), never `BuildConfig` directly. Add new keys to `ApiKeys.kt` + `build.gradle.kts` + `local.properties.template`.
 
 **Background workers:** `ScorePollingWorker`, `SeriesSyncWorker`, `PlayerCacheWorker` (WorkManager), `WidgetUpdateWorker` (Glance).
 
