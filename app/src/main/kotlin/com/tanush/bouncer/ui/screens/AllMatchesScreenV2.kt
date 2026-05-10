@@ -14,9 +14,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.tanush.bouncer.models.CricketMatch
@@ -49,8 +46,7 @@ fun AllMatchesScreenV2(
 
     val spacing = BouncerThemeV2.spacing
 
-    // Local format filter (not in ViewModel)
-    var selectedFormat by remember { mutableStateOf("All") }
+    val selectedFormat by viewModel.selectedFormat.collectAsState()
 
     // Status chips
     val statusOptions = listOf("Live", "Upcoming", "Recent")
@@ -103,7 +99,7 @@ fun AllMatchesScreenV2(
                     FilterChipRowV2(
                         items = formatOptions,
                         selectedItem = selectedFormat,
-                        onItemSelected = { selectedFormat = it },
+                        onItemSelected = { viewModel.setFormat(it) },
                     )
                     Spacer(Modifier.height(spacing.md))
                 }
