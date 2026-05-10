@@ -183,10 +183,10 @@ class LiveCommentaryManager(
         val ballNum = extractBallNumber(resultValue.trimStart())
         val aiEntry = if (ballNum != null && scorer.isBallByBallCommentary(resultValue)) {
             try {
-                BallCommentaryService.generateCommentary(cricbuzzId, ballNum, resultValue.take(200))
+                fusion.generateBallCommentary(cricbuzzId, ballNum, resultValue.take(200))
             } catch (e: Exception) {
                 Sentry.captureException(e)
-                BallCommentaryService.FALLBACK_COMMENTARY
+                CommentaryFusionService.FALLBACK_BALL_COMMENTARY
             }
         } else null
 

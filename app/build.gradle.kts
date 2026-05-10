@@ -36,7 +36,6 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
 
-        buildConfigField("String", "OPENROUTER_API_KEY", "\"${localProperties.getProperty("OPENROUTER_API_KEY") ?: System.getenv("OPENROUTER_API_KEY") ?: ""}\"")
         buildConfigField("String", "RAPIDAPI_KEY", "\"${localProperties.getProperty("RAPIDAPI_KEY") ?: System.getenv("RAPIDAPI_KEY") ?: ""}\"")
         buildConfigField("String", "GROQ_API_KEY",      "\"${localProperties.getProperty("GROQ_API_KEY")      ?: System.getenv("GROQ_API_KEY")      ?: ""}\"")
         buildConfigField("String", "CEREBRAS_API_KEY",  "\"${localProperties.getProperty("CEREBRAS_API_KEY")  ?: System.getenv("CEREBRAS_API_KEY")  ?: ""}\"")

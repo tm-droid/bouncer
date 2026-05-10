@@ -29,10 +29,7 @@ class CommentaryFusionServiceTest {
 
     // ── Test helpers ────────────────────────────────────────────────────────
 
-    private fun serviceWith(client: OkHttpClient) = CommentaryFusionService(
-        client = client,
-        apiUrl = "https://fake.openrouter.test/api/v1/chat/completions"
-    )
+    private fun serviceWith(client: OkHttpClient) = CommentaryFusionService(client = client)
 
     private fun readRequestBodyJson(chain: okhttp3.Interceptor.Chain): JSONObject {
         val buffer = Buffer()
@@ -40,7 +37,6 @@ class CommentaryFusionServiceTest {
         return JSONObject(buffer.readUtf8())
     }
 
-    /** Returns a valid OpenRouter response JSON wrapping [content]. */
     private fun successBody(content: String): String =
         """{"choices":[{"message":{"content":"$content"}}]}"""
 
@@ -69,7 +65,6 @@ class CommentaryFusionServiceTest {
             .build()
     }
 
-    /** Client that throws an IOException for every call. */
     private fun throwingClient(ex: Exception = IOException("Connection refused")): OkHttpClient =
         OkHttpClient.Builder().addInterceptor { throw ex }.build()
 
@@ -109,8 +104,8 @@ class CommentaryFusionServiceTest {
         val aiOutput = "18.5: Kohli drives it elegantly through the covers for four!"
         val service = serviceWith(fakeClient { n, _ ->
             when (n) {
-                1 -> 200 to successBody(aiOutput) // fusion call
-                2 -> 200 to successBody("PASS")   // verification call
+                1 -> 200 to successBody(aiOutput) // Groq fusion
+                2 -> 200 to successBody("PASS")   // Groq verification
                 else -> 500 to errorBody()
             }
         })
@@ -126,8 +121,8 @@ class CommentaryFusionServiceTest {
         val hallucinated = "18.5: Smith smashes it for six!"
         val service = serviceWith(fakeClient { n, _ ->
             when (n) {
-                1 -> 200 to successBody(hallucinated) // fusion
-                else -> 200 to successBody("FAIL")    // all verification models return FAIL
+                1 -> 200 to successBody(hallucinated) // Groq fusion
+                else -> 200 to successBody("FAIL")    // all providers return FAIL for verification
             }
         })
 
@@ -153,68 +148,44 @@ class CommentaryFusionServiceTest {
     }
 
     @Test
-    fun `fuse 429 - blocks subsequent calls for rate-limit window`() = runTest {
+    fun `fuse 429 - all providers rate-limited, second call skips HTTP`() = runTest {
         var httpCalls = 0
         val service = serviceWith(fakeClient { _, _ ->
             httpCalls++
             429 to """{"error":{"message":"Rate limited"}}"""
         })
 
-        // First call hits 429; all fusion models short-circuit after first rate-limit signal.
+        // First call: all 3 providers hit 429 and enter 30s cooldown.
         val result1 = defaultFuse(service)
         assertEquals("[AI Fused] $snippet1 / $snippet2", result1)
-
         val callsAfterFirst = httpCalls
 
-        // Second call: isApiDisabled() == true → zero new HTTP calls.
+        // Second call: all providers still in cooldown — zero new HTTP calls.
         val result2 = defaultFuse(service)
         assertEquals("[AI Fused] $snippet1 / $snippet2", result2)
         assertEquals(callsAfterFirst, httpCalls)
     }
 
     @Test
-    fun `fuse 401 - permanently disables API for cool-down window`() = runTest {
-        var httpCalls = 0
-        val service = serviceWith(fakeClient { _, _ ->
-            httpCalls++
-            401 to """{"error":{"message":"Unauthorized"}}"""
-        })
+    fun `fuse all providers fail - returns static fallback string`() = runTest {
+        val service = serviceWith(fakeClient { _, _ -> 500 to errorBody() })
 
-        defaultFuse(service)
-        val callsAfterFirst = httpCalls
+        val result = defaultFuse(service)
 
-        // Second call must not reach the network.
-        defaultFuse(service)
-        assertEquals(callsAfterFirst, httpCalls)
+        assertEquals("[AI Fused] $snippet1 / $snippet2", result)
     }
 
     @Test
-    fun `fuse 402 - permanently disables API for cool-down window`() = runTest {
-        var httpCalls = 0
-        val service = serviceWith(fakeClient { _, _ ->
-            httpCalls++
-            402 to """{"error":{"message":"Insufficient credits"}}"""
-        })
-
-        defaultFuse(service)
-        val callsAfterFirst = httpCalls
-
-        defaultFuse(service)
-        assertEquals(callsAfterFirst, httpCalls)
-    }
-
-    @Test
-    fun `fuse model fallback - primary 500 then secondary succeeds`() = runTest {
+    fun `fuse provider fallback - first provider 500 then second succeeds`() = runTest {
         val aiOutput = "18.5: Kohli punches it through covers!"
-        // fusionRoute: [inclusionai/ling-2.6-1t:free, google/gemma-3-12b-it:free]
-        // verificationRoute: [tencent/hy3-preview:free, openrouter/owl-alpha, google/gemma-3-12b-it:free]
-        // Fusion primary fails → fallback gemma used for fusion.
-        // Verification primary (tencent) succeeds immediately → gemma never used in verification.
-        val service = serviceWith(fakeClient { _, reqJson ->
-            when (reqJson.optString("model")) {
-                "inclusionai/ling-2.6-1t:free" -> 500 to errorBody()           // fusion primary: fail
-                "google/gemma-3-12b-it:free"   -> 200 to successBody(aiOutput) // fusion fallback: succeed
-                else                           -> 200 to successBody("PASS")   // all verification models
+        // Call 1: Groq fusion → 500 (fail, try next)
+        // Call 2: Cerebras fusion → 200 (success)
+        // Call 3: Groq verification → 200 PASS (providers reset between calls)
+        val service = serviceWith(fakeClient { n, _ ->
+            when (n) {
+                1 -> 500 to errorBody()            // Groq fusion: fail
+                2 -> 200 to successBody(aiOutput)  // Cerebras fusion: succeed
+                else -> 200 to successBody("PASS") // verification
             }
         })
 

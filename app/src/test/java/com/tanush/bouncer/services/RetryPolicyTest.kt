@@ -86,7 +86,8 @@ class RetryPolicyTest {
     }
 
     @Test
-    fun `TransientApiException retried 3 times because it extends IOException`() = runTest {
+    fun `IOException subclass retried 3 times because it extends IOException`() = runTest {
+        class HttpException(code: Int, msg: String) : IOException("HTTP $code: $msg")
         var callCount = 0
         val retryAttempts = mutableListOf<Int>()
 
@@ -96,11 +97,11 @@ class RetryPolicyTest {
                 onRetry = { attempt, _, _ -> retryAttempts.add(attempt) }
             ) {
                 callCount++
-                throw TransientApiException(500, "Internal Server Error")
+                throw HttpException(500, "Internal Server Error")
             }
             fail("Expected exception")
         } catch (e: IOException) {
-            assertTrue(e is TransientApiException)
+            assertTrue(e.message?.startsWith("HTTP 500") == true)
         }
 
         assertEquals(3, callCount)
