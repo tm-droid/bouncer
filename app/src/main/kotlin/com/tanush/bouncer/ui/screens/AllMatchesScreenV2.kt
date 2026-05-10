@@ -119,7 +119,7 @@ fun AllMatchesScreenV2(
                     item(key = "empty") {
                         EmptyStateV2(
                             title = "No matches",
-                            subtitle = "No ${selectedFormat.lowercase()} matches found for the current filter",
+                            subtitle = if (selectedFormat == "All") "No matches found" else "No $selectedFormat matches found",
                         )
                     }
                     return@LazyColumn
