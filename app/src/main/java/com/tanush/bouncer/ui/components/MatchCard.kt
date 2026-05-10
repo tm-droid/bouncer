@@ -61,6 +61,7 @@ import com.tanush.bouncer.ui.theme.bouncerClickable
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.models.ScrapedBatsman
+import com.tanush.bouncer.utils.parseRuns
 
 /**
  * Primary match card — glass morphism variant.
@@ -248,7 +249,7 @@ fun MatchCard(
                 Column {
                     Spacer(modifier = Modifier.height(dimens.spacing.md))
                     BallsRow(
-                        events = rawBalls.orEmpty().map { parseBallString(it) },
+                        events = rawBalls.orEmpty().map { BallEvent.from(it) },
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
@@ -456,7 +457,7 @@ private fun TeamRow(
         if (hasScore && team.score.isNotBlank()) {
             // Extract numeric score for animation
             val numericScore = remember(team.score) {
-                team.score.split("/").firstOrNull()?.toIntOrNull() ?: 0
+                parseRuns(team.score)
             }
             
             // Animated score transition
@@ -662,36 +663,6 @@ private fun WinProbabilityBar(
     }
 }
 
-// ── Ball string → BallEvent parser ──────────────────────────────────────────
-
-private fun parseBallString(ball: String): BallEvent {
-    val lower = ball.trim().lowercase()
-    return when {
-        lower == "w" || lower.startsWith("wk") || lower.contains("wicket") -> BallEvent.WICKET
-        lower == "wd" || lower.contains("wide") -> BallEvent.WIDE
-        lower == "nb" || lower.contains("no ball") || lower.contains("noball") -> BallEvent.NO_BALL
-        lower == "lb" || lower.contains("leg bye") -> BallEvent.LEG_BYE
-        lower == "b" || (lower.contains("bye") && !lower.contains("leg")) -> BallEvent.BYE
-        lower == "6" || lower.contains("six") -> BallEvent.SIX
-        lower == "4" || lower.contains("four") || lower.contains("boundary") -> BallEvent.FOUR
-        lower == "3" -> BallEvent.THREE
-        lower == "2" -> BallEvent.DOUBLE
-        lower == "1" -> BallEvent.SINGLE
-        lower == "0" || lower == "." || lower.contains("dot") -> BallEvent.DOT
-        else -> {
-            val num = lower.toIntOrNull()
-            when (num) {
-                0 -> BallEvent.DOT
-                1 -> BallEvent.SINGLE
-                2 -> BallEvent.DOUBLE
-                3 -> BallEvent.THREE
-                4 -> BallEvent.FOUR
-                6 -> BallEvent.SIX
-                else -> BallEvent.DOT
-            }
-        }
-    }
-}
 
 // ── Previews ────────────────────────────────────────────────────────────────
 

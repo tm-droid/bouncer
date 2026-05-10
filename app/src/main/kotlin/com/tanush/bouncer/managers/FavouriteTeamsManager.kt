@@ -3,12 +3,17 @@ package com.tanush.bouncer.managers
 import android.content.Context
 import android.content.SharedPreferences
 import android.util.Log
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
+import com.tanush.bouncer.data.remote.AppwriteFavouritesSync
+import io.sentry.Sentry
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
-import io.sentry.Sentry
+import kotlinx.coroutines.launch
 
 /**
  * Manages user's favourite teams with persistence, reordering, and max limit enforcement.
@@ -22,6 +27,7 @@ object FavouriteTeamsManager {
 
     private lateinit var prefs: SharedPreferences
     private val gson = Gson()
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     private val _favourites = MutableStateFlow<List<String>>(emptyList())
     val favourites: StateFlow<List<String>> = _favourites.asStateFlow()
@@ -37,6 +43,18 @@ object FavouriteTeamsManager {
             prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
             _favourites.value = load()
             Log.d(TAG, "Initialized with ${_favourites.value.size} favourites")
+            AppwriteFavouritesSync.initialize(prefs)
+            // Pull remote favourites; adopt if local is empty (e.g. fresh install)
+            scope.launch {
+                runCatching {
+                    val remote = AppwriteFavouritesSync.pull()
+                    if (remote != null && _favourites.value.isEmpty()) {
+                        Log.d(TAG, "Adopting ${remote.size} favourites from remote")
+                        _favourites.value = remote
+                        prefs.edit().putString(KEY, gson.toJson(remote)).apply()
+                    }
+                }.onFailure { e -> Log.d(TAG, "Remote favourites pull failed: ${e.message}") }
+            }
         } catch (e: Exception) {
             Sentry.captureException(e)
             throw e
@@ -155,6 +173,7 @@ object FavouriteTeamsManager {
             _favourites.value = list
             val json = gson.toJson(list)
             prefs.edit().putString(KEY, json).apply()
+            scope.launch { AppwriteFavouritesSync.push(list) }
         } catch (e: Exception) {
             Sentry.captureException(e)
             throw e

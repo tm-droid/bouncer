@@ -24,6 +24,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.tanush.bouncer.ui.components.glass.BallEvent
 import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 import com.tanush.bouncer.ui.theme.BouncerTheme
 
@@ -109,33 +110,21 @@ private fun BallCircle(ball: String) {
 @Composable
 private fun resolveBallStyle(ball: String): BallStyle {
     val colors = BouncerDesignSystem.colors
-    val trimmed = ball.trim()
-    return when {
-        trimmed.equals("W", ignoreCase = true) ->
-            BallStyle(colors.ballWicket, Color.White, "W", colors.ballWicket)
-
-        trimmed == "6" ->
-            BallStyle(colors.ballSix, Color.White, "6", colors.ballSix)
-
-        trimmed == "4" ->
-            BallStyle(colors.ballBoundary, Color.White, "4", colors.ballBoundary)
-
-        trimmed == "0" ->
-            BallStyle(colors.ballDot, Color.White.copy(alpha = 0.7f), "0", null)
-
-        trimmed.equals("Wd", ignoreCase = true) || trimmed.equals("WD", ignoreCase = true) ->
-            BallStyle(colors.ballWide, Color.White, "Wd", null)
-
-        trimmed.equals("Nb", ignoreCase = true) || trimmed.equals("NB", ignoreCase = true) ->
-            BallStyle(colors.ballNoBall, Color.White, "Nb", null)
-
-        else ->
-            BallStyle(
-                MaterialTheme.colorScheme.surfaceVariant,
-                MaterialTheme.colorScheme.onSurfaceVariant,
-                trimmed,
-                null
-            )
+    val event = BallEvent.from(ball)
+    val display = ball.trim().ifEmpty { event.displayText }
+    return when (event) {
+        BallEvent.WICKET -> BallStyle(colors.ballWicket, Color.White, "W", colors.ballWicket)
+        BallEvent.SIX -> BallStyle(colors.ballSix, Color.White, "6", colors.ballSix)
+        BallEvent.FOUR -> BallStyle(colors.ballBoundary, Color.White, "4", colors.ballBoundary)
+        BallEvent.DOT -> BallStyle(colors.ballDot, Color.White.copy(alpha = 0.7f), "0", null)
+        BallEvent.WIDE -> BallStyle(colors.ballWide, Color.White, "Wd", null)
+        BallEvent.NO_BALL -> BallStyle(colors.ballNoBall, Color.White, "Nb", null)
+        else -> BallStyle(
+            MaterialTheme.colorScheme.surfaceVariant,
+            MaterialTheme.colorScheme.onSurfaceVariant,
+            display,
+            null
+        )
     }
 }
 

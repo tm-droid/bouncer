@@ -3,6 +3,7 @@ package com.tanush.bouncer.services
 import android.util.Log
 import com.tanush.bouncer.data.local.dao.AICacheDao
 import com.tanush.bouncer.data.local.entities.AICommentaryCacheEntity
+import com.tanush.bouncer.data.remote.AppwriteAICache
 import io.sentry.Breadcrumb
 import io.sentry.Sentry
 import io.sentry.SentryLevel
@@ -59,13 +60,22 @@ object AICacheService {
                 cache.remove(key)
             }
 
-            // Memory miss — check DB
+            // Memory miss — check Room DB
             val cutoffMs = System.currentTimeMillis() - CACHE_EXPIRATION_INTERVAL_MS
             val dbResult = dao?.getCommentary(key, cutoffMs)
             if (dbResult != null) {
                 Log.d(TAG, "DB hit for key $key, warming memory cache")
                 cache[key] = CommentaryEntry(dbResult, Date())
                 return@withLock dbResult
+            }
+
+            // Room miss — check Appwrite shared cache
+            val remoteResult = AppwriteAICache.get(key)
+            if (remoteResult != null) {
+                Log.d(TAG, "Remote hit for key $key, warming local caches")
+                cache[key] = CommentaryEntry(remoteResult, Date())
+                dao?.insert(AICommentaryCacheEntity(key, remoteResult, Date().time))
+                return@withLock remoteResult
             }
 
             return@withLock null
@@ -89,6 +99,9 @@ object AICacheService {
             Log.d(TAG, "Updating cache for key $key")
             cache[key] = CommentaryEntry(commentary, now)
             dao?.insert(AICommentaryCacheEntity(key, commentary, now.time))
+            GlobalScope.launch(Dispatchers.IO) {
+                AppwriteAICache.set(key, commentary)
+            }
         } catch (e: Exception) {
             Sentry.captureException(e)
             throw e

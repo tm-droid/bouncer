@@ -38,6 +38,14 @@ android {
 
         buildConfigField("String", "OPENROUTER_API_KEY", "\"${localProperties.getProperty("OPENROUTER_API_KEY") ?: System.getenv("OPENROUTER_API_KEY") ?: ""}\"")
         buildConfigField("String", "RAPIDAPI_KEY", "\"${localProperties.getProperty("RAPIDAPI_KEY") ?: System.getenv("RAPIDAPI_KEY") ?: ""}\"")
+        buildConfigField("String", "GROQ_API_KEY",      "\"${localProperties.getProperty("GROQ_API_KEY")      ?: System.getenv("GROQ_API_KEY")      ?: ""}\"")
+        buildConfigField("String", "CEREBRAS_API_KEY",  "\"${localProperties.getProperty("CEREBRAS_API_KEY")  ?: System.getenv("CEREBRAS_API_KEY")  ?: ""}\"")
+        buildConfigField("String", "SAMBANOVA_API_KEY", "\"${localProperties.getProperty("SAMBANOVA_API_KEY") ?: System.getenv("SAMBANOVA_API_KEY") ?: ""}\"")
+        buildConfigField("String", "APPWRITE_ENDPOINT", "\"${localProperties.getProperty("APPWRITE_ENDPOINT") ?: System.getenv("APPWRITE_ENDPOINT") ?: ""}\"")
+        buildConfigField("String", "APPWRITE_PROJECT_ID", "\"${localProperties.getProperty("APPWRITE_PROJECT_ID") ?: System.getenv("APPWRITE_PROJECT_ID") ?: ""}\"")
+buildConfigField("String", "APPWRITE_AI_CACHE_DB_ID", "\"${localProperties.getProperty("APPWRITE_AI_CACHE_DB_ID") ?: System.getenv("APPWRITE_AI_CACHE_DB_ID") ?: ""}\"")
+        buildConfigField("String", "APPWRITE_AI_CACHE_COL_ID", "\"${localProperties.getProperty("APPWRITE_AI_CACHE_COL_ID") ?: System.getenv("APPWRITE_AI_CACHE_COL_ID") ?: ""}\"")
+        buildConfigField("String", "APPWRITE_FAVOURITES_COL_ID", "\"${localProperties.getProperty("APPWRITE_FAVOURITES_COL_ID") ?: System.getenv("APPWRITE_FAVOURITES_COL_ID") ?: ""}\"")
         manifestPlaceholders["sentryDsn"] = localProperties.getProperty("SENTRY_DSN", "https://e9ade5d835c36a97939191077734e5a7@o4510958403518464.ingest.us.sentry.io/4510963429212160")
         // Default environment; overridden per build type below
         manifestPlaceholders["sentryEnvironment"] = "production"

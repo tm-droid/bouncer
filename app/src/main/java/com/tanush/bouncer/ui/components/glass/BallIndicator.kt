@@ -58,6 +58,29 @@ enum class BallEvent {
             LEG_BYE -> "lb"
             BYE -> "b"
         }
+
+    companion object {
+        fun from(ball: String): BallEvent {
+            val lower = ball.trim().lowercase()
+            return when {
+                lower == "w" || lower.startsWith("wk") || lower.contains("wicket") -> WICKET
+                lower == "wd" || lower.contains("wide") -> WIDE
+                lower == "nb" || lower.contains("no ball") || lower.contains("noball") -> NO_BALL
+                lower == "lb" || lower.contains("leg bye") -> LEG_BYE
+                lower == "b" || (lower.contains("bye") && !lower.contains("leg")) -> BYE
+                lower == "6" || lower.contains("six") -> SIX
+                lower == "4" || lower.contains("four") || lower.contains("boundary") -> FOUR
+                lower == "3" -> THREE
+                lower == "2" -> DOUBLE
+                lower == "1" -> SINGLE
+                lower == "0" || lower == "." || lower.contains("dot") -> DOT
+                else -> when (lower.toIntOrNull()) {
+                    1 -> SINGLE; 2 -> DOUBLE; 3 -> THREE; 4 -> FOUR; 6 -> SIX
+                    else -> DOT
+                }
+            }
+        }
+    }
 }
 
 /**

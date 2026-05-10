@@ -33,6 +33,7 @@ import com.tanush.bouncer.ui.components.v2.RecentBallsStripV2
 import com.tanush.bouncer.ui.components.v2.SectionHeaderV2
 import com.tanush.bouncer.ui.components.v2.StatRowV2
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
+import com.tanush.bouncer.utils.TimelineEventExtractor
 
 /**
  * OverviewTabV2 — Quick stats, batsmen at crease, current bowler, commentary preview, win probability.
@@ -363,7 +364,7 @@ fun OverviewTabV2(
         }
 
         // Recent Commentary (skip for upcoming matches — no meaningful commentary yet)
-        val meaningfulCommentary = deduplicateByBall(
+        val meaningfulCommentary = TimelineEventExtractor.deduplicateByBall(
             commentary
                 .map { it.trimEnd('/').trim() }
                 .filter { it.isNotBlank() && it.length > 2 && it != "Loading commentary..." }
@@ -497,57 +498,4 @@ private fun WinProbRow(teamName: String, probability: Float) {
             fontWeight = FontWeight.Bold,
         )
     }
-}
-
-/** Deduplicate commentary by ball number — keeps the longest entry per delivery.
- *  CricBuzz progressively updates the same ball (short → full detail) so we may
- *  receive 2-3 versions of the same delivery. We also get duplicates from CricInfo fusion. */
-private fun deduplicateByBall(lines: List<String>): List<String> {
-    val ballPattern = Regex("^\\s*(\\d+\\.\\d+)")
-    val normalized = lines.map {
-        it.replace('\u00A0', ' ').replace(Regex("[\\s\\p{Zs}]+"), " ").trim()
-    }.filter { it.isNotBlank() }
-    // Pass 1: group by ball number, keep longest (most complete progressive update)
-    val bestByBall = mutableMapOf<String, String>()
-    for (line in normalized) {
-        val m = ballPattern.find(line.trimStart())
-        if (m != null) {
-            val ball = m.groupValues[1]
-            val existing = bestByBall[ball]
-            if (existing == null || line.length > existing.length) {
-                bestByBall[ball] = line
-            }
-        }
-    }
-    val seen = mutableSetOf<String>()
-    val pass1 = normalized.mapNotNull { line ->
-        val m = ballPattern.find(line.trimStart())
-        if (m != null) {
-            val ball = m.groupValues[1]
-            if (ball !in seen) {
-                seen.add(ball)
-                bestByBall[ball]
-            } else null
-        } else {
-            val key = line.lowercase()
-            if (key !in seen) { seen.add(key); line } else null
-        }
-    }
-    // Pass 2: case-insensitive prefix dedup for progressive updates
-    val toRemove = mutableSetOf<Int>()
-    for (i in pass1.indices) {
-        if (i in toRemove) continue
-        val ai = pass1[i].lowercase().replace(Regex("^[\\d.\\s]+"), "").replace(Regex("^\\d+\\s+"), "")
-        for (j in i + 1 until pass1.size) {
-            if (j in toRemove) continue
-            val bj = pass1[j].lowercase().replace(Regex("^[\\d.\\s]+"), "").replace(Regex("^\\d+\\s+"), "")
-            val shorter = if (ai.length <= bj.length) ai else bj
-            val longer = if (ai.length <= bj.length) bj else ai
-            val prefixLen = (shorter.length * 0.4).toInt().coerceAtLeast(15)
-            if (shorter.length >= 15 && longer.startsWith(shorter.take(prefixLen))) {
-                toRemove.add(if (ai.length <= bj.length) i else j)
-            }
-        }
-    }
-    return pass1.filterIndexed { idx, _ -> idx !in toRemove }
 }

@@ -33,6 +33,8 @@ import com.tanush.bouncer.ui.components.stats.WinProbabilityGauge
 import com.tanush.bouncer.ui.components.glass.GlassBloomBackground
 import com.tanush.bouncer.ui.theme.*
 import com.tanush.bouncer.ui.theme.BouncerDesignSystem
+import com.tanush.bouncer.utils.parseRuns
+import com.tanush.bouncer.utils.parseWickets
 
 /**
  * Match Analytics Screen
@@ -114,7 +116,7 @@ fun ExecutiveBoxScreen(
             // 2. Tactical Simulation Console - STANDARD
             item {
                 val battingTeam = match.teams.firstOrNull { it.isBatting }
-                val wicketsDown = battingTeam?.score?.split("/")?.getOrNull(1)?.trim()?.toIntOrNull() ?: 0
+                val wicketsDown = parseWickets(battingTeam?.score)
                 val oversStr = battingTeam?.overs ?: "0"
                 val totalOvers = when {
                     match.matchType.contains("T20", ignoreCase = true) -> 20f
@@ -123,7 +125,7 @@ fun ExecutiveBoxScreen(
                 }
                 val currentOvers = oversStr.toFloatOrNull() ?: 0f
                 val oversRemaining = (totalOvers - currentOvers).coerceAtLeast(0.1f)
-                val target = match.teams.firstOrNull { !it.isBatting }?.score?.split("/")?.firstOrNull()?.trim()?.toIntOrNull()
+                val target = match.teams.firstOrNull { !it.isBatting }?.score?.let { parseRuns(it).takeIf { r -> r > 0 } }
                 
                 TacticalSimulationConsole(
                     onSimulate = { event ->

@@ -36,6 +36,7 @@ import com.tanush.bouncer.ui.components.PremiumWinProbabilityRing
 import com.tanush.bouncer.ui.components.RunRateSpeedometer
 import com.tanush.bouncer.ui.components.StatCard
 import com.tanush.bouncer.ui.theme.*
+import com.tanush.bouncer.utils.parseRuns
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -199,7 +200,7 @@ private fun ValueAddedChartSection(match: CricketMatch) {
     val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val crr = match.score?.currentRunRate?.toFloatOrNull() ?: 6.0f
-    val totalRuns = match.teams.firstOrNull { it.isBatting }?.score?.split("/")?.firstOrNull()?.toIntOrNull() ?: 0
+    val totalRuns = parseRuns(match.teams.firstOrNull { it.isBatting }?.score)
     val overs = match.teams.firstOrNull { it.isBatting }?.overs?.split(".")?.firstOrNull()?.toIntOrNull() ?: 1
     val avgPerOver = if (overs > 0) totalRuns.toFloat() / overs else crr
     

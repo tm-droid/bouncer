@@ -8,6 +8,9 @@ import com.tanush.bouncer.managers.MatchSubscriptionManager
 import com.tanush.bouncer.managers.NotificationInboxManager
 import com.tanush.bouncer.managers.NotificationItem
 import com.tanush.bouncer.models.CricketMatch
+import com.tanush.bouncer.models.TimelineEventType
+import com.tanush.bouncer.ui.components.glass.BallEvent
+import com.tanush.bouncer.utils.TimelineEventExtractor
 import com.tanush.bouncer.network.CricBuzzScraper
 import com.tanush.bouncer.network.CricBuzzUrls
 import com.tanush.bouncer.services.LiveNotificationManager
@@ -107,6 +110,12 @@ class LiveActivityViewModel : ViewModel() {
     private var hasCompletedInitialFetch = false
     private var initialFetchJob: Job? = null
     private val consecutiveFailures = mutableMapOf<String, Int>()
+
+    // Tracks the last-known recentBalls per match (from fetchBallByBallAndBatsmen, not from the match list scrape)
+    private val recentBallsCache = mutableMapOf<String, List<String>>()
+
+    private val _completedOvers = MutableStateFlow<Map<String, List<List<String>>>>(emptyMap())
+    val completedOvers: StateFlow<Map<String, List<List<String>>>> = _completedOvers.asStateFlow()
 
     init {
         liveCommentaryManager.onKeyEvent = { title, body ->
@@ -440,6 +449,16 @@ class LiveActivityViewModel : ViewModel() {
                     )
                 }
 
+                val newBalls = details.recentBalls.orEmpty()
+                val prevBalls = recentBallsCache[match.id].orEmpty()
+                // Detect over completion: had ≥5 balls, now reset to fewer
+                if (prevBalls.size >= 5 && newBalls.size < prevBalls.size) {
+                    val overs = _completedOvers.value.toMutableMap()
+                    overs[match.id] = overs[match.id].orEmpty() + listOf(prevBalls)
+                    _completedOvers.value = overs
+                }
+                recentBallsCache[match.id] = newBalls
+
                 val lastEvent = _aiCommentary.value[match.id]?.let { detectEventFromCommentary(it) }
 
                 manager.showLiveMatchNotification(
@@ -465,16 +484,11 @@ class LiveActivityViewModel : ViewModel() {
     }
     
     private fun detectEventFromCommentary(commentary: String): LiveNotificationManager.MatchEvent? {
-        val lower = commentary.lowercase()
-        val type = when {
-            listOf("wicket", "out!", "bowled", "lbw", "caught", "stumped").any { it in lower } ->
-                LiveNotificationManager.EventType.WICKET
-            "six" in lower || "6 runs" in lower ->
-                LiveNotificationManager.EventType.SIX
-            "four" in lower || "4 runs" in lower || "boundary" in lower ->
-                LiveNotificationManager.EventType.FOUR
-            listOf("50", "century", "hundred", "milestone", "5-wicket").any { it in lower } ->
-                LiveNotificationManager.EventType.MILESTONE
+        val type = when (TimelineEventExtractor.detectBallType(commentary)) {
+            TimelineEventType.WICKET -> LiveNotificationManager.EventType.WICKET
+            TimelineEventType.SIX -> LiveNotificationManager.EventType.SIX
+            TimelineEventType.FOUR -> LiveNotificationManager.EventType.FOUR
+            TimelineEventType.MILESTONE -> LiveNotificationManager.EventType.MILESTONE
             else -> return null
         }
         return LiveNotificationManager.MatchEvent(type, commentary.take(80))
@@ -482,13 +496,22 @@ class LiveActivityViewModel : ViewModel() {
 
     private fun updateProbabilityEventsFromCommentary(matchId: String, commentary: String) {
         val match = _currentMatches.value.find { it.id == matchId } ?: return
-        val lower = commentary.lowercase()
 
-        val eventType = when {
-            listOf("wicket", "out", "bowled", "lbw", "stumped", "caught").any { it in lower } -> ProbabilityEventType.WICKET
-            listOf("six", "four", "boundary", "cracked").any { it in lower } -> ProbabilityEventType.BOUNDARY
-            "dot" in lower || "0 runs" in lower -> ProbabilityEventType.DOT_BALL
-            else -> ProbabilityEventType.OTHER
+        // Prefer scraped ball data; fall back to commentary parsing when not yet refreshed
+        val lastBall = recentBallsCache[matchId]?.lastOrNull()
+        val eventType = if (lastBall != null) {
+            when (BallEvent.from(lastBall)) {
+                BallEvent.WICKET -> ProbabilityEventType.WICKET
+                BallEvent.SIX, BallEvent.FOUR -> ProbabilityEventType.BOUNDARY
+                BallEvent.DOT -> ProbabilityEventType.DOT_BALL
+                else -> ProbabilityEventType.OTHER
+            }
+        } else {
+            when (TimelineEventExtractor.detectBallType(commentary)) {
+                TimelineEventType.WICKET -> ProbabilityEventType.WICKET
+                TimelineEventType.SIX, TimelineEventType.FOUR -> ProbabilityEventType.BOUNDARY
+                else -> ProbabilityEventType.OTHER
+            }
         }
 
         val eventImpact = when (eventType) {

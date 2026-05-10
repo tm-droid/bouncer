@@ -1,7 +1,7 @@
 package com.tanush.bouncer.services
 
 import android.util.Log
-import com.tanush.bouncer.BuildConfig
+import com.tanush.bouncer.ApiKeys
 import com.tanush.bouncer.monitoring.SentryAiSpans
 import com.tanush.bouncer.network.HttpClientProvider
 import io.sentry.Breadcrumb
@@ -23,7 +23,7 @@ class CommentaryFusionService(
     private val client: OkHttpClient = HttpClientProvider.sharedClient,
     private val apiUrl: String = "https://openrouter.ai/api/v1/chat/completions"
 ) {
-    private val openRouterApiKey = BuildConfig.OPENROUTER_API_KEY
+    private val openRouterApiKey = ApiKeys.openRouter
 
     private data class ModelRoute(
         val agentName: String,

@@ -11,6 +11,7 @@ import com.tanush.bouncer.managers.NotificationInboxManager
 import com.tanush.bouncer.managers.TeamLogoManager
 import com.tanush.bouncer.managers.TeamAcronymManager
 import com.tanush.bouncer.data.local.BouncerDatabase
+import com.tanush.bouncer.data.remote.AppwriteAICache
 import com.tanush.bouncer.services.AICacheService
 import com.tanush.bouncer.services.MatchCacheService
 import com.tanush.bouncer.services.ScorePollingWorker
@@ -57,6 +58,7 @@ class BouncerApp : Application() {
         initializeSafely("FavouriteTeamsManager") { FavouriteTeamsManager.initialize(this) }
         initializeSafely("MatchSubscriptionManager") { MatchSubscriptionManager.initialize(this) }
         initializeSafely("MatchCacheService") { MatchCacheService.initDiskCache(this) }
+        initializeSafely("AppwriteAICache") { AppwriteAICache.initialize() }
         initializeSafely("NotificationInboxManager") { NotificationInboxManager.initialize(this) }
         initializeSafely("AICacheService") {
             AICacheService.initialize(BouncerDatabase.getInstance(this).aiCacheDao())

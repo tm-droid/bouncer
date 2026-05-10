@@ -31,6 +31,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.ui.accessibility.rememberReducedMotionEnabled
+import com.tanush.bouncer.utils.FreshnessFormatter
 import kotlinx.coroutines.delay
 
 // ==========================================
@@ -46,12 +47,12 @@ fun StaleDataBadge(
     staleAtMillis: Long,
     modifier: Modifier = Modifier
 ) {
-    var relativeText by remember { mutableStateOf(formatRelativeTime(staleAtMillis)) }
+    var relativeText by remember { mutableStateOf(FreshnessFormatter.format(staleAtMillis)) }
 
     // Refresh the label every 30 seconds
     LaunchedEffect(staleAtMillis) {
         while (true) {
-            relativeText = formatRelativeTime(staleAtMillis)
+            relativeText = FreshnessFormatter.format(staleAtMillis)
             delay(30_000L)
         }
     }
@@ -102,23 +103,6 @@ fun StaleDataBadge(
                 modifier = Modifier.alpha(pulseAlpha)
             )
         }
-    }
-}
-
-// ==========================================
-// Relative time formatter
-// ==========================================
-
-private fun formatRelativeTime(staleAtMillis: Long): String {
-    val diffSeconds = (System.currentTimeMillis() - staleAtMillis) / 1000
-    return when {
-        diffSeconds < 30 -> "Just now"
-        diffSeconds < 90 -> "1m ago"
-        diffSeconds < 150 -> "2m ago"
-        diffSeconds < 210 -> "3m ago"
-        diffSeconds < 270 -> "4m ago"
-        diffSeconds < 330 -> "5m ago"
-        else -> "Stale"
     }
 }
 

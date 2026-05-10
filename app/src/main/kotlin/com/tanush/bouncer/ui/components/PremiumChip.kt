@@ -43,6 +43,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.ui.theme.BouncerDesignSystem
+import com.tanush.bouncer.utils.FreshnessFormatter
 
 enum class ChipState {
     NORMAL,
@@ -79,15 +80,6 @@ private fun chipShimmerBrush(): Brush {
     )
 }
 
-private fun formatRelativeTime(timestampMillis: Long): String {
-    val elapsed = (System.currentTimeMillis() - timestampMillis).coerceAtLeast(0L)
-    val minutes = elapsed / 60_000
-    return when {
-        minutes < 1 -> "<1m"
-        minutes < 10 -> "${minutes}m"
-        else -> "10m+"
-    }
-}
 
 @Composable
 fun PremiumChip(
@@ -142,7 +134,7 @@ fun PremiumChip(
         ChipState.ACTIVE -> "$label, selected"
         ChipState.LOADING -> "$label, loading"
         ChipState.DISABLED -> "$label, disabled"
-        ChipState.STALE -> "$label, stale data ${formatRelativeTime(staleTimestamp)} ago"
+        ChipState.STALE -> "$label, stale data ${FreshnessFormatter.formatCompact(staleTimestamp)} ago"
     }
 
     val chipModifier = modifier
@@ -226,7 +218,7 @@ fun PremiumChip(
                     )
                     Spacer(Modifier.width(2.dp))
                     Text(
-                        text = formatRelativeTime(staleTimestamp),
+                        text = FreshnessFormatter.formatCompact(staleTimestamp),
                         color = textColor,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Normal,

@@ -9,7 +9,7 @@ import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONObject
-import com.tanush.bouncer.BuildConfig
+import com.tanush.bouncer.ApiKeys
 import io.sentry.Sentry
 
 /**
@@ -18,7 +18,7 @@ import io.sentry.Sentry
  */
 object TeamDirectory {
     private const val TAG = "TeamDirectory"
-    private val API_KEY: String get() = BuildConfig.RAPIDAPI_KEY
+    private val API_KEY: String get() = ApiKeys.rapidApi
     private const val API_HOST = "cricket-api-free-data.p.rapidapi.com"
     private const val ENDPOINT = "https://cricket-api-free-data.p.rapidapi.com/cricket-teams"
     

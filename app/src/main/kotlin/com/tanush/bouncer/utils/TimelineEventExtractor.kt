@@ -40,48 +40,64 @@ object TimelineEventExtractor {
     private fun normalize(raw: String): String =
         raw.replace(aiFusedPrefix, "").trim().trimEnd('/')
 
-    /** Deduplicate commentary — CricBuzz sends progressive updates for the same ball. */
-    private fun deduplicateByBall(lines: List<String>): List<String> {
-        // Pass 1: group by ball number, keep longest entry per ball
-        val ballGroups = mutableMapOf<String, String>()
-        for (raw in lines) {
-            val line = normalize(raw)
-            if (line.isBlank()) continue
-            val key = ballNumberRegex.find(line.trimStart())?.groupValues?.get(1) ?: continue
-            val existing = ballGroups[key]
-            if (existing == null || line.length > existing.length) {
-                ballGroups[key] = line
+    /** Deduplicate commentary by ball number — keeps the longest entry per delivery.
+     *  CricBuzz sends progressive updates for the same ball; this keeps only the most complete.
+     *  Internal so OverviewTabV2 and CommentaryTabV2 can reuse it. */
+    internal fun deduplicateByBall(lines: List<String>): List<String> {
+        val ballPattern = Regex("^\\s*(\\d+\\.\\d+)")
+        val normalized = lines.map {
+            normalize(it).replace(' ', ' ').replace(Regex("[\\s\\p{Zs}]+"), " ").trim()
+        }.filter { it.isNotBlank() }
+        // Pass 1: group by ball number, keep longest (most complete progressive update)
+        val bestByBall = mutableMapOf<String, String>()
+        for (line in normalized) {
+            val m = ballPattern.find(line.trimStart())
+            if (m != null) {
+                val ball = m.groupValues[1]
+                val existing = bestByBall[ball]
+                if (existing == null || line.length > existing.length) bestByBall[ball] = line
             }
         }
-        val deduped = mutableListOf<String>()
         val seen = mutableSetOf<String>()
-        for (raw in lines) {
-            val line = normalize(raw)
-            if (line.isBlank()) continue
-            val match = ballNumberRegex.find(line.trimStart())
-            if (match != null) {
-                val key = match.groupValues[1]
-                if (seen.add(key)) {
-                    ballGroups[key]?.let { deduped.add(it) }
-                }
+        val pass1 = normalized.mapNotNull { line ->
+            val m = ballPattern.find(line.trimStart())
+            if (m != null) {
+                val ball = m.groupValues[1]
+                if (ball !in seen) { seen.add(ball); bestByBall[ball] } else null
             } else {
-                deduped.add(line)
+                val key = line.lowercase()
+                if (key !in seen) { seen.add(key); line } else null
             }
         }
-        // Pass 2: remove near-duplicates where shorter line is prefix of longer
-        val result = mutableListOf<String>()
-        for (line in deduped) {
-            val dominated = result.any { existing ->
-                val short = if (line.length < existing.length) line else existing
-                val long = if (line.length < existing.length) existing else line
-                val prefixLen = (short.length * 0.8).toInt().coerceAtLeast(15)
-                prefixLen <= short.length && long.lowercase().startsWith(short.lowercase().take(prefixLen))
-            }
-            if (!dominated || result.none { it.length >= line.length && it.lowercase().startsWith(line.lowercase().take((line.length * 0.8).toInt().coerceAtLeast(15).coerceAtMost(line.length))) }) {
-                result.add(line)
+        // Pass 2: prefix dedup — keep only the longer of near-duplicate pairs
+        val toRemove = mutableSetOf<Int>()
+        for (i in pass1.indices) {
+            if (i in toRemove) continue
+            val ai = pass1[i].lowercase().replace(Regex("^[\\d.\\s]+"), "").replace(Regex("^\\d+\\s+"), "")
+            for (j in i + 1 until pass1.size) {
+                if (j in toRemove) continue
+                val bj = pass1[j].lowercase().replace(Regex("^[\\d.\\s]+"), "").replace(Regex("^\\d+\\s+"), "")
+                val shorter = if (ai.length <= bj.length) ai else bj
+                val longer = if (ai.length <= bj.length) bj else ai
+                val prefixLen = (shorter.length * 0.4).toInt().coerceAtLeast(15)
+                if (shorter.length >= 15 && longer.startsWith(shorter.take(prefixLen))) {
+                    toRemove.add(if (ai.length <= bj.length) i else j)
+                }
             }
         }
-        return result
+        return pass1.filterIndexed { idx, _ -> idx !in toRemove }
+    }
+
+    fun detectBallType(line: String): TimelineEventType? {
+        val clean = normalize(line)
+        val wicketCheck = wicketExclusionPhrases.fold(clean.uppercase()) { t, p -> t.replace(p, "") }
+        return when {
+            wicketPatterns.any { it.containsMatchIn(wicketCheck) } -> TimelineEventType.WICKET
+            sixPattern.containsMatchIn(clean) -> TimelineEventType.SIX
+            fourPattern.containsMatchIn(clean) -> TimelineEventType.FOUR
+            milestonePatterns.any { it.containsMatchIn(clean) } -> TimelineEventType.MILESTONE
+            else -> null
+        }
     }
 
     fun extract(commentary: List<String>): List<TimelineEvent> {

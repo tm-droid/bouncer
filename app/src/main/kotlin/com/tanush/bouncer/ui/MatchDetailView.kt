@@ -58,6 +58,7 @@ import kotlinx.coroutines.delay
 import io.sentry.Sentry
 import io.sentry.Breadcrumb
 import io.sentry.SentryLevel
+import com.tanush.bouncer.utils.parseRuns
 
 /**
  * Match Detail View
@@ -180,7 +181,7 @@ fun MatchDetailView(
                 if (wickets >= 10) unlockAchievement(AchievementKind.WICKETS_10, "10 Wickets!", "${b.name} took 10 wickets")
             }
             for (team in match.teams) {
-                val teamScore = team.score.split("/").firstOrNull()?.trim()?.toIntOrNull() ?: 0
+                val teamScore = parseRuns(team.score)
                 if (teamScore >= 200) unlockAchievement(AchievementKind.TEAM_200, "200+ Total!", "${team.name} scored 200+ runs")
             }
         } catch (e: Exception) {

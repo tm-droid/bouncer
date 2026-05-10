@@ -3,6 +3,8 @@ package com.tanush.bouncer.models
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
 import com.google.gson.annotations.SerializedName
+import com.tanush.bouncer.utils.parseRuns
+import com.tanush.bouncer.utils.parseWickets
 
 @Stable
 data class CricketMatch(
@@ -92,7 +94,7 @@ data class CricketMatch(
             val ballsRemaining = (totalBalls - totalBallsDone).coerceAtLeast(1)
 
             val scoreText = battingTeam?.score ?: ""
-            val wicketsLost = scoreText.split("/").getOrNull(1)?.toIntOrNull() ?: 0
+            val wicketsLost = parseWickets(scoreText)
             val wicketsInHand = (10 - wicketsLost).coerceIn(0, 10)
 
             var prob = 50.0
@@ -113,9 +115,10 @@ data class CricketMatch(
         // For Test matches (first innings) or matches without chase data
         // Use wickets and runs position as heuristic
         val scoreText = battingTeam?.score ?: ""
-        val parts = scoreText.split("/")
-        val runs = parts.getOrNull(0)?.toIntOrNull()
-        val wickets = parts.getOrNull(1)?.toIntOrNull()
+        val runsVal = parseRuns(scoreText)
+        val wicketsVal = parseWickets(scoreText)
+        val runs: Int? = if (scoreText.isNotBlank()) runsVal else null
+        val wickets: Int? = if (scoreText.isNotBlank()) wicketsVal else null
         if (runs != null && wickets != null) {
             // Simple: more runs = stronger, more wickets lost = weaker
             var prob = 50.0

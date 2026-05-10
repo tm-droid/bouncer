@@ -28,6 +28,7 @@ import com.tanush.bouncer.models.Innings
 import com.tanush.bouncer.models.BatsmanStats
 import com.tanush.bouncer.models.BowlerStats
 import com.tanush.bouncer.ui.theme.*
+import com.tanush.bouncer.utils.parseRuns
 import io.sentry.Sentry
 
 @Composable
@@ -263,7 +264,7 @@ private fun calculateCurrentRunRate(innings: Innings?): String {
         if (innings == null) return "-"
     
         // Parse score (e.g., "245/7" -> 245)
-        val runs = innings.score.split("/").firstOrNull()?.toIntOrNull() ?: 0
+        val runs = parseRuns(innings.score)
     
         // Parse overs (e.g., "35.4" -> 35.67 overs)
         val oversStr = innings.overs.replace("Ov", "").trim()
@@ -294,10 +295,10 @@ private fun calculateRequiredRunRate(scorecard: Scorecard, currentInningsIndex: 
         val secondInnings = scorecard.innings.getOrNull(1) ?: return null
     
         // Get target (first innings score + 1)
-        val targetRuns = (firstInnings.score.split("/").firstOrNull()?.toIntOrNull() ?: 0) + 1
+        val targetRuns = parseRuns(firstInnings.score) + 1
     
         // Get current score
-        val currentRuns = secondInnings.score.split("/").firstOrNull()?.toIntOrNull() ?: 0
+        val currentRuns = parseRuns(secondInnings.score)
         val runsNeeded = targetRuns - currentRuns
     
         if (runsNeeded <= 0) return null

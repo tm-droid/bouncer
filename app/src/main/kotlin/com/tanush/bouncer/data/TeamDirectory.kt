@@ -1,6 +1,6 @@
 package com.tanush.bouncer.data
 
-import com.tanush.bouncer.BuildConfig
+import com.tanush.bouncer.ApiKeys
 import com.tanush.bouncer.network.RetrofitClient
 import io.sentry.Sentry
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -13,8 +13,7 @@ object TeamDirectory {
     private val _teams = MutableStateFlow<Map<String, TeamInfo>>(emptyMap())
     val teams: StateFlow<Map<String, TeamInfo>> = _teams.asStateFlow()
 
-    // API key loaded from BuildConfig (set in local.properties)
-    private val API_KEY = BuildConfig.RAPIDAPI_KEY
+    private val API_KEY = ApiKeys.rapidApi
     private const val API_HOST = "cricket-api-free-data.p.rapidapi.com"
 
     suspend fun fetchTeams() {

@@ -230,6 +230,12 @@ fun parseScore(score: String?): ScoreInfo {
     }
 }
 
+/** Extract just the runs from a score string like "199/7 (20.0 Ov)". Returns 0 on failure. */
+fun parseRuns(score: String?): Int = parseScore(score).runs
+
+/** Extract just the wickets from a score string like "199/7 (20.0 Ov)". Returns 0 on failure. */
+fun parseWickets(score: String?): Int = parseScore(score).wickets
+
 /**
  * Get a displayable score string - uses parsed values if valid, otherwise raw score
  */

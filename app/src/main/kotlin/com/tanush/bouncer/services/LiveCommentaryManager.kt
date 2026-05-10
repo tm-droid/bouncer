@@ -1,8 +1,10 @@
 package com.tanush.bouncer.services
 
 import android.util.Log
+import com.tanush.bouncer.models.TimelineEventType
 import com.tanush.bouncer.network.CricBuzzScraper
 import com.tanush.bouncer.network.CricInfoScraper
+import com.tanush.bouncer.utils.TimelineEventExtractor
 import io.sentry.Breadcrumb
 import io.sentry.Sentry
 import io.sentry.SentryLevel
@@ -99,10 +101,11 @@ class LiveCommentaryManager(
             }
         }
         
+        val over = ballNumber.substringBefore(".").toIntOrNull() ?: 0
         val last18Count = min(max(aiCommentaryHistory.size, 0), 18)
         val last18AI = if (last18Count > 0) aiCommentaryHistory.takeLast(last18Count) else emptyList()
         val oversSummary = try {
-            if (last18AI.isNotEmpty()) fusion.summarizeOversWithAI(last18AI, matchId, 0) else buzzLine
+            if (last18AI.isNotEmpty()) fusion.summarizeOversWithAI(last18AI, matchId, over) else buzzLine
         } catch (e: Exception) {
             Log.w("LiveCommentaryManager", "summarizeOversWithAI failed, using raw line", e)
             Sentry.captureException(e)
@@ -119,7 +122,7 @@ class LiveCommentaryManager(
                     snippet2 = infoLine,
                     oversSummary = oversSummary,
                     matchId = matchId,
-                    over = 0,
+                    over = over,
                     ballNumber = ballNumber,
                     bowler = bowlerName,
                     batsman = batsmanName,
@@ -176,7 +179,19 @@ class LiveCommentaryManager(
         }
         
         updateHistory(resultValue, cricbuzzId)
-        return@withContext aiCommentaryHistory.toList().reversed()
+
+        val ballNum = extractBallNumber(resultValue.trimStart())
+        val aiEntry = if (ballNum != null && scorer.isBallByBallCommentary(resultValue)) {
+            try {
+                BallCommentaryService.generateCommentary(cricbuzzId, ballNum, resultValue.take(200))
+            } catch (e: Exception) {
+                Sentry.captureException(e)
+                BallCommentaryService.FALLBACK_COMMENTARY
+            }
+        } else null
+
+        val history = aiCommentaryHistory.toList().reversed()
+        return@withContext if (aiEntry != null) listOf(aiEntry) + history else history
     }
 
     private suspend fun fetchSingleSourceFusion(matchId: String, url: String, keyNames: List<String>): String {
@@ -197,14 +212,16 @@ class LiveCommentaryManager(
             null 
         }
         
+        val singleBallNumber = details?.overNumbers?.lastOrNull() ?: ""
+        val singleOver = singleBallNumber.substringBefore(".").toIntOrNull() ?: 0
         return try {
             fusion.fuse(
                 snippet1 = buzzLine,
                 snippet2 = "",
                 oversSummary = buzzLine,
                 matchId = matchId,
-                over = 0,
-                ballNumber = details?.overNumbers?.lastOrNull() ?: "",
+                over = singleOver,
+                ballNumber = singleBallNumber,
                 bowler = details?.bowler?.name ?: "",
                 batsman = details?.batsmen?.firstOrNull()?.name ?: "",
                 scoreContext = details?.score ?: ""
@@ -253,28 +270,22 @@ class LiveCommentaryManager(
             }
             if (ballNum != null) lastNotifiedBallMap[matchKey] = ballNum
 
-            // 3. Stricter Event Detection (Regex-based)
-            val lower = resultValue.lowercase()
-            
-            // WICKET Detection: Must be a live dismissal, not summary text
-            if (resultValue.contains(Regex("\\bWICKET\\b", RegexOption.IGNORE_CASE)) || 
-                resultValue.contains(Regex("\\bOUT\\b!", RegexOption.IGNORE_CASE)) ||
-                lower.contains("bowled") || lower.contains("lbw") || lower.contains("stumped")) {
-                onKeyEvent?.invoke("Wicket!", resultValue)
-                triggerAiInsight(resultValue, matchKey)
-                return
-            }
-            
-            // SIX Detection
-            if (resultValue.contains(Regex("\\bSIX\\b", RegexOption.IGNORE_CASE)) || lower.contains("6 runs")) {
-                onKeyEvent?.invoke("Six!", resultValue)
-                return
-            }
-            
-            // FOUR Detection
-            if (resultValue.contains(Regex("\\bFOUR\\b", RegexOption.IGNORE_CASE)) || lower.contains("4 runs")) {
-                onKeyEvent?.invoke("Boundary", resultValue)
-                return
+            // 3. Event Detection — delegate to shared TimelineEventExtractor
+            when (TimelineEventExtractor.detectBallType(resultValue)) {
+                TimelineEventType.WICKET -> {
+                    onKeyEvent?.invoke("Wicket!", resultValue)
+                    triggerAiInsight(resultValue, matchKey)
+                    return
+                }
+                TimelineEventType.SIX -> {
+                    onKeyEvent?.invoke("Six!", resultValue)
+                    return
+                }
+                TimelineEventType.FOUR -> {
+                    onKeyEvent?.invoke("Boundary", resultValue)
+                    return
+                }
+                else -> { /* not a key event */ }
             }
             
         } catch (e: Exception) {
@@ -294,9 +305,10 @@ class LiveCommentaryManager(
         val last = lastInsightAt[matchId] ?: 0L
         if (now - last >= aiInsightCooldownMs) {
             lastInsightAt[matchId] = now
+            val insightOver = extractBallNumber(commentary)?.substringBefore(".")?.toIntOrNull() ?: 0
             scope.launch {
                 try {
-                    val insight = summarizer(aiCommentaryHistory.takeLast(6), matchId, 0)
+                    val insight = summarizer(aiCommentaryHistory.takeLast(6), matchId, insightOver)
                     onKeyEvent?.invoke("AI Strategic Insight", insight)
                 } catch (e: Exception) {
                     Sentry.captureException(e)

@@ -252,9 +252,9 @@ fun EnhancedPremiumMatchCard(
             )
             
             // Recent balls (if live)
-            if (isLive && !match.score?.recentBalls.isNullOrEmpty()) {
+            if (isLive && !match.recentBalls.isNullOrEmpty()) {
                 Spacer(modifier = Modifier.height(12.dp))
-                RecentBallsStrip(balls = match.score?.recentBalls?.split(" ") ?: emptyList())
+                RecentBallsStrip(balls = match.recentBalls ?: emptyList())
             }
         }
     }

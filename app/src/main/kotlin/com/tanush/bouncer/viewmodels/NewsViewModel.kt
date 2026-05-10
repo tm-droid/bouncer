@@ -3,7 +3,7 @@ package com.tanush.bouncer.viewmodels
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.tanush.bouncer.BuildConfig
+import com.tanush.bouncer.ApiKeys
 import com.tanush.bouncer.models.NewsArticleData
 import com.tanush.bouncer.network.RetrofitClient
 import io.sentry.Breadcrumb
@@ -97,7 +97,7 @@ class NewsViewModel : ViewModel() {
                 if (_articles.value.isEmpty()) _isLoading.value = true else _isRefreshing.value = true
                 _error.value = null
 
-                if (BuildConfig.RAPIDAPI_KEY.isBlank()) {
+                if (ApiKeys.rapidApi.isBlank()) {
                     Log.w(TAG, "Skipping news fetch because RAPIDAPI_KEY is empty")
                     breadcrumb("news.fetch", "Skipped news fetch because RapidAPI key is missing", SentryLevel.WARNING)
                     Sentry.metrics().count("news.fetch.skipped.missing_key", 1.0)

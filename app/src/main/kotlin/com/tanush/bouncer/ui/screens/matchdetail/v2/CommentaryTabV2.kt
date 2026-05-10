@@ -34,6 +34,8 @@ import androidx.compose.ui.unit.dp
 import com.tanush.bouncer.ui.components.v2.EmptyStateV2
 import com.tanush.bouncer.ui.components.v2.FilterChipRowV2
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
+import com.tanush.bouncer.models.TimelineEventType
+import com.tanush.bouncer.utils.TimelineEventExtractor
 
 /**
  * CommentaryTabV2 — Ball-by-ball commentary with colored event badges.
@@ -66,7 +68,7 @@ fun CommentaryTabV2(
 
     val filteredCommentary = remember(commentary, selectedFilter) {
         // Clean and deduplicate commentary lines (group by ball number, keep longest)
-        val cleaned = deduplicateByBall(
+        val cleaned = TimelineEventExtractor.deduplicateByBall(
             commentary
                 .map { it.replace(Regex("^\\[AI Fused\\]\\s*"), "").trimEnd('/').trim() }
                 .filter { it.isNotBlank() }
@@ -75,26 +77,12 @@ fun CommentaryTabV2(
             cleaned
         } else {
             cleaned.filter { line ->
-                val upper = line.uppercase()
                 when (selectedFilter) {
-                    "Wickets" -> {
-                        val wUpper = upper.replace("MID-WICKET", "").replace("MIDWICKET", "")
-                            .replace("OVER THE WICKET", "").replace("ROUND THE WICKET", "")
-                            .replace("AROUND THE WICKET", "")
-                        Regex("\\bWICKET\\b").containsMatchIn(wUpper) || upper.contains("OUT!") ||
-                            upper.contains(", OUT,") ||
-                            Regex("\\bCATCH\\b").containsMatchIn(wUpper) ||
-                            Regex("\\bBOWLED\\b").containsMatchIn(upper) ||
-                            Regex("\\bLBW\\b").containsMatchIn(upper) ||
-                            Regex("\\bRUN OUT\\b").containsMatchIn(upper) ||
-                            Regex("\\bSTUMPED\\b").containsMatchIn(upper)
+                    "Wickets" -> TimelineEventExtractor.detectBallType(line) == TimelineEventType.WICKET
+                    "Boundaries" -> TimelineEventExtractor.detectBallType(line).let {
+                        it == TimelineEventType.SIX || it == TimelineEventType.FOUR
                     }
-                    "Boundaries" -> Regex("\\bFOUR\\b").containsMatchIn(upper) ||
-                        Regex("\\bSIX\\b").containsMatchIn(upper)
-                    "Milestones" ->
-                        Regex("\\b(50|hundred|century|100|150|200|double century|triple century|300)\\b", RegexOption.IGNORE_CASE).containsMatchIn(line) ||
-                        Regex("\\b(half.?century|fifty)\\b", RegexOption.IGNORE_CASE).containsMatchIn(line) ||
-                        Regex("\\b(5.?wicket|five.?wicket|fifer|hat.?trick)\\b", RegexOption.IGNORE_CASE).containsMatchIn(line)
+                    "Milestones" -> TimelineEventExtractor.detectBallType(line) == TimelineEventType.MILESTONE
                     else -> true
                 }
             }
@@ -176,16 +164,9 @@ private fun CommentaryLine(line: String) {
     val overNumber = overMatch?.groupValues?.get(1)
     val commentaryText = overMatch?.groupValues?.get(2) ?: cleanLine
 
-    val upper = cleanLine.uppercase()
-    // Wicket detection — exclude fielding/bowling phrases containing "wicket"
-    val wicketText = upper.replace("MID-WICKET", "").replace("MIDWICKET", "")
-        .replace("OVER THE WICKET", "").replace("ROUND THE WICKET", "")
-        .replace("AROUND THE WICKET", "")
-    val isWicket = Regex("\\bWICKET\\b").containsMatchIn(wicketText) || upper.contains("OUT!") ||
-        upper.contains(", OUT,") || Regex("\\bCATCH\\b").containsMatchIn(wicketText) ||
-        Regex("\\bBOWLED\\b").containsMatchIn(upper) || Regex("\\bLBW\\b").containsMatchIn(upper) ||
-        Regex("\\bRUN OUT\\b").containsMatchIn(upper) || Regex("\\bSTUMPED\\b").containsMatchIn(upper)
-    val isBoundary = Regex("\\bFOUR\\b").containsMatchIn(upper) || Regex("\\bSIX\\b").containsMatchIn(upper)
+    val ballType = TimelineEventExtractor.detectBallType(cleanLine)
+    val isWicket = ballType == TimelineEventType.WICKET
+    val isBoundary = ballType == TimelineEventType.SIX || ballType == TimelineEventType.FOUR
 
     // Highlight background for key events
     val bgColor = when {
@@ -225,7 +206,7 @@ private fun CommentaryLine(line: String) {
                 EventPill(text = "W", color = colors.live)
                 Spacer(Modifier.width(spacing.sm))
             } else if (isBoundary) {
-                val isSix = cleanLine.uppercase().contains("SIX")
+                val isSix = ballType == TimelineEventType.SIX
                 EventPill(
                     text = if (isSix) "6" else "4",
                     color = if (isSix) BouncerThemeV2.colors.primary else BouncerThemeV2.colors.win,
@@ -292,62 +273,4 @@ private fun BallBadge(ball: String) {
             fontWeight = FontWeight.Bold,
         )
     }
-}
-
-/** Deduplicate commentary by ball number — keeps the longest entry per delivery.
- *  CricBuzz progressively updates the same ball (short → full detail) so we may
- *  receive 2-3 versions of the same delivery. We also get duplicates from CricInfo fusion. */
-private fun deduplicateByBall(lines: List<String>): List<String> {
-    val ballPattern = Regex("^\\s*(\\d+\\.\\d+)")
-    val normalized = lines.map {
-        it.replace('\u00A0', ' ').replace(Regex("[\\s\\p{Zs}]+"), " ").trim()
-    }.filter { it.isNotBlank() }
-
-    // Pass 1: group by ball number, keep longest (most complete progressive update)
-    val bestByBall = mutableMapOf<String, String>()
-    for (line in normalized) {
-        val m = ballPattern.find(line.trimStart())
-        if (m != null) {
-            val ball = m.groupValues[1]
-            val existing = bestByBall[ball]
-            if (existing == null || line.length > existing.length) {
-                bestByBall[ball] = line
-            }
-        }
-    }
-    val seen = mutableSetOf<String>()
-    val pass1 = normalized.mapNotNull { line ->
-        val m = ballPattern.find(line.trimStart())
-        if (m != null) {
-            val ball = m.groupValues[1]
-            if (ball !in seen) {
-                seen.add(ball)
-                bestByBall[ball]
-            } else null
-        } else {
-            val key = line.lowercase()
-            if (key !in seen) { seen.add(key); line } else null
-        }
-    }
-
-    // Pass 2: case-insensitive prefix dedup — CricBuzz sends progressive updates
-    // for the same ball that may differ in capitalization or trailing detail.
-    // If one line's core text is a prefix of another (case-insensitive), keep only the longer.
-    val toRemove = mutableSetOf<Int>()
-    for (i in pass1.indices) {
-        if (i in toRemove) continue
-        val ai = pass1[i].lowercase().replace(Regex("^[\\d.\\s]+"), "").replace(Regex("^\\d+\\s+"), "")
-        for (j in i + 1 until pass1.size) {
-            if (j in toRemove) continue
-            val bj = pass1[j].lowercase().replace(Regex("^[\\d.\\s]+"), "").replace(Regex("^\\d+\\s+"), "")
-            val shorter = if (ai.length <= bj.length) ai else bj
-            val longer = if (ai.length <= bj.length) bj else ai
-            // Use 40% of shorter as prefix match threshold (catches progressive updates)
-            val prefixLen = (shorter.length * 0.4).toInt().coerceAtLeast(15)
-            if (shorter.length >= 15 && longer.startsWith(shorter.take(prefixLen))) {
-                toRemove.add(if (ai.length <= bj.length) i else j)
-            }
-        }
-    }
-    return pass1.filterIndexed { idx, _ -> idx !in toRemove }
 }
