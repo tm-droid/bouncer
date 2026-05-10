@@ -12,8 +12,7 @@ Cricket live-scoring, match analytics, and team management app built in Kotlin/C
 
 **Setup (first time):**
 ```bash
-cp local.properties.template local.properties  # Edit with real keys
-# OR set env vars: OPENROUTER_API_KEY, RAPIDAPI_KEY, SENTRY_AUTH_TOKEN
+cp local.properties.template local.properties  # Edit with real keys — see template for full key list
 ```
 
 **Build & run:**
@@ -113,8 +112,10 @@ Detailed configuration documented in `.claude/rules/`:
 
 ## Context-Mode Tools
 
+**Gradle/build commands must use `ctx_execute(language: "shell", ...)` — a session hook blocks Bash for commands producing >20 lines output (including all `./gradlew` invocations).**
+
 For large data processing, log analysis, or API exploration:
-- `ctx_execute`: Run code against indexed data
+- `ctx_execute`: Run code or shell commands, output stays in sandbox
 - `ctx_execute_file`: Analyze large logs/data files
 - `ctx_batch_execute`: Multiple commands in one call (faster)
 - `ctx_search`: Query indexed content
