@@ -77,6 +77,13 @@ class LiveActivityViewModel : ViewModel() {
     private val _selectedCompetitionType = MutableStateFlow("All")
     val selectedCompetitionType: StateFlow<String> = _selectedCompetitionType.asStateFlow()
 
+    private val _selectedFormat = MutableStateFlow("All")
+    val selectedFormat: StateFlow<String> = _selectedFormat.asStateFlow()
+
+    fun setFormat(format: String) {
+        _selectedFormat.value = format
+    }
+
     private val _selectedGender = MutableStateFlow("All")
     val selectedGender: StateFlow<String> = _selectedGender.asStateFlow()
 
