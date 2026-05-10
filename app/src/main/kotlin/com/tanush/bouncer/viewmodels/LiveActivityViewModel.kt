@@ -80,7 +80,11 @@ class LiveActivityViewModel : ViewModel() {
     private val _selectedFormat = MutableStateFlow("All")
     val selectedFormat: StateFlow<String> = _selectedFormat.asStateFlow()
 
+    // Format filter is applied in the UI layer (AllMatchesScreenV2); this ViewModel
+    // only holds the selected value for persistence across tab switches.
     fun setFormat(format: String) {
+        if (_selectedFormat.value == format) return
+        breadcrumb("user.action", "Format changed to: $format")
         _selectedFormat.value = format
     }
 
