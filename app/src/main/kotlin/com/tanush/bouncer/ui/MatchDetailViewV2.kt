@@ -33,6 +33,7 @@ import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -111,6 +112,9 @@ fun MatchDetailViewV2(
 
     val scraper = remember { CricBuzzScraper() }
     val commentaryManager = remember { LiveCommentaryManager() }
+    DisposableEffect(match.id) {
+        onDispose { commentaryManager.close() }
+    }
 
     // Achievement state
     val context = LocalContext.current
