@@ -97,7 +97,7 @@ fun MatchDetailViewV2(
     var bowler by remember { mutableStateOf<ScrapedBowler?>(null) }
     var recentBalls by remember { mutableStateOf<List<String>>(emptyList()) }
     var scorecard by remember { mutableStateOf<Scorecard?>(null) }
-    var commentary by remember { mutableStateOf(listOf("Loading commentary...")) }
+    var commentary by remember { mutableStateOf<List<String>>(emptyList()) }
     var commentaryLoading by remember { mutableStateOf(true) }
     var showReminderSheet by remember { mutableStateOf(false) }
     var showNotifPrefsSheet by remember { mutableStateOf(false) }
