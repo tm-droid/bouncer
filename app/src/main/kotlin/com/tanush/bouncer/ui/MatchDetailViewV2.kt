@@ -125,7 +125,6 @@ fun MatchDetailViewV2(
     }
 
     // Achievement state
-    val context = LocalContext.current
     var unlockedAchievements by remember { mutableStateOf(AchievementKind.loadUnlocked(context)) }
 
     fun checkAndUnlock(kind: AchievementKind) {

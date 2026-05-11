@@ -27,32 +27,30 @@ object HighlightFuzzyMatcher {
     private fun scoreMatch(highlight: HighlightEntity, match: MatchEntity): Int {
         var score = 0
 
-        // Home team (0–30)
-        val homeScore = jaroWinkler(
-            highlight.homeTeam.lowercase().trim(),
-            match.team1.lowercase().trim()
-        )
+        // Home team (0–30): try both home and away since Highlightly may swap order
+        val homeVsTeam1 = jaroWinkler(highlight.homeTeam.lowercase().trim(), match.team1Name.lowercase().trim())
+        val homeVsTeam2 = jaroWinkler(highlight.homeTeam.lowercase().trim(), match.team2Name.lowercase().trim())
+        val homeScore = maxOf(homeVsTeam1, homeVsTeam2)
         score += (homeScore * 30).toInt()
 
         // Away team (0–30)
-        val awayScore = jaroWinkler(
-            highlight.awayTeam.lowercase().trim(),
-            match.team2.lowercase().trim()
-        )
+        val awayVsTeam1 = jaroWinkler(highlight.awayTeam.lowercase().trim(), match.team1Name.lowercase().trim())
+        val awayVsTeam2 = jaroWinkler(highlight.awayTeam.lowercase().trim(), match.team2Name.lowercase().trim())
+        val awayScore = maxOf(awayVsTeam1, awayVsTeam2)
         score += (awayScore * 30).toInt()
 
-        // League (0–20)
-        val leagueScore = if (highlight.leagueName.lowercase().contains(match.seriesName.lowercase()) ||
-            match.seriesName.lowercase().contains(highlight.leagueName.lowercase())
-        ) {
+        // League vs match title (0–20): matchTitle usually contains the series/league name
+        val titleLower = match.matchTitle.lowercase()
+        val leagueLower = highlight.leagueName.lowercase().trim()
+        val leagueScore = if (titleLower.contains(leagueLower) || leagueLower.contains(titleLower)) {
             1.0
         } else {
-            jaroWinkler(highlight.leagueName.lowercase().trim(), match.seriesName.lowercase().trim())
+            jaroWinkler(leagueLower, titleLower)
         }
         score += (leagueScore * 20).toInt()
 
         // Date proximity (0–20)
-        val dateScore = scoreDateProximity(highlight.matchStartDate, match.startTime)
+        val dateScore = scoreDateProximity(highlight.matchStartDate, match.date)
         score += dateScore
 
         return score

@@ -16,8 +16,8 @@ class HighlightsRepository(
     private val highlightDao: HighlightDao,
     private val matchDao: MatchDao
 ) {
-    private const val TAG = "HighlightsRepository"
-    private const val FRESHNESS_MS = 3_600_000L  // 1 hour
+    private val TAG = "HighlightsRepository"
+    private val FRESHNESS_MS = 3_600_000L  // 1 hour
 
     suspend fun fetchForMatch(bouncerMatchId: String): AppResult<List<HighlightEntity>> {
         return AppResult.runCatching {
