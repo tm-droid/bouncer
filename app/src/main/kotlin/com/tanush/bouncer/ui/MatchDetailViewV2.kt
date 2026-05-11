@@ -66,7 +66,6 @@ import com.tanush.bouncer.ui.screens.matchdetail.v2.HighlightsTabV2
 import com.tanush.bouncer.ui.screens.matchdetail.v2.InfoTabV2
 import com.tanush.bouncer.ui.screens.matchdetail.v2.OverviewTabV2
 import com.tanush.bouncer.ui.screens.matchdetail.v2.ScorecardTabV2
-import com.tanush.bouncer.ui.screens.matchdetail.v2.MatchTimelineTab
 import com.tanush.bouncer.viewmodels.HighlightsViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
@@ -96,8 +95,7 @@ fun MatchDetailViewV2(
     val highlightsViewModel = remember { HighlightsViewModel(context, match.id) }
     val highlights by highlightsViewModel.highlights.collectAsStateWithLifecycle()
 
-    val allTabTitles = listOf("Overview", "Scorecard", "Commentary", "Highlights", "Info")
-    val tabTitles = if (highlights.isNotEmpty()) allTabTitles else allTabTitles.filterNot { it == "Highlights" }
+    val tabTitles = listOf("Overview", "Scorecard", "Commentary", "Highlights", "Info")
     val pagerState = rememberPagerState(pageCount = { tabTitles.size })
     val scope = rememberCoroutineScope()
 
