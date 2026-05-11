@@ -62,10 +62,13 @@ import com.tanush.bouncer.ui.components.v2.ReminderBottomSheet
 import com.tanush.bouncer.ui.components.v2.StatusBadgeV2
 import com.tanush.bouncer.ui.components.v2.determineMatchStatus
 import com.tanush.bouncer.ui.screens.matchdetail.v2.CommentaryTabV2
+import com.tanush.bouncer.ui.screens.matchdetail.v2.HighlightsTabV2
 import com.tanush.bouncer.ui.screens.matchdetail.v2.InfoTabV2
 import com.tanush.bouncer.ui.screens.matchdetail.v2.OverviewTabV2
 import com.tanush.bouncer.ui.screens.matchdetail.v2.ScorecardTabV2
 import com.tanush.bouncer.ui.screens.matchdetail.v2.MatchTimelineTab
+import com.tanush.bouncer.viewmodels.HighlightsViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 import com.tanush.bouncer.utils.ShareMatchCardHelper
 import io.sentry.Breadcrumb
@@ -89,7 +92,12 @@ fun MatchDetailViewV2(
     val typography = BouncerThemeV2.typography
     val spacing = BouncerThemeV2.spacing
 
-    val tabTitles = listOf("Overview", "Scorecard", "Commentary", "Highlights", "Info")
+    val context = LocalContext.current
+    val highlightsViewModel = remember { HighlightsViewModel(context, match.id) }
+    val highlights by highlightsViewModel.highlights.collectAsStateWithLifecycle()
+
+    val allTabTitles = listOf("Overview", "Scorecard", "Commentary", "Highlights", "Info")
+    val tabTitles = if (highlights.isNotEmpty()) allTabTitles else allTabTitles.filterNot { it == "Highlights" }
     val pagerState = rememberPagerState(pageCount = { tabTitles.size })
     val scope = rememberCoroutineScope()
 
@@ -320,8 +328,9 @@ fun MatchDetailViewV2(
                 state = pagerState,
                 modifier = Modifier.weight(1f),
             ) { page ->
-                when (page) {
-                    0 -> OverviewTabV2(
+                val tabTitle = tabTitles.getOrNull(page) ?: return@HorizontalPager
+                when (tabTitle) {
+                    "Overview" -> OverviewTabV2(
                         match = liveMatch,
                         batsmen = batsmen,
                         bowler = bowler,
@@ -331,15 +340,15 @@ fun MatchDetailViewV2(
                         requiredRunRate = liveRequiredRunRate,
                         scorecard = scorecard,
                     )
-                    1 -> ScorecardTabV2(scorecard = scorecard)
-                    2 -> CommentaryTabV2(
+                    "Scorecard" -> ScorecardTabV2(scorecard = scorecard)
+                    "Commentary" -> CommentaryTabV2(
                         commentary = commentary,
                         recentBalls = recentBalls,
                         matchStatus = match.currentStatus,
                         isLoading = commentaryLoading,
                     )
-                    3 -> MatchTimelineTab(commentary = commentary)
-                    4 -> InfoTabV2(match = match)
+                    "Highlights" -> HighlightsTabV2(highlights = highlights)
+                    "Info" -> InfoTabV2(match = match)
                 }
             }
         }

@@ -90,7 +90,8 @@ class SentryOptionsConfig : Sentry.OptionsConfiguration<SentryAndroidOptions> {
 
             // 1. Benign cancellations (Coil image loads, OkHttp lifecycle)
             if (type == "IOException" && value in IGNORED_EXCEPTION_MESSAGES) return true
-            if (type == "CancellationException") return true
+            if (type.endsWith("CancellationException")) return true
+            if (type == "UnknownHostException") return true
 
             // 2. Non-actionable scraping / API errors
             for (substring in IGNORED_MESSAGE_SUBSTRINGS) {

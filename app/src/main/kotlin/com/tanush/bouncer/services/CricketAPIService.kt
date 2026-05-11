@@ -9,6 +9,7 @@ import io.sentry.Breadcrumb
 import io.sentry.Sentry
 import io.sentry.SentryLogLevel
 import io.sentry.SentryLevel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -72,6 +73,7 @@ class CricketAPIService(private val apiKey: String = "") {
                             try {
                                 fetchSanwebMatchDetails(matchSummary.id, "Live")
                             } catch (e: Exception) {
+                                if (e is CancellationException) throw e
                                 Sentry.captureException(e)
                                 null
                             }

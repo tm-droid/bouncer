@@ -8,6 +8,7 @@ import com.tanush.bouncer.utils.TimelineEventExtractor
 import io.sentry.Breadcrumb
 import io.sentry.Sentry
 import io.sentry.SentryLevel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.withContext
@@ -68,22 +69,25 @@ class LiveCommentaryManager(
             setData("matchId", matchId)
         })
         
-        val details = try { cricbuzz.fetchBallByBallAndBatsmen(matchId) } catch (e: Exception) { 
+        val details = try { cricbuzz.fetchBallByBallAndBatsmen(matchId) } catch (e: Exception) {
+            if (e is CancellationException) throw e
             Sentry.captureException(e)
-            null 
+            null
         }
         val ballNumber = details?.overNumbers?.lastOrNull() ?: ""
         val bowlerName = details?.bowler?.name ?: ""
         val batsmanName = details?.batsmen?.firstOrNull { it.isStriker }?.name ?: details?.batsmen?.firstOrNull()?.name ?: ""
         val scoreContext = details?.score ?: ""
 
-        val buzzSnippets = try { cricbuzz.fetchLiveCommentary(cricbuzzUrl) } catch (e: Exception) { 
+        val buzzSnippets = try { cricbuzz.fetchLiveCommentary(cricbuzzUrl) } catch (e: Exception) {
+            if (e is CancellationException) throw e
             Sentry.captureException(e)
-            emptyList() 
+            emptyList()
         }
-        val infoSnippets = try { cricinfo.fetchLiveCommentary(cricinfoUrl) } catch (e: Exception) { 
+        val infoSnippets = try { cricinfo.fetchLiveCommentary(cricinfoUrl) } catch (e: Exception) {
+            if (e is CancellationException) throw e
             Sentry.captureException(e)
-            emptyList() 
+            emptyList()
         }
         
         val buzzLine = findBestBallSnippet(buzzSnippets, keyNames)
@@ -107,6 +111,7 @@ class LiveCommentaryManager(
         val oversSummary = try {
             if (last18AI.isNotEmpty()) fusion.summarizeOversWithAI(last18AI, matchId, over) else buzzLine
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             Log.w("LiveCommentaryManager", "summarizeOversWithAI failed, using raw line", e)
             Sentry.captureException(e)
             buzzLine
@@ -129,6 +134,7 @@ class LiveCommentaryManager(
                     scoreContext = scoreContext
                 )
             } catch (e: Exception) {
+                if (e is CancellationException) throw e
                 Log.w("LiveCommentaryManager", "fusion.fuse failed, using raw snippet", e)
                 Sentry.captureException(e)
                 "$buzzLine / $infoLine"
@@ -139,8 +145,12 @@ class LiveCommentaryManager(
             commentaryHistory.add(resultValue)
             if (commentaryHistory.size > historyLimit) commentaryHistory.removeAt(0)
         }
-        
-        return resultValue
+
+        // Ensure the returned string starts with the ball number so the UI can parse over.ball
+        val prefixed = if (ballNumber.isNotEmpty() && !resultValue.trimStart().matches(Regex("^\\d+\\.\\d.*"))) {
+            "$ballNumber $resultValue"
+        } else resultValue
+        return prefixed
     }
 
     suspend fun getBestCommentaryForMatch(
@@ -183,10 +193,11 @@ class LiveCommentaryManager(
         val ballNum = extractBallNumber(resultValue.trimStart())
         val aiEntry = if (ballNum != null && scorer.isBallByBallCommentary(resultValue)) {
             try {
-                fusion.generateBallCommentary(cricbuzzId, ballNum, resultValue.take(200))
+                val raw = fusion.generateBallCommentary(cricbuzzId, ballNum, resultValue.take(200))
+                if (!raw.trimStart().matches(Regex("^\\d+\\.\\d.*"))) "$ballNum $raw" else raw
             } catch (e: Exception) {
                 Sentry.captureException(e)
-                CommentaryFusionService.FALLBACK_BALL_COMMENTARY
+                "$ballNum ${CommentaryFusionService.FALLBACK_BALL_COMMENTARY}"
             }
         } else null
 
@@ -202,19 +213,21 @@ class LiveCommentaryManager(
             setData("matchId", matchId)
         })
         
-        val buzz = try { cricbuzz.fetchLiveCommentary(url) } catch (e: Exception) { 
+        val buzz = try { cricbuzz.fetchLiveCommentary(url) } catch (e: Exception) {
+            if (e is CancellationException) throw e
             Sentry.captureException(e)
-            emptyList() 
+            emptyList()
         }
         val buzzLine = findBestBallSnippet(buzz, keyNames)
-        val details = try { cricbuzz.fetchBallByBallAndBatsmen(matchId) } catch (e: Exception) { 
+        val details = try { cricbuzz.fetchBallByBallAndBatsmen(matchId) } catch (e: Exception) {
+            if (e is CancellationException) throw e
             Sentry.captureException(e)
-            null 
+            null
         }
         
         val singleBallNumber = details?.overNumbers?.lastOrNull() ?: ""
         val singleOver = singleBallNumber.substringBefore(".").toIntOrNull() ?: 0
-        return try {
+        val fusionResult = try {
             fusion.fuse(
                 snippet1 = buzzLine,
                 snippet2 = "",
@@ -227,10 +240,14 @@ class LiveCommentaryManager(
                 scoreContext = details?.score ?: ""
             )
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             Log.w("LiveCommentaryManager", "fusion.fuse failed, using raw snippet", e)
             Sentry.captureException(e)
             buzzLine
         }
+        return if (singleBallNumber.isNotEmpty() && !fusionResult.trimStart().matches(Regex("^\\d+\\.\\d.*"))) {
+            "$singleBallNumber $fusionResult"
+        } else fusionResult
     }
     
     /**
@@ -289,6 +306,7 @@ class LiveCommentaryManager(
             }
             
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             Sentry.captureException(e)
         }
     }
@@ -311,6 +329,7 @@ class LiveCommentaryManager(
                     val insight = summarizer(aiCommentaryHistory.takeLast(6), matchId, insightOver)
                     onKeyEvent?.invoke("AI Strategic Insight", insight)
                 } catch (e: Exception) {
+                    if (e is CancellationException) throw e
                     Sentry.captureException(e)
                 }
             }

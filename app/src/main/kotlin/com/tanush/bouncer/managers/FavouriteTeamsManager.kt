@@ -2,6 +2,8 @@ package com.tanush.bouncer.managers
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.util.Log
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
@@ -47,6 +49,9 @@ object FavouriteTeamsManager {
             // Pull remote favourites; adopt if local is empty (e.g. fresh install)
             scope.launch {
                 runCatching {
+                    val cm = context.getSystemService(ConnectivityManager::class.java)
+                    val caps = cm?.getNetworkCapabilities(cm.activeNetwork)
+                    if (caps == null || !caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)) return@runCatching
                     val remote = AppwriteFavouritesSync.pull()
                     if (remote != null && _favourites.value.isEmpty()) {
                         Log.d(TAG, "Adopting ${remote.size} favourites from remote")

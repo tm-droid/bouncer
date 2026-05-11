@@ -137,6 +137,7 @@ class MainViewModel : ViewModel() {
                     isRetryable = true
                 )
             } catch (e: Exception) {
+                if (e is CancellationException) throw e
                 Log.e(TAG, "Error fetching matches for $status", e)
                 Sentry.addBreadcrumb(Breadcrumb().apply {
                     category = "data.error"

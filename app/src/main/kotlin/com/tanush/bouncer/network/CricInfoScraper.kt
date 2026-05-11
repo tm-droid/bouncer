@@ -5,6 +5,7 @@ import com.google.gson.JsonParser
 import io.sentry.Breadcrumb
 import io.sentry.Sentry
 import io.sentry.SentryLevel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.jsoup.Jsoup
@@ -77,6 +78,7 @@ class CricInfoScraper {
 
     private fun connect(url: String) = Jsoup.connect(url)
         .userAgent(USER_AGENT)
+        .header("Referer", "https://www.espncricinfo.com/")
         .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7")
         .header("Accept-Language", "en-US,en;q=0.9")
         .header("Cache-Control", "max-age=0")
@@ -362,6 +364,7 @@ class CricInfoScraper {
             null
         } catch (e: Exception) {
             Log.e(TAG, "Error finding match: ${e.message}")
+            if (e is CancellationException) throw e
             recordFailure(e)
             Sentry.captureException(e)
 

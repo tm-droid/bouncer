@@ -1,0 +1,23 @@
+{
+  "functions": [
+    {
+      "name": "highlights-sync",
+      "runtime": "node-20.0",
+      "path": ".",
+      "entrypoint": "src/main.js",
+      "execute": ["any"],
+      "events": ["schedules.*/create"],
+      "schedule": "*/15 * * * *",
+      "timeout": 60,
+      "vars": {
+        "APPWRITE_ENDPOINT": "https://cloud.appwrite.io/v1",
+        "APPWRITE_PROJECT_ID": "",
+        "APPWRITE_API_KEY": "",
+        "APPWRITE_HIGHLIGHTS_DB_ID": "",
+        "APPWRITE_HIGHLIGHTS_COL_ID": "",
+        "RAPIDAPI_KEY": "",
+        "HIGHLIGHTLY_API_KEY": ""
+      }
+    }
+  ]
+}

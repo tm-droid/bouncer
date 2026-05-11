@@ -1,0 +1,13 @@
+{
+  "name": "highlights-sync",
+  "version": "1.0.0",
+  "description": "Appwrite cloud function to sync cricket highlights from Highlightly API",
+  "main": "src/main.js",
+  "type": "module",
+  "engines": {
+    "node": "20"
+  },
+  "dependencies": {
+    "node-fetch": "^3.3.0"
+  }
+}

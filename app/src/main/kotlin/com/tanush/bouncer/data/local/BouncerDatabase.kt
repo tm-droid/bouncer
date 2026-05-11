@@ -8,12 +8,14 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.tanush.bouncer.data.local.dao.AICacheDao
 import com.tanush.bouncer.data.local.dao.CommentaryDao
+import com.tanush.bouncer.data.local.dao.HighlightDao
 import com.tanush.bouncer.data.local.dao.HistoricalMatchCacheDao
 import com.tanush.bouncer.data.local.dao.MatchDao
 import com.tanush.bouncer.data.local.dao.PlayerCacheDao
 import com.tanush.bouncer.data.local.dao.SeriesCacheDao
 import com.tanush.bouncer.data.local.entities.AICommentaryCacheEntity
 import com.tanush.bouncer.data.local.entities.CommentaryEntity
+import com.tanush.bouncer.data.local.entities.HighlightEntity
 import com.tanush.bouncer.data.local.entities.HistoricalMatchCacheEntity
 import com.tanush.bouncer.data.local.entities.HistoricalMatchFtsEntity
 import com.tanush.bouncer.data.local.entities.MatchEntity
@@ -32,9 +34,10 @@ import com.tanush.bouncer.data.local.entities.SeriesFtsEntity
         SeriesFtsEntity::class,
         HistoricalMatchCacheEntity::class,
         HistoricalMatchFtsEntity::class,
-        AICommentaryCacheEntity::class
+        AICommentaryCacheEntity::class,
+        HighlightEntity::class
     ],
-    version = 3,
+    version = 4,
     exportSchema = true
 )
 abstract class BouncerDatabase : RoomDatabase() {
@@ -45,6 +48,7 @@ abstract class BouncerDatabase : RoomDatabase() {
     abstract fun seriesCacheDao(): SeriesCacheDao
     abstract fun historicalMatchCacheDao(): HistoricalMatchCacheDao
     abstract fun aiCacheDao(): AICacheDao
+    abstract fun highlightDao(): HighlightDao
 
     companion object {
         @Volatile
@@ -79,8 +83,15 @@ abstract class BouncerDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("CREATE TABLE IF NOT EXISTS highlights (id TEXT NOT NULL PRIMARY KEY, title TEXT NOT NULL, imgUrl TEXT NOT NULL, embedUrl TEXT, fallbackUrl TEXT, source TEXT NOT NULL, channel TEXT NOT NULL, type TEXT NOT NULL, matchedBouncerMatchId TEXT, iccMatchId TEXT, iplMatchId TEXT, leagueName TEXT NOT NULL, homeTeam TEXT NOT NULL, awayTeam TEXT NOT NULL, matchStartDate TEXT NOT NULL, fetchedAt INTEGER NOT NULL)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS idx_highlights_matched_bouncer_match_id ON highlights(matchedBouncerMatchId)")
+            }
+        }
+
         // Add new migrations here; Room will apply them in order on upgrade.
-        private val MIGRATIONS = arrayOf<Migration>(MIGRATION_1_2, MIGRATION_2_3)
+        private val MIGRATIONS = arrayOf<Migration>(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
 
         fun getInstance(context: Context): BouncerDatabase {
             return INSTANCE ?: synchronized(this) {

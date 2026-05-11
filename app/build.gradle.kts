@@ -45,6 +45,9 @@ android {
 buildConfigField("String", "APPWRITE_AI_CACHE_DB_ID", "\"${localProperties.getProperty("APPWRITE_AI_CACHE_DB_ID") ?: System.getenv("APPWRITE_AI_CACHE_DB_ID") ?: ""}\"")
         buildConfigField("String", "APPWRITE_AI_CACHE_COL_ID", "\"${localProperties.getProperty("APPWRITE_AI_CACHE_COL_ID") ?: System.getenv("APPWRITE_AI_CACHE_COL_ID") ?: ""}\"")
         buildConfigField("String", "APPWRITE_FAVOURITES_COL_ID", "\"${localProperties.getProperty("APPWRITE_FAVOURITES_COL_ID") ?: System.getenv("APPWRITE_FAVOURITES_COL_ID") ?: ""}\"")
+        buildConfigField("String", "HIGHLIGHTLY_API_KEY", "\"${localProperties.getProperty("HIGHLIGHTLY_API_KEY") ?: System.getenv("HIGHLIGHTLY_API_KEY") ?: ""}\"")
+        buildConfigField("String", "APPWRITE_HIGHLIGHTS_DB_ID", "\"${localProperties.getProperty("APPWRITE_HIGHLIGHTS_DB_ID") ?: System.getenv("APPWRITE_HIGHLIGHTS_DB_ID") ?: ""}\"")
+        buildConfigField("String", "APPWRITE_HIGHLIGHTS_COL_ID", "\"${localProperties.getProperty("APPWRITE_HIGHLIGHTS_COL_ID") ?: System.getenv("APPWRITE_HIGHLIGHTS_COL_ID") ?: ""}\"")
         manifestPlaceholders["sentryDsn"] = localProperties.getProperty("SENTRY_DSN", "https://e9ade5d835c36a97939191077734e5a7@o4510958403518464.ingest.us.sentry.io/4510963429212160")
         // Default environment; overridden per build type below
         manifestPlaceholders["sentryEnvironment"] = "production"

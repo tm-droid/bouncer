@@ -1,11 +1,14 @@
 package com.tanush.bouncer.ui.components
 
+import android.content.Intent
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -21,6 +24,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.*
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.*
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -213,7 +219,8 @@ fun LiveCommentaryCard(
                             OverHeader(
                                 over = over,
                                 runs = balls.sumOf { getRunsFromResult(it.result) },
-                                wickets = balls.count { it.result == "W" }
+                                wickets = balls.count { it.result == "W" },
+                                balls = balls,
                             )
                         }
                     }
@@ -388,83 +395,140 @@ private fun BallBadge(
 private fun OverHeader(
     over: Int,
     runs: Int,
-    wickets: Int
+    wickets: Int,
+    balls: List<CommentaryBall>,
 ) {
     val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
-    Row(
+    val isMaiden = runs == 0 && balls.isNotEmpty() && balls.none { it.result == "WD" || it.result == "NB" }
+
+    Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 8.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
     ) {
         Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Box(
-                modifier = Modifier
-                    .background(
-                        hierarchy.secondary.primary.copy(alpha = 0.15f),
-                        RoundedCornerShape(6.dp)
-                    )
-                    .padding(horizontal = 8.dp, vertical = 4.dp)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
-                Text(
-                    text = "Over $over",
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = hierarchy.secondary.primary
-                )
+                Box(
+                    modifier = Modifier
+                        .background(
+                            hierarchy.secondary.primary.copy(alpha = 0.15f),
+                            RoundedCornerShape(6.dp),
+                        )
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                ) {
+                    Text(
+                        text = "Over $over",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = hierarchy.secondary.primary,
+                    )
+                }
+
+                if (isMaiden) {
+                    Box(
+                        modifier = Modifier
+                            .background(
+                                MaidenTeal.copy(alpha = 0.2f),
+                                RoundedCornerShape(6.dp),
+                            )
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            text = "MAIDEN",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaidenTeal,
+                        )
+                    }
+                }
             }
-        }
-        
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Text(
-                text = "$runs runs",
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Medium,
-                color = colors.textSecondary
-            )
-            if (wickets > 0) {
+
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
-                    text = "$wickets wkt${if (wickets > 1) "s" else ""}",
+                    text = "$runs run${if (runs != 1) "s" else ""}",
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Medium,
-                    color = colors.statusLive
+                    color = colors.textSecondary,
                 )
+                if (wickets > 0) {
+                    Text(
+                        text = "$wickets wkt${if (wickets > 1) "s" else ""}",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = colors.statusLive,
+                    )
+                }
+            }
+        }
+
+        // Mini ball sequence strip
+        if (balls.isNotEmpty()) {
+            Spacer(Modifier.height(6.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                balls.sortedBy { it.ballNumber }.forEach { ball ->
+                    MiniOverBall(result = ball.result)
+                }
             }
         }
     }
-    
+
     HorizontalDivider(
         color = hierarchy.secondary.primary.copy(alpha = 0.12f),
-        thickness = 0.5.dp
+        thickness = 0.5.dp,
     )
 }
 
 @Composable
+private fun MiniOverBall(result: String) {
+    val color = getBallColor(result)
+    Box(
+        modifier = Modifier
+            .size(22.dp)
+            .background(color.copy(alpha = 0.2f), CircleShape),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = getBallDisplayText(result),
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Bold,
+            color = color,
+        )
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
 private fun CommentaryBallItem(
     ball: CommentaryBall,
     isNew: Boolean,
-    shimmerOffset: Float
+    shimmerOffset: Float,
 ) {
     val hierarchy = BouncerDesignSystem.hierarchy
+    val clipboardManager = LocalClipboardManager.current
+    val context = LocalContext.current
+    var showMenu by remember { mutableStateOf(false) }
+
     val enterTransition = remember { MutableTransitionState(false) }
     LaunchedEffect(Unit) {
         enterTransition.targetState = true
     }
-    
+
     val color = getBallColor(ball.result)
     val isHighlight = ball.result in listOf("4", "6", "W")
-    
+
     AnimatedVisibility(
         visibleState = enterTransition,
         enter = fadeIn(tween(300)) + slideInVertically(tween(300)) { -it / 2 }
     ) {
+        Box {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -494,6 +558,10 @@ private fun CommentaryBallItem(
                                 RoundedCornerShape(10.dp)
                             )
                     } else Modifier
+                )
+                .combinedClickable(
+                    onClick = {},
+                    onLongClick = { showMenu = true },
                 )
                 .padding(horizontal = 8.dp, vertical = 8.dp)
         ) {
@@ -584,8 +652,40 @@ private fun CommentaryBallItem(
                 }
             }
         }
+
+        val shareText = "${ball.over.toInt()}.${ball.ballNumber}: ${ball.commentary}"
+        DropdownMenu(
+            expanded = showMenu,
+            onDismissRequest = { showMenu = false },
+        ) {
+            DropdownMenuItem(
+                text = { Text("Copy text") },
+                onClick = {
+                    clipboardManager.setText(AnnotatedString(shareText))
+                    showMenu = false
+                },
+            )
+            DropdownMenuItem(
+                text = { Text("Share") },
+                onClick = {
+                    context.startActivity(
+                        Intent.createChooser(
+                            Intent(Intent.ACTION_SEND).apply {
+                                type = "text/plain"
+                                putExtra(Intent.EXTRA_TEXT, shareText)
+                            },
+                            null,
+                        )
+                    )
+                    showMenu = false
+                },
+            )
+        }
+        }  // outer Box
     }
 }
+
+private val MaidenTeal = Color(0xFF0D9488)
 
 // Helper functions
 private fun getBallColor(result: String): Color = when (result) {
