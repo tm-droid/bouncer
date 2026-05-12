@@ -8,8 +8,10 @@ import io.appwrite.Client
 object AppwriteClient {
     private const val TAG = "AppwriteClient"
 
-    lateinit var client: Client
+    @Volatile
+    var client: Client? = null
         private set
+    @Volatile
     var isReady = false
         private set
 
