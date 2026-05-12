@@ -171,7 +171,7 @@ dependencies {
     implementation(libs.okhttp.logging)
     implementation(libs.coil.compose)
     implementation(libs.jsoup)
-    implementation("io.appwrite:sdk-for-android:+")
+    implementation("io.appwrite:sdk-for-android:12.0.0")
 
     // UI & Layout
     implementation(libs.palette)
