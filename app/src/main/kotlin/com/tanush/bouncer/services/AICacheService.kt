@@ -140,4 +140,17 @@ object AICacheService {
             throw e
         }
     }
+
+    suspend fun ingestFromRealtime(key: String, commentary: String) = mutex.withLock {
+        // Skip if this device already has a valid entry (we originated the write)
+        val existing = cache[key]
+        if (existing != null) {
+            val ageMs = Date().time - existing.timestamp.time
+            if (ageMs < CACHE_EXPIRATION_INTERVAL_MS) return@withLock
+        }
+        val now = Date()
+        cache[key] = CommentaryEntry(commentary, now)
+        dao?.insert(AICommentaryCacheEntity(key, commentary, now.time))
+        Log.d(TAG, "Realtime: warmed cache for key $key")
+    }
 }
