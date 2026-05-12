@@ -111,7 +111,8 @@ object AppwriteAICache {
         realtimeSubscription = realtime.subscribe("databases.$dbId.collections.$tableId.documents") { response ->
             val isCreate = response.events.any { it.contains(".create") }
             if (!isCreate) return@subscribe
-            val payload = response.payload
+            @Suppress("UNCHECKED_CAST")
+            val payload = response.payload as? Map<String, Any> ?: return@subscribe
             val key = payload["cache_key"] as? String
                 ?: (payload["data"] as? Map<*, *>)?.get("cache_key") as? String
             val commentary = payload["commentary"] as? String

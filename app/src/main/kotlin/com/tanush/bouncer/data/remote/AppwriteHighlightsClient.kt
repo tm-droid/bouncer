@@ -44,7 +44,8 @@ object AppwriteHighlightsClient {
                     tableId = tableId,
                     queries = listOf(Query.limit(100))
                 )
-                result.rows.map { HighlightRow.fromMap(it.data) }
+                @Suppress("UNCHECKED_CAST")
+                result.rows.map { HighlightRow.fromMap(it.data as? Map<String, Any?> ?: emptyMap()) }
             }.onFailure { e ->
                 if (e is AppwriteException) {
                     Log.d(TAG, "Fetch highlights failed (silent): ${e.message} [${e.code}]")
@@ -64,7 +65,8 @@ object AppwriteHighlightsClient {
             val isCreate = response.events.any { it.contains(".create") }
             if (!isCreate) return@subscribe
             runCatching {
-                val row = HighlightRow.fromMap(response.payload)
+                @Suppress("UNCHECKED_CAST")
+                val row = HighlightRow.fromMap(response.payload as? Map<String, Any?> ?: return@subscribe)
                 scope.launch { onNewHighlight(row) }
             }.onFailure {
                 Log.d(TAG, "Realtime highlight payload unparseable: ${it.message}")
