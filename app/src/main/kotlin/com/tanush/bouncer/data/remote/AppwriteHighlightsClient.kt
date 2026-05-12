@@ -2,31 +2,34 @@ package com.tanush.bouncer.data.remote
 
 import android.util.Log
 import com.tanush.bouncer.ApiKeys
-import com.tanush.bouncer.network.HttpClientProvider
+import io.appwrite.Query
+import io.appwrite.exceptions.AppwriteException
+import io.appwrite.services.Realtime
+import io.appwrite.services.TablesDB
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import okhttp3.Request
-import org.json.JSONObject
-import java.net.URLEncoder
 
 object AppwriteHighlightsClient {
     private const val TAG = "AppwriteHighlightsClient"
-    private val client = HttpClientProvider.sharedClient
 
-    private var baseUrl = ""
-    private var projectId = ""
+    private var dbId = ""
+    private var tableId = ""
     var isReady = false
         private set
 
+    private var realtimeInstance: Realtime? = null
+    private var realtimeSubscription: Any? = null
+
+    private val tablesDB: TablesDB?
+        get() = AppwriteClient.client?.let { TablesDB(it) }
+
     fun initialize() {
-        val endpoint = ApiKeys.appwriteEndpoint.trimEnd('/')
-        projectId = ApiKeys.appwriteProjectId
-        val dbId = ApiKeys.appwriteHighlightsDbId
-        val tableId = ApiKeys.appwriteHighlightsColId
-        isReady = listOf(endpoint, projectId, dbId, tableId).all { it.isNotBlank() }
-        if (isReady) {
-            baseUrl = "$endpoint/tablesdb/$dbId/tables/$tableId/rows"
-        } else {
+        dbId = ApiKeys.appwriteHighlightsDbId
+        tableId = ApiKeys.appwriteHighlightsColId
+        isReady = AppwriteClient.isReady && dbId.isNotBlank() && tableId.isNotBlank()
+        if (!isReady) {
             Log.w(TAG, "Appwrite highlights not configured")
         }
     }
@@ -35,27 +38,37 @@ object AppwriteHighlightsClient {
         if (!isReady) return null
         return withContext(Dispatchers.IO) {
             runCatching {
-                val request = Request.Builder()
-                    .url("$baseUrl?limit=100")
-                    .get()
-                    .addHeader("X-Appwrite-Project", projectId)
-                    .addHeader("X-Appwrite-Response-Format", "1.8.0")
-                    .build()
-                client.newCall(request).execute().use { response ->
-                    if (!response.isSuccessful) return@runCatching null
-                    val body = response.body?.string() ?: return@runCatching null
-                    val json = JSONObject(body)
-                    val rows = json.optJSONArray("rows") ?: return@runCatching emptyList()
-                    val list = mutableListOf<HighlightRow>()
-                    for (i in 0 until rows.length()) {
-                        val row = rows.getJSONObject(i)
-                        list.add(HighlightRow.fromJson(row))
-                    }
-                    list
-                }
+                val db = tablesDB ?: return@runCatching null
+                val result = db.listRows(
+                    databaseId = dbId,
+                    tableId = tableId,
+                    queries = listOf(Query.limit(100))
+                )
+                result.rows.map { HighlightRow.fromMap(it.data) }
             }.onFailure { e ->
-                Log.d(TAG, "Fetch highlights failed (silent): ${e.message}")
+                if (e is AppwriteException) {
+                    Log.d(TAG, "Fetch highlights failed (silent): ${e.message} [${e.code}]")
+                } else {
+                    Log.d(TAG, "Fetch highlights failed (silent): ${e.message}")
+                }
             }.getOrNull()
+        }
+    }
+
+    fun startRealtimeSubscription(scope: CoroutineScope, onNewHighlight: (HighlightRow) -> Unit) {
+        if (!AppwriteClient.isReady) return
+        val client = AppwriteClient.client ?: return
+        val realtime = Realtime(client)
+        realtimeInstance = realtime
+        realtimeSubscription = realtime.subscribe("databases.$dbId.collections.$tableId.documents") { response ->
+            val isCreate = response.events.any { it.contains(".create") }
+            if (!isCreate) return@subscribe
+            runCatching {
+                val row = HighlightRow.fromMap(response.payload)
+                scope.launch { onNewHighlight(row) }
+            }.onFailure {
+                Log.d(TAG, "Realtime highlight payload unparseable: ${it.message}")
+            }
         }
     }
 }
@@ -81,27 +94,28 @@ data class HighlightRow(
     val fetchedAt: Long
 ) {
     companion object {
-        fun fromJson(obj: JSONObject): HighlightRow {
-            val data = obj.optJSONObject("data") ?: obj
+        fun fromMap(data: Map<String, Any?>): HighlightRow {
+            // data may come from SDK row.data or from Realtime payload directly
+            val inner = (data["data"] as? Map<*, *>) ?: data
             return HighlightRow(
-                highlightId = data.optString("highlight_id", ""),
-                type = data.optString("type", "UNVERIFIED"),
-                imgUrl = data.optString("img_url", ""),
-                title = data.optString("title", ""),
-                url = data.optString("url", ""),
-                embedUrl = data.optString("embed_url", "").takeIf { it.isNotBlank() },
-                channel = data.optString("channel", ""),
-                source = data.optString("source", ""),
-                matchHomeTeam = data.optString("match_home_team", ""),
-                matchAwayTeam = data.optString("match_away_team", ""),
-                matchHomeAbbr = data.optString("match_home_abbr", ""),
-                matchAwayAbbr = data.optString("match_away_abbr", ""),
-                matchLeagueName = data.optString("match_league_name", ""),
-                matchLeagueSeason = data.optInt("match_league_season", 0),
-                matchStartDate = data.optString("match_start_date", ""),
-                matchEndDate = data.optString("match_end_date", ""),
-                rawMatchId = data.optString("raw_match_id", ""),
-                fetchedAt = data.optLong("fetched_at", System.currentTimeMillis())
+                highlightId = inner["highlight_id"] as? String ?: "",
+                type = inner["type"] as? String ?: "UNVERIFIED",
+                imgUrl = inner["img_url"] as? String ?: "",
+                title = inner["title"] as? String ?: "",
+                url = inner["url"] as? String ?: "",
+                embedUrl = (inner["embed_url"] as? String)?.takeIf { it.isNotBlank() },
+                channel = inner["channel"] as? String ?: "",
+                source = inner["source"] as? String ?: "",
+                matchHomeTeam = inner["match_home_team"] as? String ?: "",
+                matchAwayTeam = inner["match_away_team"] as? String ?: "",
+                matchHomeAbbr = inner["match_home_abbr"] as? String ?: "",
+                matchAwayAbbr = inner["match_away_abbr"] as? String ?: "",
+                matchLeagueName = inner["match_league_name"] as? String ?: "",
+                matchLeagueSeason = (inner["match_league_season"] as? Number)?.toInt() ?: 0,
+                matchStartDate = inner["match_start_date"] as? String ?: "",
+                matchEndDate = inner["match_end_date"] as? String ?: "",
+                rawMatchId = inner["raw_match_id"] as? String ?: "",
+                fetchedAt = (inner["fetched_at"] as? Number)?.toLong() ?: System.currentTimeMillis()
             )
         }
     }
