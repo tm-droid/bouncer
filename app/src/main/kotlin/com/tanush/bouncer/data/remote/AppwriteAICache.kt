@@ -23,6 +23,9 @@ object AppwriteAICache {
     private const val TAG = "AppwriteAICache"
     private const val TTL_MS = 3_600_000L // 1 hour, matches AICacheService
 
+    private var realtimeInstance: Realtime? = null
+    private var realtimeSubscription: Any? = null  // RealtimeSubscription handle
+
     private var dbId = ""
     private var tableId = ""
     var isReady = false
@@ -104,16 +107,19 @@ object AppwriteAICache {
         if (!AppwriteClient.isReady) return
         val client = AppwriteClient.client ?: return
         val realtime = Realtime(client)
-        realtime.subscribe("databases.$dbId.collections.$tableId.documents") { response ->
+        realtimeInstance = realtime
+        realtimeSubscription = realtime.subscribe("databases.$dbId.collections.$tableId.documents") { response ->
             val isCreate = response.events.any { it.contains(".create") }
             if (!isCreate) return@subscribe
             val payload = response.payload
             val key = payload["cache_key"] as? String
                 ?: (payload["data"] as? Map<*, *>)?.get("cache_key") as? String
-                ?: return@subscribe
             val commentary = payload["commentary"] as? String
                 ?: (payload["data"] as? Map<*, *>)?.get("commentary") as? String
-                ?: return@subscribe
+            if (key == null || commentary == null) {
+                Log.d(TAG, "Realtime AI cache payload unparseable: $payload")
+                return@subscribe
+            }
             scope.launch { onNewEntry(key, commentary) }
         }
     }
