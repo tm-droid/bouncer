@@ -104,7 +104,7 @@ object AppwriteAICache {
     }
 
     fun startRealtimeSubscription(scope: CoroutineScope, onNewEntry: (key: String, commentary: String) -> Unit) {
-        if (!AppwriteClient.isReady) return
+        if (!isReady) return
         val client = AppwriteClient.client ?: return
         val realtime = Realtime(client)
         realtimeInstance = realtime

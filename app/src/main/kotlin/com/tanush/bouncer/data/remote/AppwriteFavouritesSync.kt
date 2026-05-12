@@ -8,6 +8,8 @@ import io.appwrite.Permission
 import io.appwrite.Role
 import io.appwrite.exceptions.AppwriteException
 import io.appwrite.services.TablesDB
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.util.UUID
 
 // Cross-device favourites sync backed by Appwrite TablesDB.
@@ -43,55 +45,59 @@ object AppwriteFavouritesSync {
     suspend fun pull(): List<String>? {
         if (!isReady) return null
         val client = AppwriteClient.client ?: return null
-        return runCatching {
-            val tablesDB = TablesDB(client)
-            val row = tablesDB.getRow(
-                databaseId = dbId,
-                tableId = tableId,
-                rowId = deviceId
-            )
-            @Suppress("UNCHECKED_CAST")
-            row.data["teams"] as? List<String>
-        }.onFailure { e ->
-            if (e is AppwriteException && e.code == 404) {
-                // Row doesn't exist yet — not an error
-            } else {
-                Log.d(TAG, "Remote favourites pull failed (silent): ${e.message}")
-            }
-        }.getOrNull()
+        return withContext(Dispatchers.IO) {
+            runCatching {
+                val tablesDB = TablesDB(client)
+                val row = tablesDB.getRow(
+                    databaseId = dbId,
+                    tableId = tableId,
+                    rowId = deviceId
+                )
+                @Suppress("UNCHECKED_CAST")
+                row.data["teams"] as? List<String>
+            }.onFailure { e ->
+                if (e is AppwriteException && e.code == 404) {
+                    // Row doesn't exist yet — not an error
+                } else {
+                    Log.d(TAG, "Remote favourites pull failed (silent): ${e.message}")
+                }
+            }.getOrNull()
+        }
     }
 
     suspend fun push(teams: List<String>) {
         if (!isReady) return
         val client = AppwriteClient.client ?: return
-        runCatching {
-            val tablesDB = TablesDB(client)
+        withContext(Dispatchers.IO) {
             runCatching {
-                tablesDB.updateRow(
-                    databaseId = dbId,
-                    tableId = tableId,
-                    rowId = deviceId,
-                    data = mapOf("teams" to teams)
-                )
-            }.onFailure { e ->
-                if (e is AppwriteException && e.code == 404) {
-                    // Row doesn't exist yet — create it
-                    tablesDB.createRow(
+                val tablesDB = TablesDB(client)
+                runCatching {
+                    tablesDB.updateRow(
                         databaseId = dbId,
                         tableId = tableId,
                         rowId = deviceId,
-                        data = mapOf("teams" to teams),
-                        permissions = listOf(
-                            Permission.read(Role.any()),
-                            Permission.update(Role.any())
-                        )
+                        data = mapOf("teams" to teams)
                     )
-                } else {
-                    throw e
+                }.onFailure { e ->
+                    if (e is AppwriteException && e.code == 404) {
+                        // Row doesn't exist yet — create it
+                        tablesDB.createRow(
+                            databaseId = dbId,
+                            tableId = tableId,
+                            rowId = deviceId,
+                            data = mapOf("teams" to teams),
+                            permissions = listOf(
+                                Permission.read(Role.any()),
+                                Permission.update(Role.any())
+                            )
+                        )
+                    } else {
+                        throw e
+                    }
                 }
+            }.onFailure { e ->
+                Log.d(TAG, "Remote favourites push failed (silent): ${e.message}")
             }
-        }.onFailure { e ->
-            Log.d(TAG, "Remote favourites push failed (silent): ${e.message}")
         }
     }
 }

@@ -56,7 +56,7 @@ object AppwriteHighlightsClient {
     }
 
     fun startRealtimeSubscription(scope: CoroutineScope, onNewHighlight: (HighlightRow) -> Unit) {
-        if (!AppwriteClient.isReady) return
+        if (!isReady) return
         val client = AppwriteClient.client ?: return
         val realtime = Realtime(client)
         realtimeInstance = realtime
