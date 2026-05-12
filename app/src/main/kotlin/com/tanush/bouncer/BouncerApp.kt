@@ -12,7 +12,9 @@ import com.tanush.bouncer.managers.TeamLogoManager
 import com.tanush.bouncer.managers.TeamAcronymManager
 import com.tanush.bouncer.data.local.BouncerDatabase
 import com.tanush.bouncer.data.remote.AppwriteAICache
+import com.tanush.bouncer.data.remote.AppwriteClient
 import com.tanush.bouncer.data.remote.AppwriteHighlightsClient
+import com.tanush.bouncer.data.repository.toEntity
 import com.tanush.bouncer.services.AICacheService
 import com.tanush.bouncer.services.MatchCacheService
 import com.tanush.bouncer.services.ScorePollingWorker
@@ -22,12 +24,18 @@ import io.sentry.Sentry
 import io.sentry.SentryLogLevel
 import io.sentry.SentryLevel
 import java.io.File
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 
 class BouncerApp : Application() {
 
     companion object {
         private const val TAG = "BouncerApp"
     }
+
+    private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
     override fun onCreate() {
         super.onCreate()
@@ -59,11 +67,33 @@ class BouncerApp : Application() {
         initializeSafely("FavouriteTeamsManager") { FavouriteTeamsManager.initialize(this) }
         initializeSafely("MatchSubscriptionManager") { MatchSubscriptionManager.initialize(this) }
         initializeSafely("MatchCacheService") { MatchCacheService.initDiskCache(this) }
+        initializeSafely("AppwriteClient") { AppwriteClient.initialize(this) }
         initializeSafely("AppwriteAICache") { AppwriteAICache.initialize() }
         initializeSafely("AppwriteHighlightsClient") { AppwriteHighlightsClient.initialize() }
         initializeSafely("NotificationInboxManager") { NotificationInboxManager.initialize(this) }
         initializeSafely("AICacheService") {
             AICacheService.initialize(BouncerDatabase.getInstance(this).aiCacheDao())
+        }
+
+        // Start Appwrite Realtime subscriptions (app-lifetime)
+        initializeSafely("AppwriteRealtime") {
+            val highlightDao = BouncerDatabase.getInstance(this).highlightDao()
+            AppwriteHighlightsClient.startRealtimeSubscription(
+                scope = applicationScope,
+                onNewHighlight = { row ->
+                    applicationScope.launch(Dispatchers.IO) {
+                        highlightDao.upsertAll(listOf(row.toEntity()))
+                    }
+                }
+            )
+            AppwriteAICache.startRealtimeSubscription(
+                scope = applicationScope,
+                onNewEntry = { key, commentary ->
+                    applicationScope.launch {
+                        AICacheService.ingestFromRealtime(key, commentary)
+                    }
+                }
+            )
         }
 
         // ── Configure Coil ImageLoader ───────────────────────────────────
