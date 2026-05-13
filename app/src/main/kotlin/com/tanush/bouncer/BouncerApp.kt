@@ -68,6 +68,9 @@ class BouncerApp : Application() {
         initializeSafely("MatchSubscriptionManager") { MatchSubscriptionManager.initialize(this) }
         initializeSafely("MatchCacheService") { MatchCacheService.initDiskCache(this) }
         initializeSafely("AppwriteClient") { AppwriteClient.initialize(this) }
+        applicationScope.launch(Dispatchers.IO) {
+            try { AppwriteClient.client?.ping() } catch (_: Exception) {}
+        }
         initializeSafely("AppwriteAICache") { AppwriteAICache.initialize() }
         initializeSafely("AppwriteHighlightsClient") { AppwriteHighlightsClient.initialize() }
         initializeSafely("NotificationInboxManager") { NotificationInboxManager.initialize(this) }
