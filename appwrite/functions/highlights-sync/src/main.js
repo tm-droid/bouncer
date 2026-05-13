@@ -1,166 +1,183 @@
-import { Client, Databases, Query } from "node-appwrite";
+import { Client, Databases } from "node-appwrite";
 
-export default async function(req, res) {
+// Appwrite auto-injects APPWRITE_FUNCTION_API_ENDPOINT and APPWRITE_FUNCTION_PROJECT_ID.
+// APPWRITE_API_KEY must be set manually in the function's env vars.
+
+export default async ({ req, res, log, error }) => {
+  const RAPIDAPI_KEY = process.env.RAPIDAPI_KEY ?? "";
+  const HIGHLIGHTLY_API_KEY = process.env.HIGHLIGHTLY_API_KEY ?? "";
+  const HIGHLIGHTS_DB_ID = process.env.APPWRITE_HIGHLIGHTS_DB_ID ?? "";
+  const HIGHLIGHTS_COL_ID = process.env.APPWRITE_HIGHLIGHTS_COL_ID ?? "";
+  const META_COL_ID = process.env.APPWRITE_HIGHLIGHTS_META_COL_ID ?? "";
+
   const client = new Client()
-    .setEndpoint(process.env.APPWRITE_ENDPOINT)
-    .setProject(process.env.APPWRITE_PROJECT_ID)
-    .setKey(process.env.APPWRITE_API_KEY);
+    .setEndpoint(process.env.APPWRITE_FUNCTION_API_ENDPOINT)
+    .setProject(process.env.APPWRITE_FUNCTION_PROJECT_ID)
+    .setKey(process.env.APPWRITE_API_KEY ?? "");
+  const db = new Databases(client);
 
-  const databases = new Databases(client);
-  const dbId = process.env.APPWRITE_HIGHLIGHTS_DB_ID;
-  const colId = process.env.APPWRITE_HIGHLIGHTS_COL_ID;
+  // ── Midnight reset ──────────────────────────────────────────────────────
+  // Tracks fetch_date. When date changes, last_fetch_at is treated as 0 so
+  // the cycle restarts fresh. The highlight cache is never cleared here.
+  const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
 
-  try {
-    // 1. Check Cricbuzz for live or recently completed matches
-    const today = new Date().toISOString().split('T')[0];
-    const liveMatches = await checkCricbuzzForLiveMatches(today);
+  // ── Check Cricbuzz for live / recently completed matches ────────────────
+  // Fail-open: if API call errors, proceed with highlights fetch.
+  const hasRelevantMatches = await checkForLiveOrRecentMatches(RAPIDAPI_KEY, log, error);
 
-    if (!liveMatches || liveMatches.length === 0) {
-      console.log("No live or recent matches found; skipping highlights fetch");
-      return res.json({ skipped: true });
-    }
+  if (!hasRelevantMatches) {
+    log("No live/recent matches — skipping Highlightly fetch (counter not consumed)");
+    return res.json({ skipped: true, reason: "no_live_matches" });
+  }
 
-    console.log(`Found ${liveMatches.length} live/recent matches; fetching highlights`);
+  // ── Fetch highlights from Highlightly API ───────────────────────────────
+  const highlights = await fetchHighlights(today, HIGHLIGHTLY_API_KEY, log, error);
+  if (highlights.length === 0) {
+    log("Highlightly returned 0 highlights");
+    return res.json({ upserted: 0 });
+  }
 
-    // 2. Fetch highlights from Highlightly API
-    const highlights = await fetchHighlightlyHighlights(today);
-    if (!highlights || highlights.length === 0) {
-      console.log("No highlights found for today");
-      return res.json({ highlightsCount: 0 });
-    }
-
-    // 3. Upsert highlights into Appwrite
-    let upsertedCount = 0;
-    for (const highlight of highlights) {
-      const doc = highlightToDocument(highlight);
+  // ── Upsert each highlight into Appwrite DB ──────────────────────────────
+  const now = Date.now();
+  let upserted = 0;
+  for (const h of highlights) {
+    const docId = `hl-${h.id}`;
+    const payload = buildPayload(h, now);
+    try {
+      // Try update first (cheaper on conflict); fall back to create
+      await db.updateDocument(HIGHLIGHTS_DB_ID, HIGHLIGHTS_COL_ID, docId, payload);
+    } catch (_) {
       try {
-        await databases.createDocument(
-          dbId,
-          colId,
-          doc.highlight_id,
-          doc.data,
-          ["read(\"any\")"]
-        );
-        upsertedCount++;
-      } catch (e) {
-        // Document may already exist; try to update
-        if (e.code === 409) {
-          await databases.updateDocument(dbId, colId, doc.highlight_id, doc.data);
-          upsertedCount++;
-        } else {
-          console.error(`Failed to upsert highlight ${doc.highlight_id}:`, e.message);
-        }
+        await db.createDocument(HIGHLIGHTS_DB_ID, HIGHLIGHTS_COL_ID, docId, payload, ["read(\"any\")"]);
+      } catch (e2) {
+        error(`Failed to upsert highlight ${h.id}: ${e2?.message}`);
       }
     }
-
-    console.log(`Upserted ${upsertedCount} highlights`);
-    return res.json({ upsertedCount });
-  } catch (error) {
-    console.error("Highlights sync failed:", error.message);
-    return res.json({ error: error.message }, 500);
+    upserted++;
   }
-}
 
-async function checkCricbuzzForLiveMatches(today) {
-  const rapidApiKey = process.env.RAPIDAPI_KEY;
+  // ── Persist fetch state for midnight reset tracking ─────────────────────
+  if (META_COL_ID) {
+    const metaPayload = { fetch_date: today, last_fetch_at: now };
+    try {
+      await db.updateDocument(HIGHLIGHTS_DB_ID, META_COL_ID, "fetch-state", metaPayload);
+    } catch (_) {
+      await db.createDocument(HIGHLIGHTS_DB_ID, META_COL_ID, "fetch-state", metaPayload).catch(() => {});
+    }
+  }
+
+  log(`Upserted ${upserted} highlights for ${today}`);
+  return res.json({ upserted, date: today });
+};
+
+async function checkForLiveOrRecentMatches(rapidApiKey, log, error) {
   if (!rapidApiKey) {
-    console.warn("RAPIDAPI_KEY not set; cannot check Cricbuzz");
-    return [];
+    log("RAPIDAPI_KEY not set — assuming live matches exist (fail-open)");
+    return true;
   }
 
   try {
-    // Determine appropriate Cricbuzz RapidAPI endpoint for live matches
-    // For now, assume endpoint returns matches with { id, status, endTime } fields
-    const url = "https://unofficial-cricbuzz.p.rapidapi.com/matches/live";
-    const options = {
-      method: "GET",
-      headers: {
-        "X-RapidAPI-Key": rapidApiKey,
-        "X-RapidAPI-Host": "unofficial-cricbuzz.p.rapidapi.com"
+    const response = await fetch(
+      "https://unofficial-cricbuzz.p.rapidapi.com/matches/live",
+      {
+        headers: {
+          "X-RapidAPI-Key": rapidApiKey,
+          "X-RapidAPI-Host": "unofficial-cricbuzz.p.rapidapi.com",
+        },
       }
-    };
+    );
 
-    const response = await fetch(url, options);
     if (!response.ok) {
-      console.warn(`Cricbuzz API returned ${response.status}`);
-      return [];
+      log(`Cricbuzz API returned ${response.status} — proceeding (fail-open)`);
+      return true;
     }
 
     const data = await response.json();
-    if (!Array.isArray(data)) return [];
-
     const now = Date.now();
-    const twoHoursAgo = now - 2 * 60 * 60 * 1000;
+    const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
 
-    // Filter live matches or recently completed (within 2 hours)
-    return data.filter(m => {
-      if (m.status === "live" || m.status === "Live") return true;
-      if (m.status === "completed" || m.status === "Completed") {
-        const endTime = m.endTime ? new Date(m.endTime).getTime() : 0;
-        return endTime > twoHoursAgo;
+    // Parse both flat arrays and Cricbuzz's nested typeMatches structure
+    const matches = extractMatches(data);
+    return matches.some(m => {
+      const state = (m.state ?? m.status ?? "").toLowerCase();
+      if (state === "in progress" || state === "live") return true;
+      if (state === "complete" || state === "completed") {
+        const endTime = Number(m.endDate ?? m.endTime ?? 0);
+        return (now - endTime) < TWO_HOURS_MS;
       }
       return false;
     });
-  } catch (error) {
-    console.error("Cricbuzz check failed:", error.message);
-    return [];
+  } catch (e) {
+    error(`Cricbuzz check failed: ${e?.message} — proceeding (fail-open)`);
+    return true;
   }
 }
 
-async function fetchHighlightlyHighlights(today) {
-  const rapidApiKey = process.env.RAPIDAPI_KEY;
-  const highlightlyApiKey = process.env.HIGHLIGHTLY_API_KEY;
-  if (!rapidApiKey || !highlightlyApiKey) {
-    console.warn("API keys not set");
+function extractMatches(data) {
+  // Handle flat array
+  if (Array.isArray(data)) return data;
+  // Handle Cricbuzz nested: { typeMatches: [{ seriesMatches: [{ seriesAdWrapper: { matches: [] } }] }] }
+  const results = [];
+  for (const type of (data.typeMatches ?? [])) {
+    for (const series of (type.seriesMatches ?? [])) {
+      for (const match of (series.seriesAdWrapper?.matches ?? [])) {
+        const info = match.matchInfo ?? match;
+        results.push(info);
+      }
+    }
+  }
+  return results;
+}
+
+async function fetchHighlights(today, highlightlyApiKey, log, error) {
+  if (!highlightlyApiKey) {
+    error("HIGHLIGHTLY_API_KEY not set — cannot fetch highlights");
     return [];
   }
 
   try {
-    const url = `https://cricket-highlights-api.p.rapidapi.com/highlights?date=${today}`;
-    const options = {
-      method: "GET",
-      headers: {
-        "X-RapidAPI-Key": rapidApiKey,
-        "X-RapidAPI-Host": "cricket-highlights-api.p.rapidapi.com"
+    const response = await fetch(
+      `https://cricket-highlights-api.p.rapidapi.com/highlights?date=${today}`,
+      {
+        headers: {
+          "X-RapidAPI-Key": highlightlyApiKey,
+          "X-RapidAPI-Host": "cricket-highlights-api.p.rapidapi.com",
+        },
       }
-    };
+    );
 
-    const response = await fetch(url, options);
     if (!response.ok) {
-      console.warn(`Highlightly API returned ${response.status}`);
+      error(`Highlightly API returned ${response.status}`);
       return [];
     }
 
     const data = await response.json();
-    return Array.isArray(data) ? data : data.highlights || [];
-  } catch (error) {
-    console.error("Highlightly fetch failed:", error.message);
+    return Array.isArray(data) ? data : (data.highlights ?? []);
+  } catch (e) {
+    error(`Highlightly fetch failed: ${e?.message}`);
     return [];
   }
 }
 
-function highlightToDocument(highlight) {
+function buildPayload(h, now) {
   return {
-    highlight_id: String(highlight.id),
-    data: {
-      highlight_id: String(highlight.id),
-      type: highlight.type || "UNVERIFIED",
-      img_url: highlight.imgUrl || "",
-      title: highlight.title || "",
-      url: highlight.url || "",
-      embed_url: highlight.embedUrl || null,
-      channel: highlight.channel || "",
-      source: highlight.source || "",
-      match_home_team: highlight.match?.homeTeam?.name || "",
-      match_away_team: highlight.match?.awayTeam?.name || "",
-      match_home_abbr: highlight.match?.homeTeam?.abbreviation || "",
-      match_away_abbr: highlight.match?.awayTeam?.abbreviation || "",
-      match_league_name: highlight.match?.league?.name || "",
-      match_league_season: highlight.match?.league?.season || 0,
-      match_start_date: highlight.match?.startDate || "",
-      match_end_date: highlight.match?.endDate || "",
-      raw_match_id: highlight.match?.id || "",
-      fetched_at: Date.now()
-    }
+    highlight_id: String(h.id),
+    type: h.type ?? "UNVERIFIED",
+    img_url: h.imgUrl ?? "",
+    title: h.title ?? "",
+    url: h.url ?? "",
+    embed_url: h.embedUrl?.trim() || null,
+    channel: h.channel ?? "",
+    source: h.source ?? "",
+    match_home_team: h.match?.homeTeam?.name ?? "",
+    match_away_team: h.match?.awayTeam?.name ?? "",
+    match_home_abbr: h.match?.homeTeam?.abbreviation ?? "",
+    match_away_abbr: h.match?.awayTeam?.abbreviation ?? "",
+    match_league_name: h.match?.league?.name ?? "",
+    match_league_season: h.match?.league?.season ?? 0,
+    match_start_date: h.match?.startDate ?? "",
+    match_end_date: h.match?.endDate ?? "",
+    raw_match_id: h.match?.id ?? "",
+    fetched_at: now,
   };
 }

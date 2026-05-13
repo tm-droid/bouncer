@@ -171,6 +171,7 @@ dependencies {
     implementation(libs.okhttp.logging)
     implementation(libs.coil.compose)
     implementation(libs.jsoup)
+    implementation(libs.appwrite)
 
     // UI & Layout
     implementation(libs.palette)

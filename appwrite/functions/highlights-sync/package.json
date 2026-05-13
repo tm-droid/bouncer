@@ -8,6 +8,7 @@
     "node": "20"
   },
   "dependencies": {
+    "node-appwrite": "^14.0.0",
     "node-fetch": "^3.3.0"
   }
 }

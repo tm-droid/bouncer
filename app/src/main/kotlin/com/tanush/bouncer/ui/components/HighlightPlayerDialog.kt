@@ -49,9 +49,7 @@ fun HighlightPlayerDialog(
                     }
                 },
                 modifier = Modifier.fillMaxSize()
-            ) { webView ->
-                webView.loadUrl(videoUrl)
-            }
+            )
 
             DisposableEffect(highlight.id) {
                 onDispose {

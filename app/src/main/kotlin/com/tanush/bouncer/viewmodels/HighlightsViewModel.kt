@@ -28,7 +28,7 @@ class HighlightsViewModel(context: Context, val bouncerMatchId: String) : ViewMo
         viewModelScope.launch {
             when (val result = repo.fetchForMatch(bouncerMatchId)) {
                 is AppResult.Success -> {
-                    _highlights.value = result.data.sortedWith(compareBy({ it.type }, { -it.fetchedAt }))
+                    _highlights.value = result.data.sortedWith(compareBy({ if (it.type == "VERIFIED") 0 else 1 }, { -it.fetchedAt }))
                 }
                 is AppResult.Error -> {
                     _highlights.value = emptyList()
