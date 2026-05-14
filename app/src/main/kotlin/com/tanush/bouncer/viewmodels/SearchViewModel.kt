@@ -4,8 +4,10 @@ import android.app.Application
 import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.tanush.bouncer.data.AppResult
 import com.tanush.bouncer.data.SearchRepository
 import com.tanush.bouncer.data.local.BouncerDatabase
+import io.sentry.Sentry
 import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.models.NewsArticleData
 import kotlinx.coroutines.Job
@@ -54,8 +56,18 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
                 val teamNames = matches.flatMap { m -> m.teams.map { it.name } }.distinct()
                 // Run live search and DB search concurrently
                 val liveResults = SearchRepository.search(newQuery, matches, news, teamNames)
-                val (dbSeries, dbHistorical) = SearchRepository.searchFromDb(newQuery, db)
-                val dbPlayers = SearchRepository.searchPlayersFromDb(newQuery, db)
+
+                val dbFromResult = SearchRepository.searchFromDb(newQuery, db)
+                val (dbSeries, dbHistorical) = when (dbFromResult) {
+                    is AppResult.Success -> dbFromResult.data
+                    is AppResult.Error -> { Sentry.captureException(dbFromResult.exception); Pair(emptyList(), emptyList()) }
+                    is AppResult.Loading -> Pair(emptyList(), emptyList())
+                }
+
+                val dbPlayers = SearchRepository.searchPlayersFromDb(newQuery, db).let { result ->
+                    if (result is AppResult.Error) Sentry.captureException(result.exception)
+                    result.getOrDefault(emptyList())
+                }
 
                 // Merge DB players with live players (deduplicate by name)
                 val livePlayerNames = liveResults.players.map { it.playerName }.toSet()

@@ -37,9 +37,9 @@ class ScoreListScreen(carContext: CarContext) : Screen(carContext) {
                     errorMessage = null
                     invalidate()
                 }
-                .onFailure { throwable ->
-                    Sentry.captureException(throwable)
-                    errorMessage = throwable.localizedMessage ?: "Failed to load matches"
+                .onError { e, _ ->
+                    Sentry.captureException(e)
+                    errorMessage = e.userMessage
                     matches = null
                     invalidate()
                 }

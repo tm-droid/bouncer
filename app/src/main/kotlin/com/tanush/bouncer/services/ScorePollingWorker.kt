@@ -10,11 +10,13 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.work.*
 import com.tanush.bouncer.R
+import com.tanush.bouncer.data.AppResult
 import com.tanush.bouncer.data.CricketRepository
 import com.tanush.bouncer.managers.MatchSubscriptionManager
 import com.tanush.bouncer.ui.notifications.RichNotificationBuilder
 import com.tanush.bouncer.ui.widgets.LiveMatchWidgetProvider
 import com.tanush.bouncer.ui.widgets.WidgetUpdateWorker
+import com.tanush.bouncer.utils.WorkerLogger
 import io.sentry.Breadcrumb
 import io.sentry.Sentry
 import io.sentry.SentryLevel
@@ -39,25 +41,17 @@ class ScorePollingWorker(
         })
 
         return try {
-            val response = CricketRepository.getMatches("live")
-
-            response.fold(
-                onSuccess = { matchesResponse ->
+            when (val response = CricketRepository.getMatches("live")) {
+                is AppResult.Success -> {
+                    val matchesResponse = response.data
                     val matchCount = matchesResponse.matches.size
                     Log.d(TAG, "Fetched $matchCount live matches")
 
-                    // Persist minimal data for widgets
                     cacheForWidgets(matchesResponse.matches.size)
-
-                    // Trigger widget refresh
                     WidgetUpdateWorker.triggerImmediateUpdate(context)
-
-                    // Notify other components via local broadcast
                     context.sendBroadcast(
                         Intent(ACTION_SCORES_UPDATED).setPackage(context.packageName)
                     )
-
-                    // Background OS notifications for subscribed matches
                     notifySubscribedMatches(matchesResponse.matches)
 
                     Sentry.addBreadcrumb(Breadcrumb().apply {
@@ -68,25 +62,21 @@ class ScorePollingWorker(
 
                     // Adaptive polling: chain a 5-min follow-up while live matches exist.
                     // When no live matches, the chain stops and 15-min periodic takes over.
-                    if (matchCount > 0) {
-                        enqueueLiveFollowUp(context)
-                    }
+                    if (matchCount > 0) enqueueLiveFollowUp(context)
 
-                    Result.success(
-                        workDataOf("match_count" to matchCount)
-                    )
-                },
-                onFailure = { error ->
-                    Log.e(TAG, "Poll failed", error)
+                    Result.success(workDataOf("match_count" to matchCount))
+                }
+                is AppResult.Error -> {
+                    Log.e(TAG, "Poll failed", response.exception)
                     Sentry.addBreadcrumb(Breadcrumb().apply {
                         category = "score_polling"
-                        message = "Poll failed: ${error.message}"
+                        message = "Poll failed: ${response.exception.message}"
                         level = SentryLevel.ERROR
                     })
-                    // Retry up to 3 times, then give up until next period
                     if (runAttemptCount < MAX_RETRIES) Result.retry() else Result.failure()
                 }
-            )
+                is AppResult.Loading -> if (runAttemptCount < MAX_RETRIES) Result.retry() else Result.failure()
+            }
         } catch (e: Exception) {
             Log.e(TAG, "Unexpected error in ScorePollingWorker", e)
             Sentry.captureException(e)
@@ -171,12 +161,7 @@ class ScorePollingWorker(
                 request
             )
 
-            Log.d(TAG, "Periodic score polling enqueued")
-            Sentry.addBreadcrumb(Breadcrumb().apply {
-                category = "score_polling"
-                message = "Periodic work enqueued (15 min)"
-                level = SentryLevel.INFO
-            })
+            WorkerLogger.enqueued("score_polling", "Periodic work enqueued (15 min)")
         }
 
         /**
@@ -191,12 +176,7 @@ class ScorePollingWorker(
 
             WorkManager.getInstance(context).enqueue(request)
 
-            Log.d(TAG, "One-time score poll enqueued")
-            Sentry.addBreadcrumb(Breadcrumb().apply {
-                category = "score_polling"
-                message = "One-time work enqueued"
-                level = SentryLevel.INFO
-            })
+            WorkerLogger.enqueued("score_polling", "One-time work enqueued")
         }
 
         /**

@@ -3,6 +3,7 @@ package com.tanush.bouncer.ui
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -22,9 +23,9 @@ fun McpDemoScreen(
     var echoInput by remember { mutableStateOf("") }
     var searchInput by remember { mutableStateOf("") }
     var analyzeInput by remember { mutableStateOf("") }
-    val echoResult by vm.echoResult.collectAsState()
-    val searchResult by vm.searchResult.collectAsState()
-    val analyzeResult by vm.analyzeResult.collectAsState()
+    val echoResult by vm.echoResult.collectAsStateWithLifecycle()
+    val searchResult by vm.searchResult.collectAsStateWithLifecycle()
+    val analyzeResult by vm.analyzeResult.collectAsStateWithLifecycle()
 
     var loading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf("") }

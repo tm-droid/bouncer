@@ -90,6 +90,8 @@ object PerformanceUtils {
             } catch (e: Exception) {
                 Sentry.captureException(e)
                 throw e
+            } finally {
+                debounceJobs.remove(key)
             }
         }
     }

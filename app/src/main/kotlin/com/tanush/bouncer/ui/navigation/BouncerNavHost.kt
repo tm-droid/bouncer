@@ -8,6 +8,7 @@ import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.ui.HomeScreenV2
 import com.tanush.bouncer.ui.MatchDetailViewV2
@@ -242,8 +243,8 @@ private fun NavGraphBuilder.moreChildDestinations(
 ) {
     // Search
     composable(BouncerScreen.Search.route) {
-        val currentMatches by liveActivityViewModel.currentMatches.collectAsState()
-        val news by newsViewModel.articles.collectAsState()
+        val currentMatches by liveActivityViewModel.currentMatches.collectAsStateWithLifecycle()
+        val news by newsViewModel.articles.collectAsStateWithLifecycle()
 
         SearchScreen(
             matches = currentMatches,
@@ -388,7 +389,7 @@ private fun NavGraphBuilder.parameterizedDestinations(
         val articleId = backStackEntry.arguments?.getString(BouncerScreen.NewsDetail.ARG_ARTICLE_ID)
             ?.decodeUrlSafe() ?: return@composable
 
-        val selectedArticle by newsViewModel.selectedArticle.collectAsState()
+        val selectedArticle by newsViewModel.selectedArticle.collectAsStateWithLifecycle()
 
         selectedArticle?.let {
             NewsDetailScreenV2(
@@ -432,7 +433,7 @@ private fun NavGraphBuilder.parameterizedDestinations(
         val matchId = backStackEntry.arguments?.getString(BouncerScreen.MatchDetail.ARG_MATCH_ID)
             ?.decodeUrlSafe() ?: return@composable
 
-        val matches by liveActivityViewModel.currentMatches.collectAsState()
+        val matches by liveActivityViewModel.currentMatches.collectAsStateWithLifecycle()
         val match = matches.firstOrNull { it.id == matchId }
 
         if (match != null) {

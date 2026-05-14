@@ -22,7 +22,7 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -42,7 +42,7 @@ fun MatchContextMenuSheet(
     val spacing = BouncerThemeV2.spacing
     val sheetState = rememberModalBottomSheetState()
 
-    val favorites by FavouriteTeamsManager.favourites.collectAsState()
+    val favorites by FavouriteTeamsManager.favourites.collectAsStateWithLifecycle()
     val isFavorite = match.teams.any { team -> favorites.contains(team.name) }
 
     ModalBottomSheet(

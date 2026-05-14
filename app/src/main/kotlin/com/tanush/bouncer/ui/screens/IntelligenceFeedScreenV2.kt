@@ -26,7 +26,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -56,7 +56,7 @@ fun IntelligenceFeedScreenV2(
     val spacing = BouncerThemeV2.spacing
 
     // Build alerts from ViewModel probability events
-    val probabilityEvents by liveActivityViewModel?.probabilityEvents?.collectAsState()
+    val probabilityEvents by liveActivityViewModel?.probabilityEvents?.collectAsStateWithLifecycle()
         ?: androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(emptyMap()) }
 
     val alerts = buildList {

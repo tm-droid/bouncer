@@ -11,6 +11,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -152,7 +153,7 @@ fun MainAppContainer(
     val currentRoute = navBackStackEntry?.destination?.route
 
     // Determine if viewModel has live matches for badge
-    val currentMatches by viewModel.currentMatches.collectAsState()
+    val currentMatches by viewModel.currentMatches.collectAsStateWithLifecycle()
 
     LaunchedEffect(externalDeepLinkUri, currentMatches) {
         val incomingLink = externalDeepLinkUri?.takeIf { it.isNotBlank() } ?: return@LaunchedEffect

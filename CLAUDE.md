@@ -40,11 +40,11 @@ app/src/main/kotlin/com/tanush/bouncer/
 │   ├── theme/          # Material3 theme
 │   └── adaptive/       # Window-size-class layouts
 ├── viewmodels/         # MVVM ViewModels (no Hilt — manual construction)
-├── services/           # FCM, CommentaryFusion, LiveCommentary, WebSocket, Workers
-├── managers/           # Singleton managers (TeamLogo, Acronym, Favourites, Widget)
+├── services/           # FCM, CommentaryFusion, LiveCommentary, WebSocket, Workers, AICacheService
+├── managers/           # Singleton managers (TeamLogo, Acronym, Favourites, MatchSubscription, NotificationInbox)
 ├── network/            # Retrofit + Jsoup scrapers (CricBuzz, CricInfo, Series, Squad)
 ├── data/               # Room DB, repositories, AppResult<T> monad
-│   └── remote/         # Appwrite sync objects (AppwriteAICache, AppwriteFavouritesSync)
+│   └── remote/         # Appwrite: AppwriteClient (singleton), AppwriteAICache, AppwriteHighlightsClient, AppwriteFavouritesSync
 ├── models/             # Data models and entities
 ├── analysis/           # Cricket analysis + ML models (score prediction, win probability)
 ├── auto/               # Android Auto (BouncerCarAppService)
@@ -54,13 +54,15 @@ app/src/main/kotlin/com/tanush/bouncer/
 └── logic/              # Match simulation + game logic
 ```
 
+**Appwrite cloud functions** live in `appwrite/functions/` (Node.js, deployed via Appwrite CLI). `appwrite/appwrite.config.json` defines project-level config. The `highlights-sync` function runs on a 15-min schedule; endpoint/projectId are auto-injected by the runtime — only `APPWRITE_API_KEY` and DB/collection IDs need manual env vars.
+
 **No dependency injection framework.** ViewModels are constructed manually; managers use `object` singletons initialized in `BouncerApp.onCreate`.
 
 **Error handling:** `AppResult<T>` monad (`data/AppResult.kt`) wraps success/failure. Use it for all repository return types.
 
 **Navigation:** Single `BouncerNavHost` with Compose Navigation. Deep link entry via `bouncer://match/{matchId}`.
 
-**Live data flow:** `LiveScoreWebSocketClient` → `LiveCommentaryManager` → `CommentaryFusionService` (OpenRouter, multi-model fallback) + `BallCommentaryService` (Groq → Cerebras → SambaNova per-ball) → UI via StateFlow.
+**Live data flow:** `LiveScoreWebSocketClient` → `LiveCommentaryManager` → `CommentaryFusionService` (OpenRouter, multi-model fallback) + `BallCommentaryService` (Groq → Cerebras → SambaNova per-ball) → UI via StateFlow. `AICacheService` warms cache from Appwrite Realtime events.
 
 **API keys:** Always access via `ApiKeys` object (`ApiKeys.kt`), never `BuildConfig` directly. Add new keys to `ApiKeys.kt` + `build.gradle.kts` + `local.properties.template`.
 
@@ -77,6 +79,7 @@ app/src/main/kotlin/com/tanush/bouncer/
 - **Ktor CIO**: WebSocket client for live score stream
 - **Kotlin Symbol Processing (KSP)**: Code generation for Room
 - **Android Auto**: `BouncerCarAppService` for car display
+- **Appwrite Android SDK** (`io.appwrite:sdk-for-android`): Realtime subscriptions, TablesDB sync — endpoint `https://sgp.cloud.appwrite.io/v1`, project `6a02f7f3000e6e100b19`
 
 ## Common Tasks & Skills
 
@@ -97,6 +100,7 @@ app/src/main/kotlin/com/tanush/bouncer/
 - **Compose**: Stateless components, modifiers for layout, remember/derivedStateOf for state
 - **Naming**: camelCase for functions/variables, PascalCase for types
 - **Comments**: Only for non-obvious logic (WHY, not WHAT)
+- **V2 screens**: Most screens have `V1` (legacy) and `V2` (active) variants. `V2` is the current implementation; `V1` files are kept but unused.
 
 ---
 

@@ -41,6 +41,7 @@ object FavouriteTeamsManager {
         get() = _favourites.value.size >= MAX_FAVOURITES
 
     fun initialize(context: Context) {
+        if (::prefs.isInitialized) return
         try {
             prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
             _favourites.value = load()

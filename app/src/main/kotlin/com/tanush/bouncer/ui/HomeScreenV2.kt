@@ -22,7 +22,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -61,13 +61,13 @@ fun HomeScreenV2(
     onSearchClick: () -> Unit = {},
     onNotificationsClick: () -> Unit = {},
 ) {
-    val selectedStatus by viewModel.selectedStatus.collectAsState()
-    val selectedCompetitionType by viewModel.selectedCompetitionType.collectAsState()
-    val currentMatches by viewModel.currentMatches.collectAsState()
-    val isLoading by viewModel.isLoading.collectAsState()
-    val isRefreshing by viewModel.isRefreshing.collectAsState()
-    val unreadCount by NotificationInboxManager.unreadCount.collectAsState()
-    val subscriptions by MatchSubscriptionManager.subscriptions.collectAsState()
+    val selectedStatus by viewModel.selectedStatus.collectAsStateWithLifecycle()
+    val selectedCompetitionType by viewModel.selectedCompetitionType.collectAsStateWithLifecycle()
+    val currentMatches by viewModel.currentMatches.collectAsStateWithLifecycle()
+    val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
+    val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
+    val unreadCount by NotificationInboxManager.unreadCount.collectAsStateWithLifecycle()
+    val subscriptions by MatchSubscriptionManager.subscriptions.collectAsStateWithLifecycle()
     val isOffline = rememberIsOffline()
 
     val spacing = BouncerThemeV2.spacing

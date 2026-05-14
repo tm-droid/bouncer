@@ -6,6 +6,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -25,7 +26,7 @@ fun DevToolsScreen(
 ) {
     val vm: McpViewModel = viewModel()
     var echoInput by remember { mutableStateOf("ping") }
-    val echoResult by vm.echoResult.collectAsState()
+    val echoResult by vm.echoResult.collectAsStateWithLifecycle()
     var busy by remember { mutableStateOf(false) }
 
     val context = LocalContext.current

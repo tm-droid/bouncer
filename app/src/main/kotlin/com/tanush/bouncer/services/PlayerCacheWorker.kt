@@ -6,6 +6,7 @@ import androidx.work.*
 import com.tanush.bouncer.data.local.BouncerDatabase
 import com.tanush.bouncer.data.local.entities.PlayerCacheEntity
 import com.tanush.bouncer.network.PlayerProfileScraper
+import com.tanush.bouncer.utils.WorkerLogger
 import io.sentry.Breadcrumb
 import io.sentry.Sentry
 import io.sentry.SentryLevel
@@ -165,12 +166,7 @@ class PlayerCacheWorker(
                 request
             )
 
-            Log.d(TAG, "Player cache work enqueued for '$playerName'")
-            Sentry.addBreadcrumb(Breadcrumb().apply {
-                category = "player_cache"
-                message = "One-time work enqueued for '$playerName'"
-                level = SentryLevel.INFO
-            })
+            WorkerLogger.enqueued("player_cache", "One-time work enqueued for '$playerName'")
         }
     }
 }

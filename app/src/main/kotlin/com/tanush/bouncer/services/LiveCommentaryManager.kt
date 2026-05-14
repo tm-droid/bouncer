@@ -17,6 +17,9 @@ import java.util.regex.Pattern
 import kotlin.math.max
 import kotlin.math.min
 
+private val BALL_PREFIX_REGEX = Regex("^\\d+\\.\\d.*")
+private val BALL_NUMBER_PATTERN: Pattern = Pattern.compile("^(\\d{1,3}\\.\\d)")
+
 class LiveCommentaryManager(
     private val summarizer: suspend (List<String>, String, Int) -> String = { lines, matchId, over -> CommentaryFusionService().summarizeOversWithAI(lines, matchId, over) }
 ) {
@@ -147,7 +150,7 @@ class LiveCommentaryManager(
         }
 
         // Ensure the returned string starts with the ball number so the UI can parse over.ball
-        val prefixed = if (ballNumber.isNotEmpty() && !resultValue.trimStart().matches(Regex("^\\d+\\.\\d.*"))) {
+        val prefixed = if (ballNumber.isNotEmpty() && !resultValue.trimStart().matches(BALL_PREFIX_REGEX)) {
             "$ballNumber $resultValue"
         } else resultValue
         return prefixed
@@ -194,7 +197,7 @@ class LiveCommentaryManager(
         val aiEntry = if (ballNum != null && scorer.isBallByBallCommentary(resultValue)) {
             try {
                 val raw = fusion.generateBallCommentary(cricbuzzId, ballNum, resultValue.take(200))
-                if (!raw.trimStart().matches(Regex("^\\d+\\.\\d.*"))) "$ballNum $raw" else raw
+                if (!raw.trimStart().matches(BALL_PREFIX_REGEX)) "$ballNum $raw" else raw
             } catch (e: Exception) {
                 Sentry.captureException(e)
                 "$ballNum ${CommentaryFusionService.FALLBACK_BALL_COMMENTARY}"
@@ -245,7 +248,7 @@ class LiveCommentaryManager(
             Sentry.captureException(e)
             buzzLine
         }
-        return if (singleBallNumber.isNotEmpty() && !fusionResult.trimStart().matches(Regex("^\\d+\\.\\d.*"))) {
+        return if (singleBallNumber.isNotEmpty() && !fusionResult.trimStart().matches(BALL_PREFIX_REGEX)) {
             "$singleBallNumber $fusionResult"
         } else fusionResult
     }
@@ -312,8 +315,7 @@ class LiveCommentaryManager(
     }
 
     private fun extractBallNumber(text: String): String? {
-        val pattern = Pattern.compile("^(\\d{1,3}\\.\\d)")
-        val matcher = pattern.matcher(text)
+        val matcher = BALL_NUMBER_PATTERN.matcher(text)
         return if (matcher.find()) matcher.group(1) else null
     }
 

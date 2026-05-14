@@ -1,14 +1,16 @@
 package com.tanush.bouncer.services
 
 import android.util.Log
+import com.tanush.bouncer.data.CacheConfig
 import com.tanush.bouncer.data.local.dao.AICacheDao
 import com.tanush.bouncer.data.local.entities.AICommentaryCacheEntity
 import com.tanush.bouncer.data.remote.AppwriteAICache
 import io.sentry.Breadcrumb
 import io.sentry.Sentry
 import io.sentry.SentryLevel
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -16,6 +18,7 @@ import java.util.Date
 
 object AICacheService {
     private const val TAG = "AICacheService"
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val mutex = Mutex()
     private val cache = mutableMapOf<String, CommentaryEntry>()
     private var dao: AICacheDao? = null
@@ -25,12 +28,12 @@ object AICacheService {
         val timestamp: Date
     )
 
-    private const val CACHE_EXPIRATION_INTERVAL_MS = 3600_000L // 1 hour
+    private val CACHE_EXPIRATION_INTERVAL_MS = CacheConfig.AI_CACHE_TTL_MS
 
     fun initialize(dao: AICacheDao) {
         this.dao = dao
         // Prune stale DB entries from previous sessions at startup
-        GlobalScope.launch(Dispatchers.IO) {
+        scope.launch {
             runCatching {
                 dao.deleteExpired(System.currentTimeMillis() - CACHE_EXPIRATION_INTERVAL_MS)
             }.onFailure { e ->
@@ -99,7 +102,7 @@ object AICacheService {
             Log.d(TAG, "Updating cache for key $key")
             cache[key] = CommentaryEntry(commentary, now)
             dao?.insert(AICommentaryCacheEntity(key, commentary, now.time))
-            GlobalScope.launch(Dispatchers.IO) {
+            scope.launch {
                 AppwriteAICache.set(key, commentary)
             }
         } catch (e: Exception) {

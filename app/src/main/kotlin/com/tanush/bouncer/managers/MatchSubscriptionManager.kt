@@ -22,6 +22,7 @@ object MatchSubscriptionManager {
     val subscriptions: StateFlow<Set<String>> = _subscriptions.asStateFlow()
 
     fun initialize(context: Context) {
+        if (::prefs.isInitialized) return
         try {
             prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             _subscriptions.value = load()

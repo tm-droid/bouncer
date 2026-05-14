@@ -13,7 +13,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
@@ -33,9 +33,9 @@ fun NewsDetailScreenV2(
     viewModel: NewsViewModel,
     onBack: () -> Unit,
 ) {
-    val selectedArticle by viewModel.selectedArticle.collectAsState()
-    val articleBody by viewModel.articleBody.collectAsState()
-    val isLoadingArticle by viewModel.isLoadingArticle.collectAsState()
+    val selectedArticle by viewModel.selectedArticle.collectAsStateWithLifecycle()
+    val articleBody by viewModel.articleBody.collectAsStateWithLifecycle()
+    val isLoadingArticle by viewModel.isLoadingArticle.collectAsStateWithLifecycle()
 
     val colors = BouncerThemeV2.colors
     val typography = BouncerThemeV2.typography

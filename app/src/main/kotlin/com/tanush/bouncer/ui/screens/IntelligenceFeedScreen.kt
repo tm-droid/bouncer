@@ -21,6 +21,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.viewmodels.LiveActivityViewModel
 import com.tanush.bouncer.ui.components.GlassCard
@@ -55,9 +56,9 @@ fun IntelligenceFeedScreen(
     val hierarchy = BouncerDesignSystem.hierarchy
 
     // Derive alerts from real match data
-    val vmEvents by liveActivityViewModel?.probabilityEvents?.collectAsState()
+    val vmEvents by liveActivityViewModel?.probabilityEvents?.collectAsStateWithLifecycle()
         ?: remember { mutableStateOf(emptyMap()) }
-    val aiCommentary by liveActivityViewModel?.aiCommentary?.collectAsState()
+    val aiCommentary by liveActivityViewModel?.aiCommentary?.collectAsStateWithLifecycle()
         ?: remember { mutableStateOf(emptyMap()) }
 
     val alerts = remember(match, vmEvents, aiCommentary) {

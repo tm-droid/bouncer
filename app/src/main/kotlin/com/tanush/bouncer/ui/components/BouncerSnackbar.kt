@@ -25,6 +25,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
@@ -58,7 +59,7 @@ class BouncerSnackbarHostState {
 
     val currentSnackbar: State<BouncerSnackbarData?>
         @Composable get() {
-            val list by queue.collectAsState()
+            val list by queue.collectAsStateWithLifecycle()
             return remember { derivedStateOf { list.firstOrNull() } }
         }
 

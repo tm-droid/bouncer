@@ -122,64 +122,55 @@ object SearchRepository {
     suspend fun searchFromDb(
         query: String,
         db: com.tanush.bouncer.data.local.BouncerDatabase,
-    ): Pair<List<SearchResult.SeriesResult>, List<SearchResult.HistoricalMatchResult>> = withContext(Dispatchers.IO) {
-        if (query.trim().length < 2) return@withContext Pair(emptyList(), emptyList())
-
-        // Build FTS query — wrap in quotes to search as a phrase, escape internal quotes
+    ): AppResult<Pair<List<SearchResult.SeriesResult>, List<SearchResult.HistoricalMatchResult>>> {
+        if (query.trim().length < 2) return AppResult.Success(Pair(emptyList(), emptyList()))
         val ftsQuery = "\"${query.trim().replace("\"", "\"\"")}\""
-
-        val seriesResults = try {
-            db.seriesCacheDao().searchSeries(ftsQuery).map { entity ->
-                SearchResult.SeriesResult(
-                    seriesId = entity.seriesId,
-                    name = entity.name,
-                    category = entity.category,
-                    startDate = entity.startDate,
-                    endDate = entity.endDate,
-                    relevanceScore = 1.0,
-                )
+        return AppResult.runCatchingSuspend {
+            withContext(Dispatchers.IO) {
+                val seriesResults = db.seriesCacheDao().searchSeries(ftsQuery).map { entity ->
+                    SearchResult.SeriesResult(
+                        seriesId = entity.seriesId,
+                        name = entity.name,
+                        category = entity.category,
+                        startDate = entity.startDate,
+                        endDate = entity.endDate,
+                        relevanceScore = 1.0,
+                    )
+                }
+                val historicalResults = db.historicalMatchCacheDao().searchHistoricalMatches(ftsQuery).map { entity ->
+                    SearchResult.HistoricalMatchResult(
+                        matchId = entity.matchId,
+                        matchTitle = entity.matchTitle,
+                        teams = entity.teams.split(",").map { it.trim() }.filter { it.isNotEmpty() },
+                        venue = entity.venue,
+                        date = entity.date,
+                        season = entity.season,
+                        matchType = entity.matchType,
+                        relevanceScore = 1.0,
+                    )
+                }
+                Pair(seriesResults, historicalResults)
             }
-        } catch (e: Exception) {
-            emptyList()
         }
-
-        val historicalResults = try {
-            db.historicalMatchCacheDao().searchHistoricalMatches(ftsQuery).map { entity ->
-                SearchResult.HistoricalMatchResult(
-                    matchId = entity.matchId,
-                    matchTitle = entity.matchTitle,
-                    teams = entity.teams.split(",").map { it.trim() }.filter { it.isNotEmpty() },
-                    venue = entity.venue,
-                    date = entity.date,
-                    season = entity.season,
-                    matchType = entity.matchType,
-                    relevanceScore = 1.0,
-                )
-            }
-        } catch (e: Exception) {
-            emptyList()
-        }
-
-        Pair(seriesResults, historicalResults)
     }
 
     suspend fun searchPlayersFromDb(
         query: String,
         db: com.tanush.bouncer.data.local.BouncerDatabase,
-    ): List<SearchResult.PlayerResult> = withContext(Dispatchers.IO) {
-        if (query.trim().length < 2) return@withContext emptyList()
+    ): AppResult<List<SearchResult.PlayerResult>> {
+        if (query.trim().length < 2) return AppResult.Success(emptyList())
         val ftsQuery = "\"${query.trim().replace("\"", "\"\"")}\""
-        return@withContext try {
-            db.playerCacheDao().searchPlayers(ftsQuery).map { entity ->
-                SearchResult.PlayerResult(
-                    playerName = entity.name,
-                    teamName = entity.teamName,
-                    role = entity.role,
-                    relevanceScore = 1.0,
-                )
+        return AppResult.runCatchingSuspend {
+            withContext(Dispatchers.IO) {
+                db.playerCacheDao().searchPlayers(ftsQuery).map { entity ->
+                    SearchResult.PlayerResult(
+                        playerName = entity.name,
+                        teamName = entity.teamName,
+                        role = entity.role,
+                        relevanceScore = 1.0,
+                    )
+                }
             }
-        } catch (e: Exception) {
-            emptyList()
         }
     }
 
