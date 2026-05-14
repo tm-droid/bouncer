@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "700295297623",
+    "project_id": "bouncer-84348c54",
+    "storage_bucket": "bouncer-84348c54.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:700295297623:android:2fc1a6f8697238a57a4112",
+        "android_client_info": {
+          "package_name": "com.tanush.bouncer"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBWiQ_cdXArCrvVwpsrVoI9Phtg2nLgkEs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
