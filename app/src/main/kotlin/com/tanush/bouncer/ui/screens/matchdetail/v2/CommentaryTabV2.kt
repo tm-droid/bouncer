@@ -7,9 +7,11 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -18,6 +20,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
@@ -203,13 +206,13 @@ fun CommentaryTabV2(
                         OverSeparatorCard(overNumber = over, balls = balls)
                     }
                     items(balls.size, key = { "ball_${over}_$it" }) { idx ->
-                        CommentaryLine(balls[idx])
+                        CommentaryLine(balls[idx], modifier = Modifier.animateItem())
                     }
                 }
             } else {
                 // Filtered views: flat list without separators
                 items(parsedBalls.size, key = { "comm_${selectedFilter}_$it" }) { idx ->
-                    CommentaryLine(parsedBalls[idx])
+                    CommentaryLine(parsedBalls[idx], modifier = Modifier.animateItem())
                 }
             }
 
@@ -229,7 +232,7 @@ private fun OverSeparatorCard(overNumber: Int, balls: List<ParsedBall>) {
     val totalRuns = balls.sumOf { it.runs }
     val isMaiden = totalRuns == 0 && balls.isNotEmpty() && balls.none { it.isWide || it.isNoBall }
 
-    Column(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = spacing.lg, vertical = spacing.sm),
@@ -303,7 +306,7 @@ private fun OverSeparatorCard(overNumber: Int, balls: List<ParsedBall>) {
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun CommentaryLine(ball: ParsedBall) {
+private fun CommentaryLine(ball: ParsedBall, modifier: Modifier = Modifier) {
     val colors = BouncerThemeV2.colors
     val typography = BouncerThemeV2.typography
     val spacing = BouncerThemeV2.spacing
@@ -318,7 +321,7 @@ private fun CommentaryLine(ball: ParsedBall) {
         else -> Color.Transparent
     }
 
-    Box {
+    Box(modifier = modifier) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
