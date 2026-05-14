@@ -31,6 +31,7 @@ class CommentaryScorer {
     
     // Regex pattern for ball number format (e.g., "0.1", "18.5", "45.6")
     private val ballNumberPattern = Regex("^\\d{1,2}\\.\\d\\s*[:,]?")
+    private val ballNumberLoosePattern = Regex("\\d{1,2}\\.\\d\\s")
     
     /**
      * Determines if the commentary is ball-by-ball content
@@ -51,7 +52,7 @@ class CommentaryScorer {
         
             // Check if it starts with or contains ball number format
             val hasBallNumber = ballNumberPattern.containsMatchIn(snippet) ||
-                               snippet.contains(Regex("\\d{1,2}\\.\\d\\s"))
+                               snippet.contains(ballNumberLoosePattern)
         
             // Check for typical ball-by-ball indicators
             val hasBallIndicators = lower.contains("to ") || // "bowler to batsman"

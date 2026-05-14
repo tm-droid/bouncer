@@ -9,6 +9,8 @@ import io.sentry.Breadcrumb
 
 object HighlightFallbackUrlBuilder {
     private const val TAG = "HighlightFallbackUrlBuilder"
+    private val NON_SLUG_CHARS = Regex("[^a-z0-9-]")
+    private val MULTI_DASH = Regex("-+")
 
     suspend fun buildFallbackUrl(
         highlight: HighlightEntity,
@@ -89,8 +91,8 @@ object HighlightFallbackUrlBuilder {
     private fun slugify(team: String): String {
         return team.lowercase()
             .replace(" ", "-")
-            .replace("[^a-z0-9-]".toRegex(), "")
-            .replace("-+".toRegex(), "-")
+            .replace(NON_SLUG_CHARS, "")
+            .replace(MULTI_DASH, "-")
             .trim('-')
     }
 }

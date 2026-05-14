@@ -15,6 +15,9 @@ interface HighlightDao {
     @Query("SELECT * FROM highlights WHERE matchedBouncerMatchId = :bouncerMatchId ORDER BY type DESC, fetchedAt DESC")
     fun queryByBouncerMatchId(bouncerMatchId: String): Flow<List<HighlightEntity>>
 
+    @Query("SELECT * FROM highlights WHERE matchedBouncerMatchId = :bouncerMatchId AND fetchedAt >= :freshnessCutoff ORDER BY type DESC, fetchedAt DESC")
+    suspend fun queryCachedByMatchId(bouncerMatchId: String, freshnessCutoff: Long): List<HighlightEntity>
+
     @Query("SELECT * FROM highlights ORDER BY fetchedAt DESC LIMIT 1000")
     suspend fun queryAllRecent(): List<HighlightEntity>
 

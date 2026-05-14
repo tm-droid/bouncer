@@ -8,9 +8,16 @@ Order matters for dependency + error isolation:
 2. **TeamLogoManager.initialize()** — Team branding assets
 3. **TeamAcronymManager.initialize()** — Team shorthand text
 4. **FavouriteTeamsManager.initialize()** — Restore persisted user favorites
-5. **MatchCacheService.initDiskCache()** — Initialize Room database + disk cache
-6. **CoilImageLoader** — Configure HTTP client + image loader (depends on cache service)
-7. **ScorePollingWorker.enqueuePeriodicWork()** — Schedule background score updates via WorkManager
+5. **MatchSubscriptionManager.initialize()** — FCM match subscription state (lightweight, no I/O)
+6. **MatchCacheService.initDiskCache()** — Initialize Room database + disk cache
+7. **AppwriteClient.initialize()** — Creates SDK singleton; sets `isReady = false` if keys blank
+8. **AppwriteClient.client?.ping()** — Fired on `Dispatchers.IO`; verifies connectivity
+9. **AppwriteAICache.initialize()** — Reads DB/table IDs, validates readiness
+10. **AppwriteHighlightsClient.initialize()** — Same pattern
+11. **NotificationInboxManager.initialize()** — Local notification inbox state
+12. **AppwriteRealtime subscriptions** — Subscribes highlights → Room upsert; AI cache → AICacheService.ingestFromRealtime
+13. **CoilImageLoader** — Configure HTTP client + image loader (depends on cache directory from step 6)
+14. **ScorePollingWorker.enqueuePeriodicWork()** — Schedule background score updates via WorkManager
 
 Each step wrapped in `initializeSafely()` block (try-catch + Sentry breadcrumb). If one manager fails, others still initialize.
 
@@ -31,8 +38,10 @@ Each step wrapped in `initializeSafely()` block (try-catch + Sentry breadcrumb).
 ## Why This Order
 
 - Exception handler first: catches initialization failures
-- Logo/Acronym managers early: lightweight, no I/O
-- MatchCacheService before CoilImageLoader: HTTP client config depends on cache directory setup
+- Logo/Acronym/MatchSubscription managers early: lightweight, no I/O
+- MatchCacheService before Appwrite: `AppwriteHighlightsClient` Realtime callback writes to Room DAO, needs DB initialized first
+- Appwrite inits before Realtime subscriptions: subscriptions reference already-initialized clients
+- CoilImageLoader after MatchCacheService: HTTP client config depends on cache directory setup
 - ScorePollingWorker last: depends on all services ready
 
 ## Failure Isolation

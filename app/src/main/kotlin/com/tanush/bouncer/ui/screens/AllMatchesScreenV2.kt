@@ -12,7 +12,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -37,16 +37,16 @@ fun AllMatchesScreenV2(
     viewModel: LiveActivityViewModel,
     onMatchClick: (CricketMatch) -> Unit,
 ) {
-    val selectedStatus by viewModel.selectedStatus.collectAsState()
-    val selectedCompetitionType by viewModel.selectedCompetitionType.collectAsState()
-    val currentMatches by viewModel.currentMatches.collectAsState()
-    val isLoading by viewModel.isLoading.collectAsState()
-    val isRefreshing by viewModel.isRefreshing.collectAsState()
+    val selectedStatus by viewModel.selectedStatus.collectAsStateWithLifecycle()
+    val selectedCompetitionType by viewModel.selectedCompetitionType.collectAsStateWithLifecycle()
+    val currentMatches by viewModel.currentMatches.collectAsStateWithLifecycle()
+    val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
+    val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
     val isOffline = rememberIsOffline()
 
     val spacing = BouncerThemeV2.spacing
 
-    val selectedFormat by viewModel.selectedFormat.collectAsState()
+    val selectedFormat by viewModel.selectedFormat.collectAsStateWithLifecycle()
 
     // Status chips
     val statusOptions = listOf("Live", "Upcoming", "Recent")

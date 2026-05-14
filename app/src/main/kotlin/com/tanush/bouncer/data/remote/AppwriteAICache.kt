@@ -2,6 +2,7 @@ package com.tanush.bouncer.data.remote
 
 import android.util.Log
 import com.tanush.bouncer.ApiKeys
+import com.tanush.bouncer.data.CacheConfig
 import io.appwrite.Query
 import io.appwrite.ID
 import io.appwrite.Permission
@@ -21,7 +22,7 @@ import java.time.format.DateTimeFormatter
 // total across all users instead of N calls. Falls back silently on any error.
 object AppwriteAICache {
     private const val TAG = "AppwriteAICache"
-    private const val TTL_MS = 3_600_000L // 1 hour, matches AICacheService
+    private val TTL_MS get() = CacheConfig.AI_CACHE_TTL_MS
 
     private var realtimeInstance: Realtime? = null
     private var realtimeSubscription: Any? = null  // RealtimeSubscription handle
@@ -105,6 +106,7 @@ object AppwriteAICache {
 
     fun startRealtimeSubscription(scope: CoroutineScope, onNewEntry: (key: String, commentary: String) -> Unit) {
         if (!isReady) return
+        if (realtimeSubscription != null) return
         val client = AppwriteClient.client ?: return
         val realtime = Realtime(client)
         realtimeInstance = realtime

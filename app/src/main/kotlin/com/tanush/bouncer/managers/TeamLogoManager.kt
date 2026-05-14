@@ -14,6 +14,7 @@ object TeamLogoManager {
     private var initError: String? = null
 
     fun initialize(context: Context) {
+        if (isInitialized) return
         try {
             val jsonString = context.assets.open("TeamLogos.json").bufferedReader().use { it.readText() }
             val type = object : TypeToken<Map<String, String>>() {}.type

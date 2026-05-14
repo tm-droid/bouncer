@@ -13,7 +13,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
@@ -38,10 +38,10 @@ fun NewsScreenV2(
     viewModel: NewsViewModel,
     onArticleClick: (NewsArticleData) -> Unit,
 ) {
-    val articles by viewModel.articles.collectAsState()
-    val isLoading by viewModel.isLoading.collectAsState()
-    val isRefreshing by viewModel.isRefreshing.collectAsState()
-    val error by viewModel.error.collectAsState()
+    val articles by viewModel.articles.collectAsStateWithLifecycle()
+    val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
+    val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
+    val error by viewModel.error.collectAsStateWithLifecycle()
 
     val colors = BouncerThemeV2.colors
     val typography = BouncerThemeV2.typography

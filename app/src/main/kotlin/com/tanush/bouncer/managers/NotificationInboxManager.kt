@@ -35,6 +35,7 @@ object NotificationInboxManager {
     val unreadCount: StateFlow<Int> = _unreadCount.asStateFlow()
 
     fun initialize(context: Context) {
+        if (prefs != null) return
         prefs = context.applicationContext.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
         val loaded = loadFromPrefs()
         _items.value = loaded

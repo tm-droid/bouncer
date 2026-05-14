@@ -37,7 +37,7 @@ import com.tanush.bouncer.data.local.entities.SeriesFtsEntity
         AICommentaryCacheEntity::class,
         HighlightEntity::class
     ],
-    version = 4,
+    version = 5,
     exportSchema = true
 )
 abstract class BouncerDatabase : RoomDatabase() {
@@ -90,8 +90,15 @@ abstract class BouncerDatabase : RoomDatabase() {
             }
         }
 
+        // Index was created in MIGRATION_3_4 but removed from HighlightEntity — drop to match entity schema.
+        private val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("DROP INDEX IF EXISTS idx_highlights_matched_bouncer_match_id")
+            }
+        }
+
         // Add new migrations here; Room will apply them in order on upgrade.
-        private val MIGRATIONS = arrayOf<Migration>(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+        private val MIGRATIONS = arrayOf<Migration>(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
 
         fun getInstance(context: Context): BouncerDatabase {
             return INSTANCE ?: synchronized(this) {

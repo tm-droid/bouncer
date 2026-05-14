@@ -2,6 +2,7 @@ package com.tanush.bouncer.data.repository
 
 import android.util.Log
 import com.tanush.bouncer.data.AppResult
+import com.tanush.bouncer.data.CacheConfig
 import com.tanush.bouncer.data.local.dao.HighlightDao
 import com.tanush.bouncer.data.local.dao.MatchDao
 import com.tanush.bouncer.data.local.entities.HighlightEntity
@@ -17,15 +18,13 @@ class HighlightsRepository(
     private val matchDao: MatchDao
 ) {
     private val TAG = "HighlightsRepository"
-    private val FRESHNESS_MS = 3_600_000L  // 1 hour
+    private val FRESHNESS_MS = CacheConfig.HIGHLIGHTS_FRESHNESS_MS
 
     suspend fun fetchForMatch(bouncerMatchId: String): AppResult<List<HighlightEntity>> {
         return AppResult.runCatching {
             withContext(Dispatchers.IO) {
-                val cached = highlightDao.queryAllRecent().filter {
-                    it.matchedBouncerMatchId == bouncerMatchId &&
-                    (System.currentTimeMillis() - it.fetchedAt) < FRESHNESS_MS
-                }
+                val freshnessCutoff = System.currentTimeMillis() - FRESHNESS_MS
+                val cached = highlightDao.queryCachedByMatchId(bouncerMatchId, freshnessCutoff)
                 if (cached.isNotEmpty()) {
                     Log.d(TAG, "Returning ${cached.size} cached highlights for match $bouncerMatchId")
                     return@withContext cached

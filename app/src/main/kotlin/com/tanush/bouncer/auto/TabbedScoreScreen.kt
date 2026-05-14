@@ -45,9 +45,9 @@ class TabbedScoreScreen(carContext: CarContext) : Screen(carContext) {
         invalidate()
 
         CoroutineScope(Dispatchers.IO).launch {
-            CricketRepository.getMatches("live").onSuccess { liveMatches = it.matches }.onFailure { Sentry.captureException(it) }
-            CricketRepository.getMatches("upcoming").onSuccess { upcomingMatches = it.matches }.onFailure { Sentry.captureException(it) }
-            CricketRepository.getMatches("recent").onSuccess { allMatches = it.matches }.onFailure { Sentry.captureException(it) }
+            CricketRepository.getMatches("live").onSuccess { liveMatches = it.matches }.onError { e, _ -> Sentry.captureException(e) }
+            CricketRepository.getMatches("upcoming").onSuccess { upcomingMatches = it.matches }.onError { e, _ -> Sentry.captureException(e) }
+            CricketRepository.getMatches("recent").onSuccess { allMatches = it.matches }.onError { e, _ -> Sentry.captureException(e) }
             loading = false
             invalidate()
         }

@@ -6,6 +6,7 @@ import androidx.work.*
 import com.tanush.bouncer.data.local.BouncerDatabase
 import com.tanush.bouncer.data.local.entities.SeriesCacheEntity
 import com.tanush.bouncer.network.SeriesScraper
+import com.tanush.bouncer.utils.WorkerLogger
 import io.sentry.Breadcrumb
 import io.sentry.Sentry
 import io.sentry.SentryLevel
@@ -100,12 +101,7 @@ class SeriesSyncWorker(
                 request
             )
 
-            Log.d(TAG, "Periodic series sync enqueued (24h)")
-            Sentry.addBreadcrumb(Breadcrumb().apply {
-                category = "series_sync"
-                message = "Periodic work enqueued (24h)"
-                level = SentryLevel.INFO
-            })
+            WorkerLogger.enqueued("series_sync", "Periodic work enqueued (24h)")
         }
     }
 }

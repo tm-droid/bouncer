@@ -6,7 +6,7 @@ Build outputs redirected to `~/Library/Caches/bouncer-android/app` to prevent Gr
 
 **gradle.properties settings:**
 - `org.gradle.vfs.watch=false`: Disable VFS watching (iCloud generates constant synthetic FSEvents)
-- `org.gradle.configuration-cache=false`: Disabled due to KSP + Sentry plugin compatibility issues
+- `org.gradle.configuration-cache=true`: Enabled — KSP 2.2.20+ and AGP 9.1.1+ both support it; Sentry excluded for debug via `ignoredVariants`. `problems=warn` means release builds degrade gracefully if a violation is hit.
 
 **Kotlin daemon memory:** 2GB (handles large code generation without OOM)
 
@@ -15,12 +15,12 @@ Build outputs redirected to `~/Library/Caches/bouncer-android/app` to prevent Gr
 ## Gradle Properties Tuning
 
 ```
-org.gradle.jvmargs=-XX:+UseG1GC -XX:MaxGCPauseMillis=200 -Xmx2048m
-org.gradle.workers.max=4
+org.gradle.jvmargs=-Xmx6g -XX:+UseG1GC -XX:SoftRefLRUPolicyMSPerMB=0 -XX:MaxMetaspaceSize=1g
+org.gradle.workers.max=6
 org.gradle.vfs.watch=false
-org.gradle.configuration-cache=false
-file.encoding=UTF-8
-org.gradle.console=rich
+org.gradle.configuration-cache=true
+org.gradle.configuration-cache.problems=warn
+kotlin.daemon.jvmargs=-Xmx5g -XX:+UseG1GC -XX:+UseStringDeduplication
 ```
 
 ## API Target & Compile Levels

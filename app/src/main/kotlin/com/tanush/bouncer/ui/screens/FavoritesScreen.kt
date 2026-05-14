@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
 import com.tanush.bouncer.ui.components.CoilImage
 import com.tanush.bouncer.ui.components.glass.*
@@ -50,7 +51,7 @@ fun FavoritesScreen(
     val dimens = BouncerDesignSystem.dimens
     val context = LocalContext.current
 
-    val favorites by FavouriteTeamsManager.favourites.collectAsState()
+    val favorites by FavouriteTeamsManager.favourites.collectAsStateWithLifecycle()
     var showAddTeamSheet by remember { mutableStateOf(false) }
     var isEditMode by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
@@ -179,7 +180,7 @@ fun FavoritesScreen(
 
                         // Favorite Teams
                         if (isEditMode) {
-                            items(reorderableFavorites.size) { index ->
+                            items(reorderableFavorites.size, key = { reorderableFavorites[it] }) { index ->
                                 val teamName = reorderableFavorites[index]
                                 ReorderableTeamCard(
                                     teamName = teamName,
@@ -834,7 +835,7 @@ private fun AddTeamBottomSheet(
                     .heightIn(max = 400.dp),
                 verticalArrangement = Arrangement.spacedBy(dimens.sm)
             ) {
-                items(filteredTeams) { teamName ->
+                items(filteredTeams, key = { it }) { teamName ->
                     TeamSelectionRow(
                         teamName = teamName,
                         onClick = {

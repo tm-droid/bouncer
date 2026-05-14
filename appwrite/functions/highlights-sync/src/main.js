@@ -78,11 +78,11 @@ async function checkForLiveOrRecentMatches(rapidApiKey, log, error) {
 
   try {
     const response = await fetch(
-      "https://unofficial-cricbuzz.p.rapidapi.com/matches/live",
+      "https://cricbuzz-cricket.p.rapidapi.com/matches/v1/live",
       {
         headers: {
           "X-RapidAPI-Key": rapidApiKey,
-          "X-RapidAPI-Host": "unofficial-cricbuzz.p.rapidapi.com",
+          "X-RapidAPI-Host": "cricbuzz-cricket.p.rapidapi.com",
         },
       }
     );
@@ -152,7 +152,11 @@ async function fetchHighlights(today, highlightlyApiKey, log, error) {
     }
 
     const data = await response.json();
-    return Array.isArray(data) ? data : (data.highlights ?? []);
+    const raw = Array.isArray(data) ? data : (data.highlights ?? data.data ?? data.results ?? []);
+    if (raw.length === 0) {
+      log(`Highlightly 0 results — response keys: ${Array.isArray(data) ? "[array]" : Object.keys(data).join(", ")}`);
+    }
+    return raw;
   } catch (e) {
     error(`Highlightly fetch failed: ${e?.message}`);
     return [];
