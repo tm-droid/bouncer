@@ -48,6 +48,36 @@ import kotlin.math.abs
 import com.tanush.bouncer.ui.theme.GoldPrimary
 import com.tanush.bouncer.ui.theme.GoldLight
 
+@Composable
+private fun rememberPulse(
+    initial: Float = 0.6f,
+    target: Float = 1f,
+    durationMillis: Int = 1000,
+    label: String = "pulse"
+): Float {
+    val transition = rememberInfiniteTransition(label = label)
+    return transition.animateFloat(
+        initialValue = initial,
+        targetValue = target,
+        animationSpec = infiniteRepeatable(tween(durationMillis), RepeatMode.Reverse),
+        label = label
+    ).value
+}
+
+@Composable
+private fun SectionLabel(text: String, color: Color, fontSize: Int = 10, letterSpacing: Float = 1f) {
+    Text(
+        text = text,
+        color = color,
+        fontSize = fontSize.sp,
+        fontWeight = FontWeight.Black,
+        letterSpacing = letterSpacing.sp
+    )
+}
+
+private fun teamShortLabel(acronym: String?, name: String?): String =
+    acronym ?: name?.take(3)?.uppercase() ?: "TBD"
+
 /**
  * ExpandableMatchCard with tap-to-expand mini scorecard preview
  * Shows a compact card that expands to reveal detailed scorecard information
@@ -60,35 +90,30 @@ fun ExpandableMatchCardV2(
     initiallyExpanded: Boolean = false
 ) {
     val colors = BouncerDesignSystem.colors
-    val hierarchy = BouncerDesignSystem.hierarchy
     var isExpanded by remember { mutableStateOf(initiallyExpanded) }
     val haptic = rememberHapticFeedback()
-    
+
     val team1 = match.teams.firstOrNull()
     val team2 = match.teams.getOrNull(1)
     val scoreInfo1 = parseScore(team1?.score)
     val scoreInfo2 = parseScore(team2?.score)
     val statusInfo = getMatchStatusInfo(match.status)
     val isLive = statusInfo.isLive || match.isLive
-    
-    // Expansion animation
+
     val expandProgress by animateFloatAsState(
         targetValue = if (isExpanded) 1f else 0f,
-        animationSpec = spring(
-            dampingRatio = 0.7f,
-            stiffness = 300f
-        ),
+        animationSpec = spring(dampingRatio = 0.7f, stiffness = 300f),
         label = "expandProgress"
     )
-    
+
     val cardElevation by animateDpAsState(
         targetValue = if (isExpanded) 24.dp else 12.dp,
         animationSpec = spring(dampingRatio = 0.7f),
         label = "elevation"
     )
-    
+
     val cardDescription = "Match card for ${team1?.name ?: "Team 1"} vs ${team2?.name ?: "Team 2"}. Tap to ${if (isExpanded) "collapse" else "expand"} details."
-    
+
     Surface(
         modifier = modifier
             .fillMaxWidth()
@@ -115,7 +140,6 @@ fun ExpandableMatchCardV2(
                 .fillMaxWidth()
                 .padding(20.dp)
         ) {
-            // Header with live badge
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -131,49 +155,33 @@ fun ExpandableMatchCardV2(
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f)
                 )
-                
-                if (isLive) {
-                    LiveBadge()
-                }
-                
-                // Expand indicator
+
+                if (isLive) LiveBadge()
+
                 Icon(
                     imageVector = if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
                     contentDescription = if (isExpanded) "Collapse" else "Expand",
                     tint = colors.textSecondary,
                     modifier = Modifier
                         .size(24.dp)
-                        .graphicsLayer {
-                            rotationZ = expandProgress * 180f
-                        }
+                        .graphicsLayer { rotationZ = expandProgress * 180f }
                 )
             }
-            
+
             Spacer(modifier = Modifier.height(16.dp))
-            
-            // Teams compact view
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Team 1
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = team1?.acronym ?: team1?.name?.take(3)?.uppercase() ?: "TBD",
-                        color = colors.textPrimary,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = scoreInfo1.toDisplayString(),
-                        color = GoldPrimary,
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Black
-                    )
-                }
-                
-                // VS badge
+                TeamScoreColumn(
+                    label = teamShortLabel(team1?.acronym, team1?.name),
+                    score = scoreInfo1.toDisplayString(),
+                    alignEnd = false,
+                    modifier = Modifier.weight(1f)
+                )
+
                 Box(
                     modifier = Modifier
                         .size(32.dp)
@@ -187,28 +195,15 @@ fun ExpandableMatchCardV2(
                         fontWeight = FontWeight.Black
                     )
                 }
-                
-                // Team 2
-                Column(
-                    modifier = Modifier.weight(1f),
-                    horizontalAlignment = Alignment.End
-                ) {
-                    Text(
-                        text = team2?.acronym ?: team2?.name?.take(3)?.uppercase() ?: "TBD",
-                        color = colors.textPrimary,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = scoreInfo2.toDisplayString(),
-                        color = GoldPrimary,
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Black
-                    )
-                }
+
+                TeamScoreColumn(
+                    label = teamShortLabel(team2?.acronym, team2?.name),
+                    score = scoreInfo2.toDisplayString(),
+                    alignEnd = true,
+                    modifier = Modifier.weight(1f)
+                )
             }
-            
-            // Expanded content - Mini Scorecard
+
             AnimatedVisibility(
                 visible = isExpanded,
                 enter = fadeIn(tween(200)) + expandVertically(tween(300)),
@@ -219,20 +214,13 @@ fun ExpandableMatchCardV2(
                         color = colors.glassBorder.copy(alpha = 0.3f),
                         thickness = 0.5.dp
                     )
-                    
+
                     Spacer(modifier = Modifier.height(16.dp))
-                    
-                    // Current batsmen
+
                     if (!match.scrapedBatsmen.isNullOrEmpty()) {
-                        Text(
-                            text = "BATTING",
-                            color = colors.textMuted,
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Black,
-                            letterSpacing = 1.sp
-                        )
+                        SectionLabel("BATTING", colors.textMuted)
                         Spacer(modifier = Modifier.height(8.dp))
-                        
+
                         match.scrapedBatsmen?.take(2)?.forEach { batsman ->
                             val runsInt = batsman.runs.toIntOrNull() ?: 0
                             val ballsInt = batsman.balls.toIntOrNull() ?: 0
@@ -242,41 +230,32 @@ fun ExpandableMatchCardV2(
                                 isHighlighted = ballsInt > 0 && runsInt.toFloat() / ballsInt > 1.5
                             )
                         }
-                        
+
                         Spacer(modifier = Modifier.height(12.dp))
                     }
-                    
-                    // Current bowler
+
                     match.currentBowler?.let { bowler ->
-                        Text(
-                            text = "BOWLING",
-                            color = colors.textMuted,
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Black,
-                            letterSpacing = 1.sp
-                        )
+                        SectionLabel("BOWLING", colors.textMuted)
                         Spacer(modifier = Modifier.height(8.dp))
-                        
+
                         MiniPlayerRow(
                             name = bowler.name,
                             stat = "${bowler.overs}-${bowler.maidens}-${bowler.runs}-${bowler.wickets}",
                             isHighlighted = (bowler.wickets.toIntOrNull() ?: 0) >= 2
                         )
-                        
+
                         Spacer(modifier = Modifier.height(12.dp))
                     }
-                    
-                    // Recent balls
+
                     match.recentBalls?.takeIf { it.isNotEmpty() }?.let { balls ->
                         RecentBallsTimeline(
                             balls = balls.takeLast(12),
                             modifier = Modifier.fillMaxWidth()
                         )
                     }
-                    
+
                     Spacer(modifier = Modifier.height(12.dp))
-                    
-                    // View full match button
+
                     TextButton(
                         onClick = onClick,
                         modifier = Modifier.fillMaxWidth()
@@ -296,6 +275,33 @@ fun ExpandableMatchCardV2(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun TeamScoreColumn(
+    label: String,
+    score: String,
+    alignEnd: Boolean,
+    modifier: Modifier = Modifier
+) {
+    val colors = BouncerDesignSystem.colors
+    Column(
+        modifier = modifier,
+        horizontalAlignment = if (alignEnd) Alignment.End else Alignment.Start
+    ) {
+        Text(
+            text = label,
+            color = colors.textPrimary,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Bold
+        )
+        Text(
+            text = score,
+            color = GoldPrimary,
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Black
+        )
     }
 }
 
@@ -335,17 +341,8 @@ private fun MiniPlayerRow(
 @Composable
 private fun LiveBadge() {
     val colors = BouncerDesignSystem.colors
-    val infiniteTransition = rememberInfiniteTransition(label = "liveBadge")
-    val pulse by infiniteTransition.animateFloat(
-        initialValue = 0.6f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1000),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "pulse"
-    )
-    
+    val pulse = rememberPulse(label = "liveBadge")
+
     Surface(
         color = colors.statusLive.copy(alpha = 0.15f),
         shape = RoundedCornerShape(8.dp),
@@ -387,7 +384,7 @@ fun LiveCommentaryPeek(
     val colors = BouncerDesignSystem.colors
     val scrollState = rememberScrollState()
     val infiniteTransition = rememberInfiniteTransition(label = "commentaryPeek")
-    
+
     val shimmer by infiniteTransition.animateFloat(
         initialValue = 0f,
         targetValue = 1f,
@@ -397,14 +394,13 @@ fun LiveCommentaryPeek(
         ),
         label = "shimmer"
     )
-    
-    // Auto-scroll effect for new items
+
     LaunchedEffect(commentaryItems.size) {
         if (commentaryItems.isNotEmpty()) {
             scrollState.animateScrollTo(0)
         }
     }
-    
+
     Surface(
         modifier = modifier
             .fillMaxWidth()
@@ -422,33 +418,23 @@ fun LiveCommentaryPeek(
             )
         )
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
-            // Header
+        Column(modifier = Modifier.padding(16.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "COMMENTARY",
-                    color = hierarchy.secondary.primary,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Black,
-                    letterSpacing = 1.sp
-                )
-                
+                SectionLabel("COMMENTARY", hierarchy.secondary.primary, fontSize = 11)
+
                 Text(
                     text = "${commentaryItems.size} entries",
                     color = colors.textMuted,
                     fontSize = 10.sp
                 )
             }
-            
+
             Spacer(modifier = Modifier.height(12.dp))
-            
-            // Scrollable commentary items
+
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -457,7 +443,7 @@ fun LiveCommentaryPeek(
             ) {
                 commentaryItems.take(maxVisibleItems).forEachIndexed { index, item ->
                     val alpha = 1f - (index * 0.2f).coerceAtMost(0.5f)
-                    
+
                     Text(
                         text = item,
                         color = colors.textPrimary.copy(alpha = alpha),
@@ -466,7 +452,7 @@ fun LiveCommentaryPeek(
                         overflow = TextOverflow.Ellipsis,
                         lineHeight = 16.sp
                     )
-                    
+
                     if (index < minOf(commentaryItems.size - 1, maxVisibleItems - 1)) {
                         HorizontalDivider(
                             color = colors.glassBorder.copy(alpha = 0.2f),
@@ -475,8 +461,7 @@ fun LiveCommentaryPeek(
                     }
                 }
             }
-            
-            // Fade indicator for more content
+
             if (commentaryItems.size > maxVisibleItems) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Row(
@@ -502,20 +487,19 @@ fun LiveCommentaryPeek(
 fun TeamMomentumIndicator(
     team1Name: String,
     team2Name: String,
-    momentumValue: Float, // -1 to 1, negative = team1, positive = team2
+    momentumValue: Float,
     modifier: Modifier = Modifier
 ) {
     val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
-    val haptic = rememberHapticFeedback()
     val animatedMomentum by animateFloatAsState(
         targetValue = momentumValue,
         animationSpec = spring(dampingRatio = 0.6f, stiffness = 200f),
         label = "momentum"
     )
-    
+
     val infiniteTransition = rememberInfiniteTransition(label = "momentumArrows")
-    
+
     val arrowOffset by infiniteTransition.animateFloat(
         initialValue = 0f,
         targetValue = 8f,
@@ -525,13 +509,13 @@ fun TeamMomentumIndicator(
         ),
         label = "arrowPulse"
     )
-    
+
     val momentumDescription = when {
         animatedMomentum < -0.3f -> "$team1Name has strong momentum"
         animatedMomentum > 0.3f -> "$team2Name has strong momentum"
         else -> "Momentum is even between both teams"
     }
-    
+
     Surface(
         modifier = modifier
             .fillMaxWidth()
@@ -543,17 +527,10 @@ fun TeamMomentumIndicator(
             modifier = Modifier.padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(
-                text = "MOMENTUM",
-                color = colors.textMuted,
-                fontSize = 10.sp,
-                fontWeight = FontWeight.Black,
-                letterSpacing = 1.sp
-            )
-            
+            SectionLabel("MOMENTUM", colors.textMuted)
+
             Spacer(modifier = Modifier.height(12.dp))
-            
-            // Team names
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
@@ -571,16 +548,14 @@ fun TeamMomentumIndicator(
                     fontWeight = FontWeight.Bold
                 )
             }
-            
+
             Spacer(modifier = Modifier.height(8.dp))
-            
-            // Momentum bar with arrows
+
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(40.dp)
             ) {
-                // Background track
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -589,8 +564,7 @@ fun TeamMomentumIndicator(
                         .clip(RoundedCornerShape(4.dp))
                         .background(GlassSurface)
                 )
-                
-                // Center marker
+
                 Box(
                     modifier = Modifier
                         .width(2.dp)
@@ -598,43 +572,41 @@ fun TeamMomentumIndicator(
                         .align(Alignment.Center)
                         .background(colors.textMuted)
                 )
-                
-                // Momentum indicator
-                val indicatorOffset = ((animatedMomentum + 1) / 2) // Convert -1..1 to 0..1
-                
+
+                val indicatorOffset = ((animatedMomentum + 1) / 2)
+
                 Box(
                     modifier = Modifier
                         .fillMaxWidth(0.1f)
                         .height(24.dp)
                         .align(Alignment.CenterStart)
-                        .offset(x = ((indicatorOffset * 0.9f) * 300).dp) // Adjust based on width
+                        .offset(x = ((indicatorOffset * 0.9f) * 300).dp)
                         .background(
                             brush = Brush.horizontalGradient(
-                                colors = if (animatedMomentum < 0) 
+                                colors = if (animatedMomentum < 0)
                                     listOf(colors.statusSuccess, colors.statusSuccess.copy(alpha = 0.5f))
-                                else 
+                                else
                                     listOf(colors.statusInfo.copy(alpha = 0.5f), colors.statusInfo)
                             ),
                             shape = RoundedCornerShape(12.dp)
                         )
                 )
-                
-                // Animated arrows
+
                 if (abs(animatedMomentum) > 0.2f) {
                     Row(
                         modifier = Modifier
                             .align(Alignment.Center)
                             .offset(
-                                x = (animatedMomentum * 60).dp + 
+                                x = (animatedMomentum * 60).dp +
                                     (if (animatedMomentum < 0) -arrowOffset else arrowOffset).dp
                             ),
                         horizontalArrangement = Arrangement.spacedBy(2.dp)
                     ) {
                         repeat(minOf(3, (abs(animatedMomentum) * 5).toInt().coerceAtLeast(1))) {
                             Icon(
-                                imageVector = if (animatedMomentum < 0) 
-                                    Icons.AutoMirrored.Filled.KeyboardArrowLeft 
-                                else 
+                                imageVector = if (animatedMomentum < 0)
+                                    Icons.AutoMirrored.Filled.KeyboardArrowLeft
+                                else
                                     Icons.AutoMirrored.Filled.KeyboardArrowRight,
                                 contentDescription = null,
                                 tint = if (animatedMomentum < 0) colors.statusSuccess else colors.statusInfo,
@@ -644,8 +616,7 @@ fun TeamMomentumIndicator(
                     }
                 }
             }
-            
-            // Momentum strength label
+
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = when {
@@ -682,21 +653,22 @@ fun WeatherPitchOverlay(
 ) {
     val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
-    val weatherIcon = when (weather.lowercase()) {
+    val weatherKey = weather.lowercase()
+    val weatherIcon = when (weatherKey) {
         "sunny", "clear" -> Icons.Default.WbSunny
         "cloudy", "overcast" -> Icons.Default.Cloud
         "rainy", "rain" -> Icons.Default.WaterDrop
         "partly cloudy" -> Icons.Default.FilterDrama
         else -> Icons.Default.WbSunny
     }
-    
-    val weatherColor = when (weather.lowercase()) {
+
+    val weatherColor = when (weatherKey) {
         "sunny", "clear" -> hierarchy.secondary.primary
         "cloudy", "overcast" -> colors.textSecondary
         "rainy", "rain" -> colors.statusInfo
         else -> hierarchy.secondary.primary
     }
-    
+
     val pitchColor = when (pitchType.lowercase()) {
         "batting", "flat" -> colors.statusSuccess
         "bowling", "green" -> ChartGreen
@@ -704,7 +676,7 @@ fun WeatherPitchOverlay(
         "seaming" -> ChartCyan
         else -> colors.textSecondary
     }
-    
+
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(16.dp),
@@ -716,7 +688,6 @@ fun WeatherPitchOverlay(
             horizontalArrangement = Arrangement.spacedBy(20.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Weather section
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -744,66 +715,39 @@ fun WeatherPitchOverlay(
                     }
                 }
             }
-            
-            // Divider
+
             Box(
                 modifier = Modifier
                     .width(1.dp)
                     .height(32.dp)
                     .background(colors.glassBorder)
             )
-            
-            // Humidity
+
             if (humidity != null) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.WaterDrop,
-                        contentDescription = "Humidity",
-                        tint = colors.statusInfo,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Text(
-                        text = "$humidity%",
-                        color = colors.textSecondary,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
+                ConditionChip(
+                    icon = Icons.Default.WaterDrop,
+                    iconTint = colors.statusInfo,
+                    text = "$humidity%",
+                    textColor = colors.textSecondary,
+                    contentDescription = "Humidity"
+                )
             }
-            
-            // Wind
+
             if (windSpeed != null) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Air,
-                        contentDescription = "Wind",
-                        tint = ChartCyan,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Text(
-                        text = windSpeed,
-                        color = colors.textSecondary,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
+                ConditionChip(
+                    icon = Icons.Default.Air,
+                    iconTint = ChartCyan,
+                    text = windSpeed,
+                    textColor = colors.textSecondary,
+                    contentDescription = "Wind"
+                )
             }
-            
+
             Spacer(modifier = Modifier.weight(1f))
-            
-            // Pitch type
+
             Box(
                 modifier = Modifier
-                    .background(
-                        pitchColor.copy(alpha = 0.15f),
-                        RoundedCornerShape(8.dp)
-                    )
+                    .background(pitchColor.copy(alpha = 0.15f), RoundedCornerShape(8.dp))
                     .border(1.dp, pitchColor.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
                     .padding(horizontal = 10.dp, vertical = 6.dp)
             ) {
@@ -816,6 +760,33 @@ fun WeatherPitchOverlay(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun ConditionChip(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    iconTint: Color,
+    text: String,
+    textColor: Color,
+    contentDescription: String
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = contentDescription,
+            tint = iconTint,
+            modifier = Modifier.size(18.dp)
+        )
+        Text(
+            text = text,
+            color = textColor,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Medium
+        )
     }
 }
 
@@ -832,7 +803,7 @@ fun MatchCountdown(
 ) {
     val colors = BouncerDesignSystem.colors
     var remainingTime by remember { mutableLongStateOf(targetTimeMillis - System.currentTimeMillis()) }
-    
+
     LaunchedEffect(targetTimeMillis) {
         while (remainingTime > 0) {
             delay(1000)
@@ -842,23 +813,14 @@ fun MatchCountdown(
             }
         }
     }
-    
+
     val days = (remainingTime / (1000 * 60 * 60 * 24)).toInt()
     val hours = ((remainingTime / (1000 * 60 * 60)) % 24).toInt()
     val minutes = ((remainingTime / (1000 * 60)) % 60).toInt()
     val seconds = ((remainingTime / 1000) % 60).toInt()
-    
-    val infiniteTransition = rememberInfiniteTransition(label = "countdown")
-    val pulse by infiniteTransition.animateFloat(
-        initialValue = 1f,
-        targetValue = 1.05f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(500),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "pulse"
-    )
-    
+
+    val pulse = rememberPulse(initial = 1f, target = 1.05f, durationMillis = 500, label = "countdown")
+
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
@@ -890,7 +852,7 @@ fun MatchCountdown(
                 )
                 Spacer(modifier = Modifier.height(8.dp))
             }
-            
+
             Text(
                 text = "MATCH STARTS IN",
                 color = colors.textMuted,
@@ -898,37 +860,32 @@ fun MatchCountdown(
                 fontWeight = FontWeight.Black,
                 letterSpacing = 2.sp
             )
-            
+
             Spacer(modifier = Modifier.height(16.dp))
-            
-            // Countdown digits
+
             Row(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 if (days > 0) {
-                    CountdownUnit(
-                        value = days,
-                        label = "DAYS",
-                        pulse = pulse
-                    )
+                    CountdownUnit(value = days, label = "DAYS", pulse = pulse)
                     CountdownSeparator()
                 }
-                
+
                 CountdownUnit(
                     value = hours,
                     label = "HRS",
                     pulse = if (days == 0) pulse else 1f
                 )
                 CountdownSeparator()
-                
+
                 CountdownUnit(
                     value = minutes,
                     label = "MIN",
                     pulse = if (days == 0 && hours == 0) pulse else 1f
                 )
                 CountdownSeparator()
-                
+
                 CountdownUnit(
                     value = seconds,
                     label = "SEC",
@@ -936,8 +893,8 @@ fun MatchCountdown(
                     highlight = remainingTime < 60000
                 )
             }
-            
-            if (remainingTime < 3600000) { // Less than 1 hour
+
+            if (remainingTime < 3600000) {
                 Spacer(modifier = Modifier.height(12.dp))
                 Text(
                     text = "Starting Soon!",
@@ -959,9 +916,7 @@ private fun CountdownUnit(
 ) {
     val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Box(
             modifier = Modifier
                 .size(56.dp)
@@ -1001,34 +956,20 @@ private fun CountdownUnit(
 @Composable
 private fun CountdownSeparator() {
     val hierarchy = BouncerDesignSystem.hierarchy
-    val colors = BouncerDesignSystem.colors
-    val infiniteTransition = rememberInfiniteTransition(label = "separator")
-    val alpha by infiniteTransition.animateFloat(
-        initialValue = 0.3f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(500),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "blink"
-    )
-    
+    val alpha = rememberPulse(initial = 0.3f, target = 1f, durationMillis = 500, label = "separator")
+
     Column(
         verticalArrangement = Arrangement.spacedBy(8.dp),
         modifier = Modifier.padding(bottom = 20.dp)
     ) {
-        Box(
-            modifier = Modifier
-                .size(4.dp)
-                .graphicsLayer { this.alpha = alpha }
-                .background(hierarchy.secondary.primary, CircleShape)
-        )
-        Box(
-            modifier = Modifier
-                .size(4.dp)
-                .graphicsLayer { this.alpha = alpha }
-                .background(hierarchy.secondary.primary, CircleShape)
-        )
+        repeat(2) {
+            Box(
+                modifier = Modifier
+                    .size(4.dp)
+                    .graphicsLayer { this.alpha = alpha }
+                    .background(hierarchy.secondary.primary, CircleShape)
+            )
+        }
     }
 }
 
@@ -1042,7 +983,7 @@ fun QuickStatsRowEnhanced(
     modifier: Modifier = Modifier
 ) {
     val scrollState = rememberScrollState()
-    
+
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
@@ -1100,7 +1041,7 @@ fun RecentBallsTimeline(
     val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val scrollState = rememberScrollState()
-    
+
     Row(
         modifier = modifier
             .horizontalScroll(scrollState)
@@ -1115,9 +1056,8 @@ fun RecentBallsTimeline(
             fontWeight = FontWeight.Black,
             letterSpacing = 1.sp
         )
-        
+
         balls.forEachIndexed { index, ball ->
-            // Over marker
             if (showOverMarkers && index > 0 && index % 6 == 0) {
                 Box(
                     modifier = Modifier
@@ -1134,7 +1074,7 @@ fun RecentBallsTimeline(
                         )
                 )
             }
-            
+
             TimelineBall(
                 ball = ball,
                 isLatest = index == balls.lastIndex
@@ -1158,18 +1098,9 @@ private fun TimelineBall(
         ball.contains("WD") || ball.contains("NB") -> colors.statusWarning to colors.backgroundBase
         else -> GlassSurface to colors.textPrimary
     }
-    
-    val infiniteTransition = rememberInfiniteTransition(label = "latestBall")
-    val pulse by infiniteTransition.animateFloat(
-        initialValue = 1f,
-        targetValue = 1.15f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(400),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "pulse"
-    )
-    
+
+    val pulse = rememberPulse(initial = 1f, target = 1.15f, durationMillis = 400, label = "latestBall")
+
     Box(
         modifier = Modifier
             .size(if (isLatest) 32.dp else 28.dp)
