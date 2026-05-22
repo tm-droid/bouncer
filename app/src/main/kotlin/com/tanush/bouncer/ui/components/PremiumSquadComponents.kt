@@ -43,6 +43,83 @@ import kotlin.math.cos
 import kotlin.math.sin
 import com.tanush.bouncer.ui.theme.GoldPrimary
 
+@Composable
+private fun rememberPulse(label: String, durationMs: Int): Float {
+    val transition = rememberInfiniteTransition(label = label)
+    val value by transition.animateFloat(
+        initialValue = 0.5f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMs, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "${label}Pulse"
+    )
+    return value
+}
+
+@Composable
+private fun StatColumn(
+    value: String,
+    label: String,
+    valueColor: Color,
+    valueSize: Int = 16,
+    labelLetterSpacing: Float = 0f
+) {
+    val colors = BouncerDesignSystem.colors
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            text = value,
+            fontSize = valueSize.sp,
+            fontWeight = FontWeight.Bold,
+            color = valueColor
+        )
+        Text(
+            text = label,
+            fontSize = (if (labelLetterSpacing > 0f) 9 else 10).sp,
+            color = colors.textMuted,
+            letterSpacing = labelLetterSpacing.sp
+        )
+    }
+}
+
+@Composable
+private fun PerformanceSurface(
+    active: Boolean,
+    pulse: Float,
+    accent: Color,
+    modifier: Modifier,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    val colors = BouncerDesignSystem.colors
+    Surface(
+        modifier = modifier
+            .then(
+                if (active) Modifier.drawBehind {
+                    drawRect(
+                        brush = Brush.horizontalGradient(
+                            colors = listOf(accent.copy(alpha = pulse * 0.15f), Color.Transparent)
+                        )
+                    )
+                } else Modifier
+            )
+            .shadow(
+                elevation = 8.dp,
+                shape = RoundedCornerShape(16.dp),
+                spotColor = if (active) accent.copy(alpha = 0.2f) else Color.Transparent
+            ),
+        shape = RoundedCornerShape(16.dp),
+        color = colors.glassSurface,
+        border = if (active) BorderStroke(1.dp, accent.copy(alpha = pulse * 0.6f)) else null
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            content = content
+        )
+    }
+}
+
 /**
  * Enhanced player card with premium styling
  */
@@ -61,7 +138,7 @@ fun PremiumPlayerCard(
     var isHovered by remember { mutableStateOf(false) }
     val colors = BouncerDesignSystem.colors
     val hierarchy = BouncerDesignSystem.hierarchy
-    
+
     val infiniteTransition = rememberInfiniteTransition(label = "playerCard")
     val borderGlow by infiniteTransition.animateFloat(
         initialValue = 0.3f,
@@ -72,7 +149,7 @@ fun PremiumPlayerCard(
         ),
         label = "playerBorderGlow"
     )
-    
+
     val scale by animateFloatAsState(
         targetValue = if (isHovered) 1.03f else 1f,
         animationSpec = spring(stiffness = Spring.StiffnessHigh),
@@ -93,7 +170,7 @@ fun PremiumPlayerCard(
         shape = RoundedCornerShape(20.dp),
         color = colors.glassSurface,
         border = if (isCaptain) BorderStroke(
-            2.dp, 
+            2.dp,
             Brush.linearGradient(
                 colors = listOf(
                     GoldPrimary.copy(alpha = borderGlow),
@@ -117,25 +194,19 @@ fun PremiumPlayerCard(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Player image with badges
             Box(
                 modifier = Modifier.size(80.dp),
                 contentAlignment = Alignment.Center
             ) {
-                // Glow effect
                 Canvas(modifier = Modifier.fillMaxSize()) {
                     drawCircle(
                         brush = Brush.radialGradient(
-                            colors = listOf(
-                                teamColor.copy(alpha = 0.2f),
-                                Color.Transparent
-                            )
+                            colors = listOf(teamColor.copy(alpha = 0.2f), Color.Transparent)
                         ),
                         radius = size.maxDimension * 0.6f
                     )
                 }
-                
-                // Player image
+
                 Box(
                     modifier = Modifier
                         .size(64.dp)
@@ -143,10 +214,7 @@ fun PremiumPlayerCard(
                         .clip(CircleShape)
                         .background(
                             Brush.linearGradient(
-                                colors = listOf(
-                                    colors.surface1,
-                                    teamColor.copy(alpha = 0.1f)
-                                )
+                                colors = listOf(colors.surface1, teamColor.copy(alpha = 0.1f))
                             )
                         ),
                     contentAlignment = Alignment.Center
@@ -167,17 +235,14 @@ fun PremiumPlayerCard(
                         )
                     }
                 }
-                
-                // Captain badge
+
                 if (isCaptain) {
                     Box(
                         modifier = Modifier
                             .size(24.dp)
                             .align(Alignment.TopEnd)
                             .background(
-                                Brush.linearGradient(
-                                    colors = listOf(GoldPrimary, GoldPrimary)
-                                ),
+                                Brush.linearGradient(colors = listOf(GoldPrimary, GoldPrimary)),
                                 CircleShape
                             )
                             .border(1.dp, Color.White.copy(alpha = 0.3f), CircleShape),
@@ -191,8 +256,7 @@ fun PremiumPlayerCard(
                         )
                     }
                 }
-                
-                // Wicketkeeper badge
+
                 if (isWicketkeeper) {
                     Box(
                         modifier = Modifier
@@ -210,8 +274,7 @@ fun PremiumPlayerCard(
                         )
                     }
                 }
-                
-                // Not playing indicator
+
                 if (!isPlaying) {
                     Box(
                         modifier = Modifier
@@ -229,8 +292,7 @@ fun PremiumPlayerCard(
                     }
                 }
             }
-            
-            // Player name
+
             Text(
                 text = playerName,
                 fontSize = 13.sp,
@@ -240,8 +302,7 @@ fun PremiumPlayerCard(
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
-            
-            // Role badge
+
             RoleBadge(role = playerRole, color = teamColor)
         }
     }
@@ -259,7 +320,7 @@ private fun RoleBadge(role: PlayerRole, color: Color) {
         PlayerRole.ALL_ROUNDER -> Icons.Default.SwapHoriz to "ALL"
         PlayerRole.WICKET_KEEPER_BATSMAN -> Icons.Default.Shield to "WK-BAT"
     }
-    
+
     Row(
         modifier = Modifier
             .background(color.copy(alpha = 0.12f), RoundedCornerShape(8.dp))
@@ -294,30 +355,25 @@ fun PremiumSquadGrid(
     modifier: Modifier = Modifier
 ) {
     val groupedPlayers = players.groupBy { it.role }
-    
+
     LazyColumn(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(24.dp),
         contentPadding = PaddingValues(vertical = 16.dp)
     ) {
-        // Order: Batsmen, All-rounders, Wicket-keepers, Bowlers
         val roleOrder = listOf(
             PlayerRole.BATSMAN,
             PlayerRole.ALL_ROUNDER,
             PlayerRole.WICKET_KEEPER_BATSMAN,
             PlayerRole.BOWLER
         )
-        
+
         roleOrder.forEach { role ->
             groupedPlayers[role]?.let { playersInRole ->
                 item {
-                    RoleSectionHeader(
-                        role = role,
-                        count = playersInRole.size,
-                        color = teamColor
-                    )
+                    RoleSectionHeader(role = role, count = playersInRole.size, color = teamColor)
                 }
-                
+
                 item {
                     LazyRow(
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -354,11 +410,7 @@ data class SquadPlayer(
 )
 
 @Composable
-private fun RoleSectionHeader(
-    role: PlayerRole,
-    count: Int,
-    color: Color
-) {
+private fun RoleSectionHeader(role: PlayerRole, count: Int, color: Color) {
     val colors = BouncerDesignSystem.colors
     val roleLabel = when (role) {
         PlayerRole.BATSMAN -> "Batsmen"
@@ -366,7 +418,7 @@ private fun RoleSectionHeader(
         PlayerRole.ALL_ROUNDER -> "All-rounders"
         PlayerRole.WICKET_KEEPER_BATSMAN -> "Wicket-keepers"
     }
-    
+
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -390,12 +442,8 @@ private fun RoleSectionHeader(
                 color = colors.textPrimary
             )
         }
-        
-        Text(
-            text = "$count players",
-            fontSize = 11.sp,
-            color = colors.textMuted
-        )
+
+        Text(text = "$count players", fontSize = 11.sp, color = colors.textMuted)
     }
 }
 
@@ -416,156 +464,96 @@ fun BatsmanPerformanceCard(
     modifier: Modifier = Modifier
 ) {
     val hierarchy = BouncerDesignSystem.hierarchy
-    val infiniteTransition = rememberInfiniteTransition(label = "batsman")
-    val strikePulse by infiniteTransition.animateFloat(
-        initialValue = 0.5f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(600, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "strikePulse"
-    )
     val colors = BouncerDesignSystem.colors
+    val strikePulse = rememberPulse("batsman", 600)
 
-    Surface(
+    PerformanceSurface(
+        active = isOnStrike,
+        pulse = strikePulse,
+        accent = colors.statusSuccess,
         modifier = modifier
-            .then(
-                if (isOnStrike) {
-                    Modifier.drawBehind {
-                        drawRect(
-                            brush = Brush.horizontalGradient(
-                                colors = listOf(
-                                    StatusSuccess.copy(alpha = strikePulse * 0.15f),
-                                    Color.Transparent
-                                )
-                            )
-                        )
-                    }
-                } else Modifier
-            )
-            .shadow(
-                elevation = 8.dp,
-                shape = RoundedCornerShape(16.dp),
-                spotColor = if (isOnStrike) colors.statusSuccess.copy(alpha = 0.2f) else Color.Transparent
-            ),
-        shape = RoundedCornerShape(16.dp),
-        color = colors.glassSurface,
-        border = if (isOnStrike) BorderStroke(
-            1.dp,
-            colors.statusSuccess.copy(alpha = strikePulse * 0.6f)
-        ) else null
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            // Name and status
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = name,
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = colors.textPrimary
-                    )
-                    
-                    if (isOnStrike) {
-                        OnStrikeIndicator(pulseAlpha = strikePulse)
-                    }
-                }
-                
-                // Status badges
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    if (runs >= 100) {
-                        MilestoneBadge("100", hierarchy.secondary.primary)
-                    } else if (runs >= 50) {
-                        MilestoneBadge("50", hierarchy.secondary.primary)
-                    }
-                    
-                    if (isRetired) {
-                        Text(
-                            text = "RETIRED",
-                            fontSize = 9.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = colors.textMuted,
-                            modifier = Modifier
-                                .background(colors.glassBorder, RoundedCornerShape(4.dp))
-                                .padding(horizontal = 6.dp, vertical = 2.dp)
-                        )
-                    }
-                }
-            }
-            
-            // Main stats row
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                // Runs
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        text = "$runs",
-                        fontSize = 28.sp,
-                        fontWeight = FontWeight.Black,
-                        color = hierarchy.secondary.primary
-                    )
-                    Text(
-                        text = "($balls)",
-                        fontSize = 12.sp,
-                        color = colors.textMuted
-                    )
-                }
-                
-                // Strike rate
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        text = String.format("%.2f", strikeRate),
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = when {
-                            strikeRate >= 150 -> hierarchy.secondary.primary
-                            strikeRate >= 100 -> colors.statusInfo
-                            strikeRate >= 80 -> colors.textSecondary
-                            else -> colors.ballDot
-                        }
-                    )
-                    Text(
-                        text = "SR",
-                        fontSize = 10.sp,
-                        color = colors.textMuted
-                    )
-                }
-                
-                // Boundaries
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    BoundaryCounter(count = fours, label = "4s", color = colors.statusInfo)
-                    BoundaryCounter(count = sixes, label = "6s", color = hierarchy.secondary.primary)
-                }
-            }
-            
-            // Dismissal info
-            dismissalInfo?.let {
                 Text(
-                    text = it,
-                    fontSize = 11.sp,
-                    color = colors.statusLive.copy(alpha = 0.9f),
-                    fontWeight = FontWeight.Medium
+                    text = name,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = colors.textPrimary
                 )
+
+                if (isOnStrike) {
+                    OnStrikeIndicator(pulseAlpha = strikePulse)
+                }
             }
+
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                if (runs >= 100) {
+                    MilestoneBadge("100", hierarchy.secondary.primary)
+                } else if (runs >= 50) {
+                    MilestoneBadge("50", hierarchy.secondary.primary)
+                }
+
+                if (isRetired) {
+                    Text(
+                        text = "RETIRED",
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = colors.textMuted,
+                        modifier = Modifier
+                            .background(colors.glassBorder, RoundedCornerShape(4.dp))
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                    )
+                }
+            }
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    text = "$runs",
+                    fontSize = 28.sp,
+                    fontWeight = FontWeight.Black,
+                    color = hierarchy.secondary.primary
+                )
+                Text(text = "($balls)", fontSize = 12.sp, color = colors.textMuted)
+            }
+
+            val srColor = when {
+                strikeRate >= 150 -> hierarchy.secondary.primary
+                strikeRate >= 100 -> colors.statusInfo
+                strikeRate >= 80 -> colors.textSecondary
+                else -> colors.ballDot
+            }
+            StatColumn(
+                value = String.format("%.2f", strikeRate),
+                label = "SR",
+                valueColor = srColor
+            )
+
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                BoundaryCounter(count = fours, label = "4s", color = colors.statusInfo)
+                BoundaryCounter(count = sixes, label = "6s", color = hierarchy.secondary.primary)
+            }
+        }
+
+        dismissalInfo?.let {
+            Text(
+                text = it,
+                fontSize = 11.sp,
+                color = colors.statusLive.copy(alpha = 0.9f),
+                fontWeight = FontWeight.Medium
+            )
         }
     }
 }
@@ -591,9 +579,7 @@ private fun MilestoneBadge(text: String, color: Color) {
     Box(
         modifier = Modifier
             .background(
-                Brush.linearGradient(
-                    colors = listOf(color, color.copy(alpha = 0.7f))
-                ),
+                Brush.linearGradient(colors = listOf(color, color.copy(alpha = 0.7f))),
                 RoundedCornerShape(4.dp)
             )
             .padding(horizontal = 6.dp, vertical = 2.dp)
@@ -625,11 +611,7 @@ private fun BoundaryCounter(count: Int, label: String, color: Color) {
                 color = color
             )
         }
-        Text(
-            text = label,
-            fontSize = 9.sp,
-            color = colors.textMuted
-        )
+        Text(text = label, fontSize = 9.sp, color = colors.textMuted)
     }
 }
 
@@ -648,152 +630,91 @@ fun BowlerPerformanceCard(
     modifier: Modifier = Modifier
 ) {
     val hierarchy = BouncerDesignSystem.hierarchy
-    val infiniteTransition = rememberInfiniteTransition(label = "bowler")
-    val bowlingPulse by infiniteTransition.animateFloat(
-        initialValue = 0.5f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(500, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "bowlingPulse"
-    )
     val colors = BouncerDesignSystem.colors
+    val bowlingPulse = rememberPulse("bowler", 500)
 
-    Surface(
+    PerformanceSurface(
+        active = isBowling,
+        pulse = bowlingPulse,
+        accent = colors.statusInfo,
         modifier = modifier
-            .then(
-                if (isBowling) {
-                    Modifier.drawBehind {
-                        drawRect(
-                            brush = Brush.horizontalGradient(
-                                colors = listOf(
-                                    StatusInfo.copy(alpha = bowlingPulse * 0.15f),
-                                    Color.Transparent
-                                )
-                            )
-                        )
-                    }
-                } else Modifier
-            )
-            .shadow(
-                elevation = 8.dp,
-                shape = RoundedCornerShape(16.dp),
-                spotColor = if (isBowling) colors.statusInfo.copy(alpha = 0.2f) else Color.Transparent
-            ),
-        shape = RoundedCornerShape(16.dp),
-        color = colors.glassSurface,
-        border = if (isBowling) BorderStroke(
-            1.dp,
-            colors.statusInfo.copy(alpha = bowlingPulse * 0.6f)
-        ) else null
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            // Name and bowling status
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = name,
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = colors.textPrimary
-                    )
-                    
-                    if (isBowling) {
-                        Box(
-                            modifier = Modifier
-                                .background(
-                                    colors.statusInfo.copy(alpha = 0.15f),
-                                    RoundedCornerShape(4.dp)
-                                )
-                                .padding(horizontal = 6.dp, vertical = 2.dp)
-                        ) {
-                            Text(
-                                text = "BOWLING",
-                                fontSize = 8.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = colors.statusInfo,
-                                letterSpacing = 0.5.sp
+                Text(
+                    text = name,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = colors.textPrimary
+                )
+
+                if (isBowling) {
+                    Box(
+                        modifier = Modifier
+                            .background(
+                                colors.statusInfo.copy(alpha = 0.15f),
+                                RoundedCornerShape(4.dp)
                             )
-                        }
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                    ) {
+                        Text(
+                            text = "BOWLING",
+                            fontSize = 8.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = colors.statusInfo,
+                            letterSpacing = 0.5.sp
+                        )
                     }
                 }
-                
-                // Wickets badges
-                if (wickets >= 5) {
-                    MilestoneBadge("5W", hierarchy.secondary.primary)
-                } else if (wickets >= 3) {
-                    MilestoneBadge("${wickets}W", colors.statusInfo)
-                }
             }
-            
-            // Stats row
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                // Wickets
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        text = "$wickets/$runs",
-                        fontSize = 24.sp,
-                        fontWeight = FontWeight.Black,
-                        color = hierarchy.secondary.primary
-                    )
-                    Text(
-                        text = "($overs ov)",
-                        fontSize = 11.sp,
-                        color = colors.textMuted
-                    )
-                }
-                
-                // Economy
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        text = String.format("%.2f", economy),
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = when {
-                            economy <= 4.0 -> colors.statusSuccess
-                            economy <= 6.0 -> colors.textSecondary
-                            economy <= 8.0 -> colors.statusWarning
-                            else -> colors.statusLive
-                        }
-                    )
-                    Text(
-                        text = "ECON",
-                        fontSize = 9.sp,
-                        color = colors.textMuted,
-                        letterSpacing = 0.5.sp
-                    )
-                }
-                
-                // Maidens
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        text = "$maidens",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = colors.textSecondary
-                    )
-                    Text(
-                        text = "MAIDENS",
-                        fontSize = 9.sp,
-                        color = colors.textMuted,
-                        letterSpacing = 0.5.sp
-                    )
-                }
+
+            if (wickets >= 5) {
+                MilestoneBadge("5W", hierarchy.secondary.primary)
+            } else if (wickets >= 3) {
+                MilestoneBadge("${wickets}W", colors.statusInfo)
             }
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    text = "$wickets/$runs",
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Black,
+                    color = hierarchy.secondary.primary
+                )
+                Text(text = "($overs ov)", fontSize = 11.sp, color = colors.textMuted)
+            }
+
+            val econColor = when {
+                economy <= 4.0 -> colors.statusSuccess
+                economy <= 6.0 -> colors.textSecondary
+                economy <= 8.0 -> colors.statusWarning
+                else -> colors.statusLive
+            }
+            StatColumn(
+                value = String.format("%.2f", economy),
+                label = "ECON",
+                valueColor = econColor,
+                labelLetterSpacing = 0.5f
+            )
+
+            StatColumn(
+                value = "$maidens",
+                label = "MAIDENS",
+                valueColor = colors.textSecondary,
+                labelLetterSpacing = 0.5f
+            )
         }
     }
 }
@@ -815,9 +736,8 @@ fun PartnershipCard(
     modifier: Modifier = Modifier
 ) {
     val hierarchy = BouncerDesignSystem.hierarchy
-    val totalRuns = batsman1Runs + batsman2Runs
     val batsman1Percentage = if (partnershipRuns > 0) (batsman1Runs.toFloat() / partnershipRuns) else 0.5f
-    
+
     val animatedPercentage by animateFloatAsState(
         targetValue = batsman1Percentage,
         animationSpec = tween(1000, easing = FastOutSlowInEasing),
@@ -838,7 +758,6 @@ fun PartnershipCard(
             modifier = Modifier.padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Header
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -851,7 +770,7 @@ fun PartnershipCard(
                     letterSpacing = 1.2.sp,
                     color = colors.textMuted
                 )
-                
+
                 Column(horizontalAlignment = Alignment.End) {
                     Text(
                         text = "$partnershipRuns runs",
@@ -866,8 +785,7 @@ fun PartnershipCard(
                     )
                 }
             }
-            
-            // Progress bar showing contribution
+
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -888,64 +806,50 @@ fun PartnershipCard(
                     )
                 }
             }
-            
-            // Both batsmen
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                // Batsman 1
-                Column {
-                    Text(
-                        text = batsman1Name,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = colors.textPrimary
-                    )
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                        verticalAlignment = Alignment.Bottom
-                    ) {
-                        Text(
-                            text = "$batsman1Runs",
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Black,
-                            color = hierarchy.secondary.primary
-                        )
-                        Text(
-                            text = "($batsman1Balls)",
-                            fontSize = 11.sp,
-                            color = colors.textMuted
-                        )
-                    }
-                }
-                
-                // Batsman 2
-                Column(horizontalAlignment = Alignment.End) {
-                    Text(
-                        text = batsman2Name,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = colors.textPrimary
-                    )
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                        verticalAlignment = Alignment.Bottom
-                    ) {
-                        Text(
-                            text = "$batsman2Runs",
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Black,
-                            color = hierarchy.secondary.primary
-                        )
-                        Text(
-                            text = "($batsman2Balls)",
-                            fontSize = 11.sp,
-                            color = colors.textMuted
-                        )
-                    }
-                }
+                PartnershipBatsman(
+                    name = batsman1Name,
+                    runs = batsman1Runs,
+                    balls = batsman1Balls,
+                    alignEnd = false
+                )
+                PartnershipBatsman(
+                    name = batsman2Name,
+                    runs = batsman2Runs,
+                    balls = batsman2Balls,
+                    alignEnd = true
+                )
             }
+        }
+    }
+}
+
+@Composable
+private fun PartnershipBatsman(name: String, runs: Int, balls: Int, alignEnd: Boolean) {
+    val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
+    Column(horizontalAlignment = if (alignEnd) Alignment.End else Alignment.Start) {
+        Text(
+            text = name,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = colors.textPrimary
+        )
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            verticalAlignment = Alignment.Bottom
+        ) {
+            Text(
+                text = "$runs",
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Black,
+                color = hierarchy.secondary.primary
+            )
+            Text(text = "($balls)", fontSize = 11.sp, color = colors.textMuted)
         }
     }
 }
