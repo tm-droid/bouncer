@@ -20,24 +20,12 @@ import kotlin.math.cos
 import kotlin.math.sin
 import io.sentry.Sentry
 
-// ==========================================
-// BOUNCER – Visual Effects System
-// Glassmorphism, shadows, and glow modifiers.
-// Kept intentional — no decorative-only effects.
-// ==========================================
-
-/**
- * Material 3 Motion Specs - Standard and Emphasized Easing
- */
 private object EffectEasing {
     val Standard = CubicBezierEasing(0.2f, 0f, 0f, 1f)
     val Emphasized = CubicBezierEasing(0.05f, 0.7f, 0.1f, 1f)
     val EmphasizedDecelerate = CubicBezierEasing(0.05f, 0.7f, 0.1f, 1f)
 }
 
-/**
- * Duration constants following Material 3 motion specs
- */
 private object EffectDuration {
     const val Short1 = 50
     const val Short2 = 100
@@ -55,23 +43,26 @@ private object EffectDuration {
     const val AmbientLoop = 3000
 }
 
-// ==========================================
-// GLASSMORPHISM SURFACE
-// ==========================================
+@Composable
+private fun reversingFloat(
+    label: String,
+    from: Float,
+    to: Float,
+    duration: Int,
+    easing: Easing = EffectEasing.Standard
+): State<Float> {
+    val transition = rememberInfiniteTransition(label = label)
+    return transition.animateFloat(
+        initialValue = from,
+        targetValue = to,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = duration, easing = easing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = label
+    )
+}
 
-/**
- * Premium Glassmorphism Surface with adjustable blur, frost gradient, and border
- * Creates an iOS-style frosted glass effect optimized for Android
- *
- * @param modifier Modifier for the surface
- * @param blurRadius Amount of background blur simulation (dp)
- * @param frostIntensity Intensity of the frosted glass overlay (0-1)
- * @param borderWidth Width of the glass border
- * @param borderColor Color of the glass border
- * @param cornerRadius Corner radius of the glass surface
- * @param backgroundColor Base background color for the glass
- * @param content Content to display on the glass surface
- */
 @Composable
 fun GlassmorphismSurface(
     modifier: Modifier = Modifier,
@@ -84,7 +75,6 @@ fun GlassmorphismSurface(
     content: @Composable BoxScope.() -> Unit
 ) {
     val shape = RoundedCornerShape(cornerRadius)
-    
     Box(
         modifier = modifier
             .background(backgroundColor, shape)
@@ -94,41 +84,33 @@ fun GlassmorphismSurface(
     )
 }
 
-/**
- * Internal modifier for applying frost overlay effect
- */
 private fun Modifier.glassFrostOverlay(
     intensity: Float,
     blurRadius: Dp
 ): Modifier = drawBehind {
-    // Multi-layer frost gradient for realistic glass effect
-    val frostGradient = Brush.linearGradient(
-        colors = listOf(
-            Color.White.copy(alpha = intensity * 1.5f),
-            Color.White.copy(alpha = intensity * 0.8f),
-            Color.White.copy(alpha = intensity * 0.3f)
-        ),
-        start = Offset(0f, 0f),
-        end = Offset(size.width, size.height)
+    drawRect(
+        brush = Brush.linearGradient(
+            colors = listOf(
+                Color.White.copy(alpha = intensity * 1.5f),
+                Color.White.copy(alpha = intensity * 0.8f),
+                Color.White.copy(alpha = intensity * 0.3f)
+            ),
+            start = Offset(0f, 0f),
+            end = Offset(size.width, size.height)
+        )
     )
-    
-    drawRect(brush = frostGradient)
-    
-    // Additional noise simulation layer
-    val noiseGradient = Brush.radialGradient(
-        colors = listOf(
-            Color.White.copy(alpha = intensity * 0.1f),
-            Color.Transparent
-        ),
-        center = Offset(size.width * 0.3f, size.height * 0.3f),
-        radius = size.minDimension * 0.8f
+    drawRect(
+        brush = Brush.radialGradient(
+            colors = listOf(
+                Color.White.copy(alpha = intensity * 0.1f),
+                Color.Transparent
+            ),
+            center = Offset(size.width * 0.3f, size.height * 0.3f),
+            radius = size.minDimension * 0.8f
+        )
     )
-    drawRect(brush = noiseGradient)
 }
 
-/**
- * Modifier extension for applying glassmorphism effect to any composable
- */
 fun Modifier.glassmorphism(
     blurRadius: Dp = BouncerDesign.GlassBlur,
     frostIntensity: Float = 0.12f,
@@ -138,43 +120,26 @@ fun Modifier.glassmorphism(
     backgroundColor: Color = GlassSurface
 ): Modifier {
     val shape = RoundedCornerShape(cornerRadius)
-    
     return this
         .background(backgroundColor, shape)
         .glassFrostOverlay(frostIntensity, blurRadius)
         .border(borderWidth, borderColor, shape)
 }
 
-// ==========================================
-// CHROMATIC ABERRATION EFFECT
-// ==========================================
-
-/**
- * Chromatic aberration effect modifier for premium cards
- * Creates a subtle RGB split effect on edges for a premium tech look
- *
- * @param offset Pixel offset for the chromatic split
- * @param intensity Intensity of the effect (0-1)
- */
 fun Modifier.chromaticAberration(
     offset: Float = 2f,
     intensity: Float = 0.3f
 ): Modifier = drawBehind {
-    // Red channel shift
     drawRect(
         color = Color.Red.copy(alpha = intensity * 0.15f),
         topLeft = Offset(-offset, 0f),
         size = Size(size.width + offset, size.height)
     )
-    
-    // Blue channel shift
     drawRect(
         color = Color.Blue.copy(alpha = intensity * 0.15f),
         topLeft = Offset(offset, 0f),
         size = Size(size.width, size.height)
     )
-    
-    // Cyan highlight on top edge
     drawRect(
         color = Color.Cyan.copy(alpha = intensity * 0.1f),
         topLeft = Offset(0f, 0f),
@@ -182,38 +147,14 @@ fun Modifier.chromaticAberration(
     )
 }
 
-/**
- * Animated chromatic aberration with subtle movement
- */
 fun Modifier.animatedChromaticAberration(
     maxOffset: Float = 3f,
     intensity: Float = 0.25f
 ): Modifier = composed {
-    val infiniteTransition = rememberInfiniteTransition(label = "chromatic")
-    
-    val offset by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = maxOffset,
-        animationSpec = infiniteRepeatable(
-            animation = tween(
-                durationMillis = EffectDuration.AmbientLoop,
-                easing = EffectEasing.Standard
-            ),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "chromaticOffset"
-    )
-    
+    val offset by reversingFloat("chromaticOffset", 0f, maxOffset, EffectDuration.AmbientLoop)
     chromaticAberration(offset = offset, intensity = intensity)
 }
 
-// ==========================================
-// MULTI-LAYER SHADOW
-// ==========================================
-
-/**
- * Configuration for individual shadow layers
- */
 data class ShadowLayer(
     val color: Color,
     val offsetX: Dp = 0.dp,
@@ -222,15 +163,6 @@ data class ShadowLayer(
     val spread: Dp = 0.dp
 )
 
-/**
- * Multi-layer shadow composable with customizable shadow layers
- * Creates depth with multiple stacked shadows
- *
- * @param modifier Modifier for the container
- * @param layers List of shadow layer configurations
- * @param shape Shape for the shadow casting element
- * @param content Content to display with shadows
- */
 @Composable
 fun MultiLayerShadow(
     modifier: Modifier = Modifier,
@@ -244,99 +176,41 @@ fun MultiLayerShadow(
     )
 }
 
-/**
- * Default premium shadow layers configuration
- */
 fun defaultShadowLayers(): List<ShadowLayer> = listOf(
-    // Ambient shadow - wide and soft
-    ShadowLayer(
-        color = Color.Black.copy(alpha = 0.08f),
-        offsetY = 8.dp,
-        blurRadius = 24.dp
-    ),
-    // Key shadow - focused and darker
-    ShadowLayer(
-        color = Color.Black.copy(alpha = 0.12f),
-        offsetY = 4.dp,
-        blurRadius = 12.dp
-    ),
-    // Edge shadow - tight and crisp
-    ShadowLayer(
-        color = Color.Black.copy(alpha = 0.15f),
-        offsetY = 2.dp,
-        blurRadius = 4.dp
-    )
+    ShadowLayer(Color.Black.copy(alpha = 0.08f), offsetY = 8.dp, blurRadius = 24.dp),
+    ShadowLayer(Color.Black.copy(alpha = 0.12f), offsetY = 4.dp, blurRadius = 12.dp),
+    ShadowLayer(Color.Black.copy(alpha = 0.15f), offsetY = 2.dp, blurRadius = 4.dp)
 )
 
-/**
- * Gold accent shadow layers for premium elements
- */
 fun goldShadowLayers(): List<ShadowLayer> = listOf(
-    ShadowLayer(
-        color = GoldDark.copy(alpha = 0.15f),
-        offsetY = 12.dp,
-        blurRadius = 32.dp
-    ),
-    ShadowLayer(
-        color = GoldPrimary.copy(alpha = 0.1f),
-        offsetY = 6.dp,
-        blurRadius = 16.dp
-    ),
-    ShadowLayer(
-        color = Color.Black.copy(alpha = 0.2f),
-        offsetY = 2.dp,
-        blurRadius = 6.dp
-    )
+    ShadowLayer(GoldDark.copy(alpha = 0.15f), offsetY = 12.dp, blurRadius = 32.dp),
+    ShadowLayer(GoldPrimary.copy(alpha = 0.1f), offsetY = 6.dp, blurRadius = 16.dp),
+    ShadowLayer(Color.Black.copy(alpha = 0.2f), offsetY = 2.dp, blurRadius = 6.dp)
 )
 
-/**
- * Live status shadow layers with blue glow
- */
 fun liveShadowLayers(): List<ShadowLayer> = listOf(
-    ShadowLayer(
-        color = LiveBlue.copy(alpha = 0.2f),
-        offsetY = 8.dp,
-        blurRadius = 24.dp
-    ),
-    ShadowLayer(
-        color = LiveBlueBright.copy(alpha = 0.1f),
-        offsetY = 4.dp,
-        blurRadius = 12.dp
-    ),
-    ShadowLayer(
-        color = Color.Black.copy(alpha = 0.15f),
-        offsetY = 2.dp,
-        blurRadius = 4.dp
-    )
+    ShadowLayer(LiveBlue.copy(alpha = 0.2f), offsetY = 8.dp, blurRadius = 24.dp),
+    ShadowLayer(LiveBlueBright.copy(alpha = 0.1f), offsetY = 4.dp, blurRadius = 12.dp),
+    ShadowLayer(Color.Black.copy(alpha = 0.15f), offsetY = 2.dp, blurRadius = 4.dp)
 )
 
-/**
- * Modifier extension for multi-layer shadows
- */
 fun Modifier.multiLayerShadow(
     layers: List<ShadowLayer> = defaultShadowLayers(),
     shape: Shape = RoundedCornerShape(16.dp)
 ): Modifier = composed {
     val density = LocalDensity.current
-    
     drawBehind {
         try {
             layers.forEach { layer ->
                 with(density) {
                     drawIntoCanvas { canvas ->
-                        val paint = Paint().apply {
-                            color = layer.color
-                        }
-                    
-                        val frameworkPaint = paint.asFrameworkPaint()
-                        frameworkPaint.setShadowLayer(
+                        val paint = Paint().apply { color = layer.color }
+                        paint.asFrameworkPaint().setShadowLayer(
                             layer.blurRadius.toPx(),
                             layer.offsetX.toPx(),
                             layer.offsetY.toPx(),
                             layer.color.toArgb()
                         )
-                    
-                        // Draw shadow rect
                         canvas.drawRect(
                             rect = Rect(
                                 offset = Offset(layer.offsetX.toPx(), layer.offsetY.toPx()),
@@ -354,117 +228,51 @@ fun Modifier.multiLayerShadow(
     }
 }
 
-// ==========================================
-// DEPTH PARALLAX EFFECT
-// ==========================================
-
-/**
- * Depth parallax modifier for scroll-based parallax effects
- * Creates depth perception with layered movement
- *
- * @param scrollOffset Current scroll offset
- * @param parallaxFactor Multiplier for parallax movement (0-1, where 0 = no movement)
- * @param direction Direction of parallax movement
- */
 fun Modifier.depthParallax(
     scrollOffset: Float,
     parallaxFactor: Float = 0.5f,
     direction: ParallaxDirection = ParallaxDirection.Vertical
 ): Modifier = graphicsLayer {
+    val delta = scrollOffset * parallaxFactor
     when (direction) {
-        ParallaxDirection.Vertical -> {
-            translationY = scrollOffset * parallaxFactor
-        }
-        ParallaxDirection.Horizontal -> {
-            translationX = scrollOffset * parallaxFactor
-        }
+        ParallaxDirection.Vertical -> translationY = delta
+        ParallaxDirection.Horizontal -> translationX = delta
         ParallaxDirection.Both -> {
-            translationX = scrollOffset * parallaxFactor
-            translationY = scrollOffset * parallaxFactor
+            translationX = delta
+            translationY = delta
         }
     }
 }
 
-enum class ParallaxDirection {
-    Vertical,
-    Horizontal,
-    Both
-}
+enum class ParallaxDirection { Vertical, Horizontal, Both }
 
-/**
- * Animated depth parallax with automatic subtle movement
- * Creates a floating effect for hero elements
- */
 fun Modifier.floatingParallax(
     amplitude: Float = 8f,
     duration: Int = EffectDuration.AmbientLoop
 ): Modifier = composed {
-    val infiniteTransition = rememberInfiniteTransition(label = "floating")
-    
-    val offsetY by infiniteTransition.animateFloat(
-        initialValue = -amplitude,
-        targetValue = amplitude,
-        animationSpec = infiniteRepeatable(
-            animation = tween(
-                durationMillis = duration,
-                easing = EffectEasing.Standard
-            ),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "floatY"
+    val offsetY by reversingFloat("floatY", -amplitude, amplitude, duration)
+    val offsetX by reversingFloat(
+        "floatX",
+        -amplitude * 0.5f,
+        amplitude * 0.5f,
+        (duration * 1.3).toInt()
     )
-    
-    val offsetX by infiniteTransition.animateFloat(
-        initialValue = -amplitude * 0.5f,
-        targetValue = amplitude * 0.5f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(
-                durationMillis = (duration * 1.3).toInt(),
-                easing = EffectEasing.Standard
-            ),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "floatX"
-    )
-    
     Modifier.graphicsLayer {
         translationY = offsetY
         translationX = offsetX
     }
 }
 
-/**
- * 3D tilt parallax based on scroll position
- * Creates perspective depth illusion
- */
 fun Modifier.tiltParallax(
     scrollOffset: Float,
     maxTilt: Float = 5f,
     perspective: Float = 1000f
 ): Modifier = graphicsLayer {
-    // Calculate tilt based on scroll
     val normalizedScroll = (scrollOffset / 1000f).coerceIn(-1f, 1f)
     rotationX = normalizedScroll * maxTilt
-    
-    // Add subtle perspective
     cameraDistance = perspective
 }
 
-// ==========================================
-// GLOW PULSE EFFECT
-// ==========================================
-
-/**
- * Animated glow pulse effect for live indicators
- * Creates attention-grabbing pulsing glow
- *
- * @param glowColor Base color for the glow
- * @param minAlpha Minimum glow alpha
- * @param maxAlpha Maximum glow alpha
- * @param minRadius Minimum glow radius
- * @param maxRadius Maximum glow radius
- * @param duration Pulse animation duration in ms
- */
 fun Modifier.glowPulse(
     glowColor: Color = LiveBlue,
     minAlpha: Float = 0.2f,
@@ -473,37 +281,9 @@ fun Modifier.glowPulse(
     maxRadius: Float = 1.2f,
     duration: Int = EffectDuration.GlowPulse
 ): Modifier = composed {
-    val infiniteTransition = rememberInfiniteTransition(label = "glowPulse")
-    
-    val alpha by infiniteTransition.animateFloat(
-        initialValue = minAlpha,
-        targetValue = maxAlpha,
-        animationSpec = infiniteRepeatable(
-            animation = tween(
-                durationMillis = duration,
-                easing = EffectEasing.Emphasized
-            ),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "glowAlpha"
-    )
-    
-    val radiusMultiplier by infiniteTransition.animateFloat(
-        initialValue = minRadius,
-        targetValue = maxRadius,
-        animationSpec = infiniteRepeatable(
-            animation = tween(
-                durationMillis = duration,
-                easing = EffectEasing.Emphasized
-            ),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "glowRadius"
-    )
-    
+    val alpha by reversingFloat("glowAlpha", minAlpha, maxAlpha, duration, EffectEasing.Emphasized)
+    val radiusMultiplier by reversingFloat("glowRadius", minRadius, maxRadius, duration, EffectEasing.Emphasized)
     Modifier.drawBehind {
-        val glowRadius = size.minDimension * radiusMultiplier
-        
         drawCircle(
             brush = Brush.radialGradient(
                 colors = listOf(
@@ -512,15 +292,12 @@ fun Modifier.glowPulse(
                     Color.Transparent
                 ),
                 center = Offset(size.width / 2, size.height / 2),
-                radius = glowRadius
+                radius = size.minDimension * radiusMultiplier
             )
         )
     }
 }
 
-/**
- * Gold glow pulse for premium elements
- */
 fun Modifier.goldGlowPulse(
     minAlpha: Float = 0.15f,
     maxAlpha: Float = 0.35f,
@@ -532,9 +309,6 @@ fun Modifier.goldGlowPulse(
     duration = duration
 )
 
-/**
- * Live indicator glow pulse with blue theme
- */
 fun Modifier.liveGlowPulse(
     duration: Int = EffectDuration.GlowPulse
 ): Modifier = glowPulse(
@@ -544,9 +318,6 @@ fun Modifier.liveGlowPulse(
     duration = duration
 )
 
-/**
- * Success glow pulse
- */
 fun Modifier.successGlowPulse(
     duration: Int = EffectDuration.GlowPulse
 ): Modifier = glowPulse(
@@ -556,9 +327,6 @@ fun Modifier.successGlowPulse(
     duration = duration
 )
 
-/**
- * Error glow pulse for attention
- */
 fun Modifier.errorGlowPulse(
     duration: Int = 1500
 ): Modifier = glowPulse(
@@ -568,20 +336,6 @@ fun Modifier.errorGlowPulse(
     duration = duration
 )
 
-// ==========================================
-// RADIAL SPOTLIGHT EFFECT
-// ==========================================
-
-/**
- * Radial spotlight effect for highlighting key elements
- * Creates a focused beam of light effect
- *
- * @param spotlightColor Color of the spotlight
- * @param alpha Intensity of the spotlight
- * @param centerX Horizontal center position (0-1)
- * @param centerY Vertical center position (0-1)
- * @param radius Radius of the spotlight relative to container size
- */
 fun Modifier.radialSpotlight(
     spotlightColor: Color = ShinyGoldLight,
     alpha: Float = 0.2f,
@@ -589,9 +343,6 @@ fun Modifier.radialSpotlight(
     centerY: Float = 0.3f,
     radius: Float = 0.8f
 ): Modifier = drawBehind {
-    val centerOffset = Offset(size.width * centerX, size.height * centerY)
-    val spotRadius = size.maxDimension * radius
-    
     drawCircle(
         brush = Brush.radialGradient(
             colors = listOf(
@@ -600,48 +351,19 @@ fun Modifier.radialSpotlight(
                 spotlightColor.copy(alpha = alpha * 0.1f),
                 Color.Transparent
             ),
-            center = centerOffset,
-            radius = spotRadius
+            center = Offset(size.width * centerX, size.height * centerY),
+            radius = size.maxDimension * radius
         )
     )
 }
 
-/**
- * Animated radial spotlight that moves subtly
- */
 fun Modifier.animatedSpotlight(
     spotlightColor: Color = ShinyGoldMid,
     alpha: Float = 0.15f,
     duration: Int = EffectDuration.AmbientLoop * 2
 ): Modifier = composed {
-    val infiniteTransition = rememberInfiniteTransition(label = "spotlight")
-    
-    val centerX by infiniteTransition.animateFloat(
-        initialValue = 0.3f,
-        targetValue = 0.7f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(
-                durationMillis = duration,
-                easing = EffectEasing.Standard
-            ),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "spotlightX"
-    )
-    
-    val centerY by infiniteTransition.animateFloat(
-        initialValue = 0.2f,
-        targetValue = 0.5f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(
-                durationMillis = (duration * 0.8).toInt(),
-                easing = EffectEasing.Standard
-            ),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "spotlightY"
-    )
-    
+    val centerX by reversingFloat("spotlightX", 0.3f, 0.7f, duration)
+    val centerY by reversingFloat("spotlightY", 0.2f, 0.5f, (duration * 0.8).toInt())
     radialSpotlight(
         spotlightColor = spotlightColor,
         alpha = alpha,
@@ -650,49 +372,36 @@ fun Modifier.animatedSpotlight(
     )
 }
 
-/**
- * Dual spotlight effect for dramatic emphasis
- */
+private fun DrawScope.drawSpotCircle(
+    color: Color,
+    alpha: Float,
+    centerFx: Float,
+    centerFy: Float,
+    radiusFactor: Float
+) {
+    drawCircle(
+        brush = Brush.radialGradient(
+            colors = listOf(
+                color.copy(alpha = alpha),
+                color.copy(alpha = alpha * 0.3f),
+                Color.Transparent
+            ),
+            center = Offset(size.width * centerFx, size.height * centerFy),
+            radius = size.maxDimension * radiusFactor
+        )
+    )
+}
+
 fun Modifier.dualSpotlight(
     primaryColor: Color = ShinyGoldLight,
     secondaryColor: Color = LiveBlueBright,
     primaryAlpha: Float = 0.15f,
     secondaryAlpha: Float = 0.1f
 ): Modifier = drawBehind {
-    // Primary spotlight - top left
-    drawCircle(
-        brush = Brush.radialGradient(
-            colors = listOf(
-                primaryColor.copy(alpha = primaryAlpha),
-                primaryColor.copy(alpha = primaryAlpha * 0.3f),
-                Color.Transparent
-            ),
-            center = Offset(size.width * 0.2f, size.height * 0.2f),
-            radius = size.maxDimension * 0.7f
-        )
-    )
-    
-    // Secondary spotlight - bottom right
-    drawCircle(
-        brush = Brush.radialGradient(
-            colors = listOf(
-                secondaryColor.copy(alpha = secondaryAlpha),
-                secondaryColor.copy(alpha = secondaryAlpha * 0.3f),
-                Color.Transparent
-            ),
-            center = Offset(size.width * 0.8f, size.height * 0.8f),
-            radius = size.maxDimension * 0.5f
-        )
-    )
+    drawSpotCircle(primaryColor, primaryAlpha, 0.2f, 0.2f, 0.7f)
+    drawSpotCircle(secondaryColor, secondaryAlpha, 0.8f, 0.8f, 0.5f)
 }
 
-// ==========================================
-// RIBBON HIGHLIGHT EFFECT
-// ==========================================
-
-/**
- * Diagonal ribbon highlight effect for premium cards
- */
 fun Modifier.ribbonHighlight(
     highlightColor: Color = ShinyGoldLight,
     alpha: Float = 0.08f,
@@ -700,7 +409,10 @@ fun Modifier.ribbonHighlight(
 ): Modifier = drawBehind {
     val radians = Math.toRadians(angle.toDouble()).toFloat()
     val length = size.maxDimension * 2
-    
+    val dx = length * cos(radians) / 2
+    val dy = length * sin(radians) / 2
+    val cx = size.width / 2
+    val cy = size.height / 2
     drawRect(
         brush = Brush.linearGradient(
             colors = listOf(
@@ -710,82 +422,45 @@ fun Modifier.ribbonHighlight(
                 highlightColor.copy(alpha = alpha),
                 Color.Transparent
             ),
-            start = Offset(
-                size.width / 2 - length * cos(radians) / 2,
-                size.height / 2 - length * sin(radians) / 2
-            ),
-            end = Offset(
-                size.width / 2 + length * cos(radians) / 2,
-                size.height / 2 + length * sin(radians) / 2
-            )
+            start = Offset(cx - dx, cy - dy),
+            end = Offset(cx + dx, cy + dy)
         )
     )
 }
 
-// ==========================================
-// EDGE HIGHLIGHT EFFECT
-// ==========================================
-
-/**
- * Premium edge highlight for elevated surfaces
- */
 fun Modifier.edgeHighlight(
     highlightColor: Color = Color.White,
     alpha: Float = 0.1f,
     position: EdgePosition = EdgePosition.Top
 ): Modifier = drawBehind {
+    val tinted = highlightColor.copy(alpha = alpha)
     val gradientBrush = when (position) {
-            EdgePosition.Top -> Brush.verticalGradient(
-                colors = listOf(
-                    highlightColor.copy(alpha = alpha),
-                    Color.Transparent
-                ),
-                startY = 0f,
-                endY = size.height * 0.15f
-            )
-            EdgePosition.Bottom -> Brush.verticalGradient(
-                colors = listOf(
-                    Color.Transparent,
-                    highlightColor.copy(alpha = alpha)
-                ),
-                startY = size.height * 0.85f,
-                endY = size.height
-            )
-            EdgePosition.Left -> Brush.horizontalGradient(
-                colors = listOf(
-                    highlightColor.copy(alpha = alpha),
-                    Color.Transparent
-                ),
-                startX = 0f,
-                endX = size.width * 0.15f
-            )
-            EdgePosition.Right -> Brush.horizontalGradient(
-                colors = listOf(
-                    Color.Transparent,
-                    highlightColor.copy(alpha = alpha)
-                ),
-                startX = size.width * 0.85f,
-                endX = size.width
-            )
+        EdgePosition.Top -> Brush.verticalGradient(
+            colors = listOf(tinted, Color.Transparent),
+            startY = 0f,
+            endY = size.height * 0.15f
+        )
+        EdgePosition.Bottom -> Brush.verticalGradient(
+            colors = listOf(Color.Transparent, tinted),
+            startY = size.height * 0.85f,
+            endY = size.height
+        )
+        EdgePosition.Left -> Brush.horizontalGradient(
+            colors = listOf(tinted, Color.Transparent),
+            startX = 0f,
+            endX = size.width * 0.15f
+        )
+        EdgePosition.Right -> Brush.horizontalGradient(
+            colors = listOf(Color.Transparent, tinted),
+            startX = size.width * 0.85f,
+            endX = size.width
+        )
     }
-    
     drawRect(brush = gradientBrush)
 }
 
-enum class EdgePosition {
-    Top,
-    Bottom,
-    Left,
-    Right
-}
+enum class EdgePosition { Top, Bottom, Left, Right }
 
-// ==========================================
-// INNER SHADOW EFFECT
-// ==========================================
-
-/**
- * Inner shadow effect for recessed elements
- */
 fun Modifier.innerShadow(
     shadowColor: Color = Color.Black,
     alpha: Float = 0.15f,
@@ -793,29 +468,19 @@ fun Modifier.innerShadow(
     spread: Dp = 2.dp
 ): Modifier = composed {
     val density = LocalDensity.current
-    
     Modifier.drawBehind {
         try {
             with(density) {
-                // Top inner shadow
                 drawRect(
                     brush = Brush.verticalGradient(
-                        colors = listOf(
-                            shadowColor.copy(alpha = alpha),
-                            Color.Transparent
-                        ),
+                        colors = listOf(shadowColor.copy(alpha = alpha), Color.Transparent),
                         startY = 0f,
                         endY = blur.toPx()
                     )
                 )
-            
-                // Left inner shadow
                 drawRect(
                     brush = Brush.horizontalGradient(
-                        colors = listOf(
-                            shadowColor.copy(alpha = alpha * 0.7f),
-                            Color.Transparent
-                        ),
+                        colors = listOf(shadowColor.copy(alpha = alpha * 0.7f), Color.Transparent),
                         startX = 0f,
                         endX = blur.toPx() * 0.5f
                     )
@@ -828,55 +493,32 @@ fun Modifier.innerShadow(
     }
 }
 
-// ==========================================
-// CONVENIENCE EXTENSIONS
-// ==========================================
-
-/**
- * Premium card effect combining multiple effects
- */
 fun Modifier.premiumCardEffect(
     isHighlighted: Boolean = false,
     isLive: Boolean = false
 ): Modifier = composed {
+    val shadowLayers = when {
+        isLive -> liveShadowLayers()
+        isHighlighted -> goldShadowLayers()
+        else -> defaultShadowLayers()
+    }
     this
-        .multiLayerShadow(
-            layers = when {
-                    isLive -> liveShadowLayers()
-                    isHighlighted -> goldShadowLayers()
-                    else -> defaultShadowLayers()
-            }
-        )
+        .multiLayerShadow(layers = shadowLayers)
         .then(
             if (isHighlighted) {
-                Modifier.radialSpotlight(
-                    spotlightColor = ShinyGoldMid,
-                    alpha = 0.1f
-                )
+                Modifier.radialSpotlight(spotlightColor = ShinyGoldMid, alpha = 0.1f)
             } else {
                 Modifier
             }
         )
-        .then(
-            if (isLive) {
-                Modifier.liveGlowPulse()
-            } else {
-                Modifier
-            }
-        )
+        .then(if (isLive) Modifier.liveGlowPulse() else Modifier)
 }
 
-/**
- * Hero element effect with floating and spotlight
- */
 fun Modifier.heroEffect(): Modifier = composed {
     try {
         this
             .floatingParallax(amplitude = 6f)
-            .animatedSpotlight(
-                spotlightColor = ShinyGoldLight,
-                alpha = 0.12f
-            )
+            .animatedSpotlight(spotlightColor = ShinyGoldLight, alpha = 0.12f)
             .multiLayerShadow(goldShadowLayers())
     } catch (e: Exception) {
         Sentry.captureException(e)
