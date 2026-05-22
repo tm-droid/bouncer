@@ -43,6 +43,45 @@ import com.tanush.bouncer.ui.theme.GoldPrimary
 private fun String.toPlayerInitials(): String =
     split(" ").mapNotNull { it.firstOrNull()?.uppercase() }.take(2).joinToString("")
 
+@Composable
+private fun PlayerAvatar(
+    name: String,
+    imageUrl: String?,
+    size: Dp,
+    borderWidth: Dp,
+    borderColor: Color,
+    background: Color,
+    initialsColor: Color,
+    initialsSize: androidx.compose.ui.unit.TextUnit,
+    initialsWeight: FontWeight,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .size(size)
+            .border(borderWidth, borderColor, CircleShape)
+            .clip(CircleShape)
+            .background(background),
+        contentAlignment = Alignment.Center
+    ) {
+        if (imageUrl != null) {
+            CoilImage(
+                model = imageUrl,
+                contentDescription = name,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
+            )
+        } else {
+            Text(
+                text = name.toPlayerInitials(),
+                color = initialsColor,
+                fontSize = initialsSize,
+                fontWeight = initialsWeight
+            )
+        }
+    }
+}
+
 /**
  * FlipCardPlayerStats - 3D flip card between front (photo) and back (stats)
  * Interactive player card with flip animation for detailed stats view
@@ -66,18 +105,15 @@ fun FlipCardPlayerStats(
 ) {
     var isFlipped by remember { mutableStateOf(false) }
     val haptic = rememberHapticFeedback()
-    
+
     val rotation by animateFloatAsState(
         targetValue = if (isFlipped) 180f else 0f,
-        animationSpec = spring(
-            dampingRatio = 0.7f,
-            stiffness = 300f
-        ),
+        animationSpec = spring(dampingRatio = 0.7f, stiffness = 300f),
         label = "flipRotation"
     )
-    
+
     val cardDescription = "Player card for $playerName, $playerRole. Tap to ${if (isFlipped) "see photo" else "see stats"}."
-    
+
     Box(
         modifier = modifier
             .fillMaxWidth()
@@ -95,7 +131,6 @@ fun FlipCardPlayerStats(
                 isFlipped = !isFlipped
             }
     ) {
-        // Front side - Photo
         if (rotation <= 90f) {
             FlipCardFront(
                 playerName = playerName,
@@ -105,13 +140,8 @@ fun FlipCardPlayerStats(
                 isCaptain = isCaptain,
                 isKeeper = isKeeper
             )
-        }
-        
-        // Back side - Stats
-        if (rotation > 90f) {
-            Box(
-                modifier = Modifier.graphicsLayer { rotationY = 180f }
-            ) {
+        } else {
+            Box(modifier = Modifier.graphicsLayer { rotationY = 180f }) {
                 FlipCardBack(
                     playerName = playerName,
                     runs = runs,
@@ -128,6 +158,22 @@ fun FlipCardPlayerStats(
 }
 
 @Composable
+private fun RoleBadge(text: String, background: Color, textColor: Color) {
+    Box(
+        modifier = Modifier
+            .background(background, CircleShape)
+            .padding(horizontal = 6.dp, vertical = 2.dp)
+    ) {
+        Text(
+            text = text,
+            color = textColor,
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Black
+        )
+    }
+}
+
+@Composable
 private fun FlipCardFront(
     playerName: String,
     playerRole: String,
@@ -138,6 +184,7 @@ private fun FlipCardFront(
 ) {
     val colors = BouncerDesignSystem.colors
     val hierarchy = BouncerDesignSystem.hierarchy
+    val accent = hierarchy.secondary.primary
     val infiniteTransition = rememberInfiniteTransition(label = "frontCard")
     val shimmer by infiniteTransition.animateFloat(
         initialValue = 0f,
@@ -148,14 +195,13 @@ private fun FlipCardFront(
         ),
         label = "shimmer"
     )
-    
+
     Surface(
         modifier = Modifier.fillMaxSize(),
         shape = RoundedCornerShape(24.dp),
         color = colors.glassSurface
     ) {
         Box {
-            // Background gradient
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -168,8 +214,7 @@ private fun FlipCardFront(
                         )
                     )
             )
-            
-            // Shimmer effect
+
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -178,7 +223,7 @@ private fun FlipCardFront(
                         Brush.linearGradient(
                             colors = listOf(
                                 Color.Transparent,
-                                hierarchy.secondary.primary.copy(alpha = 0.1f),
+                                accent.copy(alpha = 0.1f),
                                 Color.Transparent
                             ),
                             start = Offset(shimmer * 500f - 150f, 0f),
@@ -186,7 +231,7 @@ private fun FlipCardFront(
                         )
                     )
             )
-            
+
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -194,46 +239,25 @@ private fun FlipCardFront(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
-                // Player photo
-                Box(
-                    modifier = Modifier
-                        .size(100.dp)
-                        .shadow(
-                            elevation = 12.dp,
-                            shape = CircleShape,
-                            spotColor = hierarchy.secondary.primary.copy(alpha = 0.4f)
-                        )
-                        .border(
-                            3.dp,
-                            Brush.linearGradient(
-                                colors = listOf(hierarchy.secondary.primary, hierarchy.secondary.primary)
-                            ),
-                            CircleShape
-                        )
-                        .clip(CircleShape)
-                        .background(colors.glassBorderHighlight),
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (imageUrl != null) {
-                        CoilImage(
-                            model = imageUrl,
-                            contentDescription = playerName,
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop
-                        )
-                    } else {
-                        Text(
-                            text = playerName.toPlayerInitials(),
-                            color = hierarchy.secondary.primary,
-                            fontSize = 32.sp,
-                            fontWeight = FontWeight.Black
-                        )
-                    }
-                }
-                
+                PlayerAvatar(
+                    name = playerName,
+                    imageUrl = imageUrl,
+                    size = 100.dp,
+                    borderWidth = 3.dp,
+                    borderColor = accent,
+                    background = colors.glassBorderHighlight,
+                    initialsColor = accent,
+                    initialsSize = 32.sp,
+                    initialsWeight = FontWeight.Black,
+                    modifier = Modifier.shadow(
+                        elevation = 12.dp,
+                        shape = CircleShape,
+                        spotColor = accent.copy(alpha = 0.4f)
+                    )
+                )
+
                 Spacer(modifier = Modifier.height(16.dp))
-                
-                // Player name with badges
+
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically
@@ -245,47 +269,20 @@ private fun FlipCardFront(
                         fontWeight = FontWeight.Bold,
                         textAlign = TextAlign.Center
                     )
-                    
-                    if (isCaptain) {
-                        Box(
-                            modifier = Modifier
-                                .background(hierarchy.secondary.primary, CircleShape)
-                                .padding(horizontal = 6.dp, vertical = 2.dp)
-                        ) {
-                            Text(
-                                text = "C",
-                                color = colors.backgroundBase,
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Black
-                            )
-                        }
-                    }
-                    
-                    if (isKeeper) {
-                        Box(
-                            modifier = Modifier
-                                .background(colors.statusInfo, CircleShape)
-                                .padding(horizontal = 6.dp, vertical = 2.dp)
-                        ) {
-                            Text(
-                                text = "WK",
-                                color = colors.textPrimary,
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Black
-                            )
-                        }
-                    }
+
+                    if (isCaptain) RoleBadge("C", accent, colors.backgroundBase)
+                    if (isKeeper) RoleBadge("WK", colors.statusInfo, colors.textPrimary)
                 }
-                
+
                 Text(
                     text = playerRole,
                     color = colors.textSecondary,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Medium
                 )
-                
+
                 Spacer(modifier = Modifier.height(8.dp))
-                
+
                 Text(
                     text = "$matches MATCHES",
                     color = colors.textMuted,
@@ -293,12 +290,12 @@ private fun FlipCardFront(
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 1.sp
                 )
-                
+
                 Spacer(modifier = Modifier.height(12.dp))
-                
+
                 Text(
                     text = "TAP TO VIEW STATS",
-                    color = hierarchy.secondary.primary.copy(alpha = 0.7f),
+                    color = accent.copy(alpha = 0.7f),
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 1.sp
@@ -321,6 +318,20 @@ private fun FlipCardBack(
 ) {
     val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
+    val accent = hierarchy.secondary.primary
+
+    @Composable
+    fun SectionHeader(text: String) {
+        Text(
+            text = text,
+            color = colors.textMuted,
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 1.sp
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+    }
+
     Surface(
         modifier = Modifier.fillMaxSize(),
         shape = RoundedCornerShape(24.dp),
@@ -331,51 +342,31 @@ private fun FlipCardBack(
                 .fillMaxSize()
                 .padding(20.dp)
         ) {
-            // Header
             Text(
                 text = playerName.uppercase(),
-                color = hierarchy.secondary.primary,
+                color = accent,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Black,
                 letterSpacing = 1.sp
             )
-            
+
             Spacer(modifier = Modifier.height(16.dp))
-            
-            // Batting stats
+
             if (runs > 0 || average > 0) {
-                Text(
-                    text = "BATTING",
-                    color = colors.textMuted,
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.sp
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                
+                SectionHeader("BATTING")
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
-                    StatColumn(value = runs.toString(), label = "RUNS", color = hierarchy.secondary.primary)
+                    StatColumn(value = runs.toString(), label = "RUNS", color = accent)
                     StatColumn(value = String.format("%.1f", average), label = "AVG", color = ChartGreen)
                     StatColumn(value = String.format("%.1f", strikeRate), label = "SR", color = colors.statusInfo)
                 }
-                
                 Spacer(modifier = Modifier.height(16.dp))
             }
-            
-            // Bowling stats
+
             if (wickets > 0 || economy > 0) {
-                Text(
-                    text = "BOWLING",
-                    color = colors.textMuted,
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.sp
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                
+                SectionHeader("BOWLING")
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceEvenly
@@ -385,10 +376,9 @@ private fun FlipCardBack(
                     StatColumn(value = String.format("%.2f", economy), label = "ECON", color = ChartOrange)
                 }
             }
-            
+
             Spacer(modifier = Modifier.weight(1f))
-            
-            // View more button
+
             if (onPlayerClick != null) {
                 TextButton(
                     onClick = onPlayerClick,
@@ -396,18 +386,18 @@ private fun FlipCardBack(
                 ) {
                     Text(
                         text = "View Full Profile",
-                        color = hierarchy.secondary.primary,
+                        color = accent,
                         fontWeight = FontWeight.Bold
                     )
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                         contentDescription = null,
-                        tint = hierarchy.secondary.primary,
+                        tint = accent,
                         modifier = Modifier.size(16.dp)
                     )
                 }
             }
-            
+
             Text(
                 text = "TAP TO FLIP BACK",
                 color = colors.textMuted,
@@ -460,7 +450,6 @@ fun PerformanceRadarChart(
     chartSize: Dp = 200.dp,
     primaryColor: Color = GoldPrimary
 ) {
-    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val skills = listOf(
         "Batting" to battingSkill,
@@ -469,7 +458,7 @@ fun PerformanceRadarChart(
         "Fitness" to fitnessSkill,
         "Experience" to experienceSkill
     )
-    
+
     val animatedSkills = skills.map { (label, skill) ->
         val animated by animateFloatAsState(
             targetValue = skill / 100f,
@@ -478,9 +467,10 @@ fun PerformanceRadarChart(
         )
         label to animated
     }
-    
+
     val chartDescription = "$playerName performance: ${skills.joinToString(", ") { "${it.first} ${it.second.toInt()}%" }}"
-    
+    val angleStep = 360f / 5
+
     Box(
         modifier = modifier
             .size(chartSize)
@@ -490,50 +480,39 @@ fun PerformanceRadarChart(
         Canvas(modifier = Modifier.fillMaxSize()) {
             val center = Offset(size.width / 2, size.height / 2)
             val radius = min(size.width, size.height) / 2 - 30.dp.toPx()
-            val angleStep = 360f / 5
-            
-            // Draw grid circles
+
             for (i in 1..5) {
-                val gridRadius = radius * i / 5
                 drawCircle(
                     color = GlassBorder.copy(alpha = 0.3f),
-                    radius = gridRadius,
+                    radius = radius * i / 5,
                     center = center,
                     style = Stroke(width = 1.dp.toPx())
                 )
             }
-            
-            // Draw axis lines
+
             for (i in 0 until 5) {
                 val angle = Math.toRadians((angleStep * i - 90).toDouble())
-                val endX = center.x + radius * cos(angle).toFloat()
-                val endY = center.y + radius * sin(angle).toFloat()
-                
                 drawLine(
                     color = GlassBorder.copy(alpha = 0.5f),
                     start = center,
-                    end = Offset(endX, endY),
+                    end = Offset(
+                        center.x + radius * cos(angle).toFloat(),
+                        center.y + radius * sin(angle).toFloat()
+                    ),
                     strokeWidth = 1.dp.toPx()
                 )
             }
-            
-            // Draw skill polygon
+
             val path = Path()
             animatedSkills.forEachIndexed { index, (_, skill) ->
                 val angle = Math.toRadians((angleStep * index - 90).toDouble())
                 val skillRadius = radius * skill
                 val x = center.x + skillRadius * cos(angle).toFloat()
                 val y = center.y + skillRadius * sin(angle).toFloat()
-                
-                if (index == 0) {
-                    path.moveTo(x, y)
-                } else {
-                    path.lineTo(x, y)
-                }
+                if (index == 0) path.moveTo(x, y) else path.lineTo(x, y)
             }
             path.close()
-            
-            // Draw filled polygon
+
             drawPath(
                 path = path,
                 brush = Brush.radialGradient(
@@ -544,51 +523,40 @@ fun PerformanceRadarChart(
                     center = center
                 )
             )
-            
-            // Draw polygon outline
+
             drawPath(
                 path = path,
                 color = primaryColor,
                 style = Stroke(width = 2.dp.toPx())
             )
-            
-            // Draw points
+
             animatedSkills.forEachIndexed { index, (_, skill) ->
                 val angle = Math.toRadians((angleStep * index - 90).toDouble())
                 val skillRadius = radius * skill
-                val x = center.x + skillRadius * cos(angle).toFloat()
-                val y = center.y + skillRadius * sin(angle).toFloat()
-                
-                drawCircle(
-                    color = primaryColor,
-                    radius = 6.dp.toPx(),
-                    center = Offset(x, y)
+                val point = Offset(
+                    center.x + skillRadius * cos(angle).toFloat(),
+                    center.y + skillRadius * sin(angle).toFloat()
                 )
-                drawCircle(
-                    color = Surface1,
-                    radius = 3.dp.toPx(),
-                    center = Offset(x, y)
-                )
+                drawCircle(color = primaryColor, radius = 6.dp.toPx(), center = point)
+                drawCircle(color = Surface1, radius = 3.dp.toPx(), center = point)
             }
         }
-        
-        // Labels around the chart
-        skills.forEachIndexed { index, (label, skill) ->
-            val angleStep = 360f / 5
+
+        skills.forEachIndexed { index, (label, _) ->
             val angle = Math.toRadians((angleStep * index - 90).toDouble())
             val labelRadius = chartSize.value / 2 - 10
-            
-            val offsetX = (labelRadius * cos(angle)).dp
-            val offsetY = (labelRadius * sin(angle)).dp
-            
+
             Box(
                 modifier = Modifier
-                    .offset(x = offsetX, y = offsetY)
+                    .offset(
+                        x = (labelRadius * cos(angle)).dp,
+                        y = (labelRadius * sin(angle)).dp
+                    )
                     .background(Color.White.copy(alpha = 0.04f), RoundedCornerShape(4.dp))
                     .padding(horizontal = 4.dp, vertical = 2.dp)
             ) {
                 Text(
-                    text = "${label.take(3).uppercase()}",
+                    text = label.take(3).uppercase(),
                     color = colors.textSecondary,
                     fontSize = 9.sp,
                     fontWeight = FontWeight.Bold
@@ -619,23 +587,18 @@ fun HeadToHeadComparison(
         shape = RoundedCornerShape(24.dp),
         color = colors.glassSurface
     ) {
-        Column(
-            modifier = Modifier.padding(20.dp)
-        ) {
-            // Header with avatars
+        Column(modifier = Modifier.padding(20.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Player 1
                 PlayerComparisonHeader(
                     name = player1Name,
                     imageUrl = player1ImageUrl,
                     color = ChartGreen
                 )
-                
-                // VS badge
+
                 Box(
                     modifier = Modifier
                         .size(40.dp)
@@ -649,66 +612,68 @@ fun HeadToHeadComparison(
                         fontWeight = FontWeight.Black
                     )
                 }
-                
-                // Player 2
+
                 PlayerComparisonHeader(
                     name = player2Name,
                     imageUrl = player2ImageUrl,
                     color = colors.statusInfo
                 )
             }
-            
+
             Spacer(modifier = Modifier.height(24.dp))
-            
-            // Comparison bars
-            ComparisonBar(
-                label = "RUNS",
-                value1 = player1Stats.runs.toFloat(),
-                value2 = player2Stats.runs.toFloat(),
-                displayValue1 = player1Stats.runs.toString(),
-                displayValue2 = player2Stats.runs.toString()
+
+            val bars = listOf<@Composable () -> Unit>(
+                {
+                    ComparisonBar(
+                        label = "RUNS",
+                        value1 = player1Stats.runs.toFloat(),
+                        value2 = player2Stats.runs.toFloat(),
+                        displayValue1 = player1Stats.runs.toString(),
+                        displayValue2 = player2Stats.runs.toString()
+                    )
+                },
+                {
+                    ComparisonBar(
+                        label = "AVERAGE",
+                        value1 = player1Stats.average,
+                        value2 = player2Stats.average,
+                        displayValue1 = String.format("%.1f", player1Stats.average),
+                        displayValue2 = String.format("%.1f", player2Stats.average)
+                    )
+                },
+                {
+                    ComparisonBar(
+                        label = "STRIKE RATE",
+                        value1 = player1Stats.strikeRate,
+                        value2 = player2Stats.strikeRate,
+                        displayValue1 = String.format("%.1f", player1Stats.strikeRate),
+                        displayValue2 = String.format("%.1f", player2Stats.strikeRate)
+                    )
+                },
+                {
+                    ComparisonBar(
+                        label = "WICKETS",
+                        value1 = player1Stats.wickets.toFloat(),
+                        value2 = player2Stats.wickets.toFloat(),
+                        displayValue1 = player1Stats.wickets.toString(),
+                        displayValue2 = player2Stats.wickets.toString()
+                    )
+                },
+                {
+                    ComparisonBar(
+                        label = "ECONOMY",
+                        value1 = player1Stats.economy,
+                        value2 = player2Stats.economy,
+                        displayValue1 = String.format("%.2f", player1Stats.economy),
+                        displayValue2 = String.format("%.2f", player2Stats.economy),
+                        lowerIsBetter = true
+                    )
+                }
             )
-            
-            Spacer(modifier = Modifier.height(12.dp))
-            
-            ComparisonBar(
-                label = "AVERAGE",
-                value1 = player1Stats.average,
-                value2 = player2Stats.average,
-                displayValue1 = String.format("%.1f", player1Stats.average),
-                displayValue2 = String.format("%.1f", player2Stats.average)
-            )
-            
-            Spacer(modifier = Modifier.height(12.dp))
-            
-            ComparisonBar(
-                label = "STRIKE RATE",
-                value1 = player1Stats.strikeRate,
-                value2 = player2Stats.strikeRate,
-                displayValue1 = String.format("%.1f", player1Stats.strikeRate),
-                displayValue2 = String.format("%.1f", player2Stats.strikeRate)
-            )
-            
-            Spacer(modifier = Modifier.height(12.dp))
-            
-            ComparisonBar(
-                label = "WICKETS",
-                value1 = player1Stats.wickets.toFloat(),
-                value2 = player2Stats.wickets.toFloat(),
-                displayValue1 = player1Stats.wickets.toString(),
-                displayValue2 = player2Stats.wickets.toString()
-            )
-            
-            Spacer(modifier = Modifier.height(12.dp))
-            
-            ComparisonBar(
-                label = "ECONOMY",
-                value1 = player1Stats.economy,
-                value2 = player2Stats.economy,
-                displayValue1 = String.format("%.2f", player1Stats.economy),
-                displayValue2 = String.format("%.2f", player2Stats.economy),
-                lowerIsBetter = true
-            )
+            bars.forEachIndexed { index, bar ->
+                bar()
+                if (index < bars.lastIndex) Spacer(modifier = Modifier.height(12.dp))
+            }
         }
     }
 }
@@ -732,33 +697,20 @@ private fun PlayerComparisonHeader(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier.width(80.dp)
     ) {
-        Box(
-            modifier = Modifier
-                .size(50.dp)
-                .border(2.dp, color, CircleShape)
-                .clip(CircleShape)
-                .background(colors.glassBorderHighlight),
-            contentAlignment = Alignment.Center
-        ) {
-            if (imageUrl != null) {
-                CoilImage(
-                    model = imageUrl,
-                    contentDescription = name,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
-            } else {
-                Text(
-                    text = name.toPlayerInitials(),
-                    color = color,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-        }
-        
+        PlayerAvatar(
+            name = name,
+            imageUrl = imageUrl,
+            size = 50.dp,
+            borderWidth = 2.dp,
+            borderColor = color,
+            background = colors.glassBorderHighlight,
+            initialsColor = color,
+            initialsSize = 16.sp,
+            initialsWeight = FontWeight.Bold
+        )
+
         Spacer(modifier = Modifier.height(8.dp))
-        
+
         Text(
             text = name.split(" ").lastOrNull() ?: name,
             color = colors.textPrimary,
@@ -781,36 +733,36 @@ private fun ComparisonBar(
 ) {
     val colors = BouncerDesignSystem.colors
     val maxValue = maxOf(value1, value2).coerceAtLeast(1f)
-    
+
     val animatedValue1 by animateFloatAsState(
         targetValue = value1 / maxValue,
         animationSpec = tween(800, easing = FastOutSlowInEasing),
         label = "bar1"
     )
-    
+
     val animatedValue2 by animateFloatAsState(
         targetValue = value2 / maxValue,
         animationSpec = tween(800, easing = FastOutSlowInEasing),
         label = "bar2"
     )
-    
+
     val isPlayer1Better = if (lowerIsBetter) value1 < value2 else value1 > value2
-    
+    val isPlayer2Better = !isPlayer1Better && value1 != value2
+
     Column {
         Text(
             text = label,
-                color = colors.textMuted,
+            color = colors.textMuted,
             letterSpacing = 0.5.sp,
             modifier = Modifier.align(Alignment.CenterHorizontally)
         )
-        
+
         Spacer(modifier = Modifier.height(6.dp))
-        
+
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Player 1 value
             Text(
                 text = displayValue1,
                 color = if (isPlayer1Better || value1 == value2) ChartGreen else colors.textSecondary,
@@ -818,8 +770,7 @@ private fun ComparisonBar(
                 fontWeight = if (isPlayer1Better) FontWeight.Bold else FontWeight.Normal,
                 modifier = Modifier.width(50.dp)
             )
-            
-            // Player 1 bar (right to left)
+
             Box(
                 modifier = Modifier
                     .weight(1f)
@@ -838,16 +789,14 @@ private fun ComparisonBar(
                         )
                 )
             }
-            
-            // Spacer/divider
+
             Box(
                 modifier = Modifier
                     .width(8.dp)
                     .height(12.dp)
                     .background(colors.glassBorder, RoundedCornerShape(2.dp))
             )
-            
-            // Player 2 bar (left to right)
+
             Box(
                 modifier = Modifier
                     .weight(1f)
@@ -861,18 +810,17 @@ private fun ComparisonBar(
                         .fillMaxWidth(animatedValue2)
                         .align(Alignment.CenterStart)
                         .background(
-                            if (!isPlayer1Better && value1 != value2) colors.statusInfo else colors.statusInfo.copy(alpha = 0.5f),
+                            if (isPlayer2Better) colors.statusInfo else colors.statusInfo.copy(alpha = 0.5f),
                             RoundedCornerShape(4.dp)
                         )
                 )
             }
-            
-            // Player 2 value
+
             Text(
                 text = displayValue2,
-                color = if (!isPlayer1Better && value1 != value2) colors.statusInfo else colors.textSecondary,
+                color = if (isPlayer2Better) colors.statusInfo else colors.textSecondary,
                 fontSize = 14.sp,
-                fontWeight = if (!isPlayer1Better && value1 != value2) FontWeight.Bold else FontWeight.Normal,
+                fontWeight = if (isPlayer2Better) FontWeight.Bold else FontWeight.Normal,
                 textAlign = TextAlign.End,
                 modifier = Modifier.width(50.dp)
             )
@@ -891,7 +839,7 @@ fun AchievementBadges(
 ) {
     val colors = BouncerDesignSystem.colors
     val scrollState = rememberScrollState()
-    
+
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -905,9 +853,9 @@ fun AchievementBadges(
                 fontWeight = FontWeight.Black,
                 letterSpacing = 1.sp
             )
-            
+
             Spacer(modifier = Modifier.height(12.dp))
-            
+
             Row(
                 modifier = Modifier
                     .horizontalScroll(scrollState)
@@ -941,43 +889,35 @@ private fun AchievementBadge(
     val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     var showAnimation by remember { mutableStateOf(false) }
-    
+
     LaunchedEffect(achievement.isUnlocked) {
-        if (achievement.isUnlocked) {
-            showAnimation = true
-        }
+        if (achievement.isUnlocked) showAnimation = true
     }
-    
+
     val scale by animateFloatAsState(
         targetValue = if (showAnimation) 1f else 0f,
-        animationSpec = spring(
-            dampingRatio = 0.5f,
-            stiffness = 300f
-        ),
+        animationSpec = spring(dampingRatio = 0.5f, stiffness = 300f),
         label = "badgeScale"
     )
-    
+
     val glow by animateFloatAsState(
         targetValue = if (achievement.isUnlocked) 1f else 0f,
         animationSpec = tween(1000),
         label = "glow"
     )
-    
+
     val tierColor = when (achievement.tier) {
         AchievementTier.BRONZE -> hierarchy.secondary.primary
         AchievementTier.SILVER -> Color(0xFFC0C0C0)
         AchievementTier.GOLD -> hierarchy.secondary.primary
         AchievementTier.PLATINUM -> Color(0xFFE5E4E2)
     }
-    
+
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier.width(70.dp)
     ) {
-        Box(
-            contentAlignment = Alignment.Center
-        ) {
-            // Glow effect
+        Box(contentAlignment = Alignment.Center) {
             if (achievement.isUnlocked) {
                 Box(
                     modifier = Modifier
@@ -987,8 +927,7 @@ private fun AchievementBadge(
                         .background(tierColor, CircleShape)
                 )
             }
-            
-            // Badge
+
             Box(
                 modifier = Modifier
                     .size(50.dp)
@@ -1002,7 +941,7 @@ private fun AchievementBadge(
                         spotColor = tierColor.copy(alpha = 0.5f)
                     )
                     .background(
-                        brush = if (achievement.isUnlocked) 
+                        brush = if (achievement.isUnlocked)
                             Brush.radialGradient(
                                 colors = listOf(tierColor, tierColor.copy(alpha = 0.7f))
                             )
@@ -1026,9 +965,9 @@ private fun AchievementBadge(
                 )
             }
         }
-        
+
         Spacer(modifier = Modifier.height(6.dp))
-        
+
         Text(
             text = achievement.title,
             color = if (achievement.isUnlocked) colors.textPrimary else colors.textMuted,
@@ -1054,15 +993,13 @@ fun FormIndicator(
     val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val maxScore = recentScores.maxOrNull()?.coerceAtLeast(50) ?: 50
-    
+
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(12.dp),
         color = colors.glassSurface
     ) {
-        Column(
-            modifier = Modifier.padding(12.dp)
-        ) {
+        Column(modifier = Modifier.padding(12.dp)) {
             if (showLabels) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -1076,22 +1013,15 @@ fun FormIndicator(
                         fontWeight = FontWeight.Black,
                         letterSpacing = 0.5.sp
                     )
-                    
-                    // Form rating
+
                     val avgScore = if (recentScores.isNotEmpty()) recentScores.average() else 0.0
-                    val formLabel = when {
-                        avgScore >= 50 -> "EXCELLENT"
-                        avgScore >= 30 -> "GOOD"
-                        avgScore >= 15 -> "AVERAGE"
-                        else -> "POOR"
+                    val (formLabel, formColor) = when {
+                        avgScore >= 50 -> "EXCELLENT" to StatusSuccess
+                        avgScore >= 30 -> "GOOD" to colors.statusInfo
+                        avgScore >= 15 -> "AVERAGE" to StatusWarning
+                        else -> "POOR" to StatusLive
                     }
-                    val formColor = when {
-                        avgScore >= 50 -> StatusSuccess
-                        avgScore >= 30 -> colors.statusInfo
-                        avgScore >= 15 -> StatusWarning
-                        else -> StatusLive
-                    }
-                    
+
                     Text(
                         text = formLabel,
                         color = formColor,
@@ -1099,10 +1029,10 @@ fun FormIndicator(
                         fontWeight = FontWeight.Bold
                     )
                 }
-                
+
                 Spacer(modifier = Modifier.height(8.dp))
             }
-            
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -1110,7 +1040,7 @@ fun FormIndicator(
             ) {
                 recentScores.takeLast(5).forEach { score ->
                     val heightFraction = (score.toFloat() / maxScore).coerceIn(0.1f, 1f)
-                    
+
                     val barColor = when {
                         score >= 100 -> hierarchy.secondary.primary
                         score >= 50 -> StatusSuccess
@@ -1118,13 +1048,13 @@ fun FormIndicator(
                         score > 0 -> colors.textSecondary
                         else -> StatusLive
                     }
-                    
+
                     val animatedHeight by animateFloatAsState(
                         targetValue = heightFraction,
                         animationSpec = tween(500, easing = FastOutSlowInEasing),
                         label = "formBar"
                     )
-                    
+
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         modifier = Modifier.weight(1f)
@@ -1136,7 +1066,7 @@ fun FormIndicator(
                                 .clip(RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp))
                                 .background(barColor)
                         )
-                        
+
                         Text(
                             text = score.toString(),
                             color = barColor,
@@ -1165,7 +1095,6 @@ fun PlayerCompactCard(
     onClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
-    val hierarchy = BouncerDesignSystem.hierarchy
     val haptic = rememberHapticFeedback()
     val dsColors = BouncerDesignSystem.colors
 
@@ -1194,33 +1123,18 @@ fun PlayerCompactCard(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Avatar
-            Box(
-                modifier = Modifier
-                    .size(44.dp)
-                    .border(1.5.dp, teamColor.copy(alpha = 0.5f), CircleShape)
-                    .clip(CircleShape)
-                    .background(dsColors.glassSurface),
-                contentAlignment = Alignment.Center
-            ) {
-                if (imageUrl != null) {
-                    CoilImage(
-                        model = imageUrl,
-                        contentDescription = name,
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
-                } else {
-                    Text(
-                        text = name.toPlayerInitials(),
-                        color = teamColor,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            }
-            
-            // Info
+            PlayerAvatar(
+                name = name,
+                imageUrl = imageUrl,
+                size = 44.dp,
+                borderWidth = 1.5.dp,
+                borderColor = teamColor.copy(alpha = 0.5f),
+                background = dsColors.glassSurface,
+                initialsColor = teamColor,
+                initialsSize = 14.sp,
+                initialsWeight = FontWeight.Bold
+            )
+
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = name,
@@ -1236,8 +1150,7 @@ fun PlayerCompactCard(
                     fontSize = 11.sp
                 )
             }
-            
-            // Stat
+
             Column(horizontalAlignment = Alignment.End) {
                 Text(
                     text = primaryStat,
@@ -1252,8 +1165,7 @@ fun PlayerCompactCard(
                     fontWeight = FontWeight.Bold
                 )
             }
-            
-            // Arrow if clickable
+
             if (onClick != null) {
                 Icon(
                     imageVector = Icons.Default.ChevronRight,
@@ -1279,8 +1191,9 @@ fun PlayerMilestoneCard(
 ) {
     val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
+    val accent = hierarchy.secondary.primary
     val infiniteTransition = rememberInfiniteTransition(label = "milestone")
-    
+
     val shimmer by infiniteTransition.animateFloat(
         initialValue = 0f,
         targetValue = 1f,
@@ -1290,7 +1203,7 @@ fun PlayerMilestoneCard(
         ),
         label = "shimmer"
     )
-    
+
     val pulse by infiniteTransition.animateFloat(
         initialValue = 1f,
         targetValue = 1.05f,
@@ -1300,7 +1213,7 @@ fun PlayerMilestoneCard(
         ),
         label = "pulse"
     )
-    
+
     Surface(
         modifier = modifier
             .fillMaxWidth()
@@ -1310,19 +1223,9 @@ fun PlayerMilestoneCard(
             },
         shape = RoundedCornerShape(20.dp),
         color = colors.glassSurface,
-        border = androidx.compose.foundation.BorderStroke(
-            2.dp,
-            Brush.linearGradient(
-                colors = listOf(
-                    hierarchy.secondary.primary,
-                    hierarchy.secondary.primary,
-                    hierarchy.secondary.primary
-                )
-            )
-        )
+        border = androidx.compose.foundation.BorderStroke(2.dp, accent)
     ) {
         Box {
-            // Shimmer overlay
             Box(
                 modifier = Modifier
                     .matchParentSize()
@@ -1331,7 +1234,7 @@ fun PlayerMilestoneCard(
                         Brush.linearGradient(
                             colors = listOf(
                                 Color.Transparent,
-                                hierarchy.secondary.primary.copy(alpha = 0.15f),
+                                accent.copy(alpha = 0.15f),
                                 Color.Transparent
                             ),
                             start = Offset(shimmer * 500f - 100f, 0f),
@@ -1339,7 +1242,7 @@ fun PlayerMilestoneCard(
                         )
                     )
             )
-            
+
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -1347,33 +1250,19 @@ fun PlayerMilestoneCard(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Player image
-                Box(
-                    modifier = Modifier
-                        .size(60.dp)
-                        .shadow(12.dp, CircleShape, spotColor = hierarchy.secondary.primary.copy(alpha = 0.5f))
-                        .border(3.dp, hierarchy.secondary.primary, CircleShape)
-                        .clip(CircleShape)
-                        .background(colors.glassBorderHighlight),
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (imageUrl != null) {
-                        CoilImage(
-                            model = imageUrl,
-                            contentDescription = playerName,
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop
-                        )
-                    } else {
-                        Text(
-                            text = playerName.toPlayerInitials(),
-                            color = hierarchy.secondary.primary,
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Black
-                        )
-                    }
-                }
-                
+                PlayerAvatar(
+                    name = playerName,
+                    imageUrl = imageUrl,
+                    size = 60.dp,
+                    borderWidth = 3.dp,
+                    borderColor = accent,
+                    background = colors.glassBorderHighlight,
+                    initialsColor = accent,
+                    initialsSize = 20.sp,
+                    initialsWeight = FontWeight.Black,
+                    modifier = Modifier.shadow(12.dp, CircleShape, spotColor = accent.copy(alpha = 0.5f))
+                )
+
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = playerName,
@@ -1381,7 +1270,7 @@ fun PlayerMilestoneCard(
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold
                     )
-                    
+
                     if (matchesStat.isNotEmpty()) {
                         Text(
                             text = matchesStat,
@@ -1390,16 +1279,10 @@ fun PlayerMilestoneCard(
                         )
                     }
                 }
-                
-                // Milestone badge
+
                 Box(
                     modifier = Modifier
-                        .background(
-                            Brush.linearGradient(
-                                colors = listOf(hierarchy.secondary.primary, hierarchy.secondary.primary)
-                            ),
-                            RoundedCornerShape(12.dp)
-                        )
+                        .background(accent, RoundedCornerShape(12.dp))
                         .padding(horizontal = 16.dp, vertical = 8.dp)
                 ) {
                     Text(
