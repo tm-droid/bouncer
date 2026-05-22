@@ -35,14 +35,6 @@ import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 import com.tanush.bouncer.ui.theme.GoldPrimary
 
-// ==========================================
-// BOUNCER - Micro Interactions Library
-// Material 3 Motion Specs with Haptic Feedback
-// ==========================================
-
-/**
- * Material 3 Easing curves for micro interactions
- */
 private object MicroEasing {
     val Standard = CubicBezierEasing(0.2f, 0f, 0f, 1f)
     val StandardDecelerate = CubicBezierEasing(0f, 0f, 0f, 1f)
@@ -52,48 +44,43 @@ private object MicroEasing {
     val EmphasizedAccelerate = CubicBezierEasing(0.3f, 0f, 0.8f, 0.15f)
 }
 
-/**
- * Spring configurations for micro interactions
- */
 private object MicroSpring {
-    // Bouncy: High energy, playful
     val Bouncy = spring<Float>(dampingRatio = 0.6f, stiffness = 400f)
-    
-    // Snappy: Quick, responsive
     val Snappy = spring<Float>(dampingRatio = 0.75f, stiffness = 600f)
-    
-    // Gentle: Subtle, calm
     val Gentle = spring<Float>(dampingRatio = 0.8f, stiffness = 200f)
 }
 
-/**
- * PressScaleEffect - Modifier that adds scale-down effect on press with optional haptic feedback
- * 
- * @param pressScale The scale to animate to when pressed (default: 0.96f)
- * @param enableHaptics Whether to trigger haptic feedback on press
- * @param onClick The callback when clicked
- */
-fun Modifier.pressScaleEffect(
-    pressScale: Float = PressScale.normal,
-    enableHaptics: Boolean = true,
-    onClick: () -> Unit = {}
-): Modifier = composed {
+private fun tweenNormalDecel(duration: Int = AnimationDuration.normal) =
+    tween<Float>(durationMillis = duration, easing = MicroEasing.EmphasizedDecelerate)
+
+@Composable
+private fun pressScaleState(
+    pressScale: Float,
+    enableHaptics: Boolean,
+    label: String
+): Pair<Float, MutableInteractionSource> {
     val hapticFeedback = LocalHapticFeedback.current
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
-    
     val scale by animateFloatAsState(
         targetValue = if (isPressed) pressScale else 1f,
         animationSpec = MicroSpring.Snappy,
-        label = "press_scale"
+        label = label
     )
-    
     LaunchedEffect(isPressed) {
         if (isPressed && enableHaptics) {
             hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
         }
     }
-    
+    return scale to interactionSource
+}
+
+fun Modifier.pressScaleEffect(
+    pressScale: Float = PressScale.normal,
+    enableHaptics: Boolean = true,
+    onClick: () -> Unit = {}
+): Modifier = composed {
+    val (scale, interactionSource) = pressScaleState(pressScale, enableHaptics, "press_scale")
     this
         .scale(scale)
         .clickable(
@@ -103,9 +90,6 @@ fun Modifier.pressScaleEffect(
         )
 }
 
-/**
- * PressScaleEffect composable wrapper for more complex interactions
- */
 @Composable
 fun PressScaleEffect(
     modifier: Modifier = Modifier,
@@ -114,23 +98,7 @@ fun PressScaleEffect(
     onClick: () -> Unit,
     content: @Composable () -> Unit
 ) {
-    val hierarchy = BouncerDesignSystem.hierarchy
-    val hapticFeedback = LocalHapticFeedback.current
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
-    
-    val scale by animateFloatAsState(
-        targetValue = if (isPressed) pressScale else 1f,
-        animationSpec = MicroSpring.Snappy,
-        label = "press_scale_wrapper"
-    )
-    
-    LaunchedEffect(isPressed) {
-        if (isPressed && enableHaptics) {
-            hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
-        }
-    }
-    
+    val (scale, interactionSource) = pressScaleState(pressScale, enableHaptics, "press_scale_wrapper")
     Box(
         modifier = modifier
             .scale(scale)
@@ -144,14 +112,6 @@ fun PressScaleEffect(
     }
 }
 
-/**
- * ExpandCollapseAnimation - Smooth expand/collapse animation for expandable content
- * 
- * @param expanded Whether the content is expanded
- * @param modifier Modifier for the container
- * @param animationDuration Duration of the animation in milliseconds
- * @param content The expandable content
- */
 @Composable
 fun ExpandCollapseAnimation(
     expanded: Boolean,
@@ -192,9 +152,6 @@ fun ExpandCollapseAnimation(
     }
 }
 
-/**
- * Expandable container with header and collapsible content
- */
 @Composable
 fun ExpandableContainer(
     expanded: Boolean,
@@ -205,40 +162,26 @@ fun ExpandableContainer(
     content: @Composable () -> Unit
 ) {
     val hapticFeedback = LocalHapticFeedback.current
-    
     val rotationAngle by animateFloatAsState(
         targetValue = if (expanded) 180f else 0f,
         animationSpec = MicroSpring.Bouncy,
         label = "expand_rotation"
     )
-    
     Column(modifier = modifier) {
         Box(
-            modifier = Modifier
-                .clickable {
-                    if (enableHaptics) {
-                        hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
-                    }
-                    onExpandChange(!expanded)
+            modifier = Modifier.clickable {
+                if (enableHaptics) {
+                    hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
                 }
+                onExpandChange(!expanded)
+            }
         ) {
             header(expanded)
         }
-        
-        ExpandCollapseAnimation(expanded = expanded) {
-            content()
-        }
+        ExpandCollapseAnimation(expanded = expanded) { content() }
     }
 }
 
-/**
- * IconMorphAnimation - Smooth morphing between two icon states
- * 
- * @param isFirstState Whether to show the first icon state
- * @param firstIcon Composable for the first icon
- * @param secondIcon Composable for the second icon
- * @param modifier Modifier for the container
- */
 @Composable
 fun IconMorphAnimation(
     isFirstState: Boolean,
@@ -249,53 +192,32 @@ fun IconMorphAnimation(
 ) {
     val rotation by animateFloatAsState(
         targetValue = if (isFirstState) 0f else 180f,
-        animationSpec = tween(
-            durationMillis = animationDuration,
-            easing = MicroEasing.Emphasized
-        ),
+        animationSpec = tween(durationMillis = animationDuration, easing = MicroEasing.Emphasized),
         label = "icon_rotation"
     )
-    
     val scale by animateFloatAsState(
         targetValue = if (rotation in 45f..135f) 0.8f else 1f,
         animationSpec = MicroSpring.Snappy,
         label = "icon_scale"
     )
-    
     Box(
-        modifier = modifier
-            .graphicsLayer {
-                rotationZ = rotation
-                scaleX = scale
-                scaleY = scale
-            },
+        modifier = modifier.graphicsLayer {
+            rotationZ = rotation
+            scaleX = scale
+            scaleY = scale
+        },
         contentAlignment = Alignment.Center
     ) {
         Crossfade(
             targetState = isFirstState,
-            animationSpec = tween(
-                durationMillis = animationDuration,
-                easing = MicroEasing.Standard
-            ),
+            animationSpec = tween(durationMillis = animationDuration, easing = MicroEasing.Standard),
             label = "icon_crossfade"
         ) { showFirst ->
-            if (showFirst) {
-                firstIcon()
-            } else {
-                secondIcon()
-            }
+            if (showFirst) firstIcon() else secondIcon()
         }
     }
 }
 
-/**
- * RipplePulse - Animated ripple effect emanating from center
- * 
- * @param isActive Whether the pulse animation is active
- * @param rippleColor Color of the ripple
- * @param rippleCount Number of ripple circles
- * @param modifier Modifier for the container
- */
 @Composable
 fun RipplePulse(
     isActive: Boolean,
@@ -304,17 +226,11 @@ fun RipplePulse(
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit
 ) {
-    val hierarchy = BouncerDesignSystem.hierarchy
     val infiniteTransition = rememberInfiniteTransition(label = "ripple_pulse")
-    
-    Box(
-        modifier = modifier,
-        contentAlignment = Alignment.Center
-    ) {
+    Box(modifier = modifier, contentAlignment = Alignment.Center) {
         if (isActive) {
             repeat(rippleCount) { index ->
-                val delay = (index * 400)
-                
+                val delay = index * 400
                 val scale by infiniteTransition.animateFloat(
                     initialValue = 0.8f,
                     targetValue = 2.5f,
@@ -328,7 +244,6 @@ fun RipplePulse(
                     ),
                     label = "ripple_scale_$index"
                 )
-                
                 val alpha by infiniteTransition.animateFloat(
                     initialValue = 0.6f,
                     targetValue = 0f,
@@ -342,7 +257,6 @@ fun RipplePulse(
                     ),
                     label = "ripple_alpha_$index"
                 )
-                
                 Box(
                     modifier = Modifier
                         .matchParentSize()
@@ -355,20 +269,10 @@ fun RipplePulse(
                 )
             }
         }
-        
         content()
     }
 }
 
-/**
- * BounceClick - Button with bouncy click animation
- * 
- * @param onClick Callback when clicked
- * @param modifier Modifier for the button
- * @param enableHaptics Whether to enable haptic feedback
- * @param bounceScale Scale factor when pressed
- * @param content Button content
- */
 @Composable
 fun BounceClick(
     onClick: () -> Unit,
@@ -381,20 +285,15 @@ fun BounceClick(
     val coroutineScope = rememberCoroutineScope()
     var isPressed by remember { mutableStateOf(false) }
     var hasTriggeredBounce by remember { mutableStateOf(false) }
-    
     val scale by animateFloatAsState(
         targetValue = when {
             isPressed -> bounceScale
             hasTriggeredBounce -> 1.05f
             else -> 1f
         },
-        animationSpec = spring(
-            dampingRatio = 0.5f,
-            stiffness = 500f
-        ),
+        animationSpec = spring(dampingRatio = 0.5f, stiffness = 500f),
         label = "bounce_scale"
     )
-    
     Box(
         modifier = modifier
             .scale(scale)
@@ -427,9 +326,6 @@ fun BounceClick(
     }
 }
 
-/**
- * Swipe action data class
- */
 data class SwipeAction(
     val icon: @Composable () -> Unit,
     val backgroundColor: Color,
@@ -437,16 +333,43 @@ data class SwipeAction(
     val weight: Float = 1f
 )
 
-/**
- * SwipeRevealActions - Swipe-to-reveal action pattern
- * 
- * @param leftActions List of actions to reveal when swiping right
- * @param rightActions List of actions to reveal when swiping left
- * @param modifier Modifier for the container
- * @param actionWidth Width of each action button
- * @param enableHaptics Whether to enable haptic feedback
- * @param content The main content that can be swiped
- */
+@Composable
+private fun BoxScope.SwipeActionRow(
+    actions: List<SwipeAction>,
+    actionWidth: Dp,
+    alpha: Float,
+    arrangement: Arrangement.Horizontal,
+    enableHaptics: Boolean,
+    onResetOffset: () -> Unit
+) {
+    val hapticFeedback = LocalHapticFeedback.current
+    Row(
+        modifier = Modifier
+            .matchParentSize()
+            .alpha(alpha),
+        horizontalArrangement = arrangement
+    ) {
+        actions.forEach { action ->
+            Box(
+                modifier = Modifier
+                    .width(actionWidth)
+                    .fillMaxHeight()
+                    .background(action.backgroundColor)
+                    .clickable {
+                        if (enableHaptics) {
+                            hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                        }
+                        action.onAction()
+                        onResetOffset()
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                action.icon()
+            }
+        }
+    }
+}
+
 @Composable
 fun SwipeRevealActions(
     leftActions: List<SwipeAction> = emptyList(),
@@ -458,90 +381,45 @@ fun SwipeRevealActions(
 ) {
     val hapticFeedback = LocalHapticFeedback.current
     val density = LocalDensity.current
-    val coroutineScope = rememberCoroutineScope()
-    
     val leftActionsWidthPx = with(density) { (actionWidth * leftActions.size).toPx() }
     val rightActionsWidthPx = with(density) { (actionWidth * rightActions.size).toPx() }
-    
+
     var offsetX by remember { mutableFloatStateOf(0f) }
     val animatedOffsetX by animateFloatAsState(
         targetValue = offsetX,
         animationSpec = MicroSpring.Snappy,
         label = "swipe_offset"
     )
-    
     var hasTriggeredHaptic by remember { mutableStateOf(false) }
-    
+
     Box(modifier = modifier) {
-        // Left actions (revealed when swiping right)
         if (leftActions.isNotEmpty()) {
-            Row(
-                modifier = Modifier
-                    .matchParentSize()
-                    .alpha((animatedOffsetX / leftActionsWidthPx).coerceIn(0f, 1f)),
-                horizontalArrangement = Arrangement.Start
-            ) {
-                leftActions.forEach { action ->
-                    Box(
-                        modifier = Modifier
-                            .width(actionWidth)
-                            .fillMaxHeight()
-                            .background(action.backgroundColor)
-                            .clickable {
-                                if (enableHaptics) {
-                                    hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
-                                }
-                                action.onAction()
-                                offsetX = 0f
-                            },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        action.icon()
-                    }
-                }
-            }
+            SwipeActionRow(
+                actions = leftActions,
+                actionWidth = actionWidth,
+                alpha = (animatedOffsetX / leftActionsWidthPx).coerceIn(0f, 1f),
+                arrangement = Arrangement.Start,
+                enableHaptics = enableHaptics,
+                onResetOffset = { offsetX = 0f }
+            )
         }
-        
-        // Right actions (revealed when swiping left)
         if (rightActions.isNotEmpty()) {
-            Row(
-                modifier = Modifier
-                    .matchParentSize()
-                    .alpha((-animatedOffsetX / rightActionsWidthPx).coerceIn(0f, 1f)),
-                horizontalArrangement = Arrangement.End
-            ) {
-                rightActions.forEach { action ->
-                    Box(
-                        modifier = Modifier
-                            .width(actionWidth)
-                            .fillMaxHeight()
-                            .background(action.backgroundColor)
-                            .clickable {
-                                if (enableHaptics) {
-                                    hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
-                                }
-                                action.onAction()
-                                offsetX = 0f
-                            },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        action.icon()
-                    }
-                }
-            }
+            SwipeActionRow(
+                actions = rightActions,
+                actionWidth = actionWidth,
+                alpha = (-animatedOffsetX / rightActionsWidthPx).coerceIn(0f, 1f),
+                arrangement = Arrangement.End,
+                enableHaptics = enableHaptics,
+                onResetOffset = { offsetX = 0f }
+            )
         }
-        
-        // Main content
         Box(
             modifier = Modifier
                 .offset { IntOffset(animatedOffsetX.roundToInt(), 0) }
                 .pointerInput(Unit) {
                     detectHorizontalDragGestures(
-                        onDragStart = {
-                            hasTriggeredHaptic = false
-                        },
+                        onDragStart = { hasTriggeredHaptic = false },
                         onDragEnd = {
-                            // Snap to fully revealed or hidden
                             offsetX = when {
                                 offsetX > leftActionsWidthPx / 2 -> leftActionsWidthPx
                                 offsetX < -rightActionsWidthPx / 2 -> -rightActionsWidthPx
@@ -551,12 +429,9 @@ fun SwipeRevealActions(
                         onHorizontalDrag = { _, dragAmount ->
                             val newOffset = offsetX + dragAmount
                             offsetX = newOffset.coerceIn(-rightActionsWidthPx, leftActionsWidthPx)
-                            
-                            // Trigger haptic at threshold
                             if (enableHaptics && !hasTriggeredHaptic) {
                                 val leftThreshold = leftActionsWidthPx / 2
                                 val rightThreshold = -rightActionsWidthPx / 2
-                                
                                 if ((offsetX > leftThreshold && leftActions.isNotEmpty()) ||
                                     (offsetX < rightThreshold && rightActions.isNotEmpty())) {
                                     hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -572,16 +447,6 @@ fun SwipeRevealActions(
     }
 }
 
-/**
- * ProgressMorph - Animated progress indicator with morphing capability
- * 
- * @param progress Current progress value (0f to 1f)
- * @param progressColor Color of the progress indicator
- * @param backgroundColor Background color of the track
- * @param modifier Modifier for the container
- * @param height Height of the progress bar
- * @param cornerRadius Corner radius of the progress bar
- */
 @Composable
 fun ProgressMorph(
     progress: Float,
@@ -592,30 +457,21 @@ fun ProgressMorph(
     cornerRadius: Dp = 4.dp,
     showPulse: Boolean = false
 ) {
-    val hierarchy = BouncerDesignSystem.hierarchy
     val animatedProgress by animateFloatAsState(
         targetValue = progress.coerceIn(0f, 1f),
-        animationSpec = tween(
-            durationMillis = AnimationDuration.normal,
-            easing = MicroEasing.EmphasizedDecelerate
-        ),
+        animationSpec = tweenNormalDecel(),
         label = "progress_morph"
     )
-    
     val infiniteTransition = rememberInfiniteTransition(label = "progress_pulse")
     val pulseAlpha by infiniteTransition.animateFloat(
         initialValue = 0.4f,
         targetValue = 1f,
         animationSpec = infiniteRepeatable(
-            animation = tween(
-                durationMillis = AnimationDuration.pulse,
-                easing = MicroEasing.Standard
-            ),
+            animation = tween(durationMillis = AnimationDuration.pulse, easing = MicroEasing.Standard),
             repeatMode = RepeatMode.Reverse
         ),
         label = "pulse_alpha"
     )
-    
     Box(
         modifier = modifier
             .fillMaxWidth()
@@ -629,16 +485,12 @@ fun ProgressMorph(
                 .fillMaxWidth(animatedProgress)
                 .clip(RoundedCornerShape(cornerRadius))
                 .background(
-                    if (showPulse) progressColor.copy(alpha = pulseAlpha)
-                    else progressColor
+                    if (showPulse) progressColor.copy(alpha = pulseAlpha) else progressColor
                 )
         )
     }
 }
 
-/**
- * Circular progress with morph animation
- */
 @Composable
 fun CircularProgressMorph(
     progress: Float,
@@ -648,95 +500,63 @@ fun CircularProgressMorph(
     strokeWidth: Dp = 4.dp,
     showIndeterminate: Boolean = false
 ) {
-    val hierarchy = BouncerDesignSystem.hierarchy
     val animatedProgress by animateFloatAsState(
         targetValue = progress.coerceIn(0f, 1f),
-        animationSpec = tween(
-            durationMillis = AnimationDuration.normal,
-            easing = MicroEasing.EmphasizedDecelerate
-        ),
+        animationSpec = tweenNormalDecel(),
         label = "circular_progress"
     )
-    
     val infiniteTransition = rememberInfiniteTransition(label = "circular_rotation")
     val rotation by infiniteTransition.animateFloat(
         initialValue = 0f,
         targetValue = 360f,
         animationSpec = infiniteRepeatable(
-            animation = tween(
-                durationMillis = AnimationDuration.ambient,
-                easing = LinearEasing
-            ),
+            animation = tween(durationMillis = AnimationDuration.ambient, easing = LinearEasing),
             repeatMode = RepeatMode.Restart
         ),
         label = "rotation"
     )
-    
     Box(
         modifier = modifier
             .size(size)
             .graphicsLayer {
-                if (showIndeterminate) {
-                    rotationZ = rotation
-                }
+                if (showIndeterminate) rotationZ = rotation
             },
         contentAlignment = Alignment.Center
     ) {
-        // Background track
         Box(
             modifier = Modifier
                 .size(size)
-                .background(
-                    color = progressColor.copy(alpha = 0.2f),
-                    shape = CircleShape
-                )
+                .background(color = progressColor.copy(alpha = 0.2f), shape = CircleShape)
         )
-        
-        // Inner circle (cutout effect)
         Box(
             modifier = Modifier
                 .size(size - strokeWidth * 2)
-                .background(
-                    color = BackgroundBase,
-                    shape = CircleShape
-                )
+                .background(color = BackgroundBase, shape = CircleShape)
         )
     }
 }
 
-/**
- * Shimmer loading effect modifier
- */
 fun Modifier.shimmerEffect(
     isLoading: Boolean = true,
     shimmerColor: Color = Color.White,
     baseColor: Color = Color.White.copy(alpha = 0.08f)
 ): Modifier = composed {
     if (!isLoading) return@composed this
-
     val infiniteTransition = rememberInfiniteTransition(label = "shimmer")
     val shimmerOffset by infiniteTransition.animateFloat(
         initialValue = -1f,
         targetValue = 2f,
         animationSpec = infiniteRepeatable(
-            animation = tween(
-                durationMillis = AnimationDuration.shimmer,
-                easing = LinearEasing
-            ),
+            animation = tween(durationMillis = AnimationDuration.shimmer, easing = LinearEasing),
             repeatMode = RepeatMode.Restart
         ),
         label = "shimmer_offset"
     )
-    
     this.graphicsLayer {
-        // Apply shimmer transform
         alpha = 0.7f + (shimmerOffset * 0.15f).coerceIn(0f, 0.3f)
     }
 }
 
-/**
- * Touch feedback with visual ripple
- */
 @Composable
 fun TouchFeedback(
     modifier: Modifier = Modifier,
@@ -744,12 +564,10 @@ fun TouchFeedback(
     onClick: () -> Unit,
     content: @Composable () -> Unit
 ) {
-    val hierarchy = BouncerDesignSystem.hierarchy
     var touchPosition by remember { mutableStateOf(Offset.Zero) }
     var showRipple by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
     val hapticFeedback = LocalHapticFeedback.current
-    
     val rippleScale by animateFloatAsState(
         targetValue = if (showRipple) 3f else 0f,
         animationSpec = tween(
@@ -758,7 +576,6 @@ fun TouchFeedback(
         ),
         label = "ripple_scale"
     )
-    
     val rippleAlpha by animateFloatAsState(
         targetValue = if (showRipple) 0f else 1f,
         animationSpec = tween(
@@ -767,26 +584,23 @@ fun TouchFeedback(
         ),
         label = "ripple_alpha"
     )
-    
     Box(
-        modifier = modifier
-            .pointerInput(Unit) {
-                detectTapGestures(
-                    onTap = { offset ->
-                        touchPosition = offset
-                        showRipple = true
-                        hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
-                        onClick()
-                        coroutineScope.launch {
-                            delay(AnimationDuration.normal.toLong())
-                            showRipple = false
-                        }
+        modifier = modifier.pointerInput(Unit) {
+            detectTapGestures(
+                onTap = { offset ->
+                    touchPosition = offset
+                    showRipple = true
+                    hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onClick()
+                    coroutineScope.launch {
+                        delay(AnimationDuration.normal.toLong())
+                        showRipple = false
                     }
-                )
-            }
+                }
+            )
+        }
     ) {
         content()
-        
         if (showRipple) {
             val density = LocalDensity.current
             Box(
@@ -800,40 +614,24 @@ fun TouchFeedback(
                     .size(48.dp)
                     .scale(rippleScale)
                     .alpha(rippleAlpha)
-                    .background(
-                        color = feedbackColor,
-                        shape = CircleShape
-                    )
+                    .background(color = feedbackColor, shape = CircleShape)
             )
         }
     }
 }
 
-/**
- * Elastic scroll overscroll effect
- */
 fun Modifier.elasticOverscroll(
     overscrollFactor: Float = 0.3f
 ): Modifier = composed {
     var overscrollOffset by remember { mutableFloatStateOf(0f) }
-    
     val animatedOffset by animateFloatAsState(
         targetValue = overscrollOffset,
-        animationSpec = spring(
-            dampingRatio = 0.6f,
-            stiffness = 400f
-        ),
+        animationSpec = spring(dampingRatio = 0.6f, stiffness = 400f),
         label = "elastic_offset"
     )
-    
-    this.graphicsLayer {
-        translationY = animatedOffset
-    }
+    this.graphicsLayer { translationY = animatedOffset }
 }
 
-/**
- * Animated visibility with scale and fade
- */
 @Composable
 fun AnimatedScaleFade(
     visible: Boolean,
@@ -844,15 +642,13 @@ fun AnimatedScaleFade(
     AnimatedVisibility(
         visible = visible,
         modifier = modifier,
-        enter = scaleIn(
-            initialScale = initialScale,
-            animationSpec = MicroSpring.Bouncy
-        ) + fadeIn(
-            animationSpec = tween(
-                durationMillis = AnimationDuration.normal,
-                easing = MicroEasing.StandardDecelerate
-            )
-        ),
+        enter = scaleIn(initialScale = initialScale, animationSpec = MicroSpring.Bouncy) +
+            fadeIn(
+                animationSpec = tween(
+                    durationMillis = AnimationDuration.normal,
+                    easing = MicroEasing.StandardDecelerate
+                )
+            ),
         exit = scaleOut(
             targetScale = initialScale,
             animationSpec = tween(
@@ -870,9 +666,6 @@ fun AnimatedScaleFade(
     }
 }
 
-/**
- * Heart beat animation effect
- */
 @Composable
 fun HeartbeatEffect(
     isActive: Boolean,
@@ -882,36 +675,23 @@ fun HeartbeatEffect(
     content: @Composable () -> Unit
 ) {
     var currentBeat by remember { mutableIntStateOf(0) }
-    
     LaunchedEffect(isActive) {
         while (isActive) {
             currentBeat++
             delay(beatDuration.toLong())
             currentBeat++
             delay(beatDuration.toLong())
-            delay(600) // Pause between beats
+            delay(600)
         }
     }
-    
     val scale by animateFloatAsState(
         targetValue = if (isActive && currentBeat % 2 == 1) beatScale else 1f,
-        animationSpec = spring(
-            dampingRatio = 0.5f,
-            stiffness = 600f
-        ),
+        animationSpec = spring(dampingRatio = 0.5f, stiffness = 600f),
         label = "heartbeat_scale"
     )
-    
-    Box(
-        modifier = modifier.scale(scale)
-    ) {
-        content()
-    }
+    Box(modifier = modifier.scale(scale)) { content() }
 }
 
-/**
- * Wobble animation for attention-grabbing
- */
 @Composable
 fun WobbleEffect(
     isWobbling: Boolean,
@@ -921,20 +701,15 @@ fun WobbleEffect(
     content: @Composable () -> Unit
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "wobble")
-    
     val rotation by infiniteTransition.animateFloat(
         initialValue = -wobbleAngle,
         targetValue = wobbleAngle,
         animationSpec = infiniteRepeatable(
-            animation = tween(
-                durationMillis = wobbleDuration,
-                easing = LinearEasing
-            ),
+            animation = tween(durationMillis = wobbleDuration, easing = LinearEasing),
             repeatMode = RepeatMode.Reverse
         ),
         label = "wobble_rotation"
     )
-    
     Box(
         modifier = modifier.graphicsLayer {
             rotationZ = if (isWobbling) rotation else 0f
