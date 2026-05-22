@@ -30,25 +30,35 @@ import kotlin.math.*
 import kotlin.random.Random
 import com.tanush.bouncer.ui.theme.GoldPrimary
 
-// Reusable scale-pulse spec used by hero-number celebrations (Century, Five-Wicket).
+private val HeroPulseSpec = tween<Float>(800, easing = FastOutSlowInEasing)
+private val GlowFastSpec = tween<Float>(600)
+private val GlowMediumSpec = tween<Float>(800)
+private val GlowSlowSpec = tween<Float>(1000, easing = FastOutSlowInEasing)
+private val RadialPulseSpec = tween<Float>(1500, easing = FastOutSlowInEasing)
+private val TrophyBounceSpec = tween<Float>(600, easing = FastOutSlowInEasing)
+private val ShimmerSpec = tween<Float>(1500, easing = LinearEasing)
+private val OverlayEnter = fadeIn(tween(200)) + scaleIn(tween(400), initialScale = 0.5f)
+private val OverlayExit = fadeOut(tween(400)) + scaleOut(tween(300), targetScale = 1.5f)
+private val BadgeSpring = spring<Float>(
+    dampingRatio = Spring.DampingRatioMediumBouncy,
+    stiffness = Spring.StiffnessLow
+)
+
 @Composable
-private fun rememberHeroPulse(): Float {
-    val infiniteTransition = rememberInfiniteTransition(label = "heroPulse")
-    val scale by infiniteTransition.animateFloat(
-        initialValue = 0.95f,
-        targetValue = 1.05f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(800, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "heroPulseScale"
+private fun reverseFloat(initial: Float, target: Float, spec: DurationBasedAnimationSpec<Float>, label: String): Float {
+    val t = rememberInfiniteTransition(label = label)
+    val v by t.animateFloat(
+        initialValue = initial,
+        targetValue = target,
+        animationSpec = infiniteRepeatable(animation = spec, repeatMode = RepeatMode.Reverse),
+        label = label
     )
-    return scale
+    return v
 }
 
-// Auto-dismiss helper: shows content for [visibleMillis], hides, then invokes [onDismiss]
-// after a 500ms exit delay. Centralises the show/hide/dismiss timing used by every
-// celebration overlay in this file.
+@Composable
+private fun rememberHeroPulse(): Float = reverseFloat(0.95f, 1.05f, HeroPulseSpec, "heroPulse")
+
 @Composable
 private fun rememberAutoDismissShow(
     isVisible: Boolean,
@@ -68,9 +78,67 @@ private fun rememberAutoDismissShow(
     return show
 }
 
-/**
- * Full-screen century explosion celebration overlay
- */
+@Composable
+private fun OverlayBox(alpha: Float = 0.85f, content: @Composable BoxScope.() -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = alpha)),
+        contentAlignment = Alignment.Center,
+        content = content
+    )
+}
+
+@Composable
+private fun HeroNumber(
+    text: String,
+    fontSize: androidx.compose.ui.unit.TextUnit,
+    glowColor: Color,
+    glowAlpha: Float,
+    gradientColors: List<Color>
+) {
+    val scale = rememberHeroPulse()
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier.graphicsLayer {
+            scaleX = scale
+            scaleY = scale
+        }
+    ) {
+        Text(
+            text = text,
+            fontSize = fontSize,
+            fontWeight = FontWeight.Black,
+            color = glowColor.copy(alpha = glowAlpha),
+            modifier = Modifier.blur(20.dp)
+        )
+        Text(
+            text = text,
+            fontSize = fontSize,
+            fontWeight = FontWeight.Black,
+            style = LocalTextStyle.current.copy(
+                brush = Brush.linearGradient(colors = gradientColors)
+            )
+        )
+    }
+}
+
+@Composable
+private fun GradientPill(
+    gradientColors: List<Color>,
+    borderColor: Color,
+    content: @Composable BoxScope.() -> Unit
+) {
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier
+            .background(Brush.horizontalGradient(colors = gradientColors), RoundedCornerShape(20.dp))
+            .border(1.dp, borderColor, RoundedCornerShape(20.dp))
+            .padding(horizontal = 20.dp, vertical = 8.dp),
+        content = content
+    )
+}
+
 @Composable
 fun CenturyExplosion(
     playerName: String,
@@ -81,38 +149,17 @@ fun CenturyExplosion(
 ) {
     val colors = BouncerDesignSystem.colors
     val hierarchy = BouncerDesignSystem.hierarchy
-    val showContentState = rememberAutoDismissShow(isVisible, 4000L, onDismiss)
-    val showContent = showContentState.value
+    val showContent = rememberAutoDismissShow(isVisible, 4000L, onDismiss).value
 
-    AnimatedVisibility(
-        visible = showContent,
-        enter = fadeIn(tween(200)) + scaleIn(tween(400), initialScale = 0.5f),
-        exit = fadeOut(tween(400)) + scaleOut(tween(300), targetScale = 1.5f)
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.85f)),
-            contentAlignment = Alignment.Center
-        ) {
-            // Confetti layer
+    AnimatedVisibility(visible = showContent, enter = OverlayEnter, exit = OverlayExit) {
+        OverlayBox {
             CenturyConfetti(isActive = showContent)
-            
-            // Radial glow effect
-            RadialGlowEffect(
-                color = hierarchy.secondary.primary,
-                modifier = Modifier.fillMaxSize()
-            )
-            
-            // Central content
+            RadialGlowEffect(color = hierarchy.secondary.primary, modifier = Modifier.fillMaxSize())
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Animated "100" text
                 AnimatedCenturyNumber()
-                
-                // Player name
                 Text(
                     text = playerName.uppercase(),
                     fontSize = 28.sp,
@@ -120,8 +167,6 @@ fun CenturyExplosion(
                     color = colors.textPrimary,
                     letterSpacing = 4.sp
                 )
-                
-                // Stats
                 balls?.let {
                     Text(
                         text = "$runs runs off $balls balls",
@@ -130,8 +175,6 @@ fun CenturyExplosion(
                         color = colors.textSecondary
                     )
                 }
-                
-                // Strike rate badge
                 balls?.let {
                     val strikeRate = (runs.toFloat() / balls * 100).toInt()
                     StrikeRateBadge(strikeRate = strikeRate)
@@ -144,73 +187,30 @@ fun CenturyExplosion(
 @Composable
 private fun AnimatedCenturyNumber() {
     val hierarchy = BouncerDesignSystem.hierarchy
-    val colors = BouncerDesignSystem.colors
-    val scale = rememberHeroPulse()
-    val infiniteTransition = rememberInfiniteTransition(label = "century")
-
-    val glowAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.5f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(600),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "glowAlpha"
+    val glowAlpha = reverseFloat(0.5f, 1f, GlowFastSpec, "glowAlpha")
+    HeroNumber(
+        text = "100",
+        fontSize = 120.sp,
+        glowColor = hierarchy.secondary.primary,
+        glowAlpha = glowAlpha * 0.3f,
+        gradientColors = listOf(
+            hierarchy.secondary.secondary,
+            hierarchy.secondary.primary,
+            hierarchy.secondary.primary,
+            hierarchy.secondary.primary
+        )
     )
-    
-    Box(
-        contentAlignment = Alignment.Center,
-        modifier = Modifier.graphicsLayer { 
-            scaleX = scale
-            scaleY = scale
-        }
-    ) {
-        // Glow
-        Text(
-            text = "100",
-            fontSize = 120.sp,
-            fontWeight = FontWeight.Black,
-            color = hierarchy.secondary.primary.copy(alpha = glowAlpha * 0.3f),
-            modifier = Modifier.blur(20.dp)
-        )
-        
-        // Main text
-        Text(
-            text = "100",
-            fontSize = 120.sp,
-            fontWeight = FontWeight.Black,
-            style = LocalTextStyle.current.copy(
-                brush = Brush.linearGradient(
-                    colors = listOf(
-                        hierarchy.secondary.secondary,
-                        hierarchy.secondary.primary,
-                        hierarchy.secondary.primary,
-                        hierarchy.secondary.primary
-                    )
-                )
-            )
-        )
-    }
 }
 
 @Composable
 private fun StrikeRateBadge(strikeRate: Int) {
     val hierarchy = BouncerDesignSystem.hierarchy
-    val colors = BouncerDesignSystem.colors
-    Box(
-        contentAlignment = Alignment.Center,
-        modifier = Modifier
-            .background(
-                Brush.horizontalGradient(
-                    colors = listOf(
-                        hierarchy.secondary.primary.copy(alpha = 0.3f),
-                        hierarchy.secondary.primary.copy(alpha = 0.3f)
-                    )
-                ),
-                RoundedCornerShape(20.dp)
-            )
-            .border(1.dp, hierarchy.secondary.primary.copy(alpha = 0.5f), RoundedCornerShape(20.dp))
-            .padding(horizontal = 20.dp, vertical = 8.dp)
+    GradientPill(
+        gradientColors = listOf(
+            hierarchy.secondary.primary.copy(alpha = 0.3f),
+            hierarchy.secondary.primary.copy(alpha = 0.3f)
+        ),
+        borderColor = hierarchy.secondary.primary.copy(alpha = 0.5f)
     ) {
         Text(
             text = "SR: $strikeRate",
@@ -226,22 +226,13 @@ private fun RadialGlowEffect(
     color: Color,
     modifier: Modifier = Modifier
 ) {
-    val infiniteTransition = rememberInfiniteTransition(label = "glow")
-    val pulseScale by infiniteTransition.animateFloat(
-        initialValue = 0.8f,
-        targetValue = 1.2f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1500, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "pulseScale"
-    )
-    
+    val pulseScale = reverseFloat(0.8f, 1.2f, RadialPulseSpec, "pulseScale")
+
     Canvas(modifier = modifier) {
         val centerX = size.width / 2
         val centerY = size.height / 2
         val maxRadius = size.minDimension * pulseScale
-        
+
         drawCircle(
             brush = Brush.radialGradient(
                 colors = listOf(
@@ -258,9 +249,6 @@ private fun RadialGlowEffect(
     }
 }
 
-/**
- * Five wicket haul celebration animation
- */
 @Composable
 fun FiveWicketHaulCelebration(
     bowlerName: String,
@@ -271,36 +259,17 @@ fun FiveWicketHaulCelebration(
     onDismiss: () -> Unit
 ) {
     val colors = BouncerDesignSystem.colors
-    val showContentState = rememberAutoDismissShow(isVisible, 4000L, onDismiss)
-    val showContent = showContentState.value
+    val showContent = rememberAutoDismissShow(isVisible, 4000L, onDismiss).value
 
-    AnimatedVisibility(
-        visible = showContent,
-        enter = fadeIn(tween(200)) + scaleIn(tween(400), initialScale = 0.5f),
-        exit = fadeOut(tween(400)) + scaleOut(tween(300), targetScale = 1.5f)
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.85f)),
-            contentAlignment = Alignment.Center
-        ) {
-            // Wicket confetti
+    AnimatedVisibility(visible = showContent, enter = OverlayEnter, exit = OverlayExit) {
+        OverlayBox {
             WicketConfetti(wicketCount = wickets, isActive = showContent)
-            
-            // Purple glow for 5-fer
-            RadialGlowEffect(
-                color = ChartPurple,
-                modifier = Modifier.fillMaxSize()
-            )
-            
+            RadialGlowEffect(color = ChartPurple, modifier = Modifier.fillMaxSize())
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Animated wicket count
                 AnimatedWicketNumber(wickets = wickets)
-                
                 Text(
                     text = "WICKETS",
                     fontSize = 24.sp,
@@ -308,7 +277,6 @@ fun FiveWicketHaulCelebration(
                     color = ChartPurple,
                     letterSpacing = 8.sp
                 )
-                
                 Text(
                     text = bowlerName.uppercase(),
                     fontSize = 28.sp,
@@ -316,8 +284,6 @@ fun FiveWicketHaulCelebration(
                     color = colors.textPrimary,
                     letterSpacing = 4.sp
                 )
-                
-                // Bowling figures
                 BowlingFiguresBadge(wickets = wickets, runs = runs, overs = overs)
             }
         }
@@ -326,57 +292,24 @@ fun FiveWicketHaulCelebration(
 
 @Composable
 private fun AnimatedWicketNumber(wickets: Int) {
-    val scale = rememberHeroPulse()
-
-    Box(
-        contentAlignment = Alignment.Center,
-        modifier = Modifier.graphicsLayer { 
-            scaleX = scale
-            scaleY = scale
-        }
-    ) {
-        Text(
-            text = wickets.toString(),
-            fontSize = 140.sp,
-            fontWeight = FontWeight.Black,
-            color = ChartPurple.copy(alpha = 0.3f),
-            modifier = Modifier.blur(20.dp)
-        )
-        
-        Text(
-            text = wickets.toString(),
-            fontSize = 140.sp,
-            fontWeight = FontWeight.Black,
-            style = LocalTextStyle.current.copy(
-                brush = Brush.linearGradient(
-                    colors = listOf(
-                        ChartPurple,
-                        SixerPurple,
-                        ChartPurple
-                    )
-                )
-            )
-        )
-    }
+    HeroNumber(
+        text = wickets.toString(),
+        fontSize = 140.sp,
+        glowColor = ChartPurple,
+        glowAlpha = 0.3f,
+        gradientColors = listOf(ChartPurple, SixerPurple, ChartPurple)
+    )
 }
 
 @Composable
 private fun BowlingFiguresBadge(wickets: Int, runs: Int, overs: String) {
     val colors = BouncerDesignSystem.colors
-    Box(
-        contentAlignment = Alignment.Center,
-        modifier = Modifier
-            .background(
-                Brush.horizontalGradient(
-                    colors = listOf(
-                        ChartPurple.copy(alpha = 0.3f),
-                        SixerPurple.copy(alpha = 0.3f)
-                    )
-                ),
-                RoundedCornerShape(20.dp)
-            )
-            .border(1.dp, ChartPurple.copy(alpha = 0.5f), RoundedCornerShape(20.dp))
-            .padding(horizontal = 20.dp, vertical = 8.dp)
+    GradientPill(
+        gradientColors = listOf(
+            ChartPurple.copy(alpha = 0.3f),
+            SixerPurple.copy(alpha = 0.3f)
+        ),
+        borderColor = ChartPurple.copy(alpha = 0.5f)
     ) {
         Text(
             text = "$wickets/$runs ($overs)",
@@ -387,9 +320,6 @@ private fun BowlingFiguresBadge(wickets: Int, runs: Int, overs: String) {
     }
 }
 
-/**
- * Match win fireworks celebration
- */
 @Composable
 fun MatchWinFireworks(
     winningTeam: String,
@@ -400,41 +330,26 @@ fun MatchWinFireworks(
 ) {
     val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
-    val showContentState = rememberAutoDismissShow(isVisible, 5000L, onDismiss)
-    val showContent = showContentState.value
+    val showContent = rememberAutoDismissShow(isVisible, 5000L, onDismiss).value
 
     AnimatedVisibility(
         visible = showContent,
         enter = fadeIn(tween(300)),
         exit = fadeOut(tween(400))
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.9f)),
-            contentAlignment = Alignment.Center
-        ) {
-            // Fireworks layer
-            FireworksDisplay(
-                isActive = showContent,
-                modifier = Modifier.fillMaxSize()
-            )
-            
-            // Confetti
+        OverlayBox(alpha = 0.9f) {
+            FireworksDisplay(isActive = showContent, modifier = Modifier.fillMaxSize())
             ConfettiRain(
                 particleCount = 100,
                 colors = listOf(teamColor, hierarchy.secondary.primary, Color.White),
                 duration = 4500L,
                 isActive = showContent
             )
-            
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(20.dp)
             ) {
-                // Trophy icon
                 AnimatedTrophy(color = teamColor)
-                
                 Text(
                     text = "VICTORY!",
                     fontSize = 48.sp,
@@ -442,7 +357,6 @@ fun MatchWinFireworks(
                     color = colors.textPrimary,
                     letterSpacing = 6.sp
                 )
-                
                 Text(
                     text = winningTeam.uppercase(),
                     fontSize = 32.sp,
@@ -450,7 +364,6 @@ fun MatchWinFireworks(
                     color = teamColor,
                     letterSpacing = 3.sp
                 )
-                
                 Text(
                     text = marginText,
                     fontSize = 18.sp,
@@ -465,27 +378,9 @@ fun MatchWinFireworks(
 @Composable
 private fun AnimatedTrophy(color: Color) {
     val dsColors = BouncerDesignSystem.colors
-    val infiniteTransition = rememberInfiniteTransition(label = "trophy")
-    val bounce by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 15f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(600, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "trophyBounce"
-    )
-    
-    val glow by infiniteTransition.animateFloat(
-        initialValue = 0.5f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(800),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "trophyGlow"
-    )
-    
+    val bounce = reverseFloat(0f, 15f, TrophyBounceSpec, "trophyBounce")
+    val glow = reverseFloat(0.5f, 1f, GlowMediumSpec, "trophyGlow")
+
     Box(
         contentAlignment = Alignment.Center,
         modifier = Modifier.offset { IntOffset(0, -bounce.toInt()) }
@@ -528,12 +423,11 @@ private fun FireworksDisplay(
         Color(0xFF54A0FF),
         hierarchy.secondary.primary
     )
-    
+
     var fireworks by remember { mutableStateOf<List<FireworkState>>(emptyList()) }
-    
+
     LaunchedEffect(isActive) {
         if (isActive) {
-            // Launch fireworks at intervals
             repeat(8) { i ->
                 delay(i * 400L)
                 fireworks = fireworks + FireworkState(
@@ -545,35 +439,31 @@ private fun FireworksDisplay(
             }
         }
     }
-    
+
     Canvas(modifier = modifier) {
         val currentTime = System.currentTimeMillis()
-        
+
         fireworks.forEach { firework ->
             val elapsed = (currentTime - firework.startTime).toFloat()
             val progress = (elapsed / 1500f).coerceIn(0f, 1f)
-            
+
             if (progress < 1f) {
                 val centerX = firework.x * size.width
                 val centerY = firework.y * size.height
-                
-                // Draw explosion particles
                 val particleCount = 24
                 repeat(particleCount) { i ->
                     val angle = (i.toFloat() / particleCount) * 2 * PI.toFloat()
                     val distance = progress * 100f
                     val particleX = centerX + cos(angle) * distance
-                    val particleY = centerY + sin(angle) * distance + progress * 30f // gravity
+                    val particleY = centerY + sin(angle) * distance + progress * 30f
                     val alpha = 1f - progress
                     val particleSize = 4f * (1f - progress * 0.5f)
-                    
+
                     drawCircle(
                         color = firework.color.copy(alpha = alpha),
                         radius = particleSize,
                         center = Offset(particleX, particleY)
                     )
-                    
-                    // Trail
                     drawCircle(
                         brush = Brush.radialGradient(
                             colors = listOf(
@@ -599,9 +489,6 @@ private data class FireworkState(
     val startTime: Long
 )
 
-/**
- * Record breaker animated sliding banner
- */
 @Composable
 fun RecordBreakerBanner(
     recordType: String,
@@ -609,8 +496,7 @@ fun RecordBreakerBanner(
     isVisible: Boolean = true,
     onDismiss: () -> Unit
 ) {
-    val showBannerState = rememberAutoDismissShow(isVisible, 4000L, onDismiss)
-    val showBanner = showBannerState.value
+    val showBanner = rememberAutoDismissShow(isVisible, 4000L, onDismiss).value
 
     AnimatedVisibility(
         visible = showBanner,
@@ -638,17 +524,14 @@ fun RecordBreakerBanner(
 private fun RecordBannerCard(recordType: String, description: String) {
     val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
-    val infiniteTransition = rememberInfiniteTransition(label = "record")
-    val shimmerOffset by infiniteTransition.animateFloat(
+    val t = rememberInfiniteTransition(label = "record")
+    val shimmerOffset by t.animateFloat(
         initialValue = -1f,
         targetValue = 2f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1500, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
+        animationSpec = infiniteRepeatable(animation = ShimmerSpec, repeatMode = RepeatMode.Restart),
         label = "shimmer"
     )
-    
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -679,7 +562,6 @@ private fun RecordBannerCard(recordType: String, description: String) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Record icon
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
@@ -701,7 +583,7 @@ private fun RecordBannerCard(recordType: String, description: String) {
                     modifier = Modifier.size(32.dp)
                 )
             }
-            
+
             Column(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
@@ -713,14 +595,12 @@ private fun RecordBannerCard(recordType: String, description: String) {
                     color = hierarchy.secondary.primary,
                     letterSpacing = 1.sp
                 )
-                
                 Text(
                     text = recordType,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
                     color = colors.textPrimary
                 )
-                
                 Text(
                     text = description,
                     fontSize = 14.sp,
@@ -731,9 +611,7 @@ private fun RecordBannerCard(recordType: String, description: String) {
         }
     }
 }
-/**
- * Hat-trick special celebration animation
- */
+
 @Composable
 fun HatTrickCelebration(
     bowlerName: String,
@@ -745,7 +623,7 @@ fun HatTrickCelebration(
     var showBall1 by remember { mutableStateOf(false) }
     var showBall2 by remember { mutableStateOf(false) }
     var showBall3 by remember { mutableStateOf(false) }
-    
+
     LaunchedEffect(isVisible) {
         if (isVisible) {
             showContent = true
@@ -761,21 +639,14 @@ fun HatTrickCelebration(
             onDismiss()
         }
     }
-    
+
     AnimatedVisibility(
         visible = showContent,
         enter = fadeIn(tween(200)),
         exit = fadeOut(tween(400))
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.9f)),
-            contentAlignment = Alignment.Center
-        ) {
-            // Purple confetti for hat-trick
+        OverlayBox(alpha = 0.9f) {
             WicketConfetti(wicketCount = 3, isActive = showContent)
-            
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(24.dp)
@@ -791,16 +662,11 @@ fun HatTrickCelebration(
                     ),
                     letterSpacing = 6.sp
                 )
-                
-                // Three balls animation
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(24.dp)
-                ) {
+                Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
                     AnimatedBallIcon(visible = showBall1, delay = 0)
                     AnimatedBallIcon(visible = showBall2, delay = 100)
                     AnimatedBallIcon(visible = showBall3, delay = 200)
                 }
-                
                 Text(
                     text = bowlerName.uppercase(),
                     fontSize = 28.sp,
@@ -808,7 +674,6 @@ fun HatTrickCelebration(
                     color = colors.textPrimary,
                     letterSpacing = 4.sp
                 )
-                
                 Text(
                     text = "3 WICKETS IN 3 BALLS",
                     fontSize = 16.sp,
@@ -825,12 +690,7 @@ private fun AnimatedBallIcon(visible: Boolean, delay: Int) {
     val colors = BouncerDesignSystem.colors
     AnimatedVisibility(
         visible = visible,
-        enter = scaleIn(
-            animationSpec = spring(
-                dampingRatio = Spring.DampingRatioMediumBouncy,
-                stiffness = Spring.StiffnessLow
-            )
-        ) + fadeIn(tween(200, delayMillis = delay))
+        enter = scaleIn(animationSpec = BadgeSpring) + fadeIn(tween(200, delayMillis = delay))
     ) {
         Box(
             contentAlignment = Alignment.Center,
@@ -854,9 +714,6 @@ private fun AnimatedBallIcon(visible: Boolean, delay: Int) {
     }
 }
 
-/**
- * Animated milestone badge appearance
- */
 @Composable
 fun MilestoneBadge(
     milestone: String,
@@ -874,7 +731,6 @@ fun MilestoneBadge(
     isVisible: Boolean = true,
     onDismiss: () -> Unit = {}
 ) {
-    // Slightly different exit delay (400ms) than other celebrations — kept inline for fidelity.
     var showBadge by remember { mutableStateOf(false) }
     LaunchedEffect(isVisible) {
         if (isVisible) {
@@ -888,13 +744,7 @@ fun MilestoneBadge(
 
     AnimatedVisibility(
         visible = showBadge,
-        enter = scaleIn(
-            animationSpec = spring(
-                dampingRatio = Spring.DampingRatioMediumBouncy,
-                stiffness = Spring.StiffnessLow
-            ),
-            initialScale = 0.3f
-        ) + fadeIn(tween(200)),
+        enter = scaleIn(animationSpec = BadgeSpring, initialScale = 0.3f) + fadeIn(tween(200)),
         exit = scaleOut(tween(300), targetScale = 1.5f) + fadeOut(tween(250))
     ) {
         MilestoneBadgeCard(
@@ -914,17 +764,8 @@ private fun MilestoneBadgeCard(
     badgeColor: Color
 ) {
     val colors = BouncerDesignSystem.colors
-    val infiniteTransition = rememberInfiniteTransition(label = "badge")
-    val glowAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.3f,
-        targetValue = 0.7f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1000, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "glowAlpha"
-    )
-    
+    val glowAlpha = reverseFloat(0.3f, 0.7f, GlowSlowSpec, "glowAlpha")
+
     Card(
         modifier = Modifier
             .padding(32.dp)
@@ -942,7 +783,6 @@ private fun MilestoneBadgeCard(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Icon with glow
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
@@ -962,16 +802,13 @@ private fun MilestoneBadgeCard(
                     contentAlignment = Alignment.Center,
                     modifier = Modifier
                         .size(52.dp)
-                        .background(
-                            badgeColor.copy(alpha = 0.2f),
-                            CircleShape
-                        )
+                        .background(badgeColor.copy(alpha = 0.2f), CircleShape)
                         .border(1.dp, badgeColor.copy(alpha = 0.5f), CircleShape)
                 ) {
                     icon()
                 }
             }
-            
+
             Text(
                 text = milestone,
                 fontSize = 24.sp,
@@ -979,7 +816,6 @@ private fun MilestoneBadgeCard(
                 color = badgeColor,
                 textAlign = TextAlign.Center
             )
-            
             Text(
                 text = description,
                 fontSize = 14.sp,
