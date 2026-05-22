@@ -44,6 +44,31 @@ import kotlin.random.Random
  */
 
 @Composable
+private fun repeatingFloat(
+    label: String,
+    from: Float,
+    to: Float,
+    durationMs: Int,
+    easing: Easing = FastOutSlowInEasing,
+    repeatMode: RepeatMode = RepeatMode.Reverse,
+    transition: InfiniteTransition
+): State<Float> = transition.animateFloat(
+    initialValue = from,
+    targetValue = to,
+    animationSpec = infiniteRepeatable(
+        animation = tween(durationMs, easing = easing),
+        repeatMode = repeatMode
+    ),
+    label = label
+)
+
+private fun shimmerBrush(color: Color, shimmer: Float): Brush = Brush.linearGradient(
+    colors = listOf(color.copy(alpha = 0.3f), color.copy(alpha = 0.1f)),
+    start = Offset(shimmer * 100, 0f),
+    end = Offset((shimmer + 1) * 100, 100f)
+)
+
+@Composable
 fun TrophyDisplay(
     trophyType: TrophyType,
     title: String,
@@ -52,38 +77,10 @@ fun TrophyDisplay(
     modifier: Modifier = Modifier
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "trophy")
-    
-    val glowAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.3f,
-        targetValue = 0.8f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(2000, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "glow"
-    )
-    
-    val rotation by infiniteTransition.animateFloat(
-        initialValue = -2f,
-        targetValue = 2f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(3000, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "rotation"
-    )
-    
-    val shimmer by infiniteTransition.animateFloat(
-        initialValue = -1f,
-        targetValue = 2f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(2500, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "shimmer"
-    )
-    
-    val colors = BouncerDesignSystem.colors
+    val glowAlpha by repeatingFloat("glow", 0.3f, 0.8f, 2000, transition = infiniteTransition)
+    val rotation by repeatingFloat("rotation", -2f, 2f, 3000, transition = infiniteTransition)
+    val shimmer by repeatingFloat("shimmer", -1f, 2f, 2500, easing = LinearEasing, repeatMode = RepeatMode.Restart, transition = infiniteTransition)
+
     val hierarchy = BouncerDesignSystem.hierarchy
     val trophyColor = when (trophyType) {
         TrophyType.GOLD -> hierarchy.secondary.primary
@@ -92,7 +89,7 @@ fun TrophyDisplay(
         TrophyType.PLATINUM -> Color(0xFFE5E4E2)
         TrophyType.DIAMOND -> Color(0xFFB9F2FF)
     }
-    
+
     Column(
         modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -102,7 +99,6 @@ fun TrophyDisplay(
             modifier = Modifier.size(80.dp),
             contentAlignment = Alignment.Center
         ) {
-            // Outer glow
             if (isUnlocked) {
                 Box(
                     modifier = Modifier
@@ -112,8 +108,7 @@ fun TrophyDisplay(
                         .background(trophyColor, CircleShape)
                 )
             }
-            
-            // Trophy container
+
             Box(
                 modifier = Modifier
                     .size(72.dp)
@@ -121,21 +116,9 @@ fun TrophyDisplay(
                     .clip(CircleShape)
                     .background(
                         brush = if (isUnlocked) {
-                            Brush.linearGradient(
-                                colors = listOf(
-                                    trophyColor.copy(alpha = 0.3f),
-                                    trophyColor.copy(alpha = 0.1f)
-                                ),
-                                start = Offset(shimmer * 100, 0f),
-                                end = Offset((shimmer + 1) * 100, 100f)
-                            )
+                            shimmerBrush(trophyColor, shimmer)
                         } else {
-                            Brush.linearGradient(
-                                colors = listOf(
-                                    GlassSurface,
-                                    GlassSurface
-                                )
-                            )
+                            Brush.linearGradient(colors = listOf(GlassSurface, GlassSurface))
                         }
                     )
                     .border(
@@ -159,7 +142,7 @@ fun TrophyDisplay(
                 )
             }
         }
-        
+
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(4.dp)
@@ -171,7 +154,7 @@ fun TrophyDisplay(
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center
             )
-            
+
             if (subtitle.isNotEmpty()) {
                 Text(
                     text = subtitle,
@@ -196,7 +179,7 @@ fun CelebrationOverlay(
 ) {
     val hierarchy = BouncerDesignSystem.hierarchy
     if (!isVisible) return
-    
+
     val colors = BouncerDesignSystem.colors
     val particles = remember {
         List(50) {
@@ -215,41 +198,22 @@ fun CelebrationOverlay(
             )
         }
     }
-    
+
     val infiniteTransition = rememberInfiniteTransition(label = "celebration")
-    
-    val time by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(3000, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "time"
-    )
-    
-    val textScale by infiniteTransition.animateFloat(
-        initialValue = 0.9f,
-        targetValue = 1.1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(500, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "textScale"
-    )
-    
+    val time by repeatingFloat("time", 0f, 1f, 3000, easing = LinearEasing, repeatMode = RepeatMode.Restart, transition = infiniteTransition)
+    val textScale by repeatingFloat("textScale", 0.9f, 1.1f, 500, transition = infiniteTransition)
+
     Box(
         modifier = modifier
             .fillMaxSize()
             .background(colors.backgroundBase.copy(alpha = 0.8f)),
         contentAlignment = Alignment.Center
     ) {
-        // Confetti particles
         Canvas(modifier = Modifier.fillMaxSize()) {
             particles.forEach { particle ->
                 val y = ((particle.y + time * particle.speedY * 100) % 1.2f)
                 val x = particle.x + sin(time * 10 + particle.x * 10).toFloat() * 0.02f
-                
+
                 rotate(
                     degrees = particle.rotation + time * 360,
                     pivot = Offset(size.width * x, size.height * y)
@@ -265,8 +229,7 @@ fun CelebrationOverlay(
                 }
             }
         }
-        
-        // Celebration text
+
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -278,7 +241,7 @@ fun CelebrationOverlay(
                 tint = hierarchy.secondary.primary,
                 modifier = Modifier.size(64.dp)
             )
-            
+
             Text(
                 text = message,
                 color = TextPrimary,
@@ -309,19 +272,9 @@ fun MilestoneCard(
     modifier: Modifier = Modifier
 ) {
     val hierarchy = BouncerDesignSystem.hierarchy
-    val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "milestone")
-    
-    val glowAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.2f,
-        targetValue = 0.5f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1500, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "glow"
-    )
-    
+    val glowAlpha by repeatingFloat("glow", 0.2f, 0.5f, 1500, transition = infiniteTransition)
+
     val animatedProgress by animateFloatAsState(
         targetValue = progress,
         animationSpec = spring(
@@ -330,7 +283,7 @@ fun MilestoneCard(
         ),
         label = "progress"
     )
-    
+
     Box(
         modifier = modifier
             .fillMaxWidth()
@@ -344,9 +297,7 @@ fun MilestoneCard(
                         )
                     )
                 } else {
-                    Brush.linearGradient(
-                        colors = listOf(GlassSurface, GlassSurface)
-                    )
+                    Brush.linearGradient(colors = listOf(GlassSurface, GlassSurface))
                 }
             )
             .border(
@@ -372,7 +323,6 @@ fun MilestoneCard(
             horizontalArrangement = Arrangement.spacedBy(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Icon with glow
             Box(
                 modifier = Modifier.size(56.dp),
                 contentAlignment = Alignment.Center
@@ -386,7 +336,7 @@ fun MilestoneCard(
                             .background(hierarchy.secondary.primary, CircleShape)
                     )
                 }
-                
+
                 Box(
                     modifier = Modifier
                         .size(48.dp)
@@ -409,8 +359,7 @@ fun MilestoneCard(
                     )
                 }
             }
-            
-            // Content
+
             Column(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -421,14 +370,13 @@ fun MilestoneCard(
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold
                 )
-                
+
                 Text(
                     text = description,
                     color = TextSecondary,
                     fontSize = 12.sp
                 )
-                
-                // Progress bar
+
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -448,7 +396,7 @@ fun MilestoneCard(
                             )
                     )
                 }
-                
+
                 Text(
                     text = "${(animatedProgress * 100).toInt()}% Complete",
                     color = hierarchy.secondary.primary.copy(alpha = 0.8f),
@@ -467,29 +415,10 @@ fun StreakCounter(
     modifier: Modifier = Modifier
 ) {
     val hierarchy = BouncerDesignSystem.hierarchy
-    val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "streak")
-    
-    val flame by infiniteTransition.animateFloat(
-        initialValue = 0.95f,
-        targetValue = 1.05f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(500, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "flame"
-    )
-    
-    val glowRadius by infiniteTransition.animateFloat(
-        initialValue = 8f,
-        targetValue = 16f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1000, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "glowRadius"
-    )
-    
+    val flame by repeatingFloat("flame", 0.95f, 1.05f, 500, transition = infiniteTransition)
+    val glowRadius by repeatingFloat("glowRadius", 8f, 16f, 1000, transition = infiniteTransition)
+
     Row(
         modifier = modifier
             .clip(RoundedCornerShape(16.dp))
@@ -504,10 +433,7 @@ fun StreakCounter(
             .border(
                 width = 1.dp,
                 brush = Brush.horizontalGradient(
-                    colors = listOf(
-                        Color(0xFFFF6B00),
-                        Color(0xFFFF9500)
-                    )
+                    colors = listOf(Color(0xFFFF6B00), Color(0xFFFF9500))
                 ),
                 shape = RoundedCornerShape(16.dp)
             )
@@ -515,25 +441,19 @@ fun StreakCounter(
         horizontalArrangement = Arrangement.spacedBy(16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Flame icon with glow
         Box(
             modifier = Modifier.size(48.dp),
             contentAlignment = Alignment.Center
         ) {
-            // Glow effect
             Canvas(modifier = Modifier.size(48.dp)) {
                 drawCircle(
                     brush = Brush.radialGradient(
-                        colors = listOf(
-                            Color(0xFFFF6B00).copy(alpha = 0.5f),
-                            Color.Transparent
-                        )
+                        colors = listOf(Color(0xFFFF6B00).copy(alpha = 0.5f), Color.Transparent)
                     ),
                     radius = glowRadius.dp.toPx()
                 )
             }
-            
-            // Flame shape
+
             Canvas(
                 modifier = Modifier
                     .size(32.dp)
@@ -542,7 +462,7 @@ fun StreakCounter(
                 val path = Path()
                 val width = size.width
                 val height = size.height
-                
+
                 path.moveTo(width * 0.5f, 0f)
                 path.cubicTo(
                     width * 0.7f, height * 0.3f,
@@ -554,7 +474,7 @@ fun StreakCounter(
                     width * 0.3f, height * 0.3f,
                     width * 0.5f, 0f
                 )
-                
+
                 drawPath(
                     path = path,
                     brush = Brush.verticalGradient(
@@ -567,10 +487,8 @@ fun StreakCounter(
                 )
             }
         }
-        
-        Column(
-            verticalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
+
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(
                 text = "$currentStreak $unit",
                 color = TextPrimary,
@@ -583,9 +501,9 @@ fun StreakCounter(
                 fontSize = 12.sp
             )
         }
-        
+
         Spacer(modifier = Modifier.weight(1f))
-        
+
         Column(
             horizontalAlignment = Alignment.End,
             verticalArrangement = Arrangement.spacedBy(4.dp)
@@ -614,26 +532,16 @@ fun BadgeDisplay(
     modifier: Modifier = Modifier
 ) {
     val hierarchy = BouncerDesignSystem.hierarchy
-    val colors = BouncerDesignSystem.colors
     val tierColor = when (tier) {
-        1 -> Color(0xFFCD7F32) // Bronze
-        2 -> Color(0xFFC0C0C0) // Silver
-        3 -> hierarchy.secondary.primary // Gold
-        else -> Color(0xFFB9F2FF) // Diamond
+        1 -> Color(0xFFCD7F32)
+        2 -> Color(0xFFC0C0C0)
+        3 -> hierarchy.secondary.primary
+        else -> Color(0xFFB9F2FF)
     }
-    
+
     val infiniteTransition = rememberInfiniteTransition(label = "badge")
-    
-    val shimmer by infiniteTransition.animateFloat(
-        initialValue = -1f,
-        targetValue = 2f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(3000, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "shimmer"
-    )
-    
+    val shimmer by repeatingFloat("shimmer", -1f, 2f, 3000, easing = LinearEasing, repeatMode = RepeatMode.Restart, transition = infiniteTransition)
+
     Column(
         modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -643,7 +551,6 @@ fun BadgeDisplay(
             modifier = Modifier.size(64.dp),
             contentAlignment = Alignment.Center
         ) {
-            // Badge hexagon background
             Canvas(
                 modifier = Modifier
                     .size(56.dp)
@@ -653,42 +560,20 @@ fun BadgeDisplay(
                 val radius = size.minDimension / 2
                 val centerX = size.width / 2
                 val centerY = size.height / 2
-                
+
                 for (i in 0..5) {
                     val angle = Math.toRadians((60.0 * i - 30))
                     val x = centerX + (radius * cos(angle)).toFloat()
                     val y = centerY + (radius * sin(angle)).toFloat()
-                    
-                    if (i == 0) {
-                        path.moveTo(x, y)
-                    } else {
-                        path.lineTo(x, y)
-                    }
+
+                    if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
                 }
                 path.close()
-                
-                // Fill
-                drawPath(
-                    path = path,
-                    brush = Brush.linearGradient(
-                        colors = listOf(
-                            tierColor.copy(alpha = 0.3f),
-                            tierColor.copy(alpha = 0.1f)
-                        ),
-                        start = Offset(shimmer * 100, 0f),
-                        end = Offset((shimmer + 1) * 100, 100f)
-                    )
-                )
-                
-                // Border
-                drawPath(
-                    path = path,
-                    color = tierColor,
-                    style = Stroke(width = 2.dp.toPx())
-                )
+
+                drawPath(path = path, brush = shimmerBrush(tierColor, shimmer))
+                drawPath(path = path, color = tierColor, style = Stroke(width = 2.dp.toPx()))
             }
-            
-            // Icon
+
             Icon(
                 imageVector = icon,
                 contentDescription = name,
@@ -696,7 +581,7 @@ fun BadgeDisplay(
                 modifier = Modifier.size(24.dp)
             )
         }
-        
+
         Text(
             text = name,
             color = if (isEarned) TextPrimary else TextSecondary,
@@ -716,9 +601,8 @@ fun XPProgressBar(
     modifier: Modifier = Modifier
 ) {
     val hierarchy = BouncerDesignSystem.hierarchy
-    val colors = BouncerDesignSystem.colors
     val progress = (currentXP.toFloat() / maxXP).coerceIn(0f, 1f)
-    
+
     val animatedProgress by animateFloatAsState(
         targetValue = progress,
         animationSpec = spring(
@@ -727,25 +611,15 @@ fun XPProgressBar(
         ),
         label = "xp"
     )
-    
+
     val infiniteTransition = rememberInfiniteTransition(label = "xpBar")
-    
-    val shimmer by infiniteTransition.animateFloat(
-        initialValue = -1f,
-        targetValue = 2f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(2000, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "shimmer"
-    )
-    
+    val shimmer by repeatingFloat("shimmer", -1f, 2f, 2000, easing = LinearEasing, repeatMode = RepeatMode.Restart, transition = infiniteTransition)
+
     Row(
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Level badge
         Box(
             modifier = Modifier
                 .size(48.dp)
@@ -767,9 +641,7 @@ fun XPProgressBar(
                 ),
             contentAlignment = Alignment.Center
         ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
                     text = "LVL",
                     color = hierarchy.secondary.primary.copy(alpha = 0.7f),
@@ -784,8 +656,7 @@ fun XPProgressBar(
                 )
             }
         }
-        
-        // Progress section
+
         Column(
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(4.dp)
@@ -806,8 +677,7 @@ fun XPProgressBar(
                     fontWeight = FontWeight.Medium
                 )
             }
-            
-            // XP bar
+
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -815,7 +685,6 @@ fun XPProgressBar(
                     .clip(RoundedCornerShape(6.dp))
                     .background(hierarchy.secondary.primary.copy(alpha = 0.15f))
             ) {
-                // Progress fill
                 Box(
                     modifier = Modifier
                         .fillMaxWidth(animatedProgress)
@@ -827,8 +696,7 @@ fun XPProgressBar(
                             )
                         )
                 )
-                
-                // Shimmer overlay
+
                 Box(
                     modifier = Modifier
                         .fillMaxWidth(animatedProgress)
@@ -837,11 +705,7 @@ fun XPProgressBar(
                         .alpha(0.3f)
                         .background(
                             brush = Brush.linearGradient(
-                                colors = listOf(
-                                    Color.Transparent,
-                                    Color.White,
-                                    Color.Transparent
-                                ),
+                                colors = listOf(Color.Transparent, Color.White, Color.Transparent),
                                 start = Offset(shimmer * 500, 0f),
                                 end = Offset((shimmer + 0.3f) * 500, 0f)
                             )
