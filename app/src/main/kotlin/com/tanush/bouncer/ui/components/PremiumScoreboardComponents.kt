@@ -32,6 +32,124 @@ import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.ui.components.CoilImage
 import com.tanush.bouncer.ui.theme.*
 
+@Composable
+private fun RoleBadge(text: String, background: Color, textColor: Color) {
+    Box(
+        modifier = Modifier
+            .background(background, RoundedCornerShape(4.dp))
+            .padding(horizontal = 4.dp, vertical = 1.dp)
+    ) {
+        Text(
+            text = text,
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Bold,
+            color = textColor
+        )
+    }
+}
+
+@Composable
+private fun StatColumn(
+    value: String,
+    label: String,
+    valueSize: Int,
+    valueColor: Color,
+    labelSize: Int,
+    valueWeight: FontWeight = FontWeight.Black,
+    horizontalAlignment: Alignment.Horizontal = Alignment.End,
+    modifier: Modifier = Modifier
+) {
+    Column(horizontalAlignment = horizontalAlignment, modifier = modifier) {
+        Text(
+            text = value,
+            fontSize = valueSize.sp,
+            fontWeight = valueWeight,
+            color = valueColor
+        )
+        if (label.isNotEmpty()) {
+            Text(
+                text = label,
+                fontSize = labelSize.sp,
+                fontWeight = FontWeight.Medium,
+                color = BouncerDesignSystem.colors.textTertiary
+            )
+        }
+    }
+}
+
+@Composable
+private fun PlayerContribution(
+    name: String,
+    runs: Int,
+    balls: Int,
+    runsColor: Color,
+    horizontalAlignment: Alignment.Horizontal
+) {
+    val colors = BouncerDesignSystem.colors
+    Column(horizontalAlignment = horizontalAlignment) {
+        Text(
+            text = name,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = colors.textPrimary
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(
+                text = "$runs",
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                color = runsColor
+            )
+            Text(
+                text = "($balls)",
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium,
+                color = colors.textTertiary
+            )
+        }
+    }
+}
+
+@Composable
+private fun RateRow(label: String, fraction: Float, value: Float, barColor: Color, textColor: Color) {
+    val colors = BouncerDesignSystem.colors
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = label,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Medium,
+            color = colors.textTertiary,
+            modifier = Modifier.width(30.dp)
+        )
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .height(8.dp)
+                .clip(RoundedCornerShape(4.dp))
+                .background(colors.glassBorder.copy(alpha = 0.3f))
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .fillMaxWidth(fraction)
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(barColor)
+            )
+        }
+        Text(
+            text = String.format("%.2f", value),
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Bold,
+            color = textColor,
+            modifier = Modifier.width(40.dp)
+        )
+    }
+}
+
 /**
  * Premium player card with stats
  */
@@ -51,7 +169,7 @@ fun PremiumPlayerCard(
     modifier: Modifier = Modifier
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "playerCard")
-    
+
     val strikeGlow by infiniteTransition.animateFloat(
         initialValue = 0.3f,
         targetValue = 0.8f,
@@ -61,7 +179,7 @@ fun PremiumPlayerCard(
         ),
         label = "strikeGlow"
     )
-    
+
     val borderAlpha by infiniteTransition.animateFloat(
         initialValue = 0.4f,
         targetValue = 0.7f,
@@ -87,7 +205,6 @@ fun PremiumPlayerCard(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            // Player Avatar
             Box {
                 Box(
                     modifier = Modifier
@@ -145,8 +262,7 @@ fun PremiumPlayerCard(
                         }
                     }
                 }
-                
-                // Strike indicator
+
                 if (isOnStrike) {
                     Box(
                         modifier = Modifier
@@ -166,8 +282,7 @@ fun PremiumPlayerCard(
                     }
                 }
             }
-            
-            // Player Info
+
             Column(modifier = Modifier.weight(1f)) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -181,40 +296,16 @@ fun PremiumPlayerCard(
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
-                    
-                    // Captain badge
+
                     if (isCaptain) {
-                        Box(
-                            modifier = Modifier
-                                .background(hierarchy.secondary.primary, RoundedCornerShape(4.dp))
-                                .padding(horizontal = 4.dp, vertical = 1.dp)
-                        ) {
-                            Text(
-                                text = "C",
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = colors.backgroundBase
-                            )
-                        }
+                        RoleBadge("C", hierarchy.secondary.primary, colors.backgroundBase)
                     }
-                    
-                    // Keeper badge
+
                     if (isKeeper) {
-                        Box(
-                            modifier = Modifier
-                                .background(colors.statusInfo, RoundedCornerShape(4.dp))
-                                .padding(horizontal = 4.dp, vertical = 1.dp)
-                        ) {
-                            Text(
-                                text = "WK",
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = colors.textPrimary
-                            )
-                        }
+                        RoleBadge("WK", colors.statusInfo, colors.textPrimary)
                     }
                 }
-                
+
                 Text(
                     text = role,
                     fontSize = 12.sp,
@@ -222,49 +313,28 @@ fun PremiumPlayerCard(
                     color = colors.textSecondary
                 )
             }
-            
-            // Stats
+
             if (primaryStat.isNotEmpty()) {
-                Column(
-                    horizontalAlignment = Alignment.End
-                ) {
-                    Text(
-                        text = primaryStat,
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Black,
-                        color = if (isOnStrike) hierarchy.secondary.primary else colors.textPrimary
-                    )
-                    if (primaryStatLabel.isNotEmpty()) {
-                        Text(
-                            text = primaryStatLabel,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = colors.textTertiary
-                        )
-                    }
-                }
+                StatColumn(
+                    value = primaryStat,
+                    label = primaryStatLabel,
+                    valueSize = 22,
+                    valueColor = if (isOnStrike) hierarchy.secondary.primary else colors.textPrimary,
+                    labelSize = 11
+                )
             }
-            
+
             if (secondaryStat.isNotEmpty()) {
-                Column(
+                StatColumn(
+                    value = secondaryStat,
+                    label = secondaryStatLabel,
+                    valueSize = 16,
+                    valueColor = colors.textSecondary,
+                    labelSize = 10,
+                    valueWeight = FontWeight.Bold,
                     horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier.padding(start = 8.dp)
-                ) {
-                    Text(
-                        text = secondaryStat,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = colors.textSecondary
-                    )
-                    if (secondaryStatLabel.isNotEmpty()) {
-                        Text(
-                            text = secondaryStatLabel,
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = colors.textTertiary
-                        )
-                    }
-                }
+                )
             }
         }
     }
@@ -304,7 +374,6 @@ fun MiniScoreboard(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Team info
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -318,7 +387,7 @@ fun MiniScoreboard(
                             .clip(CircleShape)
                     )
                 }
-                
+
                 Text(
                     text = teamName,
                     fontSize = 16.sp,
@@ -326,7 +395,7 @@ fun MiniScoreboard(
                     color = colors.textPrimary,
                     modifier = Modifier.weight(1f)
                 )
-                
+
                 if (isChasing && target != null) {
                     Box(
                         modifier = Modifier
@@ -345,14 +414,12 @@ fun MiniScoreboard(
                     }
                 }
             }
-            
-            // Score
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.Bottom
             ) {
-                // Main score
                 Text(
                     text = score,
                     fontSize = 36.sp,
@@ -366,17 +433,15 @@ fun MiniScoreboard(
                         )
                     )
                 )
-                
+
                 Column(horizontalAlignment = Alignment.End) {
-                    // Overs
                     Text(
                         text = "Overs: $overs",
                         fontSize = 14.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = colors.textSecondary
                     )
-                    
-                    // Run rate
+
                     if (runRate.isNotEmpty()) {
                         Row(
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -387,13 +452,13 @@ fun MiniScoreboard(
                                 fontWeight = FontWeight.Medium,
                                 color = colors.textTertiary
                             )
-                            
+
                             if (isChasing && requiredRate.isNotEmpty()) {
                                 Text(
                                     text = "RRR: $requiredRate",
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.Medium,
-                                    color = if (requiredRate.toFloatOrNull() ?: 0f > 12f) 
+                                    color = if (requiredRate.toFloatOrNull() ?: 0f > 12f)
                                         colors.statusLive else colors.statusSuccess
                                 )
                             }
@@ -430,7 +495,6 @@ fun LastWicketCard(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Wicket icon
             Box(
                 modifier = Modifier
                     .size(40.dp)
@@ -444,8 +508,7 @@ fun LastWicketCard(
                     modifier = Modifier.size(22.dp)
                 )
             }
-            
-            // Player info
+
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = "LAST WICKET",
@@ -454,14 +517,14 @@ fun LastWicketCard(
                     color = colors.statusLive,
                     letterSpacing = 1.sp
                 )
-                
+
                 Text(
                     text = playerName,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Bold,
                     color = colors.textPrimary
                 )
-                
+
                 Text(
                     text = howOut,
                     fontSize = 12.sp,
@@ -471,22 +534,14 @@ fun LastWicketCard(
                     overflow = TextOverflow.Ellipsis
                 )
             }
-            
-            // Score
-            Column(horizontalAlignment = Alignment.End) {
-                Text(
-                    text = score,
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Black,
-                    color = colors.textPrimary
-                )
-                Text(
-                    text = "$balls balls",
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = colors.textTertiary
-                )
-            }
+
+            StatColumn(
+                value = score,
+                label = "$balls balls",
+                valueSize = 20,
+                valueColor = colors.textPrimary,
+                labelSize = 11
+            )
         }
     }
 }
@@ -508,7 +563,7 @@ fun PartnershipCard(
 ) {
     val hierarchy = BouncerDesignSystem.hierarchy
     val player1Contribution = if (runs > 0) player1Runs.toFloat() / runs else 0.5f
-    
+
     val animatedContribution by animateFloatAsState(
         targetValue = player1Contribution,
         animationSpec = tween(1000, easing = FastOutSlowInEasing),
@@ -522,7 +577,6 @@ fun PartnershipCard(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Header
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -535,7 +589,7 @@ fun PartnershipCard(
                     color = colors.textSecondary,
                     letterSpacing = 1.sp
                 )
-                
+
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                     verticalAlignment = Alignment.CenterVertically
@@ -554,8 +608,7 @@ fun PartnershipCard(
                     )
                 }
             }
-            
-            // Contribution bar
+
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -575,57 +628,26 @@ fun PartnershipCard(
                         .background(colors.statusInfo)
                 )
             }
-            
-            // Player contributions
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Column {
-                    Text(
-                        text = player1Name,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = colors.textPrimary
-                    )
-                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(
-                            text = "$player1Runs",
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = colors.statusSuccess
-                        )
-                        Text(
-                            text = "($player1Balls)",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = colors.textTertiary
-                        )
-                    }
-                }
-                
-                Column(horizontalAlignment = Alignment.End) {
-                    Text(
-                        text = player2Name,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = colors.textPrimary
-                    )
-                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(
-                            text = "$player2Runs",
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = colors.statusInfo
-                        )
-                        Text(
-                            text = "($player2Balls)",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = colors.textTertiary
-                        )
-                    }
-                }
+                PlayerContribution(
+                    name = player1Name,
+                    runs = player1Runs,
+                    balls = player1Balls,
+                    runsColor = colors.statusSuccess,
+                    horizontalAlignment = Alignment.Start
+                )
+
+                PlayerContribution(
+                    name = player2Name,
+                    runs = player2Runs,
+                    balls = player2Balls,
+                    runsColor = colors.statusInfo,
+                    horizontalAlignment = Alignment.End
+                )
             }
         }
     }
@@ -648,7 +670,6 @@ fun CurrentOverDisplay(
             modifier = Modifier.padding(14.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            // Header
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -661,7 +682,7 @@ fun CurrentOverDisplay(
                     color = colors.textSecondary,
                     letterSpacing = 1.sp
                 )
-                
+
                 if (bowlerName.isNotEmpty()) {
                     Text(
                         text = bowlerName,
@@ -671,16 +692,14 @@ fun CurrentOverDisplay(
                     )
                 }
             }
-            
-            // Ball-by-ball
+
             Row(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 balls.forEach { ball ->
                     BallDisplay(ball = ball)
                 }
-                
-                // Empty slots for remaining balls
+
                 repeat((6 - balls.size).coerceAtLeast(0)) {
                     Box(
                         modifier = Modifier
@@ -714,26 +733,27 @@ private fun BallDisplay(ball: String) {
         ball == "0" -> colors.ballDot
         else -> colors.glassBorderHighlight
     }
-    
+
     val textColor = when {
         ball == "W" || ball == "6" || ball == "4" -> colors.backgroundBase
         ball.contains("WD") || ball.contains("NB") -> colors.backgroundBase
         else -> colors.textPrimary
     }
-    
+
+    val isHighlight = ball in listOf("W", "6", "4")
+
     Box(
         modifier = Modifier
             .size(36.dp)
             .shadow(
-                elevation = if (ball in listOf("W", "6", "4")) 8.dp else 0.dp,
+                elevation = if (isHighlight) 8.dp else 0.dp,
                 shape = CircleShape,
                 spotColor = backgroundColor.copy(alpha = 0.5f)
             )
             .background(backgroundColor, CircleShape)
             .border(
                 1.dp,
-                if (ball in listOf("W", "6", "4")) 
-                    colors.textPrimary.copy(alpha = 0.3f) 
+                if (isHighlight) colors.textPrimary.copy(alpha = 0.3f)
                 else colors.glassBorder.copy(alpha = 0.3f),
                 CircleShape
             ),
@@ -758,13 +778,13 @@ fun RunRateMini(
     modifier: Modifier = Modifier
 ) {
     val maxRate = maxOf(currentRate, requiredRate ?: 0f, 10f)
-    
+
     val animatedCurrent by animateFloatAsState(
         targetValue = currentRate / maxRate,
         animationSpec = tween(1000, easing = FastOutSlowInEasing),
         label = "currentRate"
     )
-    
+
     val animatedRequired by animateFloatAsState(
         targetValue = (requiredRate ?: 0f) / maxRate,
         animationSpec = tween(1000, easing = FastOutSlowInEasing),
@@ -785,91 +805,28 @@ fun RunRateMini(
                 color = colors.textSecondary,
                 letterSpacing = 1.sp
             )
-            
-            // Current rate
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "CRR",
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = colors.textTertiary,
-                    modifier = Modifier.width(30.dp)
-                )
-                
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(8.dp)
-                        .clip(RoundedCornerShape(4.dp))
-                        .background(colors.glassBorder.copy(alpha = 0.3f))
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxHeight()
-                            .fillMaxWidth(animatedCurrent)
-                            .clip(RoundedCornerShape(4.dp))
-                            .background(colors.statusSuccess)
-                    )
-                }
-                
-                Text(
-                    text = String.format("%.2f", currentRate),
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = colors.statusSuccess,
-                    modifier = Modifier.width(40.dp)
-                )
-            }
-            
-            // Required rate
+
+            RateRow(
+                label = "CRR",
+                fraction = animatedCurrent,
+                value = currentRate,
+                barColor = colors.statusSuccess,
+                textColor = colors.statusSuccess
+            )
+
             if (requiredRate != null) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "RRR",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = colors.textTertiary,
-                        modifier = Modifier.width(30.dp)
-                    )
-                    
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(8.dp)
-                            .clip(RoundedCornerShape(4.dp))
-                            .background(colors.glassBorder.copy(alpha = 0.3f))
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxHeight()
-                                .fillMaxWidth(animatedRequired)
-                                .clip(RoundedCornerShape(4.dp))
-                                .background(
-                                    if (requiredRate > 12f) colors.statusLive
-                                    else if (requiredRate > 8f) colors.statusWarning
-                                    else colors.statusInfo
-                                )
-                        )
-                    }
-                    
-                    Text(
-                        text = String.format("%.2f", requiredRate),
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = if (requiredRate > 12f) colors.statusLive
-                            else if (requiredRate > 8f) colors.statusWarning
-                            else colors.statusInfo,
-                        modifier = Modifier.width(40.dp)
-                    )
+                val rrrColor = when {
+                    requiredRate > 12f -> colors.statusLive
+                    requiredRate > 8f -> colors.statusWarning
+                    else -> colors.statusInfo
                 }
+                RateRow(
+                    label = "RRR",
+                    fraction = animatedRequired,
+                    value = requiredRate,
+                    barColor = rrrColor,
+                    textColor = rrrColor
+                )
             }
         }
     }
