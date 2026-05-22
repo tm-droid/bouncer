@@ -87,7 +87,7 @@ class ToggleFavoriteCallback : ActionCallback {
         val matchId = parameters[WidgetActionKeys.matchIdKey] ?: return
         val prefs = context.getSharedPreferences("widget_favorites", Context.MODE_PRIVATE)
         val favorites = prefs.getStringSet("favorites", mutableSetOf())?.toMutableSet() ?: mutableSetOf()
-        if (matchId in favorites) favorites.remove(matchId) else favorites.add(matchId)
+        if (!favorites.add(matchId)) favorites.remove(matchId)
         prefs.edit().putStringSet("favorites", favorites).apply()
     }
 }
@@ -104,7 +104,7 @@ class ToggleMuteCallback : ActionCallback {
         val matchId = parameters[WidgetActionKeys.matchIdKey] ?: return
         val prefs = context.getSharedPreferences("widget_muted", Context.MODE_PRIVATE)
         val mutedMatches = prefs.getStringSet("muted", mutableSetOf())?.toMutableSet() ?: mutableSetOf()
-        if (matchId in mutedMatches) mutedMatches.remove(matchId) else mutedMatches.add(matchId)
+        if (!mutedMatches.add(matchId)) mutedMatches.remove(matchId)
         prefs.edit().putStringSet("muted", mutedMatches).apply()
     }
 }
@@ -943,16 +943,13 @@ fun MatchNavigationDots(
         horizontalAlignment = Alignment.Horizontal.CenterHorizontally,
         verticalAlignment = Alignment.Vertical.CenterVertically
     ) {
+        val activeIndex = currentIndex % totalMatches
         repeat(totalMatches.coerceAtMost(5)) { index ->
+            val isActive = index == activeIndex
             Box(
                 modifier = GlanceModifier
-                    .size(if (index == currentIndex % totalMatches) 8.dp else 6.dp)
-                    .background(
-                        if (index == currentIndex % totalMatches) 
-                            WidgetColorScheme.primary 
-                        else 
-                            WidgetColorScheme.textTertiary
-                    )
+                    .size(if (isActive) 8.dp else 6.dp)
+                    .background(if (isActive) WidgetColorScheme.primary else WidgetColorScheme.textTertiary)
                     .cornerRadius(4.dp)
             ) {}
             if (index < totalMatches - 1) {
@@ -1153,15 +1150,13 @@ fun RunRateComparison(
                     text = "RRR",
                     style = WidgetTypography.labelSmall
                 )
+                val rrrColor = if (rrr > currentRunRate) WidgetColorScheme.error else WidgetColorScheme.success
                 Text(
                     text = String.format("%.2f", rrr),
                     style = TextStyle(
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,
-                        color = if (rrr > currentRunRate) 
-                            WidgetColorScheme.error 
-                        else 
-                            WidgetColorScheme.success
+                        color = rrrColor
                     )
                 )
             }
@@ -1578,27 +1573,27 @@ fun PowerplayIndicator(
     oversInPhase: Float,
     totalOversInPhase: Float
 ) {
+    val bgColor = when (currentPowerplay) {
+        PowerplayPhase.POWERPLAY_1 -> WidgetColorScheme.primaryContainer
+        PowerplayPhase.POWERPLAY_2 -> WidgetColorScheme.surfaceElevated
+        PowerplayPhase.POWERPLAY_3 -> WidgetColorScheme.surfaceHighest
+        PowerplayPhase.NONE -> WidgetColorScheme.surface
+    }
+    val phaseLabel = when (currentPowerplay) {
+        PowerplayPhase.POWERPLAY_1 -> "PP1"
+        PowerplayPhase.POWERPLAY_2 -> "PP2"
+        PowerplayPhase.POWERPLAY_3 -> "PP3"
+        PowerplayPhase.NONE -> ""
+    }
     Row(
         modifier = modifier
-            .background(
-                when (currentPowerplay) {
-                    PowerplayPhase.POWERPLAY_1 -> WidgetColorScheme.primaryContainer
-                    PowerplayPhase.POWERPLAY_2 -> WidgetColorScheme.surfaceElevated
-                    PowerplayPhase.POWERPLAY_3 -> WidgetColorScheme.surfaceHighest
-                    PowerplayPhase.NONE -> WidgetColorScheme.surface
-                }
-            )
+            .background(bgColor)
             .cornerRadius(WidgetTheme.radiusSmall)
             .padding(horizontal = 8.dp, vertical = 4.dp),
         verticalAlignment = Alignment.Vertical.CenterVertically
     ) {
         Text(
-            text = when (currentPowerplay) {
-                PowerplayPhase.POWERPLAY_1 -> "PP1"
-                PowerplayPhase.POWERPLAY_2 -> "PP2"
-                PowerplayPhase.POWERPLAY_3 -> "PP3"
-                PowerplayPhase.NONE -> ""
-            },
+            text = phaseLabel,
             style = TextStyle(
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Bold,
