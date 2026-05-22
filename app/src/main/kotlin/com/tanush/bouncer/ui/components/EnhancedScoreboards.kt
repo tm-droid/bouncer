@@ -2,6 +2,7 @@ package com.tanush.bouncer.ui.components
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -17,9 +18,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.*
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.*
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.layout.ContentScale
@@ -40,6 +43,82 @@ import com.tanush.bouncer.ui.theme.GoldPrimary
 private fun String.toPlayerInitials(): String =
     split(" ").mapNotNull { it.firstOrNull()?.uppercase() }.take(2).joinToString("")
 
+@Composable
+private fun GlassSurfaceCard(
+    modifier: Modifier = Modifier,
+    cornerRadius: Dp = 16.dp,
+    border: BorderStroke? = null,
+    content: @Composable () -> Unit
+) {
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(cornerRadius),
+        color = GlassSurface,
+        border = border,
+        content = content
+    )
+}
+
+@Composable
+private fun PlayerAvatar(
+    name: String,
+    imageUrl: String?,
+    highlighted: Boolean,
+    highlightColor: Color,
+    glow: Float = 0f,
+    size: Dp = 48.dp,
+    textColor: Color
+) {
+    val shadowMod = if (highlighted && glow > 0f) {
+        Modifier.shadow(8.dp, CircleShape, spotColor = highlightColor.copy(alpha = glow))
+    } else Modifier
+    Box(
+        modifier = Modifier
+            .size(size)
+            .clip(CircleShape)
+            .background(GlassSurface)
+            .then(shadowMod),
+        contentAlignment = Alignment.Center
+    ) {
+        if (imageUrl != null) {
+            CoilImage(
+                model = imageUrl,
+                contentDescription = name,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
+            )
+        } else {
+            Text(
+                text = name.toPlayerInitials(),
+                color = textColor,
+                fontSize = (size.value * 0.33).sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
+    }
+}
+
+private fun DrawScope.drawMiniBars(
+    values: List<Float>,
+    colorFor: (Float) -> Color,
+    alpha: Float = 1f
+) {
+    if (values.isEmpty()) return
+    val gap = 2.dp.toPx()
+    val barWidth = size.width / values.size - gap
+    val maxVal = values.max().coerceAtLeast(1f)
+    values.forEachIndexed { index, v ->
+        val barHeight = (v / maxVal * size.height).coerceAtLeast(2.dp.toPx())
+        val x = index * (barWidth + gap)
+        drawRoundRect(
+            color = colorFor(v).copy(alpha = alpha),
+            topLeft = Offset(x, size.height - barHeight),
+            size = Size(barWidth, barHeight),
+            cornerRadius = CornerRadius(2.dp.toPx())
+        )
+    }
+}
+
 /**
  * FlipDigitScore with flip animation for digit changes
  * Displays score with animated flip transition when digits change
@@ -56,7 +135,7 @@ fun FlipDigitScore(
     val scoreString = score.toString().padStart(3, '0')
     var previousScore by remember { mutableStateOf(score) }
     var isFlipping by remember { mutableStateOf(false) }
-    
+
     LaunchedEffect(score) {
         if (score != previousScore && showAnimation) {
             isFlipping = true
@@ -67,7 +146,7 @@ fun FlipDigitScore(
             previousScore = score
         }
     }
-    
+
     Row(
         modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -75,17 +154,14 @@ fun FlipDigitScore(
     ) {
         scoreString.forEachIndexed { index, digit ->
             val previousDigit = previousScore.toString().padStart(3, '0').getOrElse(index) { '0' }
-            val shouldFlip = digit != previousDigit && isFlipping
-            
             FlipDigit(
                 currentDigit = digit,
                 previousDigit = previousDigit,
-                isFlipping = shouldFlip,
+                isFlipping = digit != previousDigit && isFlipping,
                 size = digitSize.dp
             )
         }
-        
-        // Wickets display
+
         if (wickets != null) {
             Text(
                 text = "/",
@@ -111,13 +187,12 @@ private fun FlipDigit(
     size: Dp
 ) {
     val hierarchy = BouncerDesignSystem.hierarchy
-    val colors = BouncerDesignSystem.colors
     val rotation by animateFloatAsState(
         targetValue = if (isFlipping) 180f else 0f,
         animationSpec = tween(300, easing = FastOutSlowInEasing),
         label = "flipRotation"
     )
-    
+
     Box(
         modifier = Modifier
             .size(size)
@@ -125,15 +200,8 @@ private fun FlipDigit(
                 rotationX = rotation
                 cameraDistance = 12f * density
             }
-            .background(
-                GlassSurface,
-                RoundedCornerShape(8.dp)
-            )
-            .border(
-                0.5.dp,
-                hierarchy.secondary.primary.copy(alpha = 0.3f),
-                RoundedCornerShape(8.dp)
-            ),
+            .background(GlassSurface, RoundedCornerShape(8.dp))
+            .border(0.5.dp, hierarchy.secondary.primary.copy(alpha = 0.3f), RoundedCornerShape(8.dp)),
         contentAlignment = Alignment.Center
     ) {
         Text(
@@ -163,7 +231,7 @@ fun AnimatedScoreDisplay(
     val colors = BouncerDesignSystem.colors
     val hierarchy = BouncerDesignSystem.hierarchy
     val infiniteTransition = rememberInfiniteTransition(label = "scoreDisplay")
-    
+
     val shimmer by infiniteTransition.animateFloat(
         initialValue = 0f,
         targetValue = 1f,
@@ -173,9 +241,9 @@ fun AnimatedScoreDisplay(
         ),
         label = "shimmer"
     )
-    
+
     val scoreDescription = "$teamName: $runs runs for $wickets wickets in $overs overs"
-    
+
     Surface(
         modifier = modifier
             .fillMaxWidth()
@@ -184,7 +252,6 @@ fun AnimatedScoreDisplay(
         color = GlassSurface
     ) {
         Box {
-            // Shimmer overlay
             Box(
                 modifier = Modifier
                     .matchParentSize()
@@ -201,7 +268,7 @@ fun AnimatedScoreDisplay(
                         )
                     )
             )
-            
+
             Column(
                 modifier = Modifier.padding(20.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
@@ -216,7 +283,7 @@ fun AnimatedScoreDisplay(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                 }
-                
+
                 Row(
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.Bottom
@@ -227,9 +294,9 @@ fun AnimatedScoreDisplay(
                         digitSize = 48
                     )
                 }
-                
+
                 Spacer(modifier = Modifier.height(8.dp))
-                
+
                 Text(
                     text = "OVERS: $overs",
                     color = colors.textMuted,
@@ -249,18 +316,16 @@ fun AnimatedScoreDisplay(
 fun AutoScrollingPartnership(
     partnerships: List<EnhancedPartnershipInfo>,
     modifier: Modifier = Modifier,
-    scrollSpeed: Int = 50 // pixels per second
+    scrollSpeed: Int = 50
 ) {
     val colors = BouncerDesignSystem.colors
     val scrollState = rememberScrollState()
-    var isAutoScrolling by remember { mutableStateOf(true) }
-    
+    val isAutoScrolling by remember { mutableStateOf(true) }
     val scope = rememberCoroutineScope()
-    
+
     LaunchedEffect(isAutoScrolling, partnerships) {
         if (isAutoScrolling && partnerships.isNotEmpty()) {
             while (true) {
-                // Scroll forward
                 scope.launch {
                     scrollState.animateScrollTo(
                         scrollState.maxValue,
@@ -270,27 +335,16 @@ fun AutoScrollingPartnership(
                         )
                     )
                 }.join()
-                
                 delay(2000)
-                
-                // Scroll back
                 scope.launch {
-                    scrollState.animateScrollTo(
-                        0,
-                        animationSpec = tween(1000, easing = FastOutSlowInEasing)
-                    )
+                    scrollState.animateScrollTo(0, animationSpec = tween(1000, easing = FastOutSlowInEasing))
                 }.join()
-                
                 delay(2000)
             }
         }
     }
-    
-    Surface(
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        color = GlassSurface
-    ) {
+
+    GlassSurfaceCard(modifier = modifier) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -304,16 +358,15 @@ fun AutoScrollingPartnership(
                     fontWeight = FontWeight.Black,
                     letterSpacing = 1.sp
                 )
-                
                 Text(
                     text = "${partnerships.size} total",
                     color = colors.textTertiary,
                     fontSize = 10.sp
                 )
             }
-            
+
             Spacer(modifier = Modifier.height(12.dp))
-            
+
             Row(
                 modifier = Modifier
                     .horizontalScroll(scrollState)
@@ -352,18 +405,16 @@ private fun PartnershipItem(
     val runRate = if (partnership.balls > 0)
         String.format("%.2f", partnership.runs.toFloat() / partnership.balls * 6)
     else "0.00"
-    
+
     Surface(
         modifier = Modifier.width(180.dp),
         shape = RoundedCornerShape(12.dp),
         color = if (isHighlight) hierarchy.secondary.primary.copy(alpha = 0.1f) else GlassSurface,
-        border = if (isHighlight) 
-            androidx.compose.foundation.BorderStroke(1.dp, hierarchy.secondary.primary.copy(alpha = 0.3f))
+        border = if (isHighlight)
+            BorderStroke(1.dp, hierarchy.secondary.primary.copy(alpha = 0.3f))
         else null
     ) {
-        Column(
-            modifier = Modifier.padding(12.dp)
-        ) {
+        Column(modifier = Modifier.padding(12.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -375,7 +426,6 @@ private fun PartnershipItem(
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold
                 )
-                
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                     verticalAlignment = Alignment.CenterVertically
@@ -393,14 +443,13 @@ private fun PartnershipItem(
                     )
                 }
             }
-            
+
             Spacer(modifier = Modifier.height(8.dp))
-            
-            // Contribution bar
-            val contribution = if (partnership.runs > 0) 
-                partnership.player1Runs.toFloat() / partnership.runs 
+
+            val contribution = if (partnership.runs > 0)
+                partnership.player1Runs.toFloat() / partnership.runs
             else 0.5f
-            
+
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -420,9 +469,9 @@ private fun PartnershipItem(
                         .background(colors.statusInfo)
                 )
             }
-            
+
             Spacer(modifier = Modifier.height(8.dp))
-            
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
@@ -440,9 +489,9 @@ private fun PartnershipItem(
                     fontWeight = FontWeight.Medium
                 )
             }
-            
+
             Spacer(modifier = Modifier.height(4.dp))
-            
+
             Text(
                 text = "RR: $runRate",
                 color = colors.textMuted,
@@ -466,20 +515,19 @@ fun StrikeRateSparkline(
     lineColor: Color = GoldPrimary,
     showCurrentValue: Boolean = true
 ) {
-    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     if (strikeRates.isEmpty()) return
-    
+
     val maxRate = strikeRates.maxOrNull() ?: 200f
     val minRate = strikeRates.minOrNull() ?: 0f
     val currentRate = strikeRates.lastOrNull() ?: 0f
-    
+
     val animatedProgress by animateFloatAsState(
         targetValue = 1f,
         animationSpec = tween(1000, easing = FastOutSlowInEasing),
         label = "sparklineProgress"
     )
-    
+
     Row(
         modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -493,14 +541,14 @@ fun StrikeRateSparkline(
             val width = size.width
             val chartHeight = size.height
             val range = (maxRate - minRate).coerceAtLeast(1f)
-            
+
             val path = Path()
             val fillPath = Path()
-            
+
             strikeRates.forEachIndexed { index, rate ->
                 val x = (index.toFloat() / (strikeRates.size - 1).coerceAtLeast(1)) * width * animatedProgress
                 val y = chartHeight - ((rate - minRate) / range * chartHeight)
-                
+
                 if (index == 0) {
                     path.moveTo(x, y)
                     fillPath.moveTo(x, chartHeight)
@@ -510,12 +558,10 @@ fun StrikeRateSparkline(
                     fillPath.lineTo(x, y)
                 }
             }
-            
-            // Complete fill path
+
             fillPath.lineTo(width * animatedProgress, chartHeight)
             fillPath.close()
-            
-            // Draw gradient fill
+
             drawPath(
                 path = fillPath,
                 brush = Brush.verticalGradient(
@@ -525,36 +571,23 @@ fun StrikeRateSparkline(
                     )
                 )
             )
-            
-            // Draw line
+
             drawPath(
                 path = path,
                 color = lineColor,
                 style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round)
             )
-            
-            // Draw current point
+
             if (strikeRates.isNotEmpty()) {
                 val lastX = width * animatedProgress
                 val lastY = chartHeight - ((currentRate - minRate) / range * chartHeight)
-                
-                drawCircle(
-                    color = lineColor,
-                    radius = 4.dp.toPx(),
-                    center = Offset(lastX, lastY)
-                )
-                drawCircle(
-                    color = colors.surface2,
-                    radius = 2.dp.toPx(),
-                    center = Offset(lastX, lastY)
-                )
+                drawCircle(color = lineColor, radius = 4.dp.toPx(), center = Offset(lastX, lastY))
+                drawCircle(color = colors.surface2, radius = 2.dp.toPx(), center = Offset(lastX, lastY))
             }
         }
-        
+
         if (showCurrentValue) {
-            Column(
-                horizontalAlignment = Alignment.End
-            ) {
+            Column(horizontalAlignment = Alignment.End) {
                 Text(
                     text = String.format("%.1f", currentRate),
                     color = lineColor,
@@ -593,27 +626,19 @@ fun BatsmanMiniCard(
     val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val strikeRate = if (balls > 0) (runs * 100.0 / balls) else 0.0
-    
+
     val infiniteTransition = rememberInfiniteTransition(label = "batsmanCard")
     val strikeGlow by infiniteTransition.animateFloat(
         initialValue = 0.3f,
         targetValue = 0.8f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(800),
-            repeatMode = RepeatMode.Reverse
-        ),
+        animationSpec = infiniteRepeatable(animation = tween(800), repeatMode = RepeatMode.Reverse),
         label = "strikeGlow"
     )
-    
-    Surface(
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        color = GlassSurface,
-        border = if (isOnStrike) 
-            androidx.compose.foundation.BorderStroke(
-                2.dp, 
-                hierarchy.secondary.primary.copy(alpha = strikeGlow)
-            ) 
+
+    GlassSurfaceCard(
+        modifier = modifier,
+        border = if (isOnStrike)
+            BorderStroke(2.dp, hierarchy.secondary.primary.copy(alpha = strikeGlow))
         else null
     ) {
         Row(
@@ -623,37 +648,16 @@ fun BatsmanMiniCard(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Player avatar
             Box {
-                Box(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .clip(CircleShape)
-                        .background(GlassSurface)
-                        .then(
-                            if (isOnStrike) Modifier.shadow(8.dp, CircleShape, spotColor = hierarchy.secondary.primary.copy(alpha = strikeGlow))
-                            else Modifier
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (imageUrl != null) {
-                        CoilImage(
-                            model = imageUrl,
-                            contentDescription = name,
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop
-                        )
-                    } else {
-                        Text(
-                            text = name.toPlayerInitials(),
-                            color = if (isOnStrike) hierarchy.secondary.primary else colors.textSecondary,
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
+                PlayerAvatar(
+                    name = name,
+                    imageUrl = imageUrl,
+                    highlighted = isOnStrike,
+                    highlightColor = hierarchy.secondary.primary,
+                    glow = strikeGlow,
+                    textColor = if (isOnStrike) hierarchy.secondary.primary else colors.textSecondary
+                )
 
-                // Strike indicator dot
                 if (isOnStrike) {
                     Box(
                         modifier = Modifier
@@ -664,8 +668,7 @@ fun BatsmanMiniCard(
                     )
                 }
             }
-            
-            // Name and dismissal info
+
             Column(modifier = Modifier.weight(1f)) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -679,7 +682,7 @@ fun BatsmanMiniCard(
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
-                    
+
                     if (isOnStrike) {
                         Text(
                             text = "*",
@@ -689,7 +692,7 @@ fun BatsmanMiniCard(
                         )
                     }
                 }
-                
+
                 if (isOut && dismissalInfo != null) {
                     Text(
                         text = dismissalInfo,
@@ -699,15 +702,13 @@ fun BatsmanMiniCard(
                         overflow = TextOverflow.Ellipsis
                     )
                 } else if (recentScores.isNotEmpty()) {
-                    // Form sparkline
                     MiniFormSparkline(
                         scores = recentScores,
                         modifier = Modifier.height(16.dp)
                     )
                 }
             }
-            
-            // Stats
+
             Column(horizontalAlignment = Alignment.End) {
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -729,10 +730,8 @@ fun BatsmanMiniCard(
                         fontSize = 12.sp
                     )
                 }
-                
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
+
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     if (fours > 0) {
                         Text(
                             text = "${fours}x4",
@@ -768,26 +767,25 @@ private fun MiniFormSparkline(
 ) {
     val colors = BouncerDesignSystem.colors
     val maxScore = scores.maxOrNull()?.coerceAtLeast(50) ?: 50
-    
+    val values = scores.map { it.toFloat() }
+
     Canvas(modifier = modifier.width(60.dp)) {
-        val barWidth = size.width / scores.size - 2.dp.toPx()
-        
-        scores.forEachIndexed { index, score ->
-            val barHeight = (score.toFloat() / maxScore * size.height).coerceAtLeast(2.dp.toPx())
-            val x = index * (barWidth + 2.dp.toPx())
-            
+        val gap = 2.dp.toPx()
+        val barWidth = size.width / values.size - gap
+        values.forEachIndexed { index, v ->
+            val barHeight = (v / maxScore * size.height).coerceAtLeast(2.dp.toPx())
+            val x = index * (barWidth + gap)
             val color = when {
-                score >= 50 -> colors.statusSuccess
-                score >= 30 -> colors.statusInfo
-                score >= 10 -> colors.textSecondary
+                v >= 50 -> colors.statusSuccess
+                v >= 30 -> colors.statusInfo
+                v >= 10 -> colors.textSecondary
                 else -> colors.textMuted
             }
-            
             drawRoundRect(
                 color = color,
                 topLeft = Offset(x, size.height - barHeight),
                 size = Size(barWidth, barHeight),
-                cornerRadius = androidx.compose.ui.geometry.CornerRadius(2.dp.toPx())
+                cornerRadius = CornerRadius(2.dp.toPx())
             )
         }
     }
@@ -813,25 +811,18 @@ fun BowlerMiniCard(
     val colors = BouncerDesignSystem.colors
     val oversFloat = overs.toFloatOrNull() ?: 0f
     val economy = if (oversFloat > 0f) runs / oversFloat else 0f
-    
+
     val infiniteTransition = rememberInfiniteTransition(label = "bowlerCard")
     val bowlerGlow by infiniteTransition.animateFloat(
         initialValue = 0.3f,
         targetValue = 0.7f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1000),
-            repeatMode = RepeatMode.Reverse
-        ),
+        animationSpec = infiniteRepeatable(animation = tween(1000), repeatMode = RepeatMode.Reverse),
         label = "bowlerGlow"
     )
-    
-    Surface(
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        color = GlassSurface,
-        border = if (isCurrentBowler) 
-            androidx.compose.foundation.BorderStroke(2.dp, ChartCyan.copy(alpha = bowlerGlow)) 
-        else null
+
+    GlassSurfaceCard(
+        modifier = modifier,
+        border = if (isCurrentBowler) BorderStroke(2.dp, ChartCyan.copy(alpha = bowlerGlow)) else null
     ) {
         Row(
             modifier = Modifier
@@ -840,36 +831,15 @@ fun BowlerMiniCard(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Player avatar
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(CircleShape)
-                    .background(GlassSurface)
-                    .then(
-                        if (isCurrentBowler) Modifier.shadow(8.dp, CircleShape, spotColor = ChartCyan.copy(alpha = bowlerGlow))
-                        else Modifier
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                if (imageUrl != null) {
-                    CoilImage(
-                        model = imageUrl,
-                        contentDescription = name,
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
-                } else {
-                    Text(
-                        text = name.toPlayerInitials(),
-                        color = if (isCurrentBowler) ChartCyan else colors.textSecondary,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            }
-            
-            // Name and economy graph
+            PlayerAvatar(
+                name = name,
+                imageUrl = imageUrl,
+                highlighted = isCurrentBowler,
+                highlightColor = ChartCyan,
+                glow = bowlerGlow,
+                textColor = if (isCurrentBowler) ChartCyan else colors.textSecondary
+            )
+
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = name,
@@ -879,7 +849,7 @@ fun BowlerMiniCard(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-                
+
                 if (economyHistory.isNotEmpty()) {
                     EconomyMiniGraph(
                         economies = economyHistory,
@@ -896,8 +866,7 @@ fun BowlerMiniCard(
                     )
                 }
             }
-            
-            // Stats
+
             Column(horizontalAlignment = Alignment.End) {
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -920,10 +889,8 @@ fun BowlerMiniCard(
                         fontWeight = FontWeight.Bold
                     )
                 }
-                
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
+
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     if (maidens > 0) {
                         Text(
                             text = "M:$maidens",
@@ -957,29 +924,27 @@ private fun EconomyMiniGraph(
     val colors = BouncerDesignSystem.colors
     val maxEcon = economies.maxOrNull()?.coerceAtLeast(12f) ?: 12f
     val goodThreshold = 6f
-    
+
     Canvas(modifier = modifier) {
-        val barWidth = size.width / economies.size - 2.dp.toPx()
-        
+        val gap = 2.dp.toPx()
+        val barWidth = size.width / economies.size - gap
+
         economies.forEachIndexed { index, econ ->
             val barHeight = (econ / maxEcon * size.height).coerceAtLeast(2.dp.toPx())
-            val x = index * (barWidth + 2.dp.toPx())
-            
+            val x = index * (barWidth + gap)
             val color = when {
                 econ < goodThreshold -> colors.statusSuccess
                 econ < 8f -> colors.statusWarning
                 else -> colors.statusLive
             }
-            
             drawRoundRect(
                 color = color.copy(alpha = 0.7f),
                 topLeft = Offset(x, size.height - barHeight),
                 size = Size(barWidth, barHeight),
-                cornerRadius = androidx.compose.ui.geometry.CornerRadius(2.dp.toPx())
+                cornerRadius = CornerRadius(2.dp.toPx())
             )
         }
-        
-        // Good economy threshold line
+
         val thresholdY = size.height - (goodThreshold / maxEcon * size.height)
         drawLine(
             color = colors.statusSuccess.copy(alpha = 0.5f),
@@ -1006,11 +971,7 @@ fun OverSummaryRow(
 ) {
     val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
-    Surface(
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        color = GlassSurface
-    ) {
+    GlassSurfaceCard(modifier = modifier, cornerRadius = 12.dp) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -1018,7 +979,6 @@ fun OverSummaryRow(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Over number
             Box(
                 modifier = Modifier
                     .size(36.dp)
@@ -1032,8 +992,7 @@ fun OverSummaryRow(
                     fontWeight = FontWeight.Bold
                 )
             }
-            
-            // Balls
+
             Row(
                 modifier = Modifier.weight(1f),
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
@@ -1042,8 +1001,7 @@ fun OverSummaryRow(
                     MicroBallChip(ball = ball)
                 }
             }
-            
-            // Summary
+
             Row(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
@@ -1054,7 +1012,7 @@ fun OverSummaryRow(
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Black
                 )
-                
+
                 if (wickets > 0) {
                     Box(
                         modifier = Modifier
@@ -1085,7 +1043,7 @@ private fun MicroBallChip(ball: String) {
         ball == "0" || ball == "." -> DotBall to colors.textMuted
         else -> GlassSurface to colors.textPrimary
     }
-    
+
     Box(
         modifier = Modifier
             .size(22.dp)
@@ -1114,12 +1072,8 @@ fun WicketFallTimeline(
 ) {
     val colors = BouncerDesignSystem.colors
     val scrollState = rememberScrollState()
-    
-    Surface(
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        color = GlassSurface
-    ) {
+
+    GlassSurfaceCard(modifier = modifier) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
                 text = "FALL OF WICKETS",
@@ -1128,9 +1082,9 @@ fun WicketFallTimeline(
                 fontWeight = FontWeight.Black,
                 letterSpacing = 1.sp
             )
-            
+
             Spacer(modifier = Modifier.height(12.dp))
-            
+
             Row(
                 modifier = Modifier
                     .horizontalScroll(scrollState)
@@ -1142,9 +1096,8 @@ fun WicketFallTimeline(
                         wicket = wicket,
                         wicketNumber = index + 1
                     )
-                    
+
                     if (index < wickets.size - 1) {
-                        // Connector line
                         Box(
                             modifier = Modifier
                                 .width(20.dp)
@@ -1183,7 +1136,6 @@ private fun WicketFallItem(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier.width(80.dp)
     ) {
-        // Score at fall
         Box(
             modifier = Modifier
                 .size(40.dp)
@@ -1198,18 +1150,16 @@ private fun WicketFallItem(
                 fontWeight = FontWeight.Black
             )
         }
-        
+
         Spacer(modifier = Modifier.height(6.dp))
-        
-        // Wicket number
+
         Text(
             text = "$wicketNumber-${wicket.score}",
             color = colors.textSecondary,
             fontSize = 11.sp,
             fontWeight = FontWeight.Bold
         )
-        
-        // Player name
+
         Text(
             text = wicket.playerName.split(" ").lastOrNull() ?: wicket.playerName,
             color = colors.textMuted,
@@ -1217,8 +1167,7 @@ private fun WicketFallItem(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
-        
-        // Overs
+
         Text(
             text = wicket.overs,
             color = colors.textTertiary,
