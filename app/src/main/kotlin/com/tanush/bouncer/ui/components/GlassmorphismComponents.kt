@@ -33,16 +33,32 @@ import kotlinx.coroutines.delay
 import kotlin.random.Random
 import io.sentry.Sentry
 
-// ==========================================
-// PREMIUM GLASSMORPHISM MODIFIERS
-// Noise texture, gold glow, and ambient bloom
-// ==========================================
+private fun reversingSpec(durationMs: Int, easing: Easing = FastOutSlowInEasing) =
+    infiniteRepeatable<Float>(animation = tween(durationMs, easing = easing), repeatMode = RepeatMode.Reverse)
 
-/**
- * Modifier extension that draws a subtle noise pattern over content,
- * simulating the SVG fractalNoise overlay from the mockup design system.
- * Uses deterministic pseudo-random dots at ~4% opacity for tactile richness.
- */
+@Composable
+private fun pulsingFloat(
+    enabled: Boolean,
+    initial: Float,
+    target: Float,
+    durationMs: Int,
+    easing: Easing = FastOutSlowInEasing,
+    staticValue: Float = initial,
+    label: String = "pulsingFloat"
+): State<Float> {
+    return if (enabled) {
+        val transition = rememberInfiniteTransition(label = label)
+        transition.animateFloat(
+            initialValue = initial,
+            targetValue = target,
+            animationSpec = reversingSpec(durationMs, easing),
+            label = label
+        )
+    } else {
+        remember { mutableFloatStateOf(staticValue) }
+    }
+}
+
 fun Modifier.noiseOverlay(
     opacity: Float = 0.04f,
     density: Float = 0.12f,
@@ -70,16 +86,6 @@ fun Modifier.noiseOverlay(
     }
 }
 
-/**
- * Modifier extension that draws a subtle radial gold gradient behind content,
- * matching the `bg-bloom` ambient glow effect from the mockup design system.
- *
- * @param glowColor Base gold color for the bloom (if null, uses BouncerDesignSystem.GoldPrimary)
- * @param alpha Intensity of the glow (0–1)
- * @param radiusFraction Radius of bloom relative to container diagonal
- * @param centerX Horizontal center (0–1)
- * @param centerY Vertical center (0–1)
- */
 fun Modifier.goldGlow(
     glowColor: Color? = null,
     alpha: Float = 0.10f,
@@ -90,8 +96,6 @@ fun Modifier.goldGlow(
     val effectiveColor = glowColor ?: BouncerDesignSystem.colors.goldDark
     this.drawBehind {
         try {
-            val center = Offset(size.width * centerX, size.height * centerY)
-            val radius = size.maxDimension * radiusFraction
             drawCircle(
                 brush = Brush.radialGradient(
                     colors = listOf(
@@ -100,8 +104,8 @@ fun Modifier.goldGlow(
                         effectiveColor.copy(alpha = alpha * 0.12f),
                         Color.Transparent
                     ),
-                    center = center,
-                    radius = radius
+                    center = Offset(size.width * centerX, size.height * centerY),
+                    radius = size.maxDimension * radiusFraction
                 )
             )
         } catch (e: Exception) {
@@ -111,19 +115,12 @@ fun Modifier.goldGlow(
     }
 }
 
-/**
- * Visual Importance for UI Components
- */
 enum class BouncerImportance {
-    CRITICAL,   // Live scores, win probability, major alerts (Shiny, Shimmer, Gold)
-    STANDARD,   // Tactical info, streaks, key stats (Refined, Subtle borders)
-    MINIMAL     // Secondary info, logs, meta-data (Subdued, Dark, Minimalist)
+    CRITICAL,
+    STANDARD,
+    MINIMAL
 }
 
-/**
- * Sleek Layered Card with adaptive visual hierarchy.
- * Replaces the "bubbly" glass effect with professional precision.
- */
 @Composable
 fun GlassCard(
     modifier: Modifier = Modifier,
@@ -133,22 +130,16 @@ fun GlassCard(
     content: @Composable ColumnScope.() -> Unit
 ) {
     val hierarchy = BouncerDesignSystem.hierarchy
-    val infiniteTransition = rememberInfiniteTransition(label = "glassCard")
-    
-    // Subtle shimmer for CRITICAL cards — slower & lower opacity for premium feel
-    val shimmerAlpha by if (importance == BouncerImportance.CRITICAL) {
-        infiniteTransition.animateFloat(
-            initialValue = 0.02f,
-            targetValue = 0.08f,
-            animationSpec = infiniteRepeatable(
-                animation = tween(5000, easing = FastOutSlowInEasing),
-                repeatMode = RepeatMode.Reverse
-            ),
-            label = "shimmer"
-        )
-    } else {
-        remember { mutableFloatStateOf(0f) }
-    }
+    val isCritical = importance == BouncerImportance.CRITICAL
+    val shape = RoundedCornerShape(cornerRadius)
+
+    val shimmerAlpha by pulsingFloat(
+        enabled = isCritical,
+        initial = 0.02f,
+        target = 0.08f,
+        durationMs = 5000,
+        label = "shimmer"
+    )
 
     val borderBrush = when (importance) {
         BouncerImportance.CRITICAL -> Brush.linearGradient(
@@ -159,21 +150,14 @@ fun GlassCard(
             )
         )
         BouncerImportance.STANDARD -> Brush.verticalGradient(
-            colors = listOf(
-                hierarchy.dominant.glassBorderHighlight,
-                Color.Transparent
-            )
+            colors = listOf(hierarchy.dominant.glassBorderHighlight, Color.Transparent)
         )
         BouncerImportance.MINIMAL -> Brush.verticalGradient(
-            colors = listOf(
-                hierarchy.dominant.glassBorder,
-                Color.Transparent
-            )
+            colors = listOf(hierarchy.dominant.glassBorder, Color.Transparent)
         )
     }
 
-    val borderWidth = if (importance == BouncerImportance.CRITICAL) 1.dp else 0.5.dp
-
+    val borderWidth = if (isCritical) 1.dp else 0.5.dp
     val elevation = when (importance) {
         BouncerImportance.CRITICAL -> 12.dp
         BouncerImportance.STANDARD -> 6.dp
@@ -181,24 +165,23 @@ fun GlassCard(
     }
 
     Card(
-        modifier = modifier
-            .shadow(
-                elevation = elevation,
-                shape = RoundedCornerShape(cornerRadius),
-                spotColor = if (importance == BouncerImportance.CRITICAL) glowColor.copy(alpha = 0.3f) else Color.Black,
-                ambientColor = Color.Black.copy(alpha = 0.2f)
-            ),
+        modifier = modifier.shadow(
+            elevation = elevation,
+            shape = shape,
+            spotColor = if (isCritical) glowColor.copy(alpha = 0.3f) else Color.Black,
+            ambientColor = Color.Black.copy(alpha = 0.2f)
+        ),
         colors = CardDefaults.cardColors(containerColor = GlassBackground),
-        shape = RoundedCornerShape(cornerRadius),
+        shape = shape,
         border = BorderStroke(borderWidth, borderBrush)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .noiseOverlay() // Tactile noise texture from mockup design system
+                .noiseOverlay()
                 .drawWithContent {
                     drawContent()
-                    if (importance == BouncerImportance.CRITICAL) {
+                    if (isCritical) {
                         drawRect(
                             brush = Brush.verticalGradient(
                                 listOf(Color.White.copy(alpha = shimmerAlpha), Color.Transparent)
@@ -220,9 +203,6 @@ fun GlassCard(
     }
 }
 
-/**
- * Premium sleek surface with precision borders
- */
 @Composable
 fun GlassSurface(
     modifier: Modifier = Modifier,
@@ -233,18 +213,20 @@ fun GlassSurface(
     content: @Composable BoxScope.() -> Unit
 ) {
     val hierarchy = BouncerDesignSystem.hierarchy
+    val isCritical = importance == BouncerImportance.CRITICAL
+    val shape = RoundedCornerShape(cornerRadius)
     Box(
         modifier = modifier
             .shadow(
-                elevation = if (importance == BouncerImportance.CRITICAL) 8.dp else 2.dp,
-                shape = RoundedCornerShape(cornerRadius),
+                elevation = if (isCritical) 8.dp else 2.dp,
+                shape = shape,
                 spotColor = glowColor.copy(alpha = glowIntensity),
                 ambientColor = Color.Black.copy(alpha = 0.1f)
             )
-            .clip(RoundedCornerShape(cornerRadius))
+            .clip(shape)
             .background(if (importance == BouncerImportance.MINIMAL) Color.Transparent else hierarchy.dominant.glassBackground)
             .border(
-                width = if (importance == BouncerImportance.CRITICAL) 1.dp else 0.5.dp,
+                width = if (isCritical) 1.dp else 0.5.dp,
                 brush = Brush.verticalGradient(
                     colors = when (importance) {
                         BouncerImportance.CRITICAL -> listOf(hierarchy.dominant.glassBorderHighlight, Color.Transparent)
@@ -252,15 +234,12 @@ fun GlassSurface(
                         BouncerImportance.MINIMAL -> listOf(hierarchy.dominant.glassBackground, Color.Transparent)
                     }
                 ),
-                shape = RoundedCornerShape(cornerRadius)
+                shape = shape
             ),
         content = content
     )
 }
 
-/**
- * Animated score display with a sleeker, more professional look
- */
 @Composable
 fun AnimatedScoreDisplay(
     score: String,
@@ -269,6 +248,7 @@ fun AnimatedScoreDisplay(
     fontSize: Int = 28
 ) {
     val hierarchy = BouncerDesignSystem.hierarchy
+    val shape = RoundedCornerShape(8.dp)
     AnimatedContent(
         targetState = score,
         transitionSpec = {
@@ -280,15 +260,8 @@ fun AnimatedScoreDisplay(
     ) { targetScore ->
         Box(
             modifier = Modifier
-                .background(
-                    GlassSurface,
-                    RoundedCornerShape(8.dp)
-                )
-                .border(
-                    0.5.dp,
-                    color.copy(alpha = 0.15f),
-                    RoundedCornerShape(8.dp)
-                )
+                .background(GlassSurface, shape)
+                .border(0.5.dp, color.copy(alpha = 0.15f), shape)
                 .padding(horizontal = 12.dp, vertical = 4.dp)
         ) {
             Text(
@@ -302,9 +275,6 @@ fun AnimatedScoreDisplay(
     }
 }
 
-/**
- * Refined Stat Card for high-density data
- */
 @Composable
 fun StatCard(
     title: String,
@@ -329,7 +299,6 @@ fun StatCard(
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             icon?.invoke()
-            
             Text(
                 text = value,
                 fontSize = 20.sp,
@@ -337,7 +306,6 @@ fun StatCard(
                 color = if (importance == BouncerImportance.CRITICAL) color else colors.textPrimary,
                 letterSpacing = (-0.5).sp
             )
-            
             Text(
                 text = title.uppercase(),
                 fontSize = 9.sp,
@@ -349,9 +317,6 @@ fun StatCard(
     }
 }
 
-/**
- * Minimalist pulsing indicator
- */
 @Composable
 fun PulsingGlowCircle(
     modifier: Modifier = Modifier,
@@ -370,10 +335,7 @@ fun PulsingGlowCircle(
         label = "pulseAlpha"
     )
 
-    Box(
-        modifier = modifier,
-        contentAlignment = Alignment.Center
-    ) {
+    Box(modifier = modifier, contentAlignment = Alignment.Center) {
         Box(
             modifier = Modifier
                 .matchParentSize()
@@ -383,9 +345,6 @@ fun PulsingGlowCircle(
     }
 }
 
-/**
- * Sharp Run Rate Indicator
- */
 @Composable
 fun RunRateIndicator(
     currentRunRate: Float,
@@ -395,7 +354,7 @@ fun RunRateIndicator(
     val colors = BouncerDesignSystem.colors
     val isPositive = requiredRunRate == null || currentRunRate >= requiredRunRate
     val color = if (isPositive) colors.statusSuccess else colors.statusLive
-    
+
     GlassSurface(
         modifier = modifier.height(56.dp),
         cornerRadius = 8.dp
@@ -422,7 +381,6 @@ fun RunRateIndicator(
                     color = colors.textPrimary
                 )
             }
-            
             requiredRunRate?.let { rrr ->
                 Column(horizontalAlignment = Alignment.End) {
                     Text(
@@ -444,9 +402,6 @@ fun RunRateIndicator(
     }
 }
 
-/**
- * Sleek Shimmer loading placeholder
- */
 @Composable
 fun ShimmerBox(
     modifier: Modifier = Modifier,
@@ -484,9 +439,6 @@ fun ShimmerBox(
     )
 }
 
-/**
- * Precision Gradient Text
- */
 @Composable
 fun GradientShimmerText(
     text: String,
@@ -513,16 +465,6 @@ fun GradientShimmerText(
     )
 }
 
-// ==========================================
-// HERO & LARGE CONTAINER GLASS VARIANTS
-// Premium composables matching mockup tokens
-// ==========================================
-
-/**
- * GlassHero — Premium hero-tier glass card with heavier blur simulation,
- * inset gold shadow, and 20dp corner radius. Matches "glass-hero" token:
- * 40px blur + inset gold shadow + gold gradient border at 0.25 alpha.
- */
 @Composable
 fun GlassHero(
     modifier: Modifier = Modifier,
@@ -530,31 +472,24 @@ fun GlassHero(
     content: @Composable ColumnScope.() -> Unit
 ) {
     val hierarchy = BouncerDesignSystem.hierarchy
-    val cornerRadius = 20.dp
-    val shape = RoundedCornerShape(cornerRadius)
+    val shape = RoundedCornerShape(20.dp)
 
-    val infiniteTransition = rememberInfiniteTransition(label = "glassHero")
-    val insetAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.12f,
-        targetValue = 0.22f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(4000, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
+    val insetAlpha by pulsingFloat(
+        enabled = true,
+        initial = 0.12f,
+        target = 0.22f,
+        durationMs = 4000,
         label = "heroInset"
     )
 
     Card(
-        modifier = modifier
-            .shadow(
-                elevation = 20.dp,
-                shape = shape,
-                spotColor = glowColor.copy(alpha = 0.35f),
-                ambientColor = Color.Black.copy(alpha = 0.4f)
-            ),
-        colors = CardDefaults.cardColors(
-            containerColor = GlassSurface
+        modifier = modifier.shadow(
+            elevation = 20.dp,
+            shape = shape,
+            spotColor = glowColor.copy(alpha = 0.35f),
+            ambientColor = Color.Black.copy(alpha = 0.4f)
         ),
+        colors = CardDefaults.cardColors(containerColor = GlassSurface),
         shape = shape,
         border = BorderStroke(
             width = 1.dp,
@@ -570,7 +505,6 @@ fun GlassHero(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                // Inset gold shadow — radial gradient drawn behind content
                 .drawBehind {
                     drawCircle(
                         brush = Brush.radialGradient(
@@ -584,7 +518,6 @@ fun GlassHero(
                         )
                     )
                 }
-                // Darker tinted glass background simulating heavier blur
                 .background(
                     Brush.verticalGradient(
                         colors = listOf(
@@ -600,11 +533,6 @@ fun GlassHero(
     }
 }
 
-/**
- * GlassContainerLarge — Glass container for scorecard tables with darker bg,
- * 16dp corners, scrollable content, and a gold gradient top border.
- * Matches "glass-container-large" token: heavier blur, table-ready.
- */
 @Composable
 fun GlassContainerLarge(
     modifier: Modifier = Modifier,
@@ -613,36 +541,24 @@ fun GlassContainerLarge(
     content: @Composable ColumnScope.() -> Unit
 ) {
     val hierarchy = BouncerDesignSystem.hierarchy
-    val cornerRadius = 16.dp
-    val shape = RoundedCornerShape(cornerRadius)
+    val shape = RoundedCornerShape(16.dp)
     val scrollState = rememberScrollState()
 
     Card(
-        modifier = modifier
-            .shadow(
-                elevation = 10.dp,
-                shape = shape,
-                spotColor = Color.Black.copy(alpha = 0.3f),
-                ambientColor = Color.Black.copy(alpha = 0.3f)
-            ),
-        colors = CardDefaults.cardColors(
-            containerColor = GlassSurface // Slightly darker glass
+        modifier = modifier.shadow(
+            elevation = 10.dp,
+            shape = shape,
+            spotColor = Color.Black.copy(alpha = 0.3f),
+            ambientColor = Color.Black.copy(alpha = 0.3f)
         ),
+        colors = CardDefaults.cardColors(containerColor = GlassSurface),
         shape = shape,
         border = BorderStroke(
             width = 0.5.dp,
-            brush = Brush.linearGradient(
-                colors = listOf(
-                    GlassSurface,
-                    GlassBackground
-                )
-            )
+            brush = Brush.linearGradient(colors = listOf(GlassSurface, GlassBackground))
         )
     ) {
-        Column(
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            // Gold gradient top border accent
+        Column(modifier = Modifier.fillMaxWidth()) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -660,14 +576,10 @@ fun GlassContainerLarge(
                     )
             )
 
-            // Scrollable content area
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .then(
-                        if (scrollable) Modifier.verticalScroll(scrollState)
-                        else Modifier
-                    )
+                    .then(if (scrollable) Modifier.verticalScroll(scrollState) else Modifier)
                     .background(
                         Brush.verticalGradient(
                             colors = listOf(
@@ -684,15 +596,6 @@ fun GlassContainerLarge(
     }
 }
 
-// ==========================================
-// ENHANCED GLASSMORPHISM MODIFIERS (v2.0)
-// iOS-Inspired Blur Effects & Premium Styling
-// ==========================================
-
-/**
- * Modifier extension for iOS-style blur effect (Android 12+)
- * Falls back to semi-transparent overlay on older versions
- */
 fun Modifier.glassBlur(
     blurRadius: Dp = 12.dp,
     fallbackAlpha: Float = 0.85f
@@ -713,10 +616,6 @@ fun Modifier.glassBlur(
     background(GlassBackground)
 }
 
-/**
- * Advanced frosted glass card with real blur effect
- * Mimics iOS GlassyMatchView.swift aesthetic
- */
 @Composable
 fun FrostedGlassCard(
     modifier: Modifier = Modifier,
@@ -727,46 +626,40 @@ fun FrostedGlassCard(
     content: @Composable ColumnScope.() -> Unit
 ) {
     val hierarchy = BouncerDesignSystem.hierarchy
-    val infiniteTransition = rememberInfiniteTransition(label = "frostedGlass")
-    
-    val borderAlpha by if (importance == BouncerImportance.CRITICAL) {
-        infiniteTransition.animateFloat(
-            initialValue = 0.3f,
-            targetValue = 0.6f,
-            animationSpec = infiniteRepeatable(
-                animation = tween(2000, easing = LinearEasing),
-                repeatMode = RepeatMode.Reverse
-            ),
-            label = "borderGlow"
-        )
-    } else {
-        remember { mutableFloatStateOf(0.2f) }
-    }
+    val isCritical = importance == BouncerImportance.CRITICAL
+    val shape = RoundedCornerShape(cornerRadius)
+
+    val borderAlpha by pulsingFloat(
+        enabled = isCritical,
+        initial = 0.3f,
+        target = 0.6f,
+        durationMs = 2000,
+        easing = LinearEasing,
+        staticValue = 0.2f,
+        label = "borderGlow"
+    )
 
     Box(
-        modifier = modifier
-            .shadow(
-                elevation = if (importance == BouncerImportance.CRITICAL) 16.dp else 8.dp,
-                shape = RoundedCornerShape(cornerRadius),
-                spotColor = borderGlow.copy(alpha = 0.3f),
-                ambientColor = Color.Black.copy(alpha = 0.4f)
-            )
+        modifier = modifier.shadow(
+            elevation = if (isCritical) 16.dp else 8.dp,
+            shape = shape,
+            spotColor = borderGlow.copy(alpha = 0.3f),
+            ambientColor = Color.Black.copy(alpha = 0.4f)
+        )
     ) {
-        // Blur layer (Android 12+)
         Box(
             modifier = Modifier
                 .matchParentSize()
-                .clip(RoundedCornerShape(cornerRadius))
+                .clip(shape)
                 .glassBlur(blurRadius)
         )
-        
-        // Content layer with glass effect
+
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = GlassBackground),
-            shape = RoundedCornerShape(cornerRadius),
+            shape = shape,
             border = BorderStroke(
-                width = if (importance == BouncerImportance.CRITICAL) 1.5.dp else 1.dp,
+                width = if (isCritical) 1.5.dp else 1.dp,
                 brush = Brush.linearGradient(
                     colors = listOf(
                         borderGlow.copy(alpha = borderAlpha),
@@ -794,10 +687,6 @@ fun FrostedGlassCard(
     }
 }
 
-/**
- * Team-colored glass card that adapts to team colors
- * Provides dynamic theming based on match context
- */
 @Composable
 fun TeamGlassCard(
     modifier: Modifier = Modifier,
@@ -806,34 +695,26 @@ fun TeamGlassCard(
     isActive: Boolean = false,
     content: @Composable ColumnScope.() -> Unit
 ) {
-    val infiniteTransition = rememberInfiniteTransition(label = "teamGlass")
-    
-    val glowIntensity by if (isActive) {
-        infiniteTransition.animateFloat(
-            initialValue = 0.15f,
-            targetValue = 0.35f,
-            animationSpec = infiniteRepeatable(
-                animation = tween(1500, easing = FastOutSlowInEasing),
-                repeatMode = RepeatMode.Reverse
-            ),
-            label = "teamGlow"
-        )
-    } else {
-        remember { mutableFloatStateOf(0.1f) }
-    }
+    val shape = RoundedCornerShape(cornerRadius)
+
+    val glowIntensity by pulsingFloat(
+        enabled = isActive,
+        initial = 0.15f,
+        target = 0.35f,
+        durationMs = 1500,
+        staticValue = 0.1f,
+        label = "teamGlow"
+    )
 
     Card(
-        modifier = modifier
-            .shadow(
-                elevation = if (isActive) 12.dp else 6.dp,
-                shape = RoundedCornerShape(cornerRadius),
-                spotColor = teamColor.copy(alpha = glowIntensity),
-                ambientColor = Color.Black.copy(alpha = 0.3f)
-            ),
-        colors = CardDefaults.cardColors(
-            containerColor = Color.White.copy(alpha = 0.06f)
+        modifier = modifier.shadow(
+            elevation = if (isActive) 12.dp else 6.dp,
+            shape = shape,
+            spotColor = teamColor.copy(alpha = glowIntensity),
+            ambientColor = Color.Black.copy(alpha = 0.3f)
         ),
-        shape = RoundedCornerShape(cornerRadius),
+        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.06f)),
+        shape = shape,
         border = BorderStroke(
             width = 1.dp,
             brush = Brush.linearGradient(
@@ -850,7 +731,6 @@ fun TeamGlassCard(
                 .fillMaxWidth()
                 .drawWithContent {
                     drawContent()
-                    // Team color gradient overlay
                     drawRect(
                         brush = Brush.radialGradient(
                             colors = listOf(
@@ -867,9 +747,6 @@ fun TeamGlassCard(
     }
 }
 
-/**
- * Neon glow border effect for critical UI elements
- */
 @Composable
 fun NeonGlowBox(
     modifier: Modifier = Modifier,
@@ -879,45 +756,35 @@ fun NeonGlowBox(
     content: @Composable BoxScope.() -> Unit
 ) {
     val hierarchy = BouncerDesignSystem.hierarchy
-    val infiniteTransition = rememberInfiniteTransition(label = "neonGlow")
-    
-    val glowAlpha by if (pulseEnabled) {
-        infiniteTransition.animateFloat(
-            initialValue = 0.4f,
-            targetValue = 0.8f,
-            animationSpec = infiniteRepeatable(
-                animation = tween(1000, easing = FastOutSlowInEasing),
-                repeatMode = RepeatMode.Reverse
-            ),
-            label = "glowPulse"
-        )
-    } else {
-        remember { mutableFloatStateOf(0.6f) }
-    }
-    
-    val glowSize by if (pulseEnabled) {
-        infiniteTransition.animateFloat(
-            initialValue = 8f,
-            targetValue = 16f,
-            animationSpec = infiniteRepeatable(
-                animation = tween(1000, easing = FastOutSlowInEasing),
-                repeatMode = RepeatMode.Reverse
-            ),
-            label = "glowSize"
-        )
-    } else {
-        remember { mutableFloatStateOf(12f) }
-    }
+    val shape = RoundedCornerShape(cornerRadius)
+
+    val glowAlpha by pulsingFloat(
+        enabled = pulseEnabled,
+        initial = 0.4f,
+        target = 0.8f,
+        durationMs = 1000,
+        staticValue = 0.6f,
+        label = "glowPulse"
+    )
+
+    val glowSize by pulsingFloat(
+        enabled = pulseEnabled,
+        initial = 8f,
+        target = 16f,
+        durationMs = 1000,
+        staticValue = 12f,
+        label = "glowSize"
+    )
 
     Box(
         modifier = modifier
             .shadow(
                 elevation = glowSize.dp,
-                shape = RoundedCornerShape(cornerRadius),
+                shape = shape,
                 spotColor = glowColor.copy(alpha = glowAlpha),
                 ambientColor = glowColor.copy(alpha = glowAlpha * 0.5f)
             )
-            .clip(RoundedCornerShape(cornerRadius))
+            .clip(shape)
             .background(GlassSurface)
             .border(
                 width = 1.5.dp,
@@ -928,15 +795,12 @@ fun NeonGlowBox(
                         glowColor.copy(alpha = glowAlpha)
                     )
                 ),
-                shape = RoundedCornerShape(cornerRadius)
+                shape = shape
             ),
         content = content
     )
 }
 
-/**
- * Animated highlight bar for key events
- */
 @Composable
 fun EventHighlightBar(
     modifier: Modifier = Modifier,
@@ -952,7 +816,7 @@ fun EventHighlightBar(
         EventHighlightType.MILESTONE -> hierarchy.secondary.primary
         EventHighlightType.NEUTRAL -> colors.textTertiary
     }
-    
+
     val infiniteTransition = rememberInfiniteTransition(label = "eventHighlight")
     val shimmerOffset by infiniteTransition.animateFloat(
         initialValue = -200f,
@@ -994,9 +858,6 @@ enum class EventHighlightType {
     WICKET, SIX, FOUR, MILESTONE, NEUTRAL
 }
 
-/**
- * Morphing shape indicator for match phases
- */
 @Composable
 fun PhaseIndicator(
     phase: InningsPhaseType,
@@ -1011,25 +872,18 @@ fun PhaseIndicator(
         InningsPhaseType.DEATH_OVERS -> colors.statusLive
         InningsPhaseType.SUPER_OVER -> colors.statusWarning
     }
-    
     val label = when (phase) {
         InningsPhaseType.POWERPLAY -> "POWERPLAY"
         InningsPhaseType.MIDDLE_OVERS -> "MIDDLE OVERS"
         InningsPhaseType.DEATH_OVERS -> "DEATH OVERS"
         InningsPhaseType.SUPER_OVER -> "SUPER OVER"
     }
+    val shape = RoundedCornerShape(8.dp)
 
     Row(
         modifier = modifier
-            .background(
-                color.copy(alpha = 0.15f),
-                RoundedCornerShape(8.dp)
-            )
-            .border(
-                1.dp,
-                color.copy(alpha = 0.3f),
-                RoundedCornerShape(8.dp)
-            )
+            .background(color.copy(alpha = 0.15f), shape)
+            .border(1.dp, color.copy(alpha = 0.3f), shape)
             .padding(horizontal = 12.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -1039,7 +893,6 @@ fun PhaseIndicator(
                 .size(8.dp)
                 .background(color, CircleShape)
         )
-        
         if (showLabel) {
             Text(
                 text = label,
