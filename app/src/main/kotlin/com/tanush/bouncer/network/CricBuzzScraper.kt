@@ -34,11 +34,7 @@ internal fun normalizeNextFlightPayload(rawPayload: String): String? {
             normalized = normalized.substring(colonIndex + 1)
         }
     }
-
-    if (normalized.startsWith("I")) {
-        normalized = normalized.substring(1)
-    }
-
+    if (normalized.startsWith("I")) normalized = normalized.substring(1)
     normalized = normalized.trim()
     return normalized.takeIf { it.startsWith("{") || it.startsWith("[") }
 }
@@ -51,17 +47,68 @@ internal fun unwrapNextFlightPayload(scriptContent: String): String? {
     } catch (_: Exception) {
         return null
     }
-
-    if (!jsonElement.isJsonArray) {
-        return null
-    }
-
+    if (!jsonElement.isJsonArray) return null
     val array = jsonElement.asJsonArray
-    if (array.size() <= 1 || !array[1].isJsonPrimitive || !array[1].asJsonPrimitive.isString) {
-        return null
-    }
-
+    if (array.size() <= 1 || !array[1].isJsonPrimitive || !array[1].asJsonPrimitive.isString) return null
     return normalizeNextFlightPayload(array[1].asString)
+}
+
+private fun parseLenientJson(payload: String): JsonElement? = try {
+    val reader = com.google.gson.stream.JsonReader(java.io.StringReader(payload))
+    reader.isLenient = true
+    JsonParser.parseReader(reader)
+} catch (_: Exception) {
+    null
+}
+
+private inline fun forEachNextFlightPayload(html: String, block: (JsonElement) -> Unit) {
+    val startMarker = "self.__next_f.push("
+    var startIndex = 0
+    while (true) {
+        val idx = html.indexOf(startMarker, startIndex)
+        if (idx == -1) break
+        val openParenIdx = idx + startMarker.length - 1
+        var parenCount = 0
+        var inString = false
+        var escape = false
+        var endIdx = -1
+        for (i in openParenIdx until html.length) {
+            val char = html[i]
+            if (escape) { escape = false; continue }
+            if (char == '\\') { escape = true; continue }
+            if (char == '"') { inString = !inString; continue }
+            if (!inString) {
+                if (char == '(') parenCount++
+                else if (char == ')') {
+                    parenCount--
+                    if (parenCount == 0) { endIdx = i; break }
+                }
+            }
+        }
+        if (endIdx != -1) {
+            val scriptContent = html.substring(openParenIdx + 1, endIdx)
+            val nextPayload = unwrapNextFlightPayload(scriptContent)
+            if (nextPayload != null) {
+                parseLenientJson(nextPayload)?.let(block)
+            }
+            startIndex = endIdx + 1
+        } else {
+            startIndex = idx + 1
+        }
+    }
+}
+
+private inline fun crumb(
+    msg: String,
+    lvl: SentryLevel = SentryLevel.INFO,
+    data: Map<String, Any?> = emptyMap()
+) {
+    Sentry.addBreadcrumb(Breadcrumb().apply {
+        category = "network.cricbuzz"
+        message = msg
+        level = lvl
+        data.forEach { (k, v) -> if (v != null) setData(k, v) }
+    })
 }
 
 class CricBuzzScraper {
@@ -73,109 +120,64 @@ class CricBuzzScraper {
         private const val INITIAL_BACKOFF_MS = 1000L
         private const val DRIFT_ALARM_THRESHOLD = 3
 
-        // Counts consecutive successful-HTTP-but-empty-parse results across all fetches.
-        // Resets when any parse returns data. Shared across instances (singleton use pattern).
         private val consecutiveEmptyParses = java.util.concurrent.atomic.AtomicInteger(0)
     }
 
-    /**
-     * Fetches live matches using Next.js data stream parsing.
-     * Includes retry with exponential backoff for transient failures.
-     */
     suspend fun fetchLiveMatches(url: String, matchState: String): List<CricketMatch> = withContext(Dispatchers.IO) {
-        Sentry.addBreadcrumb(Breadcrumb().apply {
-            category = "network.cricbuzz"
-            message = "Fetching live matches"
-            level = SentryLevel.INFO
-            setData("url", url)
-            setData("matchState", matchState)
-        })
-        
+        crumb("Fetching live matches", data = mapOf("url" to url, "matchState" to matchState))
+
         var lastException: Exception? = null
         var backoff = INITIAL_BACKOFF_MS
 
         for (attempt in 1..MAX_RETRIES) {
             try {
-                val doc = Jsoup.connect(url)
-                    .userAgent(USER_AGENT)
-                    .timeout(10000)
-                    .get()
-
-                val html = doc.html()
-                val matches = parseNextJsData(html)
-
+                val doc = Jsoup.connect(url).userAgent(USER_AGENT).timeout(10000).get()
+                val matches = parseNextJsData(doc.html())
                 val filteredMatches = filterMatches(matches, matchState)
                 Log.d(TAG, "Found ${matches.size} total matches, filtered down to ${filteredMatches.size} for state: $matchState")
 
-                // Drift detection: HTTP 200 but parse returned 0 matches — CricBuzz may have
-                // changed their page structure. Fire a Sentry alarm after DRIFT_ALARM_THRESHOLD
-                // consecutive empty parses so we catch DOM changes same-day.
                 if (matches.isEmpty()) {
                     val count = consecutiveEmptyParses.incrementAndGet()
-                    Sentry.addBreadcrumb(Breadcrumb().apply {
-                        category = "network.cricbuzz"
-                        message = "Parse returned 0 matches (consecutive: $count)"
-                        level = SentryLevel.WARNING
-                        setData("url", url)
-                        setData("matchState", matchState)
-                        setData("consecutiveEmpty", count)
-                    })
+                    crumb("Parse returned 0 matches (consecutive: $count)", SentryLevel.WARNING,
+                        mapOf("url" to url, "matchState" to matchState, "consecutiveEmpty" to count))
                     if (count >= DRIFT_ALARM_THRESHOLD) {
                         Sentry.captureMessage(
                             "scrape_drift: CricBuzz returned 0 matches for $matchState ($count consecutive). DOM structure may have changed.",
                             SentryLevel.WARNING
+                        )
+                        consecutiveEmptyParses.set(0)
+                        throw com.tanush.bouncer.data.AppException.ScrapingException(
+                            source = "CricBuzz",
+                            message = "CricBuzz parse drift: $count consecutive empty results for $matchState"
                         )
                     }
                 } else {
                     consecutiveEmptyParses.set(0)
                 }
 
-                Sentry.addBreadcrumb(Breadcrumb().apply {
-                    category = "network.cricbuzz"
-                    message = "Successfully fetched live matches"
-                    level = SentryLevel.INFO
-                    setData("totalMatches", matches.size)
-                    setData("filteredMatches", filteredMatches.size)
-                })
-
+                crumb("Successfully fetched live matches",
+                    data = mapOf("totalMatches" to matches.size, "filteredMatches" to filteredMatches.size))
                 return@withContext filteredMatches
             } catch (e: SocketTimeoutException) {
                 lastException = e
                 Log.w(TAG, "Timeout fetching $url (attempt $attempt/$MAX_RETRIES)", e)
-                Sentry.addBreadcrumb(Breadcrumb().apply {
-                    category = "network.cricbuzz"
-                    message = "Socket timeout fetching matches"
-                    level = SentryLevel.WARNING
-                    setData("url", url)
-                    setData("attempt", attempt)
-                })
+                crumb("Socket timeout fetching matches", SentryLevel.WARNING,
+                    mapOf("url" to url, "attempt" to attempt))
             } catch (e: UnknownHostException) {
-                // No internet — retry won't help, fail fast
                 Log.e(TAG, "No internet connection fetching $url", e)
-                Sentry.addBreadcrumb(Breadcrumb().apply {
-                    category = "network.cricbuzz"
-                    message = "No internet connection"
-                    level = SentryLevel.WARNING
-                    setData("url", url)
-                })
+                crumb("No internet connection", SentryLevel.WARNING, mapOf("url" to url))
                 return@withContext emptyList()
             } catch (e: Exception) {
                 lastException = e
                 Log.e(TAG, "Error fetching matches from $url (attempt $attempt/$MAX_RETRIES)", e)
-                Sentry.addBreadcrumb(Breadcrumb().apply {
-                    category = "network.cricbuzz"
-                    message = "Error fetching matches"
-                    level = SentryLevel.ERROR
-                    setData("url", url)
-                    setData("attempt", attempt)
-                    setData("error", e.message ?: "Unknown error")
-                })
+                crumb("Error fetching matches", SentryLevel.ERROR,
+                    mapOf("url" to url, "attempt" to attempt, "error" to (e.message ?: "Unknown error")))
             }
 
             if (attempt < MAX_RETRIES) {
                 Log.d(TAG, "Retrying in ${backoff}ms...")
                 delay(backoff)
-                backoff *= 2 // exponential backoff
+                backoff *= 2
             }
         }
 
@@ -189,7 +191,6 @@ class CricBuzzScraper {
             val matchStatus = match.info.lowercase().trim()
             val isUpcoming = matchStatus.contains("preview") || matchStatus.contains("upcoming") || matchStatus.contains("scheduled")
             val isRecent = matchStatus.contains("complete") || matchStatus.contains("abandon") || matchStatus.contains("result") || matchStatus.contains("tied")
-            
             when (state) {
                 "Upcoming" -> isUpcoming
                 "Recent" -> isRecent
@@ -199,55 +200,13 @@ class CricBuzzScraper {
         }.distinctBy { it.id }
     }
 
-    /**
-     * Advanced Next.js f-push data parser.
-     * Extracts JSON chunks from the stream and searches for match objects.
-     */
     private fun parseNextJsData(html: String): List<CricketMatch> {
         val matches = mutableListOf<CricketMatch>()
-        val startMarker = "self.__next_f.push("
-        var startIndex = 0
-        
-        while (true) {
-            val idx = html.indexOf(startMarker, startIndex)
-            if (idx == -1) break
-            
-            val openParenIdx = idx + startMarker.length - 1
-            var parenCount = 0
-            var inString = false
-            var escape = false
-            var endIdx = -1
-            
-            for (i in openParenIdx until html.length) {
-                val char = html[i]
-                if (escape) { escape = false; continue }
-                if (char == '\\') { escape = true; continue }
-                if (char == '"') { inString = !inString; continue }
-                if (!inString) {
-                    if (char == '(') parenCount++
-                    else if (char == ')') {
-                        parenCount--
-                        if (parenCount == 0) { endIdx = i; break }
-                    }
-                }
-            }
-            
-            if (endIdx != -1) {
-                val scriptContent = html.substring(openParenIdx + 1, endIdx)
-                val nextPayload = unwrapNextFlightPayload(scriptContent)
-                if (nextPayload != null) {
-                    try {
-                        val reader = com.google.gson.stream.JsonReader(java.io.StringReader(nextPayload))
-                        reader.isLenient = true
-                        val data = JsonParser.parseReader(reader)
-                        matches.addAll(findMatchesInJson(data))
-                    } catch (e: Exception) {
-                        Log.d(TAG, "Skipping unparseable Next.js data segment", e)
-                    }
-                }
-                startIndex = endIdx + 1
-            } else {
-                startIndex = idx + 1
+        forEachNextFlightPayload(html) { data ->
+            try {
+                matches.addAll(findMatchesInJson(data))
+            } catch (e: Exception) {
+                Log.d(TAG, "Skipping unparseable Next.js data segment", e)
             }
         }
         return matches
@@ -257,8 +216,7 @@ class CricBuzzScraper {
         val matches = mutableListOf<CricketMatch>()
         if (element.isJsonObject) {
             val obj = element.asJsonObject
-            val match = parseMatchObject(obj)
-            if (match != null) matches.add(match)
+            parseMatchObject(obj)?.let { matches.add(it) }
             obj.keySet().forEach { matches.addAll(findMatchesInJson(obj.get(it))) }
         } else if (element.isJsonArray) {
             element.asJsonArray.forEach { matches.addAll(findMatchesInJson(it)) }
@@ -276,13 +234,11 @@ class CricBuzzScraper {
             val status = info.get("status").asString
             val state = info.get("state")?.asString ?: "Live"
 
-            // Extract match format and series info from Cricbuzz JSON
             val matchFormat = info.get("matchFormat")?.asString ?: ""
             val matchDesc = info.get("matchDesc")?.asString ?: ""
             val seriesName = info.get("seriesName")?.asString ?: ""
             val seriesId = info.get("seriesId")?.asString ?: ""
 
-            // Extract venue
             val venue = try {
                 val venueInfo = info.getAsJsonObject("venueInfo")
                 val ground = venueInfo?.get("ground")?.asString ?: ""
@@ -298,8 +254,7 @@ class CricBuzzScraper {
                 determineMatchType("$team1 vs $team2 $matchDesc")
             }
             val competitionType = classifyCompetitionType(seriesName, matchDesc)
-            
-            // Try to extract score if available in current Next.js structure
+
             var team1Score = ""
             var team2Score = ""
             var team1Overs = ""
@@ -309,69 +264,46 @@ class CricBuzzScraper {
 
             if (obj.has("matchScore")) {
                 val scoreObj = obj.getAsJsonObject("matchScore")
-                if (scoreObj.has("team1Score")) {
-                    val t1Score = scoreObj.getAsJsonObject("team1Score")
-                    // Prefer latest innings (inngs2 if it exists, otherwise inngs1)
-                    val s1 = when {
-                        t1Score.has("inngs2") -> t1Score.getAsJsonObject("inngs2")
-                        t1Score.has("inngs1") -> t1Score.getAsJsonObject("inngs1")
+                fun latestInnings(key: String): JsonObject? {
+                    if (!scoreObj.has(key)) return null
+                    val t = scoreObj.getAsJsonObject(key)
+                    return when {
+                        t.has("inngs2") -> t.getAsJsonObject("inngs2")
+                        t.has("inngs1") -> t.getAsJsonObject("inngs1")
                         else -> null
                     }
-                    if (s1 != null) {
-                        team1Score = "${s1.get("runs")?.asString ?: ""}/${s1.get("wickets")?.asString ?: "0"}"
-                        team1Overs = s1.get("overs")?.asString ?: ""
-                    }
                 }
-                if (scoreObj.has("team2Score")) {
-                    val t2Score = scoreObj.getAsJsonObject("team2Score")
-                    // Prefer latest innings (inngs2 if it exists, otherwise inngs1)
-                    val s2 = when {
-                        t2Score.has("inngs2") -> t2Score.getAsJsonObject("inngs2")
-                        t2Score.has("inngs1") -> t2Score.getAsJsonObject("inngs1")
-                        else -> null
-                    }
-                    if (s2 != null) {
-                        team2Score = "${s2.get("runs")?.asString ?: ""}/${s2.get("wickets")?.asString ?: "0"}"
-                        team2Overs = s2.get("overs")?.asString ?: ""
-                    }
+                latestInnings("team1Score")?.let { s1 ->
+                    team1Score = "${s1.get("runs")?.asString ?: ""}/${s1.get("wickets")?.asString ?: "0"}"
+                    team1Overs = s1.get("overs")?.asString ?: ""
                 }
-                // Determine batting team
+                latestInnings("team2Score")?.let { s2 ->
+                    team2Score = "${s2.get("runs")?.asString ?: ""}/${s2.get("wickets")?.asString ?: "0"}"
+                    team2Overs = s2.get("overs")?.asString ?: ""
+                }
                 val battingId = scoreObj.get("battingTeamId")?.asString
                 if (battingId != null) {
                     team1IsBatting = info.getAsJsonObject("team1").get("teamId")?.asString == battingId
                     team2IsBatting = info.getAsJsonObject("team2").get("teamId")?.asString == battingId
                 }
             }
-            
+
             val teams = listOf(
                 CricketMatch.Team(team1, team1Score, "", team1IsBatting, TeamLogoManager.getLogoUrl(team1), TeamAcronymManager.getAcronym(team1), team1Overs),
                 CricketMatch.Team(team2, team2Score, "", team2IsBatting, TeamLogoManager.getLogoUrl(team2), TeamAcronymManager.getAcronym(team2), team2Overs)
             )
-            
-            // Build MatchScore object for internal logic
-            val matchScore = if (team1Score.isNotBlank() || team2Score.isNotBlank()) {
-                CricketMatch.MatchScore(
-                    currentInnings = if (team1IsBatting) "1" else "2",
-                    batsmen = emptyList(),
-                    bowlers = emptyList(),
-                    overs = if (team1IsBatting) team1Overs else team2Overs,
-                    currentRunRate = null,
-                    requiredRunRate = null,
-                    lastWicket = null,
-                    recentBalls = null
-                )
-            } else {
-                CricketMatch.MatchScore(
-                    currentInnings = "",
-                    batsmen = emptyList(),
-                    bowlers = emptyList(),
-                    overs = null,
-                    currentRunRate = null,
-                    requiredRunRate = null,
-                    lastWicket = null,
-                    recentBalls = null
-                )
-            }
+
+            val hasScore = team1Score.isNotBlank() || team2Score.isNotBlank()
+            val matchScore = CricketMatch.MatchScore(
+                currentInnings = if (hasScore) (if (team1IsBatting) "1" else "2") else "",
+                batsmen = emptyList(),
+                bowlers = emptyList(),
+                overs = if (hasScore) (if (team1IsBatting) team1Overs else team2Overs) else null,
+                currentRunRate = null,
+                requiredRunRate = null,
+                lastWicket = null,
+                recentBalls = null
+            )
 
             return CricketMatch(
                 id = matchId,
@@ -397,9 +329,6 @@ class CricBuzzScraper {
         }
     }
 
-    /**
-     * Map Cricbuzz matchFormat codes to user-friendly labels.
-     */
     private fun mapMatchFormat(format: String): String = when (format.uppercase()) {
         "TEST" -> "Test"
         "ODI" -> "ODI"
@@ -409,15 +338,11 @@ class CricBuzzScraper {
         else -> ""
     }
 
-    /**
-     * Classify competition type from series name.
-     */
     private fun classifyCompetitionType(seriesName: String, matchDesc: String): String {
         val combined = "$seriesName $matchDesc".lowercase()
         val internationalKeywords = listOf(
             "tour of", "world cup", "champions trophy", "asia cup",
             "icc ", "tri-series", "tri series", "bilateral",
-            // Match description patterns like "1st Test", "2nd ODI", "3rd T20I"
             "\\d+(?:st|nd|rd|th) test", "\\d+(?:st|nd|rd|th) odi", "\\d+(?:st|nd|rd|th) t20i"
         )
         val leagueKeywords = listOf(
@@ -452,18 +377,9 @@ class CricBuzzScraper {
         val requiredRunRate: String? = null
     )
 
-    /**
-     * Accuracy-focused fetch for Live Scorecard details.
-     * Includes retry with exponential backoff for transient failures.
-     */
     suspend fun fetchBallByBallAndBatsmen(matchId: String): MatchDetails = withContext(Dispatchers.IO) {
-        Sentry.addBreadcrumb(Breadcrumb().apply {
-            category = "network.cricbuzz"
-            message = "Fetching ball-by-ball and batsmen data"
-            level = SentryLevel.INFO
-            setData("matchId", matchId)
-        })
-        
+        crumb("Fetching ball-by-ball and batsmen data", data = mapOf("matchId" to matchId))
+
         val url = CricBuzzUrls.liveScoresUrl(matchId)
         var lastException: Exception? = null
         var backoff = INITIAL_BACKOFF_MS
@@ -471,30 +387,28 @@ class CricBuzzScraper {
         for (attempt in 1..MAX_RETRIES) {
         try {
             val doc = Jsoup.connect(url).userAgent(USER_AGENT).timeout(10000).get()
-            
+
             val batsmen = mutableListOf<ScrapedBatsman>()
             val batRows = doc.select("div.cb-col.cb-col-100.cb-min-itm-rw")
             for (row in batRows) {
-                val nameLink = row.select("div.cb-col-50 a").first()
-                if (nameLink != null) {
-                    val name = nameLink.text()
-                    val stats = row.select("div.cb-col-10, div.cb-col-14")
-                    if (stats.size >= 4) {
-                        val isStriker = nameLink.parent()?.text()?.contains("*") == true || row.text().contains("*")
-                        try {
-                            batsmen.add(ScrapedBatsman(
-                                name = name.replace("*", "").trim(),
-                                runs = stats.getOrNull(0)?.text() ?: "0",
-                                balls = stats.getOrNull(1)?.text() ?: "0",
-                                fours = stats.getOrNull(2)?.text() ?: "0",
-                                sixes = stats.getOrNull(3)?.text() ?: "0",
-                                strikeRate = stats.getOrNull(stats.size - 1)?.text() ?: "-",
-                                isStriker = isStriker
-                            ))
-                        } catch (e: Exception) {
-                            Log.w(TAG, "Error parsing batsman stats for $name: ${e.message}")
-                            Sentry.captureException(e)
-                        }
+                val nameLink = row.select("div.cb-col-50 a").first() ?: continue
+                val name = nameLink.text()
+                val stats = row.select("div.cb-col-10, div.cb-col-14")
+                if (stats.size >= 4) {
+                    val isStriker = nameLink.parent()?.text()?.contains("*") == true || row.text().contains("*")
+                    try {
+                        batsmen.add(ScrapedBatsman(
+                            name = name.replace("*", "").trim(),
+                            runs = stats.getOrNull(0)?.text() ?: "0",
+                            balls = stats.getOrNull(1)?.text() ?: "0",
+                            fours = stats.getOrNull(2)?.text() ?: "0",
+                            sixes = stats.getOrNull(3)?.text() ?: "0",
+                            strikeRate = stats.getOrNull(stats.size - 1)?.text() ?: "-",
+                            isStriker = isStriker
+                        ))
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Error parsing batsman stats for $name: ${e.message}")
+                        Sentry.captureException(e)
                     }
                 }
             }
@@ -532,15 +446,13 @@ class CricBuzzScraper {
                 val text = it.text().trim()
                 if (text.isNotEmpty()) recentBalls.add(text)
             }
-            // Fallback: extract recent balls from Next.js RSC data when legacy selector returns nothing
             if (recentBalls.isEmpty()) {
                 recentBalls.addAll(parseRecentBallsFromNextJs(doc.html()))
             }
-            
-            val score = doc.select("span.cb-font-20.text-bold").first()?.text() ?: 
-                        doc.select("div.cb-min-bat-rw span").first()?.text()
 
-            // Extract both teams' scores from the mini-scorecard
+            val score = doc.select("span.cb-font-20.text-bold").first()?.text()
+                ?: doc.select("div.cb-min-bat-rw span").first()?.text()
+
             val miniScoreRows = doc.select("div.cb-min-bat-rw")
             var team1Score: String? = null
             var team2Score: String? = null
@@ -556,12 +468,9 @@ class CricBuzzScraper {
                 }
             }
 
-            // Extract run rates from the status/info text
             val statusText = doc.select("div.cb-text-complete, div.cb-text-live, div.cb-text-inprogress, div.cb-min-inf").text()
-            val crrMatch = Regex("CRR\\s*:?\\s*([\\d.]+)").find(statusText)
-            val rrrMatch = Regex("RRR\\s*:?\\s*([\\d.]+)").find(statusText)
-            val currentRunRate = crrMatch?.groupValues?.get(1)
-            val requiredRunRate = rrrMatch?.groupValues?.get(1)
+            val currentRunRate = Regex("CRR\\s*:?\\s*([\\d.]+)").find(statusText)?.groupValues?.get(1)
+            val requiredRunRate = Regex("RRR\\s*:?\\s*([\\d.]+)").find(statusText)?.groupValues?.get(1)
 
             return@withContext MatchDetails(recentBalls, overNumbers, batsmen, bowler, null, score,
                 team1Score = team1Score, team2Score = team2Score,
@@ -570,193 +479,71 @@ class CricBuzzScraper {
         } catch (e: SocketTimeoutException) {
             lastException = e
             Log.w(TAG, "Timeout fetching match details for $matchId (attempt $attempt/$MAX_RETRIES)")
-            Sentry.addBreadcrumb(Breadcrumb().apply {
-                category = "network.cricbuzz"
-                message = "Timeout fetching match details"
-                level = SentryLevel.WARNING
-                setData("matchId", matchId)
-                setData("attempt", attempt)
-            })
+            crumb("Timeout fetching match details", SentryLevel.WARNING,
+                mapOf("matchId" to matchId, "attempt" to attempt))
         } catch (e: UnknownHostException) {
             Log.e(TAG, "No internet fetching match details for $matchId", e)
-            Sentry.addBreadcrumb(Breadcrumb().apply {
-                category = "network.cricbuzz"
-                message = "No internet fetching match details"
-                level = SentryLevel.ERROR
-                setData("matchId", matchId)
-            })
+            crumb("No internet fetching match details", SentryLevel.ERROR, mapOf("matchId" to matchId))
             Sentry.captureException(e)
             return@withContext MatchDetails(emptyList(), emptyList(), emptyList(), null, null, null)
         } catch (e: Exception) {
             lastException = e
             Log.e(TAG, "Error fetching match details for $matchId (attempt $attempt/$MAX_RETRIES)", e)
-            Sentry.addBreadcrumb(Breadcrumb().apply {
-                category = "network.cricbuzz"
-                message = "Error fetching match details"
-                level = SentryLevel.ERROR
-                setData("matchId", matchId)
-                setData("attempt", attempt)
-                setData("error", e.message ?: "Unknown error")
-            })
+            crumb("Error fetching match details", SentryLevel.ERROR,
+                mapOf("matchId" to matchId, "attempt" to attempt, "error" to (e.message ?: "Unknown error")))
         }
 
             if (attempt < MAX_RETRIES) {
                 delay(backoff)
                 backoff *= 2
             }
-        } // end retry loop
+        }
 
         Log.e(TAG, "All $MAX_RETRIES attempts failed for match details $matchId", lastException)
         lastException?.let { Sentry.captureException(it) }
         MatchDetails(emptyList(), emptyList(), emptyList(), null, null, null)
     }
 
-    /**
-     * Commentary extraction from Cricbuzz live scores page.
-     * Parses commText entries from the embedded Next.js RSC payload.
-     * Returns lines newest-first (highest timestamp first).
-     */
     suspend fun fetchLiveCommentary(matchUrl: String): List<String> = withContext(Dispatchers.IO) {
-        Sentry.addBreadcrumb(Breadcrumb().apply {
-            category = "network.cricbuzz"
-            message = "Fetching live commentary"
-            level = SentryLevel.INFO
-            setData("url", matchUrl)
-        })
+        crumb("Fetching live commentary", data = mapOf("url" to matchUrl))
 
         try {
             val doc = Jsoup.connect(matchUrl).userAgent(USER_AGENT).timeout(12000).get()
             val html = doc.html()
 
-            // Primary: Next.js RSC payload contains commText entries
             val nextJsLines = parseCommentaryFromNextJs(html)
             if (nextJsLines.isNotEmpty()) {
                 Log.d(TAG, "Fetched ${nextJsLines.size} commentary lines from Next.js RSC data")
-                Sentry.addBreadcrumb(Breadcrumb().apply {
-                    category = "network.cricbuzz"
-                    message = "Successfully fetched commentary from Next.js RSC"
-                    level = SentryLevel.INFO
-                    setData("linesCount", nextJsLines.size)
-                })
+                crumb("Successfully fetched commentary from Next.js RSC",
+                    data = mapOf("linesCount" to nextJsLines.size))
                 return@withContext nextJsLines.filter { it.length > 5 }
             }
 
-            // Fallback: legacy CSS selectors (kept for unexpected DOM rollbacks)
             val lines = mutableListOf<String>()
             doc.select("p.cb-com-ln").forEach { lines.add(it.text().trim()) }
             doc.select("div.cb-col.cb-col-100.cb-com-ln").forEach { lines.add(it.text().trim()) }
 
             Log.d(TAG, "Fetched ${lines.size} commentary lines from legacy CSS selectors")
-            Sentry.addBreadcrumb(Breadcrumb().apply {
-                category = "network.cricbuzz"
-                message = "Successfully fetched commentary"
-                level = SentryLevel.INFO
-                setData("linesCount", lines.size)
-            })
+            crumb("Successfully fetched commentary", data = mapOf("linesCount" to lines.size))
             lines.filter { it.length > 5 }.distinct()
         } catch (e: Exception) {
             Log.e(TAG, "Error fetching Cricbuzz commentary", e)
-            Sentry.addBreadcrumb(Breadcrumb().apply {
-                category = "network.cricbuzz"
-                message = "Error fetching commentary"
-                level = SentryLevel.ERROR
-                setData("url", matchUrl)
-                setData("error", e.message ?: "Unknown error")
-            })
+            crumb("Error fetching commentary", SentryLevel.ERROR,
+                mapOf("url" to matchUrl, "error" to (e.message ?: "Unknown error")))
             Sentry.captureException(e)
             emptyList()
         }
     }
 
-    /**
-     * Parses commentary entries from Cricbuzz's Next.js RSC payload.
-     * Cricbuzz embeds per-ball commentaryPageData.matchCommentary in the page.
-     * Each entry has commText + timestamp (ms). Returns newest-first.
-     */
     private fun parseCommentaryFromNextJs(html: String): List<String> {
         val results = mutableListOf<Pair<Long, String>>()
-        val startMarker = "self.__next_f.push("
-        var startIndex = 0
-
-        while (true) {
-            val idx = html.indexOf(startMarker, startIndex)
-            if (idx == -1) break
-            val openParenIdx = idx + startMarker.length - 1
-            var parenCount = 0
-            var inString = false
-            var escape = false
-            var endIdx = -1
-            for (i in openParenIdx until html.length) {
-                val char = html[i]
-                if (escape) { escape = false; continue }
-                if (char == '\\') { escape = true; continue }
-                if (char == '"') { inString = !inString; continue }
-                if (!inString) {
-                    if (char == '(') parenCount++
-                    else if (char == ')') { parenCount--; if (parenCount == 0) { endIdx = i; break } }
-                }
-            }
-            if (endIdx != -1) {
-                val scriptContent = html.substring(openParenIdx + 1, endIdx)
-                val nextPayload = unwrapNextFlightPayload(scriptContent)
-                if (nextPayload != null) {
-                    try {
-                        val reader = com.google.gson.stream.JsonReader(java.io.StringReader(nextPayload))
-                        reader.isLenient = true
-                        val data = JsonParser.parseReader(reader)
-                        findCommentaryInJson(data, results)
-                    } catch (_: Exception) { }
-                }
-                startIndex = endIdx + 1
-            } else {
-                startIndex = idx + 1
-            }
-        }
-
+        forEachNextFlightPayload(html) { data -> findCommentaryInJson(data, results) }
         return results.sortedByDescending { it.first }.map { it.second }
     }
 
-    /**
-     * Extracts recent balls for the current/last over from Cricbuzz Next.js RSC payload.
-     * Looks for overSeparator.overSummary (space-separated: "0 0 1 0 0 0 ").
-     * Returns empty list if not found.
-     */
     private fun parseRecentBallsFromNextJs(html: String): List<String> {
-        val overData = mutableListOf<Pair<Long, String>>() // timestamp → overSummary
-        val startMarker = "self.__next_f.push("
-        var startIndex = 0
-
-        while (true) {
-            val idx = html.indexOf(startMarker, startIndex)
-            if (idx == -1) break
-            val openParenIdx = idx + startMarker.length - 1
-            var parenCount = 0; var inString = false; var escape = false; var endIdx = -1
-            for (i in openParenIdx until html.length) {
-                val char = html[i]
-                if (escape) { escape = false; continue }
-                if (char == '\\') { escape = true; continue }
-                if (char == '"') { inString = !inString; continue }
-                if (!inString) {
-                    if (char == '(') parenCount++
-                    else if (char == ')') { parenCount--; if (parenCount == 0) { endIdx = i; break } }
-                }
-            }
-            if (endIdx != -1) {
-                val scriptContent = html.substring(openParenIdx + 1, endIdx)
-                val nextPayload = unwrapNextFlightPayload(scriptContent)
-                if (nextPayload != null) {
-                    try {
-                        val reader = com.google.gson.stream.JsonReader(java.io.StringReader(nextPayload))
-                        reader.isLenient = true
-                        findOverSummaryInJson(JsonParser.parseReader(reader), overData)
-                    } catch (_: Exception) { }
-                }
-                startIndex = endIdx + 1
-            } else {
-                startIndex = idx + 1
-            }
-        }
-
+        val overData = mutableListOf<Pair<Long, String>>()
+        forEachNextFlightPayload(html) { data -> findOverSummaryInJson(data, overData) }
         if (overData.isEmpty()) return emptyList()
         val latestSummary = overData.maxByOrNull { it.first }?.second ?: return emptyList()
         return latestSummary.trim().split(" ").filter { it.isNotBlank() }
@@ -781,11 +568,9 @@ class CricBuzzScraper {
     private fun findOverSummaryInJson(element: JsonElement, results: MutableList<Pair<Long, String>>) {
         if (element.isJsonObject) {
             val obj = element.asJsonObject
-            // overSeparator objects contain overNumber, overSummary, and a timestamp key
             if (obj.has("overSummary") && obj.has("overNumber")) {
                 try {
                     val summary = obj.get("overSummary").asString
-                    // Timestamp may be in the parent; use overNumber as ordering proxy
                     val orderKey = obj.get("overNumber").asLong
                     if (summary.isNotBlank()) results.add(orderKey to summary)
                 } catch (_: Exception) { }
@@ -810,27 +595,22 @@ class CricBuzzScraper {
     }
 
     suspend fun fetchScorecard(matchId: String): Scorecard = withContext(Dispatchers.IO) {
-        Sentry.addBreadcrumb(Breadcrumb().apply {
-            category = "network.cricbuzz"
-            message = "Fetching scorecard"
-            level = SentryLevel.INFO
-            setData("matchId", matchId)
-        })
-        
+        crumb("Fetching scorecard", data = mapOf("matchId" to matchId))
+
         val url = CricBuzzUrls.scorecardUrl(matchId)
         try {
             val doc = Jsoup.connect(url).userAgent(USER_AGENT).timeout(15000).get()
             val inningsList = mutableListOf<Innings>()
-            
+
             val inningsHeaders = doc.select("div[id^=team-][id*=-innings-]")
             for (header in inningsHeaders) {
                 val headerId = header.id()
                 val content = doc.getElementById("scard-$headerId") ?: continue
-                
+
                 val teamName = header.select("div.font-bold").first()?.text() ?: "Unknown"
                 val score = header.select("span.font-bold").text()
                 val overs = header.select("span:contains(Ov)").text().replace("(", "").replace(")", "").trim()
-                
+
                 val batsmen = mutableListOf<BatsmanStats>()
                 content.select("div.grid.scorecard-bat-grid").forEach { row ->
                     val name = row.select("a").first()?.text() ?: ""
@@ -879,12 +659,11 @@ class CricBuzzScraper {
                         }
                     }
                 }
-                
+
                 val fows = mutableListOf<FallOfWicket>()
                 val fowSection = content.select("div:contains(Fall of Wickets)").first()
                 if (fowSection != null) {
                     val fowText = fowSection.nextElementSibling()?.text() ?: ""
-                    // Parse "10-1 (V Kohli, 1.2), 25-2 (RG Sharma, 4.5)"
                     val fowItems = fowText.split("),")
                     fowItems.forEachIndexed { idx, item ->
                         val parts = item.trim().split(" (")
@@ -902,36 +681,21 @@ class CricBuzzScraper {
                         }
                     }
                 }
-                
+
                 val partnerships = mutableListOf<PartnershipStats>()
-                val partSection = content.select("div:contains(Partnerships)").first()
-                if (partSection != null) {
-                    // Cricbuzz often has a partnerships section in some views, but it's sometimes hidden in scorecard
-                    // Fallback to manual calculation if needed, but let's try to find the grid if it exists
-                }
+                content.select("div:contains(Partnerships)").first()
 
                 inningsList.add(Innings(teamName, score, overs, batsmen, bowlers, fows, partnerships, "", ""))
             }
-            
-            Sentry.addBreadcrumb(Breadcrumb().apply {
-                category = "network.cricbuzz"
-                message = "Successfully fetched scorecard"
-                level = SentryLevel.INFO
-                setData("matchId", matchId)
-                setData("inningsCount", inningsList.size)
-            })
-            
+
+            crumb("Successfully fetched scorecard",
+                data = mapOf("matchId" to matchId, "inningsCount" to inningsList.size))
+
             Scorecard(inningsList)
         } catch (e: Exception) {
             Log.e(TAG, "Error fetching scorecard", e)
-            Sentry.addBreadcrumb(Breadcrumb().apply {
-                category = "network.cricbuzz"
-                message = "Error fetching scorecard"
-                level = SentryLevel.ERROR
-                setData("matchId", matchId)
-                setData("url", url)
-                setData("error", e.message ?: "Unknown error")
-            })
+            crumb("Error fetching scorecard", SentryLevel.ERROR,
+                mapOf("matchId" to matchId, "url" to url, "error" to (e.message ?: "Unknown error")))
             Sentry.captureException(e)
             Scorecard(emptyList())
         }
