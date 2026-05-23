@@ -81,16 +81,24 @@ class SentryOptionsConfig : Sentry.OptionsConfiguration<SentryAndroidOptions> {
      * Returns true for events that are non-actionable noise and should be
      * silently dropped to preserve Sentry quota and keep the Issues feed clean.
      */
-    private fun shouldDropEvent(event: SentryEvent): Boolean {
+    /**
+     * Visible for testing. Internal so unit tests in the same module can call it directly
+     * without reflection, giving regression coverage on the noise-filter rules.
+     */
+    internal fun shouldDropEvent(event: SentryEvent): Boolean {
         val exceptions = event.exceptions ?: return false
 
         for (sentryException in exceptions) {
             val type = sentryException.type ?: ""
             val value = sentryException.value ?: ""
 
-            // 1. Benign cancellations (Coil image loads, OkHttp lifecycle)
+            // 1. Benign cancellations (Coil image loads, OkHttp lifecycle, coroutines)
+            //    - type check: catches JobCancellationException, CancellationException, etc.
+            //    - value fallback: catches cases where the SDK stores a fully-qualified class
+            //      name or wraps the exception so the type field doesn't match the simple name.
             if (type == "IOException" && value in IGNORED_EXCEPTION_MESSAGES) return true
             if (type.endsWith("CancellationException")) return true
+            if (value.contains("was cancelled")) return true
             if (type == "UnknownHostException") return true
 
             // 2. Non-actionable scraping / API errors
