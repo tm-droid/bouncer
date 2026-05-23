@@ -165,8 +165,10 @@ class CricInfoScraper {
             return@withContext commentaryExists
         } catch (e: Exception) {
             Log.e(TAG, "Error checking commentary availability for matchId=$matchId: ${e.message}")
+            // recordFailure captures to Sentry at the circuit-breaker threshold (throttled).
+            // Do NOT call captureException again here — that causes double-reporting and
+            // bypasses the per-window throttle, producing bursts of identical events.
             recordFailure(e)
-            Sentry.captureException(e)
             Sentry.addBreadcrumb(Breadcrumb().apply {
                 category = "network.cricinfo"
                 message = "Error checking commentary availability"
@@ -281,8 +283,10 @@ class CricInfoScraper {
             commentaryLines
         } catch (e: Exception) {
             Log.e(TAG, "Error fetching Cricinfo commentary from URL: $matchUrl: ${e.message}")
+            // recordFailure captures to Sentry at the circuit-breaker threshold (throttled).
+            // Do NOT call captureException again here — that causes double-reporting and
+            // bypasses the per-window throttle, producing bursts of identical events.
             recordFailure(e)
-            Sentry.captureException(e)
             Sentry.addBreadcrumb(Breadcrumb().apply {
                 category = "network.cricinfo"
                 message = "Error fetching commentary"
@@ -380,8 +384,10 @@ class CricInfoScraper {
         } catch (e: Exception) {
             Log.e(TAG, "Error finding match: ${e.message}")
             if (e is CancellationException) throw e
+            // recordFailure captures to Sentry at the circuit-breaker threshold (throttled).
+            // Do NOT call captureException again here — that causes double-reporting and
+            // bypasses the per-window throttle, producing bursts of identical events.
             recordFailure(e)
-            Sentry.captureException(e)
 
             Sentry.addBreadcrumb(Breadcrumb().apply {
                 category = "network.cricinfo"
