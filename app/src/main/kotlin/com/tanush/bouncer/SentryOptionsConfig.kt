@@ -96,20 +96,20 @@ class SentryOptionsConfig : Sentry.OptionsConfiguration<SentryAndroidOptions> {
             //    - type check: catches JobCancellationException, CancellationException, etc.
             //    - value fallback: catches cases where the SDK stores a fully-qualified class
             //      name or wraps the exception so the type field doesn't match the simple name.
-            if (type == "IOException" && value in IGNORED_EXCEPTION_MESSAGES) return true
+            if (type in setOf("IOException", "SocketException") && value in IGNORED_EXCEPTION_MESSAGES) return true
             if (type.endsWith("CancellationException")) return true
             if (value.contains("was cancelled")) return true
             if (type == "UnknownHostException") return true
+            // HTTP/2 stream cancelled mid-flight — always a lifecycle/nav event, never actionable
+            if (type == "StreamResetException") return true
 
             // 2. Non-actionable scraping / API errors
             for (substring in IGNORED_MESSAGE_SUBSTRINGS) {
                 if (value.contains(substring)) return true
             }
 
-            // 3. Emulator IPv6 connection failures to Sentry itself
-            if (type == "ConnectException" && value.contains("ingest") && value.contains("sentry.io")) {
-                return true
-            }
+            // 3. TCP connection failures — always network-layer, never an actionable code bug
+            if (type == "ConnectException") return true
         }
 
         return false

@@ -72,8 +72,28 @@ class SentryOptionsConfigTest {
     }
 
     @Test
+    fun `IOException with Socket closed value is dropped`() {
+        val event = buildEvent("IOException" to "Socket closed")
+        assertTrue(config.shouldDropEvent(event))
+    }
+
+    @Test
+    fun `SocketException with Socket closed is dropped`() {
+        // SocketException extends IOException — Sentry stores actual runtime type,
+        // so the type field is "SocketException" not "IOException". Fixes ANDROID-1R.
+        val event = buildEvent("SocketException" to "Socket closed")
+        assertTrue(config.shouldDropEvent(event))
+    }
+
+    @Test
     fun `Sentry ingest ConnectException is dropped`() {
         val event = buildEvent("ConnectException" to "Failed to connect to ingest.sentry.io")
+        assertTrue(config.shouldDropEvent(event))
+    }
+
+    @Test
+    fun `ConnectException to non-Sentry host is dropped`() {
+        val event = buildEvent("ConnectException" to "Failed to connect to api-iota-jade.vercel.app/64.29.17.195:443")
         assertTrue(config.shouldDropEvent(event))
     }
 

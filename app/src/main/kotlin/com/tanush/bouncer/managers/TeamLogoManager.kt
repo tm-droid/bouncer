@@ -9,8 +9,8 @@ import io.sentry.Sentry
 
 object TeamLogoManager {
     private const val TAG = "TeamLogoManager"
-    private var logos: Map<String, String> = emptyMap()
-    private var isInitialized = false
+    @Volatile private var logos: Map<String, String> = emptyMap()
+    @Volatile private var isInitialized = false
     private var initError: String? = null
 
     fun initialize(context: Context) {
