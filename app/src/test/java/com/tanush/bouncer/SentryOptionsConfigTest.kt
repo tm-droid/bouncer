@@ -72,6 +72,20 @@ class SentryOptionsConfigTest {
     }
 
     @Test
+    fun `IOException with Socket closed value is dropped`() {
+        val event = buildEvent("IOException" to "Socket closed")
+        assertTrue(config.shouldDropEvent(event))
+    }
+
+    @Test
+    fun `SocketException with Socket closed is dropped`() {
+        // SocketException extends IOException. Sentry stores the actual runtime type,
+        // so the type field is "SocketException" not "IOException". Fixes ANDROID-1R.
+        val event = buildEvent("SocketException" to "Socket closed")
+        assertTrue(config.shouldDropEvent(event))
+    }
+
+    @Test
     fun `Sentry ingest ConnectException is dropped`() {
         val event = buildEvent("ConnectException" to "Failed to connect to ingest.sentry.io")
         assertTrue(config.shouldDropEvent(event))
@@ -82,6 +96,31 @@ class SentryOptionsConfigTest {
     @Test
     fun `HTTP 403 scraping error is dropped`() {
         val event = buildEvent("IOException" to "HTTP error fetching URL. Status=403")
+        assertTrue(config.shouldDropEvent(event))
+    }
+
+    @Test
+    fun `HttpStatusException 403 from Jsoup is dropped`() {
+        // Jsoup throws HttpStatusException (subclass of IOException); Sentry serializes
+        // the simple class name as type. The value must still be caught by the substring filter.
+        val event = buildEvent("HttpStatusException" to "HTTP error fetching URL. Status=403, URL=[https://www.espncricinfo.com/live-cricket-score]")
+        assertTrue(config.shouldDropEvent(event))
+    }
+
+    @Test
+    fun `exception chain containing HttpStatusException 403 is dropped`() {
+        // When CricInfoScraper wraps or rethrows, the SDK may build a multi-exception event.
+        // shouldDropEvent must inspect every entry in the chain, not just the outermost one.
+        val event = buildEvent(
+            "RuntimeException" to "Failed to find live match",
+            "HttpStatusException" to "HTTP error fetching URL. Status=403, URL=[https://www.espncricinfo.com/live-cricket-score]"
+        )
+        assertTrue(config.shouldDropEvent(event))
+    }
+
+    @Test
+    fun `HTTP 429 rate-limit error is dropped`() {
+        val event = buildEvent("HttpStatusException" to "HTTP error fetching URL. Status=429, URL=[https://www.espncricinfo.com/live-cricket-score]")
         assertTrue(config.shouldDropEvent(event))
     }
 

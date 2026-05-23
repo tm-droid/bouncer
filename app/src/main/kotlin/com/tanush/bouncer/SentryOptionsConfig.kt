@@ -78,11 +78,10 @@ class SentryOptionsConfig : Sentry.OptionsConfiguration<SentryAndroidOptions> {
     }
 
     /**
-     * Returns true for events that are non-actionable noise and should be
-     * silently dropped to preserve Sentry quota and keep the Issues feed clean.
-     */
-    /**
-     * Visible for testing. Internal so unit tests in the same module can call it directly
+     * Returns true for events that are non-actionable noise and should be silently dropped
+     * to preserve Sentry quota and keep the Issues feed clean.
+     *
+     * Visible for testing: `internal` so unit tests in the same module can call it directly
      * without reflection, giving regression coverage on the noise-filter rules.
      */
     internal fun shouldDropEvent(event: SentryEvent): Boolean {
@@ -100,8 +99,14 @@ class SentryOptionsConfig : Sentry.OptionsConfiguration<SentryAndroidOptions> {
             if (type.endsWith("CancellationException")) return true
             if (value.contains("was cancelled")) return true
             if (type == "UnknownHostException") return true
+            // HTTP/2 stream cancelled mid-flight — always a lifecycle/nav event, never actionable
+            if (type == "StreamResetException") return true
 
             // 2. Non-actionable scraping / API errors
+            //    HttpStatusException is Jsoup's typed exception (subclass of IOException).
+            //    The Sentry SDK serializes the simple class name as `type`, so guard on type
+            //    directly as well as on the message substring — belt-and-suspenders.
+            if (type == "HttpStatusException") return true
             for (substring in IGNORED_MESSAGE_SUBSTRINGS) {
                 if (value.contains(substring)) return true
             }
