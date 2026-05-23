@@ -37,7 +37,7 @@ import com.tanush.bouncer.data.local.entities.SeriesFtsEntity
         AICommentaryCacheEntity::class,
         HighlightEntity::class
     ],
-    version = 6,
+    version = 7,
     exportSchema = true
 )
 abstract class BouncerDatabase : RoomDatabase() {
@@ -98,7 +98,7 @@ abstract class BouncerDatabase : RoomDatabase() {
         }
 
         // Add indexed isLive column to matches so getLiveMatches() stops doing a LIKE '%live%' scan.
-        private val MIGRATION_5_6 = object : Migration(5, 6) {
+        internal val MIGRATION_5_6 = object : Migration(5, 6) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE matches ADD COLUMN isLive INTEGER NOT NULL DEFAULT 0")
                 db.execSQL(
@@ -110,8 +110,18 @@ abstract class BouncerDatabase : RoomDatabase() {
             }
         }
 
+        // Users at v5 who had the stale index survive (it was supposed to be dropped in MIGRATION_4_5)
+        // and then upgraded to v6 never had the index dropped — Room's post-migration schema validation
+        // crashes the app because HighlightEntity has no @Index. Drop idempotently to fix all affected users.
+        // Fixes ANDROID-1Q.
+        internal val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("DROP INDEX IF EXISTS idx_highlights_matched_bouncer_match_id")
+            }
+        }
+
         // Add new migrations here; Room will apply them in order on upgrade.
-        private val MIGRATIONS = arrayOf<Migration>(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
+        private val MIGRATIONS = arrayOf<Migration>(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
 
         fun getInstance(context: Context): BouncerDatabase {
             return INSTANCE ?: synchronized(this) {
