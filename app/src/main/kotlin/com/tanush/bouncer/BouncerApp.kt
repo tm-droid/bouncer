@@ -82,7 +82,11 @@ class BouncerApp : Application() {
         Sentry.metrics().count("app_start", 1.0)
 
         // ── Initialize managers ──────────────────────────────────────────
-        initializeSafely("TeamLogoManager") { TeamLogoManager.initialize(this) }
+        // TeamLogoManager: Gson cold-init + JSON parsing is heavy — run off main thread.
+        // The manager returns null/emptyMap gracefully until initialized, so callers are safe.
+        applicationScope.launch(Dispatchers.IO) {
+            initializeSafely("TeamLogoManager") { TeamLogoManager.initialize(applicationContext) }
+        }
         initializeSafely("TeamAcronymManager") { TeamAcronymManager.initialize(this) }
         initializeSafely("FavouriteTeamsManager") { FavouriteTeamsManager.initialize(this) }
         initializeSafely("MatchSubscriptionManager") { MatchSubscriptionManager.initialize(this) }
