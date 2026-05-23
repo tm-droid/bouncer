@@ -430,8 +430,14 @@ private fun NavGraphBuilder.parameterizedDestinations(
         route = BouncerScreen.MatchDetail.ROUTE_PATTERN,
         arguments = BouncerScreen.MatchDetail.arguments
     ) { backStackEntry ->
-        val matchId = backStackEntry.arguments?.getString(BouncerScreen.MatchDetail.ARG_MATCH_ID)
-            ?.decodeUrlSafe() ?: return@composable
+        val rawMatchId = backStackEntry.arguments?.getString(BouncerScreen.MatchDetail.ARG_MATCH_ID)
+            ?.decodeUrlSafe()
+        // Reject blank or implausibly long IDs (deep-link injection guard)
+        val matchId = rawMatchId?.takeIf { it.isNotBlank() && it.length <= 64 }
+            ?: run {
+                LaunchedEffect(Unit) { navController.navigateToTab(BouncerScreen.Matches.route) }
+                return@composable
+            }
 
         val matches by liveActivityViewModel.currentMatches.collectAsStateWithLifecycle()
         val match = matches.firstOrNull { it.id == matchId }

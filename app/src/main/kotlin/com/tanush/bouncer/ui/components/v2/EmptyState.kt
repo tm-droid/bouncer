@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.SearchOff
+import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -21,6 +22,7 @@ import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 
 /**
  * Centered icon + title + subtitle for empty/error screens.
+ * Pass [onRetry] to show a retry button below the subtitle.
  */
 @Composable
 fun EmptyStateV2(
@@ -28,6 +30,7 @@ fun EmptyStateV2(
     subtitle: String,
     modifier: Modifier = Modifier,
     icon: ImageVector = Icons.Outlined.SearchOff,
+    onRetry: (() -> Unit)? = null,
 ) {
     val colors = BouncerThemeV2.colors
     val typography = BouncerThemeV2.typography
@@ -60,5 +63,11 @@ fun EmptyStateV2(
             color = colors.textSecondary,
             textAlign = TextAlign.Center,
         )
+        if (onRetry != null) {
+            Spacer(Modifier.height(spacing.lg))
+            Button(onClick = onRetry) {
+                Text("Retry")
+            }
+        }
     }
 }

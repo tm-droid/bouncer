@@ -25,22 +25,33 @@ class CricInfoScraper {
     }
 
     private val matchIdMap = mutableMapOf<String, String>() // cricbuzzId -> cricinfoId
-    private val commentaryAvailabilityCache = mutableMapOf<String, Boolean>()
+    // Cached availability with timestamp so we re-check periodically (commentary can come live mid-match).
+    private val commentaryAvailabilityCache = java.util.concurrent.ConcurrentHashMap<String, Pair<Boolean, Long>>()
+    private val commentaryCacheTtlMs = 5 * 60_000L // 5 min
 
     // ── Circuit breaker state ────────────────────────────────────────────
     private val consecutiveFailures = AtomicInteger(0)
     private val circuitOpenUntil = AtomicLong(0L)
-    private var lastReportedToSentry = 0L // only report once per circuit-open window
+    @Volatile private var lastReportedToSentry = 0L // only report once per circuit-open window
 
     /**
      * Returns true when the circuit is open (too many recent failures).
      * Callers should skip the network call entirely and return a cached /
      * empty result instead of hammering a server that's rejecting us.
+     *
+     * When the cool-down expires, this transitions to "half-open": we also
+     * reset the failure counter so a single new failure doesn't immediately
+     * re-trip the breaker without giving the source a real second chance.
      */
     private fun isCircuitOpen(): Boolean {
         val now = System.currentTimeMillis()
-        if (now < circuitOpenUntil.get()) return true
-        // Circuit half-open: allow one attempt after cool-down
+        val openUntil = circuitOpenUntil.get()
+        if (now < openUntil) return true
+        // Half-open transition: clear failure counter so the next attempt
+        // starts from zero and the breaker doesn't re-trip on first error.
+        if (openUntil != 0L && consecutiveFailures.get() > 0) {
+            consecutiveFailures.set(0)
+        }
         return false
     }
 
@@ -113,7 +124,7 @@ class CricInfoScraper {
         // ── Circuit breaker check ────────────────────────────────────────
         if (isCircuitOpen()) {
             Log.d(TAG, "Circuit breaker OPEN — skipping commentary check for matchId=$matchId")
-            return@withContext commentaryAvailabilityCache[matchId] ?: false
+            return@withContext commentaryAvailabilityCache[matchId]?.first ?: false
         }
 
         Sentry.addBreadcrumb(Breadcrumb().apply {
@@ -123,21 +134,25 @@ class CricInfoScraper {
             setData("matchId", matchId)
             setData("url", url)
         })
-        
-        if (commentaryAvailabilityCache.containsKey(matchId)) {
-            return@withContext commentaryAvailabilityCache[matchId] ?: false
+
+        // Honor cache only within TTL — commentary can come live mid-match, so a stale
+        // "false" must eventually re-check.
+        commentaryAvailabilityCache[matchId]?.let { (cached, ts) ->
+            if (System.currentTimeMillis() - ts < commentaryCacheTtlMs) {
+                return@withContext cached
+            }
         }
-        
+
         try {
             val doc = connect(url).get()
             recordSuccess()
-            
+
             // Modern Cricinfo Design System (DS) selectors
-            val commentaryExists = doc.select("div[class*='ds-border-line']").isNotEmpty() || 
+            val commentaryExists = doc.select("div[class*='ds-border-line']").isNotEmpty() ||
                                  doc.select("div[class*='commentary']").isNotEmpty() ||
                                  doc.select("div.ds-text-tight-l").isNotEmpty()
-            
-            commentaryAvailabilityCache[matchId] = commentaryExists
+
+            commentaryAvailabilityCache[matchId] = commentaryExists to System.currentTimeMillis()
             
             Sentry.addBreadcrumb(Breadcrumb().apply {
                 category = "network.cricinfo"
@@ -380,8 +395,18 @@ class CricInfoScraper {
         }
     }
 
-    private fun fuzzyTeamMatch(team: String, text: String): Boolean =
-        team.length >= 3 && text.contains(team.take(3))
+    /**
+     * Stricter fuzzy match: require a substantial prefix overlap, not just
+     * 3 characters. "Ind" matched "India", "Indian", "Indies", "Indiana" before.
+     * Now we require >=5 chars or a whole-word boundary check.
+     */
+    private fun fuzzyTeamMatch(team: String, text: String): Boolean {
+        if (team.length < 4) return false
+        val needle = team.take(minOf(team.length, 6))
+        // Whole-word match preferred — surround by word boundaries.
+        val wordBoundary = Regex("\\b${Regex.escape(needle)}\\b", RegexOption.IGNORE_CASE)
+        return wordBoundary.containsMatchIn(text)
+    }
 
     private data class Candidate(val title: String, val normalized: String, val href: String, val score: Int)
 

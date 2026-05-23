@@ -37,7 +37,7 @@ class ScoreListScreen(carContext: CarContext) : Screen(carContext) {
                     errorMessage = null
                     invalidate()
                 }
-                .onError { e, _ ->
+                .onError { e ->
                     Sentry.captureException(e)
                     errorMessage = e.userMessage
                     matches = null

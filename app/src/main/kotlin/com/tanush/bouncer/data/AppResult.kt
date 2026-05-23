@@ -2,7 +2,9 @@ package com.tanush.bouncer.data
 
 sealed class AppResult<out T> {
     data class Success<T>(val data: T) : AppResult<T>()
-    data class Error(val exception: AppException, val message: String? = null) : AppResult<Nothing>()
+    data class Error(val exception: AppException) : AppResult<Nothing>() {
+        val message: String? get() = exception.userMessage ?: exception.message
+    }
     data object Loading : AppResult<Nothing>()
 
     val isSuccess get() = this is Success
@@ -36,8 +38,8 @@ sealed class AppResult<out T> {
         return this
     }
 
-    fun onError(action: (AppException, String?) -> Unit): AppResult<T> {
-        if (this is Error) action(exception, message)
+    fun onError(action: (AppException) -> Unit): AppResult<T> {
+        if (this is Error) action(exception)
         return this
     }
 
@@ -46,7 +48,7 @@ sealed class AppResult<out T> {
             return try {
                 Success(block())
             } catch (e: AppException) {
-                Error(e, e.userMessage)
+                Error(e)
             } catch (e: java.io.IOException) {
                 Error(AppException.NetworkException(cause = e))
             } catch (e: Exception) {
@@ -58,7 +60,7 @@ sealed class AppResult<out T> {
             return try {
                 Success(block())
             } catch (e: AppException) {
-                Error(e, e.userMessage)
+                Error(e)
             } catch (e: java.io.IOException) {
                 Error(AppException.NetworkException(cause = e))
             } catch (e: kotlinx.coroutines.CancellationException) {

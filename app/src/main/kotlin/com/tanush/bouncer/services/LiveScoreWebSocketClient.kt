@@ -58,7 +58,9 @@ class LiveScoreWebSocketClient(
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-    private val _messages = MutableSharedFlow<String>(extraBufferCapacity = 64)
+    // replay=1 so a late/slow consumer gets the last message immediately.
+    // Larger buffer cushions bursts when downstream is busy (e.g. waiting on LLM).
+    private val _messages = MutableSharedFlow<String>(replay = 1, extraBufferCapacity = 128)
     val messages: SharedFlow<String> = _messages.asSharedFlow()
 
     private val _connectionState = MutableStateFlow(ConnectionState.DISCONNECTED)
@@ -80,9 +82,12 @@ class LiveScoreWebSocketClient(
     }
 
     fun disconnect() {
-        shouldReconnect.set(false)
-        webSocket?.close(NORMAL_CLOSE_CODE, "Client disconnected")
+        // Close socket first, then flip the flag. Doing it the other way leaves a
+        // small window where an in-flight scheduleReconnect() could fire and re-open.
+        val ws = webSocket
         webSocket = null
+        ws?.close(NORMAL_CLOSE_CODE, "Client disconnected")
+        shouldReconnect.set(false)
         _connectionState.value = ConnectionState.DISCONNECTED
         backoffMs = INITIAL_BACKOFF_MS
         log("Disconnected by caller")

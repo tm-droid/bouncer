@@ -27,6 +27,7 @@ import com.tanush.bouncer.ui.components.v2.PullRefreshWrapperV2
 import com.tanush.bouncer.ui.components.v2.ShimmerMatchCard
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 import com.tanush.bouncer.viewmodels.LiveActivityViewModel
+import com.tanush.bouncer.viewmodels.LoadingState
 
 /**
  * AllMatchesScreenV2 — Dedicated match list tab.
@@ -42,6 +43,7 @@ fun AllMatchesScreenV2(
     val currentMatches by viewModel.currentMatches.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
     val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
+    val loadingState by viewModel.loadingState.collectAsStateWithLifecycle()
     val isOffline = rememberIsOffline()
 
     val spacing = BouncerThemeV2.spacing
@@ -114,13 +116,22 @@ fun AllMatchesScreenV2(
                     return@LazyColumn
                 }
 
-                // Empty
+                // Empty or error
                 if (filteredMatches.isEmpty() && !isLoading) {
                     item(key = "empty") {
-                        EmptyStateV2(
-                            title = "No matches",
-                            subtitle = if (selectedFormat == "All") "No matches found" else "No $selectedFormat matches found",
-                        )
+                        val errorState = loadingState as? LoadingState.Error
+                        if (errorState != null) {
+                            EmptyStateV2(
+                                title = "Couldn't load matches",
+                                subtitle = errorState.message,
+                                onRetry = { viewModel.refreshMatches() },
+                            )
+                        } else {
+                            EmptyStateV2(
+                                title = "No matches",
+                                subtitle = if (selectedFormat == "All") "No matches found" else "No $selectedFormat matches found",
+                            )
+                        }
                     }
                     return@LazyColumn
                 }

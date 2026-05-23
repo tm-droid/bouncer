@@ -10,6 +10,7 @@ import com.tanush.bouncer.managers.MatchSubscriptionManager
 import com.tanush.bouncer.managers.NotificationInboxManager
 import com.tanush.bouncer.managers.TeamLogoManager
 import com.tanush.bouncer.managers.TeamAcronymManager
+import com.tanush.bouncer.data.TeamDirectory
 import com.tanush.bouncer.data.local.BouncerDatabase
 import com.tanush.bouncer.data.remote.AppwriteAICache
 import com.tanush.bouncer.data.remote.AppwriteClient
@@ -24,10 +25,29 @@ import io.sentry.Sentry
 import io.sentry.SentryLogLevel
 import io.sentry.SentryLevel
 import java.io.File
+import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+
+/**
+ * Global health snapshot of init steps. Other code can query whether a specific
+ * component is healthy and degrade gracefully when not.
+ */
+object AppHealth {
+    private val failed = ConcurrentHashMap.newKeySet<String>()
+    private val _appwriteReachable = MutableStateFlow(false)
+    val appwriteReachable: StateFlow<Boolean> = _appwriteReachable.asStateFlow()
+
+    fun markFailed(component: String) { failed += component }
+    fun isHealthy(component: String): Boolean = component !in failed
+    fun anyFailures(): Set<String> = failed.toSet()
+    internal fun setAppwriteReachable(reachable: Boolean) { _appwriteReachable.value = reachable }
+}
 
 class BouncerApp : Application() {
 
@@ -68,14 +88,32 @@ class BouncerApp : Application() {
         initializeSafely("MatchSubscriptionManager") { MatchSubscriptionManager.initialize(this) }
         initializeSafely("MatchCacheService") { MatchCacheService.initDiskCache(this) }
         initializeSafely("AppwriteClient") { AppwriteClient.initialize(this) }
+        // Verify Appwrite reachability; reflect in AppHealth so UI can show degraded state.
         applicationScope.launch(Dispatchers.IO) {
-            try { AppwriteClient.client?.ping() } catch (_: Exception) {}
+            val reachable = try {
+                AppwriteClient.client?.ping()
+                true
+            } catch (e: Exception) {
+                Sentry.addBreadcrumb(
+                    Breadcrumb().apply {
+                        category = "app.init"
+                        message = "Appwrite ping failed: ${e.message}"
+                        level = SentryLevel.WARNING
+                    }
+                )
+                false
+            }
+            AppHealth.setAppwriteReachable(reachable)
         }
         initializeSafely("AppwriteAICache") { AppwriteAICache.initialize() }
         initializeSafely("AppwriteHighlightsClient") { AppwriteHighlightsClient.initialize() }
         initializeSafely("NotificationInboxManager") { NotificationInboxManager.initialize(this) }
         initializeSafely("AICacheService") {
             AICacheService.initialize(BouncerDatabase.getInstance(this).aiCacheDao())
+        }
+        // Warm team directory so first screen access doesn't block / silently fail.
+        applicationScope.launch(Dispatchers.IO) {
+            try { TeamDirectory.fetchTeams() } catch (e: Exception) { Sentry.captureException(e) }
         }
 
         // Start Appwrite Realtime subscriptions (app-lifetime)
@@ -139,7 +177,12 @@ class BouncerApp : Application() {
         )
         Sentry.logger().log(SentryLogLevel.INFO, "BouncerApp startup completed")
         Sentry.metrics().gauge("app_init_components", 4.0)
-        Log.i(TAG, "Application initialized successfully")
+        val failures = AppHealth.anyFailures()
+        if (failures.isNotEmpty()) {
+            Log.w(TAG, "Application initialized with degraded components: $failures")
+        } else {
+            Log.i(TAG, "Application initialized successfully")
+        }
     }
 
     // ── Helper: wrap any init step so a failure is reported but never kills startup ──
@@ -154,6 +197,7 @@ class BouncerApp : Application() {
                 }
             )
         } catch (e: Exception) {
+            AppHealth.markFailed(componentName)
             Log.e(TAG, "Failed to initialize $componentName", e)
             Sentry.captureException(e)
             Sentry.addBreadcrumb(

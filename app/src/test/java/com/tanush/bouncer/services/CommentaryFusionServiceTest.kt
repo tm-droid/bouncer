@@ -314,7 +314,7 @@ class CommentaryFusionServiceTest {
     // ── ball buffer tests ────────────────────────────────────────────────────
 
     @Test
-    fun `addBallToBuffer and getPreviousBalls round-trip`() {
+    fun `addBallToBuffer and getPreviousBalls round-trip`() = runTest {
         val svc = CommentaryFusionService()
         svc.addBallToBuffer("m1", "Ball 1")
         svc.addBallToBuffer("m1", "Ball 2")
@@ -322,7 +322,7 @@ class CommentaryFusionServiceTest {
     }
 
     @Test
-    fun `ball buffer caps at 6 entries and evicts oldest`() {
+    fun `ball buffer caps at 6 entries and evicts oldest`() = runTest {
         val svc = CommentaryFusionService()
         (1..8).forEach { svc.addBallToBuffer("m2", "Ball $it") }
 
@@ -333,13 +333,13 @@ class CommentaryFusionServiceTest {
     }
 
     @Test
-    fun `getPreviousBalls unknown match returns empty list`() {
+    fun `getPreviousBalls unknown match returns empty list`() = runTest {
         val svc = CommentaryFusionService()
         assertEquals(emptyList<String>(), svc.getPreviousBalls("no_such_match"))
     }
 
     @Test
-    fun `ball buffers are isolated per matchId`() {
+    fun `ball buffers are isolated per matchId`() = runTest {
         val svc = CommentaryFusionService()
         svc.addBallToBuffer("matchA", "A1")
         svc.addBallToBuffer("matchB", "B1")

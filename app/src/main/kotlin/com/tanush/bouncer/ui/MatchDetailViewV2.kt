@@ -152,6 +152,8 @@ fun MatchDetailViewV2(
             commentaryLoading = false
         }
 
+        if (!match.isLive) return@LaunchedEffect
+
         while (true) {
             try {
                 val details = scraper.fetchBallByBallAndBatsmen(match.id)

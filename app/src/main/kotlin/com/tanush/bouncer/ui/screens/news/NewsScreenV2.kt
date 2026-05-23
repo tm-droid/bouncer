@@ -88,6 +88,7 @@ fun NewsScreenV2(
                             EmptyStateV2(
                                 title = friendlyError,
                                 subtitle = "Pull down to refresh and try again",
+                                onRetry = { viewModel.refresh() },
                             )
                         } else {
                             EmptyStateV2(

@@ -37,6 +37,7 @@ import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.ui.components.v2.EmptyStateV2
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 import com.tanush.bouncer.viewmodels.LiveActivityViewModel
+import com.tanush.bouncer.viewmodels.LoadingState
 
 private enum class AlertTypeV2 { WICKET, MILESTONE, INFO, WARNING }
 
@@ -58,6 +59,9 @@ fun IntelligenceFeedScreenV2(
     // Build alerts from ViewModel probability events
     val probabilityEvents by liveActivityViewModel?.probabilityEvents?.collectAsStateWithLifecycle()
         ?: androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(emptyMap()) }
+
+    val loadingState by liveActivityViewModel?.loadingState?.collectAsStateWithLifecycle()
+        ?: androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(LoadingState.Idle) }
 
     val alerts = buildList {
         probabilityEvents.forEach { (matchId, events) ->
@@ -98,11 +102,21 @@ fun IntelligenceFeedScreenV2(
         containerColor = colors.background,
     ) { padding ->
         if (alerts.isEmpty()) {
-            EmptyStateV2(
-                title = "No Activity Yet",
-                subtitle = "Activity from live matches will appear here",
-                modifier = Modifier.fillMaxSize().padding(padding),
-            )
+            val errorState = loadingState as? LoadingState.Error
+            if (errorState != null) {
+                EmptyStateV2(
+                    title = "Couldn't load activity",
+                    subtitle = errorState.message,
+                    modifier = Modifier.fillMaxSize().padding(padding),
+                    onRetry = { liveActivityViewModel?.refreshMatches() },
+                )
+            } else {
+                EmptyStateV2(
+                    title = "No Activity Yet",
+                    subtitle = "Activity from live matches will appear here",
+                    modifier = Modifier.fillMaxSize().padding(padding),
+                )
+            }
         } else {
             LazyColumn(
                 modifier = Modifier.fillMaxSize().padding(padding),

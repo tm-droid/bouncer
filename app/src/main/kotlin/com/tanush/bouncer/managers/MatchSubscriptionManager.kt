@@ -70,8 +70,9 @@ object MatchSubscriptionManager {
     fun isSubscribed(matchId: String): Boolean = _subscriptions.value.contains(matchId)
 
     private fun save(set: Set<String>) {
-        _subscriptions.value = set
+        // Persist first so a process kill between disk + StateFlow doesn't lose state.
         prefs.edit().putString(KEY_SUBSCRIBED, gson.toJson(set.toList())).apply()
+        _subscriptions.value = set
     }
 
     private fun load(): Set<String> {

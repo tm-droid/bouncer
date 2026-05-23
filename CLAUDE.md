@@ -4,6 +4,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ---
 
+## Bug Fixing Philosophy
+- NEVER suppress, filter, or hide errors (e.g., Sentry filters, try/catch swallowing) without first identifying and fixing the root cause.
+- When a bug is reported across multiple items (chapters, volumes, files), search for ALL occurrences before claiming a fix is complete.
+
+## Environment & Secrets
+- Before assuming an API/env var is configured, verify it explicitly (check `.env`, deployment config, or ask). Do not assume RAPIDAPI_KEY, Appwrite keys, etc. are set.
+- For Appwrite changes, prefer the MCP server over CLI push (CLI has caused domain rule conflicts and column schema deletion from config drift).
+
+---
+
 # Bouncer Android App
 
 Cricket live-scoring, match analytics, and team management app built in Kotlin/Compose.
@@ -123,3 +133,8 @@ For large data processing, log analysis, or API exploration:
 - `ctx_execute_file`: Analyze large logs/data files
 - `ctx_batch_execute`: Multiple commands in one call (faster)
 - `ctx_search`: Query indexed content
+
+## Git & Deploy
+- When git commands hang in this sandbox, fall back to the GitHub API rather than retrying indefinitely.
+- Before force-pushing, double-check the commit SHA you're pushing matches the one containing the intended fix.
+- After deploys, verify the change is actually live (hardcoded dates, cache, hydration) before declaring done.

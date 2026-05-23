@@ -19,7 +19,7 @@ interface MatchDao {
     @Query("SELECT * FROM matches WHERE matchId = :matchId")
     fun getMatch(matchId: String): Flow<MatchEntity?>
 
-    @Query("SELECT * FROM matches WHERE status LIKE '%live%' OR currentStatus LIKE '%live%' ORDER BY lastUpdated DESC")
+    @Query("SELECT * FROM matches WHERE isLive = 1 ORDER BY lastUpdated DESC")
     fun getLiveMatches(): Flow<List<MatchEntity>>
 
     @Query("SELECT * FROM matches ORDER BY lastUpdated DESC")

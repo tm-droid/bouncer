@@ -7,7 +7,10 @@ import io.sentry.Breadcrumb
 import io.sentry.Sentry
 import io.sentry.SentryLevel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -29,8 +32,12 @@ class CommentaryFusionService(
     )
     private val providerCooldowns = ConcurrentHashMap<String, Long>()
 
-    private val previousBallsBuffer = mutableMapOf<String, MutableList<String>>()
+    // Concurrent access from per-ball coroutines — use ConcurrentHashMap + per-match mutex
+    // so reads and writes never see a torn list.
+    private val previousBallsBuffer = ConcurrentHashMap<String, MutableList<String>>()
+    private val bufferMutex = Mutex()
     private val maxBufferSize = 6
+    private val verificationTimeoutMs = 2_000L
 
     companion object {
         const val FALLBACK_BALL_COMMENTARY = "Ball delivered. Play continues."
@@ -105,13 +112,17 @@ class CommentaryFusionService(
     """
     }
 
-    fun addBallToBuffer(matchId: String, ball: String) {
-        val buffer = previousBallsBuffer.getOrPut(matchId) { mutableListOf() }
-        buffer.add(ball)
-        if (buffer.size > maxBufferSize) buffer.removeAt(0)
+    suspend fun addBallToBuffer(matchId: String, ball: String) {
+        bufferMutex.withLock {
+            val buffer = previousBallsBuffer.getOrPut(matchId) { mutableListOf() }
+            buffer.add(ball)
+            if (buffer.size > maxBufferSize) buffer.removeAt(0)
+        }
     }
 
-    fun getPreviousBalls(matchId: String): List<String> = previousBallsBuffer[matchId] ?: emptyList()
+    suspend fun getPreviousBalls(matchId: String): List<String> = bufferMutex.withLock {
+        previousBallsBuffer[matchId]?.toList() ?: emptyList()
+    }
 
     suspend fun generateBallCommentary(matchId: String, ballNumber: String, rawSnippet: String): String =
         withContext(Dispatchers.IO) {
@@ -237,8 +248,16 @@ class CommentaryFusionService(
             .replace("{batsman}", batsman)
 
         return try {
-            val verdict = callProviders(prompt, maxTokens = 16, temperature = 0.0)
+            // Cap verification at verificationTimeoutMs so a hung provider can't stall
+            // the per-ball pipeline. On timeout we pass through the generated commentary.
+            val verdict = withTimeoutOrNull(verificationTimeoutMs) {
+                callProviders(prompt, maxTokens = 16, temperature = 0.0)
+            }
             val passed = verdict?.trim()?.uppercase()?.startsWith("PASS") == true
+            if (verdict == null) {
+                Log.w("CommentaryFusionService", "Verification timed out after ${verificationTimeoutMs}ms — assuming PASS")
+                return true
+            }
             if (!passed) {
                 Log.w("CommentaryFusionService", "Hallucination check FAILED — verdict: $verdict")
                 Sentry.addBreadcrumb(Breadcrumb().apply {

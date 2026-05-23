@@ -55,6 +55,7 @@ data class ProbabilityEvent(
 class LiveActivityViewModel : ViewModel() {
     companion object {
         private const val TAG = "LiveActivityViewModel"
+        private const val MIN_MANUAL_REFRESH_INTERVAL_MS = 10_000L
     }
     
     private val scraper = CricBuzzScraper()
@@ -105,6 +106,8 @@ class LiveActivityViewModel : ViewModel() {
     
     private val _loadingState = MutableStateFlow<LoadingState>(LoadingState.Idle)
     val loadingState: StateFlow<LoadingState> = _loadingState.asStateFlow()
+
+    private var lastManualRefreshMs = 0L
     
     private val _aiCommentary = MutableStateFlow<Map<String, String>>(emptyMap())
     val aiCommentary: StateFlow<Map<String, String>> = _aiCommentary.asStateFlow()
@@ -217,6 +220,9 @@ class LiveActivityViewModel : ViewModel() {
     }
 
     fun refreshMatches() {
+        val now = System.currentTimeMillis()
+        if (_isRefreshing.value || (now - lastManualRefreshMs) < MIN_MANUAL_REFRESH_INTERVAL_MS) return
+        lastManualRefreshMs = now
         viewModelScope.launch {
             breadcrumb("user.action", "Manual refresh triggered")
             _isRefreshing.value = true

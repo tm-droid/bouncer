@@ -14,24 +14,41 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import kotlin.math.abs
 
 /**
  * AlarmManager-based Widget Updater
- * 
+ *
  * Periodically updates all Bouncer widgets with fresh match data.
- * Uses AlarmManager for lightweight background scheduling.
+ * Interval adapts: 5 min when a live match is cached, 30 min otherwise.
+ * Uses setExactAndAllowWhileIdle + self-rescheduling so the interval can
+ * change after each update without cancelling and recreating alarms.
  */
 object WidgetUpdateWorker {
 
-    private const val UPDATE_INTERVAL = 60 * 60 * 1000L // 1 hour fallback; FCM handles live updates
-    private const val REQUEST_CODE = 1001
+    private const val LIVE_INTERVAL_MS   = 5  * 60 * 1000L
+    private const val IDLE_INTERVAL_MS   = 30 * 60 * 1000L
+    private const val REQUEST_CODE       = 1001
+    private const val PREFS_WIDGET_CACHE = "widget_cache"
+    private const val KEY_LAST_UPDATE    = "last_update_epoch"
+
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
-    
+
     /**
-     * Schedule periodic widget updates (every 15 minutes when matches are live)
+     * Schedule the first adaptive widget update. Subsequent updates are
+     * self-scheduled inside [updateAllWidgets] after each run completes.
      */
     fun schedulePeriodicUpdates(context: Context) {
+        scheduleAdaptiveUpdate(context)
+    }
+
+    /** Re-schedule using the appropriate interval based on current live status. */
+    private fun scheduleAdaptiveUpdate(context: Context) {
         try {
+            val prefs = context.getSharedPreferences(PREFS_WIDGET_CACHE, Context.MODE_PRIVATE)
+            val isLive = prefs.getBoolean("is_live", false)
+            val interval = if (isLive) LIVE_INTERVAL_MS else IDLE_INTERVAL_MS
+
             val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
             val intent = Intent(context, WidgetUpdateReceiver::class.java)
             val pendingIntent = PendingIntent.getBroadcast(
@@ -40,17 +57,27 @@ object WidgetUpdateWorker {
                 intent,
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
-            
-            alarmManager.setRepeating(
-                AlarmManager.RTC_WAKEUP,
-                System.currentTimeMillis() + UPDATE_INTERVAL,
-                UPDATE_INTERVAL,
-                pendingIntent
-            )
-            
+
+            // Cancel any existing alarm before setting new one
+            alarmManager.cancel(pendingIntent)
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                alarmManager.setExactAndAllowWhileIdle(
+                    AlarmManager.RTC_WAKEUP,
+                    System.currentTimeMillis() + interval,
+                    pendingIntent
+                )
+            } else {
+                alarmManager.setExact(
+                    AlarmManager.RTC_WAKEUP,
+                    System.currentTimeMillis() + interval,
+                    pendingIntent
+                )
+            }
+
             Sentry.addBreadcrumb(Breadcrumb().apply {
                 category = "widget"
-                message = "Widget periodic updates scheduled"
+                message = "Widget update scheduled in ${interval / 60_000} min (live=$isLive)"
                 level = SentryLevel.INFO
             })
         } catch (e: Exception) {
@@ -103,29 +130,49 @@ object WidgetUpdateWorker {
                 message = "Widget update triggered"
                 level = SentryLevel.INFO
             })
-            
-            // Fetch latest match data from cache
-            val matchData = fetchLatestMatchData(context)
-            
-            if (matchData != null) {
-                // Update Glance home screen widget
-                updateGlanceWidget(context, matchData)
-                
-                // Update lock screen widget
-                updateLockScreenWidget(context, matchData)
-                
-                // Update legacy AppWidget
-                updateLegacyWidget(context, matchData)
-                
-                Sentry.addBreadcrumb(Breadcrumb().apply {
-                    category = "widget"
-                    message = "All widgets updated successfully"
-                    level = SentryLevel.INFO
-                })
-            }
+
+            val matchData = fetchLatestMatchData(context) ?: buildStaleDataFallback(context)
+
+            updateGlanceWidget(context, matchData)
+            updateLockScreenWidget(context, matchData)
+            updateLegacyWidget(context, matchData)
+
+            // Persist timestamp so next fallback can compute "last updated X min ago"
+            context.getSharedPreferences(PREFS_WIDGET_CACHE, Context.MODE_PRIVATE)
+                .edit().putLong(KEY_LAST_UPDATE, System.currentTimeMillis()).apply()
+
+            Sentry.addBreadcrumb(Breadcrumb().apply {
+                category = "widget"
+                message = "All widgets updated successfully"
+                level = SentryLevel.INFO
+            })
         } catch (e: Exception) {
             Sentry.captureException(e)
+        } finally {
+            // Reschedule with the correct live/idle interval after every run
+            scheduleAdaptiveUpdate(context)
         }
+    }
+
+    /** Returns a placeholder when SharedPrefs hold no cached match. */
+    private fun buildStaleDataFallback(context: Context): MatchWidgetData {
+        val prefs = context.getSharedPreferences(PREFS_WIDGET_CACHE, Context.MODE_PRIVATE)
+        val lastUpdate = prefs.getLong(KEY_LAST_UPDATE, 0L)
+        val statusText = if (lastUpdate > 0L) {
+            val minAgo = abs(System.currentTimeMillis() - lastUpdate) / 60_000
+            "No data · updated ${minAgo}m ago"
+        } else {
+            "No data available"
+        }
+        return MatchWidgetData(
+            team1Name   = prefs.getString("team1_name", "--") ?: "--",
+            team1Score  = prefs.getString("team1_score", "-") ?: "-",
+            team2Name   = prefs.getString("team2_name", "--") ?: "--",
+            team2Score  = prefs.getString("team2_score", "-") ?: "-",
+            matchStatus = statusText,
+            isLive      = false,
+            winProbability = prefs.getFloat("win_probability", 0.5f)
+        )
     }
 
     private fun fetchLatestMatchData(context: Context): MatchWidgetData? {

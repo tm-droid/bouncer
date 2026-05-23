@@ -176,10 +176,17 @@ object FavouriteTeamsManager {
 
     private fun save(list: List<String>) {
         try {
-            _favourites.value = list
+            // Persist first so a process kill between disk + StateFlow doesn't lose state.
             val json = gson.toJson(list)
             prefs.edit().putString(KEY, json).apply()
-            scope.launch { AppwriteFavouritesSync.push(list) }
+            _favourites.value = list
+            scope.launch {
+                try {
+                    AppwriteFavouritesSync.push(list)
+                } catch (e: Exception) {
+                    Sentry.captureException(e)
+                }
+            }
         } catch (e: Exception) {
             Sentry.captureException(e)
             throw e

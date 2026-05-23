@@ -14,13 +14,16 @@ import io.sentry.Sentry
  * Weights are initialized with He initialization for ReLU layers and
  * Xavier initialization for the sigmoid output layer.
  *
- * Thread Safety: NOT thread-safe. External synchronization required for
- * concurrent access during training.
+ * Thread Safety: read (forward) is lock-free; write (applyGradients) takes the
+ * weightLock so concurrent forward passes during training can't see torn weights.
+ * forwardWithCache + backward must run under the same lock when training.
  */
 class ScorePredictionModel private constructor(
     private val layers: List<DenseLayer>,
     private val activations: List<Activation>
 ) {
+    private val weightLock = Any()
+
     /**
      * Forward pass through the network.
      *
@@ -29,12 +32,14 @@ class ScorePredictionModel private constructor(
      */
     fun forward(input: DoubleArray): DoubleArray {
         try {
-            var current = input
-            for (i in layers.indices) {
-                current = layers[i].forward(current)
-                current = activations[i].forward(current)
+            synchronized(weightLock) {
+                var current = input
+                for (i in layers.indices) {
+                    current = layers[i].forward(current)
+                    current = activations[i].forward(current)
+                }
+                return current
             }
-            return current
         } catch (e: Exception) {
             Sentry.captureException(e)
             throw e
@@ -121,8 +126,10 @@ class ScorePredictionModel private constructor(
      */
     fun applyGradients(gradients: List<LayerGradients>, learningRate: Double) {
         try {
-            for (i in layers.indices) {
-                layers[i].applyGradients(gradients[i], learningRate)
+            synchronized(weightLock) {
+                for (i in layers.indices) {
+                    layers[i].applyGradients(gradients[i], learningRate)
+                }
             }
         } catch (e: Exception) {
             Sentry.captureException(e)

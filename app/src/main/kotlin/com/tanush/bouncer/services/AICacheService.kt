@@ -18,9 +18,15 @@ import java.util.Date
 
 object AICacheService {
     private const val TAG = "AICacheService"
+    private const val MAX_MEMORY_ENTRIES = 256
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val mutex = Mutex()
-    private val cache = mutableMapOf<String, CommentaryEntry>()
+    // LinkedHashMap with access-order = true gives us LRU semantics for free.
+    private val cache: LinkedHashMap<String, CommentaryEntry> =
+        object : LinkedHashMap<String, CommentaryEntry>(MAX_MEMORY_ENTRIES, 0.75f, true) {
+            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, CommentaryEntry>?): Boolean =
+                size > MAX_MEMORY_ENTRIES
+        }
     private var dao: AICacheDao? = null
 
     private data class CommentaryEntry(
@@ -103,7 +109,12 @@ object AICacheService {
             cache[key] = CommentaryEntry(commentary, now)
             dao?.insert(AICommentaryCacheEntity(key, commentary, now.time))
             scope.launch {
-                AppwriteAICache.set(key, commentary)
+                try {
+                    AppwriteAICache.set(key, commentary)
+                } catch (e: Exception) {
+                    Log.w(TAG, "Appwrite AI cache sync failed for key=$key", e)
+                    Sentry.captureException(e)
+                }
             }
         } catch (e: Exception) {
             Sentry.captureException(e)

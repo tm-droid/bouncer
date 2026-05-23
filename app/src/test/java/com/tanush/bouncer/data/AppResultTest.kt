@@ -86,7 +86,7 @@ class AppResultTest {
     @Test
     fun `onError called for Error`() {
         var called = false
-        AppResult.Error(AppException.ApiException(500)).onError { _, _ -> called = true }
+        AppResult.Error(AppException.ApiException(500)).onError { _ -> called = true }
         assertTrue(called)
     }
 

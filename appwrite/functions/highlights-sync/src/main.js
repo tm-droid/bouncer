@@ -17,15 +17,18 @@ export default async ({ req, res, log, error }) => {
   const db = new Databases(client);
 
   // ── Midnight reset ──────────────────────────────────────────────────────
-  // Tracks fetch_date. When date changes, last_fetch_at is treated as 0 so
-  // the cycle restarts fresh. The highlight cache is never cleared here.
   const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
 
-  // ── Check Cricbuzz for live / recently completed matches ────────────────
-  // Fail-open: if API call errors, proceed with highlights fetch.
-  const hasRelevantMatches = await checkForLiveOrRecentMatches(RAPIDAPI_KEY, log, error);
-
-  if (!hasRelevantMatches) {
+  // ── Fail-CLOSED Cricbuzz gate ──────────────────────────────────────────
+  // Old behavior assumed live matches when the API errored; that re-upserted
+  // yesterday's highlights every run. Now we skip the fetch unless we
+  // positively confirm relevant matches exist.
+  const gate = await checkForLiveOrRecentMatches(RAPIDAPI_KEY, log, error);
+  if (!gate.confirmed) {
+    log(`Cricbuzz gate not confirmed (${gate.reason}) — skipping fetch`);
+    return res.json({ skipped: true, reason: gate.reason });
+  }
+  if (!gate.hasRelevantMatches) {
     log("No live/recent matches — skipping Highlightly fetch (counter not consumed)");
     return res.json({ skipped: true, reason: "no_live_matches" });
   }
@@ -40,20 +43,23 @@ export default async ({ req, res, log, error }) => {
   // ── Upsert each highlight into Appwrite DB ──────────────────────────────
   const now = Date.now();
   let upserted = 0;
+  const failed = [];
   for (const h of highlights) {
     const docId = `hl-${h.id}`;
     const payload = buildPayload(h, now);
     try {
       // Try update first (cheaper on conflict); fall back to create
       await db.updateDocument(HIGHLIGHTS_DB_ID, HIGHLIGHTS_COL_ID, docId, payload);
+      upserted++;
     } catch (_) {
       try {
         await db.createDocument(HIGHLIGHTS_DB_ID, HIGHLIGHTS_COL_ID, docId, payload, ["read(\"any\")"]);
+        upserted++;
       } catch (e2) {
+        failed.push({ id: h.id, message: e2?.message });
         error(`Failed to upsert highlight ${h.id}: ${e2?.message}`);
       }
     }
-    upserted++;
   }
 
   // ── Persist fetch state for midnight reset tracking ─────────────────────
@@ -62,18 +68,26 @@ export default async ({ req, res, log, error }) => {
     try {
       await db.updateDocument(HIGHLIGHTS_DB_ID, META_COL_ID, "fetch-state", metaPayload);
     } catch (_) {
-      await db.createDocument(HIGHLIGHTS_DB_ID, META_COL_ID, "fetch-state", metaPayload).catch(() => {});
+      try {
+        await db.createDocument(HIGHLIGHTS_DB_ID, META_COL_ID, "fetch-state", metaPayload);
+      } catch (e3) {
+        error(`Failed to persist fetch-state meta: ${e3?.message}`);
+      }
     }
   }
 
-  log(`Upserted ${upserted} highlights for ${today}`);
-  return res.json({ upserted, date: today });
+  log(`Upserted ${upserted} highlights for ${today}; ${failed.length} failures`);
+  return res.json({ upserted, failed: failed.length, date: today });
 };
 
+/**
+ * Returns:
+ *   { confirmed: false, reason }                       — we can't trust the answer; caller should skip
+ *   { confirmed: true, hasRelevantMatches: boolean }   — authoritative answer
+ */
 async function checkForLiveOrRecentMatches(rapidApiKey, log, error) {
   if (!rapidApiKey) {
-    log("RAPIDAPI_KEY not set — assuming live matches exist (fail-open)");
-    return true;
+    return { confirmed: false, reason: "missing_rapidapi_key" };
   }
 
   try {
@@ -88,17 +102,15 @@ async function checkForLiveOrRecentMatches(rapidApiKey, log, error) {
     );
 
     if (!response.ok) {
-      log(`Cricbuzz API returned ${response.status} — proceeding (fail-open)`);
-      return true;
+      return { confirmed: false, reason: `cricbuzz_http_${response.status}` };
     }
 
     const data = await response.json();
     const now = Date.now();
     const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
 
-    // Parse both flat arrays and Cricbuzz's nested typeMatches structure
     const matches = extractMatches(data);
-    return matches.some(m => {
+    const hasRelevantMatches = matches.some(m => {
       const state = (m.state ?? m.status ?? "").toLowerCase();
       if (state === "in progress" || state === "live") return true;
       if (state === "complete" || state === "completed") {
@@ -107,16 +119,15 @@ async function checkForLiveOrRecentMatches(rapidApiKey, log, error) {
       }
       return false;
     });
+    return { confirmed: true, hasRelevantMatches };
   } catch (e) {
-    error(`Cricbuzz check failed: ${e?.message} — proceeding (fail-open)`);
-    return true;
+    error(`Cricbuzz check failed: ${e?.message}`);
+    return { confirmed: false, reason: "cricbuzz_exception" };
   }
 }
 
 function extractMatches(data) {
-  // Handle flat array
   if (Array.isArray(data)) return data;
-  // Handle Cricbuzz nested: { typeMatches: [{ seriesMatches: [{ seriesAdWrapper: { matches: [] } }] }] }
   const results = [];
   for (const type of (data.typeMatches ?? [])) {
     for (const series of (type.seriesMatches ?? [])) {
@@ -129,6 +140,10 @@ function extractMatches(data) {
   return results;
 }
 
+/**
+ * Pull highlights for a date. Validates the response shape and explicitly
+ * logs which shape matched (or "unknown") so silent format drift is visible.
+ */
 async function fetchHighlights(today, highlightlyApiKey, log, error) {
   if (!highlightlyApiKey) {
     error("HIGHLIGHTLY_API_KEY not set — cannot fetch highlights");
@@ -136,15 +151,15 @@ async function fetchHighlights(today, highlightlyApiKey, log, error) {
   }
 
   try {
-    const response = await fetch(
-      `https://cricket-highlights-api.p.rapidapi.com/highlights?date=${today}`,
-      {
-        headers: {
-          "X-RapidAPI-Key": highlightlyApiKey,
-          "X-RapidAPI-Host": "cricket-highlights-api.p.rapidapi.com",
-        },
-      }
-    );
+    const url = `https://cricket-highlights-api.p.rapidapi.com/highlights?date=${today}`;
+    log(`Fetching: ${url}`);
+    const response = await fetch(url, {
+      headers: {
+        "x-rapidapi-key": highlightlyApiKey,
+        "x-rapidapi-host": "cricket-highlights-api.p.rapidapi.com",
+        "Content-Type": "application/json",
+      },
+    });
 
     if (!response.ok) {
       error(`Highlightly API returned ${response.status}`);
@@ -152,15 +167,31 @@ async function fetchHighlights(today, highlightlyApiKey, log, error) {
     }
 
     const data = await response.json();
-    const raw = Array.isArray(data) ? data : (data.highlights ?? data.data ?? data.results ?? []);
-    if (raw.length === 0) {
-      log(`Highlightly 0 results — response keys: ${Array.isArray(data) ? "[array]" : Object.keys(data).join(", ")}`);
+    const extracted = extractHighlights(data);
+    if (!extracted.matched) {
+      error(`Highlightly response shape unknown — top-level keys: ${
+        Array.isArray(data) ? "[array]" : Object.keys(data).join(", ")
+      }`);
+      return [];
     }
-    return raw;
+    if (extracted.items.length === 0) {
+      log(`Highlightly 0 results (shape=${extracted.shape})`);
+    } else {
+      log(`Highlightly returned ${extracted.items.length} items (shape=${extracted.shape})`);
+    }
+    return extracted.items;
   } catch (e) {
     error(`Highlightly fetch failed: ${e?.message}`);
     return [];
   }
+}
+
+function extractHighlights(data) {
+  if (Array.isArray(data)) return { matched: true, shape: "array", items: data };
+  if (Array.isArray(data?.highlights)) return { matched: true, shape: "highlights", items: data.highlights };
+  if (Array.isArray(data?.data)) return { matched: true, shape: "data", items: data.data };
+  if (Array.isArray(data?.results)) return { matched: true, shape: "results", items: data.results };
+  return { matched: false, shape: "unknown", items: [] };
 }
 
 function buildPayload(h, now) {

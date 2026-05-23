@@ -61,8 +61,22 @@ class ScorePollingWorker(
                     })
 
                     // Adaptive polling: chain a 5-min follow-up while live matches exist.
-                    // When no live matches, the chain stops and 15-min periodic takes over.
-                    if (matchCount > 0) enqueueLiveFollowUp(context)
+                    // Cap at MAX_LIVE_FOLLOWUPS (1 hour) so an API that never marks the match
+                    // completed can't lock us into a permanent 5-min poll cycle. Counter resets
+                    // whenever no live matches are present.
+                    val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                    if (matchCount > 0) {
+                        val count = prefs.getInt(KEY_FOLLOWUP_COUNT, 0)
+                        if (count < MAX_LIVE_FOLLOWUPS) {
+                            prefs.edit().putInt(KEY_FOLLOWUP_COUNT, count + 1).apply()
+                            enqueueLiveFollowUp(context)
+                        } else {
+                            Log.w(TAG, "Live follow-up cap reached ($MAX_LIVE_FOLLOWUPS); falling back to periodic poll")
+                            prefs.edit().remove(KEY_FOLLOWUP_COUNT).apply()
+                        }
+                    } else {
+                        prefs.edit().remove(KEY_FOLLOWUP_COUNT).apply()
+                    }
 
                     Result.success(workDataOf("match_count" to matchCount))
                 }
@@ -135,6 +149,8 @@ class ScorePollingWorker(
         private const val ONE_TIME_WORK_TAG = "score_polling_once"
         private const val PREFS_NAME = "score_polling_cache"
         private const val MAX_RETRIES = 3
+        private const val MAX_LIVE_FOLLOWUPS = 12 // 12 × 5 min = 1 hour cap
+        private const val KEY_FOLLOWUP_COUNT = "live_followup_count"
 
         const val ACTION_SCORES_UPDATED =
             "com.tanush.bouncer.action.SCORES_UPDATED"

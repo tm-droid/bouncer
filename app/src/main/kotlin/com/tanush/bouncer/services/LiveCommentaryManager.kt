@@ -31,6 +31,7 @@ class LiveCommentaryManager(
     private val commentaryHistory = mutableListOf<String>()
     private val historyLimit = 10
     private val aiCommentaryHistory = mutableListOf<String>()
+    private val aiHistoryLimit = 50
     
     // Tracks the last ball number notified to avoid double alerts (e.g., "18.5")
     private val lastNotifiedBallMap = mutableMapOf<String, String>()
@@ -276,7 +277,10 @@ class LiveCommentaryManager(
         } else {
             aiCommentaryHistory.add(resultValue)
         }
-        
+
+        // Trim to a bounded window so long matches don't accumulate hundreds of balls.
+        while (aiCommentaryHistory.size > aiHistoryLimit) aiCommentaryHistory.removeAt(0)
+
         // Notification Logic - MAGIC PRECISION
         try {
             // 1. Only notify for ball-by-ball commentary
@@ -357,6 +361,7 @@ class LiveCommentaryManager(
                 if (!aiCommentaryHistory.contains(line)) aiCommentaryHistory.add(line)
             }
         }
+        while (aiCommentaryHistory.size > aiHistoryLimit) aiCommentaryHistory.removeAt(0)
     }
 
     fun getSeededHistory(): List<String> = aiCommentaryHistory.toList().reversed()
