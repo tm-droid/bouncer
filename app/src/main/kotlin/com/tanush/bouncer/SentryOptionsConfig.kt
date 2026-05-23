@@ -78,30 +78,43 @@ class SentryOptionsConfig : Sentry.OptionsConfiguration<SentryAndroidOptions> {
     }
 
     /**
-     * Returns true for events that are non-actionable noise and should be
-     * silently dropped to preserve Sentry quota and keep the Issues feed clean.
+     * Returns true for events that are non-actionable noise and should be silently dropped
+     * to preserve Sentry quota and keep the Issues feed clean.
+     *
+     * Visible for testing: `internal` so unit tests in the same module can call it directly
+     * without reflection, giving regression coverage on the noise-filter rules.
      */
-    private fun shouldDropEvent(event: SentryEvent): Boolean {
+    internal fun shouldDropEvent(event: SentryEvent): Boolean {
         val exceptions = event.exceptions ?: return false
 
         for (sentryException in exceptions) {
             val type = sentryException.type ?: ""
             val value = sentryException.value ?: ""
 
-            // 1. Benign cancellations (Coil image loads, OkHttp lifecycle)
-            if (type == "IOException" && value in IGNORED_EXCEPTION_MESSAGES) return true
+            // 1. Benign cancellations (Coil image loads, OkHttp lifecycle, coroutines)
+            //    - type check: catches JobCancellationException, CancellationException, etc.
+            //    - value fallback: catches cases where the SDK stores a fully-qualified class
+            //      name or wraps the exception so the type field doesn't match the simple name.
+            //    - IGNORED_EXCEPTION_MESSAGES also covers SocketException (IOException subclass):
+            //      Sentry serializes the actual runtime type ("SocketException"), not "IOException".
+            if (value in IGNORED_EXCEPTION_MESSAGES) return true
             if (type.endsWith("CancellationException")) return true
+            if (value.contains("was cancelled")) return true
             if (type == "UnknownHostException") return true
+            // HTTP/2 stream cancelled mid-flight — always a lifecycle/nav event, never actionable
+            if (type == "StreamResetException") return true
 
             // 2. Non-actionable scraping / API errors
+            //    HttpStatusException is Jsoup's typed exception (subclass of IOException).
+            //    The Sentry SDK serializes the simple class name as `type`, so guard on type
+            //    directly as well as on the message substring — belt-and-suspenders.
+            if (type == "HttpStatusException") return true
             for (substring in IGNORED_MESSAGE_SUBSTRINGS) {
                 if (value.contains(substring)) return true
             }
 
-            // 3. Emulator IPv6 connection failures to Sentry itself
-            if (type == "ConnectException" && value.contains("ingest") && value.contains("sentry.io")) {
-                return true
-            }
+            // 3. TCP connection failures — always network-layer, never an actionable code bug
+            if (type == "ConnectException") return true
         }
 
         return false

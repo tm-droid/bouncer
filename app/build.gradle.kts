@@ -14,13 +14,16 @@ if (localPropertiesFile.exists()) {
     localPropertiesFile.inputStream().use { localProperties.load(it) }
 }
 
-// Redirect build outputs to ~/Library/Caches so they live outside the iCloud-synced
-// Documents folder.  iCloud modifies file metadata on every sync, which invalidates
-// Gradle's incremental task outputs and forces mergeResources / dex / etc. to re-run
-// from scratch on every single build.
-layout.buildDirectory.set(
-    file("${System.getProperty("user.home")}/Library/Caches/bouncer-android/app")
-)
+// On macOS, redirect build outputs to ~/Library/Caches to avoid iCloud-synced Documents.
+// iCloud modifies file metadata on every sync, invalidating Gradle's incremental task
+// outputs and forcing mergeResources / dex / etc. to re-run from scratch every build.
+// On Linux (CI), leave the build directory at the default (./app/build) so artifact
+// upload paths in the CI workflow remain correct.
+if (System.getProperty("os.name").lowercase().contains("mac")) {
+    layout.buildDirectory.set(
+        file("${System.getProperty("user.home")}/Library/Caches/bouncer-android/app")
+    )
+}
 
 android {
     namespace = "com.tanush.bouncer"

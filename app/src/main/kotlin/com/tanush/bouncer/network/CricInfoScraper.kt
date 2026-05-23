@@ -47,9 +47,9 @@ class CricInfoScraper {
         val now = System.currentTimeMillis()
         val openUntil = circuitOpenUntil.get()
         if (now < openUntil) return true
-        // Half-open transition: clear failure counter so the next attempt
-        // starts from zero and the breaker doesn't re-trip on first error.
-        if (openUntil != 0L && consecutiveFailures.get() > 0) {
+        // Half-open: clear timer atomically so this block only fires once per cycle,
+        // then reset failure counter so a single new failure doesn't immediately re-trip.
+        if (openUntil != 0L && circuitOpenUntil.compareAndSet(openUntil, 0L)) {
             consecutiveFailures.set(0)
         }
         return false
@@ -165,8 +165,10 @@ class CricInfoScraper {
             return@withContext commentaryExists
         } catch (e: Exception) {
             Log.e(TAG, "Error checking commentary availability for matchId=$matchId: ${e.message}")
+            // recordFailure captures to Sentry at the circuit-breaker threshold (throttled).
+            // Do NOT call captureException again here — that causes double-reporting and
+            // bypasses the per-window throttle, producing bursts of identical events.
             recordFailure(e)
-            Sentry.captureException(e)
             Sentry.addBreadcrumb(Breadcrumb().apply {
                 category = "network.cricinfo"
                 message = "Error checking commentary availability"
@@ -281,8 +283,10 @@ class CricInfoScraper {
             commentaryLines
         } catch (e: Exception) {
             Log.e(TAG, "Error fetching Cricinfo commentary from URL: $matchUrl: ${e.message}")
+            // recordFailure captures to Sentry at the circuit-breaker threshold (throttled).
+            // Do NOT call captureException again here — that causes double-reporting and
+            // bypasses the per-window throttle, producing bursts of identical events.
             recordFailure(e)
-            Sentry.captureException(e)
             Sentry.addBreadcrumb(Breadcrumb().apply {
                 category = "network.cricinfo"
                 message = "Error fetching commentary"
@@ -380,8 +384,10 @@ class CricInfoScraper {
         } catch (e: Exception) {
             Log.e(TAG, "Error finding match: ${e.message}")
             if (e is CancellationException) throw e
+            // recordFailure captures to Sentry at the circuit-breaker threshold (throttled).
+            // Do NOT call captureException again here — that causes double-reporting and
+            // bypasses the per-window throttle, producing bursts of identical events.
             recordFailure(e)
-            Sentry.captureException(e)
 
             Sentry.addBreadcrumb(Breadcrumb().apply {
                 category = "network.cricinfo"
