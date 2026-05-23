@@ -101,20 +101,18 @@ class SentryOptionsConfig : Sentry.OptionsConfiguration<SentryAndroidOptions> {
             if (type.endsWith("CancellationException")) return true
             if (value.contains("was cancelled")) return true
             if (type == "UnknownHostException") return true
-            // HTTP/2 stream cancelled mid-flight — always a lifecycle/nav event, never actionable
-            if (type == "StreamResetException") return true
+            // HTTP/2 stream reset — only drop benign codes; INTERNAL_ERROR/PROTOCOL_ERROR are bugs
+            if (type == "StreamResetException" &&
+                (value.contains("NO_ERROR") || value.contains("CANCEL") || value.contains("REFUSED_STREAM"))
+            ) return true
 
-            // 2. Non-actionable scraping / API errors
-            //    HttpStatusException is Jsoup's typed exception (subclass of IOException).
-            //    The Sentry SDK serializes the simple class name as `type`, so guard on type
-            //    directly as well as on the message substring — belt-and-suspenders.
-            if (type == "HttpStatusException") return true
+            // 2. Non-actionable scraping / API errors (403/429 message substrings cover HttpStatusException)
             for (substring in IGNORED_MESSAGE_SUBSTRINGS) {
                 if (value.contains(substring)) return true
             }
 
-            // 3. TCP connection failures — always network-layer, never an actionable code bug
-            if (type == "ConnectException") return true
+            // 3. Sentry-ingest connection failures only — ConnectException to owned backends is actionable
+            if (type == "ConnectException" && value.contains("sentry.io")) return true
         }
 
         return false

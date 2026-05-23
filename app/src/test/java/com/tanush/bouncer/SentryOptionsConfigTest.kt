@@ -92,9 +92,10 @@ class SentryOptionsConfigTest {
     }
 
     @Test
-    fun `ConnectException to non-Sentry host is dropped`() {
+    fun `ConnectException to non-Sentry host is NOT dropped`() {
+        // ConnectException to owned/third-party backends (Appwrite, RapidAPI, etc.) is actionable.
         val event = buildEvent("ConnectException" to "Failed to connect to api-iota-jade.vercel.app/64.29.17.195:443")
-        assertTrue(config.shouldDropEvent(event))
+        assertFalse(config.shouldDropEvent(event))
     }
 
     // ── Scraping / billing noise ─────────────────────────────────────────────
@@ -145,12 +146,38 @@ class SentryOptionsConfigTest {
     }
 
     @Test
-    fun `StreamResetException with other value is dropped`() {
+    fun `StreamResetException NO_ERROR is dropped`() {
         val event = buildEvent("StreamResetException" to "stream was reset: NO_ERROR")
         assertTrue(config.shouldDropEvent(event))
     }
 
+    @Test
+    fun `StreamResetException REFUSED_STREAM is dropped`() {
+        val event = buildEvent("StreamResetException" to "stream was reset: REFUSED_STREAM")
+        assertTrue(config.shouldDropEvent(event))
+    }
+
+    @Test
+    fun `StreamResetException INTERNAL_ERROR is NOT dropped`() {
+        // INTERNAL_ERROR and PROTOCOL_ERROR indicate real bugs, not lifecycle noise.
+        val event = buildEvent("StreamResetException" to "stream was reset: INTERNAL_ERROR")
+        assertFalse(config.shouldDropEvent(event))
+    }
+
     // ── Real errors must NOT be dropped ─────────────────────────────────────
+
+    @Test
+    fun `HttpStatusException with Status=500 is NOT dropped`() {
+        // Only 403/429 substrings are in IGNORED_MESSAGE_SUBSTRINGS; server errors are bugs.
+        val event = buildEvent("HttpStatusException" to "HTTP error fetching URL. Status=500, URL=[https://www.espncricinfo.com/]")
+        assertFalse(config.shouldDropEvent(event))
+    }
+
+    @Test
+    fun `ConnectException to Appwrite backend is NOT dropped`() {
+        val event = buildEvent("ConnectException" to "Failed to connect to sgp.cloud.appwrite.io/34.87.56.12:443")
+        assertFalse(config.shouldDropEvent(event))
+    }
 
     @Test
     fun `NullPointerException is not dropped`() {
