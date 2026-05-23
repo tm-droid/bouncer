@@ -95,7 +95,9 @@ class SentryOptionsConfig : Sentry.OptionsConfiguration<SentryAndroidOptions> {
             //    - type check: catches JobCancellationException, CancellationException, etc.
             //    - value fallback: catches cases where the SDK stores a fully-qualified class
             //      name or wraps the exception so the type field doesn't match the simple name.
-            if (type == "IOException" && value in IGNORED_EXCEPTION_MESSAGES) return true
+            //    - IGNORED_EXCEPTION_MESSAGES also covers SocketException (IOException subclass):
+            //      Sentry serializes the actual runtime type ("SocketException"), not "IOException".
+            if (value in IGNORED_EXCEPTION_MESSAGES) return true
             if (type.endsWith("CancellationException")) return true
             if (value.contains("was cancelled")) return true
             if (type == "UnknownHostException") return true
