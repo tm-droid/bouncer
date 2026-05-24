@@ -55,6 +55,9 @@ enum class SheetState {
     EXPANDED
 }
 
+private const val FLING_VELOCITY_THRESHOLD = 1000f
+private const val DRAG_DISTANCE_THRESHOLD = 50f
+
 private val SheetEnterTransition = slideInVertically(
     initialOffsetY = { it },
     animationSpec = spring(dampingRatio = 0.75f)
@@ -104,6 +107,72 @@ private fun SheetSurface(
     )
 }
 
+private data class DraggableSheetOffsets(
+    val hidden: Float,
+    val peek: Float,
+    val half: Float,
+    val expanded: Float
+) {
+    fun offsetFor(state: SheetState): Float = when (state) {
+        SheetState.HIDDEN -> hidden
+        SheetState.PEEK -> peek
+        SheetState.HALF -> half
+        SheetState.EXPANDED -> expanded
+    }
+
+    fun closestState(currentOffset: Float): SheetState {
+        val candidates = listOf(
+            SheetState.HIDDEN to hidden,
+            SheetState.PEEK to peek,
+            SheetState.HALF to half,
+            SheetState.EXPANDED to expanded
+        )
+        return candidates.minByOrNull { kotlin.math.abs(it.second - currentOffset) }?.first
+            ?: SheetState.HALF
+    }
+}
+
+private fun resolveDragEndState(
+    currentState: SheetState,
+    fallback: SheetState,
+    velocity: Float
+): SheetState {
+    if (velocity > FLING_VELOCITY_THRESHOLD && currentState != SheetState.HIDDEN) {
+        return when (currentState) {
+            SheetState.EXPANDED -> SheetState.HALF
+            SheetState.HALF -> SheetState.PEEK
+            SheetState.PEEK -> SheetState.HIDDEN
+            else -> fallback
+        }
+    }
+    if (velocity < -FLING_VELOCITY_THRESHOLD && currentState != SheetState.EXPANDED) {
+        return when (currentState) {
+            SheetState.PEEK -> SheetState.HALF
+            SheetState.HALF -> SheetState.EXPANDED
+            else -> fallback
+        }
+    }
+    return fallback
+}
+
+@Composable
+private fun SheetBackdrop(
+    isVisible: Boolean,
+    enableBlur: Boolean,
+    onDismiss: () -> Unit
+) {
+    if (enableBlur) {
+        BlurBackdrop(isVisible = isVisible, onDismiss = onDismiss)
+        return
+    }
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = if (isVisible) 0.5f else 0f))
+            .clickable(enabled = isVisible) { onDismiss() }
+    )
+}
+
 @Composable
 fun DraggableBottomSheet(
     isVisible: Boolean,
@@ -121,116 +190,71 @@ fun DraggableBottomSheet(
     val view = LocalView.current
     val scope = rememberCoroutineScope()
 
-    val peekHeightPx = with(density) { peekHeight.toPx() }
-    val halfHeightPx = with(density) { (screenHeight * 0.5f).toPx() }
-    val expandedHeightPx = with(density) { (screenHeight * 0.9f).toPx() }
     val screenPx = with(density) { screenHeight.toPx() }
+    val offsets = DraggableSheetOffsets(
+        hidden = screenPx,
+        peek = screenPx - with(density) { peekHeight.toPx() },
+        half = screenPx - with(density) { (screenHeight * 0.5f).toPx() },
+        expanded = screenPx - with(density) { (screenHeight * 0.9f).toPx() }
+    )
 
     var currentState by remember { mutableStateOf(if (isVisible) initialState else SheetState.HIDDEN) }
-
-    val targetOffset = when (currentState) {
-        SheetState.HIDDEN -> screenPx
-        SheetState.PEEK -> screenPx - peekHeightPx
-        SheetState.HALF -> screenPx - halfHeightPx
-        SheetState.EXPANDED -> screenPx - expandedHeightPx
-    }
+    var dragOffset by remember { mutableFloatStateOf(0f) }
 
     val animatedOffset by animateFloatAsState(
-        targetValue = targetOffset,
+        targetValue = offsets.offsetFor(currentState),
         animationSpec = spring(dampingRatio = 0.75f, stiffness = 400f),
         label = "sheetOffset"
     )
-
-    var dragOffset by remember { mutableFloatStateOf(0f) }
 
     fun performHaptic() {
         if (enableHaptics) view.safeHaptic()
     }
 
-    fun findClosestState(currentOffset: Float): SheetState {
-        val offsets = mapOf(
-            SheetState.HIDDEN to screenPx,
-            SheetState.PEEK to screenPx - peekHeightPx,
-            SheetState.HALF to screenPx - halfHeightPx,
-            SheetState.EXPANDED to screenPx - expandedHeightPx
-        )
-        return offsets.minByOrNull { kotlin.math.abs(it.value - currentOffset) }?.key ?: SheetState.HALF
-    }
-
     LaunchedEffect(isVisible) {
-        if (isVisible && currentState == SheetState.HIDDEN) {
-            currentState = initialState
-        } else if (!isVisible) {
-            currentState = SheetState.HIDDEN
+        currentState = when {
+            isVisible && currentState == SheetState.HIDDEN -> initialState
+            !isVisible -> SheetState.HIDDEN
+            else -> currentState
         }
     }
 
-    if (isVisible || currentState != SheetState.HIDDEN) {
-        Box(modifier = Modifier.fillMaxSize()) {
-            if (enableBlurBackdrop) {
-                BlurBackdrop(
-                    isVisible = currentState != SheetState.HIDDEN,
-                    onDismiss = {
-                        performHaptic()
-                        onDismiss()
+    if (!isVisible && currentState == SheetState.HIDDEN) return
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        SheetBackdrop(
+            isVisible = currentState != SheetState.HIDDEN,
+            enableBlur = enableBlurBackdrop,
+            onDismiss = {
+                performHaptic()
+                onDismiss()
+            }
+        )
+
+        SheetSurface(
+            modifier = modifier
+                .fillMaxWidth()
+                .fillMaxHeight()
+                .offset { IntOffset(0, (animatedOffset + dragOffset).roundToInt()) }
+                .draggable(
+                    orientation = Orientation.Vertical,
+                    state = rememberDraggableState { delta -> dragOffset += delta },
+                    onDragStopped = { velocity ->
+                        val fallback = offsets.closestState(animatedOffset + dragOffset)
+                        val adjustedState = resolveDragEndState(currentState, fallback, velocity)
+
+                        if (adjustedState != currentState) performHaptic()
+
+                        currentState = adjustedState
+                        dragOffset = 0f
+
+                        if (currentState == SheetState.HIDDEN) onDismiss()
                     }
                 )
-            } else {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(Color.Black.copy(alpha = if (currentState != SheetState.HIDDEN) 0.5f else 0f))
-                        .clickable(enabled = currentState != SheetState.HIDDEN) {
-                            performHaptic()
-                            onDismiss()
-                        }
-                )
-            }
-
-            SheetSurface(
-                modifier = modifier
-                    .fillMaxWidth()
-                    .fillMaxHeight()
-                    .offset { IntOffset(0, (animatedOffset + dragOffset).roundToInt()) }
-                    .draggable(
-                        orientation = Orientation.Vertical,
-                        state = rememberDraggableState { delta -> dragOffset += delta },
-                        onDragStopped = { velocity ->
-                            val newOffset = animatedOffset + dragOffset
-                            val newState = findClosestState(newOffset)
-
-                            val adjustedState = when {
-                                velocity > 1000f && currentState != SheetState.HIDDEN -> {
-                                    when (currentState) {
-                                        SheetState.EXPANDED -> SheetState.HALF
-                                        SheetState.HALF -> SheetState.PEEK
-                                        SheetState.PEEK -> SheetState.HIDDEN
-                                        else -> newState
-                                    }
-                                }
-                                velocity < -1000f && currentState != SheetState.EXPANDED -> {
-                                    when (currentState) {
-                                        SheetState.PEEK -> SheetState.HALF
-                                        SheetState.HALF -> SheetState.EXPANDED
-                                        else -> newState
-                                    }
-                                }
-                                else -> newState
-                            }
-
-                            if (adjustedState != currentState) performHaptic()
-
-                            currentState = adjustedState
-                            dragOffset = 0f
-
-                            if (currentState == SheetState.HIDDEN) onDismiss()
-                        }
-                    )
-            ) {
-                Column(modifier = Modifier.fillMaxSize()) {
-                    SheetHandle(modifier = Modifier.padding(vertical = 12.dp))
-                    sheetContent()
-                }
+        ) {
+            Column(modifier = Modifier.fillMaxSize()) {
+                SheetHandle(modifier = Modifier.padding(vertical = 12.dp))
+                sheetContent()
             }
         }
     }
@@ -266,6 +290,70 @@ fun BlurBackdrop(
                 )
                 .clickable(enabled = isVisible) { onDismiss() }
         )
+    }
+}
+
+private fun nextStateOnDragUp(current: SheetState): SheetState = when (current) {
+    SheetState.PEEK -> SheetState.HALF
+    SheetState.HALF -> SheetState.EXPANDED
+    else -> current
+}
+
+private fun nextStateOnDragDown(current: SheetState, onDismiss: () -> Unit): SheetState =
+    when (current) {
+        SheetState.EXPANDED -> SheetState.HALF
+        SheetState.HALF -> SheetState.PEEK
+        SheetState.PEEK -> {
+            onDismiss()
+            SheetState.HIDDEN
+        }
+        else -> current
+    }
+
+@Composable
+private fun MultiStageSheetContent(
+    state: SheetState,
+    peekContent: @Composable () -> Unit,
+    halfContent: @Composable () -> Unit,
+    expandedContent: @Composable () -> Unit
+) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        when (state) {
+            SheetState.PEEK -> peekContent()
+            SheetState.HALF -> Column {
+                peekContent()
+                halfContent()
+            }
+            SheetState.EXPANDED -> Column {
+                peekContent()
+                halfContent()
+                expandedContent()
+            }
+            else -> Unit
+        }
+    }
+}
+
+@Composable
+private fun StageIndicatorRow(
+    currentState: SheetState,
+    onSelect: (SheetState) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 16.dp),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        val stages = listOf(SheetState.PEEK, SheetState.HALF, SheetState.EXPANDED)
+        stages.forEachIndexed { index, stage ->
+            if (index > 0) Spacer(modifier = Modifier.width(8.dp))
+            StageIndicator(
+                isActive = currentState == stage,
+                onClick = { onSelect(stage) }
+            )
+        }
     }
 }
 
@@ -308,59 +396,50 @@ fun MultiStageSheet(
     fun performHaptic() = view.safeHaptic()
 
     LaunchedEffect(isVisible) {
-        if (!isVisible) {
-            currentState = SheetState.HIDDEN
-        } else if (currentState == SheetState.HIDDEN) {
-            currentState = SheetState.PEEK
+        currentState = when {
+            !isVisible -> SheetState.HIDDEN
+            currentState == SheetState.HIDDEN -> SheetState.PEEK
+            else -> currentState
         }
     }
 
     LaunchedEffect(currentState) { onStateChange(currentState) }
 
-    if (isVisible || currentState != SheetState.HIDDEN) {
-        Box(modifier = Modifier.fillMaxSize()) {
-            BlurBackdrop(
-                isVisible = currentState != SheetState.HIDDEN && currentState != SheetState.PEEK,
-                onDismiss = {
-                    performHaptic()
-                    currentState = if (currentState == SheetState.EXPANDED) SheetState.HALF else SheetState.PEEK
-                }
-            )
+    if (!isVisible && currentState == SheetState.HIDDEN) return
 
-            SheetSurface(
-                modifier = modifier
-                    .fillMaxWidth()
-                    .height(currentHeight)
-                    .align(Alignment.BottomCenter)
-                    .pointerInput(Unit) {
-                        detectDragGestures(
-                            onDragEnd = {},
-                            onDrag = { _, dragAmount ->
-                                val threshold = 50f
-                                if (dragAmount.y < -threshold) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        BlurBackdrop(
+            isVisible = currentState != SheetState.HIDDEN && currentState != SheetState.PEEK,
+            onDismiss = {
+                performHaptic()
+                currentState = if (currentState == SheetState.EXPANDED) SheetState.HALF else SheetState.PEEK
+            }
+        )
+
+        SheetSurface(
+            modifier = modifier
+                .fillMaxWidth()
+                .height(currentHeight)
+                .align(Alignment.BottomCenter)
+                .pointerInput(Unit) {
+                    detectDragGestures(
+                        onDragEnd = {},
+                        onDrag = { _, dragAmount ->
+                            when {
+                                dragAmount.y < -DRAG_DISTANCE_THRESHOLD -> {
                                     performHaptic()
-                                    currentState = when (currentState) {
-                                        SheetState.PEEK -> SheetState.HALF
-                                        SheetState.HALF -> SheetState.EXPANDED
-                                        else -> currentState
-                                    }
-                                } else if (dragAmount.y > threshold) {
+                                    currentState = nextStateOnDragUp(currentState)
+                                }
+                                dragAmount.y > DRAG_DISTANCE_THRESHOLD -> {
                                     performHaptic()
-                                    currentState = when (currentState) {
-                                        SheetState.EXPANDED -> SheetState.HALF
-                                        SheetState.HALF -> SheetState.PEEK
-                                        SheetState.PEEK -> {
-                                            onDismiss()
-                                            SheetState.HIDDEN
-                                        }
-                                        else -> currentState
-                                    }
+                                    currentState = nextStateOnDragDown(currentState, onDismiss)
                                 }
                             }
-                        )
-                    }
-            ) {
-                Column(modifier = Modifier.fillMaxSize()) {
+                        }
+                    )
+                }
+        ) {
+            Column(modifier = Modifier.fillMaxSize()) {
                 SheetHandle(modifier = Modifier.padding(vertical = 10.dp))
 
                 if (title.isNotEmpty() || showCloseButton) {
@@ -375,41 +454,20 @@ fun MultiStageSheet(
                     )
                 }
 
-                Box(modifier = Modifier.fillMaxSize()) {
-                    when (currentState) {
-                        SheetState.PEEK -> peekContent()
-                        SheetState.HALF -> Column {
-                            peekContent()
-                            halfContent()
-                        }
-                        SheetState.EXPANDED -> Column {
-                            peekContent()
-                            halfContent()
-                            expandedContent()
-                        }
-                        else -> {}
-                    }
-                }
+                MultiStageSheetContent(
+                    state = currentState,
+                    peekContent = peekContent,
+                    halfContent = halfContent,
+                    expandedContent = expandedContent
+                )
 
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 16.dp),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    listOf(SheetState.PEEK, SheetState.HALF, SheetState.EXPANDED).forEachIndexed { index, stage ->
-                        if (index > 0) Spacer(modifier = Modifier.width(8.dp))
-                        StageIndicator(
-                            isActive = currentState == stage,
-                            onClick = {
-                                performHaptic()
-                                currentState = stage
-                            }
-                        )
+                StageIndicatorRow(
+                    currentState = currentState,
+                    onSelect = { stage ->
+                        performHaptic()
+                        currentState = stage
                     }
-                }
-                }
+                )
             }
         }
     }
@@ -540,6 +598,80 @@ fun SheetHeader(
     }
 }
 
+private fun buildNestedScrollConnection(
+    density: androidx.compose.ui.unit.Density,
+    scrollState: androidx.compose.foundation.ScrollState,
+    minHeight: Dp,
+    maxHeight: Dp,
+    getSheetHeight: () -> Dp,
+    setSheetHeight: (Dp) -> Unit,
+    onFlingHaptic: () -> Unit
+): NestedScrollConnection = object : NestedScrollConnection {
+    override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+        try {
+            val current = getSheetHeight()
+            if (available.y > 0 && scrollState.value == 0 && current < maxHeight) {
+                val newHeight = (current + with(density) { available.y.toDp() })
+                    .coerceIn(minHeight, maxHeight)
+                if (newHeight != current) {
+                    setSheetHeight(newHeight)
+                    return Offset(0f, available.y)
+                }
+            }
+            if (available.y < 0 && current > minHeight) {
+                val newHeight = (current + with(density) { available.y.toDp() })
+                    .coerceAtLeast(minHeight)
+                if (newHeight != current) {
+                    setSheetHeight(newHeight)
+                    return Offset(0f, available.y)
+                }
+            }
+            return Offset.Zero
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
+    }
+
+    override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
+        try {
+            val midpoint = (minHeight + maxHeight) / 2
+            setSheetHeight(if (getSheetHeight() > midpoint) maxHeight else minHeight)
+            onFlingHaptic()
+            return super.onPostFling(consumed, available)
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
+    }
+}
+
+@Composable
+private fun NestedScrollSheetHandle(
+    density: androidx.compose.ui.unit.Density,
+    minHeight: Dp,
+    maxHeight: Dp,
+    sheetHeight: Dp,
+    onSheetHeightChange: (Dp) -> Unit,
+    onDragStart: () -> Unit,
+    onDragEnd: () -> Unit
+) {
+    SheetHandle(
+        modifier = Modifier
+            .padding(vertical = 10.dp)
+            .pointerInput(Unit) {
+                detectDragGestures(
+                    onDragStart = { onDragStart() },
+                    onDragEnd = { onDragEnd() },
+                    onDrag = { _, dragAmount ->
+                        val newHeight = sheetHeight - with(density) { dragAmount.y.toDp() }
+                        onSheetHeightChange(newHeight.coerceIn(minHeight, maxHeight))
+                    }
+                )
+            }
+    )
+}
+
 @Composable
 fun NestedScrollSheet(
     isVisible: Boolean,
@@ -576,47 +708,16 @@ fun NestedScrollSheet(
 
     fun performHaptic() = view.safeHaptic()
 
-    val nestedScrollConnection = remember {
-        object : NestedScrollConnection {
-            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                try {
-                    if (available.y > 0 && scrollState.value == 0 && sheetHeight < actualMaxHeight) {
-                        val newHeight = (sheetHeight + with(density) { available.y.toDp() })
-                            .coerceIn(minHeight, actualMaxHeight)
-                        if (newHeight != sheetHeight) {
-                            sheetHeight = newHeight
-                            return Offset(0f, available.y)
-                        }
-                    }
-
-                    if (available.y < 0 && sheetHeight > minHeight) {
-                        val newHeight = (sheetHeight + with(density) { available.y.toDp() })
-                            .coerceAtLeast(minHeight)
-                        if (newHeight != sheetHeight) {
-                            sheetHeight = newHeight
-                            return Offset(0f, available.y)
-                        }
-                    }
-
-                    return Offset.Zero
-                } catch (e: Exception) {
-                    Sentry.captureException(e)
-                    throw e
-                }
-            }
-
-            override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
-                try {
-                    val midpoint = (minHeight + actualMaxHeight) / 2
-                    sheetHeight = if (sheetHeight > midpoint) actualMaxHeight else minHeight
-                    performHaptic()
-                    return super.onPostFling(consumed, available)
-                } catch (e: Exception) {
-                    Sentry.captureException(e)
-                    throw e
-                }
-            }
-        }
+    val nestedScrollConnection = remember(actualMaxHeight, minHeight) {
+        buildNestedScrollConnection(
+            density = density,
+            scrollState = scrollState,
+            minHeight = minHeight,
+            maxHeight = actualMaxHeight,
+            getSheetHeight = { sheetHeight },
+            setSheetHeight = { sheetHeight = it },
+            onFlingHaptic = { performHaptic() }
+        )
     }
 
     SlideUpSheet(isVisible = isVisible) {
@@ -637,51 +738,46 @@ fun NestedScrollSheet(
                     .nestedScroll(nestedScrollConnection)
             ) {
                 Column(modifier = Modifier.fillMaxSize()) {
-                SheetHandle(
-                    modifier = Modifier
-                        .padding(vertical = 10.dp)
-                        .pointerInput(Unit) {
-                            detectDragGestures(
-                                onDragStart = { isDraggingSheet = true },
-                                onDragEnd = {
-                                    isDraggingSheet = false
-                                    val midpoint = (minHeight + actualMaxHeight) / 2
-                                    sheetHeight = if (sheetHeight > midpoint) actualMaxHeight else minHeight
-                                    performHaptic()
-                                },
-                                onDrag = { _, dragAmount ->
-                                    val newHeight = sheetHeight - with(density) { dragAmount.y.toDp() }
-                                    sheetHeight = newHeight.coerceIn(minHeight, actualMaxHeight)
-                                }
-                            )
-                        }
-                )
-
-                if (title.isNotEmpty()) {
-                    SheetHeader(
-                        title = title,
-                        subtitle = subtitle,
-                        onClose = {
+                    NestedScrollSheetHandle(
+                        density = density,
+                        minHeight = minHeight,
+                        maxHeight = actualMaxHeight,
+                        sheetHeight = sheetHeight,
+                        onSheetHeightChange = { sheetHeight = it },
+                        onDragStart = { isDraggingSheet = true },
+                        onDragEnd = {
+                            isDraggingSheet = false
+                            val midpoint = (minHeight + actualMaxHeight) / 2
+                            sheetHeight = if (sheetHeight > midpoint) actualMaxHeight else minHeight
                             performHaptic()
-                            onDismiss()
                         }
                     )
 
-                    HorizontalDivider(
-                        color = colors.glassBorder.copy(alpha = 0.3f),
-                        thickness = 0.5.dp,
-                        modifier = Modifier.padding(horizontal = 20.dp)
-                    )
-                }
+                    if (title.isNotEmpty()) {
+                        SheetHeader(
+                            title = title,
+                            subtitle = subtitle,
+                            onClose = {
+                                performHaptic()
+                                onDismiss()
+                            }
+                        )
 
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .verticalScroll(scrollState)
-                        .padding(horizontal = 20.dp, vertical = 16.dp)
-                ) {
-                    content()
-                }
+                        HorizontalDivider(
+                            color = colors.glassBorder.copy(alpha = 0.3f),
+                            thickness = 0.5.dp,
+                            modifier = Modifier.padding(horizontal = 20.dp)
+                        )
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .verticalScroll(scrollState)
+                            .padding(horizontal = 20.dp, vertical = 16.dp)
+                    ) {
+                        content()
+                    }
                 }
             }
         }
@@ -716,51 +812,67 @@ fun QuickActionSheet(
                     .fillMaxWidth()
                     .align(Alignment.BottomCenter)
             ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(20.dp)
-                ) {
-                    SheetHandle(modifier = Modifier.padding(bottom = 12.dp))
-
-                    Text(
-                        text = title,
-                        color = colors.textPrimary,
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(bottom = 16.dp)
-                    )
-
-                    actions.forEach { action ->
-                        QuickActionItem(
-                            action = action,
-                            onClick = {
-                                performHaptic()
-                                action.onClick()
-                                if (action.dismissOnClick) onDismiss()
-                            }
-                        )
-
-                        if (action != actions.last()) Spacer(modifier = Modifier.height(8.dp))
+                QuickActionSheetBody(
+                    title = title,
+                    actions = actions,
+                    onActionClick = { action ->
+                        performHaptic()
+                        action.onClick()
+                        if (action.dismissOnClick) onDismiss()
+                    },
+                    onCancel = {
+                        performHaptic()
+                        onDismiss()
                     }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    TextButton(
-                        onClick = {
-                            performHaptic()
-                            onDismiss()
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(
-                            text = "Cancel",
-                            color = colors.textSecondary,
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
-                }
+                )
             }
+        }
+    }
+}
+
+@Composable
+private fun QuickActionSheetBody(
+    title: String,
+    actions: List<SheetQuickAction>,
+    onActionClick: (SheetQuickAction) -> Unit,
+    onCancel: () -> Unit
+) {
+    val colors = BouncerDesignSystem.colors
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(20.dp)
+    ) {
+        SheetHandle(modifier = Modifier.padding(bottom = 12.dp))
+
+        Text(
+            text = title,
+            color = colors.textPrimary,
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
+
+        actions.forEach { action ->
+            QuickActionItem(
+                action = action,
+                onClick = { onActionClick(action) }
+            )
+
+            if (action != actions.last()) Spacer(modifier = Modifier.height(8.dp))
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        TextButton(
+            onClick = onCancel,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(
+                text = "Cancel",
+                color = colors.textSecondary,
+                fontWeight = FontWeight.Medium
+            )
         }
     }
 }
@@ -840,6 +952,68 @@ private fun QuickActionItem(
 }
 
 @Composable
+private fun ConfirmationIcon(tint: Color) {
+    Box(
+        modifier = Modifier
+            .size(56.dp)
+            .background(tint.copy(alpha = 0.1f), CircleShape),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = Icons.Default.Warning,
+            contentDescription = null,
+            tint = tint,
+            modifier = Modifier.size(28.dp)
+        )
+    }
+    Spacer(modifier = Modifier.height(16.dp))
+}
+
+@Composable
+private fun ConfirmationButtons(
+    confirmText: String,
+    cancelText: String,
+    isDestructive: Boolean,
+    onCancel: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    val colors = BouncerDesignSystem.colors
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        OutlinedButton(
+            onClick = onCancel,
+            modifier = Modifier
+                .weight(1f)
+                .height(52.dp),
+            shape = RoundedCornerShape(16.dp),
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textSecondary),
+            border = androidx.compose.foundation.BorderStroke(
+                1.dp,
+                colors.glassBorder.copy(alpha = 0.5f)
+            )
+        ) {
+            Text(text = cancelText, fontWeight = FontWeight.SemiBold)
+        }
+
+        Button(
+            onClick = onConfirm,
+            modifier = Modifier
+                .weight(1f)
+                .height(52.dp),
+            shape = RoundedCornerShape(16.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = if (isDestructive) colors.statusLive else colors.goldPrimary,
+                contentColor = if (isDestructive) Color.White else colors.backgroundBase
+            )
+        ) {
+            Text(text = confirmText, fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+@Composable
 fun ConfirmationSheet(
     isVisible: Boolean,
     onDismiss: () -> Unit,
@@ -880,20 +1054,7 @@ fun ConfirmationSheet(
                     SheetHandle(modifier = Modifier.padding(bottom = 20.dp))
 
                     if (isDestructive) {
-                        Box(
-                            modifier = Modifier
-                                .size(56.dp)
-                                .background(colors.statusLive.copy(alpha = 0.1f), CircleShape),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Warning,
-                                contentDescription = null,
-                                tint = colors.statusLive,
-                                modifier = Modifier.size(28.dp)
-                            )
-                        }
-                        Spacer(modifier = Modifier.height(16.dp))
+                        ConfirmationIcon(tint = colors.statusLive)
                     }
 
                     Text(
@@ -914,47 +1075,19 @@ fun ConfirmationSheet(
 
                     Spacer(modifier = Modifier.height(24.dp))
 
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        OutlinedButton(
-                            onClick = {
-                                performHaptic()
-                                onDismiss()
-                            },
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(52.dp),
-                            shape = RoundedCornerShape(16.dp),
-                            colors = ButtonDefaults.outlinedButtonColors(
-                                contentColor = colors.textSecondary
-                            ),
-                            border = androidx.compose.foundation.BorderStroke(
-                                1.dp,
-                                colors.glassBorder.copy(alpha = 0.5f)
-                            )
-                        ) {
-                            Text(text = cancelText, fontWeight = FontWeight.SemiBold)
+                    ConfirmationButtons(
+                        confirmText = confirmText,
+                        cancelText = cancelText,
+                        isDestructive = isDestructive,
+                        onCancel = {
+                            performHaptic()
+                            onDismiss()
+                        },
+                        onConfirm = {
+                            performHaptic()
+                            onConfirm()
                         }
-
-                        Button(
-                            onClick = {
-                                performHaptic()
-                                onConfirm()
-                            },
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(52.dp),
-                            shape = RoundedCornerShape(16.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = if (isDestructive) colors.statusLive else colors.goldPrimary,
-                                contentColor = if (isDestructive) Color.White else colors.backgroundBase
-                            )
-                        ) {
-                            Text(text = confirmText, fontWeight = FontWeight.Bold)
-                        }
-                    }
+                    )
                 }
             }
         }
