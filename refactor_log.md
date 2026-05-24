@@ -12,6 +12,7 @@ Violations: CyclomaticComplexity > 10, CognitiveComplexity > 15, LongMethod > 60
 
 | File | Score | Violations Before | Violations After | CC Before | CC After | LOC Delta | Test Status | Retries |
 |------|-------|-------------------|------------------|-----------|----------|-----------|-------------|---------|
+| CricketVisualizations.kt | 42 | 18 | 6 | 51 (MatchCard) | — | +404 | PASS (pre-existing failures) | 0 |
 
 ---
 
