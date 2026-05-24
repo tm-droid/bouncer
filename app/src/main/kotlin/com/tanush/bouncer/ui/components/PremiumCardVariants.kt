@@ -47,17 +47,7 @@ fun PremiumGlassCard(
     accentColor: Color = GoldPrimary,
     content: @Composable () -> Unit
 ) {
-    val hierarchy = BouncerDesignSystem.hierarchy
-    val infiniteTransition = rememberInfiniteTransition(label = "glassCard")
-    val shimmerOffset by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(3000, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "shimmer"
-    )
+    val shimmerOffset = rememberShimmerOffset()
 
     Surface(
         modifier = modifier
@@ -66,15 +56,7 @@ fun PremiumGlassCard(
                 shape = RoundedCornerShape(CornerRadius.md),
                 spotColor = accentColor.copy(alpha = 0.2f)
             )
-            .then(
-                if (onClick != null) {
-                    Modifier.clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = ripple(color = accentColor.copy(alpha = 0.1f)),
-                        onClick = onClick
-                    )
-                } else Modifier
-            ),
+            .then(clickableModifier(onClick, accentColor)),
         shape = RoundedCornerShape(CornerRadius.md),
         color = GlassSurface.copy(alpha = 0.85f),
         border = BorderStroke(
@@ -89,24 +71,52 @@ fun PremiumGlassCard(
         )
     ) {
         Box {
-            // Glass overlay
-            Box(
-                modifier = Modifier
-                    .matchParentSize()
-                    .background(
-                        Brush.verticalGradient(
-                            colors = listOf(
-                                Color.White.copy(alpha = 0.06f),
-                                Color.Transparent,
-                                Color.Black.copy(alpha = 0.05f)
-                            )
-                        )
-                    )
-            )
-            
+            GlassOverlay()
             content()
         }
     }
+}
+
+@Composable
+private fun rememberShimmerOffset(): Float {
+    val infiniteTransition = rememberInfiniteTransition(label = "glassCard")
+    val shimmerOffset by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(3000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "shimmer"
+    )
+    return shimmerOffset
+}
+
+@Composable
+private fun clickableModifier(onClick: (() -> Unit)?, accentColor: Color): Modifier {
+    if (onClick == null) return Modifier
+    return Modifier.clickable(
+        interactionSource = remember { MutableInteractionSource() },
+        indication = ripple(color = accentColor.copy(alpha = 0.1f)),
+        onClick = onClick
+    )
+}
+
+@Composable
+private fun BoxScope.GlassOverlay() {
+    Box(
+        modifier = Modifier
+            .matchParentSize()
+            .background(
+                Brush.verticalGradient(
+                    colors = listOf(
+                        Color.White.copy(alpha = 0.06f),
+                        Color.Transparent,
+                        Color.Black.copy(alpha = 0.05f)
+                    )
+                )
+            )
+    )
 }
 
 /**
@@ -121,9 +131,8 @@ fun PremiumFeatureCard(
     onClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
-    val hierarchy = BouncerDesignSystem.hierarchy
     var isPressed by remember { mutableStateOf(false) }
-    
+
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.97f else 1f,
         animationSpec = spring(
@@ -148,45 +157,8 @@ fun PremiumFeatureCard(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Icon
-            Box(
-                modifier = Modifier
-                    .size(56.dp)
-                    .background(
-                        accentColor.copy(alpha = 0.15f),
-                        RoundedCornerShape(16.dp)
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = accentColor,
-                    modifier = Modifier.size(28.dp)
-                )
-            }
-            
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = title,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = TextPrimary
-                )
-                
-                Spacer(modifier = Modifier.height(4.dp))
-                
-                Text(
-                    text = description,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Normal,
-                    color = TextSecondary,
-                    lineHeight = 18.sp,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-            
+            FeatureCardIcon(icon = icon, accentColor = accentColor)
+            FeatureCardText(title = title, description = description, modifier = Modifier.weight(1f))
             if (onClick != null) {
                 Icon(
                     imageVector = Icons.Default.ChevronRight,
@@ -196,6 +168,48 @@ fun PremiumFeatureCard(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun FeatureCardIcon(icon: ImageVector, accentColor: Color) {
+    Box(
+        modifier = Modifier
+            .size(56.dp)
+            .background(
+                accentColor.copy(alpha = 0.15f),
+                RoundedCornerShape(16.dp)
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = accentColor,
+            modifier = Modifier.size(28.dp)
+        )
+    }
+}
+
+@Composable
+private fun FeatureCardText(title: String, description: String, modifier: Modifier = Modifier) {
+    Column(modifier = modifier) {
+        Text(
+            text = title,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Bold,
+            color = TextPrimary
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = description,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Normal,
+            color = TextSecondary,
+            lineHeight = 18.sp,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis
+        )
     }
 }
 
@@ -212,7 +226,6 @@ fun PremiumStatCard(
     accentColor: Color = GoldPrimary,
     modifier: Modifier = Modifier
 ) {
-    val hierarchy = BouncerDesignSystem.hierarchy
     val infiniteTransition = rememberInfiniteTransition(label = "statCard")
     val glowAlpha by infiniteTransition.animateFloat(
         initialValue = 0.3f,
@@ -233,32 +246,10 @@ fun PremiumStatCard(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // Icon with glow
             if (icon != null) {
-                Box(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .background(
-                            Brush.radialGradient(
-                                colors = listOf(
-                                    accentColor.copy(alpha = glowAlpha),
-                                    Color.Transparent
-                                )
-                            ),
-                            CircleShape
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = icon,
-                        contentDescription = null,
-                        tint = accentColor,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
+                StatCardIcon(icon = icon, accentColor = accentColor, glowAlpha = glowAlpha)
             }
-            
-            // Value
+
             Text(
                 text = value,
                 fontSize = 28.sp,
@@ -266,8 +257,7 @@ fun PremiumStatCard(
                 color = TextPrimary,
                 letterSpacing = (-1).sp
             )
-            
-            // Label
+
             Text(
                 text = label.uppercase(),
                 fontSize = 11.sp,
@@ -276,41 +266,70 @@ fun PremiumStatCard(
                 letterSpacing = 1.sp,
                 textAlign = TextAlign.Center
             )
-            
-            // Trend
+
             if (trend != null && trendValue.isNotEmpty()) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Icon(
-                        imageVector = when (trend) {
-                            TrendDirection.UP -> Icons.AutoMirrored.Filled.TrendingUp
-                            TrendDirection.DOWN -> Icons.AutoMirrored.Filled.TrendingDown
-                            TrendDirection.NEUTRAL -> Icons.AutoMirrored.Filled.TrendingFlat
-                        },
-                        contentDescription = null,
-                        tint = when (trend) {
-                            TrendDirection.UP -> ChartGreen
-                            TrendDirection.DOWN -> StatusLive
-                            TrendDirection.NEUTRAL -> TextTertiary
-                        },
-                        modifier = Modifier.size(16.dp)
-                    )
-                    
-                    Text(
-                        text = trendValue,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = when (trend) {
-                            TrendDirection.UP -> ChartGreen
-                            TrendDirection.DOWN -> StatusLive
-                            TrendDirection.NEUTRAL -> TextTertiary
-                        }
-                    )
-                }
+                StatCardTrend(trend = trend, trendValue = trendValue)
             }
         }
+    }
+}
+
+@Composable
+private fun StatCardIcon(icon: ImageVector, accentColor: Color, glowAlpha: Float) {
+    Box(
+        modifier = Modifier
+            .size(48.dp)
+            .background(
+                Brush.radialGradient(
+                    colors = listOf(
+                        accentColor.copy(alpha = glowAlpha),
+                        Color.Transparent
+                    )
+                ),
+                CircleShape
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = accentColor,
+            modifier = Modifier.size(24.dp)
+        )
+    }
+}
+
+private fun trendIcon(trend: TrendDirection): ImageVector = when (trend) {
+    TrendDirection.UP -> Icons.AutoMirrored.Filled.TrendingUp
+    TrendDirection.DOWN -> Icons.AutoMirrored.Filled.TrendingDown
+    TrendDirection.NEUTRAL -> Icons.AutoMirrored.Filled.TrendingFlat
+}
+
+private fun trendColor(trend: TrendDirection): Color = when (trend) {
+    TrendDirection.UP -> ChartGreen
+    TrendDirection.DOWN -> StatusLive
+    TrendDirection.NEUTRAL -> TextTertiary
+}
+
+@Composable
+private fun StatCardTrend(trend: TrendDirection, trendValue: String) {
+    val color = trendColor(trend)
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        Icon(
+            imageVector = trendIcon(trend),
+            contentDescription = null,
+            tint = color,
+            modifier = Modifier.size(16.dp)
+        )
+        Text(
+            text = trendValue,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = color
+        )
     }
 }
 
@@ -334,66 +353,74 @@ fun PremiumInfoCard(
             modifier = Modifier.padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Header
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                if (icon != null) {
-                    Icon(
-                        imageVector = icon,
-                        contentDescription = null,
-                        tint = hierarchy.secondary.primary,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-                
-                Text(
-                    text = title.uppercase(),
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = TextSecondary,
-                    letterSpacing = 1.sp
-                )
-            }
-            
-            // Divider
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(1.dp)
-                    .background(
-                        Brush.horizontalGradient(
-                            colors = listOf(
-                                hierarchy.secondary.primary.copy(alpha = 0.3f),
-                                Color.Transparent
-                            )
-                        )
-                    )
-            )
-            
-            // Items
+            InfoCardHeader(title = title, icon = icon, accentColor = hierarchy.secondary.primary)
+            InfoCardDivider(accentColor = hierarchy.secondary.primary)
             items.forEach { (key, value) ->
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        text = key,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = TextSecondary
-                    )
-                    
-                    Text(
-                        text = value,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = TextPrimary
-                    )
-                }
+                InfoCardRow(key = key, value = value)
             }
         }
+    }
+}
+
+@Composable
+private fun InfoCardHeader(title: String, icon: ImageVector?, accentColor: Color) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        if (icon != null) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = accentColor,
+                modifier = Modifier.size(20.dp)
+            )
+        }
+        Text(
+            text = title.uppercase(),
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Bold,
+            color = TextSecondary,
+            letterSpacing = 1.sp
+        )
+    }
+}
+
+@Composable
+private fun InfoCardDivider(accentColor: Color) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(1.dp)
+            .background(
+                Brush.horizontalGradient(
+                    colors = listOf(
+                        accentColor.copy(alpha = 0.3f),
+                        Color.Transparent
+                    )
+                )
+            )
+    )
+}
+
+@Composable
+private fun InfoCardRow(key: String, value: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(
+            text = key,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Medium,
+            color = TextSecondary
+        )
+        Text(
+            text = value,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = TextPrimary
+        )
     }
 }
 
@@ -431,94 +458,112 @@ fun PremiumProfileCard(
                 .padding(20.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Avatar
-            Box(
-                modifier = Modifier
-                    .size(80.dp)
-                    .border(
-                        2.dp,
-                        Brush.linearGradient(
-                            colors = listOf(
-                                hierarchy.secondary.secondary.copy(alpha = borderAlpha),
-                                hierarchy.secondary.primary.copy(alpha = borderAlpha * 0.5f)
-                            )
-                        ),
-                        CircleShape
-                    )
-                    .padding(3.dp)
-                    .clip(CircleShape)
-                    .background(GlassBorderHighlight)
-            ) {
-                if (imageUrl != null) {
-                    CoilImage(
-                        model = imageUrl,
-                        contentDescription = name,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize()
-                    )
-                } else {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = name.take(2).uppercase(),
-                            fontSize = 24.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = hierarchy.secondary.primary
-                        )
-                    }
-                }
-            }
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            // Name
-            Text(
-                text = name,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                color = TextPrimary,
-                textAlign = TextAlign.Center
+            ProfileAvatar(
+                name = name,
+                imageUrl = imageUrl,
+                borderAlpha = borderAlpha,
+                hierarchy = hierarchy
             )
-            
-            if (subtitle.isNotEmpty()) {
-                Text(
-                    text = subtitle,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = TextSecondary,
-                    textAlign = TextAlign.Center
-                )
-            }
-            
-            // Stats row
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            ProfileNameBlock(name = name, subtitle = subtitle)
+
             if (stats.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(20.dp))
-                
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly
-                ) {
-                    stats.forEach { (label, value) ->
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Text(
-                                text = value,
-                                fontSize = 20.sp,
-                                fontWeight = FontWeight.Black,
-                                color = hierarchy.secondary.primary
-                            )
-                            Text(
-                                text = label,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Medium,
-                                color = TextSecondary
-                            )
-                        }
-                    }
-                }
+                ProfileStatsRow(stats = stats, valueColor = hierarchy.secondary.primary)
+            }
+        }
+    }
+}
+
+@Composable
+private fun ProfileNameBlock(name: String, subtitle: String) {
+    Text(
+        text = name,
+        fontSize = 18.sp,
+        fontWeight = FontWeight.Bold,
+        color = TextPrimary,
+        textAlign = TextAlign.Center
+    )
+    if (subtitle.isNotEmpty()) {
+        Text(
+            text = subtitle,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Medium,
+            color = TextSecondary,
+            textAlign = TextAlign.Center
+        )
+    }
+}
+
+@Composable
+private fun ProfileAvatar(
+    name: String,
+    imageUrl: String?,
+    borderAlpha: Float,
+    hierarchy: ColorHierarchy
+) {
+    Box(
+        modifier = Modifier
+            .size(80.dp)
+            .border(
+                2.dp,
+                Brush.linearGradient(
+                    colors = listOf(
+                        hierarchy.secondary.secondary.copy(alpha = borderAlpha),
+                        hierarchy.secondary.primary.copy(alpha = borderAlpha * 0.5f)
+                    )
+                ),
+                CircleShape
+            )
+            .padding(3.dp)
+            .clip(CircleShape)
+            .background(GlassBorderHighlight)
+    ) {
+        if (imageUrl != null) {
+            CoilImage(
+                model = imageUrl,
+                contentDescription = name,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+        } else {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = name.take(2).uppercase(),
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = hierarchy.secondary.primary
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ProfileStatsRow(stats: List<Pair<String, String>>, valueColor: Color) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceEvenly
+    ) {
+        stats.forEach { (label, value) ->
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    text = value,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Black,
+                    color = valueColor
+                )
+                Text(
+                    text = label,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = TextSecondary
+                )
             }
         }
     }
@@ -537,9 +582,8 @@ fun PremiumStatBar(
     height: Dp = 8.dp,
     modifier: Modifier = Modifier
 ) {
-    val hierarchy = BouncerDesignSystem.hierarchy
     val progress = (value / maxValue).coerceIn(0f, 1f)
-    
+
     val animatedProgress by animateFloatAsState(
         targetValue = progress,
         animationSpec = tween(1000, easing = FastOutSlowInEasing),
@@ -551,49 +595,57 @@ fun PremiumStatBar(
         verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         if (label.isNotEmpty() || valueText.isNotEmpty()) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(
-                    text = label,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = TextSecondary
-                )
-                
-                Text(
-                    text = valueText,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = TextPrimary
-                )
-            }
+            StatBarLabelRow(label = label, valueText = valueText)
         }
-        
+        StatBarTrack(height = height, progress = animatedProgress, color = color)
+    }
+}
+
+@Composable
+private fun StatBarLabelRow(label: String, valueText: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(
+            text = label,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Medium,
+            color = TextSecondary
+        )
+        Text(
+            text = valueText,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = TextPrimary
+        )
+    }
+}
+
+@Composable
+private fun StatBarTrack(height: Dp, progress: Float, color: Color) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(height)
+            .clip(RoundedCornerShape(height / 2))
+            .background(GlassBorder.copy(alpha = 0.3f))
+    ) {
         Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .height(height)
+                .fillMaxHeight()
+                .fillMaxWidth(progress)
                 .clip(RoundedCornerShape(height / 2))
-                .background(GlassBorder.copy(alpha = 0.3f))
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxHeight()
-                    .fillMaxWidth(animatedProgress)
-                    .clip(RoundedCornerShape(height / 2))
-                    .background(
-                        Brush.horizontalGradient(
-                            colors = listOf(
-                                color.copy(alpha = 0.7f),
-                                color,
-                                color.copy(alpha = 0.9f)
-                            )
+                .background(
+                    Brush.horizontalGradient(
+                        colors = listOf(
+                            color.copy(alpha = 0.7f),
+                            color,
+                            color.copy(alpha = 0.9f)
                         )
                     )
-            )
-        }
+                )
+        )
     }
 }
 
@@ -612,7 +664,7 @@ fun PremiumComparisonCard(
 ) {
     val total = leftValue + rightValue
     val leftProgress = if (total > 0) leftValue.toFloat() / total else 0.5f
-    
+
     val animatedProgress by animateFloatAsState(
         targetValue = leftProgress,
         animationSpec = tween(1000, easing = FastOutSlowInEasing),
@@ -624,63 +676,94 @@ fun PremiumComparisonCard(
             modifier = Modifier.padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Labels and values
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Column(horizontalAlignment = Alignment.Start) {
-                    Text(
-                        text = leftValue.toString(),
-                        fontSize = 24.sp,
-                        fontWeight = FontWeight.Black,
-                        color = leftColor
-                    )
-                    Text(
-                        text = leftLabel,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = TextSecondary
-                    )
-                }
-                
-                Column(horizontalAlignment = Alignment.End) {
-                    Text(
-                        text = rightValue.toString(),
-                        fontSize = 24.sp,
-                        fontWeight = FontWeight.Black,
-                        color = rightColor
-                    )
-                    Text(
-                        text = rightLabel,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = TextSecondary
-                    )
-                }
-            }
-            
-            // Progress bar
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(8.dp)
-                    .clip(RoundedCornerShape(4.dp))
-            ) {
-                Box(
-                    modifier = Modifier
-                        .weight(animatedProgress.coerceAtLeast(0.01f))
-                        .fillMaxHeight()
-                        .background(leftColor)
-                )
-                Box(
-                    modifier = Modifier
-                        .weight((1f - animatedProgress).coerceAtLeast(0.01f))
-                        .fillMaxHeight()
-                        .background(rightColor)
-                )
-            }
+            ComparisonHeader(
+                leftLabel = leftLabel,
+                rightLabel = rightLabel,
+                leftValue = leftValue,
+                rightValue = rightValue,
+                leftColor = leftColor,
+                rightColor = rightColor
+            )
+            ComparisonBar(
+                animatedProgress = animatedProgress,
+                leftColor = leftColor,
+                rightColor = rightColor
+            )
         }
+    }
+}
+
+@Composable
+private fun ComparisonHeader(
+    leftLabel: String,
+    rightLabel: String,
+    leftValue: Int,
+    rightValue: Int,
+    leftColor: Color,
+    rightColor: Color
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        ComparisonValueColumn(
+            value = leftValue,
+            label = leftLabel,
+            color = leftColor,
+            alignment = Alignment.Start
+        )
+        ComparisonValueColumn(
+            value = rightValue,
+            label = rightLabel,
+            color = rightColor,
+            alignment = Alignment.End
+        )
+    }
+}
+
+@Composable
+private fun ComparisonValueColumn(
+    value: Int,
+    label: String,
+    color: Color,
+    alignment: Alignment.Horizontal
+) {
+    Column(horizontalAlignment = alignment) {
+        Text(
+            text = value.toString(),
+            fontSize = 24.sp,
+            fontWeight = FontWeight.Black,
+            color = color
+        )
+        Text(
+            text = label,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Medium,
+            color = TextSecondary
+        )
+    }
+}
+
+@Composable
+private fun ComparisonBar(animatedProgress: Float, leftColor: Color, rightColor: Color) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(8.dp)
+            .clip(RoundedCornerShape(4.dp))
+    ) {
+        Box(
+            modifier = Modifier
+                .weight(animatedProgress.coerceAtLeast(0.01f))
+                .fillMaxHeight()
+                .background(leftColor)
+        )
+        Box(
+            modifier = Modifier
+                .weight((1f - animatedProgress).coerceAtLeast(0.01f))
+                .fillMaxHeight()
+                .background(rightColor)
+        )
     }
 }
 
@@ -715,7 +798,6 @@ fun PremiumCountdownCard(
                 .padding(20.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Title
             Text(
                 text = title.uppercase(),
                 fontSize = 12.sp,
@@ -723,47 +805,31 @@ fun PremiumCountdownCard(
                 color = TextSecondary,
                 letterSpacing = 1.5.sp
             )
-            
+
             Spacer(modifier = Modifier.height(16.dp))
-            
-            // Time units
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
+
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 TimeUnit(value = days, label = "Days")
-                
-                Text(
-                    text = ":",
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = hierarchy.secondary.primary.copy(alpha = 0.5f),
-                    modifier = Modifier.graphicsLayer { scaleX = pulseScale; scaleY = pulseScale }
-                )
-                
+                CountdownSeparator(pulseScale = pulseScale, color = hierarchy.secondary.primary)
                 TimeUnit(value = hours, label = "Hrs")
-                
-                Text(
-                    text = ":",
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = hierarchy.secondary.primary.copy(alpha = 0.5f),
-                    modifier = Modifier.graphicsLayer { scaleX = pulseScale; scaleY = pulseScale }
-                )
-                
+                CountdownSeparator(pulseScale = pulseScale, color = hierarchy.secondary.primary)
                 TimeUnit(value = minutes, label = "Min")
-                
-                Text(
-                    text = ":",
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = hierarchy.secondary.primary.copy(alpha = 0.5f),
-                    modifier = Modifier.graphicsLayer { scaleX = pulseScale; scaleY = pulseScale }
-                )
-                
+                CountdownSeparator(pulseScale = pulseScale, color = hierarchy.secondary.primary)
                 TimeUnit(value = seconds, label = "Sec", isAnimated = true)
             }
         }
     }
+}
+
+@Composable
+private fun CountdownSeparator(pulseScale: Float, color: Color) {
+    Text(
+        text = ":",
+        fontSize = 24.sp,
+        fontWeight = FontWeight.Bold,
+        color = color.copy(alpha = 0.5f),
+        modifier = Modifier.graphicsLayer { scaleX = pulseScale; scaleY = pulseScale }
+    )
 }
 
 @Composable
@@ -774,7 +840,7 @@ private fun TimeUnit(
 ) {
     val hierarchy = BouncerDesignSystem.hierarchy
     val displayValue = value.toString().padStart(2, '0')
-    
+
     val infiniteTransition = rememberInfiniteTransition(label = "timeUnit")
     val scale by infiniteTransition.animateFloat(
         initialValue = 1f,
@@ -786,9 +852,7 @@ private fun TimeUnit(
         label = "scale"
     )
 
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Box(
             modifier = Modifier
                 .graphicsLayer { scaleX = scale; scaleY = scale }
@@ -805,9 +869,9 @@ private fun TimeUnit(
                 color = hierarchy.secondary.secondary
             )
         }
-        
+
         Spacer(modifier = Modifier.height(4.dp))
-        
+
         Text(
             text = label,
             fontSize = 10.sp,
