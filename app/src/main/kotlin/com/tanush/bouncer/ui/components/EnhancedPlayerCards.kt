@@ -24,6 +24,7 @@ import androidx.compose.ui.draw.*
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.*
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.layout.ContentScale
@@ -39,6 +40,9 @@ import com.tanush.bouncer.ui.theme.*
 import com.tanush.bouncer.utils.rememberHapticFeedback
 import kotlin.math.*
 import com.tanush.bouncer.ui.theme.GoldPrimary
+
+private const val RADAR_AXES = 5
+private val RADAR_ANGLE_STEP = 360f / RADAR_AXES
 
 private fun String.toPlayerInitials(): String =
     split(" ").mapNotNull { it.firstOrNull()?.uppercase() }.take(2).joinToString("")
@@ -174,6 +178,129 @@ private fun RoleBadge(text: String, background: Color, textColor: Color) {
 }
 
 @Composable
+private fun rememberShimmerProgress(durationMillis: Int, label: String): State<Float> {
+    val infiniteTransition = rememberInfiniteTransition(label = label)
+    return infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "${label}_progress"
+    )
+}
+
+@Composable
+private fun ShimmerOverlay(
+    shimmer: Float,
+    accent: Color,
+    cornerRadius: Dp,
+    alpha: Float,
+    spread: Float,
+    height: Float,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(cornerRadius))
+            .background(
+                Brush.linearGradient(
+                    colors = listOf(
+                        Color.Transparent,
+                        accent.copy(alpha = alpha),
+                        Color.Transparent
+                    ),
+                    start = Offset(shimmer * 500f - spread, 0f),
+                    end = Offset(shimmer * 500f + spread, height)
+                )
+            )
+    )
+}
+
+@Composable
+private fun FlipCardFrontBackground(accent: Color, shimmer: Float) {
+    val colors = BouncerDesignSystem.colors
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                Brush.verticalGradient(
+                    colors = listOf(
+                        colors.surface1.copy(alpha = 0.8f),
+                        colors.glassSurface
+                    )
+                )
+            )
+    )
+
+    ShimmerOverlay(
+        shimmer = shimmer,
+        accent = accent,
+        cornerRadius = 24.dp,
+        alpha = 0.1f,
+        spread = 150f,
+        height = 300f,
+        modifier = Modifier.fillMaxSize()
+    )
+}
+
+@Composable
+private fun FlipCardFrontInfo(
+    playerName: String,
+    playerRole: String,
+    matches: Int,
+    isCaptain: Boolean,
+    isKeeper: Boolean,
+    accent: Color
+) {
+    val colors = BouncerDesignSystem.colors
+
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = playerName,
+            color = colors.textPrimary,
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center
+        )
+
+        if (isCaptain) RoleBadge("C", accent, colors.backgroundBase)
+        if (isKeeper) RoleBadge("WK", colors.statusInfo, colors.textPrimary)
+    }
+
+    Text(
+        text = playerRole,
+        color = colors.textSecondary,
+        fontSize = 13.sp,
+        fontWeight = FontWeight.Medium
+    )
+
+    Spacer(modifier = Modifier.height(8.dp))
+
+    Text(
+        text = "$matches MATCHES",
+        color = colors.textMuted,
+        fontSize = 11.sp,
+        fontWeight = FontWeight.Bold,
+        letterSpacing = 1.sp
+    )
+
+    Spacer(modifier = Modifier.height(12.dp))
+
+    Text(
+        text = "TAP TO VIEW STATS",
+        color = accent.copy(alpha = 0.7f),
+        fontSize = 10.sp,
+        fontWeight = FontWeight.Bold,
+        letterSpacing = 1.sp
+    )
+}
+
+@Composable
 private fun FlipCardFront(
     playerName: String,
     playerRole: String,
@@ -185,16 +312,7 @@ private fun FlipCardFront(
     val colors = BouncerDesignSystem.colors
     val hierarchy = BouncerDesignSystem.hierarchy
     val accent = hierarchy.secondary.primary
-    val infiniteTransition = rememberInfiniteTransition(label = "frontCard")
-    val shimmer by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(3000, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "shimmer"
-    )
+    val shimmer by rememberShimmerProgress(durationMillis = 3000, label = "frontCard")
 
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -202,35 +320,7 @@ private fun FlipCardFront(
         color = colors.glassSurface
     ) {
         Box {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        Brush.verticalGradient(
-                            colors = listOf(
-                                colors.surface1.copy(alpha = 0.8f),
-                                colors.glassSurface
-                            )
-                        )
-                    )
-            )
-
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .clip(RoundedCornerShape(24.dp))
-                    .background(
-                        Brush.linearGradient(
-                            colors = listOf(
-                                Color.Transparent,
-                                accent.copy(alpha = 0.1f),
-                                Color.Transparent
-                            ),
-                            start = Offset(shimmer * 500f - 150f, 0f),
-                            end = Offset(shimmer * 500f + 150f, 300f)
-                        )
-                    )
-            )
+            FlipCardFrontBackground(accent = accent, shimmer = shimmer)
 
             Column(
                 modifier = Modifier
@@ -258,50 +348,77 @@ private fun FlipCardFront(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = playerName,
-                        color = colors.textPrimary,
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        textAlign = TextAlign.Center
-                    )
-
-                    if (isCaptain) RoleBadge("C", accent, colors.backgroundBase)
-                    if (isKeeper) RoleBadge("WK", colors.statusInfo, colors.textPrimary)
-                }
-
-                Text(
-                    text = playerRole,
-                    color = colors.textSecondary,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Medium
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Text(
-                    text = "$matches MATCHES",
-                    color = colors.textMuted,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.sp
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                Text(
-                    text = "TAP TO VIEW STATS",
-                    color = accent.copy(alpha = 0.7f),
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.sp
+                FlipCardFrontInfo(
+                    playerName = playerName,
+                    playerRole = playerRole,
+                    matches = matches,
+                    isCaptain = isCaptain,
+                    isKeeper = isKeeper,
+                    accent = accent
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun StatSectionHeader(text: String) {
+    Text(
+        text = text,
+        color = BouncerDesignSystem.colors.textMuted,
+        fontSize = 10.sp,
+        fontWeight = FontWeight.Bold,
+        letterSpacing = 1.sp
+    )
+    Spacer(modifier = Modifier.height(8.dp))
+}
+
+@Composable
+private fun BattingStatsSection(runs: Int, average: Float, strikeRate: Float, accent: Color) {
+    val colors = BouncerDesignSystem.colors
+    StatSectionHeader("BATTING")
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceEvenly
+    ) {
+        StatColumn(value = runs.toString(), label = "RUNS", color = accent)
+        StatColumn(value = String.format("%.1f", average), label = "AVG", color = ChartGreen)
+        StatColumn(value = String.format("%.1f", strikeRate), label = "SR", color = colors.statusInfo)
+    }
+    Spacer(modifier = Modifier.height(16.dp))
+}
+
+@Composable
+private fun BowlingStatsSection(wickets: Int, bowlingAverage: Float, economy: Float) {
+    val colors = BouncerDesignSystem.colors
+    StatSectionHeader("BOWLING")
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceEvenly
+    ) {
+        StatColumn(value = wickets.toString(), label = "WKTS", color = colors.statusInfo)
+        StatColumn(value = String.format("%.1f", bowlingAverage), label = "AVG", color = ChartCyan)
+        StatColumn(value = String.format("%.2f", economy), label = "ECON", color = ChartOrange)
+    }
+}
+
+@Composable
+private fun ViewProfileButton(accent: Color, onClick: () -> Unit) {
+    TextButton(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Text(
+            text = "View Full Profile",
+            color = accent,
+            fontWeight = FontWeight.Bold
+        )
+        Icon(
+            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+            contentDescription = null,
+            tint = accent,
+            modifier = Modifier.size(16.dp)
+        )
     }
 }
 
@@ -319,18 +436,6 @@ private fun FlipCardBack(
     val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val accent = hierarchy.secondary.primary
-
-    @Composable
-    fun SectionHeader(text: String) {
-        Text(
-            text = text,
-            color = colors.textMuted,
-            fontSize = 10.sp,
-            fontWeight = FontWeight.Bold,
-            letterSpacing = 1.sp
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-    }
 
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -353,49 +458,17 @@ private fun FlipCardBack(
             Spacer(modifier = Modifier.height(16.dp))
 
             if (runs > 0 || average > 0) {
-                SectionHeader("BATTING")
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly
-                ) {
-                    StatColumn(value = runs.toString(), label = "RUNS", color = accent)
-                    StatColumn(value = String.format("%.1f", average), label = "AVG", color = ChartGreen)
-                    StatColumn(value = String.format("%.1f", strikeRate), label = "SR", color = colors.statusInfo)
-                }
-                Spacer(modifier = Modifier.height(16.dp))
+                BattingStatsSection(runs = runs, average = average, strikeRate = strikeRate, accent = accent)
             }
 
             if (wickets > 0 || economy > 0) {
-                SectionHeader("BOWLING")
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly
-                ) {
-                    StatColumn(value = wickets.toString(), label = "WKTS", color = colors.statusInfo)
-                    StatColumn(value = String.format("%.1f", bowlingAverage), label = "AVG", color = ChartCyan)
-                    StatColumn(value = String.format("%.2f", economy), label = "ECON", color = ChartOrange)
-                }
+                BowlingStatsSection(wickets = wickets, bowlingAverage = bowlingAverage, economy = economy)
             }
 
             Spacer(modifier = Modifier.weight(1f))
 
             if (onPlayerClick != null) {
-                TextButton(
-                    onClick = onPlayerClick,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(
-                        text = "View Full Profile",
-                        color = accent,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                        contentDescription = null,
-                        tint = accent,
-                        modifier = Modifier.size(16.dp)
-                    )
-                }
+                ViewProfileButton(accent = accent, onClick = onPlayerClick)
             }
 
             Text(
@@ -434,6 +507,109 @@ private fun StatColumn(
     }
 }
 
+private fun radarAngleRadians(index: Int): Double =
+    Math.toRadians((RADAR_ANGLE_STEP * index - 90).toDouble())
+
+private fun DrawScope.drawRadarGrid(center: Offset, radius: Float) {
+    for (i in 1..RADAR_AXES) {
+        drawCircle(
+            color = GlassBorder.copy(alpha = 0.3f),
+            radius = radius * i / RADAR_AXES,
+            center = center,
+            style = Stroke(width = 1.dp.toPx())
+        )
+    }
+
+    for (i in 0 until RADAR_AXES) {
+        val angle = radarAngleRadians(i)
+        drawLine(
+            color = GlassBorder.copy(alpha = 0.5f),
+            start = center,
+            end = Offset(
+                center.x + radius * cos(angle).toFloat(),
+                center.y + radius * sin(angle).toFloat()
+            ),
+            strokeWidth = 1.dp.toPx()
+        )
+    }
+}
+
+private fun buildRadarPath(animatedSkills: List<Pair<String, Float>>, center: Offset, radius: Float): Path {
+    val path = Path()
+    animatedSkills.forEachIndexed { index, (_, skill) ->
+        val angle = radarAngleRadians(index)
+        val skillRadius = radius * skill
+        val x = center.x + skillRadius * cos(angle).toFloat()
+        val y = center.y + skillRadius * sin(angle).toFloat()
+        if (index == 0) path.moveTo(x, y) else path.lineTo(x, y)
+    }
+    path.close()
+    return path
+}
+
+private fun DrawScope.drawRadarShape(path: Path, primaryColor: Color, center: Offset) {
+    drawPath(
+        path = path,
+        brush = Brush.radialGradient(
+            colors = listOf(
+                primaryColor.copy(alpha = 0.4f),
+                primaryColor.copy(alpha = 0.1f)
+            ),
+            center = center
+        )
+    )
+
+    drawPath(
+        path = path,
+        color = primaryColor,
+        style = Stroke(width = 2.dp.toPx())
+    )
+}
+
+private fun DrawScope.drawRadarPoints(
+    animatedSkills: List<Pair<String, Float>>,
+    center: Offset,
+    radius: Float,
+    primaryColor: Color
+) {
+    animatedSkills.forEachIndexed { index, (_, skill) ->
+        val angle = radarAngleRadians(index)
+        val skillRadius = radius * skill
+        val point = Offset(
+            center.x + skillRadius * cos(angle).toFloat(),
+            center.y + skillRadius * sin(angle).toFloat()
+        )
+        drawCircle(color = primaryColor, radius = 6.dp.toPx(), center = point)
+        drawCircle(color = Surface1, radius = 3.dp.toPx(), center = point)
+    }
+}
+
+@Composable
+private fun RadarAxisLabels(skills: List<Pair<String, Float>>, chartSize: Dp) {
+    val colors = BouncerDesignSystem.colors
+    skills.forEachIndexed { index, (label, _) ->
+        val angle = radarAngleRadians(index)
+        val labelRadius = chartSize.value / 2 - 10
+
+        Box(
+            modifier = Modifier
+                .offset(
+                    x = (labelRadius * cos(angle)).dp,
+                    y = (labelRadius * sin(angle)).dp
+                )
+                .background(Color.White.copy(alpha = 0.04f), RoundedCornerShape(4.dp))
+                .padding(horizontal = 4.dp, vertical = 2.dp)
+        ) {
+            Text(
+                text = label.take(3).uppercase(),
+                color = colors.textSecondary,
+                fontSize = 9.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
+    }
+}
+
 /**
  * PerformanceRadarChart - Radar chart for all-rounder visualization
  * Displays player skills across multiple dimensions
@@ -450,7 +626,6 @@ fun PerformanceRadarChart(
     chartSize: Dp = 200.dp,
     primaryColor: Color = GoldPrimary
 ) {
-    val colors = BouncerDesignSystem.colors
     val skills = listOf(
         "Batting" to battingSkill,
         "Bowling" to bowlingSkill,
@@ -469,7 +644,6 @@ fun PerformanceRadarChart(
     }
 
     val chartDescription = "$playerName performance: ${skills.joinToString(", ") { "${it.first} ${it.second.toInt()}%" }}"
-    val angleStep = 360f / 5
 
     Box(
         modifier = modifier
@@ -481,90 +655,85 @@ fun PerformanceRadarChart(
             val center = Offset(size.width / 2, size.height / 2)
             val radius = min(size.width, size.height) / 2 - 30.dp.toPx()
 
-            for (i in 1..5) {
-                drawCircle(
-                    color = GlassBorder.copy(alpha = 0.3f),
-                    radius = radius * i / 5,
-                    center = center,
-                    style = Stroke(width = 1.dp.toPx())
-                )
-            }
+            drawRadarGrid(center, radius)
 
-            for (i in 0 until 5) {
-                val angle = Math.toRadians((angleStep * i - 90).toDouble())
-                drawLine(
-                    color = GlassBorder.copy(alpha = 0.5f),
-                    start = center,
-                    end = Offset(
-                        center.x + radius * cos(angle).toFloat(),
-                        center.y + radius * sin(angle).toFloat()
-                    ),
-                    strokeWidth = 1.dp.toPx()
-                )
-            }
-
-            val path = Path()
-            animatedSkills.forEachIndexed { index, (_, skill) ->
-                val angle = Math.toRadians((angleStep * index - 90).toDouble())
-                val skillRadius = radius * skill
-                val x = center.x + skillRadius * cos(angle).toFloat()
-                val y = center.y + skillRadius * sin(angle).toFloat()
-                if (index == 0) path.moveTo(x, y) else path.lineTo(x, y)
-            }
-            path.close()
-
-            drawPath(
-                path = path,
-                brush = Brush.radialGradient(
-                    colors = listOf(
-                        primaryColor.copy(alpha = 0.4f),
-                        primaryColor.copy(alpha = 0.1f)
-                    ),
-                    center = center
-                )
-            )
-
-            drawPath(
-                path = path,
-                color = primaryColor,
-                style = Stroke(width = 2.dp.toPx())
-            )
-
-            animatedSkills.forEachIndexed { index, (_, skill) ->
-                val angle = Math.toRadians((angleStep * index - 90).toDouble())
-                val skillRadius = radius * skill
-                val point = Offset(
-                    center.x + skillRadius * cos(angle).toFloat(),
-                    center.y + skillRadius * sin(angle).toFloat()
-                )
-                drawCircle(color = primaryColor, radius = 6.dp.toPx(), center = point)
-                drawCircle(color = Surface1, radius = 3.dp.toPx(), center = point)
-            }
+            val path = buildRadarPath(animatedSkills, center, radius)
+            drawRadarShape(path, primaryColor, center)
+            drawRadarPoints(animatedSkills, center, radius, primaryColor)
         }
 
-        skills.forEachIndexed { index, (label, _) ->
-            val angle = Math.toRadians((angleStep * index - 90).toDouble())
-            val labelRadius = chartSize.value / 2 - 10
-
-            Box(
-                modifier = Modifier
-                    .offset(
-                        x = (labelRadius * cos(angle)).dp,
-                        y = (labelRadius * sin(angle)).dp
-                    )
-                    .background(Color.White.copy(alpha = 0.04f), RoundedCornerShape(4.dp))
-                    .padding(horizontal = 4.dp, vertical = 2.dp)
-            ) {
-                Text(
-                    text = label.take(3).uppercase(),
-                    color = colors.textSecondary,
-                    fontSize = 9.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-        }
+        RadarAxisLabels(skills = skills, chartSize = chartSize)
     }
 }
+
+@Composable
+private fun VersusBadge(accent: Color) {
+    val colors = BouncerDesignSystem.colors
+    Box(
+        modifier = Modifier
+            .size(40.dp)
+            .background(colors.glassBorderHighlight, CircleShape),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = "VS",
+            color = accent,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Black
+        )
+    }
+}
+
+private data class ComparisonBarData(
+    val label: String,
+    val value1: Float,
+    val value2: Float,
+    val displayValue1: String,
+    val displayValue2: String,
+    val lowerIsBetter: Boolean = false
+)
+
+private fun buildComparisonBars(
+    player1Stats: PlayerComparisonStats,
+    player2Stats: PlayerComparisonStats
+): List<ComparisonBarData> = listOf(
+    ComparisonBarData(
+        label = "RUNS",
+        value1 = player1Stats.runs.toFloat(),
+        value2 = player2Stats.runs.toFloat(),
+        displayValue1 = player1Stats.runs.toString(),
+        displayValue2 = player2Stats.runs.toString()
+    ),
+    ComparisonBarData(
+        label = "AVERAGE",
+        value1 = player1Stats.average,
+        value2 = player2Stats.average,
+        displayValue1 = String.format("%.1f", player1Stats.average),
+        displayValue2 = String.format("%.1f", player2Stats.average)
+    ),
+    ComparisonBarData(
+        label = "STRIKE RATE",
+        value1 = player1Stats.strikeRate,
+        value2 = player2Stats.strikeRate,
+        displayValue1 = String.format("%.1f", player1Stats.strikeRate),
+        displayValue2 = String.format("%.1f", player2Stats.strikeRate)
+    ),
+    ComparisonBarData(
+        label = "WICKETS",
+        value1 = player1Stats.wickets.toFloat(),
+        value2 = player2Stats.wickets.toFloat(),
+        displayValue1 = player1Stats.wickets.toString(),
+        displayValue2 = player2Stats.wickets.toString()
+    ),
+    ComparisonBarData(
+        label = "ECONOMY",
+        value1 = player1Stats.economy,
+        value2 = player2Stats.economy,
+        displayValue1 = String.format("%.2f", player1Stats.economy),
+        displayValue2 = String.format("%.2f", player2Stats.economy),
+        lowerIsBetter = true
+    )
+)
 
 /**
  * HeadToHeadComparison - Side-by-side player stats comparison
@@ -599,19 +768,7 @@ fun HeadToHeadComparison(
                     color = ChartGreen
                 )
 
-                Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .background(colors.glassBorderHighlight, CircleShape),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "VS",
-                        color = hierarchy.secondary.primary,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Black
-                    )
-                }
+                VersusBadge(accent = hierarchy.secondary.primary)
 
                 PlayerComparisonHeader(
                     name = player2Name,
@@ -622,56 +779,16 @@ fun HeadToHeadComparison(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            val bars = listOf<@Composable () -> Unit>(
-                {
-                    ComparisonBar(
-                        label = "RUNS",
-                        value1 = player1Stats.runs.toFloat(),
-                        value2 = player2Stats.runs.toFloat(),
-                        displayValue1 = player1Stats.runs.toString(),
-                        displayValue2 = player2Stats.runs.toString()
-                    )
-                },
-                {
-                    ComparisonBar(
-                        label = "AVERAGE",
-                        value1 = player1Stats.average,
-                        value2 = player2Stats.average,
-                        displayValue1 = String.format("%.1f", player1Stats.average),
-                        displayValue2 = String.format("%.1f", player2Stats.average)
-                    )
-                },
-                {
-                    ComparisonBar(
-                        label = "STRIKE RATE",
-                        value1 = player1Stats.strikeRate,
-                        value2 = player2Stats.strikeRate,
-                        displayValue1 = String.format("%.1f", player1Stats.strikeRate),
-                        displayValue2 = String.format("%.1f", player2Stats.strikeRate)
-                    )
-                },
-                {
-                    ComparisonBar(
-                        label = "WICKETS",
-                        value1 = player1Stats.wickets.toFloat(),
-                        value2 = player2Stats.wickets.toFloat(),
-                        displayValue1 = player1Stats.wickets.toString(),
-                        displayValue2 = player2Stats.wickets.toString()
-                    )
-                },
-                {
-                    ComparisonBar(
-                        label = "ECONOMY",
-                        value1 = player1Stats.economy,
-                        value2 = player2Stats.economy,
-                        displayValue1 = String.format("%.2f", player1Stats.economy),
-                        displayValue2 = String.format("%.2f", player2Stats.economy),
-                        lowerIsBetter = true
-                    )
-                }
-            )
+            val bars = buildComparisonBars(player1Stats, player2Stats)
             bars.forEachIndexed { index, bar ->
-                bar()
+                ComparisonBar(
+                    label = bar.label,
+                    value1 = bar.value1,
+                    value2 = bar.value2,
+                    displayValue1 = bar.displayValue1,
+                    displayValue2 = bar.displayValue2,
+                    lowerIsBetter = bar.lowerIsBetter
+                )
                 if (index < bars.lastIndex) Spacer(modifier = Modifier.height(12.dp))
             }
         }
@@ -718,6 +835,30 @@ private fun PlayerComparisonHeader(
             fontWeight = FontWeight.Bold,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
+        )
+    }
+}
+
+@Composable
+private fun ComparisonValueBar(
+    fillFraction: Float,
+    fillColor: Color,
+    alignment: Alignment,
+    modifier: Modifier = Modifier
+) {
+    val colors = BouncerDesignSystem.colors
+    Box(
+        modifier = modifier
+            .height(8.dp)
+            .clip(RoundedCornerShape(4.dp))
+            .background(Color.White.copy(alpha = 0.08f))
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxHeight()
+                .fillMaxWidth(fillFraction)
+                .align(alignment)
+                .background(fillColor, RoundedCornerShape(4.dp))
         )
     }
 }
@@ -771,24 +912,12 @@ private fun ComparisonBar(
                 modifier = Modifier.width(50.dp)
             )
 
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .height(8.dp)
-                    .clip(RoundedCornerShape(4.dp))
-                    .background(Color.White.copy(alpha = 0.08f))
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxHeight()
-                        .fillMaxWidth(animatedValue1)
-                        .align(Alignment.CenterEnd)
-                        .background(
-                            if (isPlayer1Better) ChartGreen else ChartGreen.copy(alpha = 0.5f),
-                            RoundedCornerShape(4.dp)
-                        )
-                )
-            }
+            ComparisonValueBar(
+                fillFraction = animatedValue1,
+                fillColor = if (isPlayer1Better) ChartGreen else ChartGreen.copy(alpha = 0.5f),
+                alignment = Alignment.CenterEnd,
+                modifier = Modifier.weight(1f)
+            )
 
             Box(
                 modifier = Modifier
@@ -797,24 +926,12 @@ private fun ComparisonBar(
                     .background(colors.glassBorder, RoundedCornerShape(2.dp))
             )
 
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .height(8.dp)
-                    .clip(RoundedCornerShape(4.dp))
-                    .background(Color.White.copy(alpha = 0.08f))
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxHeight()
-                        .fillMaxWidth(animatedValue2)
-                        .align(Alignment.CenterStart)
-                        .background(
-                            if (isPlayer2Better) colors.statusInfo else colors.statusInfo.copy(alpha = 0.5f),
-                            RoundedCornerShape(4.dp)
-                        )
-                )
-            }
+            ComparisonValueBar(
+                fillFraction = animatedValue2,
+                fillColor = if (isPlayer2Better) colors.statusInfo else colors.statusInfo.copy(alpha = 0.5f),
+                alignment = Alignment.CenterStart,
+                modifier = Modifier.weight(1f)
+            )
 
             Text(
                 text = displayValue2,
@@ -883,10 +1000,78 @@ enum class AchievementTier {
 }
 
 @Composable
+private fun tierColorFor(tier: AchievementTier): Color {
+    val hierarchy = BouncerDesignSystem.hierarchy
+    return when (tier) {
+        AchievementTier.BRONZE -> hierarchy.secondary.primary
+        AchievementTier.SILVER -> Color(0xFFC0C0C0)
+        AchievementTier.GOLD -> hierarchy.secondary.primary
+        AchievementTier.PLATINUM -> Color(0xFFE5E4E2)
+    }
+}
+
+@Composable
+private fun AchievementBadgeIcon(
+    achievement: PlayerAchievement,
+    tierColor: Color,
+    scale: Float,
+    glow: Float
+) {
+    val colors = BouncerDesignSystem.colors
+    Box(contentAlignment = Alignment.Center) {
+        if (achievement.isUnlocked) {
+            Box(
+                modifier = Modifier
+                    .size(56.dp)
+                    .graphicsLayer { alpha = glow * 0.5f }
+                    .blur(8.dp)
+                    .background(tierColor, CircleShape)
+            )
+        }
+
+        Box(
+            modifier = Modifier
+                .size(50.dp)
+                .graphicsLayer {
+                    scaleX = scale
+                    scaleY = scale
+                }
+                .shadow(
+                    elevation = if (achievement.isUnlocked) 8.dp else 0.dp,
+                    shape = CircleShape,
+                    spotColor = tierColor.copy(alpha = 0.5f)
+                )
+                .background(
+                    brush = if (achievement.isUnlocked)
+                        Brush.radialGradient(
+                            colors = listOf(tierColor, tierColor.copy(alpha = 0.7f))
+                        )
+                    else Brush.linearGradient(
+                        colors = listOf(colors.glassBorderHighlight, colors.glassBorderHighlight)
+                    ),
+                    shape = CircleShape
+                )
+                .border(
+                    2.dp,
+                    if (achievement.isUnlocked) Color.White.copy(alpha = 0.3f) else colors.glassBorder,
+                    CircleShape
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = achievement.icon,
+                contentDescription = achievement.title,
+                tint = if (achievement.isUnlocked) colors.backgroundBase else colors.textMuted,
+                modifier = Modifier.size(24.dp)
+            )
+        }
+    }
+}
+
+@Composable
 private fun AchievementBadge(
     achievement: PlayerAchievement
 ) {
-    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     var showAnimation by remember { mutableStateOf(false) }
 
@@ -906,65 +1091,18 @@ private fun AchievementBadge(
         label = "glow"
     )
 
-    val tierColor = when (achievement.tier) {
-        AchievementTier.BRONZE -> hierarchy.secondary.primary
-        AchievementTier.SILVER -> Color(0xFFC0C0C0)
-        AchievementTier.GOLD -> hierarchy.secondary.primary
-        AchievementTier.PLATINUM -> Color(0xFFE5E4E2)
-    }
+    val tierColor = tierColorFor(achievement.tier)
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier.width(70.dp)
     ) {
-        Box(contentAlignment = Alignment.Center) {
-            if (achievement.isUnlocked) {
-                Box(
-                    modifier = Modifier
-                        .size(56.dp)
-                        .graphicsLayer { alpha = glow * 0.5f }
-                        .blur(8.dp)
-                        .background(tierColor, CircleShape)
-                )
-            }
-
-            Box(
-                modifier = Modifier
-                    .size(50.dp)
-                    .graphicsLayer {
-                        scaleX = scale
-                        scaleY = scale
-                    }
-                    .shadow(
-                        elevation = if (achievement.isUnlocked) 8.dp else 0.dp,
-                        shape = CircleShape,
-                        spotColor = tierColor.copy(alpha = 0.5f)
-                    )
-                    .background(
-                        brush = if (achievement.isUnlocked)
-                            Brush.radialGradient(
-                                colors = listOf(tierColor, tierColor.copy(alpha = 0.7f))
-                            )
-                        else Brush.linearGradient(
-                            colors = listOf(colors.glassBorderHighlight, colors.glassBorderHighlight)
-                        ),
-                        shape = CircleShape
-                    )
-                    .border(
-                        2.dp,
-                        if (achievement.isUnlocked) Color.White.copy(alpha = 0.3f) else colors.glassBorder,
-                        CircleShape
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = achievement.icon,
-                    contentDescription = achievement.title,
-                    tint = if (achievement.isUnlocked) colors.backgroundBase else colors.textMuted,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-        }
+        AchievementBadgeIcon(
+            achievement = achievement,
+            tierColor = tierColor,
+            scale = scale,
+            glow = glow
+        )
 
         Spacer(modifier = Modifier.height(6.dp))
 
@@ -980,6 +1118,94 @@ private fun AchievementBadge(
     }
 }
 
+private data class FormQualitative(val label: String, val color: Color)
+
+@Composable
+private fun rememberFormQualitative(avgScore: Double): FormQualitative {
+    val colors = BouncerDesignSystem.colors
+    return when {
+        avgScore >= 50 -> FormQualitative("EXCELLENT", StatusSuccess)
+        avgScore >= 30 -> FormQualitative("GOOD", colors.statusInfo)
+        avgScore >= 15 -> FormQualitative("AVERAGE", StatusWarning)
+        else -> FormQualitative("POOR", StatusLive)
+    }
+}
+
+@Composable
+private fun formBarColor(score: Int): Color {
+    val hierarchy = BouncerDesignSystem.hierarchy
+    val colors = BouncerDesignSystem.colors
+    return when {
+        score >= 100 -> hierarchy.secondary.primary
+        score >= 50 -> StatusSuccess
+        score >= 30 -> colors.statusInfo
+        score > 0 -> colors.textSecondary
+        else -> StatusLive
+    }
+}
+
+@Composable
+private fun FormIndicatorHeader(recentScores: List<Int>) {
+    val colors = BouncerDesignSystem.colors
+    val avgScore = if (recentScores.isNotEmpty()) recentScores.average() else 0.0
+    val qualitative = rememberFormQualitative(avgScore)
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = "RECENT FORM",
+            color = colors.textMuted,
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Black,
+            letterSpacing = 0.5.sp
+        )
+
+        Text(
+            text = qualitative.label,
+            color = qualitative.color,
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Bold
+        )
+    }
+
+    Spacer(modifier = Modifier.height(8.dp))
+}
+
+@Composable
+private fun RowScope.FormBar(score: Int, maxScore: Int) {
+    val heightFraction = (score.toFloat() / maxScore).coerceIn(0.1f, 1f)
+    val barColor = formBarColor(score)
+
+    val animatedHeight by animateFloatAsState(
+        targetValue = heightFraction,
+        animationSpec = tween(500, easing = FastOutSlowInEasing),
+        label = "formBar"
+    )
+
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.weight(1f)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(40.dp * animatedHeight)
+                .clip(RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp))
+                .background(barColor)
+        )
+
+        Text(
+            text = score.toString(),
+            color = barColor,
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Bold
+        )
+    }
+}
+
 /**
  * FormIndicator - Runs in last 5 innings sparkline
  * Shows recent form with visual indicators
@@ -990,7 +1216,6 @@ fun FormIndicator(
     modifier: Modifier = Modifier,
     showLabels: Boolean = true
 ) {
-    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val maxScore = recentScores.maxOrNull()?.coerceAtLeast(50) ?: 50
 
@@ -1001,36 +1226,7 @@ fun FormIndicator(
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
             if (showLabels) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "RECENT FORM",
-                        color = colors.textMuted,
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Black,
-                        letterSpacing = 0.5.sp
-                    )
-
-                    val avgScore = if (recentScores.isNotEmpty()) recentScores.average() else 0.0
-                    val (formLabel, formColor) = when {
-                        avgScore >= 50 -> "EXCELLENT" to StatusSuccess
-                        avgScore >= 30 -> "GOOD" to colors.statusInfo
-                        avgScore >= 15 -> "AVERAGE" to StatusWarning
-                        else -> "POOR" to StatusLive
-                    }
-
-                    Text(
-                        text = formLabel,
-                        color = formColor,
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
+                FormIndicatorHeader(recentScores = recentScores)
             }
 
             Row(
@@ -1039,44 +1235,47 @@ fun FormIndicator(
                 verticalAlignment = Alignment.Bottom
             ) {
                 recentScores.takeLast(5).forEach { score ->
-                    val heightFraction = (score.toFloat() / maxScore).coerceIn(0.1f, 1f)
-
-                    val barColor = when {
-                        score >= 100 -> hierarchy.secondary.primary
-                        score >= 50 -> StatusSuccess
-                        score >= 30 -> colors.statusInfo
-                        score > 0 -> colors.textSecondary
-                        else -> StatusLive
-                    }
-
-                    val animatedHeight by animateFloatAsState(
-                        targetValue = heightFraction,
-                        animationSpec = tween(500, easing = FastOutSlowInEasing),
-                        label = "formBar"
-                    )
-
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(40.dp * animatedHeight)
-                                .clip(RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp))
-                                .background(barColor)
-                        )
-
-                        Text(
-                            text = score.toString(),
-                            color = barColor,
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
+                    FormBar(score = score, maxScore = maxScore)
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun CompactCardInfo(name: String, role: String) {
+    val dsColors = BouncerDesignSystem.colors
+    Text(
+        text = name,
+        color = dsColors.textPrimary,
+        fontSize = 14.sp,
+        fontWeight = FontWeight.Bold,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis
+    )
+    Text(
+        text = role,
+        color = dsColors.textSecondary,
+        fontSize = 11.sp
+    )
+}
+
+@Composable
+private fun CompactCardStat(primaryStat: String, primaryStatLabel: String, teamColor: Color) {
+    val dsColors = BouncerDesignSystem.colors
+    Column(horizontalAlignment = Alignment.End) {
+        Text(
+            text = primaryStat,
+            color = teamColor,
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Black
+        )
+        Text(
+            text = primaryStatLabel,
+            color = dsColors.textMuted,
+            fontSize = 9.sp,
+            fontWeight = FontWeight.Bold
+        )
     }
 }
 
@@ -1098,20 +1297,22 @@ fun PlayerCompactCard(
     val haptic = rememberHapticFeedback()
     val dsColors = BouncerDesignSystem.colors
 
+    val clickModifier = if (onClick != null) {
+        Modifier.clickable(
+            interactionSource = remember { MutableInteractionSource() },
+            indication = ripple(color = teamColor.copy(alpha = 0.2f))
+        ) {
+            haptic.click()
+            onClick()
+        }
+    } else {
+        Modifier
+    }
+
     Surface(
         modifier = modifier
             .fillMaxWidth()
-            .then(
-                if (onClick != null) {
-                    Modifier.clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = ripple(color = teamColor.copy(alpha = 0.2f))
-                    ) {
-                        haptic.click()
-                        onClick()
-                    }
-                } else Modifier
-            ),
+            .then(clickModifier),
         shape = RoundedCornerShape(14.dp),
         color = dsColors.glassBorderHighlight,
         border = androidx.compose.foundation.BorderStroke(0.5.dp, dsColors.glassBorder.copy(alpha = 0.3f))
@@ -1136,35 +1337,14 @@ fun PlayerCompactCard(
             )
 
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = name,
-                    color = dsColors.textPrimary,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Text(
-                    text = role,
-                    color = dsColors.textSecondary,
-                    fontSize = 11.sp
-                )
+                CompactCardInfo(name = name, role = role)
             }
 
-            Column(horizontalAlignment = Alignment.End) {
-                Text(
-                    text = primaryStat,
-                    color = teamColor,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Black
-                )
-                Text(
-                    text = primaryStatLabel,
-                    color = dsColors.textMuted,
-                    fontSize = 9.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
+            CompactCardStat(
+                primaryStat = primaryStat,
+                primaryStatLabel = primaryStatLabel,
+                teamColor = teamColor
+            )
 
             if (onClick != null) {
                 Icon(
@@ -1175,6 +1355,42 @@ fun PlayerCompactCard(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun MilestoneBadge(milestone: String, accent: Color) {
+    val colors = BouncerDesignSystem.colors
+    Box(
+        modifier = Modifier
+            .background(accent, RoundedCornerShape(12.dp))
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+    ) {
+        Text(
+            text = milestone,
+            color = colors.backgroundBase,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Black
+        )
+    }
+}
+
+@Composable
+private fun MilestonePlayerInfo(playerName: String, matchesStat: String) {
+    val colors = BouncerDesignSystem.colors
+    Text(
+        text = playerName,
+        color = colors.textPrimary,
+        fontSize = 16.sp,
+        fontWeight = FontWeight.Bold
+    )
+
+    if (matchesStat.isNotEmpty()) {
+        Text(
+            text = matchesStat,
+            color = colors.textSecondary,
+            fontSize = 12.sp
+        )
     }
 }
 
@@ -1226,21 +1442,14 @@ fun PlayerMilestoneCard(
         border = androidx.compose.foundation.BorderStroke(2.dp, accent)
     ) {
         Box {
-            Box(
-                modifier = Modifier
-                    .matchParentSize()
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(
-                        Brush.linearGradient(
-                            colors = listOf(
-                                Color.Transparent,
-                                accent.copy(alpha = 0.15f),
-                                Color.Transparent
-                            ),
-                            start = Offset(shimmer * 500f - 100f, 0f),
-                            end = Offset(shimmer * 500f + 100f, 200f)
-                        )
-                    )
+            ShimmerOverlay(
+                shimmer = shimmer,
+                accent = accent,
+                cornerRadius = 20.dp,
+                alpha = 0.15f,
+                spread = 100f,
+                height = 200f,
+                modifier = Modifier.matchParentSize()
             )
 
             Row(
@@ -1264,34 +1473,10 @@ fun PlayerMilestoneCard(
                 )
 
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = playerName,
-                        color = colors.textPrimary,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-
-                    if (matchesStat.isNotEmpty()) {
-                        Text(
-                            text = matchesStat,
-                            color = colors.textSecondary,
-                            fontSize = 12.sp
-                        )
-                    }
+                    MilestonePlayerInfo(playerName = playerName, matchesStat = matchesStat)
                 }
 
-                Box(
-                    modifier = Modifier
-                        .background(accent, RoundedCornerShape(12.dp))
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
-                ) {
-                    Text(
-                        text = milestone,
-                        color = colors.backgroundBase,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Black
-                    )
-                }
+                MilestoneBadge(milestone = milestone, accent = accent)
             }
         }
     }
