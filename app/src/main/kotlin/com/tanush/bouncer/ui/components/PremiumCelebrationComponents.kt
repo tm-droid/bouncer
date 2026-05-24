@@ -68,6 +68,14 @@ private fun shimmerBrush(color: Color, shimmer: Float): Brush = Brush.linearGrad
     end = Offset((shimmer + 1) * 100, 100f)
 )
 
+private fun trophyColorFor(type: TrophyType, secondaryPrimary: Color): Color = when (type) {
+    TrophyType.GOLD -> secondaryPrimary
+    TrophyType.SILVER -> Color(0xFFC0C0C0)
+    TrophyType.BRONZE -> Color(0xFFCD7F32)
+    TrophyType.PLATINUM -> Color(0xFFE5E4E2)
+    TrophyType.DIAMOND -> Color(0xFFB9F2FF)
+}
+
 @Composable
 fun TrophyDisplay(
     trophyType: TrophyType,
@@ -79,90 +87,124 @@ fun TrophyDisplay(
     val infiniteTransition = rememberInfiniteTransition(label = "trophy")
     val glowAlpha by repeatingFloat("glow", 0.3f, 0.8f, 2000, transition = infiniteTransition)
     val rotation by repeatingFloat("rotation", -2f, 2f, 3000, transition = infiniteTransition)
-    val shimmer by repeatingFloat("shimmer", -1f, 2f, 2500, easing = LinearEasing, repeatMode = RepeatMode.Restart, transition = infiniteTransition)
+    val shimmer by repeatingFloat(
+        "shimmer", -1f, 2f, 2500,
+        easing = LinearEasing, repeatMode = RepeatMode.Restart, transition = infiniteTransition
+    )
 
     val hierarchy = BouncerDesignSystem.hierarchy
-    val trophyColor = when (trophyType) {
-        TrophyType.GOLD -> hierarchy.secondary.primary
-        TrophyType.SILVER -> Color(0xFFC0C0C0)
-        TrophyType.BRONZE -> Color(0xFFCD7F32)
-        TrophyType.PLATINUM -> Color(0xFFE5E4E2)
-        TrophyType.DIAMOND -> Color(0xFFB9F2FF)
-    }
+    val trophyColor = trophyColorFor(trophyType, hierarchy.secondary.primary)
 
     Column(
         modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Box(
-            modifier = Modifier.size(80.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            if (isUnlocked) {
-                Box(
-                    modifier = Modifier
-                        .size(90.dp)
-                        .blur(16.dp)
-                        .alpha(glowAlpha)
-                        .background(trophyColor, CircleShape)
-                )
-            }
+        TrophyIcon(
+            isUnlocked = isUnlocked,
+            trophyColor = trophyColor,
+            glowAlpha = glowAlpha,
+            rotation = rotation,
+            shimmer = shimmer,
+            title = title
+        )
+        TrophyText(
+            title = title,
+            subtitle = subtitle,
+            isUnlocked = isUnlocked,
+            trophyColor = trophyColor
+        )
+    }
+}
 
+@Composable
+private fun TrophyIcon(
+    isUnlocked: Boolean,
+    trophyColor: Color,
+    glowAlpha: Float,
+    rotation: Float,
+    shimmer: Float,
+    title: String
+) {
+    Box(
+        modifier = Modifier.size(80.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        if (isUnlocked) {
             Box(
                 modifier = Modifier
-                    .size(72.dp)
-                    .rotate(if (isUnlocked) rotation else 0f)
-                    .clip(CircleShape)
-                    .background(
-                        brush = if (isUnlocked) {
-                            shimmerBrush(trophyColor, shimmer)
-                        } else {
-                            Brush.linearGradient(colors = listOf(GlassSurface, GlassSurface))
-                        }
-                    )
-                    .border(
-                        width = 2.dp,
-                        brush = Brush.linearGradient(
-                            colors = if (isUnlocked) {
-                                listOf(trophyColor, trophyColor.copy(alpha = 0.5f))
-                            } else {
-                                listOf(TextMuted, GlassBorder)
-                            }
-                        ),
-                        shape = CircleShape
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.EmojiEvents,
-                    contentDescription = title,
-                    tint = if (isUnlocked) trophyColor else TextMuted,
-                    modifier = Modifier.size(40.dp)
-                )
-            }
+                    .size(90.dp)
+                    .blur(16.dp)
+                    .alpha(glowAlpha)
+                    .background(trophyColor, CircleShape)
+            )
         }
 
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+        Box(
+            modifier = Modifier
+                .size(72.dp)
+                .rotate(if (isUnlocked) rotation else 0f)
+                .clip(CircleShape)
+                .background(brush = trophyBackgroundBrush(isUnlocked, trophyColor, shimmer))
+                .border(
+                    width = 2.dp,
+                    brush = trophyBorderBrush(isUnlocked, trophyColor),
+                    shape = CircleShape
+                ),
+            contentAlignment = Alignment.Center
         ) {
+            Icon(
+                imageVector = Icons.Default.EmojiEvents,
+                contentDescription = title,
+                tint = if (isUnlocked) trophyColor else TextMuted,
+                modifier = Modifier.size(40.dp)
+            )
+        }
+    }
+}
+
+private fun trophyBackgroundBrush(isUnlocked: Boolean, trophyColor: Color, shimmer: Float): Brush =
+    if (isUnlocked) {
+        shimmerBrush(trophyColor, shimmer)
+    } else {
+        Brush.linearGradient(colors = listOf(GlassSurface, GlassSurface))
+    }
+
+private fun trophyBorderBrush(isUnlocked: Boolean, trophyColor: Color): Brush =
+    Brush.linearGradient(
+        colors = if (isUnlocked) {
+            listOf(trophyColor, trophyColor.copy(alpha = 0.5f))
+        } else {
+            listOf(TextMuted, GlassBorder)
+        }
+    )
+
+@Composable
+private fun TrophyText(
+    title: String,
+    subtitle: String,
+    isUnlocked: Boolean,
+    trophyColor: Color
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        Text(
+            text = title,
+            color = if (isUnlocked) TextPrimary else TextSecondary,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center
+        )
+
+        if (subtitle.isNotEmpty()) {
             Text(
-                text = title,
-                color = if (isUnlocked) TextPrimary else TextSecondary,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold,
+                text = subtitle,
+                color = if (isUnlocked) trophyColor else TextMuted,
+                fontSize = 12.sp,
                 textAlign = TextAlign.Center
             )
-
-            if (subtitle.isNotEmpty()) {
-                Text(
-                    text = subtitle,
-                    color = if (isUnlocked) trophyColor else TextMuted,
-                    fontSize = 12.sp,
-                    textAlign = TextAlign.Center
-                )
-            }
         }
     }
 }
@@ -177,30 +219,17 @@ fun CelebrationOverlay(
     message: String,
     modifier: Modifier = Modifier
 ) {
-    val hierarchy = BouncerDesignSystem.hierarchy
     if (!isVisible) return
 
+    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
-    val particles = remember {
-        List(50) {
-            Particle(
-                x = Random.nextFloat(),
-                y = Random.nextFloat() - 0.5f,
-                size = Random.nextFloat() * 8f + 4f,
-                color = listOf(
-                    hierarchy.secondary.primary,
-                    hierarchy.secondary.secondary,
-                    hierarchy.secondary.primary,
-                    Color.White
-                ).random(),
-                speedY = Random.nextFloat() * 0.02f + 0.01f,
-                rotation = Random.nextFloat() * 360f
-            )
-        }
-    }
+    val particles = remember { buildCelebrationParticles(hierarchy.secondary.primary, hierarchy.secondary.secondary) }
 
     val infiniteTransition = rememberInfiniteTransition(label = "celebration")
-    val time by repeatingFloat("time", 0f, 1f, 3000, easing = LinearEasing, repeatMode = RepeatMode.Restart, transition = infiniteTransition)
+    val time by repeatingFloat(
+        "time", 0f, 1f, 3000,
+        easing = LinearEasing, repeatMode = RepeatMode.Restart, transition = infiniteTransition
+    )
     val textScale by repeatingFloat("textScale", 0.9f, 1.1f, 500, transition = infiniteTransition)
 
     Box(
@@ -209,47 +238,70 @@ fun CelebrationOverlay(
             .background(colors.backgroundBase.copy(alpha = 0.8f)),
         contentAlignment = Alignment.Center
     ) {
-        Canvas(modifier = Modifier.fillMaxSize()) {
-            particles.forEach { particle ->
-                val y = ((particle.y + time * particle.speedY * 100) % 1.2f)
-                val x = particle.x + sin(time * 10 + particle.x * 10).toFloat() * 0.02f
+        ParticleCanvas(particles = particles, time = time)
+        CelebrationMessage(message = message, textScale = textScale, accent = hierarchy.secondary.primary)
+    }
+}
 
-                rotate(
-                    degrees = particle.rotation + time * 360,
-                    pivot = Offset(size.width * x, size.height * y)
-                ) {
-                    drawRect(
-                        color = particle.color,
-                        topLeft = Offset(
-                            size.width * x - particle.size / 2,
-                            size.height * y - particle.size / 2
-                        ),
-                        size = androidx.compose.ui.geometry.Size(particle.size, particle.size * 0.6f)
-                    )
-                }
+private fun buildCelebrationParticles(primary: Color, secondary: Color): List<Particle> {
+    val palette = listOf(primary, secondary, primary, Color.White)
+    return List(50) {
+        Particle(
+            x = Random.nextFloat(),
+            y = Random.nextFloat() - 0.5f,
+            size = Random.nextFloat() * 8f + 4f,
+            color = palette.random(),
+            speedY = Random.nextFloat() * 0.02f + 0.01f,
+            rotation = Random.nextFloat() * 360f
+        )
+    }
+}
+
+@Composable
+private fun ParticleCanvas(particles: List<Particle>, time: Float) {
+    Canvas(modifier = Modifier.fillMaxSize()) {
+        particles.forEach { particle ->
+            val y = ((particle.y + time * particle.speedY * 100) % 1.2f)
+            val x = particle.x + sin(time * 10 + particle.x * 10).toFloat() * 0.02f
+
+            rotate(
+                degrees = particle.rotation + time * 360,
+                pivot = Offset(size.width * x, size.height * y)
+            ) {
+                drawRect(
+                    color = particle.color,
+                    topLeft = Offset(
+                        size.width * x - particle.size / 2,
+                        size.height * y - particle.size / 2
+                    ),
+                    size = androidx.compose.ui.geometry.Size(particle.size, particle.size * 0.6f)
+                )
             }
         }
+    }
+}
 
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            modifier = Modifier.scale(textScale)
-        ) {
-            Icon(
-                imageVector = Icons.Default.EmojiEvents,
-                contentDescription = null,
-                tint = hierarchy.secondary.primary,
-                modifier = Modifier.size(64.dp)
-            )
+@Composable
+private fun CelebrationMessage(message: String, textScale: Float, accent: Color) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+        modifier = Modifier.scale(textScale)
+    ) {
+        Icon(
+            imageVector = Icons.Default.EmojiEvents,
+            contentDescription = null,
+            tint = accent,
+            modifier = Modifier.size(64.dp)
+        )
 
-            Text(
-                text = message,
-                color = TextPrimary,
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center
-            )
-        }
+        Text(
+            text = message,
+            color = TextPrimary,
+            fontSize = 24.sp,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center
+        )
     }
 }
 
@@ -288,32 +340,14 @@ fun MilestoneCard(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(
-                brush = if (isCompleted) {
-                    Brush.linearGradient(
-                        colors = listOf(
-                            hierarchy.secondary.primary.copy(alpha = 0.2f),
-                            hierarchy.secondary.primary.copy(alpha = 0.1f)
-                        )
-                    )
-                } else {
-                    Brush.linearGradient(colors = listOf(GlassSurface, GlassSurface))
-                }
-            )
+            .background(brush = milestoneBackgroundBrush(isCompleted, hierarchy.secondary.primary))
             .border(
                 width = if (isCompleted) 2.dp else 1.dp,
-                brush = if (isCompleted) {
-                    Brush.linearGradient(
-                        colors = listOf(hierarchy.secondary.primary, hierarchy.secondary.primary, hierarchy.secondary.secondary)
-                    )
-                } else {
-                    Brush.linearGradient(
-                        colors = listOf(
-                            hierarchy.secondary.primary.copy(alpha = 0.3f),
-                            hierarchy.secondary.secondary.copy(alpha = 0.1f)
-                        )
-                    )
-                },
+                brush = milestoneBorderBrush(
+                    isCompleted,
+                    hierarchy.secondary.primary,
+                    hierarchy.secondary.secondary
+                ),
                 shape = RoundedCornerShape(16.dp)
             )
             .padding(16.dp)
@@ -323,89 +357,152 @@ fun MilestoneCard(
             horizontalArrangement = Arrangement.spacedBy(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Box(
-                modifier = Modifier.size(56.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                if (isCompleted) {
-                    Box(
-                        modifier = Modifier
-                            .size(64.dp)
-                            .blur(12.dp)
-                            .alpha(glowAlpha)
-                            .background(hierarchy.secondary.primary, CircleShape)
-                    )
-                }
-
-                Box(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .clip(CircleShape)
-                        .background(
-                            if (isCompleted) hierarchy.secondary.primary.copy(alpha = 0.2f) else GlassSurface
-                        )
-                        .border(
-                            width = 2.dp,
-                            color = if (isCompleted) hierarchy.secondary.primary else hierarchy.secondary.primary.copy(alpha = 0.3f),
-                            shape = CircleShape
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = if (isCompleted) Icons.Default.Verified else icon,
-                        contentDescription = null,
-                        tint = if (isCompleted) hierarchy.secondary.primary else TextSecondary,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-            }
-
-            Column(
+            MilestoneIcon(
+                icon = icon,
+                isCompleted = isCompleted,
+                glowAlpha = glowAlpha,
+                accent = hierarchy.secondary.primary
+            )
+            MilestoneDetails(
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Text(
-                    text = milestone,
-                    color = if (isCompleted) hierarchy.secondary.primary else TextPrimary,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold
-                )
-
-                Text(
-                    text = description,
-                    color = TextSecondary,
-                    fontSize = 12.sp
-                )
-
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(6.dp)
-                        .clip(RoundedCornerShape(3.dp))
-                        .background(hierarchy.secondary.primary.copy(alpha = 0.2f))
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth(animatedProgress)
-                            .fillMaxHeight()
-                            .clip(RoundedCornerShape(3.dp))
-                            .background(
-                                brush = Brush.horizontalGradient(
-                                    colors = listOf(hierarchy.secondary.primary, hierarchy.secondary.primary)
-                                )
-                            )
-                    )
-                }
-
-                Text(
-                    text = "${(animatedProgress * 100).toInt()}% Complete",
-                    color = hierarchy.secondary.primary.copy(alpha = 0.8f),
-                    fontSize = 11.sp
-                )
-            }
+                milestone = milestone,
+                description = description,
+                animatedProgress = animatedProgress,
+                isCompleted = isCompleted,
+                primary = hierarchy.secondary.primary
+            )
         }
     }
 }
+
+private fun milestoneBackgroundBrush(isCompleted: Boolean, primary: Color): Brush =
+    if (isCompleted) {
+        Brush.linearGradient(
+            colors = listOf(
+                primary.copy(alpha = 0.2f),
+                primary.copy(alpha = 0.1f)
+            )
+        )
+    } else {
+        Brush.linearGradient(colors = listOf(GlassSurface, GlassSurface))
+    }
+
+private fun milestoneBorderBrush(isCompleted: Boolean, primary: Color, secondary: Color): Brush =
+    if (isCompleted) {
+        Brush.linearGradient(colors = listOf(primary, primary, secondary))
+    } else {
+        Brush.linearGradient(
+            colors = listOf(
+                primary.copy(alpha = 0.3f),
+                secondary.copy(alpha = 0.1f)
+            )
+        )
+    }
+
+@Composable
+private fun MilestoneIcon(
+    icon: ImageVector,
+    isCompleted: Boolean,
+    glowAlpha: Float,
+    accent: Color
+) {
+    Box(
+        modifier = Modifier.size(56.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        if (isCompleted) {
+            Box(
+                modifier = Modifier
+                    .size(64.dp)
+                    .blur(12.dp)
+                    .alpha(glowAlpha)
+                    .background(accent, CircleShape)
+            )
+        }
+
+        Box(
+            modifier = Modifier
+                .size(48.dp)
+                .clip(CircleShape)
+                .background(if (isCompleted) accent.copy(alpha = 0.2f) else GlassSurface)
+                .border(
+                    width = 2.dp,
+                    color = if (isCompleted) accent else accent.copy(alpha = 0.3f),
+                    shape = CircleShape
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = if (isCompleted) Icons.Default.Verified else icon,
+                contentDescription = null,
+                tint = if (isCompleted) accent else TextSecondary,
+                modifier = Modifier.size(24.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun MilestoneDetails(
+    milestone: String,
+    description: String,
+    animatedProgress: Float,
+    isCompleted: Boolean,
+    primary: Color,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Text(
+            text = milestone,
+            color = if (isCompleted) primary else TextPrimary,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Bold
+        )
+
+        Text(
+            text = description,
+            color = TextSecondary,
+            fontSize = 12.sp
+        )
+
+        ProgressTrack(animatedProgress = animatedProgress, primary = primary)
+
+        Text(
+            text = "${(animatedProgress * 100).toInt()}% Complete",
+            color = primary.copy(alpha = 0.8f),
+            fontSize = 11.sp
+        )
+    }
+}
+
+@Composable
+private fun ProgressTrack(animatedProgress: Float, primary: Color) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(6.dp)
+            .clip(RoundedCornerShape(3.dp))
+            .background(primary.copy(alpha = 0.2f))
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth(animatedProgress)
+                .fillMaxHeight()
+                .clip(RoundedCornerShape(3.dp))
+                .background(
+                    brush = Brush.horizontalGradient(colors = listOf(primary, primary))
+                )
+        )
+    }
+}
+
+private val StreakOrange = Color(0xFFFF6B00)
+private val StreakAmber = Color(0xFFFF9500)
+private val StreakGold = Color(0xFFFFD700)
+private val StreakRed = Color(0xFFFF4500)
 
 @Composable
 fun StreakCounter(
@@ -425,101 +522,102 @@ fun StreakCounter(
             .background(
                 brush = Brush.horizontalGradient(
                     colors = listOf(
-                        Color(0xFFFF6B00).copy(alpha = 0.2f),
-                        Color(0xFFFF9500).copy(alpha = 0.1f)
+                        StreakOrange.copy(alpha = 0.2f),
+                        StreakAmber.copy(alpha = 0.1f)
                     )
                 )
             )
             .border(
                 width = 1.dp,
-                brush = Brush.horizontalGradient(
-                    colors = listOf(Color(0xFFFF6B00), Color(0xFFFF9500))
-                ),
+                brush = Brush.horizontalGradient(colors = listOf(StreakOrange, StreakAmber)),
                 shape = RoundedCornerShape(16.dp)
             )
             .padding(16.dp),
         horizontalArrangement = Arrangement.spacedBy(16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(
-            modifier = Modifier.size(48.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Canvas(modifier = Modifier.size(48.dp)) {
-                drawCircle(
-                    brush = Brush.radialGradient(
-                        colors = listOf(Color(0xFFFF6B00).copy(alpha = 0.5f), Color.Transparent)
-                    ),
-                    radius = glowRadius.dp.toPx()
-                )
-            }
-
-            Canvas(
-                modifier = Modifier
-                    .size(32.dp)
-                    .scale(flame)
-            ) {
-                val path = Path()
-                val width = size.width
-                val height = size.height
-
-                path.moveTo(width * 0.5f, 0f)
-                path.cubicTo(
-                    width * 0.7f, height * 0.3f,
-                    width, height * 0.5f,
-                    width * 0.5f, height
-                )
-                path.cubicTo(
-                    0f, height * 0.5f,
-                    width * 0.3f, height * 0.3f,
-                    width * 0.5f, 0f
-                )
-
-                drawPath(
-                    path = path,
-                    brush = Brush.verticalGradient(
-                        colors = listOf(
-                            Color(0xFFFFD700),
-                            Color(0xFFFF6B00),
-                            Color(0xFFFF4500)
-                        )
-                    )
-                )
-            }
-        }
-
-        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(
-                text = "$currentStreak $unit",
-                color = TextPrimary,
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold
-            )
-            Text(
-                text = "Current Streak",
-                color = TextSecondary,
-                fontSize = 12.sp
-            )
-        }
-
+        FlameIcon(flame = flame, glowRadius = glowRadius)
+        StreakValueColumn(value = currentStreak, unit = unit, label = "Current Streak")
         Spacer(modifier = Modifier.weight(1f))
+        StreakValueColumn(
+            value = maxStreak,
+            unit = unit,
+            label = "Best Streak",
+            valueColor = hierarchy.secondary.primary,
+            valueSize = 18,
+            alignment = Alignment.End
+        )
+    }
+}
 
-        Column(
-            horizontalAlignment = Alignment.End,
-            verticalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            Text(
-                text = "$maxStreak $unit",
-                color = hierarchy.secondary.primary,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold
-            )
-            Text(
-                text = "Best Streak",
-                color = TextSecondary,
-                fontSize = 12.sp
+@Composable
+private fun FlameIcon(flame: Float, glowRadius: Float) {
+    Box(
+        modifier = Modifier.size(48.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Canvas(modifier = Modifier.size(48.dp)) {
+            drawCircle(
+                brush = Brush.radialGradient(
+                    colors = listOf(StreakOrange.copy(alpha = 0.5f), Color.Transparent)
+                ),
+                radius = glowRadius.dp.toPx()
             )
         }
+
+        Canvas(
+            modifier = Modifier
+                .size(32.dp)
+                .scale(flame)
+        ) {
+            drawPath(
+                path = buildFlamePath(size.width, size.height),
+                brush = Brush.verticalGradient(
+                    colors = listOf(StreakGold, StreakOrange, StreakRed)
+                )
+            )
+        }
+    }
+}
+
+private fun buildFlamePath(width: Float, height: Float): Path = Path().apply {
+    moveTo(width * 0.5f, 0f)
+    cubicTo(
+        width * 0.7f, height * 0.3f,
+        width, height * 0.5f,
+        width * 0.5f, height
+    )
+    cubicTo(
+        0f, height * 0.5f,
+        width * 0.3f, height * 0.3f,
+        width * 0.5f, 0f
+    )
+}
+
+@Composable
+private fun StreakValueColumn(
+    value: Int,
+    unit: String,
+    label: String,
+    valueColor: Color = TextPrimary,
+    valueSize: Int = 24,
+    alignment: Alignment.Horizontal = Alignment.Start
+) {
+    Column(
+        horizontalAlignment = alignment,
+        verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        Text(
+            text = "$value $unit",
+            color = valueColor,
+            fontSize = valueSize.sp,
+            fontWeight = FontWeight.Bold
+        )
+        Text(
+            text = label,
+            color = TextSecondary,
+            fontSize = 12.sp
+        )
     }
 }
 
@@ -532,55 +630,26 @@ fun BadgeDisplay(
     modifier: Modifier = Modifier
 ) {
     val hierarchy = BouncerDesignSystem.hierarchy
-    val tierColor = when (tier) {
-        1 -> Color(0xFFCD7F32)
-        2 -> Color(0xFFC0C0C0)
-        3 -> hierarchy.secondary.primary
-        else -> Color(0xFFB9F2FF)
-    }
+    val tierColor = tierColorFor(tier, hierarchy.secondary.primary)
 
     val infiniteTransition = rememberInfiniteTransition(label = "badge")
-    val shimmer by repeatingFloat("shimmer", -1f, 2f, 3000, easing = LinearEasing, repeatMode = RepeatMode.Restart, transition = infiniteTransition)
+    val shimmer by repeatingFloat(
+        "shimmer", -1f, 2f, 3000,
+        easing = LinearEasing, repeatMode = RepeatMode.Restart, transition = infiniteTransition
+    )
 
     Column(
         modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Box(
-            modifier = Modifier.size(64.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Canvas(
-                modifier = Modifier
-                    .size(56.dp)
-                    .alpha(if (isEarned) 1f else 0.4f)
-            ) {
-                val path = Path()
-                val radius = size.minDimension / 2
-                val centerX = size.width / 2
-                val centerY = size.height / 2
-
-                for (i in 0..5) {
-                    val angle = Math.toRadians((60.0 * i - 30))
-                    val x = centerX + (radius * cos(angle)).toFloat()
-                    val y = centerY + (radius * sin(angle)).toFloat()
-
-                    if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
-                }
-                path.close()
-
-                drawPath(path = path, brush = shimmerBrush(tierColor, shimmer))
-                drawPath(path = path, color = tierColor, style = Stroke(width = 2.dp.toPx()))
-            }
-
-            Icon(
-                imageVector = icon,
-                contentDescription = name,
-                tint = if (isEarned) tierColor else TextMuted,
-                modifier = Modifier.size(24.dp)
-            )
-        }
+        BadgeHexagon(
+            icon = icon,
+            isEarned = isEarned,
+            tierColor = tierColor,
+            shimmer = shimmer,
+            name = name
+        )
 
         Text(
             text = name,
@@ -590,6 +659,58 @@ fun BadgeDisplay(
             textAlign = TextAlign.Center,
             maxLines = 2
         )
+    }
+}
+
+private fun tierColorFor(tier: Int, secondaryPrimary: Color): Color = when (tier) {
+    1 -> Color(0xFFCD7F32)
+    2 -> Color(0xFFC0C0C0)
+    3 -> secondaryPrimary
+    else -> Color(0xFFB9F2FF)
+}
+
+@Composable
+private fun BadgeHexagon(
+    icon: ImageVector,
+    isEarned: Boolean,
+    tierColor: Color,
+    shimmer: Float,
+    name: String
+) {
+    Box(
+        modifier = Modifier.size(64.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Canvas(
+            modifier = Modifier
+                .size(56.dp)
+                .alpha(if (isEarned) 1f else 0.4f)
+        ) {
+            val path = buildHexagonPath(size.width, size.height, size.minDimension / 2)
+            drawPath(path = path, brush = shimmerBrush(tierColor, shimmer))
+            drawPath(path = path, color = tierColor, style = Stroke(width = 2.dp.toPx()))
+        }
+
+        Icon(
+            imageVector = icon,
+            contentDescription = name,
+            tint = if (isEarned) tierColor else TextMuted,
+            modifier = Modifier.size(24.dp)
+        )
+    }
+}
+
+private fun buildHexagonPath(width: Float, height: Float, radius: Float): Path {
+    val centerX = width / 2
+    val centerY = height / 2
+    return Path().apply {
+        for (i in 0..5) {
+            val angle = Math.toRadians(60.0 * i - 30)
+            val x = centerX + (radius * cos(angle)).toFloat()
+            val y = centerY + (radius * sin(angle)).toFloat()
+            if (i == 0) moveTo(x, y) else lineTo(x, y)
+        }
+        close()
     }
 }
 
@@ -613,105 +734,146 @@ fun XPProgressBar(
     )
 
     val infiniteTransition = rememberInfiniteTransition(label = "xpBar")
-    val shimmer by repeatingFloat("shimmer", -1f, 2f, 2000, easing = LinearEasing, repeatMode = RepeatMode.Restart, transition = infiniteTransition)
+    val shimmer by repeatingFloat(
+        "shimmer", -1f, 2f, 2000,
+        easing = LinearEasing, repeatMode = RepeatMode.Restart, transition = infiniteTransition
+    )
 
     Row(
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(
-            modifier = Modifier
-                .size(48.dp)
-                .clip(CircleShape)
-                .background(
-                    brush = Brush.radialGradient(
-                        colors = listOf(
-                            hierarchy.secondary.primary.copy(alpha = 0.3f),
-                            hierarchy.secondary.primary.copy(alpha = 0.1f)
-                        )
+        LevelBadge(level = level, accent = hierarchy.secondary.primary)
+        XPProgressDetails(
+            modifier = Modifier.weight(1f),
+            currentXP = currentXP,
+            maxXP = maxXP,
+            animatedProgress = animatedProgress,
+            shimmer = shimmer,
+            primary = hierarchy.secondary.primary,
+            secondary = hierarchy.secondary.secondary
+        )
+    }
+}
+
+@Composable
+private fun LevelBadge(level: Int, accent: Color) {
+    Box(
+        modifier = Modifier
+            .size(48.dp)
+            .clip(CircleShape)
+            .background(
+                brush = Brush.radialGradient(
+                    colors = listOf(
+                        accent.copy(alpha = 0.3f),
+                        accent.copy(alpha = 0.1f)
                     )
                 )
-                .border(
-                    width = 2.dp,
+            )
+            .border(
+                width = 2.dp,
+                brush = Brush.linearGradient(colors = listOf(accent, accent)),
+                shape = CircleShape
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                text = "LVL",
+                color = accent.copy(alpha = 0.7f),
+                fontSize = 8.sp,
+                fontWeight = FontWeight.Medium
+            )
+            Text(
+                text = "$level",
+                color = accent,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
+    }
+}
+
+@Composable
+private fun XPProgressDetails(
+    currentXP: Int,
+    maxXP: Int,
+    animatedProgress: Float,
+    shimmer: Float,
+    primary: Color,
+    secondary: Color,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = "Experience",
+                color = TextSecondary,
+                fontSize = 12.sp
+            )
+            Text(
+                text = "$currentXP / $maxXP XP",
+                color = primary,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium
+            )
+        }
+
+        XPProgressTrack(
+            animatedProgress = animatedProgress,
+            shimmer = shimmer,
+            primary = primary,
+            secondary = secondary
+        )
+    }
+}
+
+@Composable
+private fun XPProgressTrack(
+    animatedProgress: Float,
+    shimmer: Float,
+    primary: Color,
+    secondary: Color
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(12.dp)
+            .clip(RoundedCornerShape(6.dp))
+            .background(primary.copy(alpha = 0.15f))
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth(animatedProgress)
+                .fillMaxHeight()
+                .clip(RoundedCornerShape(6.dp))
+                .background(
+                    brush = Brush.horizontalGradient(
+                        colors = listOf(primary, primary, secondary)
+                    )
+                )
+        )
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth(animatedProgress)
+                .fillMaxHeight()
+                .clip(RoundedCornerShape(6.dp))
+                .alpha(0.3f)
+                .background(
                     brush = Brush.linearGradient(
-                        colors = listOf(hierarchy.secondary.primary, hierarchy.secondary.primary)
-                    ),
-                    shape = CircleShape
-                ),
-            contentAlignment = Alignment.Center
-        ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(
-                    text = "LVL",
-                    color = hierarchy.secondary.primary.copy(alpha = 0.7f),
-                    fontSize = 8.sp,
-                    fontWeight = FontWeight.Medium
+                        colors = listOf(Color.Transparent, Color.White, Color.Transparent),
+                        start = Offset(shimmer * 500, 0f),
+                        end = Offset((shimmer + 0.3f) * 500, 0f)
+                    )
                 )
-                Text(
-                    text = "$level",
-                    color = hierarchy.secondary.primary,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-        }
-
-        Column(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(
-                    text = "Experience",
-                    color = TextSecondary,
-                    fontSize = 12.sp
-                )
-                Text(
-                    text = "$currentXP / $maxXP XP",
-                    color = hierarchy.secondary.primary,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Medium
-                )
-            }
-
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(12.dp)
-                    .clip(RoundedCornerShape(6.dp))
-                    .background(hierarchy.secondary.primary.copy(alpha = 0.15f))
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth(animatedProgress)
-                        .fillMaxHeight()
-                        .clip(RoundedCornerShape(6.dp))
-                        .background(
-                            brush = Brush.horizontalGradient(
-                                colors = listOf(hierarchy.secondary.primary, hierarchy.secondary.primary, hierarchy.secondary.secondary)
-                            )
-                        )
-                )
-
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth(animatedProgress)
-                        .fillMaxHeight()
-                        .clip(RoundedCornerShape(6.dp))
-                        .alpha(0.3f)
-                        .background(
-                            brush = Brush.linearGradient(
-                                colors = listOf(Color.Transparent, Color.White, Color.Transparent),
-                                start = Offset(shimmer * 500, 0f),
-                                end = Offset((shimmer + 0.3f) * 500, 0f)
-                            )
-                        )
-                )
-            }
-        }
+        )
     }
 }
