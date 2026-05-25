@@ -9,6 +9,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -50,12 +51,9 @@ fun PremiumTeamCard(
     onClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    var isPressed by remember { mutableStateOf(false) }
     val colors = BouncerDesignSystem.colors
-    val hierarchy = BouncerDesignSystem.hierarchy
-    
     val infiniteTransition = rememberInfiniteTransition(label = "teamCard")
-    
+
     val shimmerOffset by infiniteTransition.animateFloat(
         initialValue = -1f,
         targetValue = 2f,
@@ -65,7 +63,7 @@ fun PremiumTeamCard(
         ),
         label = "teamShimmer"
     )
-    
+
     val favoriteScale by animateFloatAsState(
         targetValue = if (isFavorite) 1.15f else 1f,
         animationSpec = spring(
@@ -74,9 +72,9 @@ fun PremiumTeamCard(
         ),
         label = "favoriteScale"
     )
-    
+
     val pressScale by animateFloatAsState(
-        targetValue = if (isPressed) 0.97f else 1f,
+        targetValue = 1f,
         animationSpec = spring(stiffness = Spring.StiffnessHigh),
         label = "pressScale"
     )
@@ -99,142 +97,200 @@ fun PremiumTeamCard(
             ),
         shape = RoundedCornerShape(24.dp),
         color = colors.glassSurface,
-        border = if (isFavorite) {
-            BorderStroke(
-                2.dp,
-                Brush.linearGradient(
-                    colors = listOf(
-                        GoldPrimary.copy(alpha = 0.6f),
-                        GoldPrimary,
-                        GoldPrimary.copy(alpha = 0.6f)
-                    )
-                )
-            )
-        } else null
+        border = favoriteCardBorder(isFavorite)
     ) {
         Box {
-            // Shimmer overlay
             if (isFavorite) {
-                Canvas(modifier = Modifier.matchParentSize()) {
-                    val start = shimmerOffset * size.width
-                    drawRect(
-                        brush = Brush.linearGradient(
-                            colors = listOf(
-                                Color.Transparent,
-                                Color.White.copy(alpha = 0.03f),
-                                Color.Transparent
-                            ),
-                            start = Offset(start, 0f),
-                            end = Offset(start + size.width * 0.4f, size.height)
-                        )
-                    )
-                }
+                ShimmerOverlay(shimmerOffset = shimmerOffset)
             }
-            
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(20.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                // Header row
+            PremiumTeamCardBody(
+                teamName = teamName,
+                teamLogo = teamLogo,
+                teamCountry = teamCountry,
+                teamType = teamType,
+                isFavorite = isFavorite,
+                recentForm = recentForm,
+                stats = stats,
+                favoriteScale = favoriteScale,
+                onFavoriteClick = onFavoriteClick
+            )
+        }
+    }
+}
+
+private fun favoriteCardBorder(isFavorite: Boolean): BorderStroke? {
+    if (!isFavorite) return null
+    return BorderStroke(
+        2.dp,
+        Brush.linearGradient(
+            colors = listOf(
+                GoldPrimary.copy(alpha = 0.6f),
+                GoldPrimary,
+                GoldPrimary.copy(alpha = 0.6f)
+            )
+        )
+    )
+}
+
+@Composable
+private fun BoxScope.ShimmerOverlay(shimmerOffset: Float) {
+    Canvas(modifier = Modifier.matchParentSize()) {
+        val start = shimmerOffset * size.width
+        drawRect(
+            brush = Brush.linearGradient(
+                colors = listOf(
+                    Color.Transparent,
+                    Color.White.copy(alpha = 0.03f),
+                    Color.Transparent
+                ),
+                start = Offset(start, 0f),
+                end = Offset(start + size.width * 0.4f, size.height)
+            )
+        )
+    }
+}
+
+@Composable
+private fun PremiumTeamCardBody(
+    teamName: String,
+    teamLogo: String?,
+    teamCountry: String?,
+    teamType: TeamType,
+    isFavorite: Boolean,
+    recentForm: List<MatchResult>?,
+    stats: TeamQuickStats?,
+    favoriteScale: Float,
+    onFavoriteClick: () -> Unit
+) {
+    val colors = BouncerDesignSystem.colors
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(20.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        PremiumTeamHeader(
+            teamName = teamName,
+            teamLogo = teamLogo,
+            teamCountry = teamCountry,
+            teamType = teamType,
+            isFavorite = isFavorite,
+            favoriteScale = favoriteScale,
+            onFavoriteClick = onFavoriteClick
+        )
+
+        recentForm?.takeIf { it.isNotEmpty() }?.let { form ->
+            RecentFormSection(form = form)
+        }
+
+        stats?.let { teamStats ->
+            HorizontalDivider(color = colors.glassBorder.copy(alpha = 0.3f))
+            QuickStatsRow(stats = teamStats)
+        }
+    }
+}
+
+@Composable
+private fun PremiumTeamHeader(
+    teamName: String,
+    teamLogo: String?,
+    teamCountry: String?,
+    teamType: TeamType,
+    isFavorite: Boolean,
+    favoriteScale: Float,
+    onFavoriteClick: () -> Unit
+) {
+    val colors = BouncerDesignSystem.colors
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.Top
+    ) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            TeamLogoLarge(
+                logo = teamLogo,
+                name = teamName,
+                isFavorite = isFavorite
+            )
+
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    text = teamName,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = colors.textPrimary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.Top
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Team info
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(16.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        // Team logo
-                        TeamLogoLarge(
-                            logo = teamLogo,
-                            name = teamName,
-                            isFavorite = isFavorite
-                        )
-                        
-                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Text(
-                                text = teamName,
-                                fontSize = 18.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = colors.textPrimary,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                            
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                TeamTypeBadge(type = teamType)
-                                
-                                teamCountry?.let {
-                                    Text(
-                                        text = it,
-                                        fontSize = 11.sp,
-                                        color = colors.textMuted
-                                    )
-                                }
-                            }
-                        }
-                    }
-                    
-                    // Favorite button
-                    IconButton(
-                        onClick = onFavoriteClick,
-                        modifier = Modifier
-                            .graphicsLayer {
-                                scaleX = favoriteScale
-                                scaleY = favoriteScale
-                            }
-                    ) {
-                        Icon(
-                            imageVector = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                            contentDescription = "Favorite",
-                            tint = if (isFavorite) colors.statusLive else colors.textMuted,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
-                }
-                
-                // Recent form
-                recentForm?.takeIf { it.isNotEmpty() }?.let { form ->
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TeamTypeBadge(type = teamType)
+
+                    teamCountry?.let {
                         Text(
-                            text = "RECENT FORM",
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 1.sp,
+                            text = it,
+                            fontSize = 11.sp,
                             color = colors.textMuted
                         )
-                        
-                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            form.take(5).forEach { result ->
-                                FormIndicator(result = result)
-                            }
-                        }
-                    }
-                }
-                
-                // Quick stats
-                stats?.let { teamStats ->
-                    HorizontalDivider(color = colors.glassBorder.copy(alpha = 0.3f))
-                    
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceEvenly
-                    ) {
-                        QuickStat(label = "Matches", value = "${teamStats.matchesPlayed}")
-                        QuickStat(label = "Won", value = "${teamStats.wins}", valueColor = colors.statusSuccess)
-                        QuickStat(label = "Lost", value = "${teamStats.losses}", valueColor = colors.statusLive)
-                        QuickStat(label = "Win %", value = "${teamStats.winPercentage}%", valueColor = GoldPrimary)
                     }
                 }
             }
         }
+
+        IconButton(
+            onClick = onFavoriteClick,
+            modifier = Modifier.graphicsLayer {
+                scaleX = favoriteScale
+                scaleY = favoriteScale
+            }
+        ) {
+            Icon(
+                imageVector = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                contentDescription = "Favorite",
+                tint = if (isFavorite) colors.statusLive else colors.textMuted,
+                modifier = Modifier.size(24.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun RecentFormSection(form: List<MatchResult>) {
+    val colors = BouncerDesignSystem.colors
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            text = "RECENT FORM",
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 1.sp,
+            color = colors.textMuted
+        )
+
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            form.take(5).forEach { result ->
+                FormIndicator(result = result)
+            }
+        }
+    }
+}
+
+@Composable
+private fun QuickStatsRow(stats: TeamQuickStats) {
+    val colors = BouncerDesignSystem.colors
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceEvenly
+    ) {
+        QuickStat(label = "Matches", value = "${stats.matchesPlayed}")
+        QuickStat(label = "Won", value = "${stats.wins}", valueColor = colors.statusSuccess)
+        QuickStat(label = "Lost", value = "${stats.losses}", valueColor = colors.statusLive)
+        QuickStat(label = "Win %", value = "${stats.winPercentage}%", valueColor = GoldPrimary)
     }
 }
 
@@ -277,36 +333,40 @@ private fun TeamLogoLarge(
         label = "logoGlow"
     )
 
+    val glowModifier = if (isFavorite) {
+        Modifier.drawBehind {
+            drawCircle(
+                brush = Brush.radialGradient(
+                    colors = listOf(
+                        hierarchy.secondary.primary.copy(alpha = glowPulse * 0.4f),
+                        Color.Transparent
+                    )
+                ),
+                radius = size.maxDimension * 0.8f
+            )
+        }
+    } else {
+        Modifier
+    }
+
+    val borderBrush = if (isFavorite) {
+        Brush.linearGradient(
+            colors = listOf(hierarchy.secondary.primary, hierarchy.secondary.primary)
+        )
+    } else {
+        Brush.linearGradient(
+            colors = listOf(colors.glassBorder, colors.glassBorder.copy(alpha = 0.5f))
+        )
+    }
+
     Box(
         modifier = Modifier
             .size(64.dp)
-            .then(
-                if (isFavorite) {
-                    Modifier.drawBehind {
-                        drawCircle(
-                            brush = Brush.radialGradient(
-                                colors = listOf(
-                                    hierarchy.secondary.primary.copy(alpha = glowPulse * 0.4f),
-                                    Color.Transparent
-                                )
-                            ),
-                            radius = size.maxDimension * 0.8f
-                        )
-                    }
-                } else Modifier
-            )
+            .then(glowModifier)
             .border(
                 width = if (isFavorite) 2.dp else 1.dp,
-                brush = if (isFavorite) {
-                    Brush.linearGradient(
-                        colors = listOf(hierarchy.secondary.primary, hierarchy.secondary.primary)
-                    )
-                } else {
-                    Brush.linearGradient(
-                        colors = listOf(colors.glassBorder, colors.glassBorder.copy(alpha = 0.5f))
-                    )
-                },
-                CircleShape
+                brush = borderBrush,
+                shape = CircleShape
             )
             .clip(CircleShape)
             .background(colors.surface1),
@@ -351,15 +411,13 @@ private fun TeamTypeBadge(type: TeamType) {
 @Composable
 private fun FormIndicator(result: MatchResult) {
     val colors = BouncerDesignSystem.colors
-    val colorAndText: Pair<Color, String> = when (result) {
+    val (color, text) = when (result) {
         MatchResult.WIN -> colors.statusSuccess to "W"
         MatchResult.LOSS -> colors.statusLive to "L"
         MatchResult.DRAW -> colors.statusWarning to "D"
         MatchResult.NO_RESULT -> colors.textMuted to "NR"
     }
-    val color = colorAndText.first
-    val text = colorAndText.second
-    
+
     Box(
         modifier = Modifier
             .size(28.dp)
@@ -422,23 +480,25 @@ fun FavoriteTeamChip(
         label = "chipGlow"
     )
 
+    val glowModifier = if (isSelected) {
+        Modifier.drawBehind {
+            drawRoundRect(
+                brush = Brush.radialGradient(
+                    colors = listOf(
+                        GoldPrimary.copy(alpha = glowPulse * 0.3f),
+                        Color.Transparent
+                    )
+                ),
+                cornerRadius = CornerRadius(24.dp.toPx())
+            )
+        }
+    } else {
+        Modifier
+    }
+
     Surface(
         modifier = modifier
-            .then(
-                if (isSelected) {
-                    Modifier.drawBehind {
-                        drawRoundRect(
-                            brush = Brush.radialGradient(
-                                colors = listOf(
-                                    GoldPrimary.copy(alpha = glowPulse * 0.3f),
-                                    Color.Transparent
-                                )
-                            ),
-                            cornerRadius = CornerRadius(24.dp.toPx())
-                        )
-                    }
-                } else Modifier
-            )
+            .then(glowModifier)
             .shadow(
                 elevation = if (isSelected) 12.dp else 6.dp,
                 shape = RoundedCornerShape(24.dp),
@@ -453,65 +513,92 @@ fun FavoriteTeamChip(
             BorderStroke(1.dp, colors.glassBorder.copy(alpha = 0.3f))
         }
     ) {
-        Row(
-            modifier = Modifier.padding(12.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            verticalAlignment = Alignment.CenterVertically
+        FavoriteTeamChipContent(
+            teamName = teamName,
+            teamLogo = teamLogo,
+            isSelected = isSelected,
+            onRemove = onRemove
+        )
+    }
+}
+
+@Composable
+private fun FavoriteTeamChipContent(
+    teamName: String,
+    teamLogo: String?,
+    isSelected: Boolean,
+    onRemove: () -> Unit
+) {
+    val colors = BouncerDesignSystem.colors
+    Row(
+        modifier = Modifier.padding(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        FavoriteTeamChipLogo(
+            teamName = teamName,
+            teamLogo = teamLogo,
+            isSelected = isSelected
+        )
+
+        Text(
+            text = teamName,
+            fontSize = 13.sp,
+            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+            color = if (isSelected) colors.goldPrimary else colors.textPrimary,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+
+        IconButton(
+            onClick = onRemove,
+            modifier = Modifier.size(24.dp)
         ) {
-            // Team logo
-            Box(
-                modifier = Modifier
-                    .size(36.dp)
-                    .border(
-                        1.dp,
-                        if (isSelected) colors.goldPrimary.copy(alpha = 0.5f) else colors.glassBorder,
-                        CircleShape
-                    )
-                    .clip(CircleShape)
-                    .background(colors.surface1),
-                contentAlignment = Alignment.Center
-            ) {
-                if (!teamLogo.isNullOrEmpty()) {
-                    CoilImage(
-                        model = teamLogo,
-                        contentDescription = teamName,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(6.dp),
-                        contentScale = ContentScale.Fit
-                    )
-                } else {
-                    Text(
-                        text = teamName.take(2).uppercase(),
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Black,
-                        color = GoldPrimary
-                    )
-                }
-            }
-            
-            // Team name
-            Text(
-                text = teamName,
-                fontSize = 13.sp,
-                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                color = if (isSelected) colors.goldPrimary else colors.textPrimary,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+            Icon(
+                imageVector = Icons.Default.Close,
+                contentDescription = "Remove",
+                modifier = Modifier.size(16.dp),
+                tint = colors.textMuted
             )
-            
-            // Remove button
-            IconButton(
-                onClick = onRemove,
-                modifier = Modifier.size(24.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Close,
-                    contentDescription = "Remove",
-                    modifier = Modifier.size(16.dp),
-                    tint = colors.textMuted
-                )
-            }
+        }
+    }
+}
+
+@Composable
+private fun FavoriteTeamChipLogo(
+    teamName: String,
+    teamLogo: String?,
+    isSelected: Boolean
+) {
+    val colors = BouncerDesignSystem.colors
+    Box(
+        modifier = Modifier
+            .size(36.dp)
+            .border(
+                1.dp,
+                if (isSelected) colors.goldPrimary.copy(alpha = 0.5f) else colors.glassBorder,
+                CircleShape
+            )
+            .clip(CircleShape)
+            .background(colors.surface1),
+        contentAlignment = Alignment.Center
+    ) {
+        if (!teamLogo.isNullOrEmpty()) {
+            CoilImage(
+                model = teamLogo,
+                contentDescription = teamName,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(6.dp),
+                contentScale = ContentScale.Fit
+            )
+        } else {
+            Text(
+                text = teamName.take(2).uppercase(),
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Black,
+                color = GoldPrimary
+            )
         }
     }
 }
@@ -555,12 +642,12 @@ private fun TeamSelectorChip(
     onClick: () -> Unit
 ) {
     val hierarchy = BouncerDesignSystem.hierarchy
+    val colors = BouncerDesignSystem.colors
     val scale by animateFloatAsState(
         targetValue = if (isSelected) 1.05f else 1f,
         animationSpec = spring(stiffness = Spring.StiffnessHigh),
         label = "chipScale"
     )
-    val colors = BouncerDesignSystem.colors
 
     Surface(
         modifier = Modifier
@@ -580,51 +667,61 @@ private fun TeamSelectorChip(
             BorderStroke(1.5.dp, hierarchy.secondary.primary)
         } else null
     ) {
-        Column(
-            modifier = Modifier.padding(12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            // Logo
-            Box(
+        TeamSelectorChipContent(team = team, isSelected = isSelected)
+    }
+}
+
+@Composable
+private fun TeamSelectorChipContent(team: TeamInfo, isSelected: Boolean) {
+    val colors = BouncerDesignSystem.colors
+    Column(
+        modifier = Modifier.padding(12.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        TeamSelectorChipLogo(team = team, isSelected = isSelected)
+
+        Text(
+            text = team.shortName ?: team.name,
+            fontSize = 10.sp,
+            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+            color = if (isSelected) colors.goldPrimary else colors.textSecondary,
+            maxLines = 1,
+            textAlign = TextAlign.Center
+        )
+    }
+}
+
+@Composable
+private fun TeamSelectorChipLogo(team: TeamInfo, isSelected: Boolean) {
+    val colors = BouncerDesignSystem.colors
+    Box(
+        modifier = Modifier
+            .size(44.dp)
+            .clip(CircleShape)
+            .background(colors.surface1)
+            .border(
+                if (isSelected) 2.dp else 1.dp,
+                if (isSelected) colors.goldPrimary else colors.glassBorder,
+                CircleShape
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        if (!team.logo.isNullOrEmpty()) {
+            CoilImage(
+                model = team.logo,
+                contentDescription = team.name,
                 modifier = Modifier
-                    .size(44.dp)
-                    .clip(CircleShape)
-                    .background(colors.surface1)
-                    .border(
-                        if (isSelected) 2.dp else 1.dp,
-                        if (isSelected) colors.goldPrimary else colors.glassBorder,
-                        CircleShape
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                if (!team.logo.isNullOrEmpty()) {
-                    CoilImage(
-                        model = team.logo,
-                        contentDescription = team.name,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(8.dp),
-                        contentScale = ContentScale.Fit
-                    )
-                } else {
-                    Text(
-                        text = (team.shortName ?: team.name).take(3).uppercase(),
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Black,
-                        color = if (isSelected) colors.goldPrimary else colors.textSecondary
-                    )
-                }
-            }
-            
-            // Name
+                    .fillMaxSize()
+                    .padding(8.dp),
+                contentScale = ContentScale.Fit
+            )
+        } else {
             Text(
-                text = team.shortName ?: team.name,
-                fontSize = 10.sp,
-                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                color = if (isSelected) colors.goldPrimary else colors.textSecondary,
-                maxLines = 1,
-                textAlign = TextAlign.Center
+                text = (team.shortName ?: team.name).take(3).uppercase(),
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Black,
+                color = if (isSelected) colors.goldPrimary else colors.textSecondary
             )
         }
     }
@@ -659,52 +756,50 @@ fun TeamVsTeamCard(
             modifier = Modifier.padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
-            // Team logos and VS
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // Team 1
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    TeamLogoLarge(logo = team1.logo, name = team1.name, isFavorite = false)
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = team1.shortName ?: team1.name,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = hierarchy.secondary.primary
-                    )
-                }
-                
-                // VS
-                Text(
-                    text = "VS",
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Black,
-                    color = colors.textMuted
-                )
-                
-                // Team 2
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    TeamLogoLarge(logo = team2.logo, name = team2.name, isFavorite = false)
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = team2.shortName ?: team2.name,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = colors.textSecondary
-                    )
-                }
-            }
-            
+            VersusHeader(team1 = team1, team2 = team2)
+
             HorizontalDivider(color = colors.glassBorder.copy(alpha = 0.3f))
-            
-            // Stats comparison
+
             VersusStatRow(label = "Matches Won", value1 = team1Stats.wins, value2 = team2Stats.wins)
             VersusStatRow(label = "Highest Score", value1 = team1Stats.highestScore, value2 = team2Stats.highestScore)
             VersusStatRow(label = "Avg. Score", value1 = team1Stats.avgScore, value2 = team2Stats.avgScore)
         }
+    }
+}
+
+@Composable
+private fun VersusHeader(team1: TeamInfo, team2: TeamInfo) {
+    val hierarchy = BouncerDesignSystem.hierarchy
+    val colors = BouncerDesignSystem.colors
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceEvenly,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        VersusTeamColumn(team = team1, nameColor = hierarchy.secondary.primary)
+
+        Text(
+            text = "VS",
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Black,
+            color = colors.textMuted
+        )
+
+        VersusTeamColumn(team = team2, nameColor = colors.textSecondary)
+    }
+}
+
+@Composable
+private fun VersusTeamColumn(team: TeamInfo, nameColor: Color) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        TeamLogoLarge(logo = team.logo, name = team.name, isFavorite = false)
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = team.shortName ?: team.name,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Bold,
+            color = nameColor
+        )
     }
 }
 
@@ -721,60 +816,70 @@ private fun VersusStatRow(
     value2: Int
 ) {
     val hierarchy = BouncerDesignSystem.hierarchy
+    val colors = BouncerDesignSystem.colors
     val total = value1 + value2
     val ratio1 = if (total > 0) value1.toFloat() / total else 0.5f
-    
+
     val animatedRatio by animateFloatAsState(
         targetValue = ratio1,
         animationSpec = tween(800, easing = FastOutSlowInEasing),
         label = "vsRatio"
     )
-    val colors = BouncerDesignSystem.colors
 
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text(
-                text = "$value1",
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold,
-                color = if (value1 > value2) hierarchy.secondary.primary else colors.textSecondary
-            )
-            Text(
-                text = label,
-                fontSize = 12.sp,
-                color = colors.textMuted
-            )
-            Text(
-                text = "$value2",
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold,
-                color = if (value2 > value1) hierarchy.secondary.primary else colors.textSecondary
-            )
-        }
-        
-        // Progress bar
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(6.dp)
-                .clip(RoundedCornerShape(3.dp))
-                .background(colors.glassBorder)
-        ) {
-            Row {
-                Box(
-                    modifier = Modifier
-                        .fillMaxHeight()
-                        .fillMaxWidth(animatedRatio)
-                        .background(
-                            Brush.horizontalGradient(
-                                colors = listOf(hierarchy.secondary.primary, hierarchy.secondary.primary)
-                            )
+        VersusStatValues(label = label, value1 = value1, value2 = value2)
+        VersusStatBar(animatedRatio = animatedRatio, barColor = hierarchy.secondary.primary, trackColor = colors.glassBorder)
+    }
+}
+
+@Composable
+private fun VersusStatValues(label: String, value1: Int, value2: Int) {
+    val hierarchy = BouncerDesignSystem.hierarchy
+    val colors = BouncerDesignSystem.colors
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(
+            text = "$value1",
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Bold,
+            color = if (value1 > value2) hierarchy.secondary.primary else colors.textSecondary
+        )
+        Text(
+            text = label,
+            fontSize = 12.sp,
+            color = colors.textMuted
+        )
+        Text(
+            text = "$value2",
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Bold,
+            color = if (value2 > value1) hierarchy.secondary.primary else colors.textSecondary
+        )
+    }
+}
+
+@Composable
+private fun VersusStatBar(animatedRatio: Float, barColor: Color, trackColor: Color) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(6.dp)
+            .clip(RoundedCornerShape(3.dp))
+            .background(trackColor)
+    ) {
+        Row {
+            Box(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .fillMaxWidth(animatedRatio)
+                    .background(
+                        Brush.horizontalGradient(
+                            colors = listOf(barColor, barColor)
                         )
-                )
-            }
+                    )
+            )
         }
     }
 }
