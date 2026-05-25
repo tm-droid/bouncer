@@ -6,6 +6,9 @@ import android.util.Log
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.tanush.bouncer.analysis.MatchSituation
+import org.json.JSONArray
+import org.json.JSONObject
+import java.io.File
 import com.tanush.bouncer.analysis.MatchupAnalysis
 import com.tanush.bouncer.analysis.PlayerStatisticsEngine
 import com.tanush.bouncer.analysis.TeamStatistics
@@ -46,6 +49,9 @@ class ModelTrainer(private val context: Context? = null) {
         private const val KEY_MODEL_TRAINED = "model_trained"
         private const val KEY_MODEL_WEIGHTS = "model_weights"
         private const val KEY_TRAINING_STATS = "training_stats"
+
+        /** Filename for file-based weight persistence in context.filesDir. */
+        private const val MODEL_FILE_NAME = "score_model_v1.json"
 
         /** Maximum score for denormalization */
         const val MAX_SCORE = 350.0
@@ -389,7 +395,143 @@ class ModelTrainer(private val context: Context? = null) {
     // ═══════════════════════════════════════════════════════════════
 
     /**
-     * Save model weights to SharedPreferences.
+     * Serialize model weights to a [JSONObject] using the [ScorePredictionModel.serializeWeights]
+     * map format so the JSON round-trips cleanly with [loadFromFile].
+     */
+    private fun weightsToJson(): JSONObject {
+        val weightMap = model.serializeWeights()
+        val root = JSONObject()
+        root.put("isTrained", isTrained)
+        val layerCount = weightMap["layerCount"] as Int
+        root.put("layerCount", layerCount)
+        for (i in 0 until layerCount) {
+            root.put("layer_${i}_inputSize", weightMap["layer_${i}_inputSize"])
+            root.put("layer_${i}_outputSize", weightMap["layer_${i}_outputSize"])
+
+            @Suppress("UNCHECKED_CAST")
+            val weights = weightMap["layer_${i}_weights"] as List<List<Double>>
+            val weightsArr = JSONArray()
+            for (row in weights) {
+                val rowArr = JSONArray()
+                for (v in row) rowArr.put(v)
+                weightsArr.put(rowArr)
+            }
+            root.put("layer_${i}_weights", weightsArr)
+
+            @Suppress("UNCHECKED_CAST")
+            val biases = weightMap["layer_${i}_biases"] as List<Double>
+            val biasArr = JSONArray()
+            for (v in biases) biasArr.put(v)
+            root.put("layer_${i}_biases", biasArr)
+        }
+        return root
+    }
+
+    /**
+     * Convert a [JSONObject] (written by [weightsToJson]) back into the Map format
+     * expected by [ScorePredictionModel.deserializeWeights].
+     */
+    private fun jsonToWeightMap(root: JSONObject): Map<String, Any> {
+        val map = mutableMapOf<String, Any>()
+        val layerCount = root.getInt("layerCount")
+        map["layerCount"] = layerCount
+        for (i in 0 until layerCount) {
+            map["layer_${i}_inputSize"] = root.getInt("layer_${i}_inputSize")
+            map["layer_${i}_outputSize"] = root.getInt("layer_${i}_outputSize")
+
+            val weightsArr = root.getJSONArray("layer_${i}_weights")
+            val weights = mutableListOf<List<Double>>()
+            for (j in 0 until weightsArr.length()) {
+                val rowArr = weightsArr.getJSONArray(j)
+                val row = mutableListOf<Double>()
+                for (k in 0 until rowArr.length()) row.add(rowArr.getDouble(k))
+                weights.add(row)
+            }
+            map["layer_${i}_weights"] = weights
+
+            val biasArr = root.getJSONArray("layer_${i}_biases")
+            val biases = mutableListOf<Double>()
+            for (j in 0 until biasArr.length()) biases.add(biasArr.getDouble(j))
+            map["layer_${i}_biases"] = biases
+        }
+        return map
+    }
+
+    /**
+     * Save trained model weights to [context.filesDir]/score_model_v1.json.
+     *
+     * Convenience overload — uses the context supplied at construction time.
+     * No-op (with a log warning) if no context was provided.
+     * Called automatically at the end of successful training via [saveModel].
+     */
+    fun saveToFile() {
+        val ctx = context
+        if (ctx == null) {
+            Log.w(TAG, "saveToFile: no context — skipping file persistence")
+            return
+        }
+        saveToFile(ctx)
+    }
+
+    /**
+     * Save trained model weights to [ctx.filesDir]/score_model_v1.json.
+     *
+     * Silently logs errors rather than throwing — a save failure is non-fatal.
+     */
+    fun saveToFile(ctx: Context) {
+        try {
+            val file = File(ctx.filesDir, MODEL_FILE_NAME)
+            file.writeText(weightsToJson().toString())
+            Log.d(TAG, "Model saved to file: ${file.absolutePath} (${model.parameterCount()} params)")
+        } catch (e: Exception) {
+            Log.e(TAG, "saveToFile failed: ${e.message}")
+            Sentry.captureException(e)
+        }
+    }
+
+    /**
+     * Load model weights from [context.filesDir]/score_model_v1.json.
+     *
+     * Convenience overload — uses the context supplied at construction time.
+     * Returns false if no context was provided.
+     */
+    fun loadFromFile(): Boolean {
+        val ctx = context ?: return false
+        return loadFromFile(ctx)
+    }
+
+    /**
+     * Load model weights from [ctx.filesDir]/score_model_v1.json.
+     *
+     * @return true if weights were loaded successfully; false if the file is missing,
+     *         empty, or corrupt — in which case the model is reset to untrained state
+     *         and the caller should fall back to retraining.
+     */
+    fun loadFromFile(ctx: Context): Boolean {
+        return try {
+            val file = File(ctx.filesDir, MODEL_FILE_NAME)
+            if (!file.exists() || file.length() == 0L) {
+                Log.d(TAG, "No saved model file found at ${file.absolutePath}")
+                return false
+            }
+            val root = JSONObject(file.readText())
+            val weightMap = jsonToWeightMap(root)
+            model.deserializeWeights(weightMap)
+            isTrained = root.optBoolean("isTrained", true)
+            Log.d(TAG, "Model loaded from file (trained=$isTrained, ${model.parameterCount()} params)")
+            true
+        } catch (e: Exception) {
+            Log.e(TAG, "loadFromFile failed — falling back to untrained: ${e.message}")
+            Sentry.captureException(e)
+            model = ScorePredictionModel.create()
+            isTrained = false
+            false
+        }
+    }
+
+    /**
+     * Save model weights to SharedPreferences (legacy path, kept for backward compat).
+     * Also delegates to [saveToFile] when a context is available.
      */
     private fun saveModel() {
         try {
@@ -399,25 +541,34 @@ class ModelTrainer(private val context: Context? = null) {
                 ?.putBoolean(KEY_MODEL_TRAINED, isTrained)
                 ?.putString(KEY_MODEL_WEIGHTS, weightsJson)
                 ?.apply()
-            Log.d(TAG, "Model saved successfully (${model.parameterCount()} parameters)")
+            Log.d(TAG, "Model saved to SharedPreferences (${model.parameterCount()} parameters)")
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to save model: ${e.message}")
+            Log.e(TAG, "Failed to save model to SharedPreferences: ${e.message}")
         }
+        // Also persist to file for reliable cross-session recovery
+        saveToFile()
     }
 
     /**
-     * Load model weights from SharedPreferences.
+     * Load model weights — tries file first, falls back to SharedPreferences.
      */
     private fun loadModel() {
         try {
+            // Prefer file-based persistence (authoritative)
+            if (loadFromFile()) return
+
+            // Legacy: SharedPreferences fallback
             val wasTrained = prefs?.getBoolean(KEY_MODEL_TRAINED, false) ?: false
             if (!wasTrained) return
 
             val weightsJson = prefs?.getString(KEY_MODEL_WEIGHTS, null) ?: return
-            // Model loaded from persistence — currently just re-creates with defaults
-            // Full deserialization would restore weight arrays
+
+            val gson = Gson()
+            val type = object : TypeToken<Map<String, Any>>() {}.type
+            val weightMap: Map<String, Any> = gson.fromJson(weightsJson, type)
+            model.deserializeWeights(weightMap)
             isTrained = wasTrained
-            Log.d(TAG, "Model loaded (trained: $isTrained)")
+            Log.d(TAG, "Model loaded from SharedPreferences (trained=$isTrained)")
         } catch (e: Exception) {
             Log.e(TAG, "Failed to load model: ${e.message}")
             model = ScorePredictionModel.create()

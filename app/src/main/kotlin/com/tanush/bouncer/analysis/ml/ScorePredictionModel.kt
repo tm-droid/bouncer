@@ -186,6 +186,107 @@ class ScorePredictionModel private constructor(
         }
     }
 
+    /**
+     * Restore model weights from a map previously produced by [serializeWeights].
+     *
+     * The map must contain the exact keys written by serializeWeights:
+     *   "layerCount", "layer_N_weights", "layer_N_biases",
+     *   "layer_N_inputSize", "layer_N_outputSize"
+     *
+     * Layer count and dimensions must match the current model architecture.
+     * Throws [IllegalArgumentException] on structural mismatch.
+     */
+    fun deserializeWeights(map: Map<String, Any>) {
+        try {
+            val layerCount = when (val v = map["layerCount"]) {
+                is Int -> v
+                is Long -> v.toInt()
+                is Double -> v.toInt()
+                else -> throw IllegalArgumentException(
+                    "deserializeWeights: missing or invalid 'layerCount'"
+                )
+            }
+            require(layerCount == layers.size) {
+                "deserializeWeights: layerCount=$layerCount but model has ${layers.size} layers"
+            }
+
+            synchronized(weightLock) {
+                for (i in layers.indices) {
+                    val inputSize = when (val v = map["layer_${i}_inputSize"]) {
+                        is Int -> v
+                        is Long -> v.toInt()
+                        is Double -> v.toInt()
+                        else -> throw IllegalArgumentException(
+                            "deserializeWeights: missing 'layer_${i}_inputSize'"
+                        )
+                    }
+                    val outputSize = when (val v = map["layer_${i}_outputSize"]) {
+                        is Int -> v
+                        is Long -> v.toInt()
+                        is Double -> v.toInt()
+                        else -> throw IllegalArgumentException(
+                            "deserializeWeights: missing 'layer_${i}_outputSize'"
+                        )
+                    }
+                    require(inputSize == layers[i].inputSize && outputSize == layers[i].outputSize) {
+                        "deserializeWeights: layer $i dimension mismatch — " +
+                        "expected (${layers[i].inputSize}→${layers[i].outputSize}), " +
+                        "got ($inputSize→$outputSize)"
+                    }
+
+                    @Suppress("UNCHECKED_CAST")
+                    val rawWeights = map["layer_${i}_weights"] as? List<List<*>>
+                        ?: throw IllegalArgumentException(
+                            "deserializeWeights: missing or wrong type for 'layer_${i}_weights'"
+                        )
+                    require(rawWeights.size == outputSize) {
+                        "deserializeWeights: layer $i weights row count ${rawWeights.size} != outputSize $outputSize"
+                    }
+                    for (j in 0 until outputSize) {
+                        val row = rawWeights[j]
+                        require(row.size == inputSize) {
+                            "deserializeWeights: layer $i weights[$j] size ${row.size} != inputSize $inputSize"
+                        }
+                        for (k in 0 until inputSize) {
+                            layers[i].weights[j][k] = when (val v = row[k]) {
+                                is Double -> v
+                                is Float -> v.toDouble()
+                                is Int -> v.toDouble()
+                                is Long -> v.toDouble()
+                                else -> throw IllegalArgumentException(
+                                    "deserializeWeights: unexpected weight type ${v?.javaClass}"
+                                )
+                            }
+                        }
+                    }
+
+                    @Suppress("UNCHECKED_CAST")
+                    val rawBiases = map["layer_${i}_biases"] as? List<*>
+                        ?: throw IllegalArgumentException(
+                            "deserializeWeights: missing or wrong type for 'layer_${i}_biases'"
+                        )
+                    require(rawBiases.size == outputSize) {
+                        "deserializeWeights: layer $i biases size ${rawBiases.size} != outputSize $outputSize"
+                    }
+                    for (j in 0 until outputSize) {
+                        layers[i].biases[j] = when (val v = rawBiases[j]) {
+                            is Double -> v
+                            is Float -> v.toDouble()
+                            is Int -> v.toDouble()
+                            is Long -> v.toDouble()
+                            else -> throw IllegalArgumentException(
+                                "deserializeWeights: unexpected bias type ${v?.javaClass}"
+                            )
+                        }
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Sentry.captureException(e)
+            throw e
+        }
+    }
+
     companion object {
         /**
          * Creates the default score prediction model architecture.
