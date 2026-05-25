@@ -56,22 +56,34 @@ class LiveActivityViewModel : ViewModel() {
     companion object {
         private const val TAG = "LiveActivityViewModel"
         private const val MIN_MANUAL_REFRESH_INTERVAL_MS = 10_000L
+        private const val MAX_PROBABILITY_EVENTS = 300
+        private const val MIN_PROB = 5.0
+        private const val MAX_PROB = 95.0
+        private const val IMPACT_WICKET = -8.0
+        private const val IMPACT_BOUNDARY = 4.0
+        private const val IMPACT_DOT = -1.0
+        private const val LIVE_POLL_INTERVAL_MS = 6_000L
+        private const val SLOW_POLL_INTERVAL_MS = 60_000L
+        private const val DEFAULT_POLL_INTERVAL_MS = 30_000L
+        private const val MAX_BACKOFF_MULTIPLIER = 4
+        private const val FAILURE_REPORT_THRESHOLD = 3
+        private const val OVER_BALL_COUNT = 5
     }
-    
+
     private val scraper = CricBuzzScraper()
     private val liveCommentaryManager = LiveCommentaryManager()
     private val winCalculator = WinProbabilityCalculator()
-    
+
     // Set from a context-aware component (Activity / Composable with LocalContext).
     private var notificationManager: LiveNotificationManager? = null
 
     fun setNotificationManager(manager: LiveNotificationManager) {
         notificationManager = manager
     }
-    
+
     private val _keyEvent = MutableStateFlow<Pair<String, String>?>(null)
     val keyEvent: StateFlow<Pair<String, String>?> = _keyEvent.asStateFlow()
-    
+
     private val _selectedStatus = MutableStateFlow("Live")
     val selectedStatus: StateFlow<String> = _selectedStatus.asStateFlow()
 
@@ -103,12 +115,12 @@ class LiveActivityViewModel : ViewModel() {
 
     private val _isRefreshing = MutableStateFlow(false)
     val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
-    
+
     private val _loadingState = MutableStateFlow<LoadingState>(LoadingState.Idle)
     val loadingState: StateFlow<LoadingState> = _loadingState.asStateFlow()
 
     private var lastManualRefreshMs = 0L
-    
+
     private val _aiCommentary = MutableStateFlow<Map<String, String>>(emptyMap())
     val aiCommentary: StateFlow<Map<String, String>> = _aiCommentary.asStateFlow()
 
@@ -132,60 +144,71 @@ class LiveActivityViewModel : ViewModel() {
     val completedOvers: StateFlow<Map<String, List<List<String>>>> = _completedOvers.asStateFlow()
 
     init {
-        liveCommentaryManager.onKeyEvent = { title, body ->
-            viewModelScope.launch {
-                try {
-                    breadcrumb("live.event", "Key event: $title")
-                    _keyEvent.value = title to body
+        liveCommentaryManager.onKeyEvent = { title, body -> onLiveKeyEvent(title, body) }
+        startPolling(forceInitialFetch = true)
+    }
 
-                    val liveMatch = _currentMatches.value.firstOrNull { it.isLive } ?: return@launch
-                    if (!MatchSubscriptionManager.isSubscribed(liveMatch.id)) return@launch
+    private fun onLiveKeyEvent(title: String, body: String) {
+        viewModelScope.launch {
+            try {
+                breadcrumb("live.event", "Key event: $title")
+                _keyEvent.value = title to body
 
-                    NotificationInboxManager.add(
-                        NotificationItem(
-                            matchId = liveMatch.id,
-                            title = title,
-                            body = body,
-                            type = NotificationInboxManager.inferType(title),
-                        )
+                val liveMatch = _currentMatches.value.firstOrNull { it.isLive } ?: return@launch
+                if (!MatchSubscriptionManager.isSubscribed(liveMatch.id)) return@launch
+
+                NotificationInboxManager.add(
+                    NotificationItem(
+                        matchId = liveMatch.id,
+                        title = title,
+                        body = body,
+                        type = NotificationInboxManager.inferType(title),
                     )
+                )
 
-                    val manager = notificationManager ?: return@launch
-                    when {
-                        title.contains("Wicket", ignoreCase = true) -> manager.showWicketAlert(
-                            match = liveMatch,
-                            batsmanName = body.substringBefore(" ").take(30),
-                            bowlerName = "",
-                            dismissalType = "dismissed",
-                            runsScored = 0
-                        )
-                        title.contains("Six", ignoreCase = true) -> manager.showSixAlert(
-                            match = liveMatch,
-                            batsmanName = "",
-                            bowlerName = "",
-                            description = body.take(60)
-                        )
-                        title.contains("Boundary", ignoreCase = true) || title.contains("Four", ignoreCase = true) -> manager.showFourAlert(
-                            match = liveMatch,
-                            batsmanName = "",
-                            bowlerName = "",
-                            description = body.take(60)
-                        )
-                        title.contains("AI Strategic", ignoreCase = true) -> manager.showMilestoneAlert(
-                            match = liveMatch,
-                            playerName = "AI Insight",
-                            milestone = title,
-                            description = body.take(80)
-                        )
-                    }
-                } catch (e: Exception) {
-                    if (e is CancellationException) throw e
-                    Log.e(TAG, "Error processing key event: $title", e)
-                    Sentry.captureException(e)
-                }
+                notificationManager?.let { dispatchKeyEventAlert(it, liveMatch, title, body) }
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                Log.e(TAG, "Error processing key event: $title", e)
+                Sentry.captureException(e)
             }
         }
-        startPolling(forceInitialFetch = true)
+    }
+
+    private fun dispatchKeyEventAlert(
+        manager: LiveNotificationManager,
+        match: CricketMatch,
+        title: String,
+        body: String,
+    ) {
+        when {
+            title.contains("Wicket", ignoreCase = true) -> manager.showWicketAlert(
+                match = match,
+                batsmanName = body.substringBefore(" ").take(30),
+                bowlerName = "",
+                dismissalType = "dismissed",
+                runsScored = 0
+            )
+            title.contains("Six", ignoreCase = true) -> manager.showSixAlert(
+                match = match,
+                batsmanName = "",
+                bowlerName = "",
+                description = body.take(60)
+            )
+            title.contains("Boundary", ignoreCase = true) || title.contains("Four", ignoreCase = true) ->
+                manager.showFourAlert(
+                    match = match,
+                    batsmanName = "",
+                    bowlerName = "",
+                    description = body.take(60)
+                )
+            title.contains("AI Strategic", ignoreCase = true) -> manager.showMilestoneAlert(
+                match = match,
+                playerName = "AI Insight",
+                milestone = title,
+                description = body.take(80)
+            )
+        }
     }
 
     private fun breadcrumb(
@@ -212,11 +235,11 @@ class LiveActivityViewModel : ViewModel() {
             _keyEvent.value = null
         }
     }
-    
+
     private fun getPollingInterval(status: String): Long = when (status) {
-        "Live" -> 6_000L
-        "Upcoming", "Recent" -> 60_000L
-        else -> 30_000L
+        "Live" -> LIVE_POLL_INTERVAL_MS
+        "Upcoming", "Recent" -> SLOW_POLL_INTERVAL_MS
+        else -> DEFAULT_POLL_INTERVAL_MS
     }
 
     fun refreshMatches() {
@@ -264,7 +287,7 @@ class LiveActivityViewModel : ViewModel() {
     private fun filterAndEmitMatches(matches: List<CricketMatch>) {
         val type = _selectedCompetitionType.value
         val gender = _selectedGender.value
-        
+
         val filtered = matches.filter { match ->
             val typeMatch = type == "All" || match.competitionType == type
             val genderMatch = gender == "All" || match.gender == gender
@@ -280,6 +303,17 @@ class LiveActivityViewModel : ViewModel() {
         val wasPollingActive = isPollingActive
         isPollingActive = true
 
+        cancelNonLivePollingTasks()
+        ensurePollingForCurrentStatuses()
+
+        val shouldRunInitialFetch = forceInitialFetch || !hasCompletedInitialFetch
+        when {
+            shouldRunInitialFetch && initialFetchJob?.isActive != true -> runInitialFetch()
+            !wasPollingActive -> runFastResumeFetch()
+        }
+    }
+
+    private fun cancelNonLivePollingTasks() {
         // Cancel only non-live polling tasks; live polling persists across status changes.
         pollingTasks.entries.removeAll { (status, job) ->
             if (status != "Live") {
@@ -288,52 +322,59 @@ class LiveActivityViewModel : ViewModel() {
                 true
             } else false
         }
+    }
 
+    private fun ensurePollingForCurrentStatuses() {
         if (!pollingTasks.containsKey("Live")) {
             startPollingForStatus("Live")
         }
-
         val selectedStatus = _selectedStatus.value
         if (selectedStatus != "Live" && !pollingTasks.containsKey(selectedStatus)) {
             startPollingForStatus(selectedStatus)
         }
+    }
 
-        val shouldRunInitialFetch = forceInitialFetch || !hasCompletedInitialFetch
-        if (shouldRunInitialFetch && initialFetchJob?.isActive != true) {
-            initialFetchJob = viewModelScope.launch {
-                if (_currentMatches.value.isEmpty()) {
-                    _isLoading.value = true
-                }
-                for (status in listOf("Live", "Upcoming", "Recent")) {
-                    try {
-                        updateMatches(status)
-                    } catch (e: Exception) {
-                        if (e is CancellationException) throw e
-                        Log.e(TAG, "Initial fetch error for $status", e)
-                        breadcrumb(
-                            category = "data.error",
-                            message = "Initial fetch failed for status: $status",
-                            level = SentryLevel.ERROR,
-                            data = mapOf("status" to status),
-                        )
-                        Sentry.captureException(e)
-                        _loadingState.value = LoadingState.Error(e.message ?: "Unknown error")
-                    }
-                }
-                _isLoading.value = false
-                hasCompletedInitialFetch = true
+    private fun runInitialFetch() {
+        initialFetchJob = viewModelScope.launch {
+            if (_currentMatches.value.isEmpty()) {
+                _isLoading.value = true
             }
-        } else if (!wasPollingActive) {
-            // Fast resume path to avoid waiting for the next polling tick.
-            viewModelScope.launch {
-                runCatching { updateMatches("Live") }
-                if (selectedStatus != "Live") {
-                    runCatching { updateMatches(selectedStatus) }
+            for (status in listOf("Live", "Upcoming", "Recent")) {
+                try {
+                    updateMatches(status)
+                } catch (e: Exception) {
+                    if (e is CancellationException) throw e
+                    handleInitialFetchError(status, e)
                 }
+            }
+            _isLoading.value = false
+            hasCompletedInitialFetch = true
+        }
+    }
+
+    private fun handleInitialFetchError(status: String, e: Exception) {
+        Log.e(TAG, "Initial fetch error for $status", e)
+        breadcrumb(
+            category = "data.error",
+            message = "Initial fetch failed for status: $status",
+            level = SentryLevel.ERROR,
+            data = mapOf("status" to status),
+        )
+        Sentry.captureException(e)
+        _loadingState.value = LoadingState.Error(e.message ?: "Unknown error")
+    }
+
+    private fun runFastResumeFetch() {
+        // Fast resume path to avoid waiting for the next polling tick.
+        val selectedStatus = _selectedStatus.value
+        viewModelScope.launch {
+            runCatching { updateMatches("Live") }
+            if (selectedStatus != "Live") {
+                runCatching { updateMatches(selectedStatus) }
             }
         }
     }
-    
+
     fun stopPolling() {
         Log.d(TAG, "Stopping all polling tasks")
         isPollingActive = false
@@ -345,67 +386,83 @@ class LiveActivityViewModel : ViewModel() {
         }
         pollingTasks.clear()
     }
-    
+
     private fun startPollingForStatus(status: String) {
         Log.d(TAG, "Starting polling task for $status")
         val job = viewModelScope.launch {
             while (isPollingActive) {
                 try {
-                    val failures = consecutiveFailures[status] ?: 0
-                    // Adaptive backoff: up to 5x base interval after repeated failures.
-                    val interval = getPollingInterval(status) * (1 + failures.coerceAtMost(4))
-                    Log.d(TAG, "Waiting $interval ms before next update for $status (failures: $failures)")
-                    delay(interval)
-
+                    awaitNextPollTick(status)
                     if (!isPollingActive) break
-
-                    if (status == "Live") {
-                        updateMatches(status)
-                        updateAllLiveCommentaries()
-                        updateLiveNotifications()
-                    } else if (!MatchCacheService.isCacheValid(status)) {
-                        updateMatches(status)
-                    }
-
-                    consecutiveFailures[status] = 0
-                    if (_loadingState.value is LoadingState.Error) {
-                        _loadingState.value = LoadingState.Idle
-                    }
+                    runPollIteration(status)
+                    onPollSuccess(status)
                 } catch (e: Exception) {
                     if (e is CancellationException) throw e
-
-                    val failures = (consecutiveFailures[status] ?: 0) + 1
-                    consecutiveFailures[status] = failures
-                    Log.e(TAG, "Error in polling loop for $status (failure #$failures)", e)
-
-                    breadcrumb(
-                        category = "polling.error",
-                        message = "Polling failed for status: $status (attempt #$failures)",
-                        level = SentryLevel.WARNING,
-                        data = mapOf("status" to status, "failure_count" to failures),
-                    )
-                    Sentry.metrics().count("live.poll.error", 1.0)
-                    Sentry.logger().log(SentryLogLevel.WARN, "Polling failure #%s for %s", failures.toString(), status)
-
-                    // Suppress until 3 consecutive failures to reduce noise.
-                    if (failures >= 3) Sentry.captureException(e)
-
-                    if (_currentMatches.value.isEmpty()) {
-                        val offline = MatchCacheService.getOfflineMatches(status)
-                        _loadingState.value = if (!offline.isNullOrEmpty()) {
-                            Log.d(TAG, "Using offline cache for $status (${offline.size} matches)")
-                            filterAndEmitMatches(offline)
-                            LoadingState.Error("Showing cached data — couldn't reach server")
-                        } else {
-                            LoadingState.Error(e.localizedMessage ?: "Network error")
-                        }
-                    }
+                    handlePollFailure(status, e)
                 }
             }
         }
         pollingTasks[status] = job
     }
-    
+
+    private suspend fun awaitNextPollTick(status: String) {
+        val failures = consecutiveFailures[status] ?: 0
+        // Adaptive backoff: up to 5x base interval after repeated failures.
+        val interval = getPollingInterval(status) * (1 + failures.coerceAtMost(MAX_BACKOFF_MULTIPLIER))
+        Log.d(TAG, "Waiting $interval ms before next update for $status (failures: $failures)")
+        delay(interval)
+    }
+
+    private suspend fun runPollIteration(status: String) {
+        if (status == "Live") {
+            updateMatches(status)
+            updateAllLiveCommentaries()
+            updateLiveNotifications()
+        } else if (!MatchCacheService.isCacheValid(status)) {
+            updateMatches(status)
+        }
+    }
+
+    private fun onPollSuccess(status: String) {
+        consecutiveFailures[status] = 0
+        if (_loadingState.value is LoadingState.Error) {
+            _loadingState.value = LoadingState.Idle
+        }
+    }
+
+    private suspend fun handlePollFailure(status: String, e: Exception) {
+        val failures = (consecutiveFailures[status] ?: 0) + 1
+        consecutiveFailures[status] = failures
+        Log.e(TAG, "Error in polling loop for $status (failure #$failures)", e)
+
+        breadcrumb(
+            category = "polling.error",
+            message = "Polling failed for status: $status (attempt #$failures)",
+            level = SentryLevel.WARNING,
+            data = mapOf("status" to status, "failure_count" to failures),
+        )
+        Sentry.metrics().count("live.poll.error", 1.0)
+        Sentry.logger().log(SentryLogLevel.WARN, "Polling failure #%s for %s", failures.toString(), status)
+
+        // Suppress until 3 consecutive failures to reduce noise.
+        if (failures >= FAILURE_REPORT_THRESHOLD) Sentry.captureException(e)
+
+        if (_currentMatches.value.isEmpty()) {
+            applyOfflineFallback(status, e)
+        }
+    }
+
+    private suspend fun applyOfflineFallback(status: String, e: Exception) {
+        val offline = MatchCacheService.getOfflineMatches(status)
+        _loadingState.value = if (!offline.isNullOrEmpty()) {
+            Log.d(TAG, "Using offline cache for $status (${offline.size} matches)")
+            filterAndEmitMatches(offline)
+            LoadingState.Error("Showing cached data — couldn't reach server")
+        } else {
+            LoadingState.Error(e.localizedMessage ?: "Network error")
+        }
+    }
+
     private suspend fun updateAllLiveCommentaries() {
         val updatedCommentary = _aiCommentary.value.toMutableMap()
 
@@ -438,68 +495,76 @@ class LiveActivityViewModel : ViewModel() {
 
         _aiCommentary.value = updatedCommentary
     }
-    
+
     private suspend fun updateLiveNotifications() {
         val manager = notificationManager ?: return
 
         for (match in _currentMatches.value) {
             if (!match.isLive) continue
-
-            try {
-                val details = scraper.fetchBallByBallAndBatsmen(match.id)
-
-                val batsmenInfo = details.batsmen.map { bat ->
-                    LiveNotificationManager.BatsmanInfo(
-                        name = bat.name,
-                        runs = bat.runs.toIntOrNull() ?: 0,
-                        balls = bat.balls.toIntOrNull() ?: 0,
-                        isStriker = bat.isStriker,
-                    )
-                }
-
-                val bowlerInfo = details.bowler?.let { b ->
-                    LiveNotificationManager.BowlerInfo(
-                        name = b.name,
-                        overs = b.overs,
-                        runs = b.runs.toIntOrNull() ?: 0,
-                        wickets = b.wickets.toIntOrNull() ?: 0,
-                    )
-                }
-
-                val newBalls = details.recentBalls.orEmpty()
-                val prevBalls = recentBallsCache[match.id].orEmpty()
-                // Detect over completion: had ≥5 balls, now reset to fewer
-                if (prevBalls.size >= 5 && newBalls.size < prevBalls.size) {
-                    val overs = _completedOvers.value.toMutableMap()
-                    overs[match.id] = overs[match.id].orEmpty() + listOf(prevBalls)
-                    _completedOvers.value = overs
-                }
-                recentBallsCache[match.id] = newBalls
-
-                val lastEvent = _aiCommentary.value[match.id]?.let { detectEventFromCommentary(it) }
-
-                manager.showLiveMatchNotification(
-                    match = match,
-                    winProbability = match.winProbability.toFloat() / 100f,
-                    lastEvent = lastEvent,
-                    batsmen = batsmenInfo,
-                    bowler = bowlerInfo,
-                    recentBalls = details.recentBalls,
-                )
-            } catch (e: Exception) {
-                if (e is CancellationException) throw e
-                Log.w(TAG, "Failed to update notification for match ${match.id}", e)
-                breadcrumb(
-                    category = "notification.error",
-                    message = "Failed to update live notification for match: ${match.id}",
-                    level = SentryLevel.WARNING,
-                    data = mapOf("match_id" to match.id),
-                )
-                Sentry.captureException(e)
-            }
+            updateNotificationForMatch(manager, match)
         }
     }
-    
+
+    private suspend fun updateNotificationForMatch(
+        manager: LiveNotificationManager,
+        match: CricketMatch,
+    ) {
+        try {
+            val details = scraper.fetchBallByBallAndBatsmen(match.id)
+            val batsmenInfo = details.batsmen.map { bat ->
+                LiveNotificationManager.BatsmanInfo(
+                    name = bat.name,
+                    runs = bat.runs.toIntOrNull() ?: 0,
+                    balls = bat.balls.toIntOrNull() ?: 0,
+                    isStriker = bat.isStriker,
+                )
+            }
+
+            val bowlerInfo = details.bowler?.let { b ->
+                LiveNotificationManager.BowlerInfo(
+                    name = b.name,
+                    overs = b.overs,
+                    runs = b.runs.toIntOrNull() ?: 0,
+                    wickets = b.wickets.toIntOrNull() ?: 0,
+                )
+            }
+
+            recordOverCompletion(match.id, details.recentBalls.orEmpty())
+
+            val lastEvent = _aiCommentary.value[match.id]?.let { detectEventFromCommentary(it) }
+
+            manager.showLiveMatchNotification(
+                match = match,
+                winProbability = match.winProbability.toFloat() / 100f,
+                lastEvent = lastEvent,
+                batsmen = batsmenInfo,
+                bowler = bowlerInfo,
+                recentBalls = details.recentBalls,
+            )
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
+            Log.w(TAG, "Failed to update notification for match ${match.id}", e)
+            breadcrumb(
+                category = "notification.error",
+                message = "Failed to update live notification for match: ${match.id}",
+                level = SentryLevel.WARNING,
+                data = mapOf("match_id" to match.id),
+            )
+            Sentry.captureException(e)
+        }
+    }
+
+    private fun recordOverCompletion(matchId: String, newBalls: List<String>) {
+        val prevBalls = recentBallsCache[matchId].orEmpty()
+        // Detect over completion: had ≥5 balls, now reset to fewer
+        if (prevBalls.size >= OVER_BALL_COUNT && newBalls.size < prevBalls.size) {
+            val overs = _completedOvers.value.toMutableMap()
+            overs[matchId] = overs[matchId].orEmpty() + listOf(prevBalls)
+            _completedOvers.value = overs
+        }
+        recentBallsCache[matchId] = newBalls
+    }
+
     private fun detectEventFromCommentary(commentary: String): LiveNotificationManager.MatchEvent? {
         val type = when (TimelineEventExtractor.detectBallType(commentary)) {
             TimelineEventType.WICKET -> LiveNotificationManager.EventType.WICKET
@@ -511,12 +576,9 @@ class LiveActivityViewModel : ViewModel() {
         return LiveNotificationManager.MatchEvent(type, commentary.take(80))
     }
 
-    private fun updateProbabilityEventsFromCommentary(matchId: String, commentary: String) {
-        val match = _currentMatches.value.find { it.id == matchId } ?: return
-
-        // Prefer scraped ball data; fall back to commentary parsing when not yet refreshed
+    private fun classifyProbabilityEvent(matchId: String, commentary: String): ProbabilityEventType {
         val lastBall = recentBallsCache[matchId]?.lastOrNull()
-        val eventType = if (lastBall != null) {
+        return if (lastBall != null) {
             when (BallEvent.from(lastBall)) {
                 BallEvent.WICKET -> ProbabilityEventType.WICKET
                 BallEvent.SIX, BallEvent.FOUR -> ProbabilityEventType.BOUNDARY
@@ -530,17 +592,25 @@ class LiveActivityViewModel : ViewModel() {
                 else -> ProbabilityEventType.OTHER
             }
         }
+    }
 
-        val eventImpact = when (eventType) {
-            ProbabilityEventType.WICKET -> -8.0
-            ProbabilityEventType.BOUNDARY -> +4.0
-            ProbabilityEventType.DOT_BALL -> -1.0
-            ProbabilityEventType.OTHER -> 0.0
-        }
+    private fun impactForEvent(eventType: ProbabilityEventType): Double = when (eventType) {
+        ProbabilityEventType.WICKET -> IMPACT_WICKET
+        ProbabilityEventType.BOUNDARY -> IMPACT_BOUNDARY
+        ProbabilityEventType.DOT_BALL -> IMPACT_DOT
+        ProbabilityEventType.OTHER -> 0.0
+    }
+
+    private fun updateProbabilityEventsFromCommentary(matchId: String, commentary: String) {
+        val match = _currentMatches.value.find { it.id == matchId } ?: return
+
+        // Prefer scraped ball data; fall back to commentary parsing when not yet refreshed
+        val eventType = classifyProbabilityEvent(matchId, commentary)
+        val eventImpact = impactForEvent(eventType)
 
         val currentEvents = _probabilityEvents.value[matchId].orEmpty()
         val baseProb = match.calculateHeuristicProbability()
-        val newProbability = (baseProb + eventImpact).coerceIn(5.0, 95.0)
+        val newProbability = (baseProb + eventImpact).coerceIn(MIN_PROB, MAX_PROB)
         val ball = currentEvents.size
 
         val newEvent = ProbabilityEvent(
@@ -554,7 +624,7 @@ class LiveActivityViewModel : ViewModel() {
         )
 
         // Keep only last 300 events (50 overs worth) to bound memory.
-        val trimmedEvents = (currentEvents + newEvent).takeLast(300)
+        val trimmedEvents = (currentEvents + newEvent).takeLast(MAX_PROBABILITY_EVENTS)
 
         _probabilityEvents.value = _probabilityEvents.value + (matchId to trimmedEvents)
 
@@ -563,7 +633,7 @@ class LiveActivityViewModel : ViewModel() {
             if (m.id == matchId) m.copy(winProbability = newProbability) else m
         }
     }
-    
+
     fun getAICommentaryForMatch(matchId: String): String? = _aiCommentary.value[matchId]
 
     fun getProbabilityEventsForMatch(matchId: String): List<ProbabilityEvent> =
@@ -608,15 +678,19 @@ class LiveActivityViewModel : ViewModel() {
         } catch (e: CancellationException) {
             throw e
         } catch (e: java.net.UnknownHostException) {
-            Log.e(TAG, "No internet connection during refresh", e)
-            breadcrumb("network.error", "No internet connection during refresh", SentryLevel.ERROR)
-            Sentry.captureException(e)
-            _loadingState.value = LoadingState.Error("No internet connection. Check your network and try again.")
+            reportRefreshError(
+                e,
+                logMsg = "No internet connection during refresh",
+                crumb = "No internet connection during refresh",
+                userMsg = "No internet connection. Check your network and try again.",
+            )
         } catch (e: java.net.SocketTimeoutException) {
-            Log.e(TAG, "Request timed out during refresh", e)
-            breadcrumb("network.error", "Socket timeout during refresh", SentryLevel.ERROR)
-            Sentry.captureException(e)
-            _loadingState.value = LoadingState.Error("Request timed out. Pull to refresh to try again.")
+            reportRefreshError(
+                e,
+                logMsg = "Request timed out during refresh",
+                crumb = "Socket timeout during refresh",
+                userMsg = "Request timed out. Pull to refresh to try again.",
+            )
         } catch (e: Exception) {
             Log.e(TAG, "Error refreshing matches", e)
             breadcrumb(
@@ -630,6 +704,13 @@ class LiveActivityViewModel : ViewModel() {
                 e.localizedMessage ?: "Failed to load matches. Pull to refresh to try again."
             )
         }
+    }
+
+    private fun reportRefreshError(e: Exception, logMsg: String, crumb: String, userMsg: String) {
+        Log.e(TAG, logMsg, e)
+        breadcrumb("network.error", crumb, SentryLevel.ERROR)
+        Sentry.captureException(e)
+        _loadingState.value = LoadingState.Error(userMsg)
     }
 
     override fun onCleared() {
