@@ -10,6 +10,9 @@ import io.sentry.Sentry
 import io.sentry.SentryLevel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.launch
 import java.util.regex.Pattern
@@ -32,6 +35,10 @@ class LiveCommentaryManager(
     private val historyLimit = 10
     private val aiCommentaryHistory = mutableListOf<String>()
     private val aiHistoryLimit = 50
+
+    // Per-ball live streaming commentary — resets on each new ball, accumulates tokens as they arrive
+    private val _streamingCommentary = MutableStateFlow("")
+    val streamingCommentary: StateFlow<String> = _streamingCommentary.asStateFlow()
 
     // Tracks the last ball number notified to avoid double alerts (e.g., "18.5")
     private val lastNotifiedBallMap = mutableMapOf<String, String>()
@@ -145,6 +152,24 @@ class LiveCommentaryManager(
         }
     }
 
+    /**
+     * Resets [streamingCommentary] and starts collecting tokens from [CommentaryFusionService.streamCommentary].
+     * Appends each token to [_streamingCommentary] as it arrives.
+     * Must be called from within a coroutine scope on Dispatchers.IO.
+     */
+    private suspend fun streamBallCommentary(matchContext: CommentaryFusionService.MatchContext) {
+        _streamingCommentary.value = ""
+        try {
+            fusion.streamCommentary(matchContext).collect { token ->
+                _streamingCommentary.value += token
+            }
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
+            Log.w(TAG, "streamBallCommentary failed", e)
+            Sentry.captureException(e)
+        }
+    }
+
     private suspend fun getBestCommentary(
         cricbuzzUrl: String,
         cricinfoUrl: String,
@@ -173,6 +198,20 @@ class LiveCommentaryManager(
 
         val over = ballNumber.substringBefore(".").toIntOrNull() ?: 0
         val oversSummary = computeOversSummary(matchId, over, buzzLine)
+
+        streamBallCommentary(
+            CommentaryFusionService.MatchContext(
+                matchId = matchId,
+                over = over,
+                ballNumber = ballNumber,
+                snippet1 = buzzLine,
+                snippet2 = infoLine,
+                oversSummary = oversSummary,
+                bowler = bowlerName,
+                batsman = batsmanName,
+                scoreContext = scoreContext
+            )
+        )
 
         val resultValue = when (scorer.compare(buzzLine, infoLine, keyNames, commentaryHistory)) {
             CommentaryScorer.ComparisonResult.UseFirst -> buzzLine
@@ -253,6 +292,24 @@ class LiveCommentaryManager(
 
         val singleBallNumber = details?.overNumbers?.lastOrNull() ?: ""
         val singleOver = singleBallNumber.substringBefore(".").toIntOrNull() ?: 0
+        val singleBowler = details?.bowler?.name ?: ""
+        val singleBatsman = details?.batsmen?.firstOrNull()?.name ?: ""
+        val singleScore = details?.score ?: ""
+
+        streamBallCommentary(
+            CommentaryFusionService.MatchContext(
+                matchId = matchId,
+                over = singleOver,
+                ballNumber = singleBallNumber,
+                snippet1 = buzzLine,
+                snippet2 = "",
+                oversSummary = buzzLine,
+                bowler = singleBowler,
+                batsman = singleBatsman,
+                scoreContext = singleScore
+            )
+        )
+
         val fusionResult = fuseLines(
             buzzLine = buzzLine,
             infoLine = "",
@@ -260,9 +317,9 @@ class LiveCommentaryManager(
             matchId = matchId,
             over = singleOver,
             ballNumber = singleBallNumber,
-            bowler = details?.bowler?.name ?: "",
-            batsman = details?.batsmen?.firstOrNull()?.name ?: "",
-            scoreContext = details?.score ?: ""
+            bowler = singleBowler,
+            batsman = singleBatsman,
+            scoreContext = singleScore
         )
         return prefixBallNumber(singleBallNumber, fusionResult)
     }
