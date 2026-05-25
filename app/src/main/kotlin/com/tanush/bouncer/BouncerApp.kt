@@ -12,9 +12,12 @@ import com.tanush.bouncer.managers.TeamLogoManager
 import com.tanush.bouncer.managers.TeamAcronymManager
 import com.tanush.bouncer.data.TeamDirectory
 import com.tanush.bouncer.data.local.BouncerDatabase
+import com.tanush.bouncer.analysis.PlayerStatisticsEngine
+import com.tanush.bouncer.analysis.ml.ModelTrainer
 import com.tanush.bouncer.data.remote.AppwriteAICache
 import com.tanush.bouncer.data.remote.AppwriteClient
 import com.tanush.bouncer.data.remote.AppwriteHighlightsClient
+import com.tanush.bouncer.data.remote.AppwritePlayerFormsClient
 import com.tanush.bouncer.data.repository.toEntity
 import com.tanush.bouncer.services.AICacheService
 import com.tanush.bouncer.services.MatchCacheService
@@ -91,6 +94,9 @@ class BouncerApp : Application() {
         initializeSafely("FavouriteTeamsManager") { FavouriteTeamsManager.initialize(this) }
         initializeSafely("MatchSubscriptionManager") { MatchSubscriptionManager.initialize(this) }
         initializeSafely("MatchCacheService") { MatchCacheService.initDiskCache(this) }
+        // Restore trained ML model weights from disk. Must run after MatchCacheService
+        // (Room DB init ensures filesDir is stable / no iCloud redirect interference).
+        initializeSafely("ModelTrainer") { ModelTrainer.loadFromFile(this) }
         initializeSafely("AppwriteClient") { AppwriteClient.initialize(this) }
         // Verify Appwrite reachability; reflect in AppHealth so UI can show degraded state.
         applicationScope.launch(Dispatchers.IO) {
@@ -108,6 +114,21 @@ class BouncerApp : Application() {
                 false
             }
             AppHealth.setAppwriteReachable(reachable)
+        }
+        initializeSafely("AppwritePlayerFormsClient") { AppwritePlayerFormsClient.initialize() }
+        // Fire-and-forget: download updated model weights from Appwrite Storage if remote is newer.
+        // Only runs when Appwrite is configured — download is silent/non-blocking on failure.
+        if (AppwriteClient.isReady) {
+            applicationScope.launch(Dispatchers.IO) {
+                AppwriteClient.downloadModelWeightsIfNewer(applicationContext)
+            }
+        }
+        // Fire-and-forget: pull remote player form snapshots and pre-warm local accumulators.
+        // Prevents cold-start where recent form falls back to career average until local
+        // match processing catches up.
+        applicationScope.launch(Dispatchers.IO) {
+            val forms = AppwritePlayerFormsClient.pullAllForms()
+            PlayerStatisticsEngine.seedFromRemote(forms)
         }
         initializeSafely("AppwriteAICache") { AppwriteAICache.initialize() }
         initializeSafely("AppwriteHighlightsClient") { AppwriteHighlightsClient.initialize() }

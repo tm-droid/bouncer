@@ -60,6 +60,29 @@ class ModelTrainer(private val context: Context? = null) {
 
         /** Maximum score for denormalization */
         const val MAX_SCORE = 350.0
+
+        /**
+         * Process-wide shared instance. Initialized once at app startup via [loadFromFile].
+         * Other components that need inference should reference this instance.
+         */
+        @Volatile
+        var shared: ModelTrainer? = null
+            private set
+
+        /**
+         * Initialize the shared [ModelTrainer] instance and restore saved weights from disk.
+         * Safe to call multiple times — subsequent calls are no-ops if already initialized.
+         * Intended for use in [BouncerApp.onCreate] after Room DB / filesDir is available.
+         */
+        fun loadFromFile(context: Context) {
+            if (shared != null) return
+            val trainer = ModelTrainer(context.applicationContext)
+            // loadFromFile(ctx) is called in init → loadModel(), so weights are already
+            // attempted. Re-call explicitly to ensure the file path is fresh after any
+            // iCloud/cache redirect that might have moved filesDir.
+            trainer.loadFromFile(context.applicationContext)
+            shared = trainer
+        }
     }
 
     // The neural network model

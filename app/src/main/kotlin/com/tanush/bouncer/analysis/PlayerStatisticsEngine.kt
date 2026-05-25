@@ -1,5 +1,6 @@
 package com.tanush.bouncer.analysis
 
+import com.tanush.bouncer.data.remote.PlayerFormSnapshot
 import com.tanush.bouncer.models.CricsheetMatch
 import com.tanush.bouncer.models.CricsheetBall
 import kotlin.math.max
@@ -12,6 +13,23 @@ import kotlin.math.max
  * venue-specific stats, and recent form — all keyed by player name (or registry ID if available).
  */
 class PlayerStatisticsEngine {
+
+    companion object {
+        /**
+         * Process-wide shared instance for pre-warming from remote form data at startup.
+         * Components that need inference can also reference this instance. If a component
+         * requires a fresh/isolated engine, construct a new [PlayerStatisticsEngine] directly.
+         */
+        val shared: PlayerStatisticsEngine by lazy { PlayerStatisticsEngine() }
+
+        /**
+         * Convenience delegate — seeds the [shared] instance from remote form snapshots.
+         * Called from [BouncerApp] startup so callers don't need to manage the instance reference.
+         */
+        fun seedFromRemote(forms: Map<String, PlayerFormSnapshot>) {
+            shared.seedFromRemote(forms)
+        }
+    }
 
     /** Mutable accumulators keyed by player name — LRU-capped at 500 entries to prevent unbounded growth */
     private val battingAccumulators = object : LinkedHashMap<String, BattingAccumulator>(500, 0.75f, true) {
@@ -193,6 +211,45 @@ class PlayerStatisticsEngine {
 
     fun getAllBatterNames(): Set<String> = battingAccumulators.keys.toSet()
     fun getAllBowlerNames(): Set<String> = bowlingAccumulators.keys.toSet()
+
+    /**
+     * Pre-warm form accumulators from remote data — avoids cold-start where recent form
+     * shows as career average until enough local matches are processed.
+     *
+     * Each snapshot is treated as a single synthetic "match" entry so the form window
+     * stays bounded and real local match data naturally displaces it over time.
+     */
+    fun seedFromRemote(forms: Map<String, PlayerFormSnapshot>) {
+        forms.forEach { (playerName, snapshot) ->
+            seedPlayerForm(playerName, snapshot)
+        }
+    }
+
+    /**
+     * Insert a synthetic match entry from a remote [PlayerFormSnapshot].
+     * Only seeds if the accumulator has no prior form data (cold start) to avoid
+     * overwriting form that was already built from local match processing.
+     */
+    private fun seedPlayerForm(playerName: String, snapshot: PlayerFormSnapshot) {
+        if (snapshot.recentSR > 0.0) {
+            val batAcc = battingAccumulators.getOrPut(playerName) { BattingAccumulator(playerName) }
+            // Only seed if no local form has been accumulated yet
+            if (batAcc.recentMatchDates.isEmpty()) {
+                // Synthetic timestamp = 0 (epoch) ensures real matches always sort after
+                val syntheticBalls = if (snapshot.matchCount > 0) snapshot.matchCount * 18 else 18
+                val syntheticRuns = ((snapshot.recentSR / 100.0) * syntheticBalls).toInt()
+                batAcc.updateBattingForm(0L, syntheticRuns, syntheticBalls)
+            }
+        }
+        if (snapshot.recentEconomy > 0.0) {
+            val bowlAcc = bowlingAccumulators.getOrPut(playerName) { BowlingAccumulator(playerName) }
+            if (bowlAcc.recentMatchDates.isEmpty()) {
+                val syntheticBalls = if (snapshot.matchCount > 0) snapshot.matchCount * 18 else 18
+                val syntheticRuns = ((snapshot.recentEconomy / 6.0) * syntheticBalls).toInt()
+                bowlAcc.updateBowlingForm(0L, syntheticRuns, syntheticBalls)
+            }
+        }
+    }
 
     // MARK: - Output Data Classes
 
