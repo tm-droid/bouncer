@@ -47,10 +47,12 @@ class CommentaryFusionService(
     private enum class PromptPhase { POWERPLAY, MIDDLE, DEATH, LAST_BALL }
 
     private fun selectPhase(ballNumber: Double, totalOvers: Int): PromptPhase {
-        val ballsInInnings = totalOvers * 6
-        val ballsRemaining = ballsInInnings - (ballNumber * 6).toInt()
+        val completedOvers = ballNumber.toInt()
+        val ballsInCurrentOver = ((ballNumber * 10).toInt() % 10)
+        val ballsBowled = completedOvers * 6 + ballsInCurrentOver
+        val ballsRemaining = totalOvers * 6 - ballsBowled
         return when {
-            ballNumber <= 6.0 -> PromptPhase.POWERPLAY
+            ballNumber < 6.0 -> PromptPhase.POWERPLAY
             ballsRemaining <= 1 -> PromptPhase.LAST_BALL
             ballsRemaining <= 24 -> PromptPhase.DEATH   // last 4 overs
             else -> PromptPhase.MIDDLE
@@ -453,6 +455,7 @@ class CommentaryFusionService(
         val now = System.currentTimeMillis()
         val fullBuilder = StringBuilder()
         var succeeded = false
+        var hasEmittedAny = false
 
         for (provider in providers) {
             if (!currentCoroutineContext().isActive) break
@@ -466,11 +469,16 @@ class CommentaryFusionService(
                         if (currentCoroutineContext().isActive) {
                             emit(chunk)
                             fullBuilder.append(chunk)
+                            hasEmittedAny = true
                         }
                     }
                 succeeded = true
                 break
             } catch (e: Exception) {
+                if (hasEmittedAny) {
+                    // Partial output already sent to consumer — don't retry with another provider
+                    throw e
+                }
                 fullBuilder.clear()
                 Sentry.addBreadcrumb(Breadcrumb().apply {
                     category = "service.commentary"
