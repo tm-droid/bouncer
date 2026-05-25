@@ -76,12 +76,9 @@ class ModelTrainer(private val context: Context? = null) {
          */
         fun loadFromFile(context: Context) {
             if (shared != null) return
-            val trainer = ModelTrainer(context.applicationContext)
-            // loadFromFile(ctx) is called in init → loadModel(), so weights are already
-            // attempted. Re-call explicitly to ensure the file path is fresh after any
-            // iCloud/cache redirect that might have moved filesDir.
-            trainer.loadFromFile(context.applicationContext)
-            shared = trainer
+            // ModelTrainer.init {} calls loadModel() → loadFromFile(ctx), so weights are
+            // already loaded during construction. No duplicate call needed.
+            shared = ModelTrainer(context.applicationContext)
         }
     }
 

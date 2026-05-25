@@ -118,17 +118,21 @@ class BouncerApp : Application() {
         initializeSafely("AppwritePlayerFormsClient") { AppwritePlayerFormsClient.initialize() }
         // Fire-and-forget: download updated model weights from Appwrite Storage if remote is newer.
         // Only runs when Appwrite is configured — download is silent/non-blocking on failure.
+        // Reloads the in-memory model if newer weights were downloaded.
         if (AppwriteClient.isReady) {
             applicationScope.launch(Dispatchers.IO) {
-                AppwriteClient.downloadModelWeightsIfNewer(applicationContext)
+                val updated = AppwriteClient.downloadModelWeightsIfNewer(applicationContext)
+                if (updated) ModelTrainer.shared?.loadFromFile(applicationContext)
             }
         }
         // Fire-and-forget: pull remote player form snapshots and pre-warm local accumulators.
         // Prevents cold-start where recent form falls back to career average until local
         // match processing catches up.
-        applicationScope.launch(Dispatchers.IO) {
-            val forms = AppwritePlayerFormsClient.pullAllForms()
-            PlayerStatisticsEngine.seedFromRemote(forms)
+        if (AppwriteClient.isReady) {
+            applicationScope.launch(Dispatchers.IO) {
+                val forms = AppwritePlayerFormsClient.pullAllForms()
+                PlayerStatisticsEngine.seedFromRemote(forms)
+            }
         }
         initializeSafely("AppwriteAICache") { AppwriteAICache.initialize() }
         initializeSafely("AppwriteHighlightsClient") { AppwriteHighlightsClient.initialize() }
