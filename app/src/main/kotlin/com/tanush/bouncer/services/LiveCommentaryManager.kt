@@ -164,8 +164,12 @@ class LiveCommentaryManager(
             fusion.streamCommentary(matchContext).collect { token ->
                 _streamingCommentary.update { it + token }
             }
+            _streamingCommentary.value = ""  // clear when stream finishes normally
+        } catch (e: CancellationException) {
+            _streamingCommentary.value = ""
+            throw e
         } catch (e: Exception) {
-            if (e is CancellationException) throw e
+            _streamingCommentary.value = ""
             Log.w(TAG, "streamBallCommentary failed", e)
             Sentry.captureException(e)
         }

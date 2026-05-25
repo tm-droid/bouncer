@@ -379,9 +379,13 @@ fun OverviewTabV2(
             // Show streaming (in-flight) text as the top item while a ball is being processed
             if (hasStreaming) {
                 item(key = "streaming_commentary") {
+                    val displayStreaming = streamingCommentary
+                        .replace(Regex("^\\[AI Fused\\]\\s*"), "")
+                        .trimEnd('/')
+                        .trim()
                     BouncerCard {
                         Text(
-                            text = streamingCommentary,
+                            text = displayStreaming,
                             style = typography.bodySmall,
                             color = colors.primary,
                             modifier = Modifier.padding(spacing.md),
@@ -390,11 +394,11 @@ fun OverviewTabV2(
                 }
             }
             val previewLines = meaningfulCommentary.take(5)
-            items(previewLines.size, key = { idx -> "overview_comm_$idx" }) { idx ->
-                val line = previewLines[idx].replace(Regex("^\\[AI Fused\\]\\s*"), "").trimEnd('/').trim()
+            items(previewLines, key = { line -> "overview_comm_${line.hashCode()}" }) { line ->
+                val formatted = line.replace(Regex("^\\[AI Fused\\]\\s*"), "").trimEnd('/').trim()
                 BouncerCard {
                     Text(
-                        text = line,
+                        text = formatted,
                         style = typography.bodySmall,
                         color = colors.onSurface,
                         modifier = Modifier.padding(spacing.md),
