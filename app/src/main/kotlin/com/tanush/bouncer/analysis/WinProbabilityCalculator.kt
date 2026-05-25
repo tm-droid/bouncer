@@ -269,7 +269,7 @@ class WinProbabilityCalculator(
     ): Double {
         val ballsBowled = maxBalls - ballsRemaining
         var wins = 0
-        val simulations = 5000
+        val simulations = (ballsRemaining * 150).coerceIn(500, 8_000)
 
         for (i in 0 until simulations) {
             if (simulateOneMatch(ballsBowled, wicketsLost, runsNeeded)) {
