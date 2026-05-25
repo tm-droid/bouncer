@@ -108,6 +108,29 @@
             ]
         },
         {
+            "$id": "player-forms",
+            "$permissions": ["create(\"any\")", "read(\"any\")", "update(\"any\")"],
+            "databaseId": "bouncer-db",
+            "name": "Player Forms",
+            "enabled": true,
+            "rowSecurity": false,
+            "columns": [
+                { "key": "player_name",     "type": "varchar", "required": true,  "size": 255, "array": false },
+                { "key": "recent_sr",       "type": "double",  "required": false,              "array": false },
+                { "key": "recent_economy",  "type": "double",  "required": false,              "array": false },
+                { "key": "match_count",     "type": "integer", "required": false,              "array": false },
+                { "key": "updated_at",      "type": "varchar", "required": false, "size": 50,  "array": false }
+            ],
+            "indexes": [
+                {
+                    "key": "idx_player_name",
+                    "type": "key",
+                    "attributes": ["player_name"],
+                    "orders": ["ASC"]
+                }
+            ]
+        },
+        {
             "$id": "highlights-meta",
             "$permissions": ["read(\"any\")"],
             "databaseId": "bouncer-db",
