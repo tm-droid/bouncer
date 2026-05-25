@@ -121,6 +121,7 @@ fun MatchDetailViewV2(
     DisposableEffect(match.id) {
         onDispose { commentaryManager.close() }
     }
+    val streamingCommentary by commentaryManager.streamingCommentary.collectAsStateWithLifecycle()
 
     // Achievement state
     var unlockedAchievements by remember { mutableStateOf(AchievementKind.loadUnlocked(context)) }
@@ -338,6 +339,7 @@ fun MatchDetailViewV2(
                         currentRunRate = liveCurrentRunRate,
                         requiredRunRate = liveRequiredRunRate,
                         scorecard = scorecard,
+                        streamingCommentary = streamingCommentary,
                     )
                     "Scorecard" -> ScorecardTabV2(scorecard = scorecard)
                     "Commentary" -> CommentaryTabV2(

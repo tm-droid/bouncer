@@ -48,6 +48,7 @@ fun OverviewTabV2(
     currentRunRate: String?,
     requiredRunRate: String?,
     scorecard: Scorecard? = null,
+    streamingCommentary: String = "",
 ) {
     val colors = BouncerThemeV2.colors
     val typography = BouncerThemeV2.typography
@@ -369,10 +370,24 @@ fun OverviewTabV2(
                 .map { it.trimEnd('/').trim() }
                 .filter { it.isNotBlank() && it.length > 2 && it != "Loading commentary..." }
         )
-        val hasCommentary = !isUpcoming && meaningfulCommentary.isNotEmpty()
+        val hasStreaming = !isUpcoming && streamingCommentary.isNotBlank()
+        val hasCommentary = !isUpcoming && (meaningfulCommentary.isNotEmpty() || hasStreaming)
         if (hasCommentary) {
             item(key = "commentary_header") {
                 SectionHeaderV2(title = "Recent Commentary")
+            }
+            // Show streaming (in-flight) text as the top item while a ball is being processed
+            if (hasStreaming) {
+                item(key = "streaming_commentary") {
+                    BouncerCard {
+                        Text(
+                            text = streamingCommentary,
+                            style = typography.bodySmall,
+                            color = colors.primary,
+                            modifier = Modifier.padding(spacing.md),
+                        )
+                    }
+                }
             }
             val previewLines = meaningfulCommentary.take(5)
             items(previewLines.size, key = { idx -> "overview_comm_$idx" }) { idx ->
