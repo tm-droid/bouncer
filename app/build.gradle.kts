@@ -6,6 +6,12 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
     alias(libs.plugins.sentry)
+    id("io.gitlab.arturbosch.detekt") version "1.23.6"
+}
+
+detekt {
+    buildUponDefaultConfig = true
+    config.setFrom("$projectDir/config/detekt.yml")
 }
 
 val localProperties = Properties()
@@ -214,7 +220,7 @@ dependencies {
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
     // Real org.json impl so unit tests don't hit the mocked Android stub
-    testImplementation("org.json:json:20240303")
+    testImplementation(libs.json)
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.espresso.core)
     debugImplementation(libs.compose.ui.tooling)

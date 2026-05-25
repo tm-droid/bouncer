@@ -206,11 +206,10 @@ class ScorePredictionModel private constructor(
                     "deserializeWeights: missing or invalid 'layerCount'"
                 )
             }
-            require(layerCount == layers.size) {
-                "deserializeWeights: layerCount=$layerCount but model has ${layers.size} layers"
-            }
-
             synchronized(weightLock) {
+                require(layerCount == layers.size) {
+                    "deserializeWeights: layerCount=$layerCount but model has ${layers.size} layers"
+                }
                 for (i in layers.indices) {
                     val inputSize = when (val v = map["layer_${i}_inputSize"]) {
                         is Int -> v

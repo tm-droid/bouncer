@@ -402,7 +402,12 @@ class ModelTrainer(private val context: Context? = null) {
         val weightMap = model.serializeWeights()
         val root = JSONObject()
         root.put("isTrained", isTrained)
-        val layerCount = weightMap["layerCount"] as Int
+        val layerCount = when (val v = weightMap["layerCount"]) {
+            is Int -> v
+            is Long -> v.toInt()
+            is Double -> v.toInt()
+            else -> error("layerCount not a number: $v")
+        }
         root.put("layerCount", layerCount)
         for (i in 0 until layerCount) {
             root.put("layer_${i}_inputSize", weightMap["layer_${i}_inputSize"])
