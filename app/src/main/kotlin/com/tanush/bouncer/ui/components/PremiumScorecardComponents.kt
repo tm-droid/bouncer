@@ -14,12 +14,12 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.*
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -116,6 +116,139 @@ private fun StrikeIndicator() {
 }
 
 @Composable
+private fun CircleIconBadge(
+    icon: ImageVector,
+    tint: Color,
+    boxSize: Dp,
+    iconSize: Dp,
+    borderAlpha: Float = 0.5f,
+    fillStartAlpha: Float = 0.3f,
+    fillEndAlpha: Float = 0.1f
+) {
+    Box(
+        modifier = Modifier
+            .size(boxSize)
+            .background(
+                Brush.radialGradient(
+                    colors = listOf(
+                        tint.copy(alpha = fillStartAlpha),
+                        tint.copy(alpha = fillEndAlpha)
+                    )
+                ),
+                CircleShape
+            )
+            .border(1.dp, tint.copy(alpha = borderAlpha), CircleShape),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(iconSize))
+    }
+}
+
+@Composable
+private fun TeamHeaderRow(
+    teamName: String,
+    teamColor: Color,
+    total: String,
+    overs: String
+) {
+    val colors = BouncerDesignSystem.colors
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            CircleIconBadge(
+                icon = Icons.Default.SportsCricket,
+                tint = teamColor,
+                boxSize = 36.dp,
+                iconSize = 18.dp
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Column {
+                Text(teamName, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = colors.textPrimary)
+                Text("Batting", fontSize = 12.sp, color = colors.textSecondary)
+            }
+        }
+
+        Column(horizontalAlignment = Alignment.End) {
+            Text(total, fontSize = 22.sp, fontWeight = FontWeight.Black, color = teamColor)
+            Text("($overs ov)", fontSize = 12.sp, color = colors.textSecondary)
+        }
+    }
+}
+
+@Composable
+private fun ExtrasRow(extras: Int) {
+    val colors = BouncerDesignSystem.colors
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(GlassBackgroundHover, RoundedCornerShape(8.dp))
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text("Extras", fontSize = 12.sp, fontWeight = FontWeight.Medium, color = colors.textSecondary)
+        Text("$extras", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = colors.textPrimary)
+    }
+}
+
+@Composable
+private fun TotalRow(total: String) {
+    val hierarchy = BouncerDesignSystem.hierarchy
+    val colors = BouncerDesignSystem.colors
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            "TOTAL",
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Black,
+            color = hierarchy.secondary.primary,
+            letterSpacing = 2.sp
+        )
+        Text(total, fontSize = 18.sp, fontWeight = FontWeight.Black, color = colors.textPrimary)
+    }
+}
+
+@Composable
+private fun staggeredAlpha(index: Int, isVisible: Boolean, label: String): Float {
+    val value by animateFloatAsState(
+        targetValue = if (isVisible) 1f else 0f,
+        animationSpec = tween(500, delayMillis = 50 * index, easing = FastOutSlowInEasing),
+        label = label
+    )
+    return value
+}
+
+@Composable
+private fun RowDivider() {
+    HorizontalDivider(
+        color = GlassBorderLight,
+        thickness = 0.5.dp,
+        modifier = Modifier.padding(vertical = 2.dp)
+    )
+}
+
+@Composable
+private fun BatsmenList(
+    batsmen: List<BatsmanScoreData>,
+    teamColor: Color,
+    isVisible: Boolean
+) {
+    batsmen.forEachIndexed { index, batsman ->
+        val progress = staggeredAlpha(index, isVisible, "batsman_$index")
+        BatsmanRow(batsman = batsman, teamColor = teamColor, animationProgress = progress)
+        if (index < batsmen.lastIndex) RowDivider()
+    }
+}
+
+@Composable
 fun PremiumBattingScorecard(
     teamName: String,
     teamColor: Color,
@@ -125,7 +258,6 @@ fun PremiumBattingScorecard(
     overs: String,
     modifier: Modifier = Modifier
 ) {
-    val colors = BouncerDesignSystem.colors
     val hierarchy = BouncerDesignSystem.hierarchy
     var isVisible by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { isVisible = true }
@@ -141,46 +273,7 @@ fun PremiumBattingScorecard(
                 .fillMaxWidth()
                 .padding(24.dp)
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier
-                            .size(36.dp)
-                            .background(
-                                Brush.radialGradient(
-                                    colors = listOf(
-                                        teamColor.copy(alpha = 0.3f),
-                                        teamColor.copy(alpha = 0.1f)
-                                    )
-                                ),
-                                CircleShape
-                            )
-                            .border(1.dp, teamColor.copy(alpha = 0.5f), CircleShape),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            Icons.Default.SportsCricket,
-                            contentDescription = null,
-                            tint = teamColor,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Column {
-                        Text(teamName, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = colors.textPrimary)
-                        Text("Batting", fontSize = 12.sp, color = colors.textSecondary)
-                    }
-                }
-
-                Column(horizontalAlignment = Alignment.End) {
-                    Text(total, fontSize = 22.sp, fontWeight = FontWeight.Black, color = teamColor)
-                    Text("($overs ov)", fontSize = 12.sp, color = colors.textSecondary)
-                }
-            }
+            TeamHeaderRow(teamName = teamName, teamColor = teamColor, total = total, overs = overs)
 
             Spacer(modifier = Modifier.height(24.dp))
             ScorecardHeader()
@@ -190,55 +283,12 @@ fun PremiumBattingScorecard(
                 thickness = 0.5.dp
             )
 
-            batsmen.forEachIndexed { index, batsman ->
-                val delayedVisible by animateFloatAsState(
-                    targetValue = if (isVisible) 1f else 0f,
-                    animationSpec = tween(500, delayMillis = 50 * index, easing = FastOutSlowInEasing),
-                    label = "batsman_$index"
-                )
-                BatsmanRow(batsman = batsman, teamColor = teamColor, animationProgress = delayedVisible)
-                if (index < batsmen.lastIndex) {
-                    HorizontalDivider(
-                        color = GlassBorderLight,
-                        thickness = 0.5.dp,
-                        modifier = Modifier.padding(vertical = 2.dp)
-                    )
-                }
-            }
+            BatsmenList(batsmen = batsmen, teamColor = teamColor, isVisible = isVisible)
 
             Spacer(modifier = Modifier.height(16.dp))
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(GlassBackgroundHover, RoundedCornerShape(8.dp))
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text("Extras", fontSize = 12.sp, fontWeight = FontWeight.Medium, color = colors.textSecondary)
-                Text("$extras", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = colors.textPrimary)
-            }
-
+            ExtrasRow(extras = extras)
             Spacer(modifier = Modifier.height(8.dp))
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    "TOTAL",
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Black,
-                    color = hierarchy.secondary.primary,
-                    letterSpacing = 2.sp
-                )
-                Text(total, fontSize = 18.sp, fontWeight = FontWeight.Black, color = colors.textPrimary)
-            }
-
+            TotalRow(total = total)
             Spacer(modifier = Modifier.height(16.dp))
             GoldGradientDivider()
         }
@@ -248,7 +298,6 @@ fun PremiumBattingScorecard(
 @Composable
 fun GoldGradientDivider(modifier: Modifier = Modifier) {
     val hierarchy = BouncerDesignSystem.hierarchy
-    val colors = BouncerDesignSystem.colors
     Box(
         modifier = modifier
             .fillMaxWidth()
@@ -284,21 +333,193 @@ private fun RowScope.HeaderCell(
     )
 }
 
+private data class HeaderColumn(val label: String, val width: Dp, val align: TextAlign = TextAlign.Center)
+
+private val BATTING_HEADER_COLUMNS = listOf(
+    HeaderColumn("R", 32.dp),
+    HeaderColumn("B", 32.dp),
+    HeaderColumn("4s", 28.dp),
+    HeaderColumn("6s", 28.dp),
+    HeaderColumn("S/R", 48.dp, TextAlign.End)
+)
+
+private val BOWLING_HEADER_COLUMNS = listOf(
+    HeaderColumn("O", 32.dp),
+    HeaderColumn("M", 28.dp),
+    HeaderColumn("R", 32.dp),
+    HeaderColumn("W", 28.dp),
+    HeaderColumn("ECON", 44.dp, TextAlign.End)
+)
+
 @Composable
-private fun ScorecardHeader() {
+private fun StatHeaderRow(firstLabel: String, columns: List<HeaderColumn>) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        HeaderCell("BATTER", Modifier.weight(1f), TextAlign.Start, letterSpacing = 1.sp)
-        HeaderCell("R", Modifier.width(32.dp))
-        HeaderCell("B", Modifier.width(32.dp))
-        HeaderCell("4s", Modifier.width(28.dp))
-        HeaderCell("6s", Modifier.width(28.dp))
-        HeaderCell("S/R", Modifier.width(48.dp), TextAlign.End)
+        HeaderCell(firstLabel, Modifier.weight(1f), TextAlign.Start, letterSpacing = 1.sp)
+        columns.forEach { col ->
+            HeaderCell(col.label, Modifier.width(col.width), col.align)
+        }
     }
+}
+
+@Composable
+private fun ScorecardHeader() {
+    StatHeaderRow("BATTER", BATTING_HEADER_COLUMNS)
+}
+
+@Composable
+private fun strikeRowBackgroundModifier(
+    isNotOut: Boolean,
+    teamColor: Color,
+    goldPrimaryColor: Color
+): Modifier {
+    if (!isNotOut) return Modifier.fillMaxWidth()
+    return Modifier
+        .fillMaxWidth()
+        .background(
+            Brush.horizontalGradient(
+                colors = listOf(
+                    teamColor.copy(alpha = 0.10f),
+                    teamColor.copy(alpha = 0.02f)
+                )
+            ),
+            RoundedCornerShape(4.dp)
+        )
+        .drawBehind {
+            drawRect(
+                color = goldPrimaryColor,
+                topLeft = Offset.Zero,
+                size = Size(3.dp.toPx(), size.height)
+            )
+        }
+}
+
+@Composable
+private fun MilestoneBadgeWithSpacer(text: String, color: Color) {
+    Spacer(modifier = Modifier.width(6.dp))
+    MilestoneBadge(text, color)
+}
+
+@Composable
+private fun PlayerMilestone(majorMilestone: Boolean, minorMilestone: Boolean, majorText: String, minorText: String) {
+    val hierarchy = BouncerDesignSystem.hierarchy
+    when {
+        majorMilestone -> MilestoneBadgeWithSpacer(majorText, NeonSuccess)
+        minorMilestone -> MilestoneBadgeWithSpacer(minorText, hierarchy.secondary.primary)
+    }
+}
+
+@Composable
+private fun BatsmanNameRow(
+    batsman: BatsmanScoreData,
+    isHighScore: Boolean,
+    isCentury: Boolean
+) {
+    val colors = BouncerDesignSystem.colors
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            batsman.name,
+            fontSize = 14.sp,
+            fontWeight = if (batsman.isNotOut) FontWeight.Bold else FontWeight.Medium,
+            color = if (batsman.isNotOut) colors.textPrimary else colors.textPrimary.copy(alpha = 0.7f),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+
+        if (batsman.isOnStrike) {
+            Spacer(modifier = Modifier.width(6.dp))
+            StrikeIndicator()
+        }
+
+        PlayerMilestone(
+            majorMilestone = isCentury,
+            minorMilestone = isHighScore,
+            majorText = "100",
+            minorText = "50"
+        )
+    }
+}
+
+@Composable
+private fun BatsmanStatusText(batsman: BatsmanScoreData) {
+    val colors = BouncerDesignSystem.colors
+    when {
+        !batsman.isNotOut && batsman.dismissal.isNotEmpty() -> {
+            Text(
+                batsman.dismissal,
+                fontSize = 11.sp,
+                color = colors.textTertiary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+        batsman.isNotOut -> {
+            Spacer(modifier = Modifier.height(2.dp))
+            Surface(
+                color = NeonSuccess.copy(alpha = 0.12f),
+                shape = RoundedCornerShape(50),
+                border = BorderStroke(0.5.dp, NeonSuccess.copy(alpha = 0.25f))
+            ) {
+                Text(
+                    "not out",
+                    fontSize = 9.sp,
+                    color = NeonSuccess.copy(alpha = 0.9f),
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                )
+            }
+        }
+    }
+}
+
+private fun strikeRateColor(
+    strikeRate: Float,
+    primaryText: Color,
+    secondaryText: Color
+): Color = when {
+    strikeRate >= 150 -> NeonSuccess
+    strikeRate >= 100 -> primaryText
+    else -> secondaryText
+}
+
+@Composable
+private fun BatsmanStatCells(
+    batsman: BatsmanScoreData,
+    teamColor: Color,
+    isHighScore: Boolean
+) {
+    val colors = BouncerDesignSystem.colors
+    StatCell(
+        text = "${batsman.runs}",
+        width = 32.dp,
+        color = if (isHighScore) teamColor else colors.textPrimary,
+        fontSize = 14,
+        fontWeight = FontWeight.Bold
+    )
+    StatCell(text = "${batsman.balls}", width = 32.dp, color = colors.textSecondary)
+    StatCell(
+        text = "${batsman.fours}",
+        width = 28.dp,
+        color = if (batsman.fours > 0) BoundaryBlue else colors.textTertiary,
+        fontWeight = if (batsman.fours > 0) FontWeight.Medium else FontWeight.Normal
+    )
+    StatCell(
+        text = "${batsman.sixes}",
+        width = 28.dp,
+        color = if (batsman.sixes > 0) SixerPurple else colors.textTertiary,
+        fontWeight = if (batsman.sixes > 0) FontWeight.Medium else FontWeight.Normal
+    )
+    StatCell(
+        text = String.format("%.1f", batsman.strikeRate),
+        width = 48.dp,
+        color = strikeRateColor(batsman.strikeRate, colors.textPrimary, colors.textSecondary),
+        fontWeight = FontWeight.Medium,
+        textAlign = TextAlign.End
+    )
 }
 
 @Composable
@@ -308,41 +529,20 @@ private fun BatsmanRow(
     animationProgress: Float
 ) {
     val hierarchy = BouncerDesignSystem.hierarchy
-    val colors = BouncerDesignSystem.colors
     val isHighScore = batsman.runs >= 50
     val isCentury = batsman.runs >= 100
-
-    val rowAlpha = animationProgress
     val slideOffset = (1f - animationProgress) * 20f
-    val goldPrimaryColor = hierarchy.secondary.primary
 
-    val strikeRowModifier = if (batsman.isNotOut) {
-        Modifier
-            .fillMaxWidth()
-            .background(
-                Brush.horizontalGradient(
-                    colors = listOf(
-                        teamColor.copy(alpha = 0.10f),
-                        teamColor.copy(alpha = 0.02f)
-                    )
-                ),
-                RoundedCornerShape(4.dp)
-            )
-            .drawBehind {
-                drawRect(
-                    color = goldPrimaryColor,
-                    topLeft = Offset.Zero,
-                    size = Size(3.dp.toPx(), size.height)
-                )
-            }
-    } else {
-        Modifier.fillMaxWidth()
-    }
+    val strikeRowModifier = strikeRowBackgroundModifier(
+        isNotOut = batsman.isNotOut,
+        teamColor = teamColor,
+        goldPrimaryColor = hierarchy.secondary.primary
+    )
 
     Row(
         modifier = strikeRowModifier
             .graphicsLayer {
-                alpha = rowAlpha
+                alpha = animationProgress
                 translationX = slideOffset
             }
             .padding(
@@ -354,87 +554,11 @@ private fun BatsmanRow(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(modifier = Modifier.weight(1f)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    batsman.name,
-                    fontSize = 14.sp,
-                    fontWeight = if (batsman.isNotOut) FontWeight.Bold else FontWeight.Medium,
-                    color = if (batsman.isNotOut) colors.textPrimary else colors.textPrimary.copy(alpha = 0.7f),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-
-                if (batsman.isOnStrike) {
-                    Spacer(modifier = Modifier.width(6.dp))
-                    StrikeIndicator()
-                }
-
-                if (isCentury) {
-                    Spacer(modifier = Modifier.width(6.dp))
-                    MilestoneBadge("100", NeonSuccess)
-                } else if (isHighScore) {
-                    Spacer(modifier = Modifier.width(6.dp))
-                    MilestoneBadge("50", hierarchy.secondary.primary)
-                }
-            }
-
-            if (!batsman.isNotOut && batsman.dismissal.isNotEmpty()) {
-                Text(
-                    batsman.dismissal,
-                    fontSize = 11.sp,
-                    color = colors.textTertiary,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            } else if (batsman.isNotOut) {
-                Spacer(modifier = Modifier.height(2.dp))
-                Surface(
-                    color = NeonSuccess.copy(alpha = 0.12f),
-                    shape = RoundedCornerShape(50),
-                    border = BorderStroke(0.5.dp, NeonSuccess.copy(alpha = 0.25f))
-                ) {
-                    Text(
-                        "not out",
-                        fontSize = 9.sp,
-                        color = NeonSuccess.copy(alpha = 0.9f),
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
-                    )
-                }
-            }
+            BatsmanNameRow(batsman = batsman, isHighScore = isHighScore, isCentury = isCentury)
+            BatsmanStatusText(batsman = batsman)
         }
 
-        StatCell(
-            text = "${batsman.runs}",
-            width = 32.dp,
-            color = if (isHighScore) teamColor else colors.textPrimary,
-            fontSize = 14,
-            fontWeight = FontWeight.Bold
-        )
-        StatCell(text = "${batsman.balls}", width = 32.dp, color = colors.textSecondary)
-        StatCell(
-            text = "${batsman.fours}",
-            width = 28.dp,
-            color = if (batsman.fours > 0) BoundaryBlue else colors.textTertiary,
-            fontWeight = if (batsman.fours > 0) FontWeight.Medium else FontWeight.Normal
-        )
-        StatCell(
-            text = "${batsman.sixes}",
-            width = 28.dp,
-            color = if (batsman.sixes > 0) SixerPurple else colors.textTertiary,
-            fontWeight = if (batsman.sixes > 0) FontWeight.Medium else FontWeight.Normal
-        )
-        StatCell(
-            text = String.format("%.1f", batsman.strikeRate),
-            width = 48.dp,
-            color = when {
-                batsman.strikeRate >= 150 -> NeonSuccess
-                batsman.strikeRate >= 100 -> colors.textPrimary
-                else -> colors.textSecondary
-            },
-            fontWeight = FontWeight.Medium,
-            textAlign = TextAlign.End
-        )
+        BatsmanStatCells(batsman = batsman, teamColor = teamColor, isHighScore = isHighScore)
     }
 }
 
@@ -456,6 +580,42 @@ private fun MilestoneBadge(text: String, color: Color) {
 }
 
 @Composable
+private fun BowlingTeamHeader(teamColor: Color) {
+    val colors = BouncerDesignSystem.colors
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(
+            modifier = Modifier
+                .size(32.dp)
+                .background(teamColor.copy(alpha = 0.15f), CircleShape)
+                .border(0.5.dp, teamColor.copy(alpha = 0.3f), CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                Icons.Default.Adjust,
+                contentDescription = null,
+                tint = teamColor,
+                modifier = Modifier.size(16.dp)
+            )
+        }
+        Spacer(modifier = Modifier.width(12.dp))
+        Text("Bowling", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = colors.textPrimary)
+    }
+}
+
+@Composable
+private fun BowlersList(
+    bowlers: List<BowlerScoreData>,
+    teamColor: Color,
+    isVisible: Boolean
+) {
+    bowlers.forEachIndexed { index, bowler ->
+        val progress = staggeredAlpha(index, isVisible, "bowler_$index")
+        BowlerRow(bowler = bowler, teamColor = teamColor, animationProgress = progress)
+        if (index < bowlers.lastIndex) RowDivider()
+    }
+}
+
+@Composable
 fun PremiumBowlingScorecard(
     teamName: String,
     teamColor: Color,
@@ -463,7 +623,6 @@ fun PremiumBowlingScorecard(
     modifier: Modifier = Modifier
 ) {
     val hierarchy = BouncerDesignSystem.hierarchy
-    val colors = BouncerDesignSystem.colors
     var isVisible by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { isVisible = true }
 
@@ -479,24 +638,7 @@ fun PremiumBowlingScorecard(
                 .fillMaxWidth()
                 .padding(24.dp)
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier
-                        .size(32.dp)
-                        .background(teamColor.copy(alpha = 0.15f), CircleShape)
-                        .border(0.5.dp, teamColor.copy(alpha = 0.3f), CircleShape),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        Icons.Default.Adjust,
-                        contentDescription = null,
-                        tint = teamColor,
-                        modifier = Modifier.size(16.dp)
-                    )
-                }
-                Spacer(modifier = Modifier.width(12.dp))
-                Text("Bowling", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = colors.textPrimary)
-            }
+            BowlingTeamHeader(teamColor = teamColor)
 
             Spacer(modifier = Modifier.height(16.dp))
             BowlingHeader()
@@ -506,50 +648,117 @@ fun PremiumBowlingScorecard(
                 thickness = 0.5.dp
             )
 
-            bowlers.forEachIndexed { index, bowler ->
-                val delayedVisible by animateFloatAsState(
-                    targetValue = if (isVisible) 1f else 0f,
-                    animationSpec = tween(500, delayMillis = 50 * index, easing = FastOutSlowInEasing),
-                    label = "bowler_$index"
-                )
-                BowlerRow(bowler = bowler, teamColor = teamColor, animationProgress = delayedVisible)
-                if (index < bowlers.lastIndex) {
-                    HorizontalDivider(
-                        color = GlassBorderLight,
-                        thickness = 0.5.dp,
-                        modifier = Modifier.padding(vertical = 2.dp)
-                    )
-                }
-            }
+            BowlersList(bowlers = bowlers, teamColor = teamColor, isVisible = isVisible)
         }
     }
 }
 
 @Composable
 private fun BowlingHeader() {
+    StatHeaderRow("BOWLER", BOWLING_HEADER_COLUMNS)
+}
+
+@Composable
+private fun RowScope.BowlerNameRow(
+    bowler: BowlerScoreData,
+    isGoodFigures: Boolean,
+    isFiveWicket: Boolean
+) {
+    val colors = BouncerDesignSystem.colors
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(bottom = 8.dp),
+        modifier = Modifier.weight(1f),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        HeaderCell("BOWLER", Modifier.weight(1f), TextAlign.Start, letterSpacing = 1.sp)
-        HeaderCell("O", Modifier.width(32.dp))
-        HeaderCell("M", Modifier.width(28.dp))
-        HeaderCell("R", Modifier.width(32.dp))
-        HeaderCell("W", Modifier.width(28.dp))
-        HeaderCell("ECON", Modifier.width(44.dp), TextAlign.End)
+        Text(
+            bowler.name,
+            fontSize = 14.sp,
+            fontWeight = if (bowler.isBowling) FontWeight.Bold else FontWeight.Medium,
+            color = if (bowler.isBowling) colors.textPrimary else colors.textPrimary.copy(alpha = 0.85f),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+
+        if (bowler.isBowling) {
+            Spacer(modifier = Modifier.width(6.dp))
+            StrikeIndicator()
+        }
+
+        PlayerMilestone(
+            majorMilestone = isFiveWicket,
+            minorMilestone = isGoodFigures,
+            majorText = "5W",
+            minorText = "3W"
+        )
     }
+}
+
+private fun bowlerEconomyColor(
+    economy: Float,
+    primaryText: Color,
+    goldPrimary: Color
+): Color = when {
+    economy <= 6 -> NeonSuccess
+    economy <= 8 -> primaryText
+    economy <= 10 -> goldPrimary
+    else -> NeonError
+}
+
+private fun bowlerWicketColor(
+    wickets: Int,
+    isFiveWicket: Boolean,
+    goldPrimary: Color,
+    tertiaryText: Color
+): Color = when {
+    isFiveWicket -> NeonSuccess
+    wickets > 0 -> goldPrimary
+    else -> tertiaryText
+}
+
+@Composable
+private fun BowlerStatCells(
+    bowler: BowlerScoreData,
+    isFiveWicket: Boolean
+) {
+    val hierarchy = BouncerDesignSystem.hierarchy
+    val colors = BouncerDesignSystem.colors
+    StatCell(text = String.format("%.1f", bowler.overs), width = 32.dp, color = colors.textSecondary)
+    StatCell(
+        text = "${bowler.maidens}",
+        width = 28.dp,
+        color = if (bowler.maidens > 0) NeonSuccess else colors.textTertiary
+    )
+    StatCell(text = "${bowler.runs}", width = 32.dp, color = colors.textSecondary)
+    StatCell(
+        text = "${bowler.wickets}",
+        width = 28.dp,
+        color = bowlerWicketColor(
+            wickets = bowler.wickets,
+            isFiveWicket = isFiveWicket,
+            goldPrimary = hierarchy.secondary.primary,
+            tertiaryText = colors.textTertiary
+        ),
+        fontSize = 14,
+        fontWeight = FontWeight.Bold
+    )
+    StatCell(
+        text = String.format("%.1f", bowler.economy),
+        width = 44.dp,
+        color = bowlerEconomyColor(
+            economy = bowler.economy,
+            primaryText = colors.textPrimary,
+            goldPrimary = hierarchy.secondary.primary
+        ),
+        fontWeight = FontWeight.Medium,
+        textAlign = TextAlign.End
+    )
 }
 
 @Composable
 private fun BowlerRow(
     bowler: BowlerScoreData,
-    teamColor: Color,
+    @Suppress("UNUSED_PARAMETER") teamColor: Color,
     animationProgress: Float
 ) {
-    val hierarchy = BouncerDesignSystem.hierarchy
-    val colors = BouncerDesignSystem.colors
     val isGoodFigures = bowler.wickets >= 3
     val isFiveWicket = bowler.wickets >= 5
 
@@ -570,63 +779,98 @@ private fun BowlerRow(
             .padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(
-            modifier = Modifier.weight(1f),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                bowler.name,
-                fontSize = 14.sp,
-                fontWeight = if (bowler.isBowling) FontWeight.Bold else FontWeight.Medium,
-                color = if (bowler.isBowling) colors.textPrimary else colors.textPrimary.copy(alpha = 0.85f),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+        BowlerNameRow(bowler = bowler, isGoodFigures = isGoodFigures, isFiveWicket = isFiveWicket)
+        BowlerStatCells(bowler = bowler, isFiveWicket = isFiveWicket)
+    }
+}
+
+@Composable
+private fun FallOfWicketsHeader() {
+    val hierarchy = BouncerDesignSystem.hierarchy
+    val colors = BouncerDesignSystem.colors
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Icon(
+            Icons.Default.Timeline,
+            contentDescription = null,
+            tint = hierarchy.secondary.primary,
+            modifier = Modifier.size(18.dp)
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Text("Fall of Wickets", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = colors.textPrimary)
+    }
+}
+
+@Composable
+private fun FallOfWicketsCanvas(
+    teamColor: Color,
+    glassBorderColor: Color
+) {
+    Canvas(modifier = Modifier.fillMaxSize()) {
+        val lineY = size.height * 0.5f
+        drawLine(
+            brush = Brush.horizontalGradient(
+                colors = listOf(
+                    glassBorderColor.copy(alpha = 0.2f),
+                    teamColor.copy(alpha = 0.5f),
+                    glassBorderColor.copy(alpha = 0.2f)
+                )
+            ),
+            start = Offset(0f, lineY),
+            end = Offset(size.width, lineY),
+            strokeWidth = 2.dp.toPx()
+        )
+    }
+}
+
+@Composable
+private fun WicketMarkersRow(
+    fallOfWickets: List<FallOfWicketData>,
+    teamColor: Color,
+    isVisible: Boolean
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceEvenly,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        fallOfWickets.forEachIndexed { index, fow ->
+            val animatedScale by animateFloatAsState(
+                targetValue = if (isVisible) 1f else 0f,
+                animationSpec = tween(500, delayMillis = 80 * index, easing = FastOutSlowInEasing),
+                label = "wicket_$index"
             )
-
-            if (bowler.isBowling) {
-                Spacer(modifier = Modifier.width(6.dp))
-                StrikeIndicator()
-            }
-
-            if (isFiveWicket) {
-                Spacer(modifier = Modifier.width(6.dp))
-                MilestoneBadge("5W", NeonSuccess)
-            } else if (isGoodFigures) {
-                Spacer(modifier = Modifier.width(6.dp))
-                MilestoneBadge("3W", hierarchy.secondary.primary)
-            }
+            WicketMarker(fow = fow, teamColor = teamColor, scale = animatedScale)
         }
+    }
+}
 
-        StatCell(text = String.format("%.1f", bowler.overs), width = 32.dp, color = colors.textSecondary)
-        StatCell(
-            text = "${bowler.maidens}",
-            width = 28.dp,
-            color = if (bowler.maidens > 0) NeonSuccess else colors.textTertiary
-        )
-        StatCell(text = "${bowler.runs}", width = 32.dp, color = colors.textSecondary)
-        StatCell(
-            text = "${bowler.wickets}",
-            width = 28.dp,
-            color = when {
-                isFiveWicket -> NeonSuccess
-                bowler.wickets > 0 -> hierarchy.secondary.primary
-                else -> colors.textTertiary
-            },
-            fontSize = 14,
-            fontWeight = FontWeight.Bold
-        )
-        StatCell(
-            text = String.format("%.1f", bowler.economy),
-            width = 44.dp,
-            color = when {
-                bowler.economy <= 6 -> NeonSuccess
-                bowler.economy <= 8 -> colors.textPrimary
-                bowler.economy <= 10 -> hierarchy.secondary.primary
-                else -> NeonError
-            },
-            fontWeight = FontWeight.Medium,
-            textAlign = TextAlign.End
-        )
+@Composable
+private fun FallOfWicketsTimelineBody(
+    fallOfWickets: List<FallOfWicketData>,
+    teamColor: Color,
+    glassBorderColor: Color,
+    isVisible: Boolean
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp)
+    ) {
+        FallOfWicketsHeader()
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(80.dp)
+        ) {
+            FallOfWicketsCanvas(teamColor = teamColor, glassBorderColor = glassBorderColor)
+            WicketMarkersRow(
+                fallOfWickets = fallOfWickets,
+                teamColor = teamColor,
+                isVisible = isVisible
+            )
+        }
     }
 }
 
@@ -636,9 +880,7 @@ fun FallOfWicketsTimeline(
     teamColor: Color,
     modifier: Modifier = Modifier
 ) {
-    val hierarchy = BouncerDesignSystem.hierarchy
-    val colors = BouncerDesignSystem.colors
-    val glassBorderColor = colors.glassBorder
+    val glassBorderColor = BouncerDesignSystem.colors.glassBorder
     var isVisible by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { isVisible = true }
 
@@ -648,61 +890,12 @@ fun FallOfWicketsTimeline(
         spotColor = teamColor.copy(alpha = 0.1f),
         cornerRadius = 20.dp
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    Icons.Default.Timeline,
-                    contentDescription = null,
-                    tint = hierarchy.secondary.primary,
-                    modifier = Modifier.size(18.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Fall of Wickets", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = colors.textPrimary)
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(80.dp)
-            ) {
-                Canvas(modifier = Modifier.fillMaxSize()) {
-                    val lineY = size.height * 0.5f
-                    drawLine(
-                        brush = Brush.horizontalGradient(
-                            colors = listOf(
-                                glassBorderColor.copy(alpha = 0.2f),
-                                teamColor.copy(alpha = 0.5f),
-                                glassBorderColor.copy(alpha = 0.2f)
-                            )
-                        ),
-                        start = Offset(0f, lineY),
-                        end = Offset(size.width, lineY),
-                        strokeWidth = 2.dp.toPx()
-                    )
-                }
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    fallOfWickets.forEachIndexed { index, fow ->
-                        val animatedScale by animateFloatAsState(
-                            targetValue = if (isVisible) 1f else 0f,
-                            animationSpec = tween(500, delayMillis = 80 * index, easing = FastOutSlowInEasing),
-                            label = "wicket_$index"
-                        )
-                        WicketMarker(fow = fow, teamColor = teamColor, scale = animatedScale)
-                    }
-                }
-            }
-        }
+        FallOfWicketsTimelineBody(
+            fallOfWickets = fallOfWickets,
+            teamColor = teamColor,
+            glassBorderColor = glassBorderColor,
+            isVisible = isVisible
+        )
     }
 }
 
@@ -746,6 +939,42 @@ private fun WicketMarker(
 }
 
 @Composable
+private fun ExtrasBreakdownRow(
+    wides: Int,
+    noBalls: Int,
+    byes: Int,
+    legByes: Int,
+    total: Int
+) {
+    val hierarchy = BouncerDesignSystem.hierarchy
+    val colors = BouncerDesignSystem.colors
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp),
+        horizontalArrangement = Arrangement.SpaceEvenly,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        ExtraItem(label = "Wd", value = wides, color = hierarchy.secondary.primary)
+        ExtraItem(label = "Nb", value = noBalls, color = NeonError)
+        ExtraItem(label = "B", value = byes, color = colors.textSecondary)
+        ExtraItem(label = "Lb", value = legByes, color = colors.textSecondary)
+
+        Box(
+            modifier = Modifier
+                .height(32.dp)
+                .width(1.dp)
+                .background(colors.glassBorder.copy(alpha = 0.3f))
+        )
+
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text("$total", fontSize = 18.sp, fontWeight = FontWeight.Black, color = colors.textPrimary)
+            Text("Total", fontSize = 10.sp, color = colors.textTertiary)
+        }
+    }
+}
+
+@Composable
 fun ExtrasBreakdown(
     wides: Int,
     noBalls: Int,
@@ -755,7 +984,6 @@ fun ExtrasBreakdown(
     modifier: Modifier = Modifier
 ) {
     val hierarchy = BouncerDesignSystem.hierarchy
-    val colors = BouncerDesignSystem.colors
     val total = wides + noBalls + byes + legByes + penalty
 
     GlassCard(
@@ -764,30 +992,13 @@ fun ExtrasBreakdown(
         spotColor = hierarchy.secondary.primary.copy(alpha = 0.08f),
         cornerRadius = 16.dp
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            ExtraItem(label = "Wd", value = wides, color = hierarchy.secondary.primary)
-            ExtraItem(label = "Nb", value = noBalls, color = NeonError)
-            ExtraItem(label = "B", value = byes, color = colors.textSecondary)
-            ExtraItem(label = "Lb", value = legByes, color = colors.textSecondary)
-
-            Box(
-                modifier = Modifier
-                    .height(32.dp)
-                    .width(1.dp)
-                    .background(colors.glassBorder.copy(alpha = 0.3f))
-            )
-
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("$total", fontSize = 18.sp, fontWeight = FontWeight.Black, color = colors.textPrimary)
-                Text("Total", fontSize = 10.sp, color = colors.textTertiary)
-            }
-        }
+        ExtrasBreakdownRow(
+            wides = wides,
+            noBalls = noBalls,
+            byes = byes,
+            legByes = legByes,
+            total = total
+        )
     }
 }
 
