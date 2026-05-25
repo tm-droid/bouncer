@@ -267,6 +267,16 @@ class PlayerStatisticsEngine {
          * runs/balls, and evicts the oldest entry when the window exceeds 10 matches.
          */
         fun updateBattingForm(matchTimestamp: Long, inningsRuns: Int, inningsBalls: Int) {
+            if (recentMatchDates.lastOrNull() == matchTimestamp) {
+                // Same match, second innings — merge into last entry instead of appending
+                recentMatchRuns[recentMatchRuns.size - 1] += inningsRuns
+                recentMatchBalls[recentMatchBalls.size - 1] += inningsBalls
+                recentRuns += inningsRuns
+                recentBallsFaced += inningsBalls
+                return
+            }
+
+            // New match — append
             recentMatchDates.addLast(matchTimestamp)
             recentMatchRuns.addLast(inningsRuns)
             recentMatchBalls.addLast(inningsBalls)
@@ -275,9 +285,9 @@ class PlayerStatisticsEngine {
 
             // Evict oldest entry if window exceeds 10 matches
             if (recentMatchDates.size > 10) {
-                recentMatchDates.removeFirst()
                 recentRuns -= recentMatchRuns.removeFirst()
                 recentBallsFaced -= recentMatchBalls.removeFirst()
+                recentMatchDates.removeFirst()
             }
         }
 
@@ -299,7 +309,11 @@ class PlayerStatisticsEngine {
                 if (s.balls > 0) (s.runs.toDouble() / s.balls) * 100.0 else 0.0
             }
 
-            val recentFormSR = if (recentBallsFaced > 0) recentRuns.toDouble() / recentBallsFaced * 100.0 else avg
+            val recentFormSR = when {
+                recentBallsFaced > 0 -> recentRuns.toDouble() / recentBallsFaced * 100.0
+                totalBalls > 0       -> avg   // career fallback
+                else                 -> 120.0 // no data — use population default
+            }
 
             return PlayerBattingStats(
                 name = name,
@@ -346,6 +360,16 @@ class PlayerStatisticsEngine {
          * and evicts the oldest entry when the window exceeds 10 matches.
          */
         fun updateBowlingForm(matchTimestamp: Long, inningsRuns: Int, inningsBalls: Int) {
+            if (recentMatchDates.lastOrNull() == matchTimestamp) {
+                // Same match, second innings — merge into last entry instead of appending
+                recentMatchRunsConceded[recentMatchRunsConceded.size - 1] += inningsRuns
+                recentMatchBallsBowled[recentMatchBallsBowled.size - 1] += inningsBalls
+                recentRunsConceded += inningsRuns
+                recentBallsBowled += inningsBalls
+                return
+            }
+
+            // New match — append
             recentMatchDates.addLast(matchTimestamp)
             recentMatchRunsConceded.addLast(inningsRuns)
             recentMatchBallsBowled.addLast(inningsBalls)
@@ -354,9 +378,9 @@ class PlayerStatisticsEngine {
 
             // Evict oldest entry if window exceeds 10 matches
             if (recentMatchDates.size > 10) {
-                recentMatchDates.removeFirst()
                 recentRunsConceded -= recentMatchRunsConceded.removeFirst()
                 recentBallsBowled -= recentMatchBallsBowled.removeFirst()
+                recentMatchDates.removeFirst()
             }
         }
 
@@ -380,7 +404,11 @@ class PlayerStatisticsEngine {
             }
 
             val recentOvers = recentBallsBowled / 6.0
-            val recentFormEco = if (recentOvers > 0) recentRunsConceded.toDouble() / recentOvers else eco
+            val recentFormEco = when {
+                recentOvers > 0 -> recentRunsConceded.toDouble() / recentOvers
+                overs > 0       -> eco  // career fallback
+                else            -> 8.0  // no data — use population default
+            }
 
             return PlayerBowlingStats(
                 name = name,
