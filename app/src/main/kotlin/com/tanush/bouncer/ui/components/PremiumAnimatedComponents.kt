@@ -18,23 +18,26 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.*
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size as GeometrySize
 import androidx.compose.ui.graphics.*
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.tanush.bouncer.ui.components.CoilImage
 import com.tanush.bouncer.ui.theme.*
 import kotlin.math.cos
 import kotlin.math.sin
 import com.tanush.bouncer.ui.theme.GoldPrimary
 import com.tanush.bouncer.ui.theme.GoldLight
+
+private const val WICKET_FALL_DURATION_MS = 2000L
 
 /**
  * Animated empty state with cricket theme
@@ -49,9 +52,8 @@ fun PremiumEmptyState(
     modifier: Modifier = Modifier
 ) {
     val colors = BouncerDesignSystem.colors
-    val hierarchy = BouncerDesignSystem.hierarchy
     val infiniteTransition = rememberInfiniteTransition(label = "emptyState")
-    
+
     val pulseScale by infiniteTransition.animateFloat(
         initialValue = 0.95f,
         targetValue = 1.05f,
@@ -61,7 +63,7 @@ fun PremiumEmptyState(
         ),
         label = "pulse"
     )
-    
+
     val glowAlpha by infiniteTransition.animateFloat(
         initialValue = 0.3f,
         targetValue = 0.7f,
@@ -71,7 +73,7 @@ fun PremiumEmptyState(
         ),
         label = "glow"
     )
-    
+
     val floatOffset by infiniteTransition.animateFloat(
         initialValue = -8f,
         targetValue = 8f,
@@ -89,76 +91,15 @@ fun PremiumEmptyState(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        // Animated icon with glow
-        Box(
-            modifier = Modifier
-                .graphicsLayer { 
-                    scaleX = pulseScale
-                    scaleY = pulseScale
-                    translationY = floatOffset
-                }
-                .size(120.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            // Outer glow ring
-            Box(
-                modifier = Modifier
-                    .size(120.dp)
-                    .graphicsLayer { alpha = glowAlpha }
-                    .background(
-                        Brush.radialGradient(
-                            colors = listOf(
-                                hierarchy.secondary.primary.copy(alpha = 0.4f),
-                                hierarchy.secondary.primary.copy(alpha = 0.1f),
-                                Color.Transparent
-                            )
-                        ),
-                        CircleShape
-                    )
-            )
-            
-            // Inner circle
-            Box(
-                modifier = Modifier
-                    .size(80.dp)
-                    .shadow(
-                        elevation = 16.dp,
-                        shape = CircleShape,
-                        spotColor = hierarchy.secondary.primary.copy(alpha = 0.3f)
-                    )
-                    .background(
-                        Brush.linearGradient(
-                            colors = listOf(
-                                GlassSurface,
-                                GlassSurface
-                            )
-                        ),
-                        CircleShape
-                    )
-                    .border(
-                        2.dp,
-                        Brush.linearGradient(
-                            colors = listOf(
-                                hierarchy.secondary.secondary.copy(alpha = 0.5f),
-                                hierarchy.secondary.primary.copy(alpha = 0.3f)
-                            )
-                        ),
-                        CircleShape
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = hierarchy.secondary.primary,
-                    modifier = Modifier.size(36.dp)
-                )
-            }
-        }
-        
+        EmptyStateIcon(
+            icon = icon,
+            pulseScale = pulseScale,
+            glowAlpha = glowAlpha,
+            floatOffset = floatOffset
+        )
+
         Spacer(modifier = Modifier.height(32.dp))
-        
-        // Title
+
         Text(
             text = title,
             fontSize = 22.sp,
@@ -167,10 +108,9 @@ fun PremiumEmptyState(
             textAlign = TextAlign.Center,
             letterSpacing = (-0.5).sp
         )
-        
+
         Spacer(modifier = Modifier.height(12.dp))
-        
-        // Description
+
         Text(
             text = description,
             fontSize = 15.sp,
@@ -179,14 +119,77 @@ fun PremiumEmptyState(
             textAlign = TextAlign.Center,
             lineHeight = 22.sp
         )
-        
-        // Action button
+
         if (actionText != null && onAction != null) {
             Spacer(modifier = Modifier.height(28.dp))
-            
-            PremiumActionButton(
-                text = actionText,
-                onClick = onAction
+            PremiumActionButton(text = actionText, onClick = onAction)
+        }
+    }
+}
+
+@Composable
+private fun EmptyStateIcon(
+    icon: ImageVector,
+    pulseScale: Float,
+    glowAlpha: Float,
+    floatOffset: Float
+) {
+    val hierarchy = BouncerDesignSystem.hierarchy
+    Box(
+        modifier = Modifier
+            .graphicsLayer {
+                scaleX = pulseScale
+                scaleY = pulseScale
+                translationY = floatOffset
+            }
+            .size(120.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Box(
+            modifier = Modifier
+                .size(120.dp)
+                .graphicsLayer { alpha = glowAlpha }
+                .background(
+                    Brush.radialGradient(
+                        colors = listOf(
+                            hierarchy.secondary.primary.copy(alpha = 0.4f),
+                            hierarchy.secondary.primary.copy(alpha = 0.1f),
+                            Color.Transparent
+                        )
+                    ),
+                    CircleShape
+                )
+        )
+
+        Box(
+            modifier = Modifier
+                .size(80.dp)
+                .shadow(
+                    elevation = 16.dp,
+                    shape = CircleShape,
+                    spotColor = hierarchy.secondary.primary.copy(alpha = 0.3f)
+                )
+                .background(
+                    Brush.linearGradient(colors = listOf(GlassSurface, GlassSurface)),
+                    CircleShape
+                )
+                .border(
+                    2.dp,
+                    Brush.linearGradient(
+                        colors = listOf(
+                            hierarchy.secondary.secondary.copy(alpha = 0.5f),
+                            hierarchy.secondary.primary.copy(alpha = 0.3f)
+                        )
+                    ),
+                    CircleShape
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = hierarchy.secondary.primary,
+                modifier = Modifier.size(36.dp)
             )
         }
     }
@@ -205,8 +208,8 @@ fun PremiumActionButton(
 ) {
     val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
-    var isPressed by remember { mutableStateOf(false) }
-    
+    val isPressed by remember { mutableStateOf(false) }
+
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.95f else 1f,
         animationSpec = spring(
@@ -215,7 +218,7 @@ fun PremiumActionButton(
         ),
         label = "buttonScale"
     )
-    
+
     val infiniteTransition = rememberInfiniteTransition(label = "buttonShimmer")
     val shimmerOffset by infiniteTransition.animateFloat(
         initialValue = -1f,
@@ -226,6 +229,8 @@ fun PremiumActionButton(
         ),
         label = "shimmer"
     )
+
+    val backgroundBrush = actionButtonBrush(enabled, shimmerOffset, hierarchy, colors)
 
     Box(
         modifier = modifier
@@ -239,26 +244,7 @@ fun PremiumActionButton(
                 spotColor = hierarchy.secondary.primary.copy(alpha = 0.4f)
             )
             .clip(RoundedCornerShape(16.dp))
-            .background(
-                if (enabled) {
-                    Brush.linearGradient(
-                        colors = listOf(
-                            hierarchy.secondary.primary,
-                            hierarchy.secondary.primary,
-                            hierarchy.secondary.primary
-                        ),
-                        start = Offset(shimmerOffset * 100, 0f),
-                        end = Offset((shimmerOffset + 1) * 100, 0f)
-                    )
-                } else {
-                    Brush.linearGradient(
-                        colors = listOf(
-                            colors.glassBorder,
-                            colors.glassBorder.copy(alpha = 0.5f)
-                        )
-                    )
-                }
-            )
+            .background(backgroundBrush)
             .clickable(
                 enabled = enabled,
                 interactionSource = remember { MutableInteractionSource() },
@@ -268,27 +254,64 @@ fun PremiumActionButton(
             .padding(horizontal = 24.dp, vertical = 14.dp),
         contentAlignment = Alignment.Center
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            if (icon != null) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = if (enabled) colors.backgroundBase else colors.textTertiary,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-            
-            Text(
-                text = text.uppercase(),
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold,
-                color = if (enabled) colors.backgroundBase else colors.textTertiary,
-                letterSpacing = 1.sp
+        ActionButtonContent(text = text, icon = icon, enabled = enabled, colors = colors)
+    }
+}
+
+@Composable
+private fun actionButtonBrush(
+    enabled: Boolean,
+    shimmerOffset: Float,
+    hierarchy: ColorHierarchy,
+    colors: BouncerColors
+): Brush {
+    if (enabled) {
+        return Brush.linearGradient(
+            colors = listOf(
+                hierarchy.secondary.primary,
+                hierarchy.secondary.primary,
+                hierarchy.secondary.primary
+            ),
+            start = Offset(shimmerOffset * 100, 0f),
+            end = Offset((shimmerOffset + 1) * 100, 0f)
+        )
+    }
+    return Brush.linearGradient(
+        colors = listOf(
+            colors.glassBorder,
+            colors.glassBorder.copy(alpha = 0.5f)
+        )
+    )
+}
+
+@Composable
+private fun ActionButtonContent(
+    text: String,
+    icon: ImageVector?,
+    enabled: Boolean,
+    colors: BouncerColors
+) {
+    val contentColor = if (enabled) colors.backgroundBase else colors.textTertiary
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        if (icon != null) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = contentColor,
+                modifier = Modifier.size(20.dp)
             )
         }
+
+        Text(
+            text = text.uppercase(),
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Bold,
+            color = contentColor,
+            letterSpacing = 1.sp
+        )
     }
 }
 
@@ -303,7 +326,7 @@ fun CricketBallLoader(
     val colors = BouncerDesignSystem.colors
     val statusLive = colors.statusLive
     val infiniteTransition = rememberInfiniteTransition(label = "cricketBall")
-    
+
     val rotation by infiniteTransition.animateFloat(
         initialValue = 0f,
         targetValue = 360f,
@@ -313,7 +336,7 @@ fun CricketBallLoader(
         ),
         label = "rotation"
     )
-    
+
     val bounce by infiniteTransition.animateFloat(
         initialValue = 0f,
         targetValue = 1f,
@@ -334,63 +357,65 @@ fun CricketBallLoader(
         contentAlignment = Alignment.Center
     ) {
         Canvas(modifier = Modifier.fillMaxSize()) {
-            val ballRadius = size.toPx() / 2
-            val center = Offset(ballRadius, ballRadius)
-            
-            // Ball body
-            drawCircle(
-                brush = Brush.radialGradient(
-                    colors = listOf(
-                        statusLive,
-                        Color(0xFFA01818),
-                        Color(0xFF6B0F0F)
-                    ),
-                    center = Offset(ballRadius * 0.7f, ballRadius * 0.5f),
-                    radius = ballRadius
-                ),
-                radius = ballRadius,
-                center = center
-            )
-            
-            // Seam (stitching)
-            val seamPath = Path().apply {
-                val points = 12
-                for (i in 0 until points) {
-                    val angle = Math.toRadians((i * 360.0 / points) + 45)
-                    val innerRadius = ballRadius * 0.6f
-                    val outerRadius = ballRadius * 0.8f
-                    val r = if (i % 2 == 0) innerRadius else outerRadius
-                    val x = center.x + (cos(angle) * r).toFloat()
-                    val y = center.y + (sin(angle) * r).toFloat()
-                    if (i == 0) moveTo(x, y) else lineTo(x, y)
-                }
-                close()
-            }
-            
-            drawPath(
-                path = seamPath,
-                color = Color.White,
-                style = androidx.compose.ui.graphics.drawscope.Stroke(
-                    width = 2.dp.toPx(),
-                    cap = StrokeCap.Round,
-                    join = StrokeJoin.Round
-                )
-            )
-            
-            // Shine highlight
-            drawCircle(
-                brush = Brush.radialGradient(
-                    colors = listOf(
-                        Color.White.copy(alpha = 0.4f),
-                        Color.Transparent
-                    ),
-                    center = Offset(ballRadius * 0.6f, ballRadius * 0.4f),
-                    radius = ballRadius * 0.4f
-                ),
-                radius = ballRadius * 0.4f,
-                center = Offset(ballRadius * 0.6f, ballRadius * 0.4f)
-            )
+            drawCricketBall(size = size, statusLive = statusLive)
         }
+    }
+}
+
+private fun DrawScope.drawCricketBall(size: Dp, statusLive: Color) {
+    val ballRadius = size.toPx() / 2
+    val center = Offset(ballRadius, ballRadius)
+
+    drawCircle(
+        brush = Brush.radialGradient(
+            colors = listOf(
+                statusLive,
+                Color(0xFFA01818),
+                Color(0xFF6B0F0F)
+            ),
+            center = Offset(ballRadius * 0.7f, ballRadius * 0.5f),
+            radius = ballRadius
+        ),
+        radius = ballRadius,
+        center = center
+    )
+
+    drawPath(
+        path = cricketSeamPath(center, ballRadius),
+        color = Color.White,
+        style = Stroke(
+            width = 2.dp.toPx(),
+            cap = StrokeCap.Round,
+            join = StrokeJoin.Round
+        )
+    )
+
+    val shineCenter = Offset(ballRadius * 0.6f, ballRadius * 0.4f)
+    drawCircle(
+        brush = Brush.radialGradient(
+            colors = listOf(
+                Color.White.copy(alpha = 0.4f),
+                Color.Transparent
+            ),
+            center = shineCenter,
+            radius = ballRadius * 0.4f
+        ),
+        radius = ballRadius * 0.4f,
+        center = shineCenter
+    )
+}
+
+private fun cricketSeamPath(center: Offset, ballRadius: Float): Path {
+    val points = 12
+    return Path().apply {
+        for (i in 0 until points) {
+            val angle = Math.toRadians((i * 360.0 / points) + 45)
+            val r = if (i % 2 == 0) ballRadius * 0.6f else ballRadius * 0.8f
+            val x = center.x + (cos(angle) * r).toFloat()
+            val y = center.y + (sin(angle) * r).toFloat()
+            if (i == 0) moveTo(x, y) else lineTo(x, y)
+        }
+        close()
     }
 }
 
@@ -403,100 +428,123 @@ fun WicketFallingAnimation(
     onComplete: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    val colors = BouncerDesignSystem.colors
-    val goldPrimary = GoldPrimary
-    val goldLight = GoldLight
     var hasStarted by remember { mutableStateOf(false) }
-    
+
     LaunchedEffect(isActive) {
         if (isActive && !hasStarted) {
             hasStarted = true
-            kotlinx.coroutines.delay(2000)
+            kotlinx.coroutines.delay(WICKET_FALL_DURATION_MS)
             onComplete()
         }
     }
-    
+
     val fallRotation by animateFloatAsState(
         targetValue = if (isActive) 90f else 0f,
-        animationSpec = tween(
-            durationMillis = 800,
-            easing = FastOutSlowInEasing
-        ),
+        animationSpec = tween(durationMillis = 800, easing = FastOutSlowInEasing),
         label = "wicketFall"
     )
 
     if (!isActive) return
-    
+
     Canvas(modifier = modifier.size(100.dp)) {
-        val stumpWidth = 8.dp.toPx()
-        val stumpHeight = 80.dp.toPx()
-        val bailWidth = 20.dp.toPx()
-        val bailHeight = 6.dp.toPx()
-        
-        // Left stump
-        rotate(
-            degrees = -fallRotation * 0.3f,
-            pivot = Offset(size.width * 0.25f, size.height - stumpHeight * 0.3f)
-        ) {
-            drawRoundRect(
-                color = goldPrimary,
-                topLeft = Offset(size.width * 0.25f - stumpWidth/2, size.height - stumpHeight),
-                size = androidx.compose.ui.geometry.Size(stumpWidth, stumpHeight),
-                cornerRadius = androidx.compose.ui.geometry.CornerRadius(2.dp.toPx())
-            )
-        }
-        
-        // Middle stump
+        drawWicket(fallRotation = fallRotation)
+    }
+}
+
+private fun DrawScope.drawWicket(fallRotation: Float) {
+    val stumpWidth = 8.dp.toPx()
+    val stumpHeight = 80.dp.toPx()
+    val bailWidth = 20.dp.toPx()
+    val bailHeight = 6.dp.toPx()
+    val pivotY = size.height - stumpHeight * 0.3f
+
+    drawStump(
+        xFraction = 0.25f,
+        rotationDeg = -fallRotation * 0.3f,
+        pivotY = pivotY,
+        stumpWidth = stumpWidth,
+        stumpHeight = stumpHeight
+    )
+    drawStump(
+        xFraction = 0.5f,
+        rotationDeg = 0f,
+        pivotY = pivotY,
+        stumpWidth = stumpWidth,
+        stumpHeight = stumpHeight
+    )
+    drawStump(
+        xFraction = 0.75f,
+        rotationDeg = fallRotation * 0.5f,
+        pivotY = pivotY,
+        stumpWidth = stumpWidth,
+        stumpHeight = stumpHeight
+    )
+
+    drawBail(
+        pivotXFraction = 0.4f,
+        topLeftXFraction = 0.3f,
+        rotationDeg = fallRotation * 2f,
+        bailLift = fallRotation / 90f * 50f,
+        stumpHeight = stumpHeight,
+        bailWidth = bailWidth,
+        bailHeight = bailHeight
+    )
+    drawBail(
+        pivotXFraction = 0.6f,
+        topLeftXFraction = 0.55f,
+        rotationDeg = -fallRotation * 1.5f,
+        bailLift = fallRotation / 90f * 30f,
+        stumpHeight = stumpHeight,
+        bailWidth = bailWidth,
+        bailHeight = bailHeight
+    )
+}
+
+private fun DrawScope.drawStump(
+    xFraction: Float,
+    rotationDeg: Float,
+    pivotY: Float,
+    stumpWidth: Float,
+    stumpHeight: Float
+) {
+    val x = size.width * xFraction
+    val draw = {
         drawRoundRect(
-            color = goldPrimary,
-            topLeft = Offset(size.width * 0.5f - stumpWidth/2, size.height - stumpHeight),
-            size = androidx.compose.ui.geometry.Size(stumpWidth, stumpHeight),
-            cornerRadius = androidx.compose.ui.geometry.CornerRadius(2.dp.toPx())
+            color = GoldPrimary,
+            topLeft = Offset(x - stumpWidth / 2, size.height - stumpHeight),
+            size = GeometrySize(stumpWidth, stumpHeight),
+            cornerRadius = CornerRadius(2.dp.toPx())
         )
-        
-        // Right stump
-        rotate(
-            degrees = fallRotation * 0.5f,
-            pivot = Offset(size.width * 0.75f, size.height - stumpHeight * 0.3f)
-        ) {
-            drawRoundRect(
-                color = goldPrimary,
-                topLeft = Offset(size.width * 0.75f - stumpWidth/2, size.height - stumpHeight),
-                size = androidx.compose.ui.geometry.Size(stumpWidth, stumpHeight),
-                cornerRadius = androidx.compose.ui.geometry.CornerRadius(2.dp.toPx())
-            )
-        }
-        
-        // Bails - flying off
-        rotate(
-            degrees = fallRotation * 2,
-            pivot = Offset(size.width * 0.4f, size.height - stumpHeight - bailHeight)
-        ) {
-            drawRoundRect(
-                color = goldLight,
-                topLeft = Offset(
-                    size.width * 0.3f,
-                    size.height - stumpHeight - bailHeight - (fallRotation / 90f * 50f)
-                ),
-                size = androidx.compose.ui.geometry.Size(bailWidth, bailHeight),
-                cornerRadius = androidx.compose.ui.geometry.CornerRadius(2.dp.toPx())
-            )
-        }
-        
-        rotate(
-            degrees = -fallRotation * 1.5f,
-            pivot = Offset(size.width * 0.6f, size.height - stumpHeight - bailHeight)
-        ) {
-            drawRoundRect(
-                color = goldLight,
-                topLeft = Offset(
-                    size.width * 0.55f,
-                    size.height - stumpHeight - bailHeight - (fallRotation / 90f * 30f)
-                ),
-                size = androidx.compose.ui.geometry.Size(bailWidth, bailHeight),
-                cornerRadius = androidx.compose.ui.geometry.CornerRadius(2.dp.toPx())
-            )
-        }
+    }
+    if (rotationDeg == 0f) {
+        draw()
+    } else {
+        rotate(degrees = rotationDeg, pivot = Offset(x, pivotY)) { draw() }
+    }
+}
+
+private fun DrawScope.drawBail(
+    pivotXFraction: Float,
+    topLeftXFraction: Float,
+    rotationDeg: Float,
+    bailLift: Float,
+    stumpHeight: Float,
+    bailWidth: Float,
+    bailHeight: Float
+) {
+    rotate(
+        degrees = rotationDeg,
+        pivot = Offset(size.width * pivotXFraction, size.height - stumpHeight - bailHeight)
+    ) {
+        drawRoundRect(
+            color = GoldLight,
+            topLeft = Offset(
+                size.width * topLeftXFraction,
+                size.height - stumpHeight - bailHeight - bailLift
+            ),
+            size = GeometrySize(bailWidth, bailHeight),
+            cornerRadius = CornerRadius(2.dp.toPx())
+        )
     }
 }
 
@@ -511,14 +559,13 @@ fun AnimatedStatCard(
     accentColor: Color = BouncerDesignSystem.hierarchy.secondary.primary,
     modifier: Modifier = Modifier
 ) {
-    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val animatedValue by animateIntAsState(
         targetValue = value,
         animationSpec = tween(1000, easing = FastOutSlowInEasing),
         label = "statValue"
     )
-    
+
     val infiniteTransition = rememberInfiniteTransition(label = "statCard")
     val shimmerOffset by infiniteTransition.animateFloat(
         initialValue = 0f,
@@ -550,30 +597,11 @@ fun AnimatedStatCard(
         )
     ) {
         Column(
-            modifier = Modifier
-                .padding(20.dp),
+            modifier = Modifier.padding(20.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Icon
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .background(
-                        accentColor.copy(alpha = 0.15f),
-                        CircleShape
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = accentColor,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-            
-            // Value
+            StatCardIcon(icon = icon, accentColor = accentColor)
             Text(
                 text = animatedValue.toString(),
                 fontSize = 28.sp,
@@ -581,8 +609,6 @@ fun AnimatedStatCard(
                 color = colors.textPrimary,
                 letterSpacing = (-1).sp
             )
-            
-            // Label
             Text(
                 text = label.uppercase(),
                 fontSize = 11.sp,
@@ -592,6 +618,23 @@ fun AnimatedStatCard(
                 textAlign = TextAlign.Center
             )
         }
+    }
+}
+
+@Composable
+private fun StatCardIcon(icon: ImageVector, accentColor: Color) {
+    Box(
+        modifier = Modifier
+            .size(48.dp)
+            .background(accentColor.copy(alpha = 0.15f), CircleShape),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = accentColor,
+            modifier = Modifier.size(24.dp)
+        )
     }
 }
 
@@ -608,7 +651,7 @@ fun TrophyBadge(
     val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val infiniteTransition = rememberInfiniteTransition(label = "trophy")
-    
+
     val shimmerOffset by infiniteTransition.animateFloat(
         initialValue = -1f,
         targetValue = 2f,
@@ -618,74 +661,90 @@ fun TrophyBadge(
         ),
         label = "shimmer"
     )
-    
-    val color = when (tier) {
-        TrophyTier.BRONZE -> Color(0xFFCD7F32)
-        TrophyTier.SILVER -> Color(0xFFC0C0C0)
-        TrophyTier.GOLD -> hierarchy.secondary.primary
-        TrophyTier.PLATINUM -> Color(0xFFE5E4E2)
-        TrophyTier.DIAMOND -> Color(0xFFB9F2FF)
-    }
-    
-    val baseColor = if (unlocked) color else colors.glassBorder
+
+    val color = trophyColor(tier, hierarchy)
 
     Box(
         modifier = modifier.size(size),
         contentAlignment = Alignment.Center
     ) {
-        // Outer glow
         if (unlocked) {
             Box(
                 modifier = Modifier
                     .size(size)
                     .blur(8.dp)
-                    .background(
-                        color.copy(alpha = 0.4f),
-                        CircleShape
-                    )
+                    .background(color.copy(alpha = 0.4f), CircleShape)
             )
         }
-        
-        // Trophy circle
-        Box(
-            modifier = Modifier
-                .size(size * 0.85f)
-                .background(
-                    if (unlocked) {
-                        Brush.linearGradient(
-                            colors = listOf(
-                                color.copy(alpha = 0.8f),
-                                color,
-                                color.copy(alpha = 0.6f)
-                            ),
-                            start = Offset(shimmerOffset * 50, 0f),
-                            end = Offset((shimmerOffset + 1) * 50, 50f)
-                        )
-                    } else {
-                        Brush.linearGradient(
-                            colors = listOf(
-                                baseColor.copy(alpha = 0.4f),
-                                baseColor.copy(alpha = 0.2f)
-                            )
-                        )
-                    },
-                    CircleShape
-                )
-                .border(
-                    2.dp,
-                    if (unlocked) color.copy(alpha = 0.8f) else colors.glassBorder.copy(alpha = 0.3f),
-                    CircleShape
-                ),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = Icons.Default.EmojiEvents,
-                contentDescription = null,
-                tint = if (unlocked) Color.White else colors.textTertiary,
-                modifier = Modifier.size(size * 0.45f)
-            )
-        }
+
+        TrophyInnerCircle(
+            size = size,
+            color = color,
+            unlocked = unlocked,
+            shimmerOffset = shimmerOffset,
+            colors = colors
+        )
     }
+}
+
+@Composable
+private fun TrophyInnerCircle(
+    size: Dp,
+    color: Color,
+    unlocked: Boolean,
+    shimmerOffset: Float,
+    colors: BouncerColors
+) {
+    val brush = trophyBrush(unlocked, color, shimmerOffset, colors)
+    val borderColor = if (unlocked) color.copy(alpha = 0.8f) else colors.glassBorder.copy(alpha = 0.3f)
+    Box(
+        modifier = Modifier
+            .size(size * 0.85f)
+            .background(brush, CircleShape)
+            .border(2.dp, borderColor, CircleShape),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = Icons.Default.EmojiEvents,
+            contentDescription = null,
+            tint = if (unlocked) Color.White else colors.textTertiary,
+            modifier = Modifier.size(size * 0.45f)
+        )
+    }
+}
+
+private fun trophyColor(tier: TrophyTier, hierarchy: ColorHierarchy): Color = when (tier) {
+    TrophyTier.BRONZE -> Color(0xFFCD7F32)
+    TrophyTier.SILVER -> Color(0xFFC0C0C0)
+    TrophyTier.GOLD -> hierarchy.secondary.primary
+    TrophyTier.PLATINUM -> Color(0xFFE5E4E2)
+    TrophyTier.DIAMOND -> Color(0xFFB9F2FF)
+}
+
+private fun trophyBrush(
+    unlocked: Boolean,
+    color: Color,
+    shimmerOffset: Float,
+    colors: BouncerColors
+): Brush {
+    if (unlocked) {
+        return Brush.linearGradient(
+            colors = listOf(
+                color.copy(alpha = 0.8f),
+                color,
+                color.copy(alpha = 0.6f)
+            ),
+            start = Offset(shimmerOffset * 50, 0f),
+            end = Offset((shimmerOffset + 1) * 50, 50f)
+        )
+    }
+    val locked = colors.glassBorder
+    return Brush.linearGradient(
+        colors = listOf(
+            locked.copy(alpha = 0.4f),
+            locked.copy(alpha = 0.2f)
+        )
+    )
 }
 
 enum class TrophyTier {
@@ -716,19 +775,16 @@ fun AnimatedProgressRing(
         contentAlignment = Alignment.Center
     ) {
         Canvas(modifier = Modifier.fillMaxSize()) {
-            // Background ring
+            val stroke = Stroke(width = strokeWidth.toPx(), cap = StrokeCap.Round)
+
             drawArc(
                 color = backgroundColor,
                 startAngle = -90f,
                 sweepAngle = 360f,
                 useCenter = false,
-                style = androidx.compose.ui.graphics.drawscope.Stroke(
-                    width = strokeWidth.toPx(),
-                    cap = StrokeCap.Round
-                )
+                style = stroke
             )
-            
-            // Progress ring
+
             drawArc(
                 brush = Brush.sweepGradient(
                     colors = listOf(
@@ -740,13 +796,10 @@ fun AnimatedProgressRing(
                 startAngle = -90f,
                 sweepAngle = animatedProgress * 360f,
                 useCenter = false,
-                style = androidx.compose.ui.graphics.drawscope.Stroke(
-                    width = strokeWidth.toPx(),
-                    cap = StrokeCap.Round
-                )
+                style = stroke
             )
         }
-        
+
         content()
     }
 }
