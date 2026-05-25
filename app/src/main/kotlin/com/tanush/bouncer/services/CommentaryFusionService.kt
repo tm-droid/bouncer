@@ -7,6 +7,10 @@ import io.sentry.Breadcrumb
 import io.sentry.Sentry
 import io.sentry.SentryLevel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -39,10 +43,25 @@ class CommentaryFusionService(
     private val maxBufferSize = 6
     private val verificationTimeoutMs = 2_000L
 
+    // 7b: Phase-adaptive prompt selection
+    private enum class PromptPhase { POWERPLAY, MIDDLE, DEATH, LAST_BALL }
+
+    private fun selectPhase(ballNumber: Double, totalOvers: Int): PromptPhase {
+        val ballsInInnings = totalOvers * 6
+        val ballsRemaining = ballsInInnings - (ballNumber * 6).toInt()
+        return when {
+            ballNumber <= 6.0 -> PromptPhase.POWERPLAY
+            ballsRemaining <= 1 -> PromptPhase.LAST_BALL
+            ballsRemaining <= 24 -> PromptPhase.DEATH   // last 4 overs
+            else -> PromptPhase.MIDDLE
+        }
+    }
+
     companion object {
         const val FALLBACK_BALL_COMMENTARY = "Ball delivered. Play continues."
 
-        const val FUSION_PROMPT_TEMPLATE = """
+        // 7b: FUSION prompt variants — one per phase
+        const val FUSION_PROMPT_POWERPLAY = """
     You are a professional cricket commentator.
     Given the following ball-by-ball input and recent match context, write a single, natural-sounding commentary line for the current ball.
 
@@ -69,6 +88,186 @@ class CommentaryFusionService(
     - Otherwise, focus on clear, vivid, and accurate description of the current ball.
     - Avoid repetition and keep it concise.
     - Do not simply merge the two sources; pick the best or rephrase for freshness.
+    - Field restrictions apply. Focus on aggressive intent, early wicket stakes, and powerplay context.
+    """
+
+        const val FUSION_PROMPT_MIDDLE = """
+    You are a professional cricket commentator.
+    Given the following ball-by-ball input and recent match context, write a single, natural-sounding commentary line for the current ball.
+
+    Ball-by-ball input from two sources:
+    Commentary from source 1: {snippet1}
+    Commentary from source 2: {snippet2}
+
+    Ball number: {ball_number}
+    Bowler: {bowler}
+    Batsman: {batsman}
+    Current score/context: {score_context}
+
+    Recent match context (last 3 overs summary):
+    {overs_summary}
+    {previous_balls_context}
+
+    Instructions:
+    - Start your commentary line with the ball number (e.g., 18.5: ...).
+    - Use only the player names provided above or in the input/context. Do not invent or substitute player names.
+    - Do not invent details about the play, score, or situation if not present in the input/context.
+    - Paraphrase the ball input into a concise, engaging, and human-like sentence, as a real commentator would say on TV or radio.
+    - If the match context (from the summary) suggests a shift in momentum, pressure, or a notable trend, you may add a brief, context-aware narrative or emotional remark (e.g., "It's not looking good for the Indian team here" or "The bowlers are on top at the moment").
+    - Only add such narrative remarks if they fit naturally and are supported by the recent context—do not force them.
+    - Otherwise, focus on clear, vivid, and accurate description of the current ball.
+    - Avoid repetition and keep it concise.
+    - Do not simply merge the two sources; pick the best or rephrase for freshness.
+    - Focus on partnership momentum, dot ball pressure, and any turning-point significance.
+    """
+
+        const val FUSION_PROMPT_DEATH = """
+    You are a professional cricket commentator.
+    Given the following ball-by-ball input and recent match context, write a single, natural-sounding commentary line for the current ball.
+
+    Ball-by-ball input from two sources:
+    Commentary from source 1: {snippet1}
+    Commentary from source 2: {snippet2}
+
+    Ball number: {ball_number}
+    Bowler: {bowler}
+    Batsman: {batsman}
+    Current score/context: {score_context}
+
+    Recent match context (last 3 overs summary):
+    {overs_summary}
+    {previous_balls_context}
+
+    Instructions:
+    - Start your commentary line with the ball number (e.g., 18.5: ...).
+    - Use only the player names provided above or in the input/context. Do not invent or substitute player names.
+    - Do not invent details about the play, score, or situation if not present in the input/context.
+    - Paraphrase the ball input into a concise, engaging, and human-like sentence, as a real commentator would say on TV or radio.
+    - If the match context (from the summary) suggests a shift in momentum, pressure, or a notable trend, you may add a brief, context-aware narrative or emotional remark (e.g., "It's not looking good for the Indian team here" or "The bowlers are on top at the moment").
+    - Only add such narrative remarks if they fit naturally and are supported by the recent context—do not force them.
+    - Otherwise, focus on clear, vivid, and accurate description of the current ball.
+    - Avoid repetition and keep it concise.
+    - Do not simply merge the two sources; pick the best or rephrase for freshness.
+    - Match is in death overs. Capture yorker/slog sweep tension, required rate urgency.
+    """
+
+        const val FUSION_PROMPT_LAST_BALL = """
+    You are a professional cricket commentator.
+    Given the following ball-by-ball input and recent match context, write a single, natural-sounding commentary line for the current ball.
+
+    Ball-by-ball input from two sources:
+    Commentary from source 1: {snippet1}
+    Commentary from source 2: {snippet2}
+
+    Ball number: {ball_number}
+    Bowler: {bowler}
+    Batsman: {batsman}
+    Current score/context: {score_context}
+
+    Recent match context (last 3 overs summary):
+    {overs_summary}
+    {previous_balls_context}
+
+    Instructions:
+    - Start your commentary line with the ball number (e.g., 18.5: ...).
+    - Use only the player names provided above or in the input/context. Do not invent or substitute player names.
+    - Do not invent details about the play, score, or situation if not present in the input/context.
+    - Paraphrase the ball input into a concise, engaging, and human-like sentence, as a real commentator would say on TV or radio.
+    - If the match context (from the summary) suggests a shift in momentum, pressure, or a notable trend, you may add a brief, context-aware narrative or emotional remark (e.g., "It's not looking good for the Indian team here" or "The bowlers are on top at the moment").
+    - Only add such narrative remarks if they fit naturally and are supported by the recent context—do not force them.
+    - Otherwise, focus on clear, vivid, and accurate description of the current ball.
+    - Avoid repetition and keep it concise.
+    - Do not simply merge the two sources; pick the best or rephrase for freshness.
+    - This is the last ball. Use maximum tension language. Match outcome on the line.
+    """
+
+        // 7b: SINGLE_SOURCE prompt variants — one per phase
+        const val SINGLE_SOURCE_PROMPT_POWERPLAY = """
+    You are a professional cricket commentator. Given the following ball-by-ball input and recent match context, write a vivid, engaging, and concise commentary line for this specific ball, as if you are commentating live.
+
+    Ball commentary: {snippet}
+    Ball number: {ball_number}
+    Bowler: {bowler}
+    Batsman: {batsman}
+    Current score/context: {score_context}
+    {previous_balls_context}
+
+    Instructions:
+    - Start your commentary line with the ball number (e.g., 18.5: ...).
+    - Use only the player names provided above or in the input/context. Do not invent or substitute player names.
+    - Do not invent details about the play, score, or situation if not present in the input/context.
+    - Paraphrase the input into a natural, commentator-style sentence.
+    - If the recent context suggests a shift in momentum, pressure, or a notable trend, you may add a brief, context-aware narrative or emotional remark (e.g., "It's not looking good for the Indian team here").
+    - Only add such narrative remarks if they fit naturally and are supported by the recent context—do not force them.
+    - Otherwise, focus on clear, vivid, and accurate description of the current ball.
+    - Avoid repetition and keep it concise.
+    - Field restrictions apply. Focus on aggressive intent, early wicket stakes, and powerplay context.
+    """
+
+        const val SINGLE_SOURCE_PROMPT_MIDDLE = """
+    You are a professional cricket commentator. Given the following ball-by-ball input and recent match context, write a vivid, engaging, and concise commentary line for this specific ball, as if you are commentating live.
+
+    Ball commentary: {snippet}
+    Ball number: {ball_number}
+    Bowler: {bowler}
+    Batsman: {batsman}
+    Current score/context: {score_context}
+    {previous_balls_context}
+
+    Instructions:
+    - Start your commentary line with the ball number (e.g., 18.5: ...).
+    - Use only the player names provided above or in the input/context. Do not invent or substitute player names.
+    - Do not invent details about the play, score, or situation if not present in the input/context.
+    - Paraphrase the input into a natural, commentator-style sentence.
+    - If the recent context suggests a shift in momentum, pressure, or a notable trend, you may add a brief, context-aware narrative or emotional remark (e.g., "It's not looking good for the Indian team here").
+    - Only add such narrative remarks if they fit naturally and are supported by the recent context—do not force them.
+    - Otherwise, focus on clear, vivid, and accurate description of the current ball.
+    - Avoid repetition and keep it concise.
+    - Focus on partnership momentum, dot ball pressure, and any turning-point significance.
+    """
+
+        const val SINGLE_SOURCE_PROMPT_DEATH = """
+    You are a professional cricket commentator. Given the following ball-by-ball input and recent match context, write a vivid, engaging, and concise commentary line for this specific ball, as if you are commentating live.
+
+    Ball commentary: {snippet}
+    Ball number: {ball_number}
+    Bowler: {bowler}
+    Batsman: {batsman}
+    Current score/context: {score_context}
+    {previous_balls_context}
+
+    Instructions:
+    - Start your commentary line with the ball number (e.g., 18.5: ...).
+    - Use only the player names provided above or in the input/context. Do not invent or substitute player names.
+    - Do not invent details about the play, score, or situation if not present in the input/context.
+    - Paraphrase the input into a natural, commentator-style sentence.
+    - If the recent context suggests a shift in momentum, pressure, or a notable trend, you may add a brief, context-aware narrative or emotional remark (e.g., "It's not looking good for the Indian team here").
+    - Only add such narrative remarks if they fit naturally and are supported by the recent context—do not force them.
+    - Otherwise, focus on clear, vivid, and accurate description of the current ball.
+    - Avoid repetition and keep it concise.
+    - Match is in death overs. Capture yorker/slog sweep tension, required rate urgency.
+    """
+
+        const val SINGLE_SOURCE_PROMPT_LAST_BALL = """
+    You are a professional cricket commentator. Given the following ball-by-ball input and recent match context, write a vivid, engaging, and concise commentary line for this specific ball, as if you are commentating live.
+
+    Ball commentary: {snippet}
+    Ball number: {ball_number}
+    Bowler: {bowler}
+    Batsman: {batsman}
+    Current score/context: {score_context}
+    {previous_balls_context}
+
+    Instructions:
+    - Start your commentary line with the ball number (e.g., 18.5: ...).
+    - Use only the player names provided above or in the input/context. Do not invent or substitute player names.
+    - Do not invent details about the play, score, or situation if not present in the input/context.
+    - Paraphrase the input into a natural, commentator-style sentence.
+    - If the recent context suggests a shift in momentum, pressure, or a notable trend, you may add a brief, context-aware narrative or emotional remark (e.g., "It's not looking good for the Indian team here").
+    - Only add such narrative remarks if they fit naturally and are supported by the recent context—do not force them.
+    - Otherwise, focus on clear, vivid, and accurate description of the current ball.
+    - Avoid repetition and keep it concise.
+    - This is the last ball. Use maximum tension language. Match outcome on the line.
     """
 
         const val VERIFICATION_PROMPT_TEMPLATE = """
@@ -90,26 +289,24 @@ class CommentaryFusionService(
     Your response must be exactly one word: PASS or FAIL.
     """
 
-        const val SINGLE_SOURCE_PROMPT_TEMPLATE = """
-    You are a professional cricket commentator. Given the following ball-by-ball input and recent match context, write a vivid, engaging, and concise commentary line for this specific ball, as if you are commentating live.
+        // Legacy aliases kept for any external callers referencing the old constants
+        const val FUSION_PROMPT_TEMPLATE = FUSION_PROMPT_MIDDLE
+        const val SINGLE_SOURCE_PROMPT_TEMPLATE = SINGLE_SOURCE_PROMPT_MIDDLE
+    }
 
-    Ball commentary: {snippet}
-    Ball number: {ball_number}
-    Bowler: {bowler}
-    Batsman: {batsman}
-    Current score/context: {score_context}
-    {previous_balls_context}
+    // 7b: Select the right prompt template based on phase
+    private fun fusionPromptForPhase(phase: PromptPhase): String = when (phase) {
+        PromptPhase.POWERPLAY  -> FUSION_PROMPT_POWERPLAY
+        PromptPhase.MIDDLE     -> FUSION_PROMPT_MIDDLE
+        PromptPhase.DEATH      -> FUSION_PROMPT_DEATH
+        PromptPhase.LAST_BALL  -> FUSION_PROMPT_LAST_BALL
+    }
 
-    Instructions:
-    - Start your commentary line with the ball number (e.g., 18.5: ...).
-    - Use only the player names provided above or in the input/context. Do not invent or substitute player names.
-    - Do not invent details about the play, score, or situation if not present in the input/context.
-    - Paraphrase the input into a natural, commentator-style sentence.
-    - If the recent context suggests a shift in momentum, pressure, or a notable trend, you may add a brief, context-aware narrative or emotional remark (e.g., "It's not looking good for the Indian team here").
-    - Only add such narrative remarks if they fit naturally and are supported by the recent context—do not force them.
-    - Otherwise, focus on clear, vivid, and accurate description of the current ball.
-    - Avoid repetition and keep it concise.
-    """
+    private fun singleSourcePromptForPhase(phase: PromptPhase): String = when (phase) {
+        PromptPhase.POWERPLAY  -> SINGLE_SOURCE_PROMPT_POWERPLAY
+        PromptPhase.MIDDLE     -> SINGLE_SOURCE_PROMPT_MIDDLE
+        PromptPhase.DEATH      -> SINGLE_SOURCE_PROMPT_DEATH
+        PromptPhase.LAST_BALL  -> SINGLE_SOURCE_PROMPT_LAST_BALL
     }
 
     suspend fun addBallToBuffer(matchId: String, ball: String) {
@@ -151,7 +348,8 @@ class CommentaryFusionService(
         ballNumber: String,
         bowler: String,
         batsman: String,
-        scoreContext: String
+        scoreContext: String,
+        totalOvers: Int = 20
     ): String {
         Sentry.addBreadcrumb(Breadcrumb().apply {
             category = "service.commentary"
@@ -170,8 +368,12 @@ class CommentaryFusionService(
         val previousContext = if (previousBalls.isEmpty()) ""
             else "\nPrevious balls: ${previousBalls.joinToString(", ")}"
 
+        // 7b: Select phase-adaptive template
+        val ballNum = ballNumber.toDoubleOrNull() ?: over.toDouble()
+        val phase = selectPhase(ballNum, totalOvers)
+
         val prompt = if (snippet1.isEmpty() || snippet2.isEmpty()) {
-            SINGLE_SOURCE_PROMPT_TEMPLATE
+            singleSourcePromptForPhase(phase)
                 .replace("{snippet}", snippet1.ifEmpty { snippet2 })
                 .replace("{ball_number}", ballNumber)
                 .replace("{bowler}", bowler)
@@ -179,7 +381,7 @@ class CommentaryFusionService(
                 .replace("{score_context}", scoreContext)
                 .replace("{previous_balls_context}", previousContext)
         } else {
-            FUSION_PROMPT_TEMPLATE
+            fusionPromptForPhase(phase)
                 .replace("{snippet1}", snippet1)
                 .replace("{snippet2}", snippet2)
                 .replace("{ball_number}", ballNumber)
@@ -190,19 +392,168 @@ class CommentaryFusionService(
                 .replace("{previous_balls_context}", previousContext)
         }
 
-        val result = callProviders(prompt, maxTokens = 256, temperature = 0.6)
+        val (result, usedProviderName) = callProvidersTracked(prompt, maxTokens = 256, temperature = 0.6)
             ?: return "[AI Fused] $snippet1 / $snippet2"
 
         val verified = verifyCommentary(result, snippet1, snippet2, ballNumber, bowler, batsman)
         if (!verified) {
+            // 7e: FAIL → retry with next available provider before falling back to raw snippet
+            Log.w("CommentaryFusionService", "Hallucination check FAILED — retrying with next provider (used: $usedProviderName)")
+            val retried = retryWithNextProvider(prompt, alreadyTriedProvider = usedProviderName)
+            if (retried != null) {
+                AICacheService.setCommentary(retried, cacheKey)
+                return retried
+            }
             val fallback = snippet1.ifEmpty { snippet2 }
-            Log.w("CommentaryFusionService", "Using raw snippet fallback after failed verification")
+            Log.w("CommentaryFusionService", "All providers exhausted — using raw snippet fallback")
             AICacheService.setCommentary(fallback, cacheKey)
             return fallback
         }
 
         AICacheService.setCommentary(result, cacheKey)
         return result
+    }
+
+    // 7a: Public cold Flow that streams commentary, trying providers in rotation
+    fun streamCommentary(matchContext: MatchContext): Flow<String> = flow {
+        val cacheKey = "ai_commentary_stream:${matchContext.matchId}:${matchContext.over}:${matchContext.ballNumber}"
+        val cached = AICacheService.getCommentary(cacheKey)
+        if (cached != null) {
+            emit(cached)
+            return@flow
+        }
+
+        val previousBalls = getPreviousBalls(matchContext.matchId)
+        val previousContext = if (previousBalls.isEmpty()) ""
+            else "\nPrevious balls: ${previousBalls.joinToString(", ")}"
+
+        val ballNum = matchContext.ballNumber.toDoubleOrNull() ?: matchContext.over.toDouble()
+        val phase = selectPhase(ballNum, matchContext.totalOvers)
+
+        val prompt = if (matchContext.snippet1.isEmpty() || matchContext.snippet2.isEmpty()) {
+            singleSourcePromptForPhase(phase)
+                .replace("{snippet}", matchContext.snippet1.ifEmpty { matchContext.snippet2 })
+                .replace("{ball_number}", matchContext.ballNumber)
+                .replace("{bowler}", matchContext.bowler)
+                .replace("{batsman}", matchContext.batsman)
+                .replace("{score_context}", matchContext.scoreContext)
+                .replace("{previous_balls_context}", previousContext)
+        } else {
+            fusionPromptForPhase(phase)
+                .replace("{snippet1}", matchContext.snippet1)
+                .replace("{snippet2}", matchContext.snippet2)
+                .replace("{ball_number}", matchContext.ballNumber)
+                .replace("{bowler}", matchContext.bowler)
+                .replace("{batsman}", matchContext.batsman)
+                .replace("{score_context}", matchContext.scoreContext)
+                .replace("{overs_summary}", matchContext.oversSummary)
+                .replace("{previous_balls_context}", previousContext)
+        }
+
+        val now = System.currentTimeMillis()
+        val fullBuilder = StringBuilder()
+        var succeeded = false
+
+        for (provider in providers) {
+            if (!currentCoroutineContext().isActive) break
+            if (provider.key.isEmpty()) continue
+            val cooldownUntil = providerCooldowns[provider.name] ?: 0L
+            if (cooldownUntil > now) continue
+
+            try {
+                streamFromProvider(provider, prompt, maxTokens = 256, temperature = 0.6f)
+                    .collect { chunk ->
+                        if (currentCoroutineContext().isActive) {
+                            emit(chunk)
+                            fullBuilder.append(chunk)
+                        }
+                    }
+                succeeded = true
+                break
+            } catch (e: Exception) {
+                fullBuilder.clear()
+                Sentry.addBreadcrumb(Breadcrumb().apply {
+                    category = "service.commentary"
+                    message = "${provider.name} stream failed — ${e.message}"
+                    level = SentryLevel.WARNING
+                })
+                // continue to next provider
+            }
+        }
+
+        // Cache write after stream completes
+        if (succeeded && fullBuilder.isNotEmpty()) {
+            val fullText = fullBuilder.toString().trim()
+            AICacheService.setCommentary(fullText, cacheKey)
+            addBallToBuffer(matchContext.matchId, fullText)
+        }
+    }
+
+    // 7a: SSE streaming for a single provider
+    private fun streamFromProvider(
+        provider: Provider,
+        prompt: String,
+        maxTokens: Int,
+        temperature: Float
+    ): Flow<String> = flow {
+        val body = JSONObject().apply {
+            put("model", provider.model)
+            put("messages", JSONArray().put(JSONObject().apply {
+                put("role", "user")
+                put("content", prompt)
+            }))
+            put("max_tokens", maxTokens)
+            put("temperature", temperature)
+            put("stream", true)
+        }.toString().toRequestBody("application/json".toMediaType())
+
+        val request = Request.Builder()
+            .url(provider.url)
+            .header("Authorization", "Bearer ${provider.key}")
+            .header("Accept", "text/event-stream")
+            .post(body)
+            .build()
+
+        val response = withContext(Dispatchers.IO) { client.newCall(request).execute() }
+        try {
+            // Check HTTP status BEFORE reading the SSE stream
+            if (response.code == 429) {
+                providerCooldowns[provider.name] = System.currentTimeMillis() + 30_000L
+                Sentry.addBreadcrumb(Breadcrumb().apply {
+                    category = "service.commentary"
+                    message = "${provider.name} rate-limited (stream) — 30s cooldown"
+                    level = SentryLevel.WARNING
+                })
+                throw IOException("Rate limited (429)")
+            }
+            if (!response.isSuccessful) throw IOException("HTTP ${response.code}")
+
+            val source = response.body?.source() ?: throw IOException("Null body from ${provider.name}")
+            while (currentCoroutineContext().isActive) {
+                val line = withContext(Dispatchers.IO) {
+                    if (source.exhausted()) null else source.readUtf8Line()
+                } ?: break
+
+                if (line == "data: [DONE]") break
+                if (!line.startsWith("data: ")) continue
+
+                val jsonStr = line.removePrefix("data: ").trim()
+                if (jsonStr.isEmpty()) continue
+
+                val delta = try {
+                    JSONObject(jsonStr)
+                        .getJSONArray("choices")
+                        .getJSONObject(0)
+                        .getJSONObject("delta")
+                        .optString("content", "")
+                } catch (_: Exception) {
+                    continue
+                }
+                if (delta.isNotEmpty()) emit(delta)
+            }
+        } finally {
+            response.close()
+        }
     }
 
     suspend fun summarizeOversWithAI(commentaryLines: List<String>, matchId: String, over: Int): String {
@@ -217,7 +568,18 @@ class CommentaryFusionService(
             setData("lineCount", commentaryLines.size)
         })
 
-        val lines = commentaryLines.take(18)
+        // 7d: Expand context window from 18 → 24 lines; amplify wicket/six events
+        val rawLines = commentaryLines.take(24)
+        val amplifiedLines = mutableListOf<String>()
+        for (line in rawLines) {
+            amplifiedLines.add(line)
+            // Intentional: wicket/six events appear twice to amplify their signal weight in the LLM context
+            if (line.contains("wicket", ignoreCase = true) || line.contains("six", ignoreCase = true)) {
+                amplifiedLines.add(line)
+            }
+        }
+        val lines = amplifiedLines
+
         val contextHash = lines.joinToString(" ").hashCode().toString()
         val cacheKey = "ai_summary:$matchId:$over:$contextHash"
         AICacheService.getCommentary(cacheKey)?.let { return it }
@@ -226,10 +588,39 @@ class CommentaryFusionService(
         val prompt = "You are a professional cricket commentator. Summarize the following ${lines.size} " +
             "ball-by-ball commentary lines into a single, engaging paragraph, highlighting key events and players.\n\n$numbered"
 
-        val result = callProviders(prompt, maxTokens = 256, temperature = 0.4) ?: "[Summary unavailable]"
+        // 7c: Token budget 256 → 512 for over summaries
+        val result = callProviders(prompt, maxTokens = 512, temperature = 0.4) ?: "[Summary unavailable]"
         AICacheService.setCommentary(result, cacheKey)
         return result
     }
+
+    // 7e: Retry generation with any provider other than the one that produced the hallucinated output
+    private suspend fun retryWithNextProvider(prompt: String, alreadyTriedProvider: String): String? =
+        withContext(Dispatchers.IO) {
+            val now = System.currentTimeMillis()
+            for (provider in providers) {
+                if (provider.name == alreadyTriedProvider) continue
+                if (provider.key.isEmpty()) continue
+                val cooldownUntil = providerCooldowns[provider.name] ?: 0L
+                if (cooldownUntil > now) continue
+                try {
+                    val result = callProvider(provider, prompt, maxTokens = 256, temperature = 0.6)
+                    Sentry.addBreadcrumb(Breadcrumb().apply {
+                        category = "service.commentary"
+                        message = "Hallucination retry succeeded with ${provider.name}"
+                        level = SentryLevel.INFO
+                    })
+                    return@withContext result
+                } catch (e: Exception) {
+                    Sentry.addBreadcrumb(Breadcrumb().apply {
+                        category = "service.commentary"
+                        message = "${provider.name} retry failed — ${e.message}"
+                        level = SentryLevel.WARNING
+                    })
+                }
+            }
+            null
+        }
 
     private suspend fun verifyCommentary(
         aiOutput: String,
@@ -277,31 +668,39 @@ class CommentaryFusionService(
     }
 
     private suspend fun callProviders(prompt: String, maxTokens: Int, temperature: Double): String? =
-        withContext(Dispatchers.IO) {
-            val now = System.currentTimeMillis()
-            for (provider in providers) {
-                if (provider.key.isEmpty()) continue
-                val cooldownUntil = providerCooldowns[provider.name] ?: 0L
-                if (cooldownUntil > now) {
-                    Sentry.addBreadcrumb(Breadcrumb().apply {
-                        category = "service.commentary"
-                        message = "${provider.name} cooling down, skipping"
-                        level = SentryLevel.DEBUG
-                    })
-                    continue
-                }
-                try {
-                    return@withContext callProvider(provider, prompt, maxTokens, temperature)
-                } catch (e: Exception) {
-                    Sentry.addBreadcrumb(Breadcrumb().apply {
-                        category = "service.commentary"
-                        message = "${provider.name} failed — ${e.message}"
-                        level = SentryLevel.WARNING
-                    })
-                }
+        callProvidersTracked(prompt, maxTokens, temperature)?.first
+
+    // Returns Pair(content, providerName) so callers can track which provider ran (needed for 7e retry)
+    private suspend fun callProvidersTracked(
+        prompt: String,
+        maxTokens: Int,
+        temperature: Double
+    ): Pair<String, String>? = withContext(Dispatchers.IO) {
+        val now = System.currentTimeMillis()
+        for (provider in providers) {
+            if (provider.key.isEmpty()) continue
+            val cooldownUntil = providerCooldowns[provider.name] ?: 0L
+            if (cooldownUntil > now) {
+                Sentry.addBreadcrumb(Breadcrumb().apply {
+                    category = "service.commentary"
+                    message = "${provider.name} cooling down, skipping"
+                    level = SentryLevel.DEBUG
+                })
+                continue
             }
-            null
+            try {
+                val content = callProvider(provider, prompt, maxTokens, temperature)
+                return@withContext Pair(content, provider.name)
+            } catch (e: Exception) {
+                Sentry.addBreadcrumb(Breadcrumb().apply {
+                    category = "service.commentary"
+                    message = "${provider.name} failed — ${e.message}"
+                    level = SentryLevel.WARNING
+                })
+            }
         }
+        null
+    }
 
     private fun callProvider(provider: Provider, prompt: String, maxTokens: Int, temperature: Double): String {
         val body = JSONObject().apply {
@@ -342,4 +741,18 @@ class CommentaryFusionService(
             return content
         }
     }
+
+    // Data class for streamCommentary context
+    data class MatchContext(
+        val matchId: String,
+        val over: Int,
+        val ballNumber: String,
+        val snippet1: String,
+        val snippet2: String,
+        val oversSummary: String,
+        val bowler: String,
+        val batsman: String,
+        val scoreContext: String,
+        val totalOvers: Int = 20
+    )
 }
