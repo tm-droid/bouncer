@@ -3,6 +3,7 @@ package com.tanush.bouncer.data.remote
 import android.util.Log
 import com.tanush.bouncer.ApiKeys
 import io.appwrite.Permission
+import io.appwrite.Query
 import io.appwrite.Role
 import io.appwrite.exceptions.AppwriteException
 import io.appwrite.services.TablesDB
@@ -102,6 +103,7 @@ object AppwritePlayerFormsClient {
 
     /**
      * Fetch all player form documents, keyed by player_name.
+     * Uses cursor-based pagination to collect all rows (Appwrite default limit is 25).
      * Returns empty map on any error so callers degrade gracefully.
      */
     suspend fun pullAllForms(): Map<String, PlayerFormSnapshot> {
@@ -109,12 +111,24 @@ object AppwritePlayerFormsClient {
         return withContext(Dispatchers.IO) {
             runCatching {
                 val db = tablesDB ?: return@runCatching emptyMap<String, PlayerFormSnapshot>()
-                val result = db.listRows(
-                    databaseId = dbId,
-                    tableId = tableId
-                )
-                result.rows.mapNotNull { row ->
-                    val data = row.data
+                val allRows = mutableListOf<Map<String, Any>>()
+                var lastId: String? = null
+                while (true) {
+                    val queries = buildList {
+                        add(Query.limit(100))
+                        if (lastId != null) add(Query.cursorAfter(lastId!!))
+                    }
+                    val page = db.listRows(
+                        databaseId = dbId,
+                        tableId = tableId,
+                        queries = queries
+                    )
+                    @Suppress("UNCHECKED_CAST")
+                    allRows.addAll(page.rows.map { it.data as? Map<String, Any> ?: emptyMap() })
+                    if (page.rows.size < 100) break
+                    lastId = page.rows.last().id
+                }
+                allRows.mapNotNull { data ->
                     val name = data["player_name"] as? String ?: return@mapNotNull null
                     name to PlayerFormSnapshot(
                         playerName = name,
