@@ -8,7 +8,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -23,17 +22,47 @@ import androidx.compose.ui.draw.*
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.tanush.bouncer.ui.components.CoilImage
 import com.tanush.bouncer.ui.theme.*
-import kotlin.math.PI
-import kotlin.math.cos
-import kotlin.math.sin
+
+/* ---------- Shared helpers ---------- */
+
+private fun eventColorFor(
+    runs: String?,
+    isWicket: Boolean,
+    colors: BouncerColors,
+    hierarchy: ColorHierarchy
+): Color = when {
+    isWicket -> colors.statusLive
+    runs == "6" -> hierarchy.secondary.primary
+    runs == "4" -> colors.statusInfo
+    runs == "0" || runs == "." -> DotBall
+    else -> colors.textSecondary
+}
+
+@Composable
+private fun rememberPulse(
+    label: String,
+    initial: Float,
+    target: Float,
+    durationMs: Int
+): State<Float> {
+    val transition = rememberInfiniteTransition(label = label)
+    return transition.animateFloat(
+        initialValue = initial,
+        targetValue = target,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMs, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "${label}Anim"
+    )
+}
 
 /**
  * Premium live commentary card with animations
@@ -52,143 +81,157 @@ fun LiveCommentaryCardEnhanced(
 ) {
     val colors = BouncerDesignSystem.colors
     val hierarchy = BouncerDesignSystem.hierarchy
-    val eventColor = when {
-        isWicket -> colors.statusLive
-        runs == "6" -> hierarchy.secondary.primary
-        runs == "4" -> colors.statusInfo
-        runs == "0" || runs == "." -> DotBall
-        else -> colors.textSecondary
-    }
-    
-    val infiniteTransition = rememberInfiniteTransition(label = "commentary")
-    val glowPulse by infiniteTransition.animateFloat(
-        initialValue = 0.3f,
-        targetValue = 0.7f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1500, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "commentaryGlow"
-    )
+    val eventColor = eventColorFor(runs, isWicket, colors, hierarchy)
+    val highlighted = isWicket || isBoundary
+    val glowPulse by rememberPulse("commentary", 0.3f, 0.7f, 1500)
 
     Surface(
         modifier = modifier
             .fillMaxWidth()
-            .then(
-                if (isWicket || isBoundary) {
-                    Modifier.drawBehind {
-                        drawRect(
-                            brush = Brush.horizontalGradient(
-                                colors = listOf(
-                                    eventColor.copy(alpha = glowPulse * 0.1f),
-                                    Color.Transparent
-                                )
-                            )
-                        )
-                    }
-                } else Modifier
-            ),
+            .then(if (highlighted) commentaryGlowModifier(eventColor, glowPulse) else Modifier),
         shape = RoundedCornerShape(16.dp),
         color = colors.glassSurface,
-        border = if (isWicket || isBoundary) {
-            BorderStroke(1.dp, eventColor.copy(alpha = 0.4f))
-        } else null
+        border = if (highlighted) BorderStroke(1.dp, eventColor.copy(alpha = 0.4f)) else null
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Over/Ball indicator
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.width(48.dp)
-            ) {
-                Text(
-                    text = overNumber,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = hierarchy.secondary.primary
-                )
-                Text(
-                    text = ".$ballNumber",
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = colors.textMuted
-                )
-                
-                Spacer(modifier = Modifier.height(8.dp))
-                
-                // Runs badge
-                runs?.let {
-                    Box(
-                        modifier = Modifier
-                            .size(32.dp)
-                            .background(
-                                eventColor.copy(alpha = 0.15f),
-                                CircleShape
-                            )
-                            .border(1.dp, eventColor.copy(alpha = 0.5f), CircleShape),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = if (it == ".") "0" else it,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Black,
-                            color = eventColor
-                        )
-                    }
-                }
-            }
-            
-            // Commentary content
-            Column(
+            OverBallIndicator(
+                overNumber = overNumber,
+                ballNumber = ballNumber,
+                runs = runs,
+                eventColor = eventColor
+            )
+            CommentaryContent(
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                // Players
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    bowlerName?.let {
-                        Text(
-                            text = "to $it",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = colors.textTertiary
-                        )
-                    }
-                    batsmanName?.let {
-                        Text(
-                            text = it,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = colors.textSecondary
-                        )
-                    }
-                }
-                
-                // Commentary text
+                commentary = commentary,
+                runs = runs,
+                isWicket = isWicket,
+                bowlerName = bowlerName,
+                batsmanName = batsmanName
+            )
+        }
+    }
+}
+
+private fun commentaryGlowModifier(eventColor: Color, glowPulse: Float): Modifier =
+    Modifier.drawBehind {
+        drawRect(
+            brush = Brush.horizontalGradient(
+                colors = listOf(eventColor.copy(alpha = glowPulse * 0.1f), Color.Transparent)
+            )
+        )
+    }
+
+@Composable
+private fun OverBallIndicator(
+    overNumber: String,
+    ballNumber: String,
+    runs: String?,
+    eventColor: Color
+) {
+    val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.width(48.dp)
+    ) {
+        Text(
+            text = overNumber,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Bold,
+            color = hierarchy.secondary.primary
+        )
+        Text(
+            text = ".$ballNumber",
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Medium,
+            color = colors.textMuted
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        runs?.let { RunsBadge(runs = it, eventColor = eventColor) }
+    }
+}
+
+@Composable
+private fun RunsBadge(runs: String, eventColor: Color) {
+    Box(
+        modifier = Modifier
+            .size(32.dp)
+            .background(eventColor.copy(alpha = 0.15f), CircleShape)
+            .border(1.dp, eventColor.copy(alpha = 0.5f), CircleShape),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = if (runs == ".") "0" else runs,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Black,
+            color = eventColor
+        )
+    }
+}
+
+@Composable
+private fun CommentaryContent(
+    modifier: Modifier,
+    commentary: String,
+    runs: String?,
+    isWicket: Boolean,
+    bowlerName: String?,
+    batsmanName: String?
+) {
+    val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            bowlerName?.let {
                 Text(
-                    text = commentary,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Normal,
-                    color = colors.textPrimary,
-                    lineHeight = 18.sp
+                    text = "to $it",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = colors.textTertiary
                 )
-                
-                // Event badge
-                if (isWicket) {
-                    EventBadge(text = "WICKET", color = colors.statusLive)
-                } else if (runs == "6") {
-                    EventBadge(text = "SIX", color = hierarchy.secondary.primary)
-                } else if (runs == "4") {
-                    EventBadge(text = "FOUR", color = colors.statusInfo)
-                }
+            }
+            batsmanName?.let {
+                Text(
+                    text = it,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = colors.textSecondary
+                )
             }
         }
+
+        Text(
+            text = commentary,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Normal,
+            color = colors.textPrimary,
+            lineHeight = 18.sp
+        )
+
+        CommentaryEventBadge(isWicket = isWicket, runs = runs, colors = colors, hierarchy = hierarchy)
+    }
+}
+
+@Composable
+private fun CommentaryEventBadge(
+    isWicket: Boolean,
+    runs: String?,
+    colors: BouncerColors,
+    hierarchy: ColorHierarchy
+) {
+    when {
+        isWicket -> EventBadge(text = "WICKET", color = colors.statusLive)
+        runs == "6" -> EventBadge(text = "SIX", color = hierarchy.secondary.primary)
+        runs == "4" -> EventBadge(text = "FOUR", color = colors.statusInfo)
     }
 }
 
@@ -217,15 +260,12 @@ fun EnhancedRecentBallsStrip(
     balls: List<BallEvent>,
     modifier: Modifier = Modifier
 ) {
-    val hierarchy = BouncerDesignSystem.hierarchy
-    val colors = BouncerDesignSystem.colors
     var selectedBall by remember { mutableStateOf<BallEvent?>(null) }
 
     Column(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        // Balls strip
         LazyRow(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             contentPadding = PaddingValues(horizontal = 4.dp)
@@ -238,49 +278,47 @@ fun EnhancedRecentBallsStrip(
                 )
             }
         }
-        
-        // Selected ball detail
+
         AnimatedVisibility(
             visible = selectedBall != null,
             enter = fadeIn() + expandVertically(),
             exit = fadeOut() + shrinkVertically()
         ) {
-            selectedBall?.let { ball ->
-                Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = colors.surface1
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(12.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column {
-                            Text(
-                                text = "Over ${ball.over}.${ball.ballInOver}",
-                                fontSize = 11.sp,
-                                color = colors.textMuted
-                            )
-                            Text(
-                                text = ball.description,
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.Medium,
-                                color = colors.textPrimary
-                            )
-                        }
-                        
-                        if (ball.batsmanName != null) {
-                            Text(
-                                text = ball.batsmanName,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = hierarchy.secondary.primary
-                            )
-                        }
-                    }
-                }
+            selectedBall?.let { SelectedBallDetail(ball = it) }
+        }
+    }
+}
+
+@Composable
+private fun SelectedBallDetail(ball: BallEvent) {
+    val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
+    Surface(shape = RoundedCornerShape(12.dp), color = colors.surface1) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column {
+                Text(
+                    text = "Over ${ball.over}.${ball.ballInOver}",
+                    fontSize = 11.sp,
+                    color = colors.textMuted
+                )
+                Text(
+                    text = ball.description,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = colors.textPrimary
+                )
+            }
+            ball.batsmanName?.let {
+                Text(
+                    text = it,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = hierarchy.secondary.primary
+                )
             }
         }
     }
@@ -303,56 +341,25 @@ private fun AnimatedBallChip(
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
-    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
-    val color = when {
-        ball.isWicket -> colors.statusLive
-        ball.runs == "6" -> hierarchy.secondary.primary
-        ball.runs == "4" -> colors.statusInfo
-        ball.runs == "0" || ball.runs == "." -> DotBall
-        else -> colors.textSecondary
-    }
-    
+    val hierarchy = BouncerDesignSystem.hierarchy
+    val color = eventColorFor(ball.runs, ball.isWicket, colors, hierarchy)
+
     val scale by animateFloatAsState(
         targetValue = if (isSelected) 1.15f else 1f,
         animationSpec = spring(stiffness = Spring.StiffnessHigh),
         label = "ballScale"
     )
-    
-    val infiniteTransition = rememberInfiniteTransition(label = "ball_${ball.id}")
-    val glowAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.3f,
-        targetValue = 0.6f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1000, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "ballGlow"
-    )
+
+    val glowAlpha by rememberPulse("ball_${ball.id}", 0.3f, 0.6f, 1000)
+    val showGlow = isSelected || ball.isWicket || ball.runs == "6" || ball.runs == "4"
 
     Box(
         modifier = Modifier
             .graphicsLayer { scaleX = scale; scaleY = scale }
             .size(36.dp)
-            .then(
-                if (isSelected || ball.isWicket || ball.runs in listOf("6", "4")) {
-                    Modifier.drawBehind {
-                        drawCircle(
-                            brush = Brush.radialGradient(
-                                colors = listOf(
-                                    color.copy(alpha = glowAlpha * 0.4f),
-                                    Color.Transparent
-                                )
-                            ),
-                            radius = size.maxDimension * 0.8f
-                        )
-                    }
-                } else Modifier
-            )
-            .background(
-                color.copy(alpha = 0.15f),
-                CircleShape
-            )
+            .then(if (showGlow) ballGlowModifier(color, glowAlpha) else Modifier)
+            .background(color.copy(alpha = 0.15f), CircleShape)
             .border(
                 if (isSelected) 2.dp else 1.dp,
                 color.copy(alpha = if (isSelected) 0.8f else 0.4f),
@@ -361,22 +368,33 @@ private fun AnimatedBallChip(
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
-        if (ball.isWicket) {
-            Text(
-                text = "W",
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Black,
-                color = color
-            )
-        } else {
-            Text(
-                text = if (ball.runs == ".") "0" else ball.runs,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold,
-                color = color
-            )
-        }
+        BallChipLabel(ball = ball, color = color)
     }
+}
+
+private fun ballGlowModifier(color: Color, glowAlpha: Float): Modifier =
+    Modifier.drawBehind {
+        drawCircle(
+            brush = Brush.radialGradient(
+                colors = listOf(color.copy(alpha = glowAlpha * 0.4f), Color.Transparent)
+            ),
+            radius = size.maxDimension * 0.8f
+        )
+    }
+
+@Composable
+private fun BallChipLabel(ball: BallEvent, color: Color) {
+    val label = when {
+        ball.isWicket -> "W"
+        ball.runs == "." -> "0"
+        else -> ball.runs
+    }
+    Text(
+        text = label,
+        fontSize = 14.sp,
+        fontWeight = if (ball.isWicket) FontWeight.Black else FontWeight.Bold,
+        color = color
+    )
 }
 
 /**
@@ -402,30 +420,9 @@ fun KeyMomentsCard(
             modifier = Modifier.padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "KEY MOMENTS",
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.5.sp,
-                    color = hierarchy.secondary.primary
-                )
-                
-                Text(
-                    text = "${moments.size} moments",
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = colors.textMuted
-                )
-            }
-            
+            KeyMomentsHeader(count = moments.size)
             moments.take(5).forEachIndexed { index, moment ->
                 KeyMomentItem(moment = moment, index = index)
-                
                 if (index < moments.size - 1 && index < 4) {
                     HorizontalDivider(
                         color = colors.glassBorder.copy(alpha = 0.3f),
@@ -434,6 +431,31 @@ fun KeyMomentsCard(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun KeyMomentsHeader(count: Int) {
+    val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = "KEY MOMENTS",
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 1.5.sp,
+            color = hierarchy.secondary.primary
+        )
+        Text(
+            text = "$count moments",
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Medium,
+            color = colors.textMuted
+        )
     }
 }
 
@@ -450,33 +472,40 @@ data class KeyMoment(
     }
 }
 
+private fun momentColorFor(
+    type: KeyMoment.MomentType,
+    colors: BouncerColors,
+    hierarchy: ColorHierarchy
+): Color = when (type) {
+    KeyMoment.MomentType.WICKET -> colors.statusLive
+    KeyMoment.MomentType.BOUNDARY -> hierarchy.secondary.primary
+    KeyMoment.MomentType.MILESTONE -> hierarchy.secondary.primary
+    KeyMoment.MomentType.PARTNERSHIP -> colors.statusSuccess
+    KeyMoment.MomentType.REVIEW -> colors.statusInfo
+    KeyMoment.MomentType.OTHER -> colors.textSecondary
+}
+
+private fun momentIconFor(type: KeyMoment.MomentType): ImageVector = when (type) {
+    KeyMoment.MomentType.WICKET -> Icons.Default.SportsCricket
+    KeyMoment.MomentType.BOUNDARY -> Icons.Default.Whatshot
+    KeyMoment.MomentType.MILESTONE -> Icons.Default.Star
+    KeyMoment.MomentType.PARTNERSHIP -> Icons.Default.Handshake
+    KeyMoment.MomentType.REVIEW -> Icons.Default.Visibility
+    KeyMoment.MomentType.OTHER -> Icons.Default.FiberManualRecord
+}
+
 @Composable
 private fun KeyMomentItem(
     moment: KeyMoment,
     index: Int
 ) {
-    val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
     var isExpanded by remember { mutableStateOf(false) }
-    
-    val momentColor = when (moment.type) {
-        KeyMoment.MomentType.WICKET -> colors.statusLive
-        KeyMoment.MomentType.BOUNDARY -> hierarchy.secondary.primary
-        KeyMoment.MomentType.MILESTONE -> hierarchy.secondary.primary
-        KeyMoment.MomentType.PARTNERSHIP -> colors.statusSuccess
-        KeyMoment.MomentType.REVIEW -> colors.statusInfo
-        KeyMoment.MomentType.OTHER -> colors.textSecondary
-    }
-    
-    val momentIcon = when (moment.type) {
-        KeyMoment.MomentType.WICKET -> Icons.Default.SportsCricket
-        KeyMoment.MomentType.BOUNDARY -> Icons.Default.Whatshot
-        KeyMoment.MomentType.MILESTONE -> Icons.Default.Star
-        KeyMoment.MomentType.PARTNERSHIP -> Icons.Default.Handshake
-        KeyMoment.MomentType.REVIEW -> Icons.Default.Visibility
-        KeyMoment.MomentType.OTHER -> Icons.Default.FiberManualRecord
-    }
-    
+
+    val momentColor = momentColorFor(moment.type, colors, hierarchy)
+    val momentIcon = momentIconFor(moment.type)
+
     val animatedEnter by animateFloatAsState(
         targetValue = 1f,
         animationSpec = tween(300, delayMillis = index * 50),
@@ -489,46 +518,7 @@ private fun KeyMomentItem(
             .graphicsLayer { alpha = animatedEnter; translationX = (1f - animatedEnter) * 50f }
             .clickable { isExpanded = !isExpanded }
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Icon
-            Box(
-                modifier = Modifier
-                    .size(36.dp)
-                    .background(momentColor.copy(alpha = 0.12f), RoundedCornerShape(10.dp)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = momentIcon,
-                    contentDescription = null,
-                    tint = momentColor,
-                    modifier = Modifier.size(18.dp)
-                )
-            }
-            
-            // Content
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = moment.title,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = colors.textPrimary
-                )
-                Text(
-                    text = "Over ${moment.over}",
-                    fontSize = 11.sp,
-                    color = colors.textMuted
-                )
-            }
-            
-            // Impact indicator
-            ImpactIndicator(score = moment.impactScore, color = momentColor)
-        }
-        
-        // Expanded description
+        KeyMomentRow(moment = moment, momentColor = momentColor, momentIcon = momentIcon)
         AnimatedVisibility(
             visible = isExpanded,
             enter = fadeIn() + expandVertically(),
@@ -546,6 +536,48 @@ private fun KeyMomentItem(
 }
 
 @Composable
+private fun KeyMomentRow(
+    moment: KeyMoment,
+    momentColor: Color,
+    momentIcon: ImageVector
+) {
+    val colors = BouncerDesignSystem.colors
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(36.dp)
+                .background(momentColor.copy(alpha = 0.12f), RoundedCornerShape(10.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = momentIcon,
+                contentDescription = null,
+                tint = momentColor,
+                modifier = Modifier.size(18.dp)
+            )
+        }
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = moment.title,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = colors.textPrimary
+            )
+            Text(
+                text = "Over ${moment.over}",
+                fontSize = 11.sp,
+                color = colors.textMuted
+            )
+        }
+        ImpactIndicator(score = moment.impactScore, color = momentColor)
+    }
+}
+
+@Composable
 private fun ImpactIndicator(
     score: Float,
     color: Color
@@ -555,7 +587,6 @@ private fun ImpactIndicator(
         contentAlignment = Alignment.Center
     ) {
         Canvas(modifier = Modifier.fillMaxSize()) {
-            // Background
             drawArc(
                 color = GlassBorder,
                 startAngle = 0f,
@@ -563,8 +594,6 @@ private fun ImpactIndicator(
                 useCenter = false,
                 style = Stroke(3.dp.toPx(), cap = StrokeCap.Round)
             )
-            
-            // Progress
             drawArc(
                 color = color,
                 startAngle = -90f,
@@ -573,7 +602,6 @@ private fun ImpactIndicator(
                 style = Stroke(3.dp.toPx(), cap = StrokeCap.Round)
             )
         }
-        
         Text(
             text = "${(score * 10).toInt()}",
             fontSize = 10.sp,
@@ -621,134 +649,150 @@ fun ScorecardSummaryCard(
         color = colors.glassSurface
     ) {
         Box {
-            // Shimmer effect
-            Canvas(modifier = Modifier.matchParentSize()) {
-                val shimmerStart = shimmerOffset * size.width
-                drawRect(
-                    brush = Brush.linearGradient(
-                        colors = listOf(
-                            Color.Transparent,
-                            Color.White.copy(alpha = 0.03f),
-                            Color.Transparent
-                        ),
-                        start = Offset(shimmerStart, 0f),
-                        end = Offset(shimmerStart + size.width * 0.3f, size.height)
-                    )
-                )
-            }
-            
+            ScorecardShimmer(modifier = Modifier.matchParentSize(), shimmerOffset = shimmerOffset)
             Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(20.dp),
+                modifier = Modifier.fillMaxWidth().padding(20.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Team header
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // Team logo
-                    Box(
-                        modifier = Modifier
-                            .size(48.dp)
-                            .border(1.dp, hierarchy.secondary.primary.copy(alpha = 0.4f), CircleShape)
-                            .clip(CircleShape)
-                            .background(colors.surface1),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        if (!teamLogo.isNullOrEmpty()) {
-                            CoilImage(
-                                model = teamLogo,
-                                contentDescription = teamName,
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(4.dp),
-                                contentScale = ContentScale.Fit
-                            )
-                        } else {
-                            Text(
-                                text = teamName.take(3).uppercase(),
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Black,
-                                color = hierarchy.secondary.primary
-                            )
-                        }
-                    }
-                    
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = teamName,
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = colors.textPrimary
-                        )
-                        
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            runRate?.let {
-                                Text(
-                                    text = "RR: $it",
-                                    fontSize = 11.sp,
-                                    color = colors.textMuted
-                                )
-                            }
-                            extras?.let {
-                                Text(
-                                    text = "Extras: $it",
-                                    fontSize = 11.sp,
-                                    color = colors.textMuted
-                                )
-                            }
-                        }
-                    }
-                    
-                    // Score
-                    Column(horizontalAlignment = Alignment.End) {
-                        Text(
-                            text = score,
-                            fontSize = 28.sp,
-                            fontWeight = FontWeight.Black,
-                            color = hierarchy.secondary.primary
-                        )
-                        Text(
-                            text = "($overs overs)",
-                            fontSize = 11.sp,
-                            color = colors.textMuted
-                        )
-                    }
-                }
-                
-                // Divider
+                ScorecardTeamHeader(
+                    teamName = teamName,
+                    teamLogo = teamLogo,
+                    score = score,
+                    overs = overs,
+                    extras = extras,
+                    runRate = runRate
+                )
                 HorizontalDivider(color = colors.glassBorder.copy(alpha = 0.3f))
-                
-                // Top performers
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    topScorer?.let {
-                        PerformerMini(
-                            label = "Top Scorer",
-                            name = it.name,
-                            stat = it.stat,
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                    
-                    topBowler?.let {
-                        PerformerMini(
-                            label = "Best Bowler",
-                            name = it.name,
-                            stat = it.stat,
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
+                TopPerformersRow(topScorer = topScorer, topBowler = topBowler)
+            }
+        }
+    }
+}
+
+@Composable
+private fun ScorecardShimmer(modifier: Modifier, shimmerOffset: Float) {
+    Canvas(modifier = modifier) {
+        val shimmerStart = shimmerOffset * size.width
+        drawRect(
+            brush = Brush.linearGradient(
+                colors = listOf(
+                    Color.Transparent,
+                    Color.White.copy(alpha = 0.03f),
+                    Color.Transparent
+                ),
+                start = Offset(shimmerStart, 0f),
+                end = Offset(shimmerStart + size.width * 0.3f, size.height)
+            )
+        )
+    }
+}
+
+@Composable
+private fun ScorecardTeamHeader(
+    teamName: String,
+    teamLogo: String?,
+    score: String,
+    overs: String,
+    extras: String?,
+    runRate: String?
+) {
+    val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        TeamLogoBadge(teamName = teamName, teamLogo = teamLogo)
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = teamName,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                color = colors.textPrimary
+            )
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                runRate?.let {
+                    Text(text = "RR: $it", fontSize = 11.sp, color = colors.textMuted)
+                }
+                extras?.let {
+                    Text(text = "Extras: $it", fontSize = 11.sp, color = colors.textMuted)
                 }
             }
+        }
+        Column(horizontalAlignment = Alignment.End) {
+            Text(
+                text = score,
+                fontSize = 28.sp,
+                fontWeight = FontWeight.Black,
+                color = hierarchy.secondary.primary
+            )
+            Text(
+                text = "($overs overs)",
+                fontSize = 11.sp,
+                color = colors.textMuted
+            )
+        }
+    }
+}
+
+@Composable
+private fun TeamLogoBadge(teamName: String, teamLogo: String?) {
+    val colors = BouncerDesignSystem.colors
+    val hierarchy = BouncerDesignSystem.hierarchy
+    Box(
+        modifier = Modifier
+            .size(48.dp)
+            .border(1.dp, hierarchy.secondary.primary.copy(alpha = 0.4f), CircleShape)
+            .clip(CircleShape)
+            .background(colors.surface1),
+        contentAlignment = Alignment.Center
+    ) {
+        if (!teamLogo.isNullOrEmpty()) {
+            CoilImage(
+                model = teamLogo,
+                contentDescription = teamName,
+                modifier = Modifier.fillMaxSize().padding(4.dp),
+                contentScale = ContentScale.Fit
+            )
+        } else {
+            Text(
+                text = teamName.take(3).uppercase(),
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Black,
+                color = hierarchy.secondary.primary
+            )
+        }
+    }
+}
+
+@Composable
+private fun TopPerformersRow(
+    topScorer: PlayerPerformance?,
+    topBowler: PlayerPerformance?
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        topScorer?.let {
+            PerformerMini(
+                label = "Top Scorer",
+                name = it.name,
+                stat = it.stat,
+                modifier = Modifier.weight(1f)
+            )
+        }
+        topBowler?.let {
+            PerformerMini(
+                label = "Best Bowler",
+                name = it.name,
+                stat = it.stat,
+                modifier = Modifier.weight(1f)
+            )
         }
     }
 }
