@@ -13,9 +13,13 @@ import com.tanush.bouncer.analysis.MatchupAnalysis
 import com.tanush.bouncer.analysis.PlayerStatisticsEngine
 import com.tanush.bouncer.analysis.TeamStatistics
 import com.tanush.bouncer.analysis.VenueAnalysis
+import com.tanush.bouncer.data.remote.AppwriteClient
 import com.tanush.bouncer.models.CricsheetMatch
 import kotlin.math.*
 import io.sentry.Sentry
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 /**
  * High-level orchestrator for cricket score prediction model training and inference.
@@ -552,6 +556,12 @@ class ModelTrainer(private val context: Context? = null) {
         }
         // Also persist to file for reliable cross-session recovery
         saveToFile()
+        // Sync weights to Appwrite Storage so other devices get the updated model
+        context?.let { ctx ->
+            CoroutineScope(Dispatchers.IO).launch {
+                AppwriteClient.uploadModelWeights(ctx)
+            }
+        }
     }
 
     /**
