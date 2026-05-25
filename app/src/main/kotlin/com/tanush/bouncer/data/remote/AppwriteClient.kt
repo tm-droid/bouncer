@@ -114,7 +114,9 @@ object AppwriteClient {
                 }
 
                 val bytes = storage.getFileDownload(bucketId = ML_BUCKET_ID, fileId = MODEL_FILE_ID)
-                localFile.writeBytes(bytes)
+                val tmpFile = File(context.filesDir, "score_model_v1.json.tmp")
+                tmpFile.writeBytes(bytes)
+                tmpFile.renameTo(localFile)
                 Log.d(TAG, "downloadModelWeightsIfNewer: downloaded ${bytes.size} bytes (remote newer by ${remoteUpdatedAt - localModified}ms)")
                 true
             }.onFailure { e ->

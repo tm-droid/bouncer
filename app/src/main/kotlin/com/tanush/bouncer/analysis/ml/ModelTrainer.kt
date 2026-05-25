@@ -17,8 +17,9 @@ import com.tanush.bouncer.data.remote.AppwriteClient
 import com.tanush.bouncer.models.CricsheetMatch
 import kotlin.math.*
 import io.sentry.Sentry
-import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 
 /**
@@ -558,7 +559,10 @@ class ModelTrainer(private val context: Context? = null) {
         saveToFile()
         // Sync weights to Appwrite Storage so other devices get the updated model
         context?.let { ctx ->
-            CoroutineScope(Dispatchers.IO).launch {
+            @OptIn(DelicateCoroutinesApi::class)
+            GlobalScope.launch(Dispatchers.IO) {
+                // Fire-and-forget: upload failure is silent (caught inside uploadModelWeights).
+                // GlobalScope is intentional — upload must survive ViewModel/screen lifecycle.
                 AppwriteClient.uploadModelWeights(ctx)
             }
         }
