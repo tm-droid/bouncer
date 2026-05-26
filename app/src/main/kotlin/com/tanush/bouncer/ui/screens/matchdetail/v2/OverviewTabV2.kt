@@ -34,6 +34,21 @@ import com.tanush.bouncer.ui.components.v2.SectionHeaderV2
 import com.tanush.bouncer.ui.components.v2.StatRowV2
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 import com.tanush.bouncer.utils.TimelineEventExtractor
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Flare
+import androidx.compose.material.icons.filled.HeartBroken
+import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.Speed
+import com.tanush.bouncer.ui.components.premium.EliteMomentumTracker
+import com.tanush.bouncer.ui.components.premium.InsightGridCard
+import com.tanush.bouncer.ui.components.premium.MomentumEvent
+import com.tanush.bouncer.ui.components.premium.PremiumWinProbabilityHero
+import com.tanush.bouncer.ui.theme.Gold400
+import com.tanush.bouncer.ui.theme.StatusInfo
+import com.tanush.bouncer.ui.theme.StatusLive
+import com.tanush.bouncer.ui.theme.StatusSuccess
 
 /**
  * OverviewTabV2 — Quick stats, batsmen at crease, current bowler, commentary preview, win probability.
@@ -102,16 +117,31 @@ fun OverviewTabV2(
                     horizontalArrangement = Arrangement.spacedBy(spacing.sm),
                 ) {
                     currentRunRate?.let {
-                        QuickStatCard(label = "CRR", value = it, modifier = Modifier.weight(1f))
+                        InsightGridCard(
+                            modifier = Modifier.weight(1f),
+                            label = "CRR",
+                            value = it,
+                            subValue = "curr rate",
+                            icon = Icons.Default.Speed,
+                        )
                     }
                     requiredRunRate?.let {
-                        QuickStatCard(label = "RRR", value = it, modifier = Modifier.weight(1f))
+                        InsightGridCard(
+                            modifier = Modifier.weight(1f),
+                            label = "RRR",
+                            value = it,
+                            subValue = "reqd rate",
+                            icon = Icons.AutoMirrored.Filled.TrendingUp,
+                        )
                     }
                     if (hasWinPct) {
-                        QuickStatCard(
-                            label = "Win %",
-                            value = "${heuristicProb.toInt()}%",
+                        InsightGridCard(
                             modifier = Modifier.weight(1f),
+                            label = "WIN %",
+                            value = "${heuristicProb.toInt()}%",
+                            subValue = match.teams.firstOrNull()?.acronym?.take(3) ?: "--",
+                            icon = Icons.Default.AutoAwesome,
+                            isHighPriority = true,
                         )
                     }
                 }
@@ -131,6 +161,28 @@ fun OverviewTabV2(
                         Spacer(Modifier.height(spacing.xs))
                         RecentBallsStripV2(balls = recentBalls.takeLast(6))
                     }
+                }
+            }
+        }
+
+        // Momentum tracker — key events derived from current over's ball outcomes
+        if (recentBalls.isNotEmpty()) {
+            val battingOvers = match.teams.firstOrNull { it.isBatting }?.overs
+                ?: match.teams.firstOrNull()?.overs ?: "0"
+            val currentOverNum = battingOvers.split(".").firstOrNull()?.toIntOrNull() ?: 0
+            val momentumEvents = recentBalls.takeLast(6).mapIndexedNotNull { idx, ball ->
+                val overLabel = "$currentOverNum.${idx + 1}"
+                when (ball.uppercase()) {
+                    "W" -> MomentumEvent(overLabel, "WICKET", "Fall of wicket", "W", Icons.Default.HeartBroken, StatusLive)
+                    "6" -> MomentumEvent(overLabel, "SIX", "Boundary — 6 runs", "6", Icons.Default.Flare, StatusSuccess)
+                    "4" -> MomentumEvent(overLabel, "FOUR", "Boundary — 4 runs", "4", Icons.Default.Flare, Gold400)
+                    "0" -> MomentumEvent(overLabel, "DOT BALL", "Pressure on batting side", "·", Icons.Default.Security, StatusInfo)
+                    else -> null
+                }
+            }
+            if (momentumEvents.isNotEmpty()) {
+                item(key = "momentum_tracker") {
+                    EliteMomentumTracker(events = momentumEvents)
                 }
             }
         }
@@ -312,23 +364,13 @@ fun OverviewTabV2(
             }
         }
 
-        // Win Probability bar — show for any match with meaningful probability data
+        // Win Probability — premium animated hero card
         if (heuristicProb != 50.0 && match.teams.size >= 2) {
-            item(key = "win_prob_header") {
-                SectionHeaderV2(title = "Win Probability")
-            }
             item(key = "win_prob") {
-                BouncerCard {
-                    Column(modifier = Modifier.padding(spacing.md)) {
-                        val team1 = match.teams[0]
-                        val team2 = match.teams[1]
-                        val prob = (heuristicProb.toFloat() / 100f).coerceIn(0f, 1f)
-
-                        WinProbRow(teamName = team1.acronym.ifBlank { team1.name }, probability = prob)
-                        Spacer(Modifier.height(spacing.sm))
-                        WinProbRow(teamName = team2.acronym.ifBlank { team2.name }, probability = 1f - prob)
-                    }
-                }
+                PremiumWinProbabilityHero(
+                    team1Name = match.teams[0].acronym.ifBlank { match.teams[0].name.take(3).uppercase() },
+                    team1Probability = (heuristicProb.toFloat() / 100f).coerceIn(0.05f, 0.95f),
+                )
             }
         }
 

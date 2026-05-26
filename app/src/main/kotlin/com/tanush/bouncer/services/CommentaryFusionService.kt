@@ -73,6 +73,7 @@ class CommentaryFusionService(
     Bowler: {bowler}
     Batsman: {batsman}
     Current score/context: {score_context}
+    {context_extras}
 
     Recent match context (last 3 overs summary):
     {overs_summary}
@@ -103,6 +104,7 @@ class CommentaryFusionService(
     Bowler: {bowler}
     Batsman: {batsman}
     Current score/context: {score_context}
+    {context_extras}
 
     Recent match context (last 3 overs summary):
     {overs_summary}
@@ -133,6 +135,7 @@ class CommentaryFusionService(
     Bowler: {bowler}
     Batsman: {batsman}
     Current score/context: {score_context}
+    {context_extras}
 
     Recent match context (last 3 overs summary):
     {overs_summary}
@@ -163,6 +166,7 @@ class CommentaryFusionService(
     Bowler: {bowler}
     Batsman: {batsman}
     Current score/context: {score_context}
+    {context_extras}
 
     Recent match context (last 3 overs summary):
     {overs_summary}
@@ -190,6 +194,7 @@ class CommentaryFusionService(
     Bowler: {bowler}
     Batsman: {batsman}
     Current score/context: {score_context}
+    {context_extras}
     {previous_balls_context}
 
     Instructions:
@@ -212,6 +217,7 @@ class CommentaryFusionService(
     Bowler: {bowler}
     Batsman: {batsman}
     Current score/context: {score_context}
+    {context_extras}
     {previous_balls_context}
 
     Instructions:
@@ -234,6 +240,7 @@ class CommentaryFusionService(
     Bowler: {bowler}
     Batsman: {batsman}
     Current score/context: {score_context}
+    {context_extras}
     {previous_balls_context}
 
     Instructions:
@@ -256,6 +263,7 @@ class CommentaryFusionService(
     Bowler: {bowler}
     Batsman: {batsman}
     Current score/context: {score_context}
+    {context_extras}
     {previous_balls_context}
 
     Instructions:
@@ -349,7 +357,9 @@ class CommentaryFusionService(
         bowler: String,
         batsman: String,
         scoreContext: String,
-        totalOvers: Int = 20
+        totalOvers: Int = 20,
+        partnershipContext: String = "",
+        matchupContext: String = ""
     ): String {
         Sentry.addBreadcrumb(Breadcrumb().apply {
             category = "service.commentary"
@@ -372,6 +382,11 @@ class CommentaryFusionService(
         val ballNum = ballNumber.toDoubleOrNull() ?: over.toDouble()
         val phase = selectPhase(ballNum, totalOvers)
 
+        val contextExtras = buildString {
+            if (partnershipContext.isNotEmpty()) appendLine("Partnership: $partnershipContext")
+            if (matchupContext.isNotEmpty()) appendLine("H2H: $matchupContext")
+        }.trimEnd()
+
         val prompt = if (snippet1.isEmpty() || snippet2.isEmpty()) {
             singleSourcePromptForPhase(phase)
                 .replace("{snippet}", snippet1.ifEmpty { snippet2 })
@@ -379,6 +394,7 @@ class CommentaryFusionService(
                 .replace("{bowler}", bowler)
                 .replace("{batsman}", batsman)
                 .replace("{score_context}", scoreContext)
+                .replace("{context_extras}", contextExtras)
                 .replace("{previous_balls_context}", previousContext)
         } else {
             fusionPromptForPhase(phase)
@@ -388,6 +404,7 @@ class CommentaryFusionService(
                 .replace("{bowler}", bowler)
                 .replace("{batsman}", batsman)
                 .replace("{score_context}", scoreContext)
+                .replace("{context_extras}", contextExtras)
                 .replace("{overs_summary}", oversSummary)
                 .replace("{previous_balls_context}", previousContext)
         }
@@ -430,6 +447,11 @@ class CommentaryFusionService(
         val ballNum = matchContext.ballNumber.toDoubleOrNull() ?: matchContext.over.toDouble()
         val phase = selectPhase(ballNum, matchContext.totalOvers)
 
+        val streamContextExtras = buildString {
+            if (matchContext.partnershipContext.isNotEmpty()) appendLine("Partnership: ${matchContext.partnershipContext}")
+            if (matchContext.matchupContext.isNotEmpty()) appendLine("H2H: ${matchContext.matchupContext}")
+        }.trimEnd()
+
         val prompt = if (matchContext.snippet1.isEmpty() || matchContext.snippet2.isEmpty()) {
             singleSourcePromptForPhase(phase)
                 .replace("{snippet}", matchContext.snippet1.ifEmpty { matchContext.snippet2 })
@@ -437,6 +459,7 @@ class CommentaryFusionService(
                 .replace("{bowler}", matchContext.bowler)
                 .replace("{batsman}", matchContext.batsman)
                 .replace("{score_context}", matchContext.scoreContext)
+                .replace("{context_extras}", streamContextExtras)
                 .replace("{previous_balls_context}", previousContext)
         } else {
             fusionPromptForPhase(phase)
@@ -446,6 +469,7 @@ class CommentaryFusionService(
                 .replace("{bowler}", matchContext.bowler)
                 .replace("{batsman}", matchContext.batsman)
                 .replace("{score_context}", matchContext.scoreContext)
+                .replace("{context_extras}", streamContextExtras)
                 .replace("{overs_summary}", matchContext.oversSummary)
                 .replace("{previous_balls_context}", previousContext)
         }
@@ -758,6 +782,8 @@ class CommentaryFusionService(
         val bowler: String,
         val batsman: String,
         val scoreContext: String,
-        val totalOvers: Int = 20
+        val totalOvers: Int = 20,
+        val partnershipContext: String = "",
+        val matchupContext: String = ""
     )
 }

@@ -52,11 +52,14 @@ import io.sentry.Sentry
  * 29: matchTypeT20         — 1.0 if T20 format
  * 30: matchTypeODI         — 1.0 if ODI format
  * 31: matchTypeTest        — 1.0 if Test/multi-day format
+ * 32: pitchCondition       — pitch favorability: 1.0=batting, 0.83=balanced, 0.67=bowling
+ * 33: runRateTrend         — acceleration: last-2-over rate minus prior-3-over rate, normalized to [0,1]
+ * 34: bowlerSpellEconomy   — bowler's economy this spell, inverted (lower econ = higher value)
  */
 object FeatureExtractor {
 
     /** Total number of features in the extracted vector */
-    const val FEATURE_COUNT = 32
+    const val FEATURE_COUNT = 35
 
     /** Maximum expected run rate for normalization */
     private const val MAX_RUN_RATE = 15.0
@@ -82,7 +85,10 @@ object FeatureExtractor {
         val partnershipBalls: Int = 0,
         val playerStats: PlayerStatisticsEngine? = null,
         val matchupAnalysis: MatchupAnalysis? = null,
-        val venueAnalysis: VenueAnalysis? = null
+        val venueAnalysis: VenueAnalysis? = null,
+        val pitchConditionValue: Double = 1.0,
+        val bowlerSpellRuns: Int = 0,
+        val bowlerSpellBalls: Int = 0
     )
 
     /**
@@ -175,6 +181,20 @@ object FeatureExtractor {
         features[30] = if (mt.contains("ODI") || mt.contains("ODM")) 1.0 else 0.0
         features[31] = if (mt.contains("TEST") || mt.contains("MDM")) 1.0 else 0.0
 
+        // 32: Pitch condition from determinePitchType — how favorable for batting
+        features[32] = clamp(enriched.pitchConditionValue / 1.2)
+
+        // 33: Run rate trend — positive = accelerating (recent 2 overs vs prior 3 overs)
+        val recentRate = situation.lastTwoOversRuns / 2.0
+        val earlierRate = max(0, situation.lastFiveOversRuns - situation.lastTwoOversRuns) / 3.0
+        val trend = recentRate - earlierRate
+        features[33] = clamp((trend + MAX_RUN_RATE) / (2.0 * MAX_RUN_RATE))
+
+        // 34: Bowler's economy this spell (inverted — lower economy = higher feature value)
+        val spellOvers = max(enriched.bowlerSpellBalls / 6.0, 0.1)
+        val spellEconomy = enriched.bowlerSpellRuns / spellOvers
+        features[34] = clamp(1.0 - spellEconomy / MAX_RUN_RATE)
+
         return features
     }
 
@@ -194,10 +214,14 @@ object FeatureExtractor {
         var wicketsLost = 0
         var ballCount = 0
         var last30BallsRuns = 0
+        var last12BallsRuns = 0
         var currentBatter = ""
         var currentBowler = ""
         var partnershipRuns = 0
         var partnershipBalls = 0
+        var currentBowlerSpell = ""
+        var bowlerSpellRuns = 0
+        var bowlerSpellBalls = 0
 
         for (over in innings.overs) {
             for (ball in over.balls) {
@@ -216,10 +240,24 @@ object FeatureExtractor {
                 if (ballCount > atBall - 30) {
                     last30BallsRuns += ball.runs + ball.extras
                 }
-                
+                if (ballCount > atBall - 12) {
+                    last12BallsRuns += ball.runs + ball.extras
+                }
+
                 // Track current batter/bowler at this point
                 if (ball.batter.isNotBlank()) currentBatter = ball.batter
                 if (ball.bowler.isNotBlank()) currentBowler = ball.bowler
+
+                // Track bowler spell — reset on bowler change
+                if (ball.bowler.isNotBlank()) {
+                    if (ball.bowler != currentBowlerSpell) {
+                        currentBowlerSpell = ball.bowler
+                        bowlerSpellRuns = 0
+                        bowlerSpellBalls = 0
+                    }
+                    bowlerSpellRuns += ball.runs + ball.extras
+                    bowlerSpellBalls += 1
+                }
             }
             if (ballCount >= atBall) break
         }
@@ -238,6 +276,7 @@ object FeatureExtractor {
             oversRemaining = oversRemaining,
             wicketsInHand = 10 - wicketsLost,
             lastFiveOversRuns = last30BallsRuns,
+            lastTwoOversRuns = last12BallsRuns,
             isPowerPlay = isPowerPlay,
             isDeathOvers = isDeathOvers
         )
@@ -247,7 +286,9 @@ object FeatureExtractor {
             currentBatter = if (enriched.currentBatter.isBlank()) currentBatter else enriched.currentBatter,
             currentBowler = if (enriched.currentBowler.isBlank()) currentBowler else enriched.currentBowler,
             partnershipRuns = partnershipRuns,
-            partnershipBalls = partnershipBalls
+            partnershipBalls = partnershipBalls,
+            bowlerSpellRuns = bowlerSpellRuns,
+            bowlerSpellBalls = bowlerSpellBalls
         )
 
         return extractFeatures(
