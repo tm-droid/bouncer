@@ -165,6 +165,29 @@ fun OverviewTabV2(
             }
         }
 
+        // Last wicket
+        val lastWicket = match.score?.lastWicket
+        if (!lastWicket.isNullOrBlank() && isMatchActive) {
+            item(key = "last_wicket") {
+                BouncerCard {
+                    Column(modifier = Modifier.padding(spacing.md)) {
+                        Text(
+                            text = "Last Wicket",
+                            style = typography.labelMedium,
+                            color = colors.textSecondary,
+                        )
+                        Spacer(Modifier.height(spacing.xs))
+                        Text(
+                            text = lastWicket,
+                            style = typography.bodyMedium,
+                            color = colors.onSurface,
+                            fontWeight = FontWeight.Medium,
+                        )
+                    }
+                }
+            }
+        }
+
         // Momentum tracker — key events derived from current over's ball outcomes
         if (recentBalls.isNotEmpty()) {
             val battingOvers = match.teams.firstOrNull { it.isBatting }?.overs

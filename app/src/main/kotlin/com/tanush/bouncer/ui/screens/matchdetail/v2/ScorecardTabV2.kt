@@ -305,6 +305,8 @@ private fun BowlingColumnHeader() {
         HeaderCell("M")
         HeaderCell("R")
         HeaderCell("W")
+        HeaderCell("Nb")
+        HeaderCell("Wd")
         HeaderCell("Econ")
     }
     HorizontalDivider(color = BouncerThemeV2.colors.divider)
@@ -332,6 +334,8 @@ private fun BowlerRow(bowler: BowlerStats) {
         StatCell(bowler.maidens)
         StatCell(bowler.runs)
         StatCell(bowler.wickets, isBold = true)
+        StatCell(bowler.noBalls)
+        StatCell(bowler.wides)
         StatCell(bowler.economy)
     }
 }

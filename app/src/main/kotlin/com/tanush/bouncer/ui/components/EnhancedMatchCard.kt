@@ -46,8 +46,6 @@ import com.tanush.bouncer.utils.MatchStatusInfo
 import com.tanush.bouncer.utils.parseScore
 import com.tanush.bouncer.utils.toDisplayString
 import com.tanush.bouncer.utils.rememberHapticFeedback
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import io.sentry.Sentry
 import com.tanush.bouncer.ui.theme.GoldPrimary
 
@@ -123,16 +121,8 @@ fun EnhancedMatchCard(
         label = "shimmer"
     )
     
-    // Win Prob calculation (placeholder logic)
-    var winProb by remember { mutableStateOf(0.5f) }
-    LaunchedEffect(match.id, isLive) {
-        if (isLive) {
-            winProb = withContext(Dispatchers.Default) {
-                // Simulate calculation or fetch
-                (45..55).random().toFloat() / 100f
-            }
-        }
-    }
+    val heuristicProb = remember(match) { match.calculateHeuristicProbability() }
+    val winProb = (heuristicProb / 100.0).toFloat().coerceIn(0.05f, 0.95f)
     
     val matchDescription = "Match: ${team1?.name ?: "Team 1"} $score1 versus ${team2?.name ?: "Team 2"} $score2. Status: ${statusInfo.text}"
     val colors = BouncerDesignSystem.colors
@@ -340,7 +330,7 @@ private fun MatchCardHeader(
             horizontalArrangement = Arrangement.spacedBy(10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            if (isLive) {
+            if (winProb != 0.5f) {
                 MiniProbabilityBadge(
                     team1Name = match.teams.firstOrNull()?.name ?: "T1",
                     team1Probability = winProb
@@ -545,7 +535,7 @@ private fun MatchCardLiveDetails(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = batsman.name,
+                            text = if (batsman.isStriker) "${batsman.name} *" else batsman.name,
                             color = colors.textPrimary.copy(alpha = 0.9f),
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
@@ -578,7 +568,7 @@ private fun MatchCardLiveDetails(
                         overflow = TextOverflow.Ellipsis
                     )
                     Text(
-                        text = "${bowler.overs}-${bowler.runs}-${bowler.wickets}",
+                        text = "${bowler.overs}-${bowler.maidens}-${bowler.runs}-${bowler.wickets}",
                         color = hierarchy.secondary.primary,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Black
