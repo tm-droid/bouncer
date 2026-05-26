@@ -21,6 +21,7 @@ import com.tanush.bouncer.data.remote.AppwritePlayerFormsClient
 import com.tanush.bouncer.data.repository.toEntity
 import com.tanush.bouncer.services.AICacheService
 import com.tanush.bouncer.services.MatchCacheService
+import com.tanush.bouncer.services.CricsheetTrainingWorker
 import com.tanush.bouncer.services.ScorePollingWorker
 import com.tanush.bouncer.services.SeriesSyncWorker
 import io.sentry.Breadcrumb
@@ -214,6 +215,11 @@ class BouncerApp : Application() {
         }
         initializeSafely("SeriesSyncWorker") {
             SeriesSyncWorker.enqueuePeriodicWork(this)
+        }
+        // Download real Cricsheet T20 data and train ML model on first run (or after 30 days).
+        // Skipped if model is already recent; runs in background with network + battery constraints.
+        initializeSafely("CricsheetTrainingWorker") {
+            CricsheetTrainingWorker.enqueueIfNeeded(this)
         }
 
         Sentry.addBreadcrumb(

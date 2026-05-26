@@ -89,6 +89,10 @@ class ModelTrainer(private val context: Context? = null) {
     private var isTrained: Boolean = false
     private var lastTrainingResult: TrainingResult? = null
 
+    // Platt scaling calibration — A=1/B=0 is the identity (no adjustment)
+    private var calibrationA: Double = 1.0
+    private var calibrationB: Double = 0.0
+
     // Preferences for persistence
     private val prefs: SharedPreferences? by lazy {
         context?.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -169,7 +173,10 @@ class ModelTrainer(private val context: Context? = null) {
         isTrained = true
         lastTrainingResult = result
 
-        // Step 6: Save model
+        // Step 6: Fit Platt scaling calibration on the training set
+        fitCalibration(trainingSamples)
+
+        // Step 7: Save model
         saveModel()
 
         Log.d(TAG, result.summary())
@@ -280,12 +287,13 @@ class ModelTrainer(private val context: Context? = null) {
         // Forward pass
         val output = model.forward(features)
 
-        // Denormalize predictions
-        val winProbability = output[0].coerceIn(0.0, 1.0) * 100.0  // Convert to percentage
-        val predictedScore = output[1] * MAX_SCORE  // Denormalize to actual runs
+        // Apply Platt calibration to win probability then denormalize
+        val rawWinProb = output[0].coerceIn(0.0, 1.0)
+        val calibrated = calibratedWinProbability(rawWinProb)
+        val winProbability = calibrated * 100.0
+        val predictedScore = output[1] * MAX_SCORE
 
-        // Calculate confidence based on how far from 50/50 the prediction is
-        val confidence = abs(output[0] - 0.5) * 2.0  // 0=uncertain, 1=very confident
+        val confidence = abs(calibrated - 0.5) * 2.0
 
         return PredictionOutput(
             winProbability = winProbability,
@@ -427,6 +435,8 @@ class ModelTrainer(private val context: Context? = null) {
         val weightMap = model.serializeWeights()
         val root = JSONObject()
         root.put("isTrained", isTrained)
+        root.put("calibrationA", calibrationA)
+        root.put("calibrationB", calibrationB)
         val layerCount = when (val v = weightMap["layerCount"]) {
             is Int -> v
             is Long -> v.toInt()
@@ -548,6 +558,8 @@ class ModelTrainer(private val context: Context? = null) {
             val weightMap = jsonToWeightMap(root)
             model.deserializeWeights(weightMap)
             isTrained = root.optBoolean("isTrained", true)
+            calibrationA = root.optDouble("calibrationA", 1.0)
+            calibrationB = root.optDouble("calibrationB", 0.0)
             Log.d(TAG, "Model loaded from file (trained=$isTrained, ${model.parameterCount()} params)")
             true
         } catch (e: Exception) {
@@ -612,6 +624,61 @@ class ModelTrainer(private val context: Context? = null) {
             Log.e(TAG, "Failed to load model: ${e.message}")
             model = ScorePredictionModel.create()
         }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // Calibration
+    // ═══════════════════════════════════════════════════════════════
+
+    /**
+     * Maps raw sigmoid output to calibrated probability via Platt scaling.
+     * With default A=1/B=0 (identity logit), returns rawProb unchanged.
+     */
+    fun calibratedWinProbability(rawProb: Double): Double {
+        val eps = 1e-7
+        val p = rawProb.coerceIn(eps, 1.0 - eps)
+        val logit = ln(p / (1.0 - p))
+        return 1.0 / (1.0 + exp(-(calibrationA * logit + calibrationB)))
+    }
+
+    /**
+     * Fits Platt scaling (A, B) via gradient descent on the training set.
+     * Uses soft labels [(N++1)/(N++2), 1/(N-+2)] to prevent extreme-label overfitting.
+     */
+    private fun fitCalibration(samples: List<TrainingSample>) {
+        if (samples.isEmpty()) return
+        val eps = 1e-7
+
+        val nPos = samples.count { it.winProbabilityLabel > 0.5 }
+        val nNeg = samples.size - nPos
+        val labelPos = (nPos + 1.0) / (nPos + 2.0)
+        val labelNeg = 1.0 / (nNeg + 2.0)
+
+        val rawOutputs = samples.map { model.forward(it.features)[0].coerceIn(eps, 1.0 - eps) }
+        val softLabels = samples.map { if (it.winProbabilityLabel > 0.5) labelPos else labelNeg }
+
+        var a = 1.0
+        var b = 0.0
+        val lr = 0.01
+        val n = rawOutputs.size.toDouble()
+
+        repeat(200) {
+            var dA = 0.0
+            var dB = 0.0
+            for (i in rawOutputs.indices) {
+                val logit = ln(rawOutputs[i] / (1.0 - rawOutputs[i]))
+                val pCal = 1.0 / (1.0 + exp(-(a * logit + b)))
+                val residual = pCal - softLabels[i]
+                dA += residual * logit
+                dB += residual
+            }
+            a -= lr * dA / n
+            b -= lr * dB / n
+        }
+
+        calibrationA = a
+        calibrationB = b
+        Log.d(TAG, "Platt calibration fitted: A=%.4f B=%.4f".format(a, b))
     }
 
     // ═══════════════════════════════════════════════════════════════

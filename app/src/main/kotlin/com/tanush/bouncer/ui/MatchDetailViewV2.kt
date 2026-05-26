@@ -61,6 +61,7 @@ import com.tanush.bouncer.ui.components.v2.RecentBallsStripV2
 import com.tanush.bouncer.ui.components.v2.ReminderBottomSheet
 import com.tanush.bouncer.ui.components.v2.StatusBadgeV2
 import com.tanush.bouncer.ui.components.v2.determineMatchStatus
+import com.tanush.bouncer.ui.components.premium.PremiumAiStatisticsTab
 import com.tanush.bouncer.ui.screens.matchdetail.v2.CommentaryTabV2
 import com.tanush.bouncer.ui.screens.matchdetail.v2.HighlightsTabV2
 import com.tanush.bouncer.ui.screens.matchdetail.v2.InfoTabV2
@@ -95,7 +96,7 @@ fun MatchDetailViewV2(
     val highlightsViewModel = remember { HighlightsViewModel(context, match.id) }
     val highlights by highlightsViewModel.highlights.collectAsStateWithLifecycle()
 
-    val tabTitles = listOf("Overview", "Scorecard", "Commentary", "Highlights", "Info")
+    val tabTitles = listOf("Overview", "Scorecard", "Commentary", "Highlights", "Info", "AI")
     val pagerState = rememberPagerState(pageCount = { tabTitles.size })
     val scope = rememberCoroutineScope()
 
@@ -350,6 +351,7 @@ fun MatchDetailViewV2(
                     )
                     "Highlights" -> HighlightsTabV2(highlights = highlights)
                     "Info" -> InfoTabV2(match = match)
+                    "AI" -> PremiumAiStatisticsTab(match = liveMatch)
                 }
             }
         }

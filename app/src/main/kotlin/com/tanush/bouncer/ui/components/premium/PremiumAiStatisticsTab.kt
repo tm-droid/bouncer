@@ -40,10 +40,21 @@ import com.tanush.bouncer.ui.theme.*
  * Ultra-fidelity AI telemetry dashboard with cinematic animations and broadcast aesthetics.
  */
 @Composable
-fun PremiumAiStatisticsTab(matchId: String) {
-    val hierarchy = BouncerDesignSystem.hierarchy
+fun PremiumAiStatisticsTab(match: CricketMatch) {
     val scrollState = rememberScrollState()
-    
+    val winProb = match.calculateHeuristicProbability().toFloat().coerceIn(5f, 95f)
+    val crr = match.score?.currentRunRate ?: "--"
+    val rrr = match.score?.requiredRunRate ?: "--"
+    val probDelta = winProb - 50f
+    val probDeltaStr = if (probDelta >= 0) "+${probDelta.toInt()}" else "${probDelta.toInt()}"
+    val battingTeam = match.teams.firstOrNull { it.isBatting }?.acronym
+        ?: match.teams.firstOrNull()?.acronym ?: "BAT"
+    val insightText = when {
+        winProb > 65 -> "$battingTeam holding strong advantage — ${winProb.toInt()}% win probability"
+        winProb < 35 -> "bowling side dominant — $battingTeam at ${winProb.toInt()}% win probability"
+        else -> "match finely balanced — ${winProb.toInt()}% win probability"
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -51,27 +62,17 @@ fun PremiumAiStatisticsTab(matchId: String) {
             .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(32.dp)
     ) {
-        // Hero Metric: AI Impact Score
-        AiImpactHero()
-
-        // Insight Pill
-        InsightPill("Match momentum is peaking in the current phase.")
-
-        // Value Added Bar Chart
-        ValueAddedChart()
-
-        // Duel Metrics
-        DuelMetricsRow()
-
-        // Predictive Insight
-        PredictiveInsightCard()
-        
+        AiImpactHero(winProb)
+        InsightPill(insightText)
+        ValueAddedChart(winProb, probDeltaStr)
+        DuelMetricsRow(crr, rrr)
+        PredictiveInsightCard(winProb)
         Spacer(modifier = Modifier.height(140.dp))
     }
 }
 
 @Composable
-private fun AiImpactHero() {
+private fun AiImpactHero(winProb: Float) {
     val hierarchy = BouncerDesignSystem.hierarchy
     Box(
         modifier = Modifier
@@ -130,7 +131,7 @@ private fun AiImpactHero() {
                 letterSpacing = 2.5.sp
             )
             Text(
-                "94.8",
+                "${"%.1f".format(winProb)}",
                 color = TextPrimary,
                 fontSize = 80.sp,
                 fontWeight = FontWeight.Black,
@@ -186,28 +187,28 @@ private fun InsightPill(text: String) {
 }
 
 @Composable
-private fun ValueAddedChart() {
+private fun ValueAddedChart(winProb: Float, probDelta: String) {
     val hierarchy = BouncerDesignSystem.hierarchy
     Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Bottom) {
             Column {
                 Text(
-                    "ANALYTIC CONTRIBUTION", 
-                    color = hierarchy.secondary.primary, 
-                    fontSize = 10.sp, 
-                    fontWeight = FontWeight.Black, 
+                    "ANALYTIC CONTRIBUTION",
+                    color = hierarchy.secondary.primary,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Black,
                     letterSpacing = 2.sp
                 )
                 Text(
-                    "Projected Run Differential", 
-                    color = TextSecondary, 
-                    fontSize = 13.sp, 
+                    "Win Probability Delta vs Baseline",
+                    color = TextSecondary,
+                    fontSize = 13.sp,
                     fontWeight = FontWeight.Medium
                 )
             }
             Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text("+42", color = TextPrimary, fontSize = 32.sp, fontWeight = FontWeight.Black)
-                Text("PTS", color = hierarchy.secondary.primary, fontSize = 12.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(bottom = 6.dp))
+                Text(probDelta, color = TextPrimary, fontSize = 32.sp, fontWeight = FontWeight.Black)
+                Text("%", color = hierarchy.secondary.primary, fontSize = 12.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(bottom = 6.dp))
             }
         }
 
@@ -281,23 +282,23 @@ private fun ValueAddedChart() {
 }
 
 @Composable
-private fun DuelMetricsRow() {
+private fun DuelMetricsRow(crr: String, rrr: String) {
     val hierarchy = BouncerDesignSystem.hierarchy
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
         DuelCard(
             modifier = Modifier.weight(1f),
-            label = "STRATEGY BAT",
-            name = "PRIMARY TARGET",
-            value = "82.4",
-            subLabel = "PRESSURE",
+            label = "BATTING",
+            name = "CURRENT RUN RATE",
+            value = crr,
+            subLabel = "CRR",
             color = hierarchy.secondary.primary
         )
         DuelCard(
             modifier = Modifier.weight(1f),
-            label = "STRATEGY BOWL",
-            name = "LIMITING FACTOR",
-            value = "14.2",
-            subLabel = "RISK",
+            label = "BOWLING",
+            name = "REQUIRED RUN RATE",
+            value = rrr,
+            subLabel = "RRR",
             color = StatusLive
         )
     }
@@ -348,7 +349,7 @@ private fun DuelCard(modifier: Modifier, label: String, name: String, value: Str
 }
 
 @Composable
-private fun PredictiveInsightCard() {
+private fun PredictiveInsightCard(winProb: Float) {
     val hierarchy = BouncerDesignSystem.hierarchy
     Box(
         modifier = Modifier
@@ -369,7 +370,7 @@ private fun PredictiveInsightCard() {
                         .background(hierarchy.secondary.primary.copy(alpha = 0.15f))
                         .padding(horizontal = 12.dp, vertical = 6.dp)
                 ) {
-                    Text("CONFIDENCE: 92%", color = hierarchy.secondary.primary, fontSize = 9.sp, fontWeight = FontWeight.Black)
+                    Text("CONFIDENCE: ${winProb.toInt()}%", color = hierarchy.secondary.primary, fontSize = 9.sp, fontWeight = FontWeight.Black)
                 }
             }
             
@@ -399,8 +400,17 @@ private fun PredictiveInsightCard() {
                     contentAlignment = Alignment.Center
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("RISK", color = StatusLive, fontSize = 10.sp, fontWeight = FontWeight.Black)
-                        Text("HIGH", color = TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Black)
+                        Text("WIN %", color = hierarchy.secondary.primary, fontSize = 10.sp, fontWeight = FontWeight.Black)
+                        Text(
+                            text = when {
+                                winProb > 65 -> "HIGH"
+                                winProb < 35 -> "LOW"
+                                else -> "MED"
+                            },
+                            color = TextPrimary,
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Black
+                        )
                     }
                 }
             }

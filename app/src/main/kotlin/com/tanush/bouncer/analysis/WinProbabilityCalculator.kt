@@ -31,7 +31,8 @@ data class MatchSituation(
     val wicketsInHand: Int,
     val lastFiveOversRuns: Int,
     val isPowerPlay: Boolean,
-    val isDeathOvers: Boolean
+    val isDeathOvers: Boolean,
+    val lastTwoOversRuns: Int = 0
 )
 
 data class TeamPerformance(
@@ -672,7 +673,10 @@ class WinProbabilityCalculator(
             runsNeeded = runsNeeded,
             ballsBowled = ballsBowled,
             wicketsLost = wicketsLost,
-            maxBalls = if (ballsRemaining > 120) 300 else 120
+            maxBalls = if (ballsRemaining > 120) 300 else 120,
+            enriched = FeatureExtractor.EnrichedContext(
+                pitchConditionValue = pitchCondition.value
+            )
         )
 
         val output = mlModelLocal.forward(features)
