@@ -38,7 +38,7 @@ jobs:
 
       - name: Configure Gradle for CI
         run: |
-          echo "org.gradle.jvmargs=-Xmx3g -XX:+UseG1GC -XX:MaxMetaspaceSize=512m -Dfile.encoding=UTF-8" >> gradle.properties
+          echo "org.gradle.jvmargs=-Xmx3g -XX:+UseG1GC -XX:MaxMetaspaceSize=1g -Dfile.encoding=UTF-8" >> gradle.properties
           echo "kotlin.daemon.jvmargs=-Xmx2g -XX:+UseG1GC -Dfile.encoding=UTF-8" >> gradle.properties
           echo "org.gradle.workers.max=2" >> gradle.properties
 

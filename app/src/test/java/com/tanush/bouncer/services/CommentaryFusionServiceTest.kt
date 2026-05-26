@@ -29,7 +29,14 @@ class CommentaryFusionServiceTest {
 
     // ── Test helpers ────────────────────────────────────────────────────────
 
-    private fun serviceWith(client: OkHttpClient) = CommentaryFusionService(client = client)
+    private fun serviceWith(client: OkHttpClient) = CommentaryFusionService(
+        client = client,
+        testProviders = listOf(
+            Triple("Groq",      "test-key", "test-model"),
+            Triple("Cerebras",  "test-key", "test-model"),
+            Triple("SambaNova", "test-key", "test-model"),
+        )
+    )
 
     private fun readRequestBodyJson(chain: okhttp3.Interceptor.Chain): JSONObject {
         val buffer = Buffer()
