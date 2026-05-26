@@ -4,6 +4,7 @@ import android.util.Log
 import com.google.gson.JsonElement
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
+import com.tanush.bouncer.data.AppException
 import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.models.ScrapedBatsman
 import com.tanush.bouncer.models.ScrapedBowler
@@ -19,6 +20,7 @@ import io.sentry.SentryLevel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
+import org.jsoup.HttpStatusException
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
@@ -48,6 +50,13 @@ internal fun unwrapNextFlightPayload(scriptContent: String): String? {
     if (array.size() <= 1 || !array[1].isJsonPrimitive || !array[1].asJsonPrimitive.isString) return null
     return normalizeNextFlightPayload(array[1].asString)
 }
+
+internal fun classifyHttpException(e: HttpStatusException): AppException.ApiException =
+    AppException.ApiException(
+        statusCode = e.statusCode,
+        message = "HTTP ${e.statusCode} from ${e.url}",
+        cause = e
+    )
 
 private fun parseLenientJson(payload: String): JsonElement? = try {
     val reader = com.google.gson.stream.JsonReader(java.io.StringReader(payload))
@@ -149,6 +158,12 @@ class CricBuzzScraper {
                 Log.e(TAG, "No internet connection fetching $url", e)
                 crumb("No internet connection", SentryLevel.WARNING, mapOf("url" to url))
                 return@withContext emptyList()
+            } catch (e: HttpStatusException) {
+                val classified = classifyHttpException(e)
+                crumb("HTTP ${e.statusCode} — no retry", SentryLevel.WARNING,
+                    mapOf("url" to url, "status" to e.statusCode))
+                Sentry.captureException(classified)
+                throw classified
             } catch (e: SocketTimeoutException) {
                 lastException = e
                 Log.w(TAG, "Timeout fetching $url (attempt $attempt/$MAX_RETRIES)", e)
@@ -440,6 +455,12 @@ class CricBuzzScraper {
                 crumb("No internet fetching match details", SentryLevel.ERROR, mapOf("matchId" to matchId))
                 Sentry.captureException(e)
                 return@withContext emptyMatchDetails()
+            } catch (e: HttpStatusException) {
+                val classified = classifyHttpException(e)
+                crumb("HTTP ${e.statusCode} fetching match details — no retry", SentryLevel.WARNING,
+                    mapOf("matchId" to matchId, "status" to e.statusCode))
+                Sentry.captureException(classified)
+                throw classified
             } catch (e: SocketTimeoutException) {
                 lastException = e
                 Log.w(TAG, "Timeout fetching match details for $matchId (attempt $attempt/$MAX_RETRIES)")
@@ -682,6 +703,12 @@ class CricBuzzScraper {
                 data = mapOf("matchId" to matchId, "inningsCount" to inningsList.size))
 
             Scorecard(inningsList)
+        } catch (e: HttpStatusException) {
+            val classified = classifyHttpException(e)
+            crumb("HTTP ${e.statusCode} fetching scorecard — no retry", SentryLevel.WARNING,
+                mapOf("matchId" to matchId, "status" to e.statusCode))
+            Sentry.captureException(classified)
+            throw classified
         } catch (e: Exception) {
             Log.e(TAG, "Error fetching scorecard", e)
             crumb("Error fetching scorecard", SentryLevel.ERROR,
