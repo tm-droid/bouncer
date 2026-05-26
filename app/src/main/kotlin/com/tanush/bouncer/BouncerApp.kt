@@ -94,9 +94,12 @@ class BouncerApp : Application() {
         initializeSafely("FavouriteTeamsManager") { FavouriteTeamsManager.initialize(this) }
         initializeSafely("MatchSubscriptionManager") { MatchSubscriptionManager.initialize(this) }
         initializeSafely("MatchCacheService") { MatchCacheService.initDiskCache(this) }
-        // Restore trained ML model weights from disk. Must run after MatchCacheService
-        // (Room DB init ensures filesDir is stable / no iCloud redirect interference).
-        initializeSafely("ModelTrainer") { ModelTrainer.loadFromFile(this) }
+        // Restore trained ML model weights from disk on IO — JSON parse can be 50-200ms.
+        // Must run after MatchCacheService (filesDir stability). Fire-and-forget; inference
+        // that runs before load completes degrades to untrained-model fallback gracefully.
+        applicationScope.launch(Dispatchers.IO) {
+            initializeSafely("ModelTrainer") { ModelTrainer.loadFromFile(this@BouncerApp) }
+        }
         initializeSafely("AppwriteClient") { AppwriteClient.initialize(this) }
         // Verify Appwrite reachability; reflect in AppHealth so UI can show degraded state.
         applicationScope.launch(Dispatchers.IO) {
@@ -132,6 +135,22 @@ class BouncerApp : Application() {
             applicationScope.launch(Dispatchers.IO) {
                 val forms = AppwritePlayerFormsClient.pullAllForms()
                 PlayerStatisticsEngine.seedFromRemote(forms)
+            }
+        }
+        // Push updated player form snapshots to Appwrite after each match is processed.
+        // Enables cross-device form sharing so all devices benefit from locally processed matches.
+        PlayerStatisticsEngine.shared.onFormUpdated = { forms ->
+            if (AppwriteClient.isReady) {
+                applicationScope.launch(Dispatchers.IO) {
+                    forms.forEach { (_, snapshot) ->
+                        AppwritePlayerFormsClient.pushFormSnapshot(
+                            playerName = snapshot.playerName,
+                            sr = snapshot.recentSR,
+                            economy = snapshot.recentEconomy,
+                            matchCount = snapshot.matchCount
+                        )
+                    }
+                }
             }
         }
         initializeSafely("AppwriteAICache") { AppwriteAICache.initialize() }

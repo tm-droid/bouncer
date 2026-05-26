@@ -10,6 +10,7 @@ import io.sentry.Sentry
 import io.sentry.SentryLevel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -51,6 +52,9 @@ class LiveCommentaryManager(
 
     private val supervisorJob = kotlinx.coroutines.SupervisorJob()
     private val scope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO + supervisorJob)
+
+    /** Tracks the active streaming job so stale streams can be cancelled before launching a new one. */
+    private var currentStreamJob: Job? = null
 
     fun generateOversSummary(commentaryLines: List<String>): String {
         if (commentaryLines.isEmpty()) return "No recent commentary available."
@@ -204,7 +208,8 @@ class LiveCommentaryManager(
         val over = ballNumber.substringBefore(".").toIntOrNull() ?: 0
         val oversSummary = computeOversSummary(matchId, over, buzzLine)
 
-        scope.launch {
+        currentStreamJob?.cancel()
+        currentStreamJob = scope.launch {
             streamBallCommentary(
                 CommentaryFusionService.MatchContext(
                     matchId = matchId,
@@ -303,7 +308,8 @@ class LiveCommentaryManager(
         val singleBatsman = details?.batsmen?.firstOrNull()?.name ?: ""
         val singleScore = details?.score ?: ""
 
-        scope.launch {
+        currentStreamJob?.cancel()
+        currentStreamJob = scope.launch {
             streamBallCommentary(
                 CommentaryFusionService.MatchContext(
                     matchId = matchId,

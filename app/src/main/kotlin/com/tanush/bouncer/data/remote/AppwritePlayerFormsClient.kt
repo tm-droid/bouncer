@@ -113,7 +113,8 @@ object AppwritePlayerFormsClient {
                 val db = tablesDB ?: return@runCatching emptyMap<String, PlayerFormSnapshot>()
                 val allRows = mutableListOf<Map<String, Any>>()
                 var lastId: String? = null
-                while (true) {
+                var pageCount = 0
+                while (pageCount++ < 100) { // hard cap: 100 pages × 100 rows = 10k players max
                     val queries = buildList {
                         add(Query.limit(100))
                         if (lastId != null) add(Query.cursorAfter(lastId!!))

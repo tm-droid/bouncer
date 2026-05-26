@@ -116,7 +116,11 @@ object AppwriteClient {
                 val bytes = storage.getFileDownload(bucketId = ML_BUCKET_ID, fileId = MODEL_FILE_ID)
                 val tmpFile = File(context.filesDir, "score_model_v1.json.tmp")
                 tmpFile.writeBytes(bytes)
-                tmpFile.renameTo(localFile)
+                if (!tmpFile.renameTo(localFile)) {
+                    // rename failed (cross-partition or target locked) — fall back to copy
+                    tmpFile.copyTo(localFile, overwrite = true)
+                    tmpFile.delete()
+                }
                 Log.d(TAG, "downloadModelWeightsIfNewer: downloaded ${bytes.size} bytes (remote newer by ${remoteUpdatedAt - localModified}ms)")
                 true
             }.onFailure { e ->

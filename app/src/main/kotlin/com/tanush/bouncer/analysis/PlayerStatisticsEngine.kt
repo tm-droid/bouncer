@@ -180,6 +180,8 @@ class PlayerStatisticsEngine {
                 acc.updateBowlingForm(matchDate, inningsRuns, inningsBalls)
             }
         }
+        // Notify after all innings processed so form data is flushed to Appwrite
+        onFormUpdated?.invoke(getFormSnapshots())
     }
 
     /**
@@ -211,6 +213,45 @@ class PlayerStatisticsEngine {
 
     fun getAllBatterNames(): Set<String> = battingAccumulators.keys.toSet()
     fun getAllBowlerNames(): Set<String> = bowlingAccumulators.keys.toSet()
+
+    /**
+     * Optional callback invoked at the end of each [processMatch] call with updated form snapshots.
+     * Wire this in [com.tanush.bouncer.BouncerApp] to push snapshots to Appwrite without
+     * coupling the engine to the data/remote layer.
+     */
+    var onFormUpdated: ((Map<String, PlayerFormSnapshot>) -> Unit)? = null
+
+    /**
+     * Returns form snapshots for all players that have at least one real match entry.
+     * Used by [onFormUpdated] to push updated form data to Appwrite after processing.
+     */
+    fun getFormSnapshots(): Map<String, PlayerFormSnapshot> {
+        val result = mutableMapOf<String, PlayerFormSnapshot>()
+        for ((name, acc) in battingAccumulators) {
+            if (acc.recentMatchDates.isNotEmpty()) {
+                val stats = acc.toStats()
+                result[name] = PlayerFormSnapshot(
+                    playerName = name,
+                    recentSR = stats.recentFormStrikeRate,
+                    recentEconomy = result[name]?.recentEconomy ?: 0.0,
+                    matchCount = acc.recentMatchDates.size
+                )
+            }
+        }
+        for ((name, acc) in bowlingAccumulators) {
+            if (acc.recentMatchDates.isNotEmpty()) {
+                val stats = acc.toStats()
+                val existing = result[name]
+                result[name] = PlayerFormSnapshot(
+                    playerName = name,
+                    recentSR = existing?.recentSR ?: 0.0,
+                    recentEconomy = stats.recentFormEconomy,
+                    matchCount = maxOf(acc.recentMatchDates.size, existing?.matchCount ?: 0)
+                )
+            }
+        }
+        return result
+    }
 
     /**
      * Pre-warm form accumulators from remote data — avoids cold-start where recent form
