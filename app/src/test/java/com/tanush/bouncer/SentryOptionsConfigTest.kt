@@ -98,6 +98,7 @@ class SentryOptionsConfigTest {
         assertFalse(config.shouldDropEvent(event))
     }
 
+
     // ── Scraping / billing noise ─────────────────────────────────────────────
 
     @Test
