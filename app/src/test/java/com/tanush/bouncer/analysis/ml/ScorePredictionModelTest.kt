@@ -32,13 +32,12 @@ class ScorePredictionModelTest {
 
     @Test
     fun `default model has correct parameter count`() {
-        // Architecture: 32→64(ReLU)→32(ReLU)→16(ReLU)→2(Sigmoid)
-        // Layer 0: 32*64 weights + 64 biases = 2112
+        // Architecture: FEATURE_COUNT→64(ReLU)→32(ReLU)→16(ReLU)→2(Sigmoid)
+        // Layer 0: FEATURE_COUNT*64 weights + 64 biases
         // Layer 1: 64*32 weights + 32 biases = 2080
         // Layer 2: 32*16 weights + 16 biases = 528
         // Layer 3: 16*2 weights + 2 biases = 34
-        // Total = 4754
-        val expected = (32 * 64 + 64) + (64 * 32 + 32) + (32 * 16 + 16) + (16 * 2 + 2)
+        val expected = (FeatureExtractor.FEATURE_COUNT * 64 + 64) + (64 * 32 + 32) + (32 * 16 + 16) + (16 * 2 + 2)
         assertEquals(expected, model.parameterCount())
     }
 
@@ -202,9 +201,9 @@ class ScorePredictionModelTest {
 
         val gradients = model.backward(cache, outputGrad)
 
-        // Layer 0: 32→64 → weightGrad=[64][32], biasGrad=[64]
+        // Layer 0: FEATURE_COUNT→64 → weightGrad=[64][FEATURE_COUNT], biasGrad=[64]
         assertEquals(64, gradients[0].weightGradients.size)
-        assertEquals(32, gradients[0].weightGradients[0].size)
+        assertEquals(FeatureExtractor.FEATURE_COUNT, gradients[0].weightGradients[0].size)
         assertEquals(64, gradients[0].biasGradients.size)
 
         // Layer 1: 64→32 → weightGrad=[32][64], biasGrad=[32]

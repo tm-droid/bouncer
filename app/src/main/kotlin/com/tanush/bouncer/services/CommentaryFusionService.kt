@@ -24,11 +24,16 @@ import java.io.IOException
 import java.util.concurrent.ConcurrentHashMap
 
 class CommentaryFusionService(
-    private val client: OkHttpClient = HttpClientProvider.sharedClient
+    private val client: OkHttpClient = HttpClientProvider.sharedClient,
+    // For testing: inject providers with non-empty keys to bypass the ApiKeys.isEmpty() guard.
+    // Each triple is (providerName, apiKey, modelId); URL is auto-generated and overridden by fakeClient.
+    testProviders: List<Triple<String, String, String>>? = null
 ) {
     private data class Provider(val name: String, val url: String, val key: String, val model: String)
 
-    private val providers = listOf(
+    private val providers: List<Provider> = testProviders?.map { (name, key, model) ->
+        Provider(name, "http://test-$name", key, model)
+    } ?: listOf(
         Provider("Groq",      "https://api.groq.com/openai/v1/chat/completions",    ApiKeys.groq,      "llama-3.3-70b-versatile"),
         Provider("Cerebras",  "https://api.cerebras.ai/v1/chat/completions",         ApiKeys.cerebras,  "llama-3.3-70b"),
         Provider("SambaNova", "https://api.sambanova.ai/v1/chat/completions",        ApiKeys.sambaNova, "Meta-Llama-3.3-70B-Instruct"),
