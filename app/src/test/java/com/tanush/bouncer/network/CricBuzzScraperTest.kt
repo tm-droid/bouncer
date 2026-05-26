@@ -90,4 +90,130 @@ class CricBuzzScraperTest {
         assertNull(crr)
         assertNull(rrr)
     }
+
+    // ── Task 3: Fallback selectors + extraction correctness ─────────────────
+
+    @Test
+    fun `parseBatsmenFromDoc falls back to partial-class selector when primary class absent`() {
+        val html = """
+            <div class="cb-col-100 cb-min-itm-rw">
+                <div class="cb-col-50"><a href="#">R Sharma</a>*</div>
+                <div class="cb-col-10">82</div>
+                <div class="cb-col-10">53</div>
+                <div class="cb-col-10">9</div>
+                <div class="cb-col-10">2</div>
+                <div class="cb-col-14">154.7</div>
+            </div>
+        """.trimIndent()
+        val doc = Jsoup.parse(html)
+        val batsmen = parseBatsmenFromDoc(doc)
+        assertEquals(1, batsmen.size)
+        assertEquals("R Sharma", batsmen[0].name)
+        assertTrue(batsmen[0].isStriker)
+    }
+
+    @Test
+    fun `parseBatsmenFromDoc correctly extracts runs balls fours sixes sr`() {
+        val html = """
+            <div class="cb-col cb-col-100 cb-min-itm-rw">
+                <div class="cb-col-50"><a href="#">V Kohli</a></div>
+                <div class="cb-col-10">45</div>
+                <div class="cb-col-14">38</div>
+                <div class="cb-col-10">5</div>
+                <div class="cb-col-10">1</div>
+                <div class="cb-col-14">118.4</div>
+            </div>
+        """.trimIndent()
+        val doc = Jsoup.parse(html)
+        val batsmen = parseBatsmenFromDoc(doc)
+        assertEquals(1, batsmen.size)
+        assertEquals("V Kohli", batsmen[0].name)
+        assertEquals("45", batsmen[0].runs)
+        assertEquals("38", batsmen[0].balls)
+        assertEquals("5", batsmen[0].fours)
+        assertEquals("1", batsmen[0].sixes)
+        assertEquals("118.4", batsmen[0].strikeRate)
+    }
+
+    @Test
+    fun `parseBatsmenFromDoc skips row when fewer than 4 stats columns`() {
+        val html = """
+            <div class="cb-col cb-col-100 cb-min-itm-rw">
+                <div class="cb-col-50"><a href="#">Header Row</a></div>
+                <div class="cb-col-10">R</div>
+                <div class="cb-col-10">B</div>
+            </div>
+        """.trimIndent()
+        val doc = Jsoup.parse(html)
+        assertTrue(parseBatsmenFromDoc(doc).isEmpty())
+    }
+
+    @Test
+    fun `parseScorecardBatsmen extracts name and dismissal from standard scorecard HTML`() {
+        // Dismissal is inside the name div (real Cricbuzz DOM structure)
+        val html = """
+            <div>
+                <div class="grid scorecard-bat-grid">
+                    <div>
+                        <a href="#">S Tendulkar</a>
+                        <div class="text-cbTxtSec">c Ponting b McGrath</div>
+                    </div>
+                    <div>100</div><div>120</div><div>14</div><div>1</div><div>83.3</div>
+                </div>
+            </div>
+        """.trimIndent()
+        val content = Jsoup.parse(html).body()
+        val batsmen = parseScorecardBatsmen(content)
+        assertEquals(1, batsmen.size)
+        assertEquals("S Tendulkar", batsmen[0].name)
+        assertEquals("c Ponting b McGrath", batsmen[0].dismissal)
+        assertEquals("100", batsmen[0].runs)
+    }
+
+    @Test
+    fun `parseScorecardBatsmen falls back when text-cbTxtSec absent`() {
+        // Dismissal div has a different class — fallback uses first lettered div after the name div
+        val html = """
+            <div>
+                <div class="grid scorecard-bat-grid">
+                    <div>
+                        <a href="#">S Tendulkar</a>
+                        <div class="text-gray">lbw b McGrath</div>
+                    </div>
+                    <div>100</div><div>120</div><div>14</div><div>1</div><div>83.3</div>
+                </div>
+            </div>
+        """.trimIndent()
+        val content = Jsoup.parse(html).body()
+        val batsmen = parseScorecardBatsmen(content)
+        assertEquals(1, batsmen.size)
+        assertTrue(batsmen[0].dismissal.isNotEmpty())
+    }
+
+    @Test
+    fun `parseRunRatesFromDoc extracts CRR and RRR from status div`() {
+        val html = """<div class="cb-text-live">CRR: 8.45 | RRR: 12.3</div>"""
+        val (crr, rrr) = parseRunRatesFromDoc(Jsoup.parse(html))
+        assertEquals("8.45", crr)
+        assertEquals("12.3", rrr)
+    }
+
+    @Test
+    fun `parseMiniScoreRowsFromDoc extracts team scores from standard HTML`() {
+        val html = """
+            <div class="cb-min-bat-rw">
+                <span class="cb-font-20">248/3</span>
+                <span class="cb-text-gray">(42.3 Ov)</span>
+            </div>
+            <div class="cb-min-bat-rw">
+                <span class="cb-font-20">187/8</span>
+                <span class="cb-font-12">(35.1 Ov)</span>
+            </div>
+        """.trimIndent()
+        val rows = parseMiniScoreRowsFromDoc(Jsoup.parse(html))
+        assertEquals("248/3", rows.team1Score)
+        assertEquals("187/8", rows.team2Score)
+        assertEquals("42.3", rows.team1Overs)
+        assertEquals("35.1", rows.team2Overs)
+    }
 }
