@@ -217,6 +217,52 @@ class CricBuzzScraperTest {
         assertEquals("35.1", rows.team2Overs)
     }
 
+    // ── Task 5: Commentary selectors + collectKeyedPairs ────────────────────
+
+    @Test
+    fun `parseCommentaryLegacyCss extracts lines from p cb-com-ln`() {
+        val html = """
+            <p class="cb-com-ln">19.3: Excellent delivery, beats the bat outside off stump.</p>
+            <p class="cb-com-ln">19.4: Tossed up, driven through cover for FOUR!</p>
+        """.trimIndent()
+        val lines = parseCommentaryLegacyCss(Jsoup.parse(html))
+        assertEquals(2, lines.size)
+        assertTrue(lines[0].contains("Excellent delivery"))
+    }
+
+    @Test
+    fun `parseCommentaryLegacyCss returns empty when no commentary elements present`() {
+        val doc = Jsoup.parse("<html><body><p>no cricket here</p></body></html>")
+        assertTrue(parseCommentaryLegacyCss(doc).isEmpty())
+    }
+
+    @Test
+    fun `parseCommentaryLegacyCss filters out lines shorter than 5 chars`() {
+        val html = """<p class="cb-com-ln">ok</p><p class="cb-com-ln">Valid commentary line here.</p>"""
+        val lines = parseCommentaryLegacyCss(Jsoup.parse(html))
+        assertEquals(1, lines.size)
+    }
+
+    @Test
+    fun `collectKeyedPairs returns empty when commText key absent from JSON`() {
+        val element = com.google.gson.JsonParser.parseString("""{"overNumber":10, "ballNumber": 3}""")
+        val results = mutableListOf<Pair<Long, String>>()
+        CricBuzzScraper().collectKeyedPairs(element, "commText", "timestamp", results) { it.asLong }
+        assertTrue(results.isEmpty())
+    }
+
+    @Test
+    fun `collectKeyedPairs extracts commText and timestamp correctly`() {
+        val element = com.google.gson.JsonParser.parseString(
+            """{"commText": "Ball hit for six!", "timestamp": 1716700000}"""
+        )
+        val results = mutableListOf<Pair<Long, String>>()
+        CricBuzzScraper().collectKeyedPairs(element, "commText", "timestamp", results) { it.asLong }
+        assertEquals(1, results.size)
+        assertEquals("Ball hit for six!", results[0].second)
+        assertEquals(1716700000L, results[0].first)
+    }
+
     // ── Task 4: selectorCrumb + empty-content robustness ────────────────────
 
     @Test
