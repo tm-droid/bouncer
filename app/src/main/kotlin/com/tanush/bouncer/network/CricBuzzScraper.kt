@@ -6,14 +6,10 @@ import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import com.tanush.bouncer.data.AppException
 import com.tanush.bouncer.models.CricketMatch
+import com.tanush.bouncer.models.Innings
 import com.tanush.bouncer.models.ScrapedBatsman
 import com.tanush.bouncer.models.ScrapedBowler
 import com.tanush.bouncer.models.Scorecard
-import com.tanush.bouncer.models.Innings
-import com.tanush.bouncer.models.BatsmanStats
-import com.tanush.bouncer.models.BowlerStats
-import com.tanush.bouncer.models.FallOfWicket
-import com.tanush.bouncer.models.PartnershipStats
 import io.sentry.Breadcrumb
 import io.sentry.Sentry
 import io.sentry.SentryLevel
@@ -107,7 +103,7 @@ private inline fun forEachNextFlightPayload(html: String, block: (JsonElement) -
     }
 }
 
-private inline fun crumb(
+internal inline fun crumb(
     msg: String,
     lvl: SentryLevel = SentryLevel.INFO,
     data: Map<String, Any?> = emptyMap()
@@ -484,15 +480,16 @@ class CricBuzzScraper {
     private fun emptyMatchDetails() = MatchDetails(emptyList(), emptyList(), emptyList(), null, null, null)
 
     private fun buildMatchDetails(doc: Document): MatchDetails {
-        val batsmen = parseBatsmenFromMiniScorecard(doc)
-        val bowler = parseBowlerFromMiniScorecard(doc)
-        val recentBalls = parseRecentBalls(doc)
+        val batsmen = parseBatsmenFromDoc(doc)
+        val bowler = parseBowlerFromDoc(doc)
+        val cssRecentBalls = parseRecentBallsFromDoc(doc)
+        val recentBalls = cssRecentBalls.ifEmpty { parseRecentBallsFromNextJs(doc.html()) }
 
         val score = doc.select("span.cb-font-20.text-bold").first()?.text()
             ?: doc.select("div.cb-min-bat-rw span").first()?.text()
 
-        val (team1Score, team1Overs, team2Score, team2Overs) = parseMiniScoreRows(doc)
-        val (currentRunRate, requiredRunRate) = parseRunRates(doc)
+        val (team1Score, team1Overs, team2Score, team2Overs) = parseMiniScoreRowsFromDoc(doc)
+        val (currentRunRate, requiredRunRate) = parseRunRatesFromDoc(doc)
 
         return MatchDetails(
             recentBalls = recentBalls,
@@ -510,102 +507,6 @@ class CricBuzzScraper {
         )
     }
 
-    private fun parseBatsmenFromMiniScorecard(doc: Document): List<ScrapedBatsman> {
-        val batsmen = mutableListOf<ScrapedBatsman>()
-        for (row in doc.select("div.cb-col.cb-col-100.cb-min-itm-rw")) {
-            val nameLink = row.select("div.cb-col-50 a").first() ?: continue
-            val name = nameLink.text()
-            val stats = row.select("div.cb-col-10, div.cb-col-14")
-            if (stats.size < 4) continue
-            val isStriker = nameLink.parent()?.text()?.contains("*") == true || row.text().contains("*")
-            try {
-                batsmen.add(ScrapedBatsman(
-                    name = name.replace("*", "").trim(),
-                    runs = stats.getOrNull(0)?.text() ?: "0",
-                    balls = stats.getOrNull(1)?.text() ?: "0",
-                    fours = stats.getOrNull(2)?.text() ?: "0",
-                    sixes = stats.getOrNull(3)?.text() ?: "0",
-                    strikeRate = stats.getOrNull(stats.size - 1)?.text() ?: "-",
-                    isStriker = isStriker
-                ))
-            } catch (e: Exception) {
-                Log.w(TAG, "Error parsing batsman stats for $name: ${e.message}")
-                Sentry.captureException(e)
-            }
-        }
-        return batsmen
-    }
-
-    private fun parseBowlerFromMiniScorecard(doc: Document): ScrapedBowler? {
-        val bowlerHeader = doc.select("div.cb-col-50:contains(Bowler)").first() ?: return null
-        var current = bowlerHeader.parent()?.nextElementSibling()
-        while (current != null && current.hasClass("cb-min-itm-rw")) {
-            val name = current.select("div.cb-col-50 a").text()
-            val stats = current.select("div.cb-col-10")
-            if (stats.size >= 4) {
-                return try {
-                    ScrapedBowler(
-                        name,
-                        stats.getOrNull(0)?.text() ?: "0",
-                        stats.getOrNull(1)?.text() ?: "0",
-                        stats.getOrNull(2)?.text() ?: "0",
-                        stats.getOrNull(3)?.text() ?: "0",
-                        stats.getOrNull(stats.size - 1)?.text() ?: "-"
-                    )
-                } catch (e: Exception) {
-                    Log.w(TAG, "Error parsing bowler stats for $name: ${e.message}")
-                    Sentry.captureException(e)
-                    null
-                }
-            }
-            current = current.nextElementSibling()
-        }
-        return null
-    }
-
-    private fun parseRecentBalls(doc: Document): List<String> {
-        val recentBalls = mutableListOf<String>()
-        doc.select("div.cb-min-rcnt span").forEach {
-            val text = it.text().trim()
-            if (text.isNotEmpty()) recentBalls.add(text)
-        }
-        if (recentBalls.isEmpty()) {
-            recentBalls.addAll(parseRecentBallsFromNextJs(doc.html()))
-        }
-        return recentBalls
-    }
-
-    private fun parseMiniScoreRows(doc: Document): MiniScoreRows {
-        var team1Score: String? = null
-        var team2Score: String? = null
-        var team1Overs: String? = null
-        var team2Overs: String? = null
-        doc.select("div.cb-min-bat-rw").forEachIndexed { index, row ->
-            val scoreText = row.select("span.cb-font-20").text().trim()
-            val oversText = row.select("span.cb-text-gray, span.cb-font-12").text()
-                .replace("(", "").replace(")", "").replace("Ov", "").trim()
-            when (index) {
-                0 -> { team1Score = scoreText.ifBlank { null }; team1Overs = oversText.ifBlank { null } }
-                1 -> { team2Score = scoreText.ifBlank { null }; team2Overs = oversText.ifBlank { null } }
-            }
-        }
-        return MiniScoreRows(team1Score, team1Overs, team2Score, team2Overs)
-    }
-
-    private data class MiniScoreRows(
-        val team1Score: String?,
-        val team1Overs: String?,
-        val team2Score: String?,
-        val team2Overs: String?
-    )
-
-    private fun parseRunRates(doc: Document): Pair<String?, String?> {
-        val statusText = doc.select("div.cb-text-complete, div.cb-text-live, div.cb-text-inprogress, div.cb-min-inf").text()
-        val currentRunRate = Regex("CRR\\s*:?\\s*([\\d.]+)").find(statusText)?.groupValues?.get(1)
-        val requiredRunRate = Regex("RRR\\s*:?\\s*([\\d.]+)").find(statusText)?.groupValues?.get(1)
-        return currentRunRate to requiredRunRate
-    }
-
     suspend fun fetchLiveCommentary(matchUrl: String): List<String> = withContext(Dispatchers.IO) {
         crumb("Fetching live commentary", data = mapOf("url" to matchUrl))
 
@@ -621,13 +522,11 @@ class CricBuzzScraper {
                 return@withContext nextJsLines.filter { it.length > 5 }
             }
 
-            val lines = mutableListOf<String>()
-            doc.select("p.cb-com-ln").forEach { lines.add(it.text().trim()) }
-            doc.select("div.cb-col.cb-col-100.cb-com-ln").forEach { lines.add(it.text().trim()) }
+            val lines = parseCommentaryLegacyCss(doc)
 
             Log.d(TAG, "Fetched ${lines.size} commentary lines from legacy CSS selectors")
             crumb("Successfully fetched commentary", data = mapOf("linesCount" to lines.size))
-            lines.filter { it.length > 5 }.distinct()
+            lines
         } catch (e: Exception) {
             Log.e(TAG, "Error fetching Cricbuzz commentary", e)
             crumb("Error fetching commentary", SentryLevel.ERROR,
@@ -651,7 +550,7 @@ class CricBuzzScraper {
         return latestSummary.trim().split(" ").filter { it.isNotBlank() }
     }
 
-    private fun collectKeyedPairs(
+    internal fun collectKeyedPairs(
         element: JsonElement,
         valueKey: String,
         orderKey: String,
@@ -696,7 +595,7 @@ class CricBuzzScraper {
 
             for (header in doc.select("div[id^=team-][id*=-innings-]")) {
                 val content = doc.getElementById("scard-${header.id()}") ?: continue
-                inningsList.add(parseInnings(header, content))
+                inningsList.add(parseInningsHeader(header, content))
             }
 
             crumb("Successfully fetched scorecard",
@@ -718,88 +617,4 @@ class CricBuzzScraper {
         }
     }
 
-    private fun parseInnings(header: Element, content: Element): Innings {
-        val teamName = header.select("div.font-bold").first()?.text() ?: "Unknown"
-        val score = header.select("span.font-bold").text()
-        val overs = header.select("span:contains(Ov)").text().replace("(", "").replace(")", "").trim()
-
-        val batsmen = parseScorecardBatsmen(content)
-        val bowlers = parseScorecardBowlers(content)
-        val fows = parseFallOfWickets(content)
-        val partnerships = mutableListOf<PartnershipStats>()
-        content.select("div:contains(Partnerships)").first()
-
-        return Innings(teamName, score, overs, batsmen, bowlers, fows, partnerships, "", "")
-    }
-
-    private fun parseScorecardBatsmen(content: Element): List<BatsmanStats> {
-        val batsmen = mutableListOf<BatsmanStats>()
-        content.select("div.grid.scorecard-bat-grid").forEach { row ->
-            val name = row.select("a").first()?.text() ?: ""
-            if (name.isEmpty() || name.contains("Batter")) return@forEach
-            val stats = row.children()
-            if (stats.size < 6) return@forEach
-            try {
-                batsmen.add(BatsmanStats(
-                    name,
-                    row.select("div.text-cbTxtSec").text(),
-                    stats.getOrNull(1)?.text() ?: "0",
-                    stats.getOrNull(2)?.text() ?: "0",
-                    stats.getOrNull(3)?.text() ?: "0",
-                    stats.getOrNull(4)?.text() ?: "0",
-                    stats.getOrNull(5)?.text() ?: "0"
-                ))
-            } catch (e: Exception) {
-                Log.w(TAG, "Error parsing scorecard batsman: $name", e)
-                Sentry.captureException(e)
-            }
-        }
-        return batsmen
-    }
-
-    private fun parseScorecardBowlers(content: Element): List<BowlerStats> {
-        val bowlers = mutableListOf<BowlerStats>()
-        content.select("div.grid.scorecard-bowl-grid").forEach { row ->
-            val name = row.select("a").first()?.text() ?: ""
-            if (name.isEmpty() || name.contains("Bowler")) return@forEach
-            val stats = row.children()
-            if (stats.size < 5) return@forEach
-            try {
-                bowlers.add(BowlerStats(
-                    name,
-                    stats.getOrNull(1)?.text() ?: "0",
-                    stats.getOrNull(2)?.text() ?: "0",
-                    stats.getOrNull(3)?.text() ?: "0",
-                    stats.getOrNull(4)?.text() ?: "0",
-                    "0",
-                    "0",
-                    stats.lastOrNull()?.text() ?: ""
-                ))
-            } catch (e: Exception) {
-                Log.w(TAG, "Error parsing scorecard bowler: $name", e)
-                Sentry.captureException(e)
-            }
-        }
-        return bowlers
-    }
-
-    private fun parseFallOfWickets(content: Element): List<FallOfWicket> {
-        val fows = mutableListOf<FallOfWicket>()
-        val fowSection = content.select("div:contains(Fall of Wickets)").first() ?: return fows
-        val fowText = fowSection.nextElementSibling()?.text() ?: ""
-        fowText.split("),").forEachIndexed { idx, item ->
-            val parts = item.trim().split(" (")
-            if (parts.size < 2) return@forEachIndexed
-            val scoreParts = parts[0].split("-")
-            val detailParts = parts[1].replace(")", "").split(", ")
-            if (scoreParts.size < 2 || detailParts.size < 2) return@forEachIndexed
-            fows.add(FallOfWicket(
-                score = parts[0],
-                overs = detailParts[1],
-                batsman = detailParts[0],
-                number = idx + 1
-            ))
-        }
-        return fows
-    }
 }

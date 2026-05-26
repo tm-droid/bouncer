@@ -60,4 +60,34 @@ class CricBuzzScraperTest {
 
         assertNull(unwrapNextFlightPayload(scriptContent))
     }
+
+    // ── Task 2: Extracted parser functions ──────────────────────────────────
+
+    @Test
+    fun `parseBatsmenFromDoc returns empty list when no batsman rows present`() {
+        val doc = Jsoup.parse("<html><body></body></html>")
+        assertTrue(parseBatsmenFromDoc(doc).isEmpty())
+    }
+
+    @Test
+    fun `parseBowlerFromDoc returns null when no bowler header present`() {
+        val doc = Jsoup.parse("<html><body></body></html>")
+        assertNull(parseBowlerFromDoc(doc))
+    }
+
+    @Test
+    fun `parseMiniScoreRowsFromDoc returns null scores when rows absent`() {
+        val doc = Jsoup.parse("<html><body></body></html>")
+        val rows = parseMiniScoreRowsFromDoc(doc)
+        assertNull(rows.team1Score)
+        assertNull(rows.team2Score)
+    }
+
+    @Test
+    fun `parseRunRatesFromDoc returns null pair when status element absent`() {
+        val doc = Jsoup.parse("<html><body></body></html>")
+        val (crr, rrr) = parseRunRatesFromDoc(doc)
+        assertNull(crr)
+        assertNull(rrr)
+    }
 }
