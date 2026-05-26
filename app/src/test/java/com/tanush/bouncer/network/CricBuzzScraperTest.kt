@@ -303,4 +303,71 @@ class CricBuzzScraperTest {
         assertEquals("162-3", fows[2].score)
         assertEquals("S Smith", fows[2].batsman)
     }
+
+    // ── Task 6: Malformed data + edge case robustness ────────────────────────
+
+    @Test
+    fun `parseBatsmenFromDoc handles row with empty name link gracefully`() {
+        val html = """
+            <div class="cb-col cb-col-100 cb-min-itm-rw">
+                <div class="cb-col-50"><a href="#"></a></div>
+                <div class="cb-col-10">0</div><div class="cb-col-10">0</div>
+                <div class="cb-col-10">0</div><div class="cb-col-10">0</div>
+                <div class="cb-col-14">0.0</div>
+            </div>
+        """.trimIndent()
+        val batsmen = parseBatsmenFromDoc(Jsoup.parse(html))
+        assertEquals(1, batsmen.size)
+        assertEquals("", batsmen[0].name)
+    }
+
+    @Test
+    fun `parseFallOfWickets handles malformed FOW text without throwing`() {
+        val html = """
+            <div>Fall of Wickets</div>
+            <div>CORRUPTED DATA (no proper format here)</div>
+        """.trimIndent()
+        val fows = parseFallOfWickets(Jsoup.parse(html).body())
+        assertNotNull(fows)
+    }
+
+    @Test
+    fun `parseScorecardBatsmen skips header row containing word Batter`() {
+        val html = """
+            <div>
+                <div class="grid scorecard-bat-grid">
+                    <div><a href="#">Batter</a></div>
+                    <div class="text-cbTxtSec"></div>
+                    <div>R</div><div>B</div><div>4s</div><div>6s</div><div>SR</div>
+                </div>
+                <div class="grid scorecard-bat-grid">
+                    <div><a href="#">S Tendulkar</a><div class="text-cbTxtSec">c Ponting b McGrath</div></div>
+                    <div>100</div><div>120</div><div>14</div><div>1</div><div>83.3</div>
+                </div>
+            </div>
+        """.trimIndent()
+        val batsmen = parseScorecardBatsmen(Jsoup.parse(html).body())
+        assertEquals(1, batsmen.size)
+        assertEquals("S Tendulkar", batsmen[0].name)
+    }
+
+    @Test
+    fun `normalizeNextFlightPayload handles empty string`() {
+        assertNull(normalizeNextFlightPayload(""))
+    }
+
+    @Test
+    fun `normalizeNextFlightPayload handles whitespace-only string`() {
+        assertNull(normalizeNextFlightPayload("   "))
+    }
+
+    @Test
+    fun `unwrapNextFlightPayload handles single-element array`() {
+        assertNull(unwrapNextFlightPayload("""[1]"""))
+    }
+
+    @Test
+    fun `unwrapNextFlightPayload handles non-string second element`() {
+        assertNull(unwrapNextFlightPayload("""[1, 42]"""))
+    }
 }
