@@ -216,4 +216,45 @@ class CricBuzzScraperTest {
         assertEquals("42.3", rows.team1Overs)
         assertEquals("35.1", rows.team2Overs)
     }
+
+    // ── Task 4: selectorCrumb + empty-content robustness ────────────────────
+
+    @Test
+    fun `parseScorecardBatsmen handles completely empty content without throwing`() {
+        val content = Jsoup.parse("<div></div>").body()
+        assertTrue(parseScorecardBatsmen(content).isEmpty())
+    }
+
+    @Test
+    fun `parseScorecardBowlers handles completely empty content without throwing`() {
+        val content = Jsoup.parse("<div></div>").body()
+        assertTrue(parseScorecardBowlers(content).isEmpty())
+    }
+
+    @Test
+    fun `parseFallOfWickets handles missing FOW section without throwing`() {
+        val content = Jsoup.parse("<div>No FOW here</div>").body()
+        val fows = parseFallOfWickets(content)
+        assertNotNull(fows)
+        assertTrue(fows.isEmpty())
+    }
+
+    @Test
+    fun `parseFallOfWickets parses standard FOW text correctly`() {
+        // No outer wrapping div — div:contains matches only the FOW header div itself,
+        // so nextElementSibling() correctly finds the FOW data div.
+        val html = """
+            <div>Fall of Wickets</div>
+            <div>45-1 (D Warner, 8.2), 89-2 (M Labuschagne, 21.4), 162-3 (S Smith, 40.1)</div>
+        """.trimIndent()
+        val content = Jsoup.parse(html).body()
+        val fows = parseFallOfWickets(content)
+        assertEquals(3, fows.size)
+        assertEquals("45-1", fows[0].score)
+        assertEquals("D Warner", fows[0].batsman)
+        assertEquals("8.2", fows[0].overs)
+        assertEquals("89-2", fows[1].score)
+        assertEquals("162-3", fows[2].score)
+        assertEquals("S Smith", fows[2].batsman)
+    }
 }

@@ -15,6 +15,15 @@ import org.jsoup.nodes.Element
 
 private const val PARSER_TAG = "CricBuzzParser"
 
+private fun selectorCrumb(selector: String, expected: String, foundCount: Int) {
+    if (foundCount > 0) return
+    crumb(
+        "selector_miss: '$selector' expected $expected",
+        SentryLevel.WARNING,
+        mapOf("selector" to selector, "expected" to expected, "found" to foundCount)
+    )
+}
+
 internal data class MiniScoreRows(
     val team1Score: String?,
     val team1Overs: String?,
@@ -139,9 +148,10 @@ internal fun parseCommentaryLegacyCss(doc: Document): List<String> {
 }
 
 internal fun parseInningsHeader(header: Element, content: Element): Innings {
-    val teamName = header.select("div.font-bold").first()?.text()
-        ?: header.select("div[class*=font-bold]").first()?.text()
-        ?: "Unknown"
+    val teamNameEl = header.select("div.font-bold").first()
+        ?: header.select("div[class*=font-bold]").first()
+    selectorCrumb("div.font-bold", "team name in innings header", teamNameEl?.let { 1 } ?: 0)
+    val teamName = teamNameEl?.text() ?: "Unknown"
     val score = header.select("span.font-bold").text()
     val overs = header.select("span:contains(Ov)").text()
         .replace("(", "").replace(")", "").trim()
@@ -155,7 +165,9 @@ internal fun parseInningsHeader(header: Element, content: Element): Innings {
 
 internal fun parseScorecardBatsmen(content: Element): List<BatsmanStats> {
     val batsmen = mutableListOf<BatsmanStats>()
-    content.select("div.grid.scorecard-bat-grid").forEach { row ->
+    val batRows = content.select("div.grid.scorecard-bat-grid")
+    selectorCrumb("div.grid.scorecard-bat-grid", "scorecard batsman rows", batRows.size)
+    batRows.forEach { row ->
         val name = row.select("a").first()?.text() ?: ""
         if (name.isEmpty() || name.contains("Batter")) return@forEach
         val stats = row.children()
@@ -185,7 +197,9 @@ internal fun parseScorecardBatsmen(content: Element): List<BatsmanStats> {
 
 internal fun parseScorecardBowlers(content: Element): List<BowlerStats> {
     val bowlers = mutableListOf<BowlerStats>()
-    content.select("div.grid.scorecard-bowl-grid").forEach { row ->
+    val bowlRows = content.select("div.grid.scorecard-bowl-grid")
+    selectorCrumb("div.grid.scorecard-bowl-grid", "scorecard bowler rows", bowlRows.size)
+    bowlRows.forEach { row ->
         val name = row.select("a").first()?.text() ?: ""
         if (name.isEmpty() || name.contains("Bowler")) return@forEach
         val stats = row.children()
@@ -211,7 +225,9 @@ internal fun parseScorecardBowlers(content: Element): List<BowlerStats> {
 
 internal fun parseFallOfWickets(content: Element): List<FallOfWicket> {
     val fows = mutableListOf<FallOfWicket>()
-    val fowSection = content.select("div:contains(Fall of Wickets)").first() ?: return fows
+    val fowSection = content.select("div:contains(Fall of Wickets)").first()
+    selectorCrumb("div:contains(Fall of Wickets)", "FOW section", fowSection?.let { 1 } ?: 0)
+    fowSection ?: return fows
     val fowText = fowSection.nextElementSibling()?.text() ?: ""
     fowText.split("),").forEachIndexed { idx, item ->
         val parts = item.trim().split(" (")
