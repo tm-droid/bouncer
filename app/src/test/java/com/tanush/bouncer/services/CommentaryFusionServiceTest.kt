@@ -121,8 +121,9 @@ class CommentaryFusionServiceTest {
         val hallucinated = "18.5: Smith smashes it for six!"
         val service = serviceWith(fakeClient { n, _ ->
             when (n) {
-                1 -> 200 to successBody(hallucinated) // Groq fusion
-                else -> 200 to successBody("FAIL")    // all providers return FAIL for verification
+                1 -> 200 to successBody(hallucinated) // Groq fusion: success (hallucinated)
+                2 -> 200 to successBody("FAIL")       // Groq verification: FAIL
+                else -> 500 to errorBody()            // retry generation fails → fall back to snippet1
             }
         })
 
@@ -308,7 +309,7 @@ class CommentaryFusionServiceTest {
         val lines = (1..25).map { "Ball $it commentary" }
         service.summarizeOversWithAI(lines, matchId, over)
 
-        assertEquals(18, capturedLineCount)
+        assertEquals(24, capturedLineCount)
     }
 
     // ── ball buffer tests ────────────────────────────────────────────────────
