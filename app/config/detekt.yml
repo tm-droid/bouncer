@@ -1,0 +1,69 @@
+build:
+  maxIssues: 999999
+
+comments:
+  active: false
+
+complexity:
+  active: true
+  CyclomaticComplexMethod:
+    active: true
+    threshold: 10
+  CognitiveComplexMethod:
+    active: true
+    threshold: 15
+  LongMethod:
+    active: true
+    threshold: 60
+  TooManyFunctions:
+    active: true
+    thresholdInFiles: 11
+    thresholdInClasses: 11
+    thresholdInObjects: 11
+    thresholdInInterfaces: 11
+    thresholdInEnums: 11
+    ignoreDeprecated: false
+    ignorePrivate: false
+    ignoreOverridden: false
+  ComplexCondition:
+    active: false
+  ComplexInterface:
+    active: false
+  LargeClass:
+    active: false
+  LongParameterList:
+    active: false
+  MethodOverloading:
+    active: false
+  NamedArguments:
+    active: false
+  NestedBlockDepth:
+    active: false
+  NestedScopeFunctions:
+    active: false
+  ReplaceSafeCallChainWithRun:
+    active: false
+  StringLiteralDuplication:
+    active: false
+
+coroutines:
+  active: false
+
+empty-blocks:
+  active: false
+
+exceptions:
+  active: false
+
+
+naming:
+  active: false
+
+performance:
+  active: false
+
+potential-bugs:
+  active: false
+
+style:
+  active: false
