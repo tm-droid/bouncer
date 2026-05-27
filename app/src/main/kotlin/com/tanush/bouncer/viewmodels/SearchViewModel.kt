@@ -11,6 +11,8 @@ import io.sentry.Sentry
 import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.models.NewsArticleData
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -35,7 +37,14 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
+    private val _recentQueries = MutableStateFlow<List<String>>(emptyList())
+    val recentQueries: StateFlow<List<String>> = _recentQueries.asStateFlow()
+
     private var searchJob: Job? = null
+
+    fun loadRecentQueries(context: Context) {
+        _recentQueries.value = SearchRepository.getRecentQueries(context)
+    }
 
     fun onQueryChange(
         newQuery: String,
@@ -54,17 +63,20 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
             _isLoading.value = true
             try {
                 val teamNames = matches.flatMap { m -> m.teams.map { it.name } }.distinct()
-                // Run live search and DB search concurrently
-                val liveResults = SearchRepository.search(newQuery, matches, news, teamNames)
+                val (liveResults, dbFromResult, dbPlayersResult) = coroutineScope {
+                    val live = async { SearchRepository.search(newQuery, matches, news, teamNames) }
+                    val dbFrom = async { SearchRepository.searchFromDb(newQuery, db) }
+                    val dbPlayers = async { SearchRepository.searchPlayersFromDb(newQuery, db) }
+                    Triple(live.await(), dbFrom.await(), dbPlayers.await())
+                }
 
-                val dbFromResult = SearchRepository.searchFromDb(newQuery, db)
                 val (dbSeries, dbHistorical) = when (dbFromResult) {
                     is AppResult.Success -> dbFromResult.data
                     is AppResult.Error -> { Sentry.captureException(dbFromResult.exception); Pair(emptyList(), emptyList()) }
                     is AppResult.Loading -> Pair(emptyList(), emptyList())
                 }
 
-                val dbPlayers = SearchRepository.searchPlayersFromDb(newQuery, db).let { result ->
+                val dbPlayers = dbPlayersResult.let { result ->
                     if (result is AppResult.Error) Sentry.captureException(result.exception)
                     result.getOrDefault(emptyList())
                 }
@@ -90,5 +102,11 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
 
     fun onSearchSubmitted(context: Context, query: String) {
         SearchRepository.addRecentQuery(context, query)
+        _recentQueries.value = SearchRepository.getRecentQueries(context)
+    }
+
+    fun clearRecentQueries(context: Context) {
+        SearchRepository.clearRecentQueries(context)
+        _recentQueries.value = emptyList()
     }
 }

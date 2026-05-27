@@ -124,7 +124,7 @@ object SearchRepository {
         db: com.tanush.bouncer.data.local.BouncerDatabase,
     ): AppResult<Pair<List<SearchResult.SeriesResult>, List<SearchResult.HistoricalMatchResult>>> {
         if (query.trim().length < 2) return AppResult.Success(Pair(emptyList(), emptyList()))
-        val ftsQuery = "\"${query.trim().replace("\"", "\"\"")}\""
+        val ftsQuery = "${query.trim().replace("\"", "").trim()}*"
         return AppResult.runCatchingSuspend {
             withContext(Dispatchers.IO) {
                 val seriesResults = db.seriesCacheDao().searchSeries(ftsQuery).map { entity ->
@@ -159,7 +159,7 @@ object SearchRepository {
         db: com.tanush.bouncer.data.local.BouncerDatabase,
     ): AppResult<List<SearchResult.PlayerResult>> {
         if (query.trim().length < 2) return AppResult.Success(emptyList())
-        val ftsQuery = "\"${query.trim().replace("\"", "\"\"")}\""
+        val ftsQuery = "${query.trim().replace("\"", "").trim()}*"
         return AppResult.runCatchingSuspend {
             withContext(Dispatchers.IO) {
                 db.playerCacheDao().searchPlayers(ftsQuery).map { entity ->

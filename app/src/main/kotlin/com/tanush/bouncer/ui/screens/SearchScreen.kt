@@ -33,6 +33,7 @@ import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.Tab
@@ -41,9 +42,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -86,11 +85,13 @@ fun SearchScreen(
     val query by viewModel.query.collectAsStateWithLifecycle()
     val results by viewModel.results.collectAsStateWithLifecycle()
     val selectedTab by viewModel.selectedTab.collectAsStateWithLifecycle()
-    var recentQueries by remember { mutableStateOf(SearchRepository.getRecentQueries(context)) }
+    val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
+    val recentQueries by viewModel.recentQueries.collectAsStateWithLifecycle()
     val focusRequester = remember { FocusRequester() }
 
     LaunchedEffect(Unit) {
         focusRequester.requestFocus()
+        viewModel.loadRecentQueries(context)
     }
 
     val displayResults = when (selectedTab) {
@@ -119,20 +120,28 @@ fun SearchScreen(
     Scaffold(
         containerColor = colors.background,
         topBar = {
-            SearchBarHeader(
-                query = query,
-                onQueryChange = { viewModel.onQueryChange(it, matches, news) },
-                onClear = { viewModel.onQueryChange("", matches, news) },
-                onBack = onBackClick,
-                onSearch = {
-                    if (query.isNotBlank()) {
-                        viewModel.onSearchSubmitted(context, query)
-                        recentQueries = SearchRepository.getRecentQueries(context)
-                        keyboardController?.hide()
-                    }
-                },
-                focusRequester = focusRequester,
-            )
+            Column {
+                SearchBarHeader(
+                    query = query,
+                    onQueryChange = { viewModel.onQueryChange(it, matches, news) },
+                    onClear = { viewModel.onQueryChange("", matches, news) },
+                    onBack = onBackClick,
+                    onSearch = {
+                        if (query.isNotBlank()) {
+                            viewModel.onSearchSubmitted(context, query)
+                            keyboardController?.hide()
+                        }
+                    },
+                    focusRequester = focusRequester,
+                )
+                AnimatedVisibility(visible = isLoading) {
+                    LinearProgressIndicator(
+                        modifier = Modifier.fillMaxWidth(),
+                        color = colors.primary,
+                        trackColor = colors.surfaceVariant,
+                    )
+                }
+            }
         },
     ) { innerPadding ->
         Column(
@@ -152,8 +161,17 @@ fun SearchScreen(
                             selected = selectedTab == tab,
                             onClick = { viewModel.onTabSelected(tab) },
                             text = {
+                                val count = when (tab) {
+                                    SearchTab.ALL -> results.totalCount
+                                    SearchTab.MATCHES -> results.matches.size
+                                    SearchTab.PLAYERS -> results.players.size
+                                    SearchTab.TEAMS -> results.teams.size
+                                    SearchTab.TOURNAMENTS -> results.series.size
+                                    SearchTab.NEWS -> results.news.size
+                                }
+                                val label = tab.name.lowercase().replaceFirstChar { it.uppercase() }
                                 Text(
-                                    tab.name.lowercase().replaceFirstChar { it.uppercase() },
+                                    if (count > 0) "$label ($count)" else label,
                                     style = typography.labelMedium,
                                 )
                             },
@@ -193,10 +211,7 @@ fun SearchScreen(
                             SectionHeaderV2(
                                 title = "Recent Searches",
                                 action = "Clear",
-                                onAction = {
-                                    SearchRepository.clearRecentQueries(context)
-                                    recentQueries = emptyList()
-                                },
+                                onAction = { viewModel.clearRecentQueries(context) },
                             )
                         }
                         items(recentQueries, key = { "recent_$it" }) { q ->
