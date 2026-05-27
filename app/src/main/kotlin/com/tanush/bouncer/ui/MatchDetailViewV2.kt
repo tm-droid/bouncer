@@ -90,7 +90,10 @@ fun MatchDetailViewV2(
     val uiState by vm.uiState.collectAsStateWithLifecycle()
     val streamingCommentary by vm.streamingCommentary.collectAsStateWithLifecycle()
 
-    val highlightsViewModel = remember { HighlightsViewModel(context, match.id) }
+    val highlightsViewModel: HighlightsViewModel = viewModel(
+        key = match.id,
+        factory = HighlightsViewModel.factory(context, match.id),
+    )
     val highlights by highlightsViewModel.highlights.collectAsStateWithLifecycle()
 
     val tabTitles = listOf("Overview", "Scorecard", "Commentary", "Highlights", "Info", "AI")

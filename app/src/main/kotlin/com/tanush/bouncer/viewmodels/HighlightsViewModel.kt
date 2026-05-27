@@ -2,6 +2,7 @@ package com.tanush.bouncer.viewmodels
 
 import android.content.Context
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.tanush.bouncer.data.AppResult
 import com.tanush.bouncer.data.local.BouncerDatabase
@@ -36,5 +37,14 @@ class HighlightsViewModel(context: Context, val bouncerMatchId: String) : ViewMo
                 is AppResult.Loading -> {}
             }
         }
+    }
+
+    companion object {
+        fun factory(context: Context, matchId: String): ViewModelProvider.Factory =
+            object : ViewModelProvider.Factory {
+                @Suppress("UNCHECKED_CAST")
+                override fun <T : ViewModel> create(modelClass: Class<T>): T =
+                    HighlightsViewModel(context, matchId) as T
+            }
     }
 }
