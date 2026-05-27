@@ -32,3 +32,8 @@ data class ImpactSubEvent(
     val playerOut: String,
     val over: String,
 )
+
+data class PreMatchData(
+    val pitchDescription: String,
+    val teamNews: String,
+)

@@ -266,7 +266,7 @@ fun MatchDetailViewV2(
                         isLoading = uiState.commentaryLoading,
                     )
                     "Highlights" -> HighlightsTabV2(highlights = highlights)
-                    "Info" -> InfoTabV2(match = match)
+                    "Info" -> InfoTabV2(match = match, preMatchData = uiState.preMatchData)
                     "AI" -> PremiumAiStatisticsTab(match = liveMatch)
                 }
             }

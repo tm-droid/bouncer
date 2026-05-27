@@ -16,18 +16,25 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import com.tanush.bouncer.models.CricketMatch
+import com.tanush.bouncer.models.PreMatchData
+import com.tanush.bouncer.ui.components.premium.ConditionsCard
+import com.tanush.bouncer.ui.components.premium.CurrentWeatherInfo
+import com.tanush.bouncer.ui.components.premium.PitchCondition
+import com.tanush.bouncer.ui.components.premium.TossDetails
+import com.tanush.bouncer.ui.components.premium.TossResultCard
 import com.tanush.bouncer.ui.components.v2.BouncerCard
 import com.tanush.bouncer.ui.components.v2.SectionHeaderV2
 import com.tanush.bouncer.ui.components.v2.StatRowV2
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
-import com.tanush.bouncer.ui.components.premium.TossDetails
-import com.tanush.bouncer.ui.components.premium.TossResultCard
 
 /**
  * InfoTabV2 — Match information: series, venue, date, toss, status, etc.
  */
 @Composable
-fun InfoTabV2(match: CricketMatch) {
+fun InfoTabV2(
+    match: CricketMatch,
+    preMatchData: PreMatchData? = null,
+) {
     val spacing = BouncerThemeV2.spacing
     val colors = BouncerThemeV2.colors
     val typography = BouncerThemeV2.typography
@@ -175,8 +182,75 @@ fun InfoTabV2(match: CricketMatch) {
             }
         }
 
+        // Pitch + conditions card from ESPNCricinfo match preview
+        if (preMatchData != null && preMatchData.pitchDescription.isNotBlank()) {
+            item(key = "conditions_card") {
+                ConditionsCard(
+                    weather = buildWeatherFromText(preMatchData.pitchDescription),
+                    pitch = buildPitchFromText(preMatchData.pitchDescription),
+                    venue = match.venue,
+                )
+            }
+        }
+
         item(key = "bottom") { Spacer(Modifier.height(spacing.xxl)) }
     }
+}
+
+private fun buildWeatherFromText(text: String): CurrentWeatherInfo {
+    val lower = text.lowercase()
+    val tempMatch = Regex("""(\d{1,3})\s*°?c""", RegexOption.IGNORE_CASE).find(text)
+    val temp = tempMatch?.groupValues?.get(1)?.toIntOrNull() ?: 28
+    val humidityMatch = Regex("""(\d{1,3})%?\s*humid""", RegexOption.IGNORE_CASE).find(text)
+    val humidity = humidityMatch?.groupValues?.get(1)?.toIntOrNull() ?: 60
+    val condition = when {
+        lower.contains("rain") -> "Rain"
+        lower.contains("overcast") -> "Overcast"
+        lower.contains("cloud") -> "Cloudy"
+        lower.contains("sunny") || lower.contains("clear") -> "Sunny"
+        else -> "Partly Cloudy"
+    }
+    return CurrentWeatherInfo(
+        temperature = temp, humidity = humidity, windSpeed = 15,
+        windDirection = "N", condition = condition, dewPoint = temp - 5, visibility = "10km",
+    )
+}
+
+private fun buildPitchFromText(text: String): PitchCondition {
+    val lower = text.lowercase()
+    val type = when {
+        lower.contains("green") -> "Green"
+        lower.contains("dry") || lower.contains("dusty") -> "Dry"
+        lower.contains("cracked") -> "Cracked"
+        lower.contains("flat") -> "Flat"
+        else -> "Flat"
+    }
+    val pace = when {
+        lower.contains("fast") || lower.contains("pace") || lower.contains("quick") -> 7
+        lower.contains("slow") -> 3
+        else -> 5
+    }
+    val bounce = when {
+        lower.contains("bounce") || lower.contains("lively") -> 7
+        lower.contains("low bounce") -> 3
+        else -> 5
+    }
+    val spin = when {
+        lower.contains("spin") || lower.contains("turn") -> 7
+        lower.contains("little spin") || lower.contains("no spin") -> 2
+        else -> 4
+    }
+    val seam = when {
+        lower.contains("seam") || lower.contains("swing") || lower.contains("movement") || lower.contains("green") -> 7
+        lower.contains("flat") || lower.contains("dry") -> 2
+        else -> 4
+    }
+    val deterioration = when {
+        lower.contains("crack") || lower.contains("crumbling") -> "High"
+        lower.contains("deteriorat") || lower.contains("wear") -> "Medium"
+        else -> "Low"
+    }
+    return PitchCondition(type = type, pace = pace, bounce = bounce, spin = spin, seam = seam, deterioration = deterioration)
 }
 
 private fun extractTossInfo(info: String, status: String): String {

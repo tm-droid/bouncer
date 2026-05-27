@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import com.tanush.bouncer.models.AchievementKind
 import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.models.MatchFlowData
+import com.tanush.bouncer.models.PreMatchData
 import com.tanush.bouncer.models.Scorecard
 import com.tanush.bouncer.models.ScrapedBatsman
 import com.tanush.bouncer.models.ScrapedBowler
@@ -43,6 +44,7 @@ class MatchDetailViewModel(
         val liveCurrentRunRate: String? = null,
         val liveRequiredRunRate: String? = null,
         val matchFlow: MatchFlowData? = null,
+        val preMatchData: PreMatchData? = null,
     )
 
     private val appContext = context.applicationContext
@@ -111,6 +113,27 @@ class MatchDetailViewModel(
             Sentry.addBreadcrumb(Breadcrumb().apply {
                 category = "match_detail_v2.matchflow"
                 message = "Match flow fetch failed: ${e.message}"
+                level = SentryLevel.WARNING
+            })
+        }
+
+        // Fetch pre-match data (pitch report + team news) once at startup.
+        try {
+            val url = espnMatchUrl ?: run {
+                cricinfo.findClosestLiveMatchUrlAndId(match.matchTitle)?.first.also { espnMatchUrl = it }
+            }
+            if (url != null) {
+                val preMatch = cricinfo.fetchPreMatchData(url)
+                if (preMatch != null) {
+                    _uiState.update { it.copy(preMatchData = preMatch) }
+                }
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Sentry.addBreadcrumb(Breadcrumb().apply {
+                category = "match_detail_v2.prematch"
+                message = "Pre-match data fetch failed: ${e.message}"
                 level = SentryLevel.WARNING
             })
         }

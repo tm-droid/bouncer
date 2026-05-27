@@ -7,6 +7,7 @@ import com.tanush.bouncer.models.DrsReviewEvent
 import com.tanush.bouncer.models.ImpactSubEvent
 import com.tanush.bouncer.models.MatchFlowData
 import com.tanush.bouncer.models.PowerplayEvent
+import com.tanush.bouncer.models.PreMatchData
 import io.sentry.Breadcrumb
 import io.sentry.Sentry
 import io.sentry.SentryLevel
@@ -585,5 +586,60 @@ class CricInfoScraper {
         val oversDouble = m.groupValues[2].toDoubleOrNull() ?: return null
         val over = oversDouble.toInt().coerceAtLeast(1)
         return Pair(over, runs)
+    }
+
+    // ── Pre-match data (pitch report + team news) ────────────────────────────
+
+    suspend fun fetchPreMatchData(matchUrl: String): PreMatchData? = withContext(Dispatchers.IO) {
+        if (isCircuitOpen()) return@withContext null
+
+        val previewUrl = buildPreviewUrl(matchUrl)
+        addBreadcrumb(
+            category = "network.cricinfo",
+            message = "Fetching pre-match data",
+            level = SentryLevel.INFO,
+            data = mapOf("url" to previewUrl),
+        )
+
+        try {
+            val doc = connect(previewUrl).get()
+            recordSuccess()
+            parsePreMatchData(doc)
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
+            recordFailure(e)
+            addBreadcrumb(
+                category = "network.cricinfo",
+                message = "Error fetching pre-match data",
+                level = SentryLevel.ERROR,
+                data = mapOf("url" to previewUrl, "error" to (e.message ?: "")),
+            )
+            null
+        }
+    }
+
+    private fun buildPreviewUrl(matchUrl: String): String =
+        matchUrl.trimEnd('/')
+            .removeSuffix("/live-cricket-score")
+            .removeSuffix("/commentary") + "/match-preview"
+
+    private fun parsePreMatchData(doc: Document): PreMatchData? {
+        var pitchDescription = ""
+        var teamNews = ""
+
+        for (header in doc.select("h2, h3")) {
+            val text = header.text().lowercase()
+            val nextText = header.nextElementSibling()?.text().orEmpty()
+            if (nextText.isBlank()) continue
+            when {
+                text.contains("pitch") || text.contains("condition") ->
+                    pitchDescription = nextText
+                text.contains("team news") || text.contains("probable") ->
+                    teamNews = nextText
+            }
+        }
+
+        if (pitchDescription.isBlank() && teamNews.isBlank()) return null
+        return PreMatchData(pitchDescription = pitchDescription, teamNews = teamNews)
     }
 }
