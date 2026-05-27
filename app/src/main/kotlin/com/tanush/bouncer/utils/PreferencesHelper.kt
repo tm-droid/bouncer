@@ -29,6 +29,7 @@ object PreferencesHelper {
     const val KEY_DEFAULT_LANDING = "default_landing"
     const val KEY_ONBOARDING_TEAMS = "onboarding_teams"
     const val KEY_ONBOARDING_COMPLETE = "onboarding_complete"
+    const val KEY_PREFERRED_CATEGORY = "preferred_category"
 
     fun getBoolean(context: Context, key: String, default: Boolean): Boolean {
         try {

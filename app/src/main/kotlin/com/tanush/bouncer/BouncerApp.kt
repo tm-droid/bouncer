@@ -19,6 +19,7 @@ import com.tanush.bouncer.data.remote.AppwriteClient
 import com.tanush.bouncer.data.remote.AppwriteHighlightsClient
 import com.tanush.bouncer.data.remote.AppwritePlayerFormsClient
 import com.tanush.bouncer.data.repository.toEntity
+import com.tanush.bouncer.network.HttpClientProvider
 import com.tanush.bouncer.services.AICacheService
 import com.tanush.bouncer.services.MatchCacheService
 import com.tanush.bouncer.services.CricsheetTrainingWorker
@@ -86,6 +87,7 @@ class BouncerApp : Application() {
         Sentry.metrics().count("app_start", 1.0)
 
         // ── Initialize managers ──────────────────────────────────────────
+        HttpClientProvider.initialize(cacheDir)
         // TeamLogoManager: Gson cold-init + JSON parsing is heavy — run off main thread.
         // The manager returns null/emptyMap gracefully until initialized, so callers are safe.
         applicationScope.launch(Dispatchers.IO) {
@@ -103,10 +105,12 @@ class BouncerApp : Application() {
         }
         initializeSafely("AppwriteClient") { AppwriteClient.initialize(this) }
         // Verify Appwrite reachability; reflect in AppHealth so UI can show degraded state.
+        // Timeout guards against indefinite hang on slow/captive-portal networks.
         applicationScope.launch(Dispatchers.IO) {
             val reachable = try {
-                AppwriteClient.client?.ping()
-                true
+                kotlinx.coroutines.withTimeoutOrNull(10_000L) {
+                    AppwriteClient.client?.ping()
+                } != null
             } catch (e: Exception) {
                 Sentry.addBreadcrumb(
                     Breadcrumb().apply {

@@ -661,6 +661,16 @@ class LiveActivityViewModel : ViewModel() {
         }
 
         updateHomeMatches()
+        if (status == "Live") pruneStaleMatchData(matchesWithProbability)
+    }
+
+    private fun pruneStaleMatchData(currentLiveMatches: List<CricketMatch>) {
+        val liveIds = currentLiveMatches.map { it.id }.toSet()
+        recentBallsCache.keys.retainAll(liveIds)
+        val staleIds = _probabilityEvents.value.keys - liveIds
+        if (staleIds.isNotEmpty()) {
+            _probabilityEvents.value = _probabilityEvents.value - staleIds
+        }
     }
 
     private fun updateHomeMatches() {

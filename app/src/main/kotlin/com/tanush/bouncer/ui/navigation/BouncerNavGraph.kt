@@ -119,6 +119,9 @@ sealed class BouncerScreen(val route: String) {
     /** In-app notification inbox */
     data object Notifications : BouncerScreen("notifications")
 
+    /** First-launch onboarding flow */
+    data object Onboarding : BouncerScreen("onboarding")
+
     // ═══════════════════════════════════════════════════════════════════════════
     // Parameterized Screens (With Arguments)
     // ═══════════════════════════════════════════════════════════════════════════

@@ -147,6 +147,30 @@ fun PremiumScorecardTab(
                 }
             }
 
+            // Partnerships
+            if (innings != null && innings.partnerships.isNotEmpty()) {
+                item { SectionHeader("Partnerships") }
+                item {
+                    PartnershipBreakdownCard(
+                        teamName = innings.teamName,
+                        partnerships = innings.partnerships.map { p ->
+                            PartnershipEntry(
+                                batter1Name = p.player1,
+                                batter1Runs = p.contribution1.toIntOrNull() ?: 0,
+                                batter1Balls = 0,
+                                batter2Name = p.player2,
+                                batter2Runs = p.contribution2.toIntOrNull() ?: 0,
+                                batter2Balls = 0,
+                                totalRuns = p.runs.toIntOrNull() ?: 0,
+                                totalBalls = p.balls.toIntOrNull() ?: 0,
+                                runRate = 0.0,
+                                wicketNumber = 0,
+                            )
+                        }
+                    )
+                }
+            }
+
             // Bowling Section
             item { SectionHeader("Bowling") }
             item { BowlingTableHeader() }

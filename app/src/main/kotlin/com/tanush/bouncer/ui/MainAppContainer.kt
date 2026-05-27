@@ -17,6 +17,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.tanush.bouncer.models.CricketMatch
+import com.tanush.bouncer.managers.FavouriteTeamsManager
 import com.tanush.bouncer.ui.components.v2.BottomNavBarV2
 import com.tanush.bouncer.ui.navigation.BouncerNavHost
 import com.tanush.bouncer.ui.navigation.BouncerScreen
@@ -148,6 +149,12 @@ fun MainAppContainer(
     val navController = rememberNavController()
     var consumedDeepLink by remember { mutableStateOf<String?>(null) }
 
+    val context = LocalContext.current
+    val isOnboardingComplete = remember {
+        PreferencesHelper.getBoolean(context, PreferencesHelper.KEY_ONBOARDING_COMPLETE, false)
+            || FavouriteTeamsManager.favourites.value.isNotEmpty()
+    }
+
     // Observe current route for bottom nav state
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
@@ -187,6 +194,7 @@ fun MainAppContainer(
             newsViewModel = newsViewModel,
             onMatchClick = onMatchClick,
             onArTrackingClick = onArTrackingRequest,
+            isOnboardingComplete = isOnboardingComplete,
             themeMode = themeMode,
             onThemeModeChanged = onThemeModeChanged,
             modifier = Modifier

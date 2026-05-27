@@ -103,13 +103,6 @@ fun OverviewTab_Extracted(
         }
 
         item {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                PitchEnvironmentCard(modifier = Modifier.weight(1.2f))
-                InsightGridCard(modifier = Modifier.weight(1f), label = "Engine Conf.", value = "84%", subValue = "+2.1% Session", icon = Icons.Default.AutoAwesome, accentColor = Gold400)
-            }
-        }
-
-        item {
             PowerPlayStatsCard(teamName = match.teams.firstOrNull { it.isBatting }?.name ?: "Batting Team", phases = listOf(PowerPlayPhase("PP1", 1, 1, 6, 45, 1, 36, 6, 1, 12), PowerPlayPhase("PP2", 2, 7, 40, 180, 4, 204, 12, 2, 80)))
         }
 

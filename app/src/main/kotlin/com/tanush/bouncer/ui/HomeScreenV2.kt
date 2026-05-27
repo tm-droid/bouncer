@@ -22,14 +22,17 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.tanush.bouncer.managers.MatchSubscriptionManager
 import com.tanush.bouncer.managers.NotificationInboxManager
+import com.tanush.bouncer.utils.PreferencesHelper
 import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.ui.components.NetworkStatusBanner
 import com.tanush.bouncer.ui.components.rememberIsOffline
@@ -61,6 +64,12 @@ fun HomeScreenV2(
     onSearchClick: () -> Unit = {},
     onNotificationsClick: () -> Unit = {},
 ) {
+    val context = LocalContext.current
+    LaunchedEffect(Unit) {
+        val pref = PreferencesHelper.getString(context, PreferencesHelper.KEY_PREFERRED_CATEGORY, "All")
+        if (pref != "All") viewModel.setCompetitionType(pref)
+    }
+
     val selectedStatus by viewModel.selectedStatus.collectAsStateWithLifecycle()
     val selectedCompetitionType by viewModel.selectedCompetitionType.collectAsStateWithLifecycle()
     val currentMatches by viewModel.currentMatches.collectAsStateWithLifecycle()
@@ -179,9 +188,10 @@ fun HomeScreenV2(
                 // ── Hero featured match ──
                 featuredMatch?.let { fm ->
                     item(key = "hero_${fm.id}") {
+                        val handleHeroClick = remember(fm.id) { { onMatchClick(fm) } }
                         HeroMatchCard(
                             match = fm,
-                            onClick = { onMatchClick(fm) },
+                            onClick = handleHeroClick,
                             modifier = Modifier.padding(horizontal = spacing.lg),
                         )
                         Spacer(Modifier.height(spacing.lg))
@@ -191,17 +201,18 @@ fun HomeScreenV2(
                 // ── All matches section ──
                 if (remainingMatches.isNotEmpty()) {
                     item(key = "matches_header") {
+                        val handleMoreClick = remember { { onMoreMatchesClick() } }
                         SectionHeaderV2(
                             title = "Matches",
                             action = if (remainingMatches.size > 5) "See All" else null,
-                            onAction = { onMoreMatchesClick() },
+                            onAction = handleMoreClick,
                         )
                     }
                     items(remainingMatches, key = { "match_${it.id}" }) { match ->
-                        val handleMatchClick = remember(match) {
+                        val handleMatchClick = remember(match.id) {
                             { onMatchClick(match) }
                         }
-                        val handleSubscribeToggle = remember(match) {
+                        val handleSubscribeToggle = remember(match.id) {
                             { MatchSubscriptionManager.toggle(match.id); Unit }
                         }
                         MatchCardV2(

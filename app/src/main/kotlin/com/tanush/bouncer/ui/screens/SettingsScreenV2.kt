@@ -13,6 +13,7 @@ import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Speed
@@ -59,6 +60,7 @@ fun SettingsScreenV2(
     onAchievementsClick: () -> Unit = {},
     onAboutClick: () -> Unit = {},
     onAppearanceClick: () -> Unit = {},
+    onRedoSetup: () -> Unit = {},
 ) {
     val colors = BouncerThemeV2.colors
     val typography = BouncerThemeV2.typography
@@ -244,6 +246,12 @@ fun SettingsScreenV2(
                         icon = Icons.Default.Info, title = "About Bouncer",
                         trailing = SettingsTrailing.Navigation,
                         onClick = onAboutClick,
+                    )
+                    SettingsItemV2(
+                        icon = Icons.Default.Refresh, title = "Redo Setup",
+                        subtitle = "Re-run the onboarding flow to update your teams and preferences",
+                        trailing = SettingsTrailing.Navigation,
+                        onClick = onRedoSetup,
                     )
                 }
             }

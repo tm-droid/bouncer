@@ -1,9 +1,12 @@
 package com.tanush.bouncer.ui.navigation
 
 import androidx.compose.animation.*
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import com.tanush.bouncer.utils.PreferencesHelper
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -46,19 +49,33 @@ fun BouncerNavHost(
     newsViewModel: NewsViewModel,
     onMatchClick: (CricketMatch) -> Unit,
     onArTrackingClick: () -> Unit,
+    isOnboardingComplete: Boolean = true,
     themeMode: ThemeModeV2 = ThemeModeV2.Dark,
     onThemeModeChanged: (ThemeModeV2) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     NavHost(
         navController = navController,
-        startDestination = BouncerScreen.Home.route,
+        startDestination = if (isOnboardingComplete) BouncerScreen.Home.route else BouncerScreen.Onboarding.route,
         modifier = modifier.fillMaxSize(),
         enterTransition = { BouncerMotion.Transitions.horizontalEnter() },
         exitTransition = { BouncerMotion.Transitions.horizontalExit() },
         popEnterTransition = { BouncerMotion.Transitions.horizontalPopEnter() },
         popExitTransition = { BouncerMotion.Transitions.horizontalPopExit() }
     ) {
+        // Onboarding — only shown on first launch
+        composable(
+            BouncerScreen.Onboarding.route,
+            enterTransition = { fadeIn(tween(300)) },
+            exitTransition = { fadeOut(tween(300)) },
+            popEnterTransition = { fadeIn(tween(300)) },
+            popExitTransition = { fadeOut(tween(300)) },
+        ) {
+            OnboardingScreenV2(
+                onComplete = { navController.navigateAndClearStack(BouncerScreen.Home.route) }
+            )
+        }
+
         // Primary tabs
         primaryTabDestinations(navController, liveActivityViewModel, newsViewModel, onMatchClick)
 
@@ -274,6 +291,7 @@ private fun NavGraphBuilder.moreChildDestinations(
 
     // Settings
     composable(BouncerScreen.Settings.route) {
+        val context = LocalContext.current
         SettingsScreenV2(
             onBackClick = { navController.popBackStack() },
             onFavoritesClick = {
@@ -287,7 +305,11 @@ private fun NavGraphBuilder.moreChildDestinations(
             },
             onAppearanceClick = {
                 navController.navigateForward(BouncerScreen.Appearance.route)
-            }
+            },
+            onRedoSetup = {
+                PreferencesHelper.setBoolean(context, PreferencesHelper.KEY_ONBOARDING_COMPLETE, false)
+                navController.navigateAndClearStack(BouncerScreen.Onboarding.route)
+            },
         )
     }
 

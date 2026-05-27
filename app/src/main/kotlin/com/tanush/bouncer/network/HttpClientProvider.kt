@@ -20,6 +20,13 @@ import java.util.concurrent.TimeUnit
  */
 object HttpClientProvider {
     private const val TAG = "HttpClientProvider"
+    private const val CACHE_SIZE_BYTES = 10L * 1024 * 1024
+
+    @Volatile private var cacheDir: java.io.File? = null
+
+    fun initialize(cacheDir: java.io.File) {
+        this.cacheDir = cacheDir
+    }
 
     private val loggingInterceptor = HttpLoggingInterceptor().apply {
         level = HttpLoggingInterceptor.Level.BASIC
@@ -138,6 +145,11 @@ object HttpClientProvider {
             .readTimeout(20, TimeUnit.SECONDS)
             .writeTimeout(20, TimeUnit.SECONDS)
             .retryOnConnectionFailure(true)
+            .apply {
+                cacheDir?.let { dir ->
+                    cache(okhttp3.Cache(java.io.File(dir, "okhttp"), CACHE_SIZE_BYTES))
+                }
+            }
             .addInterceptor(sentryBreadcrumbInterceptor)
             .addInterceptor(loggingInterceptor)
             .build()

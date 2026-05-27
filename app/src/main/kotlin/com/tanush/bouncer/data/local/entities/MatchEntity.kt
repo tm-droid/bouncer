@@ -7,7 +7,10 @@ import androidx.room.PrimaryKey
 
 @Entity(
     tableName = "matches",
-    indices = [Index(value = ["isLive"], name = "idx_matches_is_live")]
+    indices = [
+        Index(value = ["isLive"], name = "idx_matches_is_live"),
+        Index(value = ["lastUpdated"], name = "idx_matches_last_updated"),
+    ]
 )
 data class MatchEntity(
     @PrimaryKey
