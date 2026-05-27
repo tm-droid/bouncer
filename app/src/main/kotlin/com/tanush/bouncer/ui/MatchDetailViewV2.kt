@@ -33,8 +33,6 @@ import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -46,15 +44,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.tanush.bouncer.managers.TeamLogoManager
-import com.tanush.bouncer.models.AchievementKind
 import com.tanush.bouncer.models.CricketMatch
-import com.tanush.bouncer.models.Scorecard
-import com.tanush.bouncer.models.ScrapedBatsman
-import com.tanush.bouncer.models.ScrapedBowler
-import com.tanush.bouncer.network.CricBuzzScraper
-import com.tanush.bouncer.services.LiveCommentaryManager
 import com.tanush.bouncer.ui.components.v2.MatchNotificationPrefsSheet
 import com.tanush.bouncer.ui.components.v2.MatchStatusType
 import com.tanush.bouncer.ui.components.v2.RecentBallsStripV2
@@ -68,14 +61,11 @@ import com.tanush.bouncer.ui.screens.matchdetail.v2.InfoTabV2
 import com.tanush.bouncer.ui.screens.matchdetail.v2.OverviewTabV2
 import com.tanush.bouncer.ui.screens.matchdetail.v2.ScorecardTabV2
 import com.tanush.bouncer.viewmodels.HighlightsViewModel
+import com.tanush.bouncer.viewmodels.MatchDetailViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
-import com.tanush.bouncer.utils.ShareMatchCardHelper
-import io.sentry.Breadcrumb
-import io.sentry.Sentry
-import io.sentry.SentryLevel
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.delay
+import com.tanush.bouncer.ui.components.ShareCardData
+import com.tanush.bouncer.ui.components.ShareCardGenerator
 import kotlinx.coroutines.launch
 
 /**
@@ -93,6 +83,13 @@ fun MatchDetailViewV2(
     val spacing = BouncerThemeV2.spacing
 
     val context = LocalContext.current
+    val vm: MatchDetailViewModel = viewModel(
+        key = match.id,
+        factory = MatchDetailViewModel.factory(context, match),
+    )
+    val uiState by vm.uiState.collectAsStateWithLifecycle()
+    val streamingCommentary by vm.streamingCommentary.collectAsStateWithLifecycle()
+
     val highlightsViewModel = remember { HighlightsViewModel(context, match.id) }
     val highlights by highlightsViewModel.highlights.collectAsStateWithLifecycle()
 
@@ -100,121 +97,17 @@ fun MatchDetailViewV2(
     val pagerState = rememberPagerState(pageCount = { tabTitles.size })
     val scope = rememberCoroutineScope()
 
-    // Live data state
-    var batsmen by remember { mutableStateOf<List<ScrapedBatsman>>(emptyList()) }
-    var bowler by remember { mutableStateOf<ScrapedBowler?>(null) }
-    var recentBalls by remember { mutableStateOf<List<String>>(emptyList()) }
-    var scorecard by remember { mutableStateOf<Scorecard?>(null) }
-    var commentary by remember { mutableStateOf<List<String>>(emptyList()) }
-    var commentaryLoading by remember { mutableStateOf(true) }
     var showReminderSheet by remember { mutableStateOf(false) }
     var showNotifPrefsSheet by remember { mutableStateOf(false) }
-
-    var liveTeam1Score by remember { mutableStateOf(match.teams.getOrNull(0)?.score ?: "") }
-    var liveTeam2Score by remember { mutableStateOf(match.teams.getOrNull(1)?.score ?: "") }
-    var liveTeam1Overs by remember { mutableStateOf(match.teams.getOrNull(0)?.overs ?: "") }
-    var liveTeam2Overs by remember { mutableStateOf(match.teams.getOrNull(1)?.overs ?: "") }
-    var liveCurrentRunRate by remember { mutableStateOf(match.score?.currentRunRate) }
-    var liveRequiredRunRate by remember { mutableStateOf(match.score?.requiredRunRate) }
-
-    val scraper = remember { CricBuzzScraper() }
-    val commentaryManager = remember(match.id) { LiveCommentaryManager() }
-    DisposableEffect(match.id) {
-        onDispose { commentaryManager.close() }
-    }
-    val streamingCommentary by commentaryManager.streamingCommentary.collectAsStateWithLifecycle()
-
-    // Achievement state
-    var unlockedAchievements by remember { mutableStateOf(AchievementKind.loadUnlocked(context)) }
-
-    fun checkAndUnlock(kind: AchievementKind) {
-        if (!unlockedAchievements.contains(kind)) {
-            AchievementKind.unlock(context, kind)
-            unlockedAchievements = AchievementKind.loadUnlocked(context)
-        }
-    }
-
-    // Polling loop
-    LaunchedEffect(match.id) {
-        // One-time initial seed: fetch all currently visible commentary before the polling loop starts
-        try {
-            val url = "https://www.cricbuzz.com/live-cricket-scores/${match.id}"
-            val allLines = scraper.fetchLiveCommentary(url)
-            if (allLines.isNotEmpty()) {
-                commentaryManager.seedHistory(allLines)
-                commentary = commentaryManager.getSeededHistory()
-            }
-        } catch (e: Exception) {
-            Sentry.addBreadcrumb(Breadcrumb().apply {
-                category = "match_detail_v2.seed"
-                message = "Commentary seed failed: ${e.message}"
-                level = SentryLevel.WARNING
-            })
-        } finally {
-            commentaryLoading = false
-        }
-
-        if (!match.isLive) return@LaunchedEffect
-
-        while (true) {
-            try {
-                val details = scraper.fetchBallByBallAndBatsmen(match.id)
-                batsmen = details.batsmen
-                bowler = details.bowler
-                recentBalls = details.recentBalls
-
-                details.team1Score?.let { liveTeam1Score = it }
-                details.team2Score?.let { liveTeam2Score = it }
-                details.team1Overs?.let { liveTeam1Overs = it }
-                details.team2Overs?.let { liveTeam2Overs = it }
-                details.currentRunRate?.let { liveCurrentRunRate = it }
-                details.requiredRunRate?.let { liveRequiredRunRate = it }
-
-                scorecard = scraper.fetchScorecard(match.id)
-
-                val keyNames = batsmen.map { it.name }.toMutableList()
-                bowler?.let { keyNames.add(it.name) }
-                commentary = commentaryManager.getBestCommentaryForMatch(
-                    matchTitle = match.matchTitle,
-                    cricbuzzId = match.id,
-                    cricbuzzUrl = "https://www.cricbuzz.com/live-cricket-scores/${match.id}",
-                    keyNames = keyNames,
-                )
-
-                // Lightweight achievement checks
-                for (b in batsmen) {
-                    val runs = b.runs.toIntOrNull() ?: 0
-                    if (runs >= 50) checkAndUnlock(AchievementKind.RUNS_50)
-                    if (runs >= 100) checkAndUnlock(AchievementKind.RUNS_100)
-                }
-                bowler?.let { b ->
-                    val w = b.wickets.toIntOrNull() ?: 0
-                    if (w >= 5) checkAndUnlock(AchievementKind.WICKETS_5)
-                }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                Sentry.addBreadcrumb(Breadcrumb().apply {
-                    category = "match_detail_v2.refresh"
-                    message = "Live data refresh failed"
-                    level = SentryLevel.WARNING
-                    setData("matchId", match.id)
-                })
-                Sentry.captureException(e)
-            }
-            delay(8000)
-        }
-    }
+    var isSharingCard by remember { mutableStateOf(false) }
 
     val team1 = match.teams.getOrNull(0)
     val team2 = match.teams.getOrNull(1)
-    val score1 = liveTeam1Score.ifBlank { team1?.score ?: "" }
-    val score2 = liveTeam2Score.ifBlank { team2?.score ?: "" }
-    val overs1 = liveTeam1Overs.ifBlank { team1?.overs ?: "" }
-    val overs2 = liveTeam2Overs.ifBlank { team2?.overs ?: "" }
+    val score1 = uiState.liveTeam1Score.ifBlank { team1?.score ?: "" }
+    val score2 = uiState.liveTeam2Score.ifBlank { team2?.score ?: "" }
+    val overs1 = uiState.liveTeam1Overs.ifBlank { team1?.overs ?: "" }
+    val overs2 = uiState.liveTeam2Overs.ifBlank { team2?.overs ?: "" }
 
-    // Derive a match copy with live team scores so Overview tab (win probability, isUpcoming, etc.)
-    // always reflects the most recent data rather than the initial cached snapshot.
     val liveMatch = if (match.teams.size >= 2) {
         match.copy(
             teams = match.teams.mapIndexed { i, team ->
@@ -244,20 +137,42 @@ fun MatchDetailViewV2(
                     }
                 },
                 actions = {
-                    IconButton(onClick = {
-                        ShareMatchCardHelper.shareMatchAsImage(
-                            context = context,
-                            team1 = team1?.name ?: "",
-                            team2 = team2?.name ?: "",
-                            score1 = score1,
-                            score2 = score2,
-                            overs1 = overs1,
-                            overs2 = overs2,
-                            status = match.status,
-                            matchTitle = match.matchTitle,
-                        )
-                    }) {
-                        Icon(Icons.Default.Share, "Share", tint = colors.onSurface)
+                    IconButton(
+                        onClick = {
+                            if (!isSharingCard) {
+                                isSharingCard = true
+                                scope.launch {
+                                    val t1 = liveMatch.teams.getOrNull(0)
+                                    val t2 = liveMatch.teams.getOrNull(1)
+                                    val data = ShareCardData(
+                                        team1Name = t1?.acronym?.ifEmpty { t1.name.take(3) } ?: "T1",
+                                        team2Name = t2?.acronym?.ifEmpty { t2.name.take(3) } ?: "T2",
+                                        team1Score = t1?.score ?: "-",
+                                        team2Score = t2?.score,
+                                        matchStatus = liveMatch.status,
+                                        matchType = liveMatch.matchType,
+                                        venue = liveMatch.venue,
+                                        winProbability = (liveMatch.winProbability / 100.0).toFloat().coerceIn(0f, 1f),
+                                        isLive = liveMatch.isLive,
+                                    )
+                                    val bitmap = ShareCardGenerator.generateShareBitmap(data)
+                                    val uri = ShareCardGenerator.saveBitmapForSharing(context, bitmap)
+                                    uri?.let { ShareCardGenerator.shareImage(context, it) }
+                                    isSharingCard = false
+                                }
+                            }
+                        },
+                        enabled = !isSharingCard,
+                    ) {
+                        if (isSharingCard) {
+                            androidx.compose.material3.CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                strokeWidth = 2.dp,
+                                color = colors.onSurface,
+                            )
+                        } else {
+                            Icon(Icons.Default.Share, "Share", tint = colors.onSurface)
+                        }
                     }
                     IconButton(onClick = { showReminderSheet = true }) {
                         Icon(Icons.Default.Alarm, "Reminder", tint = colors.onSurface)
@@ -285,9 +200,9 @@ fun MatchDetailViewV2(
                 score2 = score2,
                 overs1 = overs1,
                 overs2 = overs2,
-                currentRunRate = liveCurrentRunRate,
-                requiredRunRate = liveRequiredRunRate,
-                recentBalls = recentBalls,
+                currentRunRate = uiState.liveCurrentRunRate,
+                requiredRunRate = uiState.liveRequiredRunRate,
+                recentBalls = uiState.recentBalls,
             )
 
             // ── Tab Row ──
@@ -333,21 +248,21 @@ fun MatchDetailViewV2(
                 when (tabTitle) {
                     "Overview" -> OverviewTabV2(
                         match = liveMatch,
-                        batsmen = batsmen,
-                        bowler = bowler,
-                        recentBalls = recentBalls,
-                        commentary = commentary,
-                        currentRunRate = liveCurrentRunRate,
-                        requiredRunRate = liveRequiredRunRate,
-                        scorecard = scorecard,
+                        batsmen = uiState.batsmen,
+                        bowler = uiState.bowler,
+                        recentBalls = uiState.recentBalls,
+                        commentary = uiState.commentary,
+                        currentRunRate = uiState.liveCurrentRunRate,
+                        requiredRunRate = uiState.liveRequiredRunRate,
+                        scorecard = uiState.scorecard,
                         streamingCommentary = streamingCommentary,
                     )
-                    "Scorecard" -> ScorecardTabV2(scorecard = scorecard)
+                    "Scorecard" -> ScorecardTabV2(scorecard = uiState.scorecard)
                     "Commentary" -> CommentaryTabV2(
-                        commentary = commentary,
-                        recentBalls = recentBalls,
+                        commentary = uiState.commentary,
+                        recentBalls = uiState.recentBalls,
                         matchStatus = match.currentStatus,
-                        isLoading = commentaryLoading,
+                        isLoading = uiState.commentaryLoading,
                     )
                     "Highlights" -> HighlightsTabV2(highlights = highlights)
                     "Info" -> InfoTabV2(match = match)

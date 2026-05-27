@@ -10,10 +10,15 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRowDefaults
@@ -23,18 +28,24 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
 import com.tanush.bouncer.models.BatsmanStats
 import com.tanush.bouncer.models.BowlerStats
 import com.tanush.bouncer.models.Innings
 import com.tanush.bouncer.models.Scorecard
+import com.tanush.bouncer.ui.components.ShareCardFormat
+import com.tanush.bouncer.ui.components.ShareCardGenerator
 import com.tanush.bouncer.ui.components.v2.EmptyStateV2
 import com.tanush.bouncer.ui.components.v2.SectionHeaderV2
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
+import kotlinx.coroutines.launch
 
 /**
  * ScorecardTabV2 — Clean scorecard with innings tabs, batting table, bowling table, FOW.
@@ -103,6 +114,8 @@ private fun InningsContent(innings: Innings) {
     val colors = BouncerThemeV2.colors
     val typography = BouncerThemeV2.typography
     val spacing = BouncerThemeV2.spacing
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -135,7 +148,28 @@ private fun InningsContent(innings: Innings) {
 
         // Batsmen rows
         itemsIndexed(innings.batsmen, key = { _, b -> "bat_${b.name}" }) { index, batsman ->
-            BatsmanRow(batsman = batsman, isAlternate = index % 2 == 1)
+            BatsmanRow(
+                batsman = batsman,
+                isAlternate = index % 2 == 1,
+                onShare = {
+                    scope.launch {
+                        val bitmap = ShareCardGenerator.generatePlayerInningsCard(
+                            playerName = batsman.name,
+                            teamName = innings.teamName,
+                            runs = batsman.runs,
+                            balls = batsman.balls,
+                            fours = batsman.fours,
+                            sixes = batsman.sixes,
+                            strikeRate = batsman.strikeRate,
+                            dismissal = batsman.dismissal,
+                            matchTitle = innings.teamName,
+                            format = ShareCardFormat.INSTAGRAM_POST,
+                        )
+                        val uri = ShareCardGenerator.saveBitmapForSharing(context, bitmap)
+                        uri?.let { ShareCardGenerator.shareImage(context, it) }
+                    }
+                },
+            )
         }
 
         // Extras & Total
@@ -247,12 +281,13 @@ private fun BattingColumnHeader() {
 }
 
 @Composable
-private fun BatsmanRow(batsman: BatsmanStats, isAlternate: Boolean) {
+private fun BatsmanRow(batsman: BatsmanStats, isAlternate: Boolean, onShare: (() -> Unit)? = null) {
     val colors = BouncerThemeV2.colors
     val typography = BouncerThemeV2.typography
     val spacing = BouncerThemeV2.spacing
 
     val isNotOut = batsman.dismissal.lowercase().let { it.contains("not out") || it == "batting" }
+    val hasMeaningfulInnings = batsman.runs.isNotBlank() && batsman.runs != "-" && batsman.runs != "0" || isNotOut
 
     Column(
         modifier = Modifier
@@ -276,6 +311,16 @@ private fun BatsmanRow(batsman: BatsmanStats, isAlternate: Boolean) {
             StatCell(batsman.fours)
             StatCell(batsman.sixes)
             StatCell(batsman.strikeRate)
+            if (onShare != null && hasMeaningfulInnings) {
+                IconButton(onClick = onShare, modifier = Modifier.size(28.dp)) {
+                    Icon(
+                        imageVector = Icons.Default.Share,
+                        contentDescription = "Share innings",
+                        tint = colors.textSecondary,
+                        modifier = Modifier.size(14.dp),
+                    )
+                }
+            }
         }
         if (batsman.dismissal.isNotBlank() && !isNotOut) {
             Text(

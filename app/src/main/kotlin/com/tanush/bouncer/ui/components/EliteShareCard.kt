@@ -695,6 +695,126 @@ object ShareCardGenerator {
         return bitmap
     }
     
+    fun generatePlayerInningsCard(
+        playerName: String,
+        teamName: String,
+        runs: String,
+        balls: String,
+        fours: String,
+        sixes: String,
+        strikeRate: String,
+        dismissal: String,
+        matchTitle: String,
+        format: ShareCardFormat = ShareCardFormat.INSTAGRAM_POST
+    ): Bitmap {
+        val width = format.width
+        val height = format.height
+        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+
+        // Background
+        paint.shader = LinearGradient(
+            0f, 0f, 0f, height.toFloat(),
+            intArrayOf(0xFF050505.toInt(), 0xFF141414.toInt(), 0xFF050505.toInt()),
+            null, Shader.TileMode.CLAMP
+        )
+        canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), paint)
+        paint.shader = null
+
+        // Gold top bar
+        paint.color = 0xFFFFD700.toInt()
+        canvas.drawRect(0f, 0f, width.toFloat(), 8f, paint)
+
+        // Gold border
+        paint.style = Paint.Style.STROKE
+        paint.strokeWidth = 4f
+        canvas.drawRoundRect(RectF(12f, 12f, width - 12f, height - 12f), 32f, 32f, paint)
+        paint.style = Paint.Style.FILL
+
+        val centerX = width / 2f
+        var y = 120f
+
+        // Team name
+        paint.color = 0xFF94A3B8.toInt()
+        paint.textSize = 36f
+        paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+        paint.textAlign = Paint.Align.CENTER
+        canvas.drawText(teamName.uppercase(), centerX, y, paint)
+        y += 80f
+
+        // Player name
+        paint.color = 0xFFFFFFFF.toInt()
+        paint.textSize = if (playerName.length > 18) 56f else 72f
+        canvas.drawText(playerName, centerX, y, paint)
+        y += 40f
+
+        // Divider
+        paint.color = 0xFF333333.toInt()
+        paint.style = Paint.Style.STROKE
+        paint.strokeWidth = 2f
+        canvas.drawLine(width * 0.15f, y, width * 0.85f, y, paint)
+        paint.style = Paint.Style.FILL
+        y += 100f
+
+        // Runs (large)
+        paint.color = 0xFFFFD700.toInt()
+        paint.textSize = 160f
+        paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+        canvas.drawText(runs, centerX, y, paint)
+        y += 20f
+
+        // Balls
+        paint.color = 0xFF94A3B8.toInt()
+        paint.textSize = 40f
+        paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
+        canvas.drawText("($balls balls)", centerX, y, paint)
+        y += 80f
+
+        // Stats row: 4s | 6s | SR
+        val statSpacing = width / 4f
+        val statLabels = listOf("4s", "6s", "SR")
+        val statValues = listOf(fours, sixes, strikeRate)
+        statValues.forEachIndexed { i, value ->
+            val x = statSpacing * (i + 1)
+            paint.color = 0xFFFFD700.toInt()
+            paint.textSize = 60f
+            paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+            paint.textAlign = Paint.Align.CENTER
+            canvas.drawText(value, x, y, paint)
+            paint.color = 0xFF64748B.toInt()
+            paint.textSize = 28f
+            paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
+            canvas.drawText(statLabels[i], x, y + 40f, paint)
+        }
+        y += 120f
+
+        // Dismissal
+        if (dismissal.isNotBlank()) {
+            paint.color = 0xFF64748B.toInt()
+            paint.textSize = 30f
+            paint.textAlign = Paint.Align.CENTER
+            paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.ITALIC)
+            val dismissalText = dismissal.take(55)
+            canvas.drawText(dismissalText, centerX, y, paint)
+            y += 50f
+        }
+
+        // Match title
+        paint.color = 0xFF475569.toInt()
+        paint.textSize = 26f
+        paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
+        canvas.drawText(matchTitle.take(50), centerX, y, paint)
+
+        // Bouncer branding
+        paint.color = 0xFFFFD700.toInt()
+        paint.textSize = 36f
+        paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+        canvas.drawText("BOUNCER", centerX, height - 60f, paint)
+
+        return bitmap
+    }
+
     /**
      * Saves bitmap to cache and returns shareable URI
      */
@@ -717,7 +837,7 @@ object ShareCardGenerator {
             
                 FileProvider.getUriForFile(
                     context,
-                    "${context.packageName}.provider",
+                    "${context.packageName}.fileprovider",
                     file
                 )
             } catch (e: Exception) {

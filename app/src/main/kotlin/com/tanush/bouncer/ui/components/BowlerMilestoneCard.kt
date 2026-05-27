@@ -8,6 +8,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.LocalFireDepartment
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.*
@@ -66,7 +67,8 @@ enum class BowlerMilestoneType(val displayName: String, val wickets: Int, val em
 @Composable
 fun BowlerMilestoneCard(
     milestoneInfo: BowlerMilestoneInfo,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onShare: (() -> Unit)? = null,
 ) {
     val colors = BouncerDesignSystem.colors
     val hierarchy = BouncerDesignSystem.hierarchy
@@ -191,31 +193,44 @@ fun BowlerMilestoneCard(
                         )
                     }
                     
-                    Surface(
-                        color = milestoneColor.copy(alpha = 0.2f),
-                        shape = RoundedCornerShape(16.dp),
-                        modifier = Modifier.scale(if (milestoneInfo.isNewMilestone) pulseScale else 1f)
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Surface(
+                            color = milestoneColor.copy(alpha = 0.2f),
+                            shape = RoundedCornerShape(16.dp),
+                            modifier = Modifier.scale(if (milestoneInfo.isNewMilestone) pulseScale else 1f)
                         ) {
-                            Icon(
-                                imageVector = Icons.Filled.LocalFireDepartment,
-                                contentDescription = null,
-                                tint = milestoneColor,
-                                modifier = Modifier
-                                    .size(20.dp)
-                                    .rotate(flameRotation)
-                            )
+                            Row(
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.LocalFireDepartment,
+                                    contentDescription = null,
+                                    tint = milestoneColor,
+                                    modifier = Modifier
+                                        .size(20.dp)
+                                        .rotate(flameRotation)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = milestoneInfo.milestone.displayName.uppercase(),
+                                    color = milestoneColor,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Black,
+                                    letterSpacing = 1.sp
+                                )
+                            }
+                        }
+                        if (onShare != null) {
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = milestoneInfo.milestone.displayName.uppercase(),
-                                color = milestoneColor,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Black,
-                                letterSpacing = 1.sp
-                            )
+                            IconButton(onClick = onShare, modifier = Modifier.size(32.dp)) {
+                                Icon(
+                                    imageVector = Icons.Filled.Share,
+                                    contentDescription = "Share milestone",
+                                    tint = milestoneColor,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
                         }
                     }
                 }

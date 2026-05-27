@@ -8,6 +8,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.EmojiEvents
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.*
@@ -56,7 +57,8 @@ enum class MilestoneType(val displayName: String, val runs: Int, val emoji: Stri
 @Composable
 fun BatsmanMilestoneCard(
     milestoneInfo: BatsmanMilestoneInfo,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onShare: (() -> Unit)? = null,
 ) {
     val colors = BouncerDesignSystem.colors
     val hierarchy = BouncerDesignSystem.hierarchy
@@ -161,31 +163,44 @@ fun BatsmanMilestoneCard(
                             fontSize = 32.sp
                         )
                     }
-                    
-                    // Animated milestone badge
-                    Surface(
-                        color = milestoneColor.copy(alpha = 0.2f),
-                        shape = RoundedCornerShape(16.dp),
-                        modifier = Modifier.scale(if (milestoneInfo.isNewMilestone) pulseScale else 1f)
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically
+
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        // Animated milestone badge
+                        Surface(
+                            color = milestoneColor.copy(alpha = 0.2f),
+                            shape = RoundedCornerShape(16.dp),
+                            modifier = Modifier.scale(if (milestoneInfo.isNewMilestone) pulseScale else 1f)
                         ) {
-                            Icon(
-                                imageVector = Icons.Filled.EmojiEvents,
-                                contentDescription = null,
-                                tint = milestoneColor,
-                                modifier = Modifier.size(20.dp)
-                            )
+                            Row(
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.EmojiEvents,
+                                    contentDescription = null,
+                                    tint = milestoneColor,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = milestoneInfo.milestone.displayName.uppercase(),
+                                    color = milestoneColor,
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Black,
+                                    letterSpacing = 1.sp
+                                )
+                            }
+                        }
+                        if (onShare != null) {
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = milestoneInfo.milestone.displayName.uppercase(),
-                                color = milestoneColor,
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Black,
-                                letterSpacing = 1.sp
-                            )
+                            IconButton(onClick = onShare, modifier = Modifier.size(32.dp)) {
+                                Icon(
+                                    imageVector = Icons.Filled.Share,
+                                    contentDescription = "Share milestone",
+                                    tint = milestoneColor,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
                         }
                     }
                 }
