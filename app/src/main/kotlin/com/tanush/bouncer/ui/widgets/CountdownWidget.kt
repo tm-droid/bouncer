@@ -120,7 +120,7 @@ class CountdownWidget : GlanceAppWidget() {
                 1, TimeUnit.MINUTES
             ).setConstraints(
                 Constraints.Builder()
-                    .setRequiresBatteryNotLow(false) // Run even on low battery
+                    .setRequiresBatteryNotLow(true)
                     .build()
             ).addTag("countdown_widget_update")
             .build()

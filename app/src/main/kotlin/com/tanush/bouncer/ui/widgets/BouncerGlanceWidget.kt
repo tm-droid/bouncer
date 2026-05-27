@@ -4,14 +4,13 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.GlanceTheme
-import androidx.glance.Image
-import androidx.glance.ImageProvider
+import androidx.glance.LocalSize
 import androidx.glance.action.Action
 import androidx.glance.action.ActionParameters
 import androidx.glance.action.actionParametersOf
@@ -19,34 +18,29 @@ import androidx.glance.action.actionStartActivity
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
+import androidx.glance.appwidget.SizeMode
 import androidx.glance.appwidget.provideContent
-import androidx.glance.appwidget.components.Scaffold
+import androidx.glance.appwidget.cornerRadius
 import androidx.glance.background
 import androidx.glance.layout.*
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextAlign
 import androidx.glance.text.TextStyle
-import androidx.glance.unit.ColorProvider
-import androidx.glance.appwidget.cornerRadius
 import com.tanush.bouncer.BouncerActivity
-import com.tanush.bouncer.R
 import io.sentry.Breadcrumb
 import io.sentry.Sentry
 import io.sentry.SentryLevel
 
-/**
- * Premium Glance-based Home Screen Widget for Bouncer
- * 
- * Features:
- * - Modern Jetpack Glance composables
- * - Premium dark theme with gold accents
- * - Live match scores with badges
- * - Multiple widget sizes (2x1, 3x2, 4x2)
- * - Tap to open match details
- * - Auto-refresh via WorkManager
- */
 class BouncerGlanceWidget : GlanceAppWidget() {
+
+    override val sizeMode = SizeMode.Responsive(
+        setOf(
+            DpSize(80.dp, 40.dp),    // 2x1
+            DpSize(180.dp, 110.dp),  // 3x2
+            DpSize(250.dp, 110.dp)   // 4x2
+        )
+    )
 
     companion object {
         internal const val PREF_NAME = "bouncer_glance_widget"
@@ -60,7 +54,10 @@ class BouncerGlanceWidget : GlanceAppWidget() {
             team2Score: String,
             matchStatus: String,
             isLive: Boolean,
-            winProbability: Float? = null
+            winProbability: Float? = null,
+            recentBalls: String? = null,
+            battingPair: String? = null,
+            currentBowler: String? = null
         ) {
             val prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
             prefs.edit().apply {
@@ -72,9 +69,12 @@ class BouncerGlanceWidget : GlanceAppWidget() {
                 putBoolean("is_live", isLive)
                 putFloat("win_prob", winProbability ?: 0.5f)
                 putLong("last_update", System.currentTimeMillis())
+                if (recentBalls != null) putString("recent_balls", recentBalls)
+                if (battingPair != null) putString("batting_pair", battingPair)
+                if (currentBowler != null) putString("current_bowler", currentBowler)
                 apply()
             }
-            
+
             Sentry.addBreadcrumb(Breadcrumb().apply {
                 category = "widget"
                 message = "Glance widget data updated: $team1Name vs $team2Name"
@@ -103,6 +103,37 @@ class BouncerGlanceWidget : GlanceAppWidget() {
                 )
             )
         }
+
+        /** Parse "Name|runs|balls;Name|runs|balls" back into a pair. */
+        internal fun parseBattingPair(raw: String): Pair<BatsmanInfo, BatsmanInfo>? {
+            val parts = raw.split(";")
+            if (parts.size < 2) return null
+            val striker = parseBatsman(parts[0]) ?: return null
+            val nonStriker = parseBatsman(parts[1]) ?: return null
+            return striker to nonStriker
+        }
+
+        private fun parseBatsman(raw: String): BatsmanInfo? {
+            val p = raw.split("|")
+            if (p.size < 3) return null
+            return BatsmanInfo(
+                name  = p[0],
+                runs  = p[1].toIntOrNull() ?: 0,
+                balls = p[2].toIntOrNull() ?: 0
+            )
+        }
+
+        /** Parse "name|wickets|runs|overs" back into a BowlerInfo. */
+        internal fun parseBowler(raw: String): BowlerInfo? {
+            val p = raw.split("|")
+            if (p.size < 4) return null
+            return BowlerInfo(
+                name    = p[0],
+                wickets = p[1].toIntOrNull() ?: 0,
+                runs    = p[2].toIntOrNull() ?: 0,
+                overs   = p[3]
+            )
+        }
     }
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
@@ -116,7 +147,7 @@ class BouncerGlanceWidget : GlanceAppWidget() {
     @Composable
     private fun WidgetContent(context: Context) {
         val prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
-        
+
         val team1Name = prefs.getString("team1_name", null)
         val team1Score = prefs.getString("team1_score", null)
         val team2Name = prefs.getString("team2_name", null)
@@ -124,6 +155,13 @@ class BouncerGlanceWidget : GlanceAppWidget() {
         val matchStatus = prefs.getString("match_status", "No matches")
         val isLive = prefs.getBoolean("is_live", false)
         val winProb = prefs.getFloat("win_prob", 0.5f)
+        val recentBallsRaw = prefs.getString("recent_balls", null)
+        val battingPairRaw = prefs.getString("batting_pair", null)
+        val currentBowlerRaw = prefs.getString("current_bowler", null)
+
+        val size = LocalSize.current
+        val isMediumOrLarger = size.height >= 100.dp
+        val isLargeWidget = size.width >= 240.dp && size.height >= 100.dp
 
         Box(
             modifier = GlanceModifier
@@ -134,13 +172,18 @@ class BouncerGlanceWidget : GlanceAppWidget() {
         ) {
             if (team1Name != null && team2Name != null) {
                 LiveMatchLayout(
-                    team1Name = team1Name,
-                    team1Score = team1Score ?: "-",
-                    team2Name = team2Name,
-                    team2Score = team2Score ?: "-",
-                    matchStatus = matchStatus ?: "Unknown",
-                    isLive = isLive,
-                    winProbability = winProb
+                    team1Name        = team1Name,
+                    team1Score       = team1Score ?: "-",
+                    team2Name        = team2Name,
+                    team2Score       = team2Score ?: "-",
+                    matchStatus      = matchStatus ?: "Unknown",
+                    isLive           = isLive,
+                    winProbability   = winProb,
+                    recentBallsRaw   = recentBallsRaw,
+                    battingPairRaw   = battingPairRaw,
+                    currentBowlerRaw = currentBowlerRaw,
+                    showRichData     = isMediumOrLarger,
+                    showBattingData  = isLargeWidget
                 )
             } else {
                 NoMatchLayout()
@@ -156,15 +199,24 @@ class BouncerGlanceWidget : GlanceAppWidget() {
         team2Score: String,
         matchStatus: String,
         isLive: Boolean,
-        winProbability: Float
+        winProbability: Float,
+        recentBallsRaw: String?,
+        battingPairRaw: String?,
+        currentBowlerRaw: String?,
+        showRichData: Boolean,
+        showBattingData: Boolean
     ) {
+        val recentBalls = recentBallsRaw?.split(",")?.filter { it.isNotBlank() }
+        val battingPair = battingPairRaw?.let { parseBattingPair(it) }
+        val bowler = currentBowlerRaw?.let { parseBowler(it) }
+
         Column(
             modifier = GlanceModifier
                 .fillMaxSize()
                 .padding(12.dp),
             verticalAlignment = Alignment.Top
         ) {
-            // Header with live badge
+            // Header with live badge + status
             Row(
                 modifier = GlanceModifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -188,7 +240,6 @@ class BouncerGlanceWidget : GlanceAppWidget() {
                     }
                     Spacer(modifier = GlanceModifier.width(8.dp))
                 }
-                
                 Text(
                     text = matchStatus,
                     style = TextStyle(
@@ -202,15 +253,11 @@ class BouncerGlanceWidget : GlanceAppWidget() {
             Spacer(modifier = GlanceModifier.height(12.dp))
 
             // Team 1
-            TeamRow(
-                teamName = team1Name,
-                score = team1Score,
-                isLeading = winProbability > 0.5f
-            )
+            TeamRow(teamName = team1Name, score = team1Score, isLeading = winProbability > 0.5f)
 
             Spacer(modifier = GlanceModifier.height(8.dp))
 
-            // VS Divider
+            // VS
             Row(
                 modifier = GlanceModifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally
@@ -228,17 +275,39 @@ class BouncerGlanceWidget : GlanceAppWidget() {
             Spacer(modifier = GlanceModifier.height(8.dp))
 
             // Team 2
-            TeamRow(
-                teamName = team2Name,
-                score = team2Score,
-                isLeading = winProbability < 0.5f
-            )
+            TeamRow(teamName = team2Name, score = team2Score, isLeading = winProbability < 0.5f)
 
-            Spacer(modifier = GlanceModifier.height(12.dp))
-
-            // Win probability bar
             if (isLive) {
+                Spacer(modifier = GlanceModifier.height(12.dp))
                 WinProbabilityBar(winProbability)
+            }
+
+            // 3x2+: recent balls strip
+            if (showRichData && isLive && !recentBalls.isNullOrEmpty()) {
+                Spacer(modifier = GlanceModifier.height(8.dp))
+                RecentBallsStrip(
+                    modifier = GlanceModifier.fillMaxWidth(),
+                    balls = recentBalls
+                )
+            }
+
+            // 4x2: batting pair + current bowler
+            if (showBattingData && isLive) {
+                if (battingPair != null) {
+                    Spacer(modifier = GlanceModifier.height(6.dp))
+                    BattingPairWidget(
+                        modifier = GlanceModifier.fillMaxWidth(),
+                        striker    = battingPair.first,
+                        nonStriker = battingPair.second
+                    )
+                }
+                if (bowler != null) {
+                    Spacer(modifier = GlanceModifier.height(4.dp))
+                    CurrentBowlerWidget(
+                        modifier = GlanceModifier.fillMaxWidth(),
+                        bowler = bowler
+                    )
+                }
             }
         }
     }
@@ -263,9 +332,7 @@ class BouncerGlanceWidget : GlanceAppWidget() {
                 ),
                 modifier = GlanceModifier.defaultWeight()
             )
-            
             Spacer(modifier = GlanceModifier.width(8.dp))
-            
             Text(
                 text = score,
                 style = TextStyle(
@@ -310,13 +377,9 @@ class BouncerGlanceWidget : GlanceAppWidget() {
         ) {
             Text(
                 text = "🏏",
-                style = TextStyle(
-                    fontSize = 32.sp
-                )
+                style = TextStyle(fontSize = 32.sp)
             )
-            
             Spacer(modifier = GlanceModifier.height(8.dp))
-            
             Text(
                 text = "No live matches",
                 style = TextStyle(
@@ -325,9 +388,7 @@ class BouncerGlanceWidget : GlanceAppWidget() {
                     fontWeight = FontWeight.Medium
                 )
             )
-            
             Spacer(modifier = GlanceModifier.height(4.dp))
-            
             Text(
                 text = "Check back soon",
                 style = TextStyle(
@@ -339,9 +400,6 @@ class BouncerGlanceWidget : GlanceAppWidget() {
     }
 }
 
-/**
- * Glance Widget Receiver for Home Screen
- */
 class BouncerGlanceWidgetReceiver : GlanceAppWidgetReceiver() {
     override val glanceAppWidget: GlanceAppWidget = BouncerGlanceWidget()
 }

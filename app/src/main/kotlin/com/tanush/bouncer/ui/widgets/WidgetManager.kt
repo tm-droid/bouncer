@@ -157,17 +157,42 @@ object WidgetManager {
         try {
             val team1Name = team1.acronym.ifEmpty { team1.name }
             val team2Name = team2.acronym.ifEmpty { team2.name }
-            
+
+            val recentBalls = match.recentBalls?.joinToString(",")
+
+            val battingPair = run {
+                val batsmen = match.scrapedBatsmen ?: return@run null
+                val striker = batsmen.firstOrNull { it.isStriker } ?: batsmen.getOrNull(0) ?: return@run null
+                val nonStriker = batsmen.firstOrNull { !it.isStriker } ?: batsmen.getOrNull(1) ?: return@run null
+                "${striker.name}|${striker.runs}|${striker.balls};${nonStriker.name}|${nonStriker.runs}|${nonStriker.balls}"
+            }
+
+            val currentBowler = match.currentBowler?.let { b ->
+                "${b.name}|${b.wickets}|${b.runs}|${b.overs}"
+            }
+
             BouncerGlanceWidget.updateWidgetData(
-                context = context,
-                team1Name = team1Name,
-                team1Score = team1.score ?: "-",
-                team2Name = team2Name,
-                team2Score = team2.score ?: "-",
-                matchStatus = match.status,
-                isLive = match.isLive,
-                winProbability = winProbability
+                context        = context,
+                team1Name      = team1Name,
+                team1Score     = team1.score ?: "-",
+                team2Name      = team2Name,
+                team2Score     = team2.score ?: "-",
+                matchStatus    = match.status,
+                isLive         = match.isLive,
+                winProbability = winProbability,
+                recentBalls    = recentBalls,
+                battingPair    = battingPair,
+                currentBowler  = currentBowler
             )
+
+            // Also cache these in widget_cache so WidgetUpdateWorkManagerWorker can include them
+            val prefs = context.getSharedPreferences("widget_cache", Context.MODE_PRIVATE)
+            prefs.edit().apply {
+                if (recentBalls != null) putString("recent_balls", recentBalls)
+                if (battingPair != null) putString("batting_pair", battingPair)
+                if (currentBowler != null) putString("current_bowler", currentBowler)
+                apply()
+            }
         } catch (e: Exception) {
             Sentry.captureException(e)
         }

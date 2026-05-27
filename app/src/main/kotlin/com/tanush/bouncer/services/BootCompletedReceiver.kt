@@ -4,9 +4,13 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.util.Log
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkManager
+import com.tanush.bouncer.ui.widgets.WidgetUpdateWorkManagerWorker
 import io.sentry.Breadcrumb
 import io.sentry.Sentry
 import io.sentry.SentryLevel
+import java.util.concurrent.TimeUnit
 
 /**
  * Re-enqueues periodic score polling after the device reboots.
@@ -35,6 +39,19 @@ class BootCompletedReceiver : BroadcastReceiver() {
             ScorePollingWorker.enqueuePeriodicWork(context)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to enqueue score polling on boot", e)
+            Sentry.captureException(e)
+        }
+
+        // Refresh widgets 30s after boot using cached data — don't wait up to 15 min
+        // for the first ScorePollingWorker tick.
+        try {
+            val initialWidgetUpdate = OneTimeWorkRequestBuilder<WidgetUpdateWorkManagerWorker>()
+                .setInitialDelay(30, TimeUnit.SECONDS)
+                .addTag("widget_boot_update")
+                .build()
+            WorkManager.getInstance(context).enqueue(initialWidgetUpdate)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to enqueue initial widget update on boot", e)
             Sentry.captureException(e)
         }
     }
