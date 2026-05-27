@@ -14,6 +14,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import com.tanush.bouncer.liveactivity.LiveActivityNotificationBuilder
 import com.tanush.bouncer.managers.FavouriteTeamsManager
+import com.tanush.bouncer.utils.PreferencesHelper
 
 /**
  * Main entry point for the Bouncer cricket app.
@@ -41,7 +42,11 @@ class BouncerActivity : ComponentActivity() {
         FavouriteTeamsManager.initialize(this)
 
         LiveActivityNotificationBuilder(applicationContext).createNotificationChannel()
-        requestNotificationPermissionIfNeeded()
+        // Onboarding handles the permission prompt for new users.
+        // Only request here for users who already completed onboarding (pre-onboarding installs).
+        val onboardingDone = PreferencesHelper.getBoolean(this, PreferencesHelper.KEY_ONBOARDING_COMPLETE, false)
+            || FavouriteTeamsManager.favourites.value.isNotEmpty()
+        if (onboardingDone) requestNotificationPermissionIfNeeded()
         externalDeepLinkUri.value = intent?.dataString
 
         setContent {
