@@ -28,7 +28,12 @@ data class CricketMatch(
     var category: String? = null,
     var gender: String = "Men",
     var competitionType: String = "International",
-    var winProbability: Double = 50.0
+    var winProbability: Double = 50.0,
+    // Toss and officials — populated when available from live match page
+    var tossWinner: String? = null,
+    var tossDecision: String? = null,
+    var umpire1: String? = null,
+    var umpire2: String? = null,
 ) {
     val isLive: Boolean 
         get() = status.lowercase().contains("live") || 

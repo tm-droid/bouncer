@@ -20,6 +20,8 @@ import com.tanush.bouncer.ui.components.v2.BouncerCard
 import com.tanush.bouncer.ui.components.v2.SectionHeaderV2
 import com.tanush.bouncer.ui.components.v2.StatRowV2
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
+import com.tanush.bouncer.ui.components.premium.TossDetails
+import com.tanush.bouncer.ui.components.premium.TossResultCard
 
 /**
  * InfoTabV2 — Match information: series, venue, date, toss, status, etc.
@@ -57,6 +59,22 @@ fun InfoTabV2(match: CricketMatch) {
             }
         }
 
+        // Toss result card — shown when structured toss data is available
+        if (match.tossWinner != null && match.tossDecision != null && match.teams.size >= 2) {
+            item(key = "toss_card") {
+                TossResultCard(
+                    tossDetails = TossDetails(
+                        team1Name = match.teams[0].name,
+                        team2Name = match.teams[1].name,
+                        team1Logo = match.teams[0].logoUrl ?: "",
+                        team2Logo = match.teams[1].logoUrl ?: "",
+                        tossWinner = match.tossWinner!!,
+                        decision = if (match.tossDecision == "field") "bowl" else match.tossDecision!!,
+                    ),
+                )
+            }
+        }
+
         item(key = "info_header") {
             SectionHeaderV2(title = "Match Information")
         }
@@ -72,11 +90,17 @@ fun InfoTabV2(match: CricketMatch) {
                 }
                 StatRowV2(label = "Venue", value = match.venue, modifier = pad)
 
-                // Extract toss info from the info field if available
-                val tossInfo = extractTossInfo(match.info, match.currentStatus)
-                if (tossInfo.isNotBlank()) {
-                    StatRowV2(label = "Toss", value = tossInfo, modifier = pad)
+                // Structured toss fallback for display in info rows
+                if (match.tossWinner == null) {
+                    val tossInfo = extractTossInfo(match.info, match.currentStatus)
+                    if (tossInfo.isNotBlank()) {
+                        StatRowV2(label = "Toss", value = tossInfo, modifier = pad)
+                    }
                 }
+
+                // Umpires
+                match.umpire1?.let { StatRowV2(label = "Umpire 1", value = it, modifier = pad) }
+                match.umpire2?.let { StatRowV2(label = "Umpire 2", value = it, modifier = pad) }
 
                 // Show match day for Tests
                 val dayInfo = extractDayInfo(match.currentStatus, match.matchType)

@@ -293,6 +293,12 @@ class CricBuzzScraper {
 
             val matchScore = buildMatchScore(scoreFields)
 
+            val tossObj = runCatching { info.getAsJsonObject("tossResults") }.getOrNull()
+            val tossWinner = tossObj?.get("tossWinnerName")?.asString?.takeIf { it.isNotBlank() }
+            val tossDecision = tossObj?.get("decision")?.asString?.takeIf { it.isNotBlank() }
+            val ump1 = runCatching { info.getAsJsonObject("umpire1")?.get("name")?.asString }.getOrNull()?.takeIf { it.isNotBlank() }
+            val ump2 = runCatching { info.getAsJsonObject("umpire2")?.get("name")?.asString }.getOrNull()?.takeIf { it.isNotBlank() }
+
             return CricketMatch(
                 id = matchId,
                 seriesId = seriesId,
@@ -308,7 +314,11 @@ class CricBuzzScraper {
                 info = state,
                 category = competitionType,
                 gender = "Men",
-                competitionType = competitionType
+                competitionType = competitionType,
+                tossWinner = tossWinner,
+                tossDecision = tossDecision,
+                umpire1 = ump1,
+                umpire2 = ump2,
             )
         } catch (e: Exception) {
             Log.d(TAG, "Failed to parse match from element", e)
