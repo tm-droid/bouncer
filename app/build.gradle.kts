@@ -43,7 +43,6 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        vectorDrawables { useSupportLibrary = true }
 
         buildConfigField("String", "RAPIDAPI_KEY", "\"${localProperties.getProperty("RAPIDAPI_KEY") ?: System.getenv("RAPIDAPI_KEY") ?: ""}\"")
         buildConfigField("String", "GROQ_API_KEY",      "\"${localProperties.getProperty("GROQ_API_KEY")      ?: System.getenv("GROQ_API_KEY")      ?: ""}\"")
