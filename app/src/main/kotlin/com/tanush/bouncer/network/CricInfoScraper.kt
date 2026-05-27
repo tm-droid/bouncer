@@ -504,12 +504,14 @@ class CricInfoScraper {
         val powerplays = mutableListOf<PowerplayEvent>()
         val impactSubs = mutableListOf<ImpactSubEvent>()
         val milestones = mutableListOf<String>()
+        val overMilestonesMap = sortedMapOf<Int, Int>() // over -> cumulative runs
 
         for (line in allText) {
             parseDrsLine(line)?.let { drsReviews.add(it) }
             parsePowerplayLine(line)?.let { powerplays.add(it) }
             parseImpactSubLine(line)?.let { impactSubs.add(it) }
             parseMilestoneLine(line)?.let { milestones.add(it) }
+            parseScoreMilestone(line)?.let { (over, runs) -> overMilestonesMap[over] = maxOf(overMilestonesMap.getOrDefault(over, 0), runs) }
         }
 
         return MatchFlowData(
@@ -517,6 +519,7 @@ class CricInfoScraper {
             powerplays = powerplays,
             impactSubs = impactSubs,
             milestones = milestones,
+            overMilestones = overMilestonesMap.entries.map { (over, runs) -> Pair(over, runs) },
         )
     }
 
@@ -536,6 +539,7 @@ class CricInfoScraper {
     )
 
     private val MILESTONE_REGEX = Regex("""([\w .]+): (\d+) off (\d+) balls \(\d+ x 4""")
+    private val SCORE_MILESTONE_REGEX = Regex("""(\d+) runs? in ([\d.]+) overs?""", RegexOption.IGNORE_CASE)
 
     private fun parseDrsLine(line: String): DrsReviewEvent? {
         val m = DRS_REGEX.find(line) ?: return null
@@ -573,5 +577,13 @@ class CricInfoScraper {
     private fun parseMilestoneLine(line: String): String? {
         val m = MILESTONE_REGEX.find(line) ?: return null
         return m.value.trim()
+    }
+
+    private fun parseScoreMilestone(line: String): Pair<Int, Int>? {
+        val m = SCORE_MILESTONE_REGEX.find(line) ?: return null
+        val runs = m.groupValues[1].toIntOrNull() ?: return null
+        val oversDouble = m.groupValues[2].toDoubleOrNull() ?: return null
+        val over = oversDouble.toInt().coerceAtLeast(1)
+        return Pair(over, runs)
     }
 }

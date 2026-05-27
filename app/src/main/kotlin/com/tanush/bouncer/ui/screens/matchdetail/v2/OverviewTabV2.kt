@@ -31,6 +31,8 @@ import com.tanush.bouncer.models.ScrapedBatsman
 import com.tanush.bouncer.models.ScrapedBowler
 import com.tanush.bouncer.models.DRSReviewData
 import com.tanush.bouncer.ui.components.premium.DRSReviewCard
+import com.tanush.bouncer.ui.components.premium.LiveScoringData
+import com.tanush.bouncer.ui.components.premium.LiveScoringGraphCard
 import com.tanush.bouncer.ui.components.premium.PowerPlayAnalysisCard
 import com.tanush.bouncer.ui.components.premium.PowerPlayPhase
 import com.tanush.bouncer.ui.components.v2.BouncerCard
@@ -443,6 +445,33 @@ fun OverviewTabV2(
                         over = latestDrs.over,
                         decision = latestDrs.decision,
                         umpireName = latestDrs.umpireName,
+                    ),
+                )
+            }
+        }
+
+        // Over-by-over scoring graph from ESPNCricinfo score milestones
+        val overMilestones = matchFlow?.overMilestones
+        if (!overMilestones.isNullOrEmpty() && match.teams.size >= 2) {
+            val maxOver = overMilestones.maxOf { it.first }
+            val cumulativeScores = buildList {
+                var prev = 0
+                for (over in 1..maxOver) {
+                    val milestone = overMilestones.lastOrNull { it.first <= over }
+                    val cumulative = milestone?.second ?: prev
+                    add(cumulative)
+                    prev = cumulative
+                }
+            }
+            item(key = "scoring_graph") {
+                LiveScoringGraphCard(
+                    scoringData = LiveScoringData(
+                        team1Name = match.teams[0].acronym.ifBlank { match.teams[0].name.take(3).uppercase() },
+                        team2Name = match.teams[1].acronym.ifBlank { match.teams[1].name.take(3).uppercase() },
+                        team1Scores = cumulativeScores,
+                        team2Scores = emptyList(),
+                        currentOver = maxOver,
+                        projectedScore = cumulativeScores.lastOrNull() ?: 0,
                     ),
                 )
             }

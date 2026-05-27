@@ -5,6 +5,8 @@ data class MatchFlowData(
     val powerplays: List<PowerplayEvent> = emptyList(),
     val impactSubs: List<ImpactSubEvent> = emptyList(),
     val milestones: List<String> = emptyList(),
+    // (over, cumulativeRuns) pairs derived from "X runs in Y.Z overs" milestones
+    val overMilestones: List<Pair<Int, Int>> = emptyList(),
 )
 
 data class DrsReviewEvent(
