@@ -55,11 +55,11 @@ import com.tanush.bouncer.ui.components.v2.ReminderBottomSheet
 import com.tanush.bouncer.ui.components.v2.StatusBadgeV2
 import com.tanush.bouncer.ui.components.v2.determineMatchStatus
 import com.tanush.bouncer.ui.components.premium.PremiumAiStatisticsTab
+import com.tanush.bouncer.ui.components.premium.PremiumScorecardTab
 import com.tanush.bouncer.ui.screens.matchdetail.v2.CommentaryTabV2
 import com.tanush.bouncer.ui.screens.matchdetail.v2.HighlightsTabV2
 import com.tanush.bouncer.ui.screens.matchdetail.v2.InfoTabV2
 import com.tanush.bouncer.ui.screens.matchdetail.v2.OverviewTabV2
-import com.tanush.bouncer.ui.screens.matchdetail.v2.ScorecardTabV2
 import com.tanush.bouncer.viewmodels.HighlightsViewModel
 import com.tanush.bouncer.viewmodels.MatchDetailViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -256,8 +256,9 @@ fun MatchDetailViewV2(
                         requiredRunRate = uiState.liveRequiredRunRate,
                         scorecard = uiState.scorecard,
                         streamingCommentary = streamingCommentary,
+                        matchFlow = uiState.matchFlow,
                     )
-                    "Scorecard" -> ScorecardTabV2(scorecard = uiState.scorecard)
+                    "Scorecard" -> PremiumScorecardTab(scorecard = uiState.scorecard)
                     "Commentary" -> CommentaryTabV2(
                         commentary = uiState.commentary,
                         recentBalls = uiState.recentBalls,

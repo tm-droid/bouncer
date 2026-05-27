@@ -143,9 +143,9 @@ fun DRSReviewCard(
 
         // Delivery Metrics
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            MetricGlassCard("Impact Speed", review.impactSpeed, Icons.Default.TrackChanges, modifier = Modifier.weight(1f))
-            MetricGlassCard("Turn Degree", review.turnDegree, Icons.Default.TrackChanges, modifier = Modifier.weight(1f))
-            MetricGlassCard("Confidence", review.confidence, Icons.Default.AutoAwesome, modifier = Modifier.weight(1f))
+            MetricGlassCard("Over", review.over, Icons.Default.TrackChanges, modifier = Modifier.weight(1f))
+            MetricGlassCard("Decision", review.decision, Icons.Default.TrackChanges, modifier = Modifier.weight(1f))
+            MetricGlassCard("Umpire", review.umpireName, Icons.Default.AutoAwesome, modifier = Modifier.weight(1f))
         }
     }
 }

@@ -6,10 +6,12 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.tanush.bouncer.models.AchievementKind
 import com.tanush.bouncer.models.CricketMatch
+import com.tanush.bouncer.models.MatchFlowData
 import com.tanush.bouncer.models.Scorecard
 import com.tanush.bouncer.models.ScrapedBatsman
 import com.tanush.bouncer.models.ScrapedBowler
 import com.tanush.bouncer.network.CricBuzzScraper
+import com.tanush.bouncer.network.CricInfoScraper
 import com.tanush.bouncer.services.LiveCommentaryManager
 import io.sentry.Breadcrumb
 import io.sentry.Sentry
@@ -40,11 +42,14 @@ class MatchDetailViewModel(
         val liveTeam2Overs: String = "",
         val liveCurrentRunRate: String? = null,
         val liveRequiredRunRate: String? = null,
+        val matchFlow: MatchFlowData? = null,
     )
 
     private val appContext = context.applicationContext
     private val scraper = CricBuzzScraper()
+    private val cricinfo = CricInfoScraper()
     private val commentaryManager = LiveCommentaryManager()
+    private var espnMatchUrl: String? = null
 
     private val _uiState = MutableStateFlow(
         UiState(
@@ -87,6 +92,27 @@ class MatchDetailViewModel(
             })
         } finally {
             _uiState.update { it.copy(commentaryLoading = false) }
+        }
+
+        // Fetch match flow once (DRS reviews, powerplay summaries, impact subs).
+        try {
+            val url = espnMatchUrl ?: run {
+                cricinfo.findClosestLiveMatchUrlAndId(match.matchTitle)?.first.also { espnMatchUrl = it }
+            }
+            if (url != null) {
+                val flow = cricinfo.fetchMatchFlow(url)
+                if (flow.drsReviews.isNotEmpty() || flow.powerplays.isNotEmpty() || flow.impactSubs.isNotEmpty()) {
+                    _uiState.update { it.copy(matchFlow = flow) }
+                }
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Sentry.addBreadcrumb(Breadcrumb().apply {
+                category = "match_detail_v2.matchflow"
+                message = "Match flow fetch failed: ${e.message}"
+                level = SentryLevel.WARNING
+            })
         }
 
         if (!match.isLive) return

@@ -26,9 +26,9 @@ data class ScrapedBatsman(
 
 data class DRSReviewData(
     val isSuccessful: Boolean,
-    val impactSpeed: String,
-    val turnDegree: String,
-    val confidence: String
+    val over: String,
+    val decision: String,
+    val umpireName: String,
 )
 
 data class PowerPlayPhaseData(

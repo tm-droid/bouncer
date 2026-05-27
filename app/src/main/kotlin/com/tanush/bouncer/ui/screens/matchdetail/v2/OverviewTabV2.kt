@@ -25,9 +25,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.tanush.bouncer.models.CricketMatch
+import com.tanush.bouncer.models.MatchFlowData
 import com.tanush.bouncer.models.Scorecard
 import com.tanush.bouncer.models.ScrapedBatsman
 import com.tanush.bouncer.models.ScrapedBowler
+import com.tanush.bouncer.models.DRSReviewData
+import com.tanush.bouncer.ui.components.premium.DRSReviewCard
+import com.tanush.bouncer.ui.components.premium.PowerPlayAnalysisCard
+import com.tanush.bouncer.ui.components.premium.PowerPlayPhase
 import com.tanush.bouncer.ui.components.v2.BouncerCard
 import com.tanush.bouncer.ui.components.v2.RecentBallsStripV2
 import com.tanush.bouncer.ui.components.v2.SectionHeaderV2
@@ -64,6 +69,7 @@ fun OverviewTabV2(
     requiredRunRate: String?,
     scorecard: Scorecard? = null,
     streamingCommentary: String = "",
+    matchFlow: MatchFlowData? = null,
 ) {
     val colors = BouncerThemeV2.colors
     val typography = BouncerThemeV2.typography
@@ -393,6 +399,51 @@ fun OverviewTabV2(
                 PremiumWinProbabilityHero(
                     team1Name = match.teams[0].acronym.ifBlank { match.teams[0].name.take(3).uppercase() },
                     team1Probability = (heuristicProb.toFloat() / 100f).coerceIn(0.05f, 0.95f),
+                )
+            }
+        }
+
+        // Powerplay summary from ESPNCricinfo
+        val ppPhases = matchFlow?.powerplays
+        if (!ppPhases.isNullOrEmpty()) {
+            val battingTeamName = match.teams.firstOrNull { it.isBatting }?.name
+                ?: match.teams.firstOrNull()?.name ?: ""
+            item(key = "powerplay_card") {
+                PowerPlayAnalysisCard(
+                    teamName = battingTeamName,
+                    phases = ppPhases.map { pp ->
+                        PowerPlayPhase(
+                            name = "PP${pp.phase}",
+                            overs = pp.overs,
+                            runs = pp.runs,
+                            wickets = pp.wickets,
+                            runRate = if (pp.overs.contains("-")) {
+                                val parts = pp.overs.split(Regex("[–\\-]"))
+                                val start = parts.firstOrNull()?.toDoubleOrNull() ?: 0.0
+                                val end = parts.lastOrNull()?.toDoubleOrNull() ?: 6.0
+                                val oversPlayed = (end - start).coerceAtLeast(0.1)
+                                pp.runs / oversPlayed
+                            } else 0.0,
+                            boundaries = 0,
+                            sixes = 0,
+                            dotBalls = 0,
+                        )
+                    },
+                )
+            }
+        }
+
+        // DRS reviews from ESPNCricinfo — show most recent review
+        val latestDrs = matchFlow?.drsReviews?.lastOrNull()
+        if (latestDrs != null) {
+            item(key = "drs_card") {
+                DRSReviewCard(
+                    review = DRSReviewData(
+                        isSuccessful = latestDrs.isUpheld,
+                        over = latestDrs.over,
+                        decision = latestDrs.decision,
+                        umpireName = latestDrs.umpireName,
+                    ),
                 )
             }
         }

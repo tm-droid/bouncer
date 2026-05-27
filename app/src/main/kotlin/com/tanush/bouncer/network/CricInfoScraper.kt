@@ -3,6 +3,10 @@ package com.tanush.bouncer.network
 import android.util.Log
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
+import com.tanush.bouncer.models.DrsReviewEvent
+import com.tanush.bouncer.models.ImpactSubEvent
+import com.tanush.bouncer.models.MatchFlowData
+import com.tanush.bouncer.models.PowerplayEvent
 import io.sentry.Breadcrumb
 import io.sentry.Sentry
 import io.sentry.SentryLevel
@@ -447,5 +451,127 @@ class CricInfoScraper {
 
         return url.split("/").asReversed()
             .firstOrNull { it.length >= 5 && it.all { ch -> ch.isDigit() } }
+    }
+
+    // ── Match Flow (DRS reviews, powerplay summaries, impact subs) ──────────
+
+    suspend fun fetchMatchFlow(matchUrl: String): MatchFlowData = withContext(Dispatchers.IO) {
+        if (isCircuitOpen()) return@withContext MatchFlowData()
+
+        val scorecardUrl = buildScorecardUrl(matchUrl)
+        addBreadcrumb(
+            category = "network.cricinfo",
+            message = "Fetching match flow",
+            level = SentryLevel.INFO,
+            data = mapOf("url" to scorecardUrl),
+        )
+
+        try {
+            val doc = connect(scorecardUrl).get()
+            recordSuccess()
+            val flow = parseMatchFlow(doc)
+            addBreadcrumb(
+                category = "network.cricinfo",
+                message = "Match flow fetched",
+                level = SentryLevel.INFO,
+                data = mapOf("drs" to flow.drsReviews.size, "pp" to flow.powerplays.size, "subs" to flow.impactSubs.size),
+            )
+            flow
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
+            recordFailure(e)
+            addBreadcrumb(
+                category = "network.cricinfo",
+                message = "Error fetching match flow",
+                level = SentryLevel.ERROR,
+                data = mapOf("url" to scorecardUrl, "error" to (e.message ?: "")),
+            )
+            MatchFlowData()
+        }
+    }
+
+    private fun buildScorecardUrl(matchUrl: String): String =
+        matchUrl.trimEnd('/')
+            .removeSuffix("/live-cricket-score")
+            .removeSuffix("/commentary") + "/full-scorecard"
+
+    private fun parseMatchFlow(doc: Document): MatchFlowData {
+        val allText = doc.select("p, div.ds-text-tight-s, span.ds-text-tight-s, div[class*='match-flow']")
+            .map { it.text().trim() }
+            .filter { it.length > 20 }
+
+        val drsReviews = mutableListOf<DrsReviewEvent>()
+        val powerplays = mutableListOf<PowerplayEvent>()
+        val impactSubs = mutableListOf<ImpactSubEvent>()
+        val milestones = mutableListOf<String>()
+
+        for (line in allText) {
+            parseDrsLine(line)?.let { drsReviews.add(it) }
+            parsePowerplayLine(line)?.let { powerplays.add(it) }
+            parseImpactSubLine(line)?.let { impactSubs.add(it) }
+            parseMilestoneLine(line)?.let { milestones.add(it) }
+        }
+
+        return MatchFlowData(
+            drsReviews = drsReviews,
+            powerplays = powerplays,
+            impactSubs = impactSubs,
+            milestones = milestones,
+        )
+    }
+
+    private val DRS_REGEX = Regex(
+        """Over ([\d.]+): Review by (.+?) \((Batting|Bowling)\), Decision Challenged - (.+?), Umpire - (.+?), Batter - (.+?) \((Upheld|Struck down)\)""",
+        RegexOption.IGNORE_CASE,
+    )
+
+    private val POWERPLAY_REGEX = Regex(
+        """Powerplay (\d+): Overs ([\d.]+[–\-][\d.]+).*?(\d+) runs, (\d+) wicket""",
+        RegexOption.IGNORE_CASE,
+    )
+
+    private val IMPACT_SUB_REGEX = Regex(
+        """(.+?) Impact Player Sub: (.+?) in for (.+?) \(.+?, ([\d.]+) ov\)""",
+        RegexOption.IGNORE_CASE,
+    )
+
+    private val MILESTONE_REGEX = Regex("""([\w .]+): (\d+) off (\d+) balls \(\d+ x 4""")
+
+    private fun parseDrsLine(line: String): DrsReviewEvent? {
+        val m = DRS_REGEX.find(line) ?: return null
+        return DrsReviewEvent(
+            over = m.groupValues[1],
+            teamName = m.groupValues[2].trim(),
+            reviewType = m.groupValues[3],
+            decision = m.groupValues[4].trim(),
+            umpireName = m.groupValues[5].trim(),
+            batterName = m.groupValues[6].trim(),
+            isUpheld = m.groupValues[7].equals("Upheld", ignoreCase = true),
+        )
+    }
+
+    private fun parsePowerplayLine(line: String): PowerplayEvent? {
+        val m = POWERPLAY_REGEX.find(line) ?: return null
+        return PowerplayEvent(
+            phase = m.groupValues[1].toIntOrNull() ?: 1,
+            overs = m.groupValues[2],
+            runs = m.groupValues[3].toIntOrNull() ?: 0,
+            wickets = m.groupValues[4].toIntOrNull() ?: 0,
+        )
+    }
+
+    private fun parseImpactSubLine(line: String): ImpactSubEvent? {
+        val m = IMPACT_SUB_REGEX.find(line) ?: return null
+        return ImpactSubEvent(
+            team = m.groupValues[1].trim(),
+            playerIn = m.groupValues[2].trim(),
+            playerOut = m.groupValues[3].trim(),
+            over = m.groupValues[4],
+        )
+    }
+
+    private fun parseMilestoneLine(line: String): String? {
+        val m = MILESTONE_REGEX.find(line) ?: return null
+        return m.value.trim()
     }
 }
