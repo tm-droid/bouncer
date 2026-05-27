@@ -2,6 +2,7 @@ package com.tanush.bouncer.network
 
 import com.tanush.bouncer.models.FormatStats
 import com.tanush.bouncer.models.PlayerProfile
+import com.tanush.bouncer.models.RecentInnings
 import io.sentry.Breadcrumb
 import io.sentry.Sentry
 import io.sentry.SentryLevel
@@ -254,6 +255,7 @@ object PlayerProfileScraper {
             bio = playerData.optString("bio", ""),
             teams = extractTeams(playerData),
             stats = stats,
+            recentForm = extractRecentForm(playerData),
         )
     }
 
@@ -266,6 +268,28 @@ object PlayerProfileScraper {
             if (teamName.isNotEmpty()) teams.add(teamName)
         }
         return teams
+    }
+
+    private fun extractRecentForm(playerData: JSONObject): List<RecentInnings> {
+        val formArray = playerData.optJSONArray("battingForm")
+            ?: playerData.optJSONObject("batting")?.optJSONArray("form")
+            ?: playerData.optJSONArray("recentForm")
+            ?: return emptyList()
+
+        return buildList {
+            for (i in 0 until minOf(formArray.length(), 10)) {
+                val entry = formArray.optJSONObject(i) ?: continue
+                val runs = entry.optInt("runs", entry.optInt("score", -1))
+                if (runs < 0) continue
+                add(RecentInnings(
+                    runs = runs,
+                    balls = entry.optInt("balls", 0),
+                    opponent = entry.optString("opposingTeam", entry.optString("opponent", "")),
+                    format = entry.optString("matchFormat", entry.optString("format", "")),
+                    date = entry.optString("matchDate", entry.optString("date", "")),
+                ))
+            }
+        }
     }
 
     /**

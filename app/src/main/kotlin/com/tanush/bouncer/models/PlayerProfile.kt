@@ -1,5 +1,13 @@
 package com.tanush.bouncer.models
 
+data class RecentInnings(
+    val runs: Int,
+    val balls: Int = 0,
+    val opponent: String = "",
+    val format: String = "",
+    val date: String = "",
+)
+
 data class PlayerProfile(
     val id: String,
     val name: String,
@@ -12,6 +20,7 @@ data class PlayerProfile(
     val bio: String = "",
     val teams: List<String> = emptyList(),
     val stats: Map<String, FormatStats> = emptyMap(), // "Test", "ODI", "T20I", "IPL"
+    val recentForm: List<RecentInnings> = emptyList(),
 )
 
 data class FormatStats(
