@@ -2,6 +2,7 @@ package com.tanush.bouncer.data.remote
 
 import android.util.Log
 import com.tanush.bouncer.ApiKeys
+import com.tanush.bouncer.data.CacheConfig
 import io.appwrite.Permission
 import io.appwrite.Query
 import io.appwrite.Role
@@ -129,8 +130,17 @@ object AppwritePlayerFormsClient {
                     if (page.rows.size < 100) break
                     lastId = page.rows.last().id
                 }
+                val staleThresholdMs = System.currentTimeMillis() - CacheConfig.PLAYER_FORM_TTL_MS
                 allRows.mapNotNull { data ->
                     val name = data["player_name"] as? String ?: return@mapNotNull null
+                    val updatedAt = data["updated_at"] as? String
+                    if (updatedAt != null) {
+                        val updatedMs = runCatching { Instant.parse(updatedAt).toEpochMilli() }.getOrNull() ?: 0L
+                        if (updatedMs < staleThresholdMs) {
+                            Log.d(TAG, "Skipping stale player form for $name (updated_at=$updatedAt)")
+                            return@mapNotNull null
+                        }
+                    }
                     name to PlayerFormSnapshot(
                         playerName = name,
                         recentSR = (data["recent_sr"] as? Number)?.toDouble() ?: 0.0,

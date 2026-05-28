@@ -43,6 +43,11 @@ class CommentaryFusionService(
     // Concurrent access from per-ball coroutines — use ConcurrentHashMap + per-match mutex
     // so reads and writes never see a torn list.
     private val previousBallsBuffer = ConcurrentHashMap<String, MutableList<String>>()
+    // Temp=0.0 verify calls are fully deterministic: same inputs → same PASS/FAIL every time.
+    // Cache by content hash to avoid redundant AI calls on retry paths.
+    private val verifyCache = object : LinkedHashMap<Int, Boolean>(512, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<Int, Boolean>?) = size > 512
+    }
     private val bufferMutex = Mutex()
     private val maxBufferSize = 6
 
@@ -334,7 +339,12 @@ class CommentaryFusionService(
         previousBallsBuffer[matchId]?.toList() ?: emptyList()
     }
 
-    suspend fun generateBallCommentary(matchId: String, ballNumber: String, rawSnippet: String): String =
+    suspend fun generateBallCommentary(
+        matchId: String,
+        ballNumber: String,
+        rawSnippet: String,
+        isMatchComplete: Boolean = false
+    ): String =
         withContext(Dispatchers.IO) {
             val cacheKey = "ball_ai:$matchId:$ballNumber"
             AICacheService.getCommentary(cacheKey)?.let { return@withContext it }
@@ -347,7 +357,7 @@ class CommentaryFusionService(
 
             val result = callProviders(prompt, maxTokens = 50, temperature = 0.7)
                 ?: return@withContext FALLBACK_BALL_COMMENTARY
-            AICacheService.setCommentary(result, cacheKey)
+            AICacheService.setCommentary(result, cacheKey, permanent = isMatchComplete)
             addBallToBuffer(matchId, result)
             result
         }
@@ -364,7 +374,8 @@ class CommentaryFusionService(
         scoreContext: String,
         totalOvers: Int = 20,
         partnershipContext: String = "",
-        matchupContext: String = ""
+        matchupContext: String = "",
+        isMatchComplete: Boolean = false
     ): String {
         Sentry.addBreadcrumb(Breadcrumb().apply {
             category = "service.commentary"
@@ -423,16 +434,16 @@ class CommentaryFusionService(
             Log.w("CommentaryFusionService", "Hallucination check FAILED — retrying with next provider (used: $usedProviderName)")
             val retried = retryWithNextProvider(prompt, alreadyTriedProvider = usedProviderName)
             if (retried != null) {
-                AICacheService.setCommentary(retried, cacheKey)
+                AICacheService.setCommentary(retried, cacheKey, permanent = isMatchComplete)
                 return retried
             }
             val fallback = snippet1.ifEmpty { snippet2 }
             Log.w("CommentaryFusionService", "All providers exhausted — using raw snippet fallback")
-            AICacheService.setCommentary(fallback, cacheKey)
+            AICacheService.setCommentary(fallback, cacheKey, permanent = isMatchComplete)
             return fallback
         }
 
-        AICacheService.setCommentary(result, cacheKey)
+        AICacheService.setCommentary(result, cacheKey, permanent = isMatchComplete)
         return result
     }
 
@@ -519,7 +530,7 @@ class CommentaryFusionService(
         // Cache write after stream completes
         if (succeeded && fullBuilder.isNotEmpty()) {
             val fullText = fullBuilder.toString().trim()
-            AICacheService.setCommentary(fullText, cacheKey)
+            AICacheService.setCommentary(fullText, cacheKey, permanent = matchContext.isMatchComplete)
             addBallToBuffer(matchContext.matchId, fullText)
         }
     }
@@ -591,7 +602,12 @@ class CommentaryFusionService(
         }
     }
 
-    suspend fun summarizeOversWithAI(commentaryLines: List<String>, matchId: String, over: Int): String {
+    suspend fun summarizeOversWithAI(
+        commentaryLines: List<String>,
+        matchId: String,
+        over: Int,
+        isMatchComplete: Boolean = false
+    ): String {
         if (commentaryLines.isEmpty()) return "No recent commentary available."
 
         Sentry.addBreadcrumb(Breadcrumb().apply {
@@ -625,7 +641,7 @@ class CommentaryFusionService(
 
         // 7c: Token budget 256 → 512 for over summaries
         val result = callProviders(prompt, maxTokens = 512, temperature = 0.4) ?: "[Summary unavailable]"
-        AICacheService.setCommentary(result, cacheKey)
+        AICacheService.setCommentary(result, cacheKey, permanent = isMatchComplete)
         return result
     }
 
@@ -665,6 +681,9 @@ class CommentaryFusionService(
         bowler: String,
         batsman: String
     ): Boolean {
+        val cacheKey = (aiOutput + snippet1 + snippet2 + ballNumber + bowler + batsman).hashCode()
+        verifyCache[cacheKey]?.let { return it }
+
         val prompt = VERIFICATION_PROMPT_TEMPLATE
             .replace("{snippet1}", snippet1)
             .replace("{snippet2}", snippet2)
@@ -693,6 +712,7 @@ class CommentaryFusionService(
                     setData("aiOutput", aiOutput.take(200))
                 })
             }
+            verifyCache[cacheKey] = passed
             passed
         } catch (e: Exception) {
             // API failure during verification — pass through rather than discard good commentary
@@ -789,6 +809,7 @@ class CommentaryFusionService(
         val scoreContext: String,
         val totalOvers: Int = 20,
         val partnershipContext: String = "",
-        val matchupContext: String = ""
+        val matchupContext: String = "",
+        val isMatchComplete: Boolean = false
     )
 }

@@ -5,6 +5,7 @@ import android.util.Log
 import androidx.work.*
 import com.tanush.bouncer.data.local.BouncerDatabase
 import com.tanush.bouncer.data.local.entities.PlayerCacheEntity
+import com.tanush.bouncer.data.remote.AppwritePlayerProfilesClient
 import com.tanush.bouncer.network.PlayerProfileScraper
 import com.tanush.bouncer.utils.WorkerLogger
 import io.sentry.Breadcrumb
@@ -52,6 +53,19 @@ class PlayerCacheWorker(
                 return Result.success()
             }
 
+            // Check global Appwrite cache before hitting the scraper.
+            val remoteProfile = AppwritePlayerProfilesClient.pullProfile(playerId)
+            if (remoteProfile != null) {
+                db.playerCacheDao().upsert(remoteProfile)
+                Log.d(TAG, "Appwrite hit for '$playerName' — skipped scrape, warmed Room")
+                Sentry.addBreadcrumb(Breadcrumb().apply {
+                    category = "player_cache"
+                    message = "Appwrite cache hit for '$playerName' — skipped scrape"
+                    level = SentryLevel.INFO
+                })
+                return Result.success()
+            }
+
             val results = PlayerProfileScraper.searchPlayers(playerName)
             val firstResult = results.firstOrNull() ?: run {
                 Log.d(TAG, "Player '$playerName' not found in search — skipping")
@@ -83,6 +97,7 @@ class PlayerCacheWorker(
             )
 
             db.playerCacheDao().upsert(entity)
+            AppwritePlayerProfilesClient.pushProfile(entity)
 
             Log.d(TAG, "Cached player profile for '${profile.name}'")
             Sentry.addBreadcrumb(Breadcrumb().apply {

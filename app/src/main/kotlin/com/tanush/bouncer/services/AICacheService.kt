@@ -31,7 +31,8 @@ object AICacheService {
 
     private data class CommentaryEntry(
         val commentary: String,
-        val timestamp: Date
+        val timestamp: Date,
+        val permanent: Boolean = false
     )
 
     private val CACHE_EXPIRATION_INTERVAL_MS = CacheConfig.AI_CACHE_TTL_MS
@@ -61,7 +62,7 @@ object AICacheService {
             val cached = cache[key]
             if (cached != null) {
                 val ageMs = Date().time - cached.timestamp.time
-                if (ageMs < CACHE_EXPIRATION_INTERVAL_MS) {
+                if (cached.permanent || ageMs < CACHE_EXPIRATION_INTERVAL_MS) {
                     Log.d(TAG, "Memory hit for key $key")
                     return@withLock cached.commentary
                 }
@@ -69,7 +70,7 @@ object AICacheService {
                 cache.remove(key)
             }
 
-            // Memory miss — check Room DB
+            // Memory miss — check Room DB (permanent entries have timestamp=Long.MAX_VALUE, always pass cutoff)
             val cutoffMs = System.currentTimeMillis() - CACHE_EXPIRATION_INTERVAL_MS
             val dbResult = dao?.getCommentary(key, cutoffMs)
             if (dbResult != null) {
@@ -79,11 +80,13 @@ object AICacheService {
             }
 
             // Room miss — check Appwrite shared cache
-            val remoteResult = AppwriteAICache.get(key)
-            if (remoteResult != null) {
-                Log.d(TAG, "Remote hit for key $key, warming local caches")
-                cache[key] = CommentaryEntry(remoteResult, Date())
-                dao?.insert(AICommentaryCacheEntity(key, remoteResult, Date().time))
+            val remoteHit = AppwriteAICache.get(key)
+            if (remoteHit != null) {
+                val (remoteResult, isPermanent) = remoteHit
+                Log.d(TAG, "Remote hit for key $key (permanent=$isPermanent), warming local caches")
+                cache[key] = CommentaryEntry(remoteResult, Date(), permanent = isPermanent)
+                val dbTimestamp = if (isPermanent) CacheConfig.AI_CACHE_PERMANENT_TIMESTAMP else Date().time
+                dao?.insert(AICommentaryCacheEntity(key, remoteResult, dbTimestamp))
                 return@withLock remoteResult
             }
 
@@ -94,7 +97,7 @@ object AICacheService {
         }
     }
 
-    suspend fun setCommentary(commentary: String, key: String) = mutex.withLock {
+    suspend fun setCommentary(commentary: String, key: String, permanent: Boolean = false) = mutex.withLock {
         try {
             Sentry.addBreadcrumb(Breadcrumb().apply {
                 category = "service.ai"
@@ -102,15 +105,17 @@ object AICacheService {
                 level = SentryLevel.INFO
                 setData("cacheKey", key)
                 setData("contentLength", commentary.length)
+                setData("permanent", permanent)
             })
 
             val now = Date()
-            Log.d(TAG, "Updating cache for key $key")
-            cache[key] = CommentaryEntry(commentary, now)
-            dao?.insert(AICommentaryCacheEntity(key, commentary, now.time))
+            Log.d(TAG, "Updating cache for key $key (permanent=$permanent)")
+            cache[key] = CommentaryEntry(commentary, now, permanent = permanent)
+            val dbTimestamp = if (permanent) CacheConfig.AI_CACHE_PERMANENT_TIMESTAMP else now.time
+            dao?.insert(AICommentaryCacheEntity(key, commentary, dbTimestamp))
             scope.launch {
                 try {
-                    AppwriteAICache.set(key, commentary)
+                    AppwriteAICache.set(key, commentary, permanent)
                 } catch (e: Exception) {
                     Log.w(TAG, "Appwrite AI cache sync failed for key=$key", e)
                     Sentry.captureException(e)
@@ -145,7 +150,7 @@ object AICacheService {
             val cached = cache[key]
             if (cached != null) {
                 val ageMs = Date().time - cached.timestamp.time
-                return@withLock ageMs < CACHE_EXPIRATION_INTERVAL_MS
+                return@withLock cached.permanent || ageMs < CACHE_EXPIRATION_INTERVAL_MS
             }
             val cutoffMs = System.currentTimeMillis() - CACHE_EXPIRATION_INTERVAL_MS
             return@withLock dao?.getCommentary(key, cutoffMs) != null

@@ -44,7 +44,9 @@ object AppwriteAICache {
         }
     }
 
-    suspend fun get(key: String): String? {
+    // Returns (commentary, isPermanent). isPermanent=true when expires_at is >1 year away —
+    // used by AICacheService to decide whether to warm local caches permanently.
+    suspend fun get(key: String): Pair<String, Boolean>? {
         if (!isReady) return null
         return withContext(Dispatchers.IO) {
             runCatching {
@@ -57,14 +59,21 @@ object AppwriteAICache {
                 val row = result.rows.firstOrNull() ?: return@runCatching null
                 val data = row.data
                 val expiresAt = data["expires_at"] as? String ?: ""
+                val now = System.currentTimeMillis()
                 if (expiresAt.isNotBlank()) {
                     val expiry = runCatching { Instant.parse(expiresAt).toEpochMilli() }.getOrNull() ?: 0L
-                    if (expiry < System.currentTimeMillis()) {
+                    if (expiry < now) {
                         Log.d(TAG, "Remote cache expired for key $key")
                         return@runCatching null
                     }
+                    val commentary = (data["commentary"] as? String)?.takeIf { it.isNotBlank() }
+                        ?: return@runCatching null
+                    val isPermanent = expiry > now + 365L * 24 * 60 * 60 * 1000
+                    return@runCatching Pair(commentary, isPermanent)
                 }
-                (data["commentary"] as? String)?.takeIf { it.isNotBlank() }
+                val commentary = (data["commentary"] as? String)?.takeIf { it.isNotBlank() }
+                    ?: return@runCatching null
+                Pair(commentary, false)
             }.onFailure { e ->
                 if (e is AppwriteException) {
                     Log.d(TAG, "Remote cache get failed (silent): ${e.message} [${e.code}]")
@@ -75,14 +84,18 @@ object AppwriteAICache {
         }
     }
 
-    suspend fun set(key: String, commentary: String) {
+    suspend fun set(key: String, commentary: String, permanent: Boolean = false) {
         if (!isReady) return
         withContext(Dispatchers.IO) {
             runCatching {
                 val db = tablesDB ?: return@runCatching
-                val expiresAt = DateTimeFormatter.ISO_INSTANT.format(
-                    Instant.ofEpochMilli(System.currentTimeMillis() + TTL_MS)
-                )
+                val expiresAt = if (permanent) {
+                    "2099-01-01T00:00:00.000Z"
+                } else {
+                    DateTimeFormatter.ISO_INSTANT.format(
+                        Instant.ofEpochMilli(System.currentTimeMillis() + TTL_MS)
+                    )
+                }
                 db.createRow(
                     databaseId = dbId,
                     tableId = tableId,

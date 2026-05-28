@@ -473,6 +473,7 @@ class LiveActivityViewModel : ViewModel() {
                     cricbuzzId = match.id,
                     cricbuzzUrl = "https://www.cricbuzz.com/live-cricket-scores/${match.id}",
                     keyNames = match.teams.map { it.name },
+                    isMatchComplete = match.isCompleted,
                 )
 
                 val latestCommentary = commentary.firstOrNull().orEmpty()

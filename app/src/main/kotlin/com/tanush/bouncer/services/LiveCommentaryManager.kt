@@ -33,6 +33,9 @@ class LiveCommentaryManager(
     private val scorer = CommentaryScorer()
     private val fusion = CommentaryFusionService()
 
+    // Set at start of getBestCommentaryForMatch; all internal calls use this to decide cache permanence.
+    private var isMatchComplete: Boolean = false
+
     private val commentaryHistory = mutableListOf<String>()
     private val historyLimit = 10
     private val aiCommentaryHistory = mutableListOf<String>()
@@ -110,7 +113,7 @@ class LiveCommentaryManager(
         val last18Count = min(max(aiCommentaryHistory.size, 0), 18)
         val last18AI = if (last18Count > 0) aiCommentaryHistory.takeLast(last18Count) else emptyList()
         return try {
-            if (last18AI.isNotEmpty()) fusion.summarizeOversWithAI(last18AI, matchId, over) else fallback
+            if (last18AI.isNotEmpty()) fusion.summarizeOversWithAI(last18AI, matchId, over, isMatchComplete) else fallback
         } catch (e: Exception) {
             if (e is CancellationException) throw e
             Log.w(TAG, "summarizeOversWithAI failed, using raw line", e)
@@ -140,7 +143,8 @@ class LiveCommentaryManager(
                 ballNumber = ballNumber,
                 bowler = bowler,
                 batsman = batsman,
-                scoreContext = scoreContext
+                scoreContext = scoreContext,
+                isMatchComplete = isMatchComplete
             )
         } catch (e: Exception) {
             if (e is CancellationException) throw e
@@ -220,7 +224,8 @@ class LiveCommentaryManager(
                     oversSummary = oversSummary,
                     bowler = bowlerName,
                     batsman = batsmanName,
-                    scoreContext = scoreContext
+                    scoreContext = scoreContext,
+                    isMatchComplete = isMatchComplete
                 )
             )
         }
@@ -266,7 +271,7 @@ class LiveCommentaryManager(
         val ballNum = extractBallNumber(resultValue.trimStart()) ?: return null
         if (!scorer.isBallByBallCommentary(resultValue)) return null
         return try {
-            val raw = fusion.generateBallCommentary(cricbuzzId, ballNum, resultValue.take(200))
+            val raw = fusion.generateBallCommentary(cricbuzzId, ballNum, resultValue.take(200), isMatchComplete)
             if (!raw.trimStart().matches(BALL_PREFIX_REGEX)) "$ballNum $raw" else raw
         } catch (e: Exception) {
             Sentry.captureException(e)
@@ -278,8 +283,10 @@ class LiveCommentaryManager(
         matchTitle: String,
         cricbuzzId: String,
         cricbuzzUrl: String,
-        keyNames: List<String>
+        keyNames: List<String>,
+        isMatchComplete: Boolean = false
     ): List<String> = withContext(Dispatchers.IO) {
+        this@LiveCommentaryManager.isMatchComplete = isMatchComplete
         addBreadcrumb(
             "Getting best commentary for match",
             mapOf("matchTitle" to matchTitle, "cricbuzzId" to cricbuzzId)
@@ -320,7 +327,8 @@ class LiveCommentaryManager(
                     oversSummary = buzzLine,
                     bowler = singleBowler,
                     batsman = singleBatsman,
-                    scoreContext = singleScore
+                    scoreContext = singleScore,
+                    isMatchComplete = isMatchComplete
                 )
             )
         }

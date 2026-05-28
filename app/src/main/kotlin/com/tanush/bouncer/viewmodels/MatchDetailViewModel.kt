@@ -152,6 +152,7 @@ class MatchDetailViewModel(
                     cricbuzzId = match.id,
                     cricbuzzUrl = "https://www.cricbuzz.com/live-cricket-scores/${match.id}",
                     keyNames = keyNames,
+                    isMatchComplete = match.isCompleted,
                 )
 
                 _uiState.update { state ->
