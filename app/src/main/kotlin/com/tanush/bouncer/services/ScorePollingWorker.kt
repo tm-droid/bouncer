@@ -12,6 +12,7 @@ import androidx.work.*
 import com.tanush.bouncer.R
 import com.tanush.bouncer.data.AppResult
 import com.tanush.bouncer.data.CricketRepository
+import com.tanush.bouncer.network.models.SanwebMatchSummary
 import com.tanush.bouncer.managers.MatchSubscriptionManager
 import com.tanush.bouncer.ui.notifications.RichNotificationBuilder
 import com.tanush.bouncer.ui.widgets.LiveMatchWidgetProvider
@@ -48,7 +49,7 @@ class ScorePollingWorker(
                     val matchCount = matchesResponse.matches.size
                     Log.d(TAG, "Fetched $matchCount live matches")
 
-                    cacheForWidgets(matchesResponse.matches.size)
+                    cacheForWidgets(matchesResponse.matches)
                     WidgetUpdateWorker.triggerImmediateUpdate(context)
                     context.sendBroadcast(
                         Intent(ACTION_SCORES_UPDATED).setPackage(context.packageName)
@@ -102,15 +103,58 @@ class ScorePollingWorker(
         }
     }
 
-    private fun cacheForWidgets(liveCount: Int) {
+    private suspend fun cacheForWidgets(matches: List<SanwebMatchSummary>) {
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             .edit()
-            .putInt("live_match_count", liveCount)
+            .putInt("live_match_count", matches.size)
             .putLong("last_poll_epoch", System.currentTimeMillis())
             .apply()
+
+        val widgetPrefs = context.getSharedPreferences("widget_cache", Context.MODE_PRIVATE)
+        val primary = matches.firstOrNull()
+
+        if (primary == null) {
+            widgetPrefs.edit().putBoolean("is_live", false).apply()
+            return
+        }
+
+        val scoreData = try {
+            (CricketRepository.getMatchScore(primary.id) as? AppResult.Success)?.data
+        } catch (e: Exception) {
+            Log.w(TAG, "Score fetch for widget failed", e)
+            null
+        }
+
+        val (team1, team2) = parseWidgetTeamNames(primary.title)
+
+        widgetPrefs.edit().apply {
+            putString("team1_name", team1)
+            putString("team2_name", team2)
+            putString("match_status", scoreData?.update ?: primary.status)
+            putBoolean("is_live", true)
+            if (scoreData != null) {
+                putString("team1_score", scoreData.livescore)
+                val battingPair = "${scoreData.batterone}|${scoreData.batsmanonerun}|${scoreData.batsmanoneball}" +
+                        ";${scoreData.battertwo}|${scoreData.batsmantworun}|${scoreData.batsmantwoball}"
+                putString("batting_pair", battingPair)
+                val currentBowler = "${scoreData.bowlerone}|${scoreData.bowleronewickers}|${scoreData.bowleronerun}|${scoreData.bowleroneover}"
+                putString("current_bowler", currentBowler)
+            }
+            apply()
+        }
     }
 
-    private fun notifySubscribedMatches(matches: List<com.tanush.bouncer.network.models.SanwebMatchSummary>) {
+    private fun parseWidgetTeamNames(title: String): Pair<String, String> {
+        val vsIdx = title.indexOf(" vs ", ignoreCase = true)
+        if (vsIdx < 0) return Pair("Team 1", "Team 2")
+        val before = title.substring(0, vsIdx)
+        val after = title.substring(vsIdx + 4)
+        val team1 = before.substringAfterLast(", ").trim().ifEmpty { before.trim() }
+        val team2 = after.substringBefore(",").trim()
+        return Pair(team1, team2)
+    }
+
+    private fun notifySubscribedMatches(matches: List<SanwebMatchSummary>) {
         val subscribed = MatchSubscriptionManager.subscriptions.value
         if (subscribed.isEmpty()) return
 
