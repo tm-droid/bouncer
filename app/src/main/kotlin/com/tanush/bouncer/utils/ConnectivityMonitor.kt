@@ -15,6 +15,14 @@ object ConnectivityMonitor {
     private val _isOnline = MutableStateFlow(true)
     val isOnline: StateFlow<Boolean> = _isOnline.asStateFlow()
 
+    // Callbacks fired when network recovers. Use-site pattern:
+    //   ConnectivityMonitor.addNetworkRecoveryCallback { wsClient.onNetworkAvailable() }
+    // Unregister in onStop/onCleared to avoid leaks.
+    private val networkRecoveryCallbacks = java.util.concurrent.CopyOnWriteArraySet<() -> Unit>()
+
+    fun addNetworkRecoveryCallback(cb: () -> Unit) { networkRecoveryCallbacks.add(cb) }
+    fun removeNetworkRecoveryCallback(cb: () -> Unit) { networkRecoveryCallbacks.remove(cb) }
+
     private var initialized = false
 
     fun init(context: Context) {
@@ -35,6 +43,7 @@ object ConnectivityMonitor {
         cm.registerNetworkCallback(request, object : ConnectivityManager.NetworkCallback() {
             override fun onAvailable(network: Network) {
                 _isOnline.value = true
+                networkRecoveryCallbacks.forEach { it() }
                 Sentry.addBreadcrumb(Breadcrumb().apply {
                     category = "connectivity"
                     message = "Network available"

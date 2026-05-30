@@ -3,6 +3,7 @@ package com.tanush.bouncer.data.local
 import androidx.room.testing.MigrationTestHelper
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -30,5 +31,30 @@ class MigrationTest {
         )
         migratedDb.close()
         // If validation passes, the schema matches HighlightEntity (no index). Test passes.
+    }
+
+    @Test
+    fun migrate8to9_createsExpectedIndices() {
+        helper.createDatabase("test-db-8", 8).close()
+
+        val db = helper.runMigrationsAndValidate(
+            "test-db-8", 9, true,
+            BouncerDatabase.MIGRATION_8_9
+        )
+
+        // Verify all three indices are present in sqlite_master.
+        val cursor = db.query(
+            "SELECT name FROM sqlite_master WHERE type='index' AND name IN (?, ?, ?)",
+            arrayOf(
+                "index_highlights_matchedBouncerMatchId",
+                "index_highlights_fetchedAt",
+                "index_ai_commentary_cache_timestamp",
+            )
+        )
+        val count = cursor.count
+        cursor.close()
+        db.close()
+
+        assertEquals("Expected 3 indices after migration 8→9, found $count", 3, count)
     }
 }

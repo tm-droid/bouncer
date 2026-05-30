@@ -225,8 +225,10 @@ dependencies {
     testImplementation(libs.kotlinx.coroutines.test)
     // Real org.json impl so unit tests don't hit the mocked Android stub
     testImplementation(libs.json)
+    testImplementation(libs.mockk)
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.espresso.core)
+    androidTestImplementation(libs.room.testing)
     debugImplementation(libs.compose.ui.tooling)
     debugImplementation(libs.compose.ui.test.manifest)
     debugImplementation(libs.leakcanary)

@@ -40,7 +40,9 @@ enum class ConnectionState {
  */
 class LiveScoreWebSocketClient(
     private val wsUrl: String,
-    private val client: OkHttpClient = buildDefaultClient()
+    private val client: OkHttpClient = buildDefaultClient(),
+    // Injectable for testing with TestScope; production uses the default IO dispatcher.
+    private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO),
 ) {
     companion object {
         private const val TAG = "LiveScoreWS"
@@ -56,8 +58,6 @@ class LiveScoreWebSocketClient(
                 .pingInterval(30, TimeUnit.SECONDS)
                 .build()
     }
-
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     // replay=1 so a late/slow consumer gets the last message immediately.
     // Larger buffer cushions bursts when downstream is busy (e.g. waiting on LLM).
