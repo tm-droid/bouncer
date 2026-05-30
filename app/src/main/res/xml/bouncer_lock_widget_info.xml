@@ -7,6 +7,7 @@
     android:widgetCategory="keyguard"
     android:updatePeriodMillis="900000"
     android:description="@string/bouncer_lock_widget_description"
+    android:previewLayout="@layout/widget_lock_preview"
     android:previewImage="@drawable/ic_lock_widget_preview"
     android:initialLayout="@layout/widget_lock_loading"
     android:widgetFeatures="configuration_optional" />

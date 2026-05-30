@@ -10,6 +10,7 @@
     android:widgetCategory="home_screen|keyguard"
     android:updatePeriodMillis="1800000"
     android:description="@string/bouncer_glance_widget_description"
+    android:previewLayout="@layout/widget_glance_preview"
     android:previewImage="@drawable/ic_widget_preview"
     android:initialLayout="@layout/widget_glance_loading"
     android:configure="com.tanush.bouncer.ui.widgets.WidgetConfigurationActivity"

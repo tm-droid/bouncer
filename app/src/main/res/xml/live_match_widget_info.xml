@@ -8,6 +8,7 @@
     android:updatePeriodMillis="60000"
     android:description="@string/live_match_widget_description"
     android:previewLayout="@layout/widget_live_match_preview"
+    android:previewImage="@drawable/ic_widget_preview"
     android:initialLayout="@layout/widget_live_match"
     android:resizeMode="horizontal|vertical"
     android:widgetCategory="home_screen|keyguard"
