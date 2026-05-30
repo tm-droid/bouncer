@@ -69,6 +69,9 @@ class LiveScoreWebSocketClient(
     private var webSocket: WebSocket? = null
     private var backoffMs = INITIAL_BACKOFF_MS
     private val shouldReconnect = AtomicBoolean(false)
+    // Tracks the in-flight reconnect delay so disconnect() can cancel it immediately
+    // instead of letting it run out (up to MAX_BACKOFF_MS = 30 s) before checking shouldReconnect.
+    private var reconnectJob: Job? = null
 
     // ── Public API ──────────────────────────────────────────────────────
 
@@ -82,7 +85,10 @@ class LiveScoreWebSocketClient(
     }
 
     fun disconnect() {
-        // Close socket first, then flip the flag. Doing it the other way leaves a
+        // Cancel the pending reconnect delay first so the coroutine doesn't outlive this call.
+        reconnectJob?.cancel()
+        reconnectJob = null
+        // Close socket next, then flip the flag. Doing it the other way leaves a
         // small window where an in-flight scheduleReconnect() could fire and re-open.
         val ws = webSocket
         webSocket = null
@@ -160,6 +166,8 @@ class LiveScoreWebSocketClient(
     }
 
     private fun scheduleReconnect() {
+        // Cancel any stale pending delay before starting a new one (e.g. rapid failure loop).
+        reconnectJob?.cancel()
         val delay = backoffMs
         backoffMs = (backoffMs * 2).coerceAtMost(MAX_BACKOFF_MS)
         _connectionState.value = ConnectionState.RECONNECTING
@@ -169,7 +177,7 @@ class LiveScoreWebSocketClient(
             setData("delayMs", delay)
         }
 
-        scope.launch {
+        reconnectJob = scope.launch {
             delay(delay)
             if (shouldReconnect.get()) {
                 openConnection(isReconnect = true)
