@@ -140,7 +140,12 @@ object AppwriteAICache {
         val client = AppwriteClient.client ?: return
         val realtime = Realtime(client)
         realtimeInstance = realtime
-        realtimeSubscription = realtime.subscribe("databases.$dbId.collections.$tableId.documents") { response ->
+        // TablesDB tables are backed by Appwrite collections internally, so the standard
+        // databases.{db}.collections.{table}.documents channel format is correct.
+        // Log the exact channel so a silent subscription miss is visible in logcat.
+        val channel = "databases.$dbId.collections.$tableId.documents"
+        Log.d(TAG, "Subscribing to realtime channel: $channel")
+        realtimeSubscription = realtime.subscribe(channel) { response ->
             val isCreate = response.events.any { it.contains(".create") }
             if (!isCreate) return@subscribe
             @Suppress("UNCHECKED_CAST")

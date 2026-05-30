@@ -50,51 +50,61 @@ object AICacheService {
         }
     }
 
-    suspend fun getCommentary(key: String): String? = mutex.withLock {
-        try {
-            Sentry.addBreadcrumb(Breadcrumb().apply {
-                category = "service.ai"
-                message = "Getting cached commentary"
-                level = SentryLevel.INFO
-                setData("cacheKey", key)
-            })
+    suspend fun getCommentary(key: String): String? {
+        Sentry.addBreadcrumb(Breadcrumb().apply {
+            category = "service.ai"
+            message = "Getting cached commentary"
+            level = SentryLevel.INFO
+            setData("cacheKey", key)
+        })
 
-            val cached = cache[key]
-            if (cached != null) {
-                val ageMs = Date().time - cached.timestamp.time
-                if (cached.permanent || ageMs < CACHE_EXPIRATION_INTERVAL_MS) {
-                    Log.d(TAG, "Memory hit for key $key")
-                    return@withLock cached.commentary
+        // Phase 1: memory + Room under mutex. Both are fast local I/O — holding mutex here is fine.
+        val localHit: String? = mutex.withLock {
+            try {
+                val cached = cache[key]
+                if (cached != null) {
+                    val ageMs = Date().time - cached.timestamp.time
+                    if (cached.permanent || ageMs < CACHE_EXPIRATION_INTERVAL_MS) {
+                        Log.d(TAG, "Memory hit for key $key")
+                        return@withLock cached.commentary
+                    }
+                    Log.d(TAG, "Memory expired for key $key")
+                    cache.remove(key)
                 }
-                Log.d(TAG, "Memory expired for key $key")
-                cache.remove(key)
+                val cutoffMs = System.currentTimeMillis() - CACHE_EXPIRATION_INTERVAL_MS
+                val dbResult = dao?.getCommentary(key, cutoffMs)
+                if (dbResult != null) {
+                    Log.d(TAG, "DB hit for key $key, warming memory cache")
+                    cache[key] = CommentaryEntry(dbResult, Date())
+                }
+                dbResult
+            } catch (e: Exception) {
+                Sentry.captureException(e)
+                throw e
             }
+        }
+        if (localHit != null) return localHit
 
-            // Memory miss — check Room DB (permanent entries have timestamp=Long.MAX_VALUE, always pass cutoff)
-            val cutoffMs = System.currentTimeMillis() - CACHE_EXPIRATION_INTERVAL_MS
-            val dbResult = dao?.getCommentary(key, cutoffMs)
-            if (dbResult != null) {
-                Log.d(TAG, "DB hit for key $key, warming memory cache")
-                cache[key] = CommentaryEntry(dbResult, Date())
-                return@withLock dbResult
-            }
-
-            // Room miss — check Appwrite shared cache
-            val remoteHit = AppwriteAICache.get(key)
-            if (remoteHit != null) {
-                val (remoteResult, isPermanent) = remoteHit
-                Log.d(TAG, "Remote hit for key $key (permanent=$isPermanent), warming local caches")
-                cache[key] = CommentaryEntry(remoteResult, Date(), permanent = isPermanent)
-                val dbTimestamp = if (isPermanent) CacheConfig.AI_CACHE_PERMANENT_TIMESTAMP else Date().time
-                dao?.insert(AICommentaryCacheEntity(key, remoteResult, dbTimestamp))
-                return@withLock remoteResult
-            }
-
-            return@withLock null
+        // Phase 2: Appwrite network call — mutex NOT held.
+        // Holding it during remote I/O would block setCommentary (called every ball) and
+        // isCacheValid for the full round-trip, stalling live commentary generation.
+        val remoteHit = try {
+            AppwriteAICache.get(key)
         } catch (e: Exception) {
             Sentry.captureException(e)
             throw e
+        } ?: return null
+
+        val (remoteResult, isPermanent) = remoteHit
+        Log.d(TAG, "Remote hit for key $key (permanent=$isPermanent), warming local caches")
+
+        // Phase 3: write-back to local caches under mutex
+        mutex.withLock {
+            cache[key] = CommentaryEntry(remoteResult, Date(), permanent = isPermanent)
+            val dbTimestamp = if (isPermanent) CacheConfig.AI_CACHE_PERMANENT_TIMESTAMP else Date().time
+            dao?.insert(AICommentaryCacheEntity(key, remoteResult, dbTimestamp))
         }
+        return remoteResult
     }
 
     suspend fun setCommentary(commentary: String, key: String, permanent: Boolean = false) = mutex.withLock {

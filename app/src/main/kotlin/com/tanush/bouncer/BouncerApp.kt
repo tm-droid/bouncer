@@ -185,7 +185,9 @@ class BouncerApp : Application() {
             AppwriteAICache.startRealtimeSubscription(
                 scope = applicationScope,
                 onNewEntry = { key, commentary ->
-                    applicationScope.launch {
+                    // Dispatchers.IO required — ingestFromRealtime acquires a mutex and writes to
+                    // Room. Running on Main risks jank if the mutex is contested or Room suspends.
+                    applicationScope.launch(Dispatchers.IO) {
                         AICacheService.ingestFromRealtime(key, commentary)
                     }
                 }

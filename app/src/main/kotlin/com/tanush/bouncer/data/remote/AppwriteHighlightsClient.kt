@@ -39,13 +39,23 @@ object AppwriteHighlightsClient {
         return withContext(Dispatchers.IO) {
             runCatching {
                 val db = tablesDB ?: return@runCatching null
-                val result = db.listRows(
-                    databaseId = dbId,
-                    tableId = tableId,
-                    queries = listOf(Query.limit(100))
-                )
-                @Suppress("UNCHECKED_CAST")
-                result.rows.map { HighlightRow.fromMap(it.data as? Map<String, Any?> ?: emptyMap()) }
+                // Cursor-based pagination — static limit(100) silently truncates as the table grows
+                // (Appwrite default is 25; even 100 misses rows once the table exceeds that cap).
+                val allRows = mutableListOf<HighlightRow>()
+                var lastId: String? = null
+                var pageCount = 0
+                while (pageCount++ < 50) {
+                    val queries = buildList {
+                        add(Query.limit(100))
+                        if (lastId != null) add(Query.cursorAfter(lastId!!))
+                    }
+                    val page = db.listRows(databaseId = dbId, tableId = tableId, queries = queries)
+                    @Suppress("UNCHECKED_CAST")
+                    allRows.addAll(page.rows.map { HighlightRow.fromMap(it.data as? Map<String, Any?> ?: emptyMap()) })
+                    if (page.rows.size < 100) break
+                    lastId = page.rows.last().id
+                }
+                allRows
             }.onFailure { e ->
                 if (e is AppwriteException) {
                     Log.d(TAG, "Fetch highlights failed (silent): ${e.message} [${e.code}]")
@@ -62,7 +72,12 @@ object AppwriteHighlightsClient {
         val client = AppwriteClient.client ?: return
         val realtime = Realtime(client)
         realtimeInstance = realtime
-        realtimeSubscription = realtime.subscribe("databases.$dbId.collections.$tableId.documents") { response ->
+        // TablesDB tables are backed by Appwrite collections internally, so the standard
+        // databases.{db}.collections.{table}.documents channel format is correct.
+        // Log the exact channel so a silent subscription miss is visible in logcat.
+        val channel = "databases.$dbId.collections.$tableId.documents"
+        Log.d(TAG, "Subscribing to realtime channel: $channel")
+        realtimeSubscription = realtime.subscribe(channel) { response ->
             val isCreate = response.events.any { it.contains(".create") }
             if (!isCreate) return@subscribe
             runCatching {
