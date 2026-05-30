@@ -42,7 +42,12 @@ object TeamColorRegistry {
         "chennai super kings" to (Color(0xFFFDB913) to Color(0xFF0078BC)),
         "royal challengers bangalore" to (Color(0xFFD71920) to Color(0xFF0B0B0B)),
         "kolkata knight riders" to (Color(0xFF3A225D) to Color(0xFFB4975A)),
-        "rajasthan royals" to (Color(0xFFE91E63) to Color(0xFF003594))
+        "rajasthan royals" to (Color(0xFFE91E63) to Color(0xFF003594)),
+        "punjab kings" to (Color(0xFFED1B24) to Color(0xFFFFFFFF)),
+        "sunrisers hyderabad" to (Color(0xFFFF822A) to Color(0xFFFFFFFF)),
+        "delhi capitals" to (Color(0xFF0078BC) to Color(0xFFEF1C25)),
+        "gujarat titans" to (Color(0xFF1C4E9D) to Color(0xFF47C1BF)),
+        "lucknow super giants" to (Color(0xFF004C93) to Color(0xFFA5D9F7))
     )
 
     private val acronyms: Map<String, String> = mapOf(
@@ -61,7 +66,14 @@ object TeamColorRegistry {
         "CSK" to "chennai super kings",
         "RCB" to "royal challengers bangalore",
         "KKR" to "kolkata knight riders",
-        "RR" to "rajasthan royals"
+        "RR" to "rajasthan royals",
+        "PBKS" to "punjab kings",
+        "KXIP" to "punjab kings",
+        "SRH" to "sunrisers hyderabad",
+        "DC" to "delhi capitals",
+        "DD" to "delhi capitals",
+        "GT" to "gujarat titans",
+        "LSG" to "lucknow super giants"
     )
 
     val default: TeamColors = buildTeamColors(GoldDark, GoldPrimary)

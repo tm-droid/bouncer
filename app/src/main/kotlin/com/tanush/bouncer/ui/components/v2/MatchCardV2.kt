@@ -23,11 +23,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.dp
 import com.tanush.bouncer.models.CricketMatch
+import com.tanush.bouncer.ui.theme.rememberMatchTeamPalette
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 import com.tanush.bouncer.utils.PreferencesManager
 import androidx.compose.runtime.getValue
@@ -56,6 +58,10 @@ fun MatchCardV2(
 
     val statusType = remember(match) { determineMatchStatus(match) }
     val winProb = remember(match) { match.calculateHeuristicProbability() }
+    val teamPalette = rememberMatchTeamPalette(
+        match.teams.getOrNull(0)?.name,
+        match.teams.getOrNull(1)?.name,
+    )
 
     BouncerCard(
         modifier = modifier.fillMaxWidth(),
@@ -110,6 +116,7 @@ fun MatchCardV2(
                     overs = team1.overs,
                     isBatting = team1.isBatting,
                     logoUrl = team1.logoUrl,
+                    teamColor = teamPalette.home.primary,
                 )
                 Spacer(Modifier.height(spacing.sm))
                 TeamRowV2(
@@ -119,6 +126,7 @@ fun MatchCardV2(
                     overs = team2.overs,
                     isBatting = team2.isBatting,
                     logoUrl = team2.logoUrl,
+                    teamColor = teamPalette.away.primary,
                 )
             }
 
@@ -131,7 +139,11 @@ fun MatchCardV2(
                 Text(
                     text = match.currentStatus,
                     style = typography.bodySmall,
-                    color = if (match.isLive) colors.primary else colors.textSecondary,
+                    color = if (match.isLive) {
+                    if (match.teams.getOrNull(0)?.isBatting == true) teamPalette.home.primary else teamPalette.away.primary
+                } else {
+                    colors.textSecondary
+                },
                     maxLines = 2,
                 )
             }
@@ -147,13 +159,13 @@ fun MatchCardV2(
                     Text(
                         text = "${match.teams[0].acronym} ${winProb.toInt()}%",
                         style = typography.bodySmall,
-                        color = colors.primary,
+                        color = teamPalette.home.primary,
                     )
                     Spacer(Modifier.weight(1f))
                     Text(
                         text = "${(100 - winProb.toInt())}% ${match.teams[1].acronym}",
                         style = typography.bodySmall,
-                        color = colors.textSecondary,
+                        color = teamPalette.away.primary,
                     )
                 }
                 Spacer(Modifier.height(4.dp))
@@ -162,16 +174,13 @@ fun MatchCardV2(
                         .fillMaxWidth()
                         .height(4.dp)
                         .clip(RoundedCornerShape(2.dp))
-                        .background(colors.surfaceVariant)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth(fraction)
-                            .height(4.dp)
-                            .clip(RoundedCornerShape(2.dp))
-                            .background(colors.primary)
-                    )
-                }
+                        .background(
+                            Brush.horizontalGradient(
+                                fraction to teamPalette.home.primary,
+                                fraction to teamPalette.away.primary.copy(alpha = 0.7f),
+                            )
+                        )
+                )
             }
         }
     }

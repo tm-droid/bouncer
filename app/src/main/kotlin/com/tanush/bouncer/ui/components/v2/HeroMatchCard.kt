@@ -22,6 +22,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.tanush.bouncer.models.CricketMatch
+import com.tanush.bouncer.ui.theme.rememberMatchTeamPalette
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 
 /**
@@ -40,10 +41,14 @@ fun HeroMatchCard(
     val shapes = BouncerThemeV2.shapes
     val elevation = BouncerThemeV2.elevation
 
-    // Subtle gradient using primary color
+    val teamPalette = rememberMatchTeamPalette(
+        match.teams.getOrNull(0)?.name,
+        match.teams.getOrNull(1)?.name,
+    )
     val gradientBrush = Brush.verticalGradient(
         colors = listOf(
-            colors.primary.copy(alpha = 0.08f),
+            teamPalette.home.primary.copy(alpha = 0.10f),
+            teamPalette.away.primary.copy(alpha = 0.05f),
             colors.surface,
         )
     )
@@ -89,6 +94,7 @@ fun HeroMatchCard(
                         overs = team1.overs,
                         isBatting = team1.isBatting,
                         logoUrl = team1.logoUrl,
+                        teamColor = teamPalette.home.primary,
                     )
                     Spacer(Modifier.height(spacing.md))
                     TeamRowV2(
@@ -98,6 +104,7 @@ fun HeroMatchCard(
                         overs = team2.overs,
                         isBatting = team2.isBatting,
                         logoUrl = team2.logoUrl,
+                        teamColor = teamPalette.away.primary,
                     )
                 }
 
@@ -105,10 +112,15 @@ fun HeroMatchCard(
 
                 // Status line
                 if (match.currentStatus.isNotBlank()) {
+                    val battingColor = if (match.teams.getOrNull(0)?.isBatting == true) {
+                        teamPalette.home.primary
+                    } else {
+                        teamPalette.away.primary
+                    }
                     Text(
                         text = match.currentStatus,
                         style = typography.titleSmall,
-                        color = if (match.isLive) colors.primary else colors.textSecondary,
+                        color = if (match.isLive) battingColor else colors.textSecondary,
                     )
                 }
 
@@ -156,13 +168,13 @@ fun HeroMatchCard(
                         Text(
                             text = "${match.teams[0].acronym} ${winProb.toInt()}%",
                             style = typography.bodySmall,
-                            color = colors.primary,
+                            color = teamPalette.home.primary,
                         )
                         Spacer(Modifier.weight(1f))
                         Text(
                             text = "${(100 - winProb.toInt())}% ${match.teams[1].acronym}",
                             style = typography.bodySmall,
-                            color = colors.textSecondary,
+                            color = teamPalette.away.primary,
                         )
                     }
                     Spacer(Modifier.height(4.dp))
@@ -171,16 +183,13 @@ fun HeroMatchCard(
                             .fillMaxWidth()
                             .height(6.dp)
                             .clip(RoundedCornerShape(3.dp))
-                            .background(colors.surfaceVariant)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth(fraction)
-                                .height(6.dp)
-                                .clip(RoundedCornerShape(3.dp))
-                                .background(colors.primary)
-                        )
-                    }
+                            .background(
+                                Brush.horizontalGradient(
+                                    fraction to teamPalette.home.primary,
+                                    fraction to teamPalette.away.primary.copy(alpha = 0.7f),
+                                )
+                            )
+                    )
                 }
             }
         }

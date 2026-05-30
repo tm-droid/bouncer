@@ -10,6 +10,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -29,9 +30,12 @@ fun TeamRowV2(
     isBatting: Boolean,
     logoUrl: String?,
     modifier: Modifier = Modifier,
+    teamColor: Color? = null,
 ) {
     val colors = BouncerThemeV2.colors
     val typography = BouncerThemeV2.typography
+    val nameColor = if (isBatting && teamColor != null) teamColor else colors.onSurface
+    val scoreColor = if (isBatting && teamColor != null) teamColor else colors.onSurface
 
     Row(
         modifier = modifier.fillMaxWidth(),
@@ -49,7 +53,7 @@ fun TeamRowV2(
         Text(
             text = teamAcronym.ifBlank { teamName },
             style = typography.titleMedium,
-            color = colors.onSurface,
+            color = nameColor,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f),
@@ -63,7 +67,7 @@ fun TeamRowV2(
                 text = score,
                 style = if (isBatting) typography.scoreLarge else typography.scoreMedium,
                 fontWeight = if (isBatting) FontWeight.ExtraBold else FontWeight.Bold,
-                color = colors.onSurface,
+                color = scoreColor,
             )
             if (overs.isNotBlank() && overs != "0.0") {
                 Text(

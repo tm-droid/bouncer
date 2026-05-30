@@ -19,6 +19,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Alarm
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -41,6 +43,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -63,6 +67,8 @@ import com.tanush.bouncer.ui.screens.matchdetail.v2.OverviewTabV2
 import com.tanush.bouncer.viewmodels.HighlightsViewModel
 import com.tanush.bouncer.viewmodels.MatchDetailViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.tanush.bouncer.ui.theme.rememberMatchTeamPalette
+import com.tanush.bouncer.ui.theme.rememberTeamColors
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 import com.tanush.bouncer.ui.components.ShareCardData
 import com.tanush.bouncer.ui.components.ShareCardGenerator
@@ -124,6 +130,14 @@ fun MatchDetailViewV2(
     } else {
         match
     }
+
+    val battingTeam = liveMatch.teams.firstOrNull { it.isBatting }
+    val battingTeamColors = rememberTeamColors(battingTeam?.name)
+    val tabAccentColor by animateColorAsState(
+        targetValue = battingTeamColors.primary,
+        animationSpec = tween(800),
+        label = "tabAccent",
+    )
 
     Scaffold(
         topBar = {
@@ -218,7 +232,7 @@ fun MatchDetailViewV2(
                     if (pagerState.currentPage < tabPositions.size) {
                         TabRowDefaults.SecondaryIndicator(
                             modifier = Modifier.tabIndicatorOffset(tabPositions[pagerState.currentPage]),
-                            color = colors.primary,
+                            color = tabAccentColor,
                         )
                     }
                 },
@@ -235,7 +249,7 @@ fun MatchDetailViewV2(
                                 text = title,
                                 style = typography.labelLarge,
                                 fontWeight = if (pagerState.currentPage == index) FontWeight.Bold else FontWeight.Normal,
-                                color = if (pagerState.currentPage == index) colors.primary else colors.textSecondary,
+                                color = if (pagerState.currentPage == index) tabAccentColor else colors.textSecondary,
                             )
                         },
                     )
@@ -313,12 +327,20 @@ private fun ScoreHeaderV2(
     val typography = BouncerThemeV2.typography
     val spacing = BouncerThemeV2.spacing
 
+    val palette = rememberMatchTeamPalette(team1?.name, team2?.name)
+    val headerBrush = Brush.horizontalGradient(
+        0f to palette.home.primary.copy(alpha = 0.13f),
+        0.5f to colors.surface,
+        1f to palette.away.primary.copy(alpha = 0.13f),
+    )
+    val livePrimaryColor = if (team1?.isBatting == true) palette.home.primary else palette.away.primary
+
     val statusType = determineMatchStatus(match)
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(colors.surface)
+            .background(brush = headerBrush)
             .padding(horizontal = spacing.lg, vertical = spacing.md),
     ) {
         // Context line
@@ -340,6 +362,7 @@ private fun ScoreHeaderV2(
             score = score1,
             overs = overs1,
             isBatting = team1?.isBatting == true,
+            teamColor = palette.home.primary,
         )
         Spacer(Modifier.height(spacing.sm))
 
@@ -350,6 +373,7 @@ private fun ScoreHeaderV2(
             score = score2,
             overs = overs2,
             isBatting = team2?.isBatting == true,
+            teamColor = palette.away.primary,
         )
         Spacer(Modifier.height(spacing.sm))
 
@@ -358,7 +382,7 @@ private fun ScoreHeaderV2(
             Text(
                 text = match.currentStatus,
                 style = typography.bodySmall,
-                color = if (match.isLive) colors.primary else colors.textSecondary,
+                color = if (match.isLive) livePrimaryColor else colors.textSecondary,
                 fontWeight = FontWeight.Medium,
             )
         }
@@ -393,10 +417,12 @@ private fun TeamScoreRow(
     score: String,
     overs: String,
     isBatting: Boolean,
+    teamColor: Color = Color.Unspecified,
 ) {
     val colors = BouncerThemeV2.colors
     val typography = BouncerThemeV2.typography
     val spacing = BouncerThemeV2.spacing
+    val activeColor = if (isBatting && teamColor != Color.Unspecified) teamColor else colors.onSurface
 
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -415,7 +441,7 @@ private fun TeamScoreRow(
         Text(
             text = teamName,
             style = typography.titleMedium,
-            color = colors.onSurface,
+            color = activeColor,
             fontWeight = if (isBatting) FontWeight.Bold else FontWeight.Normal,
             modifier = Modifier.weight(1f),
         )
@@ -423,7 +449,7 @@ private fun TeamScoreRow(
             Text(
                 text = score,
                 style = typography.scoreMedium,
-                color = colors.onSurface,
+                color = activeColor,
                 fontWeight = FontWeight.Bold,
             )
             if (overs.isNotBlank()) {
