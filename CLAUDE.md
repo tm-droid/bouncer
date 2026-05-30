@@ -22,7 +22,9 @@ Cricket live-scoring, match analytics, and team management app built in Kotlin/C
 
 **Setup (first time):**
 ```bash
-cp local.properties.template local.properties  # Edit with real keys — see template for full key list
+cp local.properties.template local.properties  # Fill in secret keys (RAPIDAPI_KEY, GROQ_API_KEY, etc.)
+# Most non-secret Appwrite IDs are pre-filled — only secret API keys need manual entry.
+# APPWRITE_PLAYER_FORMS_COL_ID is intentionally blank: that collection doesn't exist yet.
 ```
 
 **Build & run:**
@@ -33,6 +35,7 @@ cp local.properties.template local.properties  # Edit with real keys — see tem
 ./gradlew test                   # Run all unit tests
 ./gradlew test --tests "*MatchUtilsTest"  # Run single test
 ./gradlew clean build            # Clean build (if cache corrupted)
+./gradlew detekt                  # Static analysis
 ./gradlew assembleDebug -PenableComposeCompilerReports  # Compose metrics
 ```
 
@@ -54,7 +57,9 @@ app/src/main/kotlin/com/tanush/bouncer/
 ├── managers/           # Singleton managers (TeamLogo, Acronym, Favourites, MatchSubscription, NotificationInbox)
 ├── network/            # Retrofit + Jsoup scrapers (CricBuzz, CricInfo, Series, Squad)
 ├── data/               # Room DB, repositories, AppResult<T> monad
-│   └── remote/         # Appwrite: AppwriteClient (singleton), AppwriteAICache, AppwriteHighlightsClient, AppwriteFavouritesSync
+│   └── remote/         # Appwrite clients: AppwriteClient (singleton), AppwriteAICache,
+│                       # AppwriteHighlightsClient, AppwriteFavouritesSync,
+│                       # AppwritePlayerFormsClient, AppwritePlayerProfilesClient
 ├── models/             # Data models and entities
 ├── analysis/           # Cricket analysis + ML models (score prediction, win probability)
 ├── auto/               # Android Auto (BouncerCarAppService)
@@ -68,11 +73,21 @@ app/src/main/kotlin/com/tanush/bouncer/
 
 **No dependency injection framework.** ViewModels are constructed manually; managers use `object` singletons initialized in `BouncerApp.onCreate`.
 
-**Error handling:** `AppResult<T>` monad (`data/AppResult.kt`) wraps success/failure. Use it for all repository return types.
+**Error handling:** `AppResult<T>` monad (`data/AppResult.kt`) wraps success/failure. Use `.fold(onSuccess, onFailure)` in ViewModels; propagate via `return AppResult.Error(e)` in repositories. Don't unwrap with `!!`.
 
 **Navigation:** Single `BouncerNavHost` with Compose Navigation. Deep link entry via `bouncer://match/{matchId}`.
 
 **Live data flow:** `LiveScoreWebSocketClient` → `LiveCommentaryManager` → `CommentaryFusionService` (OpenRouter, multi-model fallback) + `BallCommentaryService` (Groq → Cerebras → SambaNova per-ball) → UI via StateFlow. `AICacheService` warms cache from Appwrite Realtime events.
+
+**AI cache (3-tier):** Memory LRU (256 entries) → Room `ai_commentary_cache` → Appwrite `ai-commentary-cache` table. All four commentary functions (`generateBallCommentary`, `fuse`, `streamCommentary`, `summarizeOversWithAI`) check cache before calling any AI provider. Completed matches use **permanent TTL** (`Long.MAX_VALUE` in Room, `expires_at = "2099-01-01T00:00:00.000Z"` in Appwrite) — `isMatchComplete` flag threads from ViewModels → `LiveCommentaryManager` → `CommentaryFusionService` → `AICacheService`. Never set permanent=true for live matches.
+
+**Player profile cache (global):** `PlayerCacheWorker` checks `AppwritePlayerProfilesClient` before scraping Cricbuzz. First device that scrapes a player pushes to Appwrite (`player-profiles` table, `bouncer-db`); all subsequent devices get a cache hit. Row ID = `entity.playerId` (Room format: `virat_kohli`).
+
+**Appwrite project:** single database `bouncer-db`. Known tables: `ai-commentary-cache`, `highlights`, `highlights-meta`, `user-favourites`, `player-profiles`.
+
+**Appwrite MCP workflow:** `appwrite_search_tools` → `appwrite_call_tool` → `ReadMcpResourceTool` (server: `plugin:appwrite:appwrite-api`, URI from truncated result) for full output. Column creation returns `status: "processing"` — call `tables_db_list_columns` to confirm `"available"` before using. Table-level permissions at creation: `["read(\"any\")", "create(\"any\")", "update(\"any\")"]`.
+
+**New Appwrite client pattern:** `object` singleton, `initialize()` sets `dbId`/`tableId`/`isReady`, `tablesDB` computed property returns fresh `TablesDB(AppwriteClient.client ?: return null)`, all ops `runCatching` + silent log on failure. Register in `BouncerApp.kt` via `initializeSafely("Name") { Client.initialize() }`.
 
 **API keys:** Always access via `ApiKeys` object (`ApiKeys.kt`), never `BuildConfig` directly. Add new keys to `ApiKeys.kt` + `build.gradle.kts` + `local.properties.template`.
 
@@ -98,7 +113,7 @@ app/src/main/kotlin/com/tanush/bouncer/
 | Add feature | `superpowers:brainstorming` → `superpowers:writing-plans` → `superpowers:executing-plans` + `feature-dev:feature-dev` |
 | Fix bug | `superpowers:systematic-debugging` + `sentry:seer` (if Sentry involved) |
 | Code review | `code-review:code-review` |
-| Refactor | `simplify` |
+| Refactor | `code-simplifier` |
 | Git operations | `commit-commands:commit` or `commit-commands:commit-push-pr` |
 | Android testing | `android-dev MCP`: screenshots, UI dump, tap, swipe, logcat |
 | Sentry issues | `sentry:sentry-workflow` → `sentry:seer` |
