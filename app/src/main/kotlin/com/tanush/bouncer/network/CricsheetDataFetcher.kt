@@ -202,7 +202,7 @@ class CricsheetDataFetcher(private val context: Context? = null) {
     )
     
     private data class TargetData(
-        val overs: Int?,
+        val overs: Double?,
         val runs: Int?
     )
 

@@ -38,7 +38,7 @@ data class CricsheetPowerplay(
 )
 
 data class CricsheetTarget(
-    val overs: Int? = null,
+    val overs: Double? = null,
     val runs: Int? = null
 )
 
