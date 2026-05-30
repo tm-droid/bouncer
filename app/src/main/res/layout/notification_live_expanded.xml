@@ -269,6 +269,37 @@
             android:textColor="#2DD4BF" />
     </LinearLayout>
 
+    <!-- Required Rate (chase scenarios only) -->
+    <LinearLayout
+        android:id="@+id/required_rate_container"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginTop="8dp"
+        android:background="@color/card_surface"
+        android:padding="10dp"
+        android:visibility="gone">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="REQ"
+            android:textSize="9sp"
+            android:textColor="#64748B"
+            android:letterSpacing="0.1" />
+
+        <TextView
+            android:id="@+id/required_rate_text"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:textColor="#FACC15"
+            android:layout_marginStart="8dp" />
+    </LinearLayout>
+
     <!-- Recent Balls Strip (iOS Live Activity Parity) -->
     <LinearLayout
         android:id="@+id/recent_balls_container"
@@ -344,20 +375,13 @@
                 android:gravity="end" />
         </LinearLayout>
 
-        <!-- Progress Bar Background -->
-        <FrameLayout
+        <ImageView
+            android:id="@+id/win_prob_bitmap"
             android:layout_width="match_parent"
             android:layout_height="8dp"
             android:layout_marginTop="6dp"
-            android:background="@color/card_surface">
-
-            <!-- Team 1 Progress (Will be set programmatically) -->
-            <FrameLayout
-                android:id="@+id/win_prob_bar_team1"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:background="#FFD700" />
-        </FrameLayout>
+            android:scaleType="fitXY"
+            android:contentDescription="Win probability bar" />
     </LinearLayout>
 
     <!-- Last Event Container -->

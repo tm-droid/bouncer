@@ -22,6 +22,7 @@ import androidx.palette.graphics.Palette
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.util.Calendar
+import kotlin.math.pow
 import io.sentry.Sentry
 
 // ==========================================
@@ -285,9 +286,9 @@ object TeamThemeProvider {
     
     private fun calculateLuminance(color: Color): Float {
         try {
-            val r = if (color.red <= 0.03928f) color.red / 12.92f else Math.pow(((color.red + 0.055) / 1.055).toDouble(), 2.4).toFloat()
-            val g = if (color.green <= 0.03928f) color.green / 12.92f else Math.pow(((color.green + 0.055) / 1.055).toDouble(), 2.4).toFloat()
-            val b = if (color.blue <= 0.03928f) color.blue / 12.92f else Math.pow(((color.blue + 0.055) / 1.055).toDouble(), 2.4).toFloat()
+            val r = if (color.red <= 0.03928f) color.red / 12.92f else ((color.red + 0.055f) / 1.055f).toDouble().pow(2.4).toFloat()
+            val g = if (color.green <= 0.03928f) color.green / 12.92f else ((color.green + 0.055f) / 1.055f).toDouble().pow(2.4).toFloat()
+            val b = if (color.blue <= 0.03928f) color.blue / 12.92f else ((color.blue + 0.055f) / 1.055f).toDouble().pow(2.4).toFloat()
             return 0.2126f * r + 0.7152f * g + 0.0722f * b
         } catch (e: Exception) {
             Sentry.captureException(e)
@@ -457,4 +458,27 @@ object DynamicColors {
     val highContrast: HighContrastMode
         @Composable
         get() = LocalHighContrastMode.current
+}
+
+/**
+ * Returns the primary team color as an ARGB int for use in Android notification APIs
+ * (NotificationCompat.Builder.setColor, RemoteViews.setInt).
+ * Fuzzy-matches on team name; falls back to gold if unrecognized.
+ */
+fun getTeamNotificationColor(teamName: String): Int {
+    val lower = teamName.lowercase()
+    val scheme = when {
+        lower.contains("india") -> LegacyTeamSchemes.India
+        lower.contains("australia") -> LegacyTeamSchemes.Australia
+        lower.contains("england") -> LegacyTeamSchemes.England
+        lower.contains("pakistan") -> LegacyTeamSchemes.Pakistan
+        lower.contains("south africa") || lower.contains("southafrica") -> LegacyTeamSchemes.SouthAfrica
+        lower.contains("new zealand") || lower.contains("newzealand") -> LegacyTeamSchemes.NewZealand
+        lower.contains("west indies") || lower.contains("westindies") -> LegacyTeamSchemes.WestIndies
+        lower.contains("sri lanka") || lower.contains("srilanka") -> LegacyTeamSchemes.SriLanka
+        lower.contains("bangladesh") -> LegacyTeamSchemes.Bangladesh
+        lower.contains("afghanistan") -> LegacyTeamSchemes.Afghanistan
+        else -> LegacyTeamSchemes.Default
+    }
+    return scheme.primary.toArgb()
 }

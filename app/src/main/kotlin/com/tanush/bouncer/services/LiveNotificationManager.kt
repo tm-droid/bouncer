@@ -22,6 +22,7 @@ import androidx.core.app.NotificationManagerCompat
 import com.tanush.bouncer.BouncerActivity
 import com.tanush.bouncer.R
 import com.tanush.bouncer.models.CricketMatch
+import com.tanush.bouncer.ui.theme.getTeamNotificationColor
 import io.sentry.Breadcrumb
 import io.sentry.Sentry
 import io.sentry.SentryLevel
@@ -190,8 +191,16 @@ class LiveNotificationManager(private val context: Context) {
         batsmen: List<BatsmanInfo>? = null,
         bowler: BowlerInfo? = null,
         recentBalls: List<String>? = null,
-        matchPhase: MatchPhase? = null
+        matchPhase: MatchPhase? = null,
+        requiredRate: String? = null
     ) {
+        // Respect per-match notification preferences
+        val perMatchPrefs = context.getSharedPreferences("bouncer_match_notif_prefs", Context.MODE_PRIVATE)
+        if (!perMatchPrefs.getBoolean("notif_${match.id}_scoreUpdates", true)) return
+        val mutedMatches = context.getSharedPreferences("notification_state", Context.MODE_PRIVATE)
+            .getStringSet("muted_matches", emptySet()) ?: emptySet()
+        if (match.id in mutedMatches) return
+
         breadcrumb(
             "Showing live match notification",
             data = mapOf(
@@ -213,11 +222,14 @@ class LiveNotificationManager(private val context: Context) {
             getNotificationPriority(phase, lastEvent?.type ?: EventType.OTHER)
         } ?: NotificationCompat.PRIORITY_LOW
 
+        val teamAccentColor = getTeamNotificationColor(team1?.name ?: "")
+
         val builder = NotificationCompat.Builder(context, CHANNEL_ID_LIVE)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setContentTitle("${team1?.name ?: "Team 1"} vs ${team2?.name ?: "Team 2"}")
             .setContentText(buildScoreText(match))
             .setSubText(match.matchType)
+            .setColor(teamAccentColor)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .setCategory(NotificationCompat.CATEGORY_STATUS)
@@ -225,8 +237,8 @@ class LiveNotificationManager(private val context: Context) {
             .setContentIntent(pendingIntent)
             .setPriority(priority)
             .setStyle(NotificationCompat.DecoratedCustomViewStyle())
-            .setCustomContentView(createCompactView(match, winProbability))
-            .setCustomBigContentView(createExpandedView(match, winProbability, lastEvent, batsmen, bowler, recentBalls))
+            .setCustomContentView(createCompactView(match, winProbability, teamAccentColor))
+            .setCustomBigContentView(createExpandedView(match, winProbability, lastEvent, batsmen, bowler, recentBalls, requiredRate, teamAccentColor))
             .setGroup(GROUP_KEY_MATCHES)
 
         addQuickActions(builder, match, notificationId)
@@ -286,7 +298,7 @@ class LiveNotificationManager(private val context: Context) {
             putExtra(EXTRA_MATCH_ID, match.id)
             putExtra("mute_duration_minutes", 30)
         }
-        val mutePendingIntent = PendingIntent.getBroadcast(
+        val mutePendingIntent = PendingIntent.getActivity(
             context, notificationId + 200, muteIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
@@ -540,11 +552,12 @@ class LiveNotificationManager(private val context: Context) {
         return minOf(basePriority + eventBoost, NotificationCompat.PRIORITY_MAX)
     }
 
-    private fun createCompactView(match: CricketMatch, winProbability: Float?): RemoteViews = reportingErrors {
+    private fun createCompactView(match: CricketMatch, winProbability: Float?, teamAccentColor: Int): RemoteViews = reportingErrors {
         val team1 = match.teams.getOrNull(0)
         val team2 = match.teams.getOrNull(1)
 
         RemoteViews(context.packageName, R.layout.notification_live_compact).apply {
+            setInt(R.id.team_accent_bar, "setBackgroundColor", teamAccentColor)
             setTextViewText(R.id.team1_name, team1?.acronym?.ifEmpty { team1.name.take(3) } ?: "T1")
             setTextViewText(R.id.team2_name, team2?.acronym?.ifEmpty { team2.name.take(3) } ?: "T2")
             setTextViewText(R.id.score_text, buildScoreText(match))
@@ -564,7 +577,9 @@ class LiveNotificationManager(private val context: Context) {
         lastEvent: MatchEvent?,
         batsmen: List<BatsmanInfo>? = null,
         bowler: BowlerInfo? = null,
-        recentBalls: List<String>? = null
+        recentBalls: List<String>? = null,
+        requiredRate: String? = null,
+        teamAccentColor: Int = COLOR_MILESTONE
     ): RemoteViews {
         val team1 = match.teams.getOrNull(0)
         val team2 = match.teams.getOrNull(1)
@@ -580,6 +595,7 @@ class LiveNotificationManager(private val context: Context) {
             winProbability?.let { prob ->
                 setTextViewText(R.id.win_prob_team1, "${(prob * 100).toInt()}%")
                 setTextViewText(R.id.win_prob_team2, "${((1 - prob) * 100).toInt()}%")
+                setImageViewBitmap(R.id.win_prob_bitmap, createWinProbabilityBitmap(prob, 600, 16))
             }
 
             // Batsmen container: visible only when at least one batsman is supplied.
@@ -608,6 +624,13 @@ class LiveNotificationManager(private val context: Context) {
                 setViewVisibility(R.id.bowler_container, View.VISIBLE)
             } else {
                 setViewVisibility(R.id.bowler_container, View.GONE)
+            }
+
+            if (!requiredRate.isNullOrBlank()) {
+                setTextViewText(R.id.required_rate_text, "$requiredRate rpo")
+                setViewVisibility(R.id.required_rate_container, View.VISIBLE)
+            } else {
+                setViewVisibility(R.id.required_rate_container, View.GONE)
             }
 
             val balls = recentBalls?.takeIf { it.isNotEmpty() }

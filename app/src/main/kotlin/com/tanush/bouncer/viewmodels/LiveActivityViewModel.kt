@@ -140,6 +140,9 @@ class LiveActivityViewModel : ViewModel() {
     // Tracks the last-known recentBalls per match (from fetchBallByBallAndBatsmen, not from the match list scrape)
     private val recentBallsCache = mutableMapOf<String, List<String>>()
 
+    // Match IDs that were live in the previous poll cycle; used to detect match completion for auto-dismiss.
+    private val previouslyLiveMatchIds = mutableSetOf<String>()
+
     private val _completedOvers = MutableStateFlow<Map<String, List<List<String>>>>(emptyMap())
     val completedOvers: StateFlow<Map<String, List<List<String>>>> = _completedOvers.asStateFlow()
 
@@ -541,6 +544,7 @@ class LiveActivityViewModel : ViewModel() {
                 batsmen = batsmenInfo,
                 bowler = bowlerInfo,
                 recentBalls = details.recentBalls,
+                requiredRate = match.score?.requiredRunRate,
             )
         } catch (e: Exception) {
             if (e is CancellationException) throw e
@@ -662,7 +666,10 @@ class LiveActivityViewModel : ViewModel() {
         }
 
         updateHomeMatches()
-        if (status == "Live") pruneStaleMatchData(matchesWithProbability)
+        if (status == "Live") {
+            pruneStaleMatchData(matchesWithProbability)
+            dismissCompletedMatchNotifications(matchesWithProbability)
+        }
     }
 
     private fun pruneStaleMatchData(currentLiveMatches: List<CricketMatch>) {
@@ -672,6 +679,24 @@ class LiveActivityViewModel : ViewModel() {
         if (staleIds.isNotEmpty()) {
             _probabilityEvents.value = _probabilityEvents.value - staleIds
         }
+        val staleOverIds = _completedOvers.value.keys - liveIds
+        if (staleOverIds.isNotEmpty()) {
+            _completedOvers.value = _completedOvers.value - staleOverIds
+        }
+        val staleInningsIds = _firstInningsEndBall.value.keys - liveIds
+        if (staleInningsIds.isNotEmpty()) {
+            _firstInningsEndBall.value = _firstInningsEndBall.value - staleInningsIds
+        }
+    }
+
+    private fun dismissCompletedMatchNotifications(currentLiveMatches: List<CricketMatch>) {
+        val currentLiveIds = currentLiveMatches.filter { it.isLive }.map { it.id }.toSet()
+        val justFinished = previouslyLiveMatchIds - currentLiveIds
+        justFinished.forEach { matchId ->
+            notificationManager?.dismissLiveNotification(matchId)
+        }
+        previouslyLiveMatchIds.clear()
+        previouslyLiveMatchIds.addAll(currentLiveIds)
     }
 
     private fun updateHomeMatches() {

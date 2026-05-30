@@ -3,9 +3,20 @@
     android:layout_width="match_parent"
     android:layout_height="64dp"
     android:orientation="horizontal"
-    android:gravity="center_vertical"
-    android:background="@color/black_background"
-    android:padding="12dp">
+    android:background="@color/black_background">
+
+    <View
+        android:id="@+id/team_accent_bar"
+        android:layout_width="4dp"
+        android:layout_height="match_parent"
+        android:background="#D4AF37" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:padding="12dp">
 
     <ImageView
         android:id="@+id/notification_icon"
@@ -34,8 +45,6 @@
                 android:textStyle="bold"
             android:textSize="13sp"
             android:textColor="@color/text_primary" />
-                android:textSize="11sp"
-                android:textColor="@color/text_tertiary" />
 
             <TextView
                 android:id="@+id/team2_name"
@@ -77,4 +86,6 @@
         android:background="@android:color/holo_red_light"
         android:layout_marginEnd="4dp"
         android:visibility="gone" />
+
+    </LinearLayout>
 </LinearLayout>
