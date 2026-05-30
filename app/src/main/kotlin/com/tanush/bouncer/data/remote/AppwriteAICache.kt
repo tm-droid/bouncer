@@ -96,17 +96,34 @@ object AppwriteAICache {
                         Instant.ofEpochMilli(System.currentTimeMillis() + TTL_MS)
                     )
                 }
-                db.createRow(
+                val data = mapOf(
+                    "cache_key" to key,
+                    "commentary" to commentary,
+                    "expires_at" to expiresAt
+                )
+                // Upsert prevents duplicate rows per cache_key that cause non-deterministic get() results.
+                // permanent writes must overwrite non-permanent ones; always-create would leave both rows.
+                val existing = db.listRows(
                     databaseId = dbId,
                     tableId = tableId,
-                    rowId = ID.unique(),
-                    data = mapOf(
-                        "cache_key" to key,
-                        "commentary" to commentary,
-                        "expires_at" to expiresAt
-                    ),
-                    permissions = listOf(Permission.read(Role.any()))
-                )
+                    queries = listOf(Query.equal("cache_key", key), Query.limit(1))
+                ).rows.firstOrNull()
+                if (existing != null) {
+                    db.updateRow(
+                        databaseId = dbId,
+                        tableId = tableId,
+                        rowId = existing.id,
+                        data = data
+                    )
+                } else {
+                    db.createRow(
+                        databaseId = dbId,
+                        tableId = tableId,
+                        rowId = ID.unique(),
+                        data = data,
+                        permissions = listOf(Permission.read(Role.any()))
+                    )
+                }
             }.onFailure { e ->
                 if (e is AppwriteException) {
                     Log.d(TAG, "Remote cache set failed (silent): ${e.message} [${e.code}]")

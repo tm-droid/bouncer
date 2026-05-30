@@ -5,7 +5,6 @@ import com.tanush.bouncer.ApiKeys
 import com.tanush.bouncer.data.CacheConfig
 import com.tanush.bouncer.data.local.entities.PlayerCacheEntity
 import io.appwrite.Permission
-import io.appwrite.Query
 import io.appwrite.Role
 import io.appwrite.exceptions.AppwriteException
 import io.appwrite.services.TablesDB
@@ -48,12 +47,14 @@ object AppwritePlayerProfilesClient {
         return withContext(Dispatchers.IO) {
             runCatching {
                 val db = tablesDB ?: return@runCatching null
-                val result = db.listRows(
-                    databaseId = dbId,
-                    tableId = tableId,
-                    queries = listOf(Query.equal("\$id", playerId), Query.limit(1))
-                )
-                val row = result.rows.firstOrNull() ?: return@runCatching null
+                // getRow() uses the primary key directly; Query.equal("$id") is unsupported in TablesDB
+                // and silently returns no rows, causing every profile lookup to miss the cache.
+                val row = try {
+                    db.getRow(databaseId = dbId, tableId = tableId, rowId = playerId)
+                } catch (e: AppwriteException) {
+                    if (e.code == 404) return@runCatching null
+                    throw e
+                }
                 val data = row.data
                 val updatedAt = data["updated_at"] as? String
                 if (updatedAt != null) {
