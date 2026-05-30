@@ -12,10 +12,10 @@ interface HighlightDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertAll(highlights: List<HighlightEntity>)
 
-    @Query("SELECT * FROM highlights WHERE matchedBouncerMatchId = :bouncerMatchId ORDER BY type DESC, fetchedAt DESC")
+    @Query("SELECT * FROM highlights WHERE matchedBouncerMatchId = :bouncerMatchId ORDER BY type DESC, fetchedAt DESC LIMIT 50")
     fun queryByBouncerMatchId(bouncerMatchId: String): Flow<List<HighlightEntity>>
 
-    @Query("SELECT * FROM highlights WHERE matchedBouncerMatchId = :bouncerMatchId AND fetchedAt >= :freshnessCutoff ORDER BY type DESC, fetchedAt DESC")
+    @Query("SELECT * FROM highlights WHERE matchedBouncerMatchId = :bouncerMatchId AND fetchedAt >= :freshnessCutoff ORDER BY type DESC, fetchedAt DESC LIMIT 50")
     suspend fun queryCachedByMatchId(bouncerMatchId: String, freshnessCutoff: Long): List<HighlightEntity>
 
     @Query("SELECT * FROM highlights ORDER BY fetchedAt DESC LIMIT 1000")

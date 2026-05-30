@@ -37,7 +37,7 @@ import com.tanush.bouncer.data.local.entities.SeriesFtsEntity
         AICommentaryCacheEntity::class,
         HighlightEntity::class
     ],
-    version = 8,
+    version = 9,
     exportSchema = true
 )
 abstract class BouncerDatabase : RoomDatabase() {
@@ -126,8 +126,21 @@ abstract class BouncerDatabase : RoomDatabase() {
             }
         }
 
+        // highlights.matchedBouncerMatchId: 4 DAO queries filter on it; was created in v3→v4 then
+        // dropped in v4→v5 to match the entity schema (which lacked @Index). Now re-added with the
+        // correct Room-generated name so schema validation passes.
+        // highlights.fetchedAt: ORDER BY + WHERE + DELETE all filter on it.
+        // ai_commentary_cache.timestamp: WHERE + DELETE on every cache read and cleanup cycle.
+        internal val MIGRATION_8_9 = object : Migration(8, 9) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_highlights_matchedBouncerMatchId` ON highlights(matchedBouncerMatchId)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_highlights_fetchedAt` ON highlights(fetchedAt)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_ai_commentary_cache_timestamp` ON ai_commentary_cache(timestamp)")
+            }
+        }
+
         // Add new migrations here; Room will apply them in order on upgrade.
-        private val MIGRATIONS = arrayOf<Migration>(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
+        private val MIGRATIONS = arrayOf<Migration>(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9)
 
         fun getInstance(context: Context): BouncerDatabase {
             return INSTANCE ?: synchronized(this) {

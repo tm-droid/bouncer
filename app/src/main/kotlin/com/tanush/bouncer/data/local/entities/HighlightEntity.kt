@@ -1,9 +1,14 @@
 package com.tanush.bouncer.data.local.entities
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 
-@Entity(tableName = "highlights")
+@Entity(
+    tableName = "highlights",
+    // matchedBouncerMatchId: 4 queries filter on it; fetchedAt: ORDER BY + DELETE + WHERE
+    indices = [Index("matchedBouncerMatchId"), Index("fetchedAt")]
+)
 data class HighlightEntity(
     @PrimaryKey val id: String,
     val title: String,

@@ -13,7 +13,7 @@ interface CommentaryDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertCommentary(commentary: List<CommentaryEntity>)
 
-    @Query("SELECT * FROM commentary WHERE matchId = :matchId ORDER BY ballNumber DESC")
+    @Query("SELECT * FROM commentary WHERE matchId = :matchId ORDER BY ballNumber DESC LIMIT 500")
     fun getCommentary(matchId: String): Flow<List<CommentaryEntity>>
 
     @Query("SELECT * FROM commentary WHERE matchId = :matchId ORDER BY ballNumber DESC LIMIT :limit OFFSET :offset")
