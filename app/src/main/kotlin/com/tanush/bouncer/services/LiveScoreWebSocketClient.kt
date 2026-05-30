@@ -105,6 +105,21 @@ class LiveScoreWebSocketClient(
         return ws.send(message)
     }
 
+    /**
+     * Call from ConnectivityManager.NetworkCallback.onAvailable() to bypass the remaining
+     * backoff delay and reconnect immediately when the network recovers.
+     * Without this, a dropped connection waits up to MAX_BACKOFF_MS (30 s) even when
+     * the network is already back.
+     */
+    fun onNetworkAvailable() {
+        if (_connectionState.value == ConnectionState.RECONNECTING && shouldReconnect.get()) {
+            reconnectJob?.cancel()
+            reconnectJob = null
+            backoffMs = INITIAL_BACKOFF_MS  // network is back — reset so next drop starts fresh
+            openConnection(isReconnect = true)
+        }
+    }
+
     // ── Internal ────────────────────────────────────────────────────────
 
     private fun openConnection(isReconnect: Boolean) {
