@@ -6,6 +6,7 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
     alias(libs.plugins.sentry)
+    alias(libs.plugins.google.services)
     id("io.gitlab.arturbosch.detekt") version "1.23.6"
 }
 
