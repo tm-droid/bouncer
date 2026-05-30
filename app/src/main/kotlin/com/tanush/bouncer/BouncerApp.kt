@@ -215,17 +215,14 @@ class BouncerApp : Application() {
             coil.Coil.setImageLoader(imageLoader)
         }
 
-        // ── Enqueue periodic score polling via WorkManager ───────────────
-        initializeSafely("ScorePollingWorker") {
-            ScorePollingWorker.enqueuePeriodicWork(this)
-        }
-        initializeSafely("SeriesSyncWorker") {
-            SeriesSyncWorker.enqueuePeriodicWork(this)
-        }
-        // Download real Cricsheet T20 data and train ML model on first run (or after 30 days).
-        // Skipped if model is already recent; runs in background with network + battery constraints.
-        initializeSafely("CricsheetTrainingWorker") {
-            CricsheetTrainingWorker.enqueueIfNeeded(this)
+        // ── Enqueue periodic workers after first frame — not needed for launch ──
+        applicationScope.launch(Dispatchers.IO) {
+            kotlinx.coroutines.delay(500L)
+            initializeSafely("ScorePollingWorker") { ScorePollingWorker.enqueuePeriodicWork(this@BouncerApp) }
+            initializeSafely("SeriesSyncWorker") { SeriesSyncWorker.enqueuePeriodicWork(this@BouncerApp) }
+            // Download real Cricsheet T20 data and train ML model on first run (or after 30 days).
+            // Skipped if model is already recent; runs in background with network + battery constraints.
+            initializeSafely("CricsheetTrainingWorker") { CricsheetTrainingWorker.enqueueIfNeeded(this@BouncerApp) }
         }
 
         Sentry.addBreadcrumb(

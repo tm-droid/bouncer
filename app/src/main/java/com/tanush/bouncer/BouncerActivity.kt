@@ -5,12 +5,14 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.os.SystemClock
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.mutableStateOf
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.core.view.WindowCompat
 import com.tanush.bouncer.liveactivity.LiveActivityNotificationBuilder
 import com.tanush.bouncer.managers.FavouriteTeamsManager
@@ -26,7 +28,13 @@ class BouncerActivity : ComponentActivity() {
     private val externalDeepLinkUri = mutableStateOf<String?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        val splashScreen = installSplashScreen()
         super.onCreate(savedInstanceState)
+
+        val splashStart = SystemClock.elapsedRealtime()
+        splashScreen.setKeepOnScreenCondition {
+            SystemClock.elapsedRealtime() - splashStart < 300L
+        }
 
         io.sentry.Sentry.addBreadcrumb(
             io.sentry.Breadcrumb().apply {
@@ -38,8 +46,6 @@ class BouncerActivity : ComponentActivity() {
 
         enableEdgeToEdge()
         WindowCompat.setDecorFitsSystemWindows(window, false)
-
-        FavouriteTeamsManager.initialize(this)
 
         LiveActivityNotificationBuilder(applicationContext).createNotificationChannel()
         // Onboarding handles the permission prompt for new users.

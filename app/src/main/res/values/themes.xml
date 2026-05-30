@@ -6,4 +6,10 @@
         <item name="android:statusBarColor">@color/black_background</item>
         <item name="android:navigationBarColor">@color/black_background</item>
     </style>
+
+    <style name="Theme.Bouncer.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/black_background</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground_vector</item>
+        <item name="postSplashScreenTheme">@style/Theme.Bouncer</item>
+    </style>
 </resources>
