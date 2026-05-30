@@ -45,6 +45,8 @@ object WidgetUpdateWorker {
 
             val request = OneTimeWorkRequestBuilder<WidgetUpdateWorkManagerWorker>()
                 .setInitialDelay(delayMs, TimeUnit.MILLISECONDS)
+                // Exponential backoff so retry storms don't hit Glance APIs back-to-back
+                .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, WorkRequest.MIN_BACKOFF_MILLIS, TimeUnit.MILLISECONDS)
                 .addTag("widget_update")
                 .build()
 
@@ -68,6 +70,8 @@ object WidgetUpdateWorker {
     fun triggerImmediateUpdate(context: Context) {
         try {
             val request = OneTimeWorkRequestBuilder<WidgetUpdateWorkManagerWorker>()
+                // Exponential backoff so retry storms don't hit Glance APIs back-to-back
+                .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, WorkRequest.MIN_BACKOFF_MILLIS, TimeUnit.MILLISECONDS)
                 .addTag("widget_immediate_update")
                 .build()
             WorkManager.getInstance(context).enqueue(request)
@@ -190,7 +194,14 @@ class WidgetUpdateWorkManagerWorker(
             Result.success()
         } catch (e: Exception) {
             Sentry.captureException(e)
-            Result.retry()
+            // Cap retries to prevent unbounded hammering on persistent Glance/OS failures.
+            // On final failure, re-arm the self-scheduling loop so widgets recover on next trigger.
+            return if (runAttemptCount < 3) {
+                Result.retry()
+            } else {
+                WidgetUpdateWorker.scheduleAdaptiveUpdate(context)
+                Result.failure()
+            }
         }
     }
 
