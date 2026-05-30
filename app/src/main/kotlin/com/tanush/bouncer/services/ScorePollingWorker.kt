@@ -20,6 +20,7 @@ import com.tanush.bouncer.utils.WorkerLogger
 import io.sentry.Breadcrumb
 import io.sentry.Sentry
 import io.sentry.SentryLevel
+import kotlinx.coroutines.CancellationException
 import java.util.concurrent.TimeUnit
 
 /**
@@ -91,6 +92,9 @@ class ScorePollingWorker(
                 }
                 is AppResult.Loading -> if (runAttemptCount < MAX_RETRIES) Result.retry() else Result.failure()
             }
+        } catch (e: CancellationException) {
+            // Normal WorkManager lifecycle cancellation — not an error, re-throw immediately.
+            throw e
         } catch (e: Exception) {
             Log.e(TAG, "Unexpected error in ScorePollingWorker", e)
             Sentry.captureException(e)
