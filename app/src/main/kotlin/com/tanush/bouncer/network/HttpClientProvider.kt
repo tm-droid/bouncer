@@ -10,6 +10,8 @@ import okhttp3.OkHttpClient
 import okhttp3.Response
 import okhttp3.logging.HttpLoggingInterceptor
 import java.io.IOException
+import java.net.ConnectException
+import java.net.UnknownHostException
 import java.util.concurrent.TimeUnit
 
 /**
@@ -43,6 +45,23 @@ object HttpClientProvider {
         // OkHttp wraps cancellations in IOException
         val cause = e.cause
         if (cause is java.util.concurrent.CancellationException) return true
+        return false
+    }
+
+    /**
+     * Returns true if the exception is a transient connectivity error (e.g. no
+     * network, captive portal, DNS unavailable). The device may be on a Wi-Fi
+     * network without actual internet access (EAI_NODATA), causing DNS resolution
+     * to fail for all external hosts. These errors are expected and handled by
+     * callers; they should not be reported to Sentry as actionable exceptions.
+     */
+    internal fun isConnectivityException(e: Exception): Boolean {
+        if (e is UnknownHostException) return true
+        if (e is ConnectException) return true
+        if (e is java.net.SocketTimeoutException) return true
+        val cause = e.cause
+        if (cause is UnknownHostException) return true
+        if (cause is ConnectException) return true
         return false
     }
 
@@ -115,6 +134,22 @@ object HttpClientProvider {
                     setData("url", url)
                     setData("method", method)
                     setData("durationMs", duration)
+                })
+            } else if (isConnectivityException(e)) {
+                // Transient connectivity error (e.g. no internet, captive portal, DNS failure).
+                // The device may be connected to a network without actual internet access —
+                // WorkManager's CONNECTED constraint does not guarantee DNS resolution works.
+                // These are expected, handled by callers, and not actionable in Sentry.
+                Log.w(TAG, "HTTP $method $url connectivity failure after ${duration}ms: ${e.message}")
+                Sentry.addBreadcrumb(Breadcrumb().apply {
+                    category = "network.http"
+                    message = "HTTP $method request failed (no connectivity)"
+                    level = SentryLevel.WARNING
+                    setData("url", url)
+                    setData("method", method)
+                    setData("durationMs", duration)
+                    setData("error", e.message ?: "Unknown error")
+                    setData("errorType", e.javaClass.simpleName)
                 })
             } else {
                 Log.e(TAG, "HTTP $method $url failed after ${duration}ms", e)
