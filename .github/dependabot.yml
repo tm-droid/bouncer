@@ -6,15 +6,35 @@ updates:
     schedule:
       interval: "weekly"
       day: "monday"
+    open-pull-requests-limit: 5
     labels:
       - "dependencies"
       - "android"
+    groups:
+      androidx:
+        patterns:
+          - "androidx.*"
+      kotlin:
+        patterns:
+          - "org.jetbrains.kotlin.*"
+          - "org.jetbrains.kotlinx.*"
+      firebase:
+        patterns:
+          - "com.google.firebase.*"
+          - "com.google.gms.*"
+      networking:
+        patterns:
+          - "com.squareup.retrofit2.*"
+          - "com.squareup.okhttp3.*"
+          - "io.ktor.*"
+          - "io.coil-kt.*"
 
   - package-ecosystem: "npm"
     directory: "/appwrite/functions/highlights-sync"
     schedule:
       interval: "weekly"
       day: "monday"
+    open-pull-requests-limit: 5
     labels:
       - "dependencies"
       - "appwrite"
@@ -24,6 +44,7 @@ updates:
     schedule:
       interval: "weekly"
       day: "monday"
+    open-pull-requests-limit: 5
     labels:
       - "dependencies"
       - "ci"
