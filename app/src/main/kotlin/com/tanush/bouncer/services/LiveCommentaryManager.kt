@@ -15,6 +15,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.launch
 import java.util.regex.Pattern
@@ -33,8 +35,10 @@ class LiveCommentaryManager(
     private val scorer = CommentaryScorer()
     private val fusion = CommentaryFusionService()
 
-    // Set at start of getBestCommentaryForMatch; all internal calls use this to decide cache permanence.
-    private var isMatchComplete: Boolean = false
+    // Guards commentaryHistory, aiCommentaryHistory, lastNotifiedBallMap — never hold across suspension.
+    private val stateMutex = Mutex()
+    // Guards currentStreamJob cancel+reassign to prevent two concurrent streams.
+    private val streamJobMutex = Mutex()
 
     private val commentaryHistory = mutableListOf<String>()
     private val historyLimit = 10
@@ -109,9 +113,16 @@ class LiveCommentaryManager(
         }
     }
 
-    private suspend fun computeOversSummary(matchId: String, over: Int, fallback: String): String {
-        val last18Count = min(max(aiCommentaryHistory.size, 0), 18)
-        val last18AI = if (last18Count > 0) aiCommentaryHistory.takeLast(last18Count) else emptyList()
+    private suspend fun computeOversSummary(
+        matchId: String,
+        over: Int,
+        fallback: String,
+        isMatchComplete: Boolean
+    ): String {
+        val last18AI = stateMutex.withLock {
+            val count = min(max(aiCommentaryHistory.size, 0), 18)
+            if (count > 0) aiCommentaryHistory.takeLast(count) else emptyList()
+        }
         return try {
             if (last18AI.isNotEmpty()) fusion.summarizeOversWithAI(last18AI, matchId, over, isMatchComplete) else fallback
         } catch (e: Exception) {
@@ -131,7 +142,8 @@ class LiveCommentaryManager(
         ballNumber: String,
         bowler: String,
         batsman: String,
-        scoreContext: String
+        scoreContext: String,
+        isMatchComplete: Boolean
     ): String {
         return try {
             fusion.fuse(
@@ -154,10 +166,12 @@ class LiveCommentaryManager(
         }
     }
 
-    private fun recordCommentary(resultValue: String) {
-        if (commentaryHistory.isEmpty() || commentaryHistory.last() != resultValue) {
-            commentaryHistory.add(resultValue)
-            if (commentaryHistory.size > historyLimit) commentaryHistory.removeAt(0)
+    private suspend fun recordCommentary(resultValue: String) {
+        stateMutex.withLock {
+            if (commentaryHistory.isEmpty() || commentaryHistory.last() != resultValue) {
+                commentaryHistory.add(resultValue)
+                if (commentaryHistory.size > historyLimit) commentaryHistory.removeAt(0)
+            }
         }
     }
 
@@ -186,7 +200,8 @@ class LiveCommentaryManager(
     private suspend fun getBestCommentary(
         cricbuzzUrl: String,
         cricinfoUrl: String,
-        keyNames: List<String>
+        keyNames: List<String>,
+        isMatchComplete: Boolean
     ): String {
         val matchId = cricbuzzUrl.split("/").lastOrNull() ?: "unknown"
         addBreadcrumb("Getting best commentary", mapOf("matchId" to matchId))
@@ -210,32 +225,36 @@ class LiveCommentaryManager(
         if (!hasBallContent) return formatNonBallCommentary(buzzLine, infoLine)
 
         val over = ballNumber.substringBefore(".").toIntOrNull() ?: 0
-        val oversSummary = computeOversSummary(matchId, over, buzzLine)
+        val oversSummary = computeOversSummary(matchId, over, buzzLine, isMatchComplete)
 
-        currentStreamJob?.cancel()
-        currentStreamJob = scope.launch {
-            streamBallCommentary(
-                CommentaryFusionService.MatchContext(
-                    matchId = matchId,
-                    over = over,
-                    ballNumber = ballNumber,
-                    snippet1 = buzzLine,
-                    snippet2 = infoLine,
-                    oversSummary = oversSummary,
-                    bowler = bowlerName,
-                    batsman = batsmanName,
-                    scoreContext = scoreContext,
-                    isMatchComplete = isMatchComplete
+        // Synchronize cancel+reassign so concurrent calls can't race on currentStreamJob.
+        streamJobMutex.withLock {
+            currentStreamJob?.cancel()
+            currentStreamJob = scope.launch {
+                streamBallCommentary(
+                    CommentaryFusionService.MatchContext(
+                        matchId = matchId,
+                        over = over,
+                        ballNumber = ballNumber,
+                        snippet1 = buzzLine,
+                        snippet2 = infoLine,
+                        oversSummary = oversSummary,
+                        bowler = bowlerName,
+                        batsman = batsmanName,
+                        scoreContext = scoreContext,
+                        isMatchComplete = isMatchComplete
+                    )
                 )
-            )
+            }
         }
 
-        val resultValue = when (scorer.compare(buzzLine, infoLine, keyNames, commentaryHistory)) {
+        val snapshotHistory = stateMutex.withLock { commentaryHistory.toList() }
+        val resultValue = when (scorer.compare(buzzLine, infoLine, keyNames, snapshotHistory)) {
             CommentaryScorer.ComparisonResult.UseFirst -> buzzLine
             CommentaryScorer.ComparisonResult.UseSecond -> infoLine
             CommentaryScorer.ComparisonResult.FuseBoth -> fuseLines(
                 buzzLine, infoLine, oversSummary, matchId, over, ballNumber,
-                bowlerName, batsmanName, scoreContext
+                bowlerName, batsmanName, scoreContext, isMatchComplete
             )
         }
 
@@ -247,27 +266,28 @@ class LiveCommentaryManager(
         matchTitle: String,
         cricbuzzId: String,
         cricbuzzUrl: String,
-        keyNames: List<String>
+        keyNames: List<String>,
+        isMatchComplete: Boolean
     ): String {
         val mappedCricinfoId = cricinfo.getMappedCricinfoId(cricbuzzId)
         if (mappedCricinfoId != null) {
             val cricinfoUrl = "https://www.espncricinfo.com/series/$mappedCricinfoId/commentary"
             return if (cricinfo.isCommentaryAvailable(mappedCricinfoId, cricinfoUrl)) {
-                getBestCommentary(cricbuzzUrl, cricinfoUrl, keyNames)
+                getBestCommentary(cricbuzzUrl, cricinfoUrl, keyNames, isMatchComplete)
             } else {
-                fetchSingleSourceFusion(cricbuzzId, cricbuzzUrl, keyNames)
+                fetchSingleSourceFusion(cricbuzzId, cricbuzzUrl, keyNames, isMatchComplete)
             }
         }
         val found = cricinfo.findClosestLiveMatchUrlAndId(matchTitle)
         if (found != null) {
             val (url, id) = found
             cricinfo.mapMatchIds(cricbuzzId, id)
-            return getBestCommentary(cricbuzzUrl, url, keyNames)
+            return getBestCommentary(cricbuzzUrl, url, keyNames, isMatchComplete)
         }
-        return fetchSingleSourceFusion(cricbuzzId, cricbuzzUrl, keyNames)
+        return fetchSingleSourceFusion(cricbuzzId, cricbuzzUrl, keyNames, isMatchComplete)
     }
 
-    private suspend fun buildAiEntry(cricbuzzId: String, resultValue: String): String? {
+    private suspend fun buildAiEntry(cricbuzzId: String, resultValue: String, isMatchComplete: Boolean): String? {
         val ballNum = extractBallNumber(resultValue.trimStart()) ?: return null
         if (!scorer.isBallByBallCommentary(resultValue)) return null
         return try {
@@ -286,21 +306,28 @@ class LiveCommentaryManager(
         keyNames: List<String>,
         isMatchComplete: Boolean = false
     ): List<String> = withContext(Dispatchers.IO) {
-        this@LiveCommentaryManager.isMatchComplete = isMatchComplete
+        // Capture isMatchComplete as a local val at call-start and thread it explicitly through all
+        // downstream calls so no async job ever reads a stale shared field value.
+        val matchComplete = isMatchComplete
         addBreadcrumb(
             "Getting best commentary for match",
             mapOf("matchTitle" to matchTitle, "cricbuzzId" to cricbuzzId)
         )
 
-        val resultValue = resolveBestCommentary(matchTitle, cricbuzzId, cricbuzzUrl, keyNames)
+        val resultValue = resolveBestCommentary(matchTitle, cricbuzzId, cricbuzzUrl, keyNames, matchComplete)
         updateHistory(resultValue, cricbuzzId)
 
-        val aiEntry = buildAiEntry(cricbuzzId, resultValue)
-        val history = aiCommentaryHistory.toList().reversed()
+        val aiEntry = buildAiEntry(cricbuzzId, resultValue, matchComplete)
+        val history = stateMutex.withLock { aiCommentaryHistory.toList().reversed() }
         return@withContext if (aiEntry != null) listOf(aiEntry) + history else history
     }
 
-    private suspend fun fetchSingleSourceFusion(matchId: String, url: String, keyNames: List<String>): String {
+    private suspend fun fetchSingleSourceFusion(
+        matchId: String,
+        url: String,
+        keyNames: List<String>,
+        isMatchComplete: Boolean
+    ): String {
         addBreadcrumb("Fetching single source fusion", mapOf("matchId" to matchId))
 
         val buzz = safeFetch(emptyList<String>()) { cricbuzz.fetchLiveCommentary(url) }
@@ -315,22 +342,25 @@ class LiveCommentaryManager(
         val singleBatsman = details?.batsmen?.firstOrNull()?.name ?: ""
         val singleScore = details?.score ?: ""
 
-        currentStreamJob?.cancel()
-        currentStreamJob = scope.launch {
-            streamBallCommentary(
-                CommentaryFusionService.MatchContext(
-                    matchId = matchId,
-                    over = singleOver,
-                    ballNumber = singleBallNumber,
-                    snippet1 = buzzLine,
-                    snippet2 = "",
-                    oversSummary = buzzLine,
-                    bowler = singleBowler,
-                    batsman = singleBatsman,
-                    scoreContext = singleScore,
-                    isMatchComplete = isMatchComplete
+        // Synchronize cancel+reassign so concurrent calls can't race on currentStreamJob.
+        streamJobMutex.withLock {
+            currentStreamJob?.cancel()
+            currentStreamJob = scope.launch {
+                streamBallCommentary(
+                    CommentaryFusionService.MatchContext(
+                        matchId = matchId,
+                        over = singleOver,
+                        ballNumber = singleBallNumber,
+                        snippet1 = buzzLine,
+                        snippet2 = "",
+                        oversSummary = buzzLine,
+                        bowler = singleBowler,
+                        batsman = singleBatsman,
+                        scoreContext = singleScore,
+                        isMatchComplete = isMatchComplete
+                    )
                 )
-            )
+            }
         }
 
         val fusionResult = fuseLines(
@@ -342,15 +372,17 @@ class LiveCommentaryManager(
             ballNumber = singleBallNumber,
             bowler = singleBowler,
             batsman = singleBatsman,
-            scoreContext = singleScore
+            scoreContext = singleScore,
+            isMatchComplete = isMatchComplete
         )
         return prefixBallNumber(singleBallNumber, fusionResult)
     }
 
     /**
      * Insert or replace entry for the same ball number; replacement only if newer line is at least as long.
+     * Caller MUST hold stateMutex.
      */
-    private fun upsertAiHistoryEntry(line: String) {
+    private fun upsertAiHistoryEntryLocked(line: String) {
         val ballNum = extractBallNumber(line.trimStart())
         if (ballNum == null) {
             aiCommentaryHistory.add(line)
@@ -366,16 +398,19 @@ class LiveCommentaryManager(
         }
     }
 
-    private fun trimAiHistory() {
+    /** Caller MUST hold stateMutex. */
+    private fun trimAiHistoryLocked() {
         while (aiCommentaryHistory.size > aiHistoryLimit) aiCommentaryHistory.removeAt(0)
     }
 
-    private fun shouldSkipNotification(resultValue: String, matchKey: String): Boolean {
+    private suspend fun shouldSkipNotification(resultValue: String, matchKey: String): Boolean {
         if (!scorer.isBallByBallCommentary(resultValue)) return true
         val ballNum = extractBallNumber(resultValue)
-        if (ballNum != null && lastNotifiedBallMap[matchKey] == ballNum) return true
-        if (ballNum != null) lastNotifiedBallMap[matchKey] = ballNum
-        return false
+        return stateMutex.withLock {
+            if (ballNum != null && lastNotifiedBallMap[matchKey] == ballNum) return@withLock true
+            if (ballNum != null) lastNotifiedBallMap[matchKey] = ballNum
+            false
+        }
     }
 
     private fun dispatchKeyEvent(resultValue: String, matchKey: String) {
@@ -393,17 +428,19 @@ class LiveCommentaryManager(
     /**
      * Accuracy-focused history update and notification trigger.
      */
-    private fun updateHistory(resultValue: String, matchId: String? = null) {
-        if (aiCommentaryHistory.lastOrNull() == resultValue) return
+    private suspend fun updateHistory(resultValue: String, matchId: String? = null) {
+        stateMutex.withLock {
+            if (aiCommentaryHistory.lastOrNull() == resultValue) return@withLock
 
-        // CricBuzz sends progressive updates for the same ball (short → full).
-        // Replace any earlier entry for the same ball number with the newer (longer) text.
-        upsertAiHistoryEntry(resultValue)
+            // CricBuzz sends progressive updates for the same ball (short → full).
+            // Replace any earlier entry for the same ball number with the newer (longer) text.
+            upsertAiHistoryEntryLocked(resultValue)
 
-        // Trim to a bounded window so long matches don't accumulate hundreds of balls.
-        trimAiHistory()
+            // Trim to a bounded window so long matches don't accumulate hundreds of balls.
+            trimAiHistoryLocked()
+        }
 
-        // Notification Logic - MAGIC PRECISION
+        // Notification Logic - MAGIC PRECISION (outside mutex — no state access needed after here)
         try {
             val matchKey = matchId ?: "global"
             if (shouldSkipNotification(resultValue, matchKey)) return
@@ -429,7 +466,9 @@ class LiveCommentaryManager(
         val insightOver = extractBallNumber(commentary)?.substringBefore(".")?.toIntOrNull() ?: 0
         scope.launch {
             try {
-                val insight = summarizer(aiCommentaryHistory.takeLast(6), matchId, insightOver)
+                // Snapshot history under mutex before the suspension point in summarizer.
+                val snapshot = stateMutex.withLock { aiCommentaryHistory.takeLast(6) }
+                val insight = summarizer(snapshot, matchId, insightOver)
                 onKeyEvent?.invoke("AI Strategic Insight", insight)
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
@@ -442,23 +481,26 @@ class LiveCommentaryManager(
      * Pre-populate aiCommentaryHistory with historical lines fetched before the polling loop starts.
      * Existing entries are not duplicated; newer/longer entries for the same ball replace older ones.
      */
-    fun seedHistory(lines: List<String>) {
-        for (line in lines.reversed().filter { it.length > 5 }) {
-            if (aiCommentaryHistory.lastOrNull() == line) continue
-            val ballNum = extractBallNumber(line.trimStart())
-            if (ballNum == null) {
-                if (!aiCommentaryHistory.contains(line)) aiCommentaryHistory.add(line)
-            } else {
-                upsertAiHistoryEntry(line)
+    suspend fun seedHistory(lines: List<String>) {
+        stateMutex.withLock {
+            for (line in lines.reversed().filter { it.length > 5 }) {
+                if (aiCommentaryHistory.lastOrNull() == line) continue
+                val ballNum = extractBallNumber(line.trimStart())
+                if (ballNum == null) {
+                    if (!aiCommentaryHistory.contains(line)) aiCommentaryHistory.add(line)
+                } else {
+                    upsertAiHistoryEntryLocked(line)
+                }
             }
+            trimAiHistoryLocked()
         }
-        trimAiHistory()
     }
 
-    fun getSeededHistory(): List<String> = aiCommentaryHistory.toList().reversed()
+    suspend fun getSeededHistory(): List<String> = stateMutex.withLock { aiCommentaryHistory.toList().reversed() }
 
     fun getMappedCricinfoId(cricbuzzId: String): String? = cricinfo.getMappedCricinfoId(cricbuzzId)
-    fun getHistory(): List<String> = commentaryHistory
+    // Returns a snapshot; callers on any thread get a consistent immutable copy.
+    suspend fun getHistory(): List<String> = stateMutex.withLock { commentaryHistory.toList() }
     fun isBallByBallCommentary(snippet: String): Boolean = scorer.isBallByBallCommentary(snippet)
 
     /**

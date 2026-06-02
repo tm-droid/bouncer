@@ -45,9 +45,9 @@ class CommentaryFusionService(
     private val previousBallsBuffer = ConcurrentHashMap<String, MutableList<String>>()
     // Temp=0.0 verify calls are fully deterministic: same inputs → same PASS/FAIL every time.
     // Cache by content hash to avoid redundant AI calls on retry paths.
-    private val verifyCache = object : LinkedHashMap<Int, Boolean>(512, 0.75f, true) {
-        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<Int, Boolean>?) = size > 512
-    }
+    // ConcurrentHashMap: point reads/writes never cross suspension points so no Mutex needed here.
+    private val verifyCache = ConcurrentHashMap<Int, Boolean>(512)
+    private val verifyCacheMutex = Mutex()
     private val bufferMutex = Mutex()
     private val maxBufferSize = 6
 
@@ -712,7 +712,13 @@ class CommentaryFusionService(
                     setData("aiOutput", aiOutput.take(200))
                 })
             }
-            verifyCache[cacheKey] = passed
+            // Evict oldest entries when cache exceeds 512. Use mutex to make check-then-act atomic.
+            verifyCacheMutex.withLock {
+                if (verifyCache.size >= 512) {
+                    verifyCache.keys.firstOrNull()?.let { verifyCache.remove(it) }
+                }
+                verifyCache[cacheKey] = passed
+            }
             passed
         } catch (e: Exception) {
             // API failure during verification — pass through rather than discard good commentary
