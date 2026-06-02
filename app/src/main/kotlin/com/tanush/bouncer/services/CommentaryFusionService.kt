@@ -6,10 +6,13 @@ import com.tanush.bouncer.network.HttpClientProvider
 import io.sentry.Breadcrumb
 import io.sentry.Sentry
 import io.sentry.SentryLevel
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
-import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -55,8 +58,10 @@ class CommentaryFusionService(
     private val maxBufferSize = 6
 
     // In-flight dedup: concurrent fuse() calls for the same cache key share one LLM call.
-    // Map is guarded by inFlightMutex for check-then-put atomicity; Deferred itself is
-    // created in the caller's coroutine scope so cancellation propagates naturally.
+    // Map is guarded by inFlightMutex for check-then-put atomicity. Deferred is launched
+    // from serviceScope (not the caller's scope) so cancellation of one caller never
+    // cancels shared work in progress for other callers.
+    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val inFlightFuse = ConcurrentHashMap<String, Deferred<String>>()
     private val inFlightMutex = Mutex()
 
@@ -402,29 +407,30 @@ class CommentaryFusionService(
         AICacheService.getCommentary(cacheKey)?.let { return it }
 
         // In-flight dedup: if another coroutine is already computing this key, await its result
-        // instead of firing a duplicate LLM call. coroutineScope() ensures the shared Deferred
-        // is parented to the outermost scope so cancellation of one caller does not cancel the
+        // instead of firing a duplicate LLM call. serviceScope.async() parents the Deferred to
+        // the class-level scope so cancellation of any individual caller does not cancel the
         // shared work — each awaiter observes cancellation independently on await().
-        return coroutineScope {
-            val deferred: Deferred<String> = inFlightMutex.withLock {
-                inFlightFuse.getOrPut(cacheKey) {
-                    async(Dispatchers.IO) {
-                        try {
-                            computeFuse(
-                                snippet1, snippet2, oversSummary, matchId, over, ballNumber,
-                                bowler, batsman, scoreContext, totalOvers,
-                                partnershipContext, matchupContext, isMatchComplete, cacheKey
-                            )
-                        } finally {
-                            // Remove entry once work completes (success or failure) so a subsequent
-                            // call after cache miss re-computes rather than re-awaiting a done Deferred.
+        val deferred: Deferred<String> = inFlightMutex.withLock {
+            inFlightFuse.getOrPut(cacheKey) {
+                serviceScope.async {
+                    try {
+                        computeFuse(
+                            snippet1, snippet2, oversSummary, matchId, over, ballNumber,
+                            bowler, batsman, scoreContext, totalOvers,
+                            partnershipContext, matchupContext, isMatchComplete, cacheKey
+                        )
+                    } finally {
+                        // NonCancellable ensures the map entry is always removed even if this
+                        // coroutine is cancelled while inFlightMutex is contended — without it,
+                        // withLock would throw CancellationException and leave a stale entry.
+                        withContext(NonCancellable) {
                             inFlightMutex.withLock { inFlightFuse.remove(cacheKey) }
                         }
                     }
                 }
             }
-            deferred.await()
         }
+        return deferred.await()
     }
 
     private suspend fun computeFuse(
@@ -855,6 +861,9 @@ class CommentaryFusionService(
             return content
         }
     }
+
+    /** Cancel the class-level scope; call when the service is torn down. */
+    fun close() { serviceScope.cancel() }
 
     // Data class for streamCommentary context
     data class MatchContext(
