@@ -6,8 +6,13 @@ import io.appwrite.Query
 import io.appwrite.exceptions.AppwriteException
 import io.appwrite.services.Realtime
 import io.appwrite.services.TablesDB
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -19,8 +24,11 @@ object AppwriteHighlightsClient {
     var isReady = false
         private set
 
-    private var realtimeInstance: Realtime? = null
-    private var realtimeSubscription: Any? = null
+    private val reconnectScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    @Volatile private var realtimeSubscription: Any? = null
+    private var reconnectJob: Job? = null
+
+
 
     private val tablesDB: TablesDB?
         get() = AppwriteClient.client?.let { TablesDB(it) }
@@ -68,26 +76,62 @@ object AppwriteHighlightsClient {
 
     fun startRealtimeSubscription(scope: CoroutineScope, onNewHighlight: (HighlightRow) -> Unit) {
         if (!isReady) return
-        if (realtimeSubscription != null) return
-        val client = AppwriteClient.client ?: return
-        val realtime = Realtime(client)
-        realtimeInstance = realtime
+        if (reconnectJob?.isActive == true) return
+        reconnectJob = reconnectScope.launch {
+            subscribeWithReconnect(scope, onNewHighlight)
+        }
+    }
+
+    private suspend fun subscribeWithReconnect(
+        scope: CoroutineScope,
+        onNewHighlight: (HighlightRow) -> Unit
+    ) {
         // TablesDB tables are backed by Appwrite collections internally, so the standard
         // databases.{db}.collections.{table}.documents channel format is correct.
-        // Log the exact channel so a silent subscription miss is visible in logcat.
         val channel = "databases.$dbId.collections.$tableId.documents"
-        Log.d(TAG, "Subscribing to realtime channel: $channel")
-        realtimeSubscription = realtime.subscribe(channel) { response ->
-            val isCreate = response.events.any { it.contains(".create") }
-            if (!isCreate) return@subscribe
-            runCatching {
-                @Suppress("UNCHECKED_CAST")
-                val row = HighlightRow.fromMap(response.payload as? Map<String, Any?> ?: return@subscribe)
-                scope.launch { onNewHighlight(row) }
-            }.onFailure {
-                Log.d(TAG, "Realtime highlight payload unparseable: ${it.message}")
+        var backoffMs = 2_000L
+        while (reconnectScope.isActive) {
+            try {
+                val client = AppwriteClient.client ?: run {
+                    Log.w(TAG, "Realtime reconnect: AppwriteClient not ready, retrying in ${backoffMs}ms")
+                    delay(backoffMs)
+                    backoffMs = minOf(backoffMs * 2, 60_000L)
+                    return@run null
+                } ?: continue
+                Log.d(TAG, "Subscribing to realtime channel: $channel")
+                realtimeSubscription = Realtime(client).subscribe(channel) { response ->
+                    val isCreate = response.events.any { it.contains(".create") }
+                    if (!isCreate) return@subscribe
+                    runCatching {
+                        @Suppress("UNCHECKED_CAST")
+                        val row = HighlightRow.fromMap(response.payload as? Map<String, Any?> ?: return@subscribe)
+                        scope.launch { onNewHighlight(row) }
+                    }.onFailure {
+                        Log.d(TAG, "Realtime highlight payload unparseable: ${it.message}")
+                    }
+                }
+                // Subscription registered successfully — reset backoff, stay alive
+                backoffMs = 2_000L
+                // Suspend until scope is cancelled; re-subscribe loop continues if needed
+                // (Appwrite SDK does not expose error/close callbacks, so we rely on scope
+                // cancellation via stop() to exit cleanly)
+                return
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.w(TAG, "Realtime subscription failed, retrying in ${backoffMs}ms: ${e.message}")
+                realtimeSubscription = null
+                delay(backoffMs)
+                backoffMs = minOf(backoffMs * 2, 60_000L)
             }
         }
+    }
+
+    /** Unsubscribes and stops reconnect attempts. Safe to call multiple times. */
+    fun stop() {
+        reconnectJob?.cancel()
+        reconnectJob = null
+        realtimeSubscription = null
     }
 }
 

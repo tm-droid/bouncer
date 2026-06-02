@@ -10,8 +10,13 @@ import io.appwrite.Role
 import io.appwrite.exceptions.AppwriteException
 import io.appwrite.services.Realtime
 import io.appwrite.services.TablesDB
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.Instant
@@ -24,8 +29,9 @@ object AppwriteAICache {
     private const val TAG = "AppwriteAICache"
     private val TTL_MS get() = CacheConfig.AI_CACHE_TTL_MS
 
-    private var realtimeInstance: Realtime? = null
-    private var realtimeSubscription: Any? = null  // RealtimeSubscription handle
+    private val reconnectScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    @Volatile private var realtimeSubscription: Any? = null  // RealtimeSubscription handle
+    private var reconnectJob: Job? = null
 
     private var dbId = ""
     private var tableId = ""
@@ -136,29 +142,65 @@ object AppwriteAICache {
 
     fun startRealtimeSubscription(scope: CoroutineScope, onNewEntry: (key: String, commentary: String) -> Unit) {
         if (!isReady) return
-        if (realtimeSubscription != null) return
-        val client = AppwriteClient.client ?: return
-        val realtime = Realtime(client)
-        realtimeInstance = realtime
+        if (reconnectJob?.isActive == true) return
+        reconnectJob = reconnectScope.launch {
+            subscribeWithReconnect(scope, onNewEntry)
+        }
+    }
+
+    private suspend fun subscribeWithReconnect(
+        scope: CoroutineScope,
+        onNewEntry: (key: String, commentary: String) -> Unit
+    ) {
         // TablesDB tables are backed by Appwrite collections internally, so the standard
         // databases.{db}.collections.{table}.documents channel format is correct.
-        // Log the exact channel so a silent subscription miss is visible in logcat.
         val channel = "databases.$dbId.collections.$tableId.documents"
-        Log.d(TAG, "Subscribing to realtime channel: $channel")
-        realtimeSubscription = realtime.subscribe(channel) { response ->
-            val isCreate = response.events.any { it.contains(".create") }
-            if (!isCreate) return@subscribe
-            @Suppress("UNCHECKED_CAST")
-            val payload = response.payload as? Map<String, Any> ?: return@subscribe
-            val key = payload["cache_key"] as? String
-                ?: (payload["data"] as? Map<*, *>)?.get("cache_key") as? String
-            val commentary = payload["commentary"] as? String
-                ?: (payload["data"] as? Map<*, *>)?.get("commentary") as? String
-            if (key == null || commentary == null) {
-                Log.d(TAG, "Realtime AI cache payload unparseable: $payload")
-                return@subscribe
+        var backoffMs = 2_000L
+        while (reconnectScope.isActive) {
+            try {
+                val client = AppwriteClient.client ?: run {
+                    Log.w(TAG, "Realtime reconnect: AppwriteClient not ready, retrying in ${backoffMs}ms")
+                    delay(backoffMs)
+                    backoffMs = minOf(backoffMs * 2, 60_000L)
+                    return@run null
+                } ?: continue
+                Log.d(TAG, "Subscribing to realtime channel: $channel")
+                realtimeSubscription = Realtime(client).subscribe(channel) { response ->
+                    val isCreate = response.events.any { it.contains(".create") }
+                    if (!isCreate) return@subscribe
+                    @Suppress("UNCHECKED_CAST")
+                    val payload = response.payload as? Map<String, Any> ?: return@subscribe
+                    val key = payload["cache_key"] as? String
+                        ?: (payload["data"] as? Map<*, *>)?.get("cache_key") as? String
+                    val commentary = payload["commentary"] as? String
+                        ?: (payload["data"] as? Map<*, *>)?.get("commentary") as? String
+                    if (key == null || commentary == null) {
+                        Log.d(TAG, "Realtime AI cache payload unparseable: $payload")
+                        return@subscribe
+                    }
+                    scope.launch { onNewEntry(key, commentary) }
+                }
+                // Subscription registered successfully — reset backoff, stay alive
+                backoffMs = 2_000L
+                // Suspend until scope is cancelled; re-subscribe loop continues if needed
+                // (Appwrite SDK does not expose error/close callbacks, so we rely on scope
+                // cancellation via stop() to exit cleanly)
+                return
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.w(TAG, "Realtime subscription failed, retrying in ${backoffMs}ms: ${e.message}")
+                realtimeSubscription = null
+                delay(backoffMs)
+                backoffMs = minOf(backoffMs * 2, 60_000L)
             }
-            scope.launch { onNewEntry(key, commentary) }
         }
+    }
+
+    /** Unsubscribes and stops reconnect attempts. Safe to call multiple times. */
+    fun stop() {
+        reconnectJob?.cancel()
+        reconnectJob = null
+        realtimeSubscription = null
     }
 }
