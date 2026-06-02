@@ -72,8 +72,7 @@ class WinProbabilityCalculator(
     private val maxBalls = totalBalls
     private val maxWickets = 10
 
-    // Tables to store run and wicket probabilities
-    private var runTable: Array<DoubleArray>
+    // Table to store wicket probabilities
     private var wicketTable: Array<DoubleArray>
 
     // Run probabilities for different shot types (simplified), pre-sorted by key to avoid
@@ -102,7 +101,6 @@ class WinProbabilityCalculator(
 
     init {
         // Initialize tables
-        runTable = Array(maxBalls + 1) { DoubleArray(maxWickets + 1) }
         wicketTable = Array(maxBalls + 1) { DoubleArray(maxWickets + 1) }
 
         initializeProbabilityTables()
@@ -117,7 +115,6 @@ class WinProbabilityCalculator(
                     val baseWicketProbability = calculateBaseWicketProbability(ball, wicket)
 
                     // Apply pitch condition modifier; clamp wicket probability to [0,1]
-                    runTable[ball][wicket] = baseRunProbability * pitchCondition.value
                     wicketTable[ball][wicket] = (baseWicketProbability * (2 - pitchCondition.value)).coerceIn(0.0, 1.0)
                 }
             }
@@ -655,14 +652,14 @@ class WinProbabilityCalculator(
         requiredRunRate: Double,
         battingTeam: String = "",
         bowlingTeam: String = ""
-    ): PredictionOutput {
+    ): PredictionOutput = withContext(Dispatchers.Default) {
         val mlModelLocal = mlModel
         if (mlModelLocal == null || !mlModelTrained) {
             // Fallback to simulation-based probability
             val simProb = calculateWinProbability(
                 runsNeeded, ballsRemaining, wicketsLost, currentRunRate, requiredRunRate
             )
-            return PredictionOutput(
+            return@withContext PredictionOutput(
                 winProbability = simProb,
                 predictedScore = 0.0,
                 confidence = 0.3, // Low confidence for simulation-only
@@ -696,7 +693,7 @@ class WinProbabilityCalculator(
             runsNeeded = runsNeeded,
             ballsBowled = ballsBowled,
             wicketsLost = wicketsLost,
-            maxBalls = if (ballsRemaining > 120) 300 else 120,
+            maxBalls = maxBalls,
             enriched = FeatureExtractor.EnrichedContext(
                 pitchConditionValue = pitchCondition.value
             )
@@ -706,7 +703,7 @@ class WinProbabilityCalculator(
         val winProb = output[0].coerceIn(0.0, 1.0) * 100.0
         val predictedScore = output[1] * ModelTrainer.MAX_SCORE
 
-        return PredictionOutput(
+        PredictionOutput(
             winProbability = winProb,
             predictedScore = predictedScore,
             confidence = kotlin.math.abs(output[0] - 0.5) * 2.0,
