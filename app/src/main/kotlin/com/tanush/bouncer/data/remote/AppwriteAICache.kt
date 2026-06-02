@@ -14,6 +14,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.security.MessageDigest
 import java.time.Instant
 import java.time.format.DateTimeFormatter
 
@@ -84,6 +85,16 @@ object AppwriteAICache {
         }
     }
 
+    /**
+     * Derives a deterministic, Appwrite-safe document ID from a cache key.
+     * SHA-256 of the key, first 18 bytes as lowercase hex = 36 chars (within Appwrite's 36-char limit).
+     * All-hex chars satisfy Appwrite's alphanumeric+hyphen+underscore constraint.
+     */
+    private fun cacheKeyToDocId(key: String): String {
+        val digest = MessageDigest.getInstance("SHA-256").digest(key.toByteArray(Charsets.UTF_8))
+        return digest.take(18).joinToString("") { "%02x".format(it) }
+    }
+
     suspend fun set(key: String, commentary: String, permanent: Boolean = false) {
         if (!isReady) return
         withContext(Dispatchers.IO) {
@@ -101,28 +112,25 @@ object AppwriteAICache {
                     "commentary" to commentary,
                     "expires_at" to expiresAt
                 )
-                // Upsert prevents duplicate rows per cache_key that cause non-deterministic get() results.
-                // permanent writes must overwrite non-permanent ones; always-create would leave both rows.
-                val existing = db.listRows(
-                    databaseId = dbId,
-                    tableId = tableId,
-                    queries = listOf(Query.equal("cache_key", key), Query.limit(1))
-                ).rows.firstOrNull()
-                if (existing != null) {
-                    db.updateRow(
-                        databaseId = dbId,
-                        tableId = tableId,
-                        rowId = existing.id,
-                        data = data
-                    )
-                } else {
+                // Use a deterministic document ID derived from the cache key so concurrent
+                // set() calls for the same key conflict on ID (409) rather than creating
+                // duplicate rows. Catch 409 and treat as success — the row already exists.
+                val docId = cacheKeyToDocId(key)
+                try {
                     db.createRow(
                         databaseId = dbId,
                         tableId = tableId,
-                        rowId = ID.unique(),
+                        rowId = docId,
                         data = data,
                         permissions = listOf(Permission.read(Role.any()))
                     )
+                } catch (e: AppwriteException) {
+                    if (e.code == 409) {
+                        // Row already exists (concurrent writer or previous call) — idempotent success.
+                        Log.d(TAG, "Remote cache set: row already exists for key $key (409 conflict — OK)")
+                    } else {
+                        throw e
+                    }
                 }
             }.onFailure { e ->
                 if (e is AppwriteException) {

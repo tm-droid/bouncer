@@ -6,7 +6,10 @@ import com.tanush.bouncer.network.HttpClientProvider
 import io.sentry.Breadcrumb
 import io.sentry.Sentry
 import io.sentry.SentryLevel
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -50,6 +53,12 @@ class CommentaryFusionService(
     private val verifyCacheMutex = Mutex()
     private val bufferMutex = Mutex()
     private val maxBufferSize = 6
+
+    // In-flight dedup: concurrent fuse() calls for the same cache key share one LLM call.
+    // Map is guarded by inFlightMutex for check-then-put atomicity; Deferred itself is
+    // created in the caller's coroutine scope so cancellation propagates naturally.
+    private val inFlightFuse = ConcurrentHashMap<String, Deferred<String>>()
+    private val inFlightMutex = Mutex()
 
     // 7b: Phase-adaptive prompt selection
     private enum class PromptPhase { POWERPLAY, MIDDLE, DEATH, LAST_BALL }
@@ -387,9 +396,53 @@ class CommentaryFusionService(
         })
 
         val contextHash = (snippet1 + snippet2 + oversSummary).hashCode().toString()
-        val cacheKey = "ai_commentary:$matchId:$over:$contextHash"
+        // ballNumber included in key: two dot-balls in the same over with identical snippets
+        // must not collide and serve the wrong commentary for ball B.
+        val cacheKey = "ai_commentary:$matchId:$over:$ballNumber:$contextHash"
         AICacheService.getCommentary(cacheKey)?.let { return it }
 
+        // In-flight dedup: if another coroutine is already computing this key, await its result
+        // instead of firing a duplicate LLM call. coroutineScope() ensures the shared Deferred
+        // is parented to the outermost scope so cancellation of one caller does not cancel the
+        // shared work — each awaiter observes cancellation independently on await().
+        return coroutineScope {
+            val deferred: Deferred<String> = inFlightMutex.withLock {
+                inFlightFuse.getOrPut(cacheKey) {
+                    async(Dispatchers.IO) {
+                        try {
+                            computeFuse(
+                                snippet1, snippet2, oversSummary, matchId, over, ballNumber,
+                                bowler, batsman, scoreContext, totalOvers,
+                                partnershipContext, matchupContext, isMatchComplete, cacheKey
+                            )
+                        } finally {
+                            // Remove entry once work completes (success or failure) so a subsequent
+                            // call after cache miss re-computes rather than re-awaiting a done Deferred.
+                            inFlightMutex.withLock { inFlightFuse.remove(cacheKey) }
+                        }
+                    }
+                }
+            }
+            deferred.await()
+        }
+    }
+
+    private suspend fun computeFuse(
+        snippet1: String,
+        snippet2: String,
+        oversSummary: String,
+        matchId: String,
+        over: Int,
+        ballNumber: String,
+        bowler: String,
+        batsman: String,
+        scoreContext: String,
+        totalOvers: Int,
+        partnershipContext: String,
+        matchupContext: String,
+        isMatchComplete: Boolean,
+        cacheKey: String
+    ): String {
         val previousBalls = getPreviousBalls(matchId)
         val previousContext = if (previousBalls.isEmpty()) ""
             else "\nPrevious balls: ${previousBalls.joinToString(", ")}"
