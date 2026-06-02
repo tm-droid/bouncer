@@ -496,8 +496,12 @@ class CommentaryFusionService(
             Log.w("CommentaryFusionService", "Hallucination check FAILED — retrying with next provider (used: $usedProviderName)")
             val retried = retryWithNextProvider(prompt, alreadyTriedProvider = usedProviderName)
             if (retried != null) {
-                AICacheService.setCommentary(retried, cacheKey, permanent = isMatchComplete)
-                return retried
+                val retriedVerified = verifyCommentary(retried, snippet1, snippet2, ballNumber, bowler, batsman)
+                if (retriedVerified) {
+                    AICacheService.setCommentary(retried, cacheKey, permanent = isMatchComplete)
+                    return retried
+                }
+                // retried also unverified — fall through to raw snippet fallback
             }
             val fallback = snippet1.ifEmpty { snippet2 }
             Log.w("CommentaryFusionService", "All providers exhausted — using raw snippet fallback")
