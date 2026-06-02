@@ -414,8 +414,8 @@ class CricInfoScraper {
 
     private fun scoreCandidate(title: String, teamNames: List<String>): Int {
         var score = 0
-        if (title.contains(teamNames[0])) score += 50
-        if (title.contains(teamNames[1])) score += 50
+        if (teamNames[0].isNotBlank() && title.contains(teamNames[0])) score += 50
+        if (teamNames[1].isNotBlank() && title.contains(teamNames[1])) score += 50
         if (score >= 100) return score
         if (fuzzyTeamMatch(teamNames[0], title)) score += 40
         if (fuzzyTeamMatch(teamNames[1], title)) score += 40
