@@ -28,6 +28,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.io.IOException
 import java.util.concurrent.ConcurrentHashMap
+import kotlin.random.Random
 
 class CommentaryFusionService(
     private val client: OkHttpClient = HttpClientProvider.sharedClient,
@@ -83,6 +84,8 @@ class CommentaryFusionService(
 
     companion object {
         const val FALLBACK_BALL_COMMENTARY = "Ball delivered. Play continues."
+        // P2-6: Base cooldown after 429; actual cooldown = BASE + jitter(0..BASE) → 30–60s per provider.
+        const val BASE_COOLDOWN_MS = 30_000L
 
         // 7b: FUSION prompt variants — one per phase
         const val FUSION_PROMPT_POWERPLAY = """
@@ -624,10 +627,12 @@ class CommentaryFusionService(
         try {
             // Check HTTP status BEFORE reading the SSE stream
             if (response.code == 429) {
-                providerCooldowns[provider.name] = System.currentTimeMillis() + 30_000L
+                // P2-6: Add jitter to avoid synchronized retry storm when all providers are rate-limited.
+                val cooldownMs = BASE_COOLDOWN_MS + Random.nextLong(0, BASE_COOLDOWN_MS)
+                providerCooldowns[provider.name] = System.currentTimeMillis() + cooldownMs
                 Sentry.addBreadcrumb(Breadcrumb().apply {
                     category = "service.commentary"
-                    message = "${provider.name} rate-limited (stream) — 30s cooldown"
+                    message = "${provider.name} rate-limited (stream) — ${cooldownMs}ms cooldown"
                     level = SentryLevel.WARNING
                 })
                 throw IOException("Rate limited (429)")
@@ -757,11 +762,13 @@ class CommentaryFusionService(
             // Using withTimeoutOrNull here races with StandardTestDispatcher's virtual-time
             // advancement when callProvidersTracked dispatches to Dispatchers.IO.
             val verdict = callProviders(prompt, maxTokens = 16, temperature = 0.0)
-            val passed = verdict?.trim()?.uppercase()?.startsWith("PASS") == true
             if (verdict == null) {
-                Log.d("CommentaryFusionService", "No provider available for verification — assuming PASS")
-                return true
+                // P0-5: No provider available — fail closed. Caching unverified content is worse
+                // than discarding it; the caller will retry or fall back to the raw snippet.
+                Log.w("CommentaryFusionService", "No provider available for verification — failing closed (FAIL)")
+                return false
             }
+            val passed = verdict.trim().uppercase().startsWith("PASS")
             if (!passed) {
                 Log.w("CommentaryFusionService", "Hallucination check FAILED — verdict: $verdict")
                 Sentry.addBreadcrumb(Breadcrumb().apply {
@@ -781,9 +788,9 @@ class CommentaryFusionService(
             }
             passed
         } catch (e: Exception) {
-            // API failure during verification — pass through rather than discard good commentary
-            Log.w("CommentaryFusionService", "Verification call failed — assuming PASS: ${e.message}")
-            true
+            // P0-5: API failure during verification — fail closed; don't cache unverified content.
+            Log.w("CommentaryFusionService", "Verification call failed — failing closed (FAIL): ${e.message}")
+            false
         }
     }
 
@@ -841,16 +848,18 @@ class CommentaryFusionService(
 
         client.newCall(request).execute().use { response ->
             if (response.code == 429) {
-                providerCooldowns[provider.name] = System.currentTimeMillis() + 30_000L
+                // P2-6: Add jitter to avoid synchronized retry storm when all providers are rate-limited.
+                val cooldownMs = BASE_COOLDOWN_MS + Random.nextLong(0, BASE_COOLDOWN_MS)
+                providerCooldowns[provider.name] = System.currentTimeMillis() + cooldownMs
                 Sentry.addBreadcrumb(Breadcrumb().apply {
                     category = "service.commentary"
-                    message = "${provider.name} rate-limited — 30s cooldown"
+                    message = "${provider.name} rate-limited — ${cooldownMs}ms cooldown"
                     level = SentryLevel.WARNING
                 })
                 throw IOException("Rate limited (429)")
             }
             if (!response.isSuccessful) throw IOException("HTTP ${response.code}")
-            val content = JSONObject(response.body!!.string())
+            val content = JSONObject(response.body?.string() ?: throw IOException("Null body from ${provider.name}"))
                 .getJSONArray("choices")
                 .getJSONObject(0)
                 .getJSONObject("message")
