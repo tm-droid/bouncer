@@ -513,6 +513,7 @@ class CommentaryFusionService(
                 succeeded = true
                 break
             } catch (e: Exception) {
+                if (e is CancellationException) throw e
                 if (hasEmittedAny) {
                     // Partial output already sent to consumer — don't retry with another provider
                     throw e
