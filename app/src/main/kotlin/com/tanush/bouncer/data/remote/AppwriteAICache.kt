@@ -30,6 +30,7 @@ object AppwriteAICache {
     private val TTL_MS get() = CacheConfig.AI_CACHE_TTL_MS
 
     @Volatile private var realtimeSubscription: Any? = null  // RealtimeSubscription handle
+    private val subscriptionStarted = java.util.concurrent.atomic.AtomicBoolean(false)
     private val reconnectScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     private var dbId = ""
@@ -148,7 +149,7 @@ object AppwriteAICache {
 
     fun startRealtimeSubscription(scope: CoroutineScope, onNewEntry: (key: String, commentary: String) -> Unit) {
         if (!isReady) return
-        if (realtimeSubscription != null) return
+        if (!subscriptionStarted.compareAndSet(false, true)) return
         startSubscriptionLoop { response ->
             val isCreate = response.events.any { it.contains(".create") }
             if (!isCreate) return@startSubscriptionLoop

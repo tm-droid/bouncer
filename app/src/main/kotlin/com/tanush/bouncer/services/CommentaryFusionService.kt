@@ -783,7 +783,8 @@ class CommentaryFusionService(
                     setData("aiOutput", aiOutput.take(200))
                 })
             }
-            // Evict oldest entries when cache exceeds 512. Use mutex to make check-then-act atomic.
+            // Evict an arbitrary entry when cache exceeds 512 (ConcurrentHashMap has no ordering
+            // guarantee — not LRU/FIFO, but acceptable since values are deterministic and re-computable).
             verifyCacheMutex.withLock {
                 if (verifyCache.size >= 512) {
                     verifyCache.keys.firstOrNull()?.let { verifyCache.remove(it) }

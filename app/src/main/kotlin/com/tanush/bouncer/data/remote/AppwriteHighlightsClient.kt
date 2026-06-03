@@ -24,6 +24,7 @@ object AppwriteHighlightsClient {
         private set
 
     @Volatile private var realtimeSubscription: Any? = null
+    private val subscriptionStarted = java.util.concurrent.atomic.AtomicBoolean(false)
     private val reconnectScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     private val tablesDB: TablesDB?
@@ -72,7 +73,7 @@ object AppwriteHighlightsClient {
 
     fun startRealtimeSubscription(scope: CoroutineScope, onNewHighlight: (HighlightRow) -> Unit) {
         if (!isReady) return
-        if (realtimeSubscription != null) return
+        if (!subscriptionStarted.compareAndSet(false, true)) return
         startSubscriptionLoop { response ->
             val isCreate = response.events.any { it.contains(".create") }
             if (!isCreate) return@startSubscriptionLoop
