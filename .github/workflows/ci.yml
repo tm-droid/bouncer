@@ -194,6 +194,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     needs: build
+    continue-on-error: true  # app not yet created in Play Console; first upload must be done manually
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
     steps:
