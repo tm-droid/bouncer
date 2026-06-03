@@ -204,7 +204,7 @@ jobs:
           name: release-aab
           path: app/build/outputs/bundle/release/
 
-      - uses: google-github-actions/upload-google-play@v1
+      - uses: r0adkll/upload-google-play@v1
         with:
           serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
           packageName: com.tanush.bouncer
