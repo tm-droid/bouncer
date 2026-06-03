@@ -66,16 +66,22 @@ class ScorePollingWorker(
                     // Cap at MAX_LIVE_FOLLOWUPS (1 hour) so an API that never marks the match
                     // completed can't lock us into a permanent 5-min poll cycle. Counter resets
                     // whenever no live matches are present.
+                    // Synchronized to prevent a race if WorkManager ever runs two instances
+                    // concurrently (e.g. expedited + periodic overlap).
                     val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
                     if (matchCount > 0) {
-                        val count = prefs.getInt(KEY_FOLLOWUP_COUNT, 0)
-                        if (count < MAX_LIVE_FOLLOWUPS) {
-                            prefs.edit().putInt(KEY_FOLLOWUP_COUNT, count + 1).apply()
-                            enqueueLiveFollowUp(context)
-                        } else {
-                            Log.w(TAG, "Live follow-up cap reached ($MAX_LIVE_FOLLOWUPS); falling back to periodic poll")
-                            prefs.edit().remove(KEY_FOLLOWUP_COUNT).apply()
+                        val enqueue = synchronized(ScorePollingWorker::class.java) {
+                            val count = prefs.getInt(KEY_FOLLOWUP_COUNT, 0)
+                            if (count < MAX_LIVE_FOLLOWUPS) {
+                                prefs.edit().putInt(KEY_FOLLOWUP_COUNT, count + 1).commit()
+                                true
+                            } else {
+                                Log.w(TAG, "Live follow-up cap reached ($MAX_LIVE_FOLLOWUPS); falling back to periodic poll")
+                                prefs.edit().remove(KEY_FOLLOWUP_COUNT).commit()
+                                false
+                            }
                         }
+                        if (enqueue) enqueueLiveFollowUp(context)
                     } else {
                         prefs.edit().remove(KEY_FOLLOWUP_COUNT).apply()
                     }

@@ -2,7 +2,6 @@ package com.tanush.bouncer.analysis.ml
 
 import kotlin.math.*
 import kotlin.random.Random
-import io.sentry.Sentry
 
 /**
  * Multi-layer perceptron (neural network) for cricket score prediction.
@@ -31,18 +30,13 @@ class ScorePredictionModel private constructor(
      * @return Output predictions
      */
     fun forward(input: DoubleArray): DoubleArray {
-        try {
-            synchronized(weightLock) {
-                var current = input
-                for (i in layers.indices) {
-                    current = layers[i].forward(current)
-                    current = activations[i].forward(current)
-                }
-                return current
+        synchronized(weightLock) {
+            var current = input
+            for (i in layers.indices) {
+                current = layers[i].forward(current)
+                current = activations[i].forward(current)
             }
-        } catch (e: Exception) {
-            Sentry.captureException(e)
-            throw e
+            return current
         }
     }
 
@@ -54,33 +48,28 @@ class ScorePredictionModel private constructor(
      */
     fun forwardWithCache(input: DoubleArray): ForwardCache {
         return synchronized(weightLock) {
-            try {
-                val preActivations = mutableListOf<DoubleArray>()
-                val postActivations = mutableListOf<DoubleArray>()
+            val preActivations = mutableListOf<DoubleArray>()
+            val postActivations = mutableListOf<DoubleArray>()
 
-                var current = input
-                postActivations.add(current.copyOf()) // input is activation[0]
+            var current = input
+            postActivations.add(current.copyOf()) // input is activation[0]
 
-                for (i in layers.indices) {
-                    val z = layers[i].forward(current)
-                    preActivations.add(z.copyOf())
+            for (i in layers.indices) {
+                val z = layers[i].forward(current)
+                preActivations.add(z.copyOf())
 
-                    val a = activations[i].forward(z)
-                    postActivations.add(a.copyOf())
+                val a = activations[i].forward(z)
+                postActivations.add(a.copyOf())
 
-                    current = a
-                }
-
-                ForwardCache(
-                    input = input,
-                    preActivations = preActivations,
-                    postActivations = postActivations,
-                    output = current
-                )
-            } catch (e: Exception) {
-                Sentry.captureException(e)
-                throw e
+                current = a
             }
+
+            ForwardCache(
+                input = input,
+                preActivations = preActivations,
+                postActivations = postActivations,
+                output = current
+            )
         }
     }
 
@@ -92,32 +81,27 @@ class ScorePredictionModel private constructor(
      * @return List of [LayerGradients] for each layer (in layer order)
      */
     fun backward(cache: ForwardCache, outputGradient: DoubleArray): List<LayerGradients> {
-        try {
-            val allGradients = mutableListOf<LayerGradients>()
-            var currentGradient = outputGradient
+        val allGradients = mutableListOf<LayerGradients>()
+        var currentGradient = outputGradient
 
-            // Backpropagate through layers in reverse
-            for (i in layers.indices.reversed()) {
-                // Gradient through activation
-                val activationGrad = activations[i].backward(
-                    cache.preActivations[i], currentGradient
-                )
+        // Backpropagate through layers in reverse
+        for (i in layers.indices.reversed()) {
+            // Gradient through activation
+            val activationGrad = activations[i].backward(
+                cache.preActivations[i], currentGradient
+            )
 
-                // Gradient through linear layer
-                val inputToLayer = cache.postActivations[i] // activation from previous layer
-                val layerGrad = layers[i].backward(inputToLayer, activationGrad)
+            // Gradient through linear layer
+            val inputToLayer = cache.postActivations[i] // activation from previous layer
+            val layerGrad = layers[i].backward(inputToLayer, activationGrad)
 
-                allGradients.add(0, layerGrad)
+            allGradients.add(0, layerGrad)
 
-                // Pass gradient to previous layer
-                currentGradient = layerGrad.inputGradient
-            }
-
-            return allGradients
-        } catch (e: Exception) {
-            Sentry.captureException(e)
-            throw e
+            // Pass gradient to previous layer
+            currentGradient = layerGrad.inputGradient
         }
+
+        return allGradients
     }
 
     /**
@@ -127,65 +111,38 @@ class ScorePredictionModel private constructor(
      * @param learningRate Step size for the update
      */
     fun applyGradients(gradients: List<LayerGradients>, learningRate: Double) {
-        try {
-            synchronized(weightLock) {
-                for (i in layers.indices) {
-                    layers[i].applyGradients(gradients[i], learningRate)
-                }
+        synchronized(weightLock) {
+            for (i in layers.indices) {
+                layers[i].applyGradients(gradients[i], learningRate)
             }
-        } catch (e: Exception) {
-            Sentry.captureException(e)
-            throw e
         }
     }
 
     /** Get all model parameters as a flat list (for serialization / inspection). */
-    fun getParameters(): List<DoubleArray> {
-        try {
-            return layers.flatMap { listOf(it.weights.flatten(), it.biases.copyOf()) }
-        } catch (e: Exception) {
-            Sentry.captureException(e)
-            throw e
-        }
-    }
+    fun getParameters(): List<DoubleArray> =
+        layers.flatMap { listOf(it.weights.flatten(), it.biases.copyOf()) }
 
     /** Get the total number of trainable parameters in the model. */
-    fun parameterCount(): Int {
-        try {
-            return layers.sumOf { it.weights.size * it.weights[0].size + it.biases.size }
-        } catch (e: Exception) {
-            Sentry.captureException(e)
-            throw e
-        }
-    }
+    fun parameterCount(): Int =
+        layers.sumOf { it.weights.size * it.weights[0].size + it.biases.size }
 
     /** Deep-copy the entire model (useful for checkpointing best model during training). */
     fun copy(): ScorePredictionModel {
-        try {
-            val copiedLayers = layers.map { it.copy() }
-            return ScorePredictionModel(copiedLayers, activations)
-        } catch (e: Exception) {
-            Sentry.captureException(e)
-            throw e
-        }
+        val copiedLayers = layers.map { it.copy() }
+        return ScorePredictionModel(copiedLayers, activations)
     }
 
     /** Save model weights to a map for persistence. */
     fun serializeWeights(): Map<String, Any> {
-        try {
-            val data = mutableMapOf<String, Any>()
-            data["layerCount"] = layers.size
-            for (i in layers.indices) {
-                data["layer_${i}_weights"] = layers[i].weights.map { it.toList() }
-                data["layer_${i}_biases"] = layers[i].biases.toList()
-                data["layer_${i}_inputSize"] = layers[i].inputSize
-                data["layer_${i}_outputSize"] = layers[i].outputSize
-            }
-            return data
-        } catch (e: Exception) {
-            Sentry.captureException(e)
-            throw e
+        val data = mutableMapOf<String, Any>()
+        data["layerCount"] = layers.size
+        for (i in layers.indices) {
+            data["layer_${i}_weights"] = layers[i].weights.map { it.toList() }
+            data["layer_${i}_biases"] = layers[i].biases.toList()
+            data["layer_${i}_inputSize"] = layers[i].inputSize
+            data["layer_${i}_outputSize"] = layers[i].outputSize
         }
+        return data
     }
 
     /**
@@ -199,92 +156,87 @@ class ScorePredictionModel private constructor(
      * Throws [IllegalArgumentException] on structural mismatch.
      */
     fun deserializeWeights(map: Map<String, Any>) {
-        try {
-            val layerCount = when (val v = map["layerCount"]) {
-                is Int -> v
-                is Long -> v.toInt()
-                is Double -> v.toInt()
-                else -> throw IllegalArgumentException(
-                    "deserializeWeights: missing or invalid 'layerCount'"
-                )
+        val layerCount = when (val v = map["layerCount"]) {
+            is Int -> v
+            is Long -> v.toInt()
+            is Double -> v.toInt()
+            else -> throw IllegalArgumentException(
+                "deserializeWeights: missing or invalid 'layerCount'"
+            )
+        }
+        synchronized(weightLock) {
+            require(layerCount == layers.size) {
+                "deserializeWeights: layerCount=$layerCount but model has ${layers.size} layers"
             }
-            synchronized(weightLock) {
-                require(layerCount == layers.size) {
-                    "deserializeWeights: layerCount=$layerCount but model has ${layers.size} layers"
+            for (i in layers.indices) {
+                val inputSize = when (val v = map["layer_${i}_inputSize"]) {
+                    is Int -> v
+                    is Long -> v.toInt()
+                    is Double -> v.toInt()
+                    else -> throw IllegalArgumentException(
+                        "deserializeWeights: missing 'layer_${i}_inputSize'"
+                    )
                 }
-                for (i in layers.indices) {
-                    val inputSize = when (val v = map["layer_${i}_inputSize"]) {
-                        is Int -> v
-                        is Long -> v.toInt()
-                        is Double -> v.toInt()
-                        else -> throw IllegalArgumentException(
-                            "deserializeWeights: missing 'layer_${i}_inputSize'"
-                        )
-                    }
-                    val outputSize = when (val v = map["layer_${i}_outputSize"]) {
-                        is Int -> v
-                        is Long -> v.toInt()
-                        is Double -> v.toInt()
-                        else -> throw IllegalArgumentException(
-                            "deserializeWeights: missing 'layer_${i}_outputSize'"
-                        )
-                    }
-                    require(inputSize == layers[i].inputSize && outputSize == layers[i].outputSize) {
-                        "deserializeWeights: layer $i dimension mismatch — " +
-                        "expected (${layers[i].inputSize}→${layers[i].outputSize}), " +
-                        "got ($inputSize→$outputSize)"
-                    }
+                val outputSize = when (val v = map["layer_${i}_outputSize"]) {
+                    is Int -> v
+                    is Long -> v.toInt()
+                    is Double -> v.toInt()
+                    else -> throw IllegalArgumentException(
+                        "deserializeWeights: missing 'layer_${i}_outputSize'"
+                    )
+                }
+                require(inputSize == layers[i].inputSize && outputSize == layers[i].outputSize) {
+                    "deserializeWeights: layer $i dimension mismatch — " +
+                    "expected (${layers[i].inputSize}→${layers[i].outputSize}), " +
+                    "got ($inputSize→$outputSize)"
+                }
 
-                    @Suppress("UNCHECKED_CAST")
-                    val rawWeights = map["layer_${i}_weights"] as? List<List<*>>
-                        ?: throw IllegalArgumentException(
-                            "deserializeWeights: missing or wrong type for 'layer_${i}_weights'"
-                        )
-                    require(rawWeights.size == outputSize) {
-                        "deserializeWeights: layer $i weights row count ${rawWeights.size} != outputSize $outputSize"
+                @Suppress("UNCHECKED_CAST")
+                val rawWeights = map["layer_${i}_weights"] as? List<List<*>>
+                    ?: throw IllegalArgumentException(
+                        "deserializeWeights: missing or wrong type for 'layer_${i}_weights'"
+                    )
+                require(rawWeights.size == outputSize) {
+                    "deserializeWeights: layer $i weights row count ${rawWeights.size} != outputSize $outputSize"
+                }
+                for (j in 0 until outputSize) {
+                    val row = rawWeights[j]
+                    require(row.size == inputSize) {
+                        "deserializeWeights: layer $i weights[$j] size ${row.size} != inputSize $inputSize"
                     }
-                    for (j in 0 until outputSize) {
-                        val row = rawWeights[j]
-                        require(row.size == inputSize) {
-                            "deserializeWeights: layer $i weights[$j] size ${row.size} != inputSize $inputSize"
-                        }
-                        for (k in 0 until inputSize) {
-                            layers[i].weights[j][k] = when (val v = row[k]) {
-                                is Double -> v
-                                is Float -> v.toDouble()
-                                is Int -> v.toDouble()
-                                is Long -> v.toDouble()
-                                else -> throw IllegalArgumentException(
-                                    "deserializeWeights: unexpected weight type ${v?.javaClass}"
-                                )
-                            }
-                        }
-                    }
-
-                    @Suppress("UNCHECKED_CAST")
-                    val rawBiases = map["layer_${i}_biases"] as? List<*>
-                        ?: throw IllegalArgumentException(
-                            "deserializeWeights: missing or wrong type for 'layer_${i}_biases'"
-                        )
-                    require(rawBiases.size == outputSize) {
-                        "deserializeWeights: layer $i biases size ${rawBiases.size} != outputSize $outputSize"
-                    }
-                    for (j in 0 until outputSize) {
-                        layers[i].biases[j] = when (val v = rawBiases[j]) {
+                    for (k in 0 until inputSize) {
+                        layers[i].weights[j][k] = when (val v = row[k]) {
                             is Double -> v
                             is Float -> v.toDouble()
                             is Int -> v.toDouble()
                             is Long -> v.toDouble()
                             else -> throw IllegalArgumentException(
-                                "deserializeWeights: unexpected bias type ${v?.javaClass}"
+                                "deserializeWeights: unexpected weight type ${v?.javaClass}"
                             )
                         }
                     }
                 }
+
+                @Suppress("UNCHECKED_CAST")
+                val rawBiases = map["layer_${i}_biases"] as? List<*>
+                    ?: throw IllegalArgumentException(
+                        "deserializeWeights: missing or wrong type for 'layer_${i}_biases'"
+                    )
+                require(rawBiases.size == outputSize) {
+                    "deserializeWeights: layer $i biases size ${rawBiases.size} != outputSize $outputSize"
+                }
+                for (j in 0 until outputSize) {
+                    layers[i].biases[j] = when (val v = rawBiases[j]) {
+                        is Double -> v
+                        is Float -> v.toDouble()
+                        is Int -> v.toDouble()
+                        is Long -> v.toDouble()
+                        else -> throw IllegalArgumentException(
+                            "deserializeWeights: unexpected bias type ${v?.javaClass}"
+                        )
+                    }
+                }
             }
-        } catch (e: Exception) {
-            Sentry.captureException(e)
-            throw e
         }
     }
 
@@ -298,26 +250,21 @@ class ScorePredictionModel private constructor(
          * @param seed Random seed for reproducible weight initialization
          */
         fun create(seed: Long = 42L): ScorePredictionModel {
-            try {
-                val rng = Random(seed)
-                return ScorePredictionModel(
-                    layers = listOf(
-                        DenseLayer.heInit(FeatureExtractor.FEATURE_COUNT, 64, rng),
-                        DenseLayer.heInit(64, 32, rng),
-                        DenseLayer.heInit(32, 16, rng),
-                        DenseLayer.xavierInit(16, 2, rng) // output: [winProb, scoreNorm]
-                    ),
-                    activations = listOf(
-                        Activation.RELU,
-                        Activation.RELU,
-                        Activation.RELU,
-                        Activation.SIGMOID
-                    )
+            val rng = Random(seed)
+            return ScorePredictionModel(
+                layers = listOf(
+                    DenseLayer.heInit(FeatureExtractor.FEATURE_COUNT, 64, rng),
+                    DenseLayer.heInit(64, 32, rng),
+                    DenseLayer.heInit(32, 16, rng),
+                    DenseLayer.xavierInit(16, 2, rng) // output: [winProb, scoreNorm]
+                ),
+                activations = listOf(
+                    Activation.RELU,
+                    Activation.RELU,
+                    Activation.RELU,
+                    Activation.SIGMOID
                 )
-            } catch (e: Exception) {
-                Sentry.captureException(e)
-                throw e
-            }
+            )
         }
 
         /**
@@ -368,23 +315,18 @@ class DenseLayer(
 ) {
     /** Forward: compute z = W·x + b */
     fun forward(input: DoubleArray): DoubleArray {
-        try {
-            require(input.size == inputSize) {
-                "Input size ${input.size} doesn't match expected $inputSize"
-            }
-            val output = DoubleArray(outputSize)
-            for (j in 0 until outputSize) {
-                var sum = biases[j]
-                for (i in 0 until inputSize) {
-                    sum += weights[j][i] * input[i]
-                }
-                output[j] = sum
-            }
-            return output
-        } catch (e: Exception) {
-            Sentry.captureException(e)
-            throw e
+        require(input.size == inputSize) {
+            "Input size ${input.size} doesn't match expected $inputSize"
         }
+        val output = DoubleArray(outputSize)
+        for (j in 0 until outputSize) {
+            var sum = biases[j]
+            for (i in 0 until inputSize) {
+                sum += weights[j][i] * input[i]
+            }
+            output[j] = sum
+        }
+        return output
     }
 
     /**
@@ -395,131 +337,94 @@ class DenseLayer(
      * @return [LayerGradients] containing weight, bias, and input gradients
      */
     fun backward(input: DoubleArray, outputGradient: DoubleArray): LayerGradients {
-        try {
-            // ∂L/∂W = outputGradient ⊗ input^T
-            val weightGradients = Array(outputSize) { j ->
-                DoubleArray(inputSize) { i ->
-                    outputGradient[j] * input[i]
-                }
+        // ∂L/∂W = outputGradient ⊗ input^T
+        val weightGradients = Array(outputSize) { j ->
+            DoubleArray(inputSize) { i ->
+                outputGradient[j] * input[i]
             }
-
-            // ∂L/∂b = outputGradient
-            val biasGradients = outputGradient.copyOf()
-
-            // ∂L/∂x = W^T · outputGradient
-            val inputGradient = DoubleArray(inputSize)
-            for (i in 0 until inputSize) {
-                var sum = 0.0
-                for (j in 0 until outputSize) {
-                    sum += weights[j][i] * outputGradient[j]
-                }
-                inputGradient[i] = sum
-            }
-
-            return LayerGradients(weightGradients, biasGradients, inputGradient)
-        } catch (e: Exception) {
-            Sentry.captureException(e)
-            throw e
         }
+
+        // ∂L/∂b = outputGradient
+        val biasGradients = outputGradient.copyOf()
+
+        // ∂L/∂x = W^T · outputGradient
+        val inputGradient = DoubleArray(inputSize)
+        for (i in 0 until inputSize) {
+            var sum = 0.0
+            for (j in 0 until outputSize) {
+                sum += weights[j][i] * outputGradient[j]
+            }
+            inputGradient[i] = sum
+        }
+
+        return LayerGradients(weightGradients, biasGradients, inputGradient)
     }
 
     /** Apply gradient updates: W -= lr * ∂L/∂W, b -= lr * ∂L/∂b */
     fun applyGradients(gradients: LayerGradients, learningRate: Double) {
-        try {
-            for (j in 0 until outputSize) {
-                for (i in 0 until inputSize) {
-                    weights[j][i] -= learningRate * gradients.weightGradients[j][i]
-                }
-                biases[j] -= learningRate * gradients.biasGradients[j]
+        for (j in 0 until outputSize) {
+            for (i in 0 until inputSize) {
+                weights[j][i] -= learningRate * gradients.weightGradients[j][i]
             }
-        } catch (e: Exception) {
-            Sentry.captureException(e)
-            throw e
+            biases[j] -= learningRate * gradients.biasGradients[j]
         }
     }
 
     /** Deep copy of this layer. */
-    fun copy(): DenseLayer {
-        try {
-            return DenseLayer(
-                weights = weights.map { it.copyOf() }.toTypedArray(),
-                biases = biases.copyOf(),
-                inputSize = inputSize,
-                outputSize = outputSize
-            )
-        } catch (e: Exception) {
-            Sentry.captureException(e)
-            throw e
-        }
-    }
+    fun copy(): DenseLayer = DenseLayer(
+        weights = weights.map { it.copyOf() }.toTypedArray(),
+        biases = biases.copyOf(),
+        inputSize = inputSize,
+        outputSize = outputSize
+    )
 
     companion object {
         /** He initialization: weights ~ N(0, sqrt(2/fanIn)). Best for ReLU. */
         fun heInit(inputSize: Int, outputSize: Int, rng: Random): DenseLayer {
-            try {
-                val std = sqrt(2.0 / inputSize)
-                return DenseLayer(
-                    weights = Array(outputSize) {
-                        DoubleArray(inputSize) { rng.nextGaussian() * std }
-                    },
-                    biases = DoubleArray(outputSize) { 0.0 },
-                    inputSize = inputSize,
-                    outputSize = outputSize
-                )
-            } catch (e: Exception) {
-                Sentry.captureException(e)
-                throw e
-            }
+            val std = sqrt(2.0 / inputSize)
+            return DenseLayer(
+                weights = Array(outputSize) {
+                    DoubleArray(inputSize) { rng.nextGaussian() * std }
+                },
+                biases = DoubleArray(outputSize) { 0.0 },
+                inputSize = inputSize,
+                outputSize = outputSize
+            )
         }
 
         /** Xavier initialization: weights ~ N(0, sqrt(2/(fanIn + fanOut))). Best for Sigmoid/Tanh. */
         fun xavierInit(inputSize: Int, outputSize: Int, rng: Random): DenseLayer {
-            try {
-                val std = sqrt(2.0 / (inputSize + outputSize))
-                return DenseLayer(
-                    weights = Array(outputSize) {
-                        DoubleArray(inputSize) { rng.nextGaussian() * std }
-                    },
-                    biases = DoubleArray(outputSize) { 0.0 },
-                    inputSize = inputSize,
-                    outputSize = outputSize
-                )
-            } catch (e: Exception) {
-                Sentry.captureException(e)
-                throw e
-            }
+            val std = sqrt(2.0 / (inputSize + outputSize))
+            return DenseLayer(
+                weights = Array(outputSize) {
+                    DoubleArray(inputSize) { rng.nextGaussian() * std }
+                },
+                biases = DoubleArray(outputSize) { 0.0 },
+                inputSize = inputSize,
+                outputSize = outputSize
+            )
         }
     }
 }
 
 /** Extension to produce Gaussian random from Kotlin Random. */
 private fun Random.nextGaussian(): Double {
-    try {
-        // Box-Muller transform
-        val u1 = nextDouble()
-        val u2 = nextDouble()
-        return sqrt(-2.0 * ln(max(u1, 1e-10))) * cos(2.0 * PI * u2)
-    } catch (e: Exception) {
-        Sentry.captureException(e)
-        throw e
-    }
+    // Box-Muller transform
+    val u1 = nextDouble()
+    val u2 = nextDouble()
+    return sqrt(-2.0 * ln(max(u1, 1e-10))) * cos(2.0 * PI * u2)
 }
 
 /** Flatten a 2D array to a 1D array. */
 private fun Array<DoubleArray>.flatten(): DoubleArray {
-    try {
-        val total = sumOf { it.size }
-        val result = DoubleArray(total)
-        var idx = 0
-        for (row in this) {
-            row.copyInto(result, idx)
-            idx += row.size
-        }
-        return result
-    } catch (e: Exception) {
-        Sentry.captureException(e)
-        throw e
+    val total = sumOf { it.size }
+    val result = DoubleArray(total)
+    var idx = 0
+    for (row in this) {
+        row.copyInto(result, idx)
+        idx += row.size
     }
+    return result
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -552,34 +457,22 @@ enum class Activation {
         override fun forward(z: DoubleArray): DoubleArray =
             DoubleArray(z.size) { sigmoid(z[it]) }
 
-        override fun backward(z: DoubleArray, gradient: DoubleArray): DoubleArray {
-            try {
-                return DoubleArray(z.size) {
-                    val s = sigmoid(z[it])
-                    gradient[it] * s * (1.0 - s)
-                }
-            } catch (e: Exception) {
-                Sentry.captureException(e)
-                throw e
+        override fun backward(z: DoubleArray, gradient: DoubleArray): DoubleArray =
+            DoubleArray(z.size) {
+                val s = sigmoid(z[it])
+                gradient[it] * s * (1.0 - s)
             }
-        }
     },
 
     TANH {
         override fun forward(z: DoubleArray): DoubleArray =
             DoubleArray(z.size) { tanh(z[it]) }
 
-        override fun backward(z: DoubleArray, gradient: DoubleArray): DoubleArray {
-            try {
-                return DoubleArray(z.size) {
-                    val t = tanh(z[it])
-                    gradient[it] * (1.0 - t * t)
-                }
-            } catch (e: Exception) {
-                Sentry.captureException(e)
-                throw e
+        override fun backward(z: DoubleArray, gradient: DoubleArray): DoubleArray =
+            DoubleArray(z.size) {
+                val t = tanh(z[it])
+                gradient[it] * (1.0 - t * t)
             }
-        }
     },
 
     LINEAR {
@@ -592,19 +485,13 @@ enum class Activation {
 }
 
 /** Numerically stable sigmoid. */
-private fun sigmoid(x: Double): Double {
-    try {
-        return if (x >= 0) {
-            1.0 / (1.0 + exp(-x))
-        } else {
-            val ez = exp(x)
-            ez / (1.0 + ez)
-        }
-    } catch (e: Exception) {
-        Sentry.captureException(e)
-        throw e
+private fun sigmoid(x: Double): Double =
+    if (x >= 0) {
+        1.0 / (1.0 + exp(-x))
+    } else {
+        val ez = exp(x)
+        ez / (1.0 + ez)
     }
-}
 
 // ═══════════════════════════════════════════════════════════════════
 // Cache and Gradient Data Structures
@@ -620,14 +507,9 @@ data class ForwardCache(
     val output: DoubleArray
 ) {
     override fun equals(other: Any?): Boolean {
-        try {
-            if (this === other) return true
-            if (other !is ForwardCache) return false
-            return input.contentEquals(other.input) && output.contentEquals(other.output)
-        } catch (e: Exception) {
-            Sentry.captureException(e)
-            throw e
-        }
+        if (this === other) return true
+        if (other !is ForwardCache) return false
+        return input.contentEquals(other.input) && output.contentEquals(other.output)
     }
 
     override fun hashCode(): Int = input.contentHashCode() * 31 + output.contentHashCode()
@@ -642,15 +524,10 @@ data class LayerGradients(
     val inputGradient: DoubleArray            // ∂L/∂x (passed to previous layer)
 ) {
     override fun equals(other: Any?): Boolean {
-        try {
-            if (this === other) return true
-            if (other !is LayerGradients) return false
-            return biasGradients.contentEquals(other.biasGradients) &&
-                    inputGradient.contentEquals(other.inputGradient)
-        } catch (e: Exception) {
-            Sentry.captureException(e)
-            throw e
-        }
+        if (this === other) return true
+        if (other !is LayerGradients) return false
+        return biasGradients.contentEquals(other.biasGradients) &&
+                inputGradient.contentEquals(other.inputGradient)
     }
 
     override fun hashCode(): Int = biasGradients.contentHashCode()
