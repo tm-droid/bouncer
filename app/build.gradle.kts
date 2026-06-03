@@ -36,6 +36,15 @@ android {
     namespace = "com.tanush.bouncer"
     compileSdk = 36
 
+    signingConfigs {
+        create("release") {
+            storeFile = file("bouncer-release.keystore")
+            storePassword = localProperties.getProperty("KEYSTORE_PASSWORD") ?: System.getenv("KEYSTORE_PASSWORD") ?: ""
+            keyAlias = localProperties.getProperty("KEY_ALIAS") ?: System.getenv("KEY_ALIAS") ?: ""
+            keyPassword = localProperties.getProperty("KEY_PASSWORD") ?: System.getenv("KEY_PASSWORD") ?: ""
+        }
+    }
+
     defaultConfig {
         applicationId = "com.tanush.bouncer"
         minSdk = 26
@@ -78,6 +87,7 @@ buildConfigField("String", "APPWRITE_AI_CACHE_DB_ID", "\"${localProperties.getPr
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             manifestPlaceholders["sentryEnvironment"] = "production"
             manifestPlaceholders["sentryDebug"] = "false"
+            signingConfig = signingConfigs.getByName("release")
         }
         debug {
             isCrunchPngs = false
