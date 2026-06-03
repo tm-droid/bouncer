@@ -53,32 +53,34 @@ class ScorePredictionModel private constructor(
      * @return [ForwardCache] containing all layer outputs and pre-activations
      */
     fun forwardWithCache(input: DoubleArray): ForwardCache {
-        try {
-            val preActivations = mutableListOf<DoubleArray>()
-            val postActivations = mutableListOf<DoubleArray>()
+        return synchronized(weightLock) {
+            try {
+                val preActivations = mutableListOf<DoubleArray>()
+                val postActivations = mutableListOf<DoubleArray>()
 
-            var current = input
-            postActivations.add(current.copyOf()) // input is activation[0]
+                var current = input
+                postActivations.add(current.copyOf()) // input is activation[0]
 
-            for (i in layers.indices) {
-                val z = layers[i].forward(current)
-                preActivations.add(z.copyOf())
+                for (i in layers.indices) {
+                    val z = layers[i].forward(current)
+                    preActivations.add(z.copyOf())
 
-                val a = activations[i].forward(z)
-                postActivations.add(a.copyOf())
+                    val a = activations[i].forward(z)
+                    postActivations.add(a.copyOf())
 
-                current = a
+                    current = a
+                }
+
+                ForwardCache(
+                    input = input,
+                    preActivations = preActivations,
+                    postActivations = postActivations,
+                    output = current
+                )
+            } catch (e: Exception) {
+                Sentry.captureException(e)
+                throw e
             }
-
-            return ForwardCache(
-                input = input,
-                preActivations = preActivations,
-                postActivations = postActivations,
-                output = current
-            )
-        } catch (e: Exception) {
-            Sentry.captureException(e)
-            throw e
         }
     }
 

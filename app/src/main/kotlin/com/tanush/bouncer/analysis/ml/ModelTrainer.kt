@@ -76,9 +76,12 @@ class ModelTrainer(private val context: Context? = null) {
          */
         fun loadFromFile(context: Context) {
             if (shared != null) return
-            // ModelTrainer.init {} calls loadModel() → loadFromFile(ctx), so weights are
-            // already loaded during construction. No duplicate call needed.
-            shared = ModelTrainer(context.applicationContext)
+            synchronized(ModelTrainer::class.java) {
+                if (shared != null) return
+                // ModelTrainer.init {} calls loadModel() → loadFromFile(ctx), so weights are
+                // already loaded during construction. No duplicate call needed.
+                shared = ModelTrainer(context.applicationContext)
+            }
         }
     }
 

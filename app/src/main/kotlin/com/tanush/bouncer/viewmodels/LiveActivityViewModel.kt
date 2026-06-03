@@ -73,6 +73,7 @@ class LiveActivityViewModel : ViewModel() {
     private val liveCommentaryManager = LiveCommentaryManager()
 
     // Set from a context-aware component (Activity / Composable with LocalContext).
+    // Must pass applicationContext (or a context whose lifecycle outlives this ViewModel) to avoid leaking an Activity.
     private var notificationManager: LiveNotificationManager? = null
 
     fun setNotificationManager(manager: LiveNotificationManager) {
@@ -749,6 +750,7 @@ class LiveActivityViewModel : ViewModel() {
 
     override fun onCleared() {
         super.onCleared()
+        notificationManager = null
         liveCommentaryManager.close()
     }
 }
