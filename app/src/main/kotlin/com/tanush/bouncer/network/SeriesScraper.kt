@@ -85,16 +85,17 @@ class SeriesScraper {
             } catch (e: UnknownHostException) {
                 lastException = e
             } catch (e: Exception) {
-                lastException = e
-                break
+                // Non-network error (parse failure, etc.) — rethrow so caller can
+                // distinguish real failure from genuine empty response and retry/fail.
+                throw e
             }
 
             delay(backoff)
             backoff *= 2
         }
 
-        Sentry.captureException(lastException ?: Exception("Series fetch failed"))
-        emptyList()
+        // All retries exhausted for network errors — throw so WorkManager retries.
+        throw lastException ?: Exception("Series fetch failed after $MAX_RETRIES attempts")
     }
 
     /**

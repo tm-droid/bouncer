@@ -46,6 +46,7 @@ object SquadScraper {
             
             val doc = Jsoup.connect(urlString)
                 .userAgent(USER_AGENT)
+                .timeout(10_000)
                 .get()
             
             // Team 1 (left column)

@@ -25,7 +25,7 @@ class ProbabilityTracker(
     private var currentProbability: Double = 50.0
     private val prefs: SharedPreferences = context.getSharedPreferences("probability_cache", Context.MODE_PRIVATE)
     
-    fun trackEvent(
+    suspend fun trackEvent(
         ball: Int,
         over: Int,
         runs: Int,
@@ -36,8 +36,8 @@ class ProbabilityTracker(
         matchSituation: TrackerMatchSituation
     ) {
         val oldProbability = currentProbability
-        
-        // Calculate new probability
+
+        // Calculate new probability — suspend call dispatches to Dispatchers.Default internally
         val runsNeeded = (matchSituation.requiredRunRate * matchSituation.oversRemaining).toInt()
         currentProbability = calculator.calculateWinProbability(
             runsNeeded = runsNeeded,

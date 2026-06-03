@@ -89,7 +89,7 @@ class CommentaryFusionServiceTest {
 
     private fun fuseCacheKey(): String {
         val hash = (snippet1 + snippet2 + oversSummary).hashCode()
-        return "ai_commentary:$matchId:$over:$hash"
+        return "ai_commentary:$matchId:$over:$ballNumber:$hash"
     }
 
     private suspend fun defaultFuse(service: CommentaryFusionService) = service.fuse(

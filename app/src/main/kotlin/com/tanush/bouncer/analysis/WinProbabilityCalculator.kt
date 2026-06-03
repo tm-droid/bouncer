@@ -8,6 +8,8 @@ import com.tanush.bouncer.models.CricsheetMatch
 import com.tanush.bouncer.models.CricsheetInnings
 import kotlin.math.max
 import io.sentry.Sentry
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 enum class PitchCondition(val value: Double) {
     BATTING_FRIENDLY(1.2),
@@ -62,25 +64,27 @@ class WinProbabilityCalculator(
     private val pitchCondition: PitchCondition = PitchCondition.BALANCED,
     private val battingTeamForm: List<PlayerForm> = emptyList(),
     private val bowlingTeamForm: List<PlayerForm> = emptyList(),
-    private val historicalData: Map<String, Double> = emptyMap()
+    private val historicalData: Map<String, Double> = emptyMap(),
+    /** Total balls in one innings: T20=120, ODI=300, Test=450. Defaults to 300 (ODI). */
+    val totalBalls: Int = 300
 ) {
-    // Constants for the game
-    private val maxBalls = 300  // For 50 overs
+    // Constants for the game — use totalBalls so T20/ODI/Test are modelled correctly
+    private val maxBalls = totalBalls
     private val maxWickets = 10
 
-    // Tables to store run and wicket probabilities
-    private var runTable: Array<DoubleArray>
+    // Table to store wicket probabilities
     private var wicketTable: Array<DoubleArray>
 
-    // Run probabilities for different shot types (simplified)
-    private val runProbabilities: Map<Int, Double> = mapOf(
+    // Run probabilities for different shot types (simplified), pre-sorted by key to avoid
+    // per-ball sort in the hot Monte Carlo loop.
+    private val sortedRunProbabilities: List<Map.Entry<Int, Double>> = mapOf(
         0 to 0.3,  // Dot ball
         1 to 0.25, // Single
         2 to 0.15, // Double
         3 to 0.05, // Triple
         4 to 0.15, // Four
         6 to 0.1   // Six
-    )
+    ).entries.sortedBy { it.key }
 
     // Cricsheet data
     private var historicalMatches: List<CricsheetMatch> = emptyList()
@@ -97,7 +101,6 @@ class WinProbabilityCalculator(
 
     init {
         // Initialize tables
-        runTable = Array(maxBalls + 1) { DoubleArray(maxWickets + 1) }
         wicketTable = Array(maxBalls + 1) { DoubleArray(maxWickets + 1) }
 
         initializeProbabilityTables()
@@ -111,9 +114,8 @@ class WinProbabilityCalculator(
                     val baseRunProbability = calculateBaseRunProbability(ball, wicket)
                     val baseWicketProbability = calculateBaseWicketProbability(ball, wicket)
 
-                    // Apply pitch condition modifier
-                    runTable[ball][wicket] = baseRunProbability * pitchCondition.value
-                    wicketTable[ball][wicket] = baseWicketProbability * (2 - pitchCondition.value)
+                    // Apply pitch condition modifier; clamp wicket probability to [0,1]
+                    wicketTable[ball][wicket] = (baseWicketProbability * (2 - pitchCondition.value)).coerceIn(0.0, 1.0)
                 }
             }
         } catch (e: Exception) {
@@ -144,9 +146,9 @@ class WinProbabilityCalculator(
             }
             probability += (battingFormAverage - 0.5) * 0.1
 
-            // Add match situation modifiers
+            // Add match situation modifiers (death overs = last 20% of innings)
             val isPowerPlay = ball < 36
-            val isDeathOvers = ball > 240
+            val isDeathOvers = ball > (maxBalls * 0.8).toInt()
 
             if (isPowerPlay) {
                 val battingTeamStats = teamStats[battingTeamName]
@@ -195,9 +197,9 @@ class WinProbabilityCalculator(
             }
             probability += (bowlingFormAverage - 0.5) * 0.02
 
-            // Add match situation modifiers
+            // Add match situation modifiers (death overs = last 20% of innings)
             val isPowerPlay = ball < 36
-            val isDeathOvers = ball > 240
+            val isDeathOvers = ball > (maxBalls * 0.8).toInt()
 
             if (isPowerPlay) {
                 probability *= 1.1
@@ -205,7 +207,8 @@ class WinProbabilityCalculator(
                 probability *= 1.2
             }
 
-            return probability
+            // Clamp wicket probability to valid range [0,1]
+            return probability.coerceIn(0.0, 1.0)
         } catch (e: Exception) {
             Sentry.captureException(e)
             throw e
@@ -217,8 +220,8 @@ class WinProbabilityCalculator(
             val random = Math.random()
             var cumulativeProbability = 0.0
 
-            val sortedProbabilities = runProbabilities.entries.sortedBy { it.key }
-            for ((runs, probability) in sortedProbabilities) {
+            // sortedRunProbabilities is pre-sorted once at construction — no per-ball sort
+            for ((runs, probability) in sortedRunProbabilities) {
                 cumulativeProbability += probability
                 if (random <= cumulativeProbability) {
                     return runs
@@ -261,16 +264,31 @@ class WinProbabilityCalculator(
         }
     }
 
-    fun calculateWinProbability(
+    /**
+     * Calculate win probability via Monte Carlo simulation.
+     *
+     * Callers MUST invoke this from a background coroutine (Dispatchers.Default or IO).
+     * The function wraps its body in [withContext(Dispatchers.Default)] as a safety net,
+     * so suspend-callers don't accidentally block the main thread.
+     *
+     * Returns a percentage in [0.0, 100.0].
+     */
+    suspend fun calculateWinProbability(
         runsNeeded: Int,
         ballsRemaining: Int,
         wicketsLost: Int,
         currentRunRate: Double,
         requiredRunRate: Double
-    ): Double {
-        val ballsBowled = maxBalls - ballsRemaining
+    ): Double = withContext(Dispatchers.Default) {
+        // Short-circuit: known terminal states
+        if (wicketsLost >= maxWickets) return@withContext 0.0
+        if (runsNeeded <= 0) return@withContext 100.0
+        val safeBallsRemaining = ballsRemaining.coerceIn(0, maxBalls)
+        if (safeBallsRemaining <= 0) return@withContext 0.0
+
+        val ballsBowled = (maxBalls - safeBallsRemaining).coerceAtLeast(0)
         var wins = 0
-        val simulations = (ballsRemaining * 150).coerceIn(500, 8_000)
+        val simulations = (safeBallsRemaining * 150).coerceIn(500, 8_000)
 
         for (i in 0 until simulations) {
             if (simulateOneMatch(ballsBowled, wicketsLost, runsNeeded)) {
@@ -278,10 +296,10 @@ class WinProbabilityCalculator(
             }
         }
 
-        return (wins.toDouble() / simulations) * 100.0
+        (wins.toDouble() / simulations * 100.0).coerceIn(0.0, 100.0)
     }
 
-    fun calculateSimpleWinProbability(
+    suspend fun calculateSimpleWinProbability(
         runsNeeded: Int,
         ballsRemaining: Int,
         wicketsInHand: Int
@@ -626,7 +644,7 @@ class WinProbabilityCalculator(
      * @param bowlingTeam Name of the bowling team (for historical lookup)
      * @return Win probability as percentage (0-100)
      */
-    fun calculateMLWinProbability(
+    suspend fun calculateMLWinProbability(
         runsNeeded: Int,
         ballsRemaining: Int,
         wicketsLost: Int,
@@ -634,14 +652,14 @@ class WinProbabilityCalculator(
         requiredRunRate: Double,
         battingTeam: String = "",
         bowlingTeam: String = ""
-    ): PredictionOutput {
+    ): PredictionOutput = withContext(Dispatchers.Default) {
         val mlModelLocal = mlModel
         if (mlModelLocal == null || !mlModelTrained) {
             // Fallback to simulation-based probability
             val simProb = calculateWinProbability(
                 runsNeeded, ballsRemaining, wicketsLost, currentRunRate, requiredRunRate
             )
-            return PredictionOutput(
+            return@withContext PredictionOutput(
                 winProbability = simProb,
                 predictedScore = 0.0,
                 confidence = 0.3, // Low confidence for simulation-only
@@ -651,8 +669,10 @@ class WinProbabilityCalculator(
             )
         }
 
-        val ballsBowled = max(0, 300 - ballsRemaining)
+        val ballsBowled = max(0, maxBalls - ballsRemaining)
         val oversRemaining = max(ballsRemaining / 6.0, 0.1)
+        // Power-play is first 6 overs (36 balls); death overs = last 20% of innings
+        val deathOversThreshold = (maxBalls * 0.8).toInt()
         val situation = MatchSituation(
             currentRunRate = currentRunRate,
             requiredRunRate = requiredRunRate,
@@ -660,7 +680,7 @@ class WinProbabilityCalculator(
             wicketsInHand = 10 - wicketsLost,
             lastFiveOversRuns = (currentRunRate * 5).toInt(),
             isPowerPlay = ballsBowled < 36,
-            isDeathOvers = ballsBowled > 90
+            isDeathOvers = ballsBowled > deathOversThreshold
         )
 
         val battingStats = getTeamStats(battingTeam)
@@ -673,7 +693,7 @@ class WinProbabilityCalculator(
             runsNeeded = runsNeeded,
             ballsBowled = ballsBowled,
             wicketsLost = wicketsLost,
-            maxBalls = if (ballsRemaining > 120) 300 else 120,
+            maxBalls = maxBalls,
             enriched = FeatureExtractor.EnrichedContext(
                 pitchConditionValue = pitchCondition.value
             )
@@ -683,7 +703,7 @@ class WinProbabilityCalculator(
         val winProb = output[0].coerceIn(0.0, 1.0) * 100.0
         val predictedScore = output[1] * ModelTrainer.MAX_SCORE
 
-        return PredictionOutput(
+        PredictionOutput(
             winProbability = winProb,
             predictedScore = predictedScore,
             confidence = kotlin.math.abs(output[0] - 0.5) * 2.0,

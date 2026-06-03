@@ -17,15 +17,17 @@ object MatchSubscriptionManager {
 
     private lateinit var prefs: SharedPreferences
     private val gson = Gson()
+    private var initialized = false
 
     private val _subscriptions = MutableStateFlow<Set<String>>(emptySet())
     val subscriptions: StateFlow<Set<String>> = _subscriptions.asStateFlow()
 
     fun initialize(context: Context) {
-        if (::prefs.isInitialized) return
+        if (initialized) return
         try {
             prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             _subscriptions.value = load()
+            initialized = true
             Log.d(TAG, "Initialized with ${_subscriptions.value.size} subscriptions")
         } catch (e: Exception) {
             Sentry.captureException(e)
@@ -34,6 +36,7 @@ object MatchSubscriptionManager {
     }
 
     fun subscribe(matchId: String) {
+        if (!initialized) return
         try {
             val current = _subscriptions.value.toMutableSet()
             if (current.add(matchId)) {
@@ -46,6 +49,7 @@ object MatchSubscriptionManager {
     }
 
     fun unsubscribe(matchId: String) {
+        if (!initialized) return
         try {
             val current = _subscriptions.value.toMutableSet()
             if (current.remove(matchId)) {
@@ -58,6 +62,7 @@ object MatchSubscriptionManager {
     }
 
     fun toggle(matchId: String): Boolean {
+        if (!initialized) return false
         return if (isSubscribed(matchId)) {
             unsubscribe(matchId)
             false
@@ -67,7 +72,10 @@ object MatchSubscriptionManager {
         }
     }
 
-    fun isSubscribed(matchId: String): Boolean = _subscriptions.value.contains(matchId)
+    fun isSubscribed(matchId: String): Boolean {
+        if (!initialized) return false
+        return _subscriptions.value.contains(matchId)
+    }
 
     private fun save(set: Set<String>) {
         // Persist first so a process kill between disk + StateFlow doesn't lose state.

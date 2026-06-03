@@ -6,7 +6,14 @@ import com.tanush.bouncer.network.HttpClientProvider
 import io.sentry.Breadcrumb
 import io.sentry.Sentry
 import io.sentry.SentryLevel
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -22,6 +29,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.io.IOException
 import java.util.concurrent.ConcurrentHashMap
+import kotlin.random.Random
 
 class CommentaryFusionService(
     private val client: OkHttpClient = HttpClientProvider.sharedClient,
@@ -45,11 +53,19 @@ class CommentaryFusionService(
     private val previousBallsBuffer = ConcurrentHashMap<String, MutableList<String>>()
     // Temp=0.0 verify calls are fully deterministic: same inputs → same PASS/FAIL every time.
     // Cache by content hash to avoid redundant AI calls on retry paths.
-    private val verifyCache = object : LinkedHashMap<Int, Boolean>(512, 0.75f, true) {
-        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<Int, Boolean>?) = size > 512
-    }
+    // ConcurrentHashMap: point reads/writes never cross suspension points so no Mutex needed here.
+    private val verifyCache = ConcurrentHashMap<Int, Boolean>(512)
+    private val verifyCacheMutex = Mutex()
     private val bufferMutex = Mutex()
     private val maxBufferSize = 6
+
+    // In-flight dedup: concurrent fuse() calls for the same cache key share one LLM call.
+    // Map is guarded by inFlightMutex for check-then-put atomicity. Deferred is launched
+    // from serviceScope (not the caller's scope) so cancellation of one caller never
+    // cancels shared work in progress for other callers.
+    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val inFlightFuse = ConcurrentHashMap<String, Deferred<String>>()
+    private val inFlightMutex = Mutex()
 
     // 7b: Phase-adaptive prompt selection
     private enum class PromptPhase { POWERPLAY, MIDDLE, DEATH, LAST_BALL }
@@ -69,6 +85,8 @@ class CommentaryFusionService(
 
     companion object {
         const val FALLBACK_BALL_COMMENTARY = "Ball delivered. Play continues."
+        // P2-6: Base cooldown after 429; actual cooldown = BASE + jitter(0..BASE) → 30–60s per provider.
+        const val BASE_COOLDOWN_MS = 30_000L
 
         // 7b: FUSION prompt variants — one per phase
         const val FUSION_PROMPT_POWERPLAY = """
@@ -387,9 +405,54 @@ class CommentaryFusionService(
         })
 
         val contextHash = (snippet1 + snippet2 + oversSummary).hashCode().toString()
-        val cacheKey = "ai_commentary:$matchId:$over:$contextHash"
+        // ballNumber included in key: two dot-balls in the same over with identical snippets
+        // must not collide and serve the wrong commentary for ball B.
+        val cacheKey = "ai_commentary:$matchId:$over:$ballNumber:$contextHash"
         AICacheService.getCommentary(cacheKey)?.let { return it }
 
+        // In-flight dedup: if another coroutine is already computing this key, await its result
+        // instead of firing a duplicate LLM call. serviceScope.async() parents the Deferred to
+        // the class-level scope so cancellation of any individual caller does not cancel the
+        // shared work — each awaiter observes cancellation independently on await().
+        val deferred: Deferred<String> = inFlightMutex.withLock {
+            inFlightFuse.getOrPut(cacheKey) {
+                serviceScope.async {
+                    try {
+                        computeFuse(
+                            snippet1, snippet2, oversSummary, matchId, over, ballNumber,
+                            bowler, batsman, scoreContext, totalOvers,
+                            partnershipContext, matchupContext, isMatchComplete, cacheKey
+                        )
+                    } finally {
+                        // NonCancellable ensures the map entry is always removed even if this
+                        // coroutine is cancelled while inFlightMutex is contended — without it,
+                        // withLock would throw CancellationException and leave a stale entry.
+                        withContext(NonCancellable) {
+                            inFlightMutex.withLock { inFlightFuse.remove(cacheKey) }
+                        }
+                    }
+                }
+            }
+        }
+        return deferred.await()
+    }
+
+    private suspend fun computeFuse(
+        snippet1: String,
+        snippet2: String,
+        oversSummary: String,
+        matchId: String,
+        over: Int,
+        ballNumber: String,
+        bowler: String,
+        batsman: String,
+        scoreContext: String,
+        totalOvers: Int,
+        partnershipContext: String,
+        matchupContext: String,
+        isMatchComplete: Boolean,
+        cacheKey: String
+    ): String {
         val previousBalls = getPreviousBalls(matchId)
         val previousContext = if (previousBalls.isEmpty()) ""
             else "\nPrevious balls: ${previousBalls.joinToString(", ")}"
@@ -569,10 +632,12 @@ class CommentaryFusionService(
         try {
             // Check HTTP status BEFORE reading the SSE stream
             if (response.code == 429) {
-                providerCooldowns[provider.name] = System.currentTimeMillis() + 30_000L
+                // P2-6: Add jitter to avoid synchronized retry storm when all providers are rate-limited.
+                val cooldownMs = BASE_COOLDOWN_MS + Random.nextLong(0, BASE_COOLDOWN_MS)
+                providerCooldowns[provider.name] = System.currentTimeMillis() + cooldownMs
                 Sentry.addBreadcrumb(Breadcrumb().apply {
                     category = "service.commentary"
-                    message = "${provider.name} rate-limited (stream) — 30s cooldown"
+                    message = "${provider.name} rate-limited (stream) — ${cooldownMs}ms cooldown"
                     level = SentryLevel.WARNING
                 })
                 throw IOException("Rate limited (429)")
@@ -702,11 +767,13 @@ class CommentaryFusionService(
             // Using withTimeoutOrNull here races with StandardTestDispatcher's virtual-time
             // advancement when callProvidersTracked dispatches to Dispatchers.IO.
             val verdict = callProviders(prompt, maxTokens = 16, temperature = 0.0)
-            val passed = verdict?.trim()?.uppercase()?.startsWith("PASS") == true
             if (verdict == null) {
-                Log.d("CommentaryFusionService", "No provider available for verification — assuming PASS")
-                return true
+                // P0-5: No provider available — fail closed. Caching unverified content is worse
+                // than discarding it; the caller will retry or fall back to the raw snippet.
+                Log.w("CommentaryFusionService", "No provider available for verification — failing closed (FAIL)")
+                return false
             }
+            val passed = verdict.trim().uppercase().startsWith("PASS")
             if (!passed) {
                 Log.w("CommentaryFusionService", "Hallucination check FAILED — verdict: $verdict")
                 Sentry.addBreadcrumb(Breadcrumb().apply {
@@ -717,12 +784,19 @@ class CommentaryFusionService(
                     setData("aiOutput", aiOutput.take(200))
                 })
             }
-            verifyCache[cacheKey] = passed
+            // Evict an arbitrary entry when cache exceeds 512 (ConcurrentHashMap has no ordering
+            // guarantee — not LRU/FIFO, but acceptable since values are deterministic and re-computable).
+            verifyCacheMutex.withLock {
+                if (verifyCache.size >= 512) {
+                    verifyCache.keys.firstOrNull()?.let { verifyCache.remove(it) }
+                }
+                verifyCache[cacheKey] = passed
+            }
             passed
         } catch (e: Exception) {
-            // API failure during verification — pass through rather than discard good commentary
-            Log.w("CommentaryFusionService", "Verification call failed — assuming PASS: ${e.message}")
-            true
+            // P0-5: API failure during verification — fail closed; don't cache unverified content.
+            Log.w("CommentaryFusionService", "Verification call failed — failing closed (FAIL): ${e.message}")
+            false
         }
     }
 
@@ -780,16 +854,18 @@ class CommentaryFusionService(
 
         client.newCall(request).execute().use { response ->
             if (response.code == 429) {
-                providerCooldowns[provider.name] = System.currentTimeMillis() + 30_000L
+                // P2-6: Add jitter to avoid synchronized retry storm when all providers are rate-limited.
+                val cooldownMs = BASE_COOLDOWN_MS + Random.nextLong(0, BASE_COOLDOWN_MS)
+                providerCooldowns[provider.name] = System.currentTimeMillis() + cooldownMs
                 Sentry.addBreadcrumb(Breadcrumb().apply {
                     category = "service.commentary"
-                    message = "${provider.name} rate-limited — 30s cooldown"
+                    message = "${provider.name} rate-limited — ${cooldownMs}ms cooldown"
                     level = SentryLevel.WARNING
                 })
                 throw IOException("Rate limited (429)")
             }
             if (!response.isSuccessful) throw IOException("HTTP ${response.code}")
-            val content = JSONObject(response.body!!.string())
+            val content = JSONObject(response.body?.string() ?: throw IOException("Null body from ${provider.name}"))
                 .getJSONArray("choices")
                 .getJSONObject(0)
                 .getJSONObject("message")
@@ -800,6 +876,9 @@ class CommentaryFusionService(
             return content
         }
     }
+
+    /** Cancel the class-level scope; call when the service is torn down. */
+    fun close() { serviceScope.cancel() }
 
     // Data class for streamCommentary context
     data class MatchContext(

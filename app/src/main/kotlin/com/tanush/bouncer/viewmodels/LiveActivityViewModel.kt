@@ -3,7 +3,6 @@ package com.tanush.bouncer.viewmodels
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.tanush.bouncer.analysis.WinProbabilityCalculator
 import com.tanush.bouncer.managers.MatchSubscriptionManager
 import com.tanush.bouncer.managers.NotificationInboxManager
 import com.tanush.bouncer.managers.NotificationItem
@@ -72,9 +71,9 @@ class LiveActivityViewModel : ViewModel() {
 
     private val scraper = CricBuzzScraper()
     private val liveCommentaryManager = LiveCommentaryManager()
-    private val winCalculator = WinProbabilityCalculator()
 
     // Set from a context-aware component (Activity / Composable with LocalContext).
+    // Must pass applicationContext (or a context whose lifecycle outlives this ViewModel) to avoid leaking an Activity.
     private var notificationManager: LiveNotificationManager? = null
 
     fun setNotificationManager(manager: LiveNotificationManager) {
@@ -751,6 +750,7 @@ class LiveActivityViewModel : ViewModel() {
 
     override fun onCleared() {
         super.onCleared()
+        notificationManager = null
         liveCommentaryManager.close()
     }
 }

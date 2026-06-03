@@ -265,10 +265,10 @@ class CricBuzzScraper {
         try {
             if (!obj.has("matchInfo")) return null
             val info = obj.getAsJsonObject("matchInfo")
-            val matchId = info.get("matchId").asString
-            val team1 = info.getAsJsonObject("team1").get("teamName").asString
-            val team2 = info.getAsJsonObject("team2").get("teamName").asString
-            val status = info.get("status").asString
+            val matchId = info.get("matchId")?.asString ?: return null
+            val team1 = info.getAsJsonObject("team1")?.get("teamName")?.asString ?: return null
+            val team2 = info.getAsJsonObject("team2")?.get("teamName")?.asString ?: return null
+            val status = info.get("status")?.asString ?: return null
             val state = info.get("state")?.asString ?: "Live"
 
             val matchFormat = info.get("matchFormat")?.asString ?: ""

@@ -8,6 +8,7 @@ import com.tanush.bouncer.data.remote.AppwriteAICache
 import io.sentry.Breadcrumb
 import io.sentry.Sentry
 import io.sentry.SentryLevel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -79,8 +80,9 @@ object AICacheService {
                 }
                 dbResult
             } catch (e: Exception) {
+                if (e is CancellationException) throw e
                 Sentry.captureException(e)
-                throw e
+                return@withLock null  // treat local cache failure as miss, degrade gracefully
             }
         }
         if (localHit != null) return localHit
@@ -91,8 +93,9 @@ object AICacheService {
         val remoteHit = try {
             AppwriteAICache.get(key)
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             Sentry.captureException(e)
-            throw e
+            return null  // treat remote failure as miss, degrade gracefully
         } ?: return null
 
         val (remoteResult, isPermanent) = remoteHit
@@ -132,8 +135,9 @@ object AICacheService {
                 }
             }
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             Sentry.captureException(e)
-            throw e
+            return@withLock  // degrade gracefully — commentary was generated, cache write failing is non-fatal
         }
     }
 
@@ -183,6 +187,7 @@ object AICacheService {
             dao?.insert(AICommentaryCacheEntity(key, commentary, now.time))
             Log.d(TAG, "Realtime: warmed cache for key $key")
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             Log.w(TAG, "Failed to ingest realtime cache entry for key $key", e)
         }
     }
