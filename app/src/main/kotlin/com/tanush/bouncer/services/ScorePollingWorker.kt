@@ -42,6 +42,13 @@ class ScorePollingWorker(
             level = SentryLevel.INFO
         })
 
+        // Early-exit: no subscriptions → nothing to notify, skip network call entirely.
+        if (MatchSubscriptionManager.subscriptions.value.isEmpty()) {
+            Log.d(TAG, "No subscriptions — skipping poll")
+            WorkerLogger.enqueued("score_polling", "Skipped — no active subscriptions")
+            return Result.success()
+        }
+
         return try {
             when (val response = CricketRepository.getMatches("live")) {
                 is AppResult.Success -> {
