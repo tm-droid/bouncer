@@ -196,7 +196,7 @@ fun ChipSelector(
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         contentPadding = PaddingValues(horizontal = 16.dp)
     ) {
-        items(chips) { chip ->
+        items(chips, key = { it.id }) { chip ->
             SelectableChip(
                 chip = chip,
                 isSelected = selectedChip == chip,

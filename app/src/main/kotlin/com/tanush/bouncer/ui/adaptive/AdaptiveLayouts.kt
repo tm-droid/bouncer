@@ -511,7 +511,7 @@ fun <T> ResponsiveGrid(
         horizontalArrangement = horizontalArrangement,
         verticalArrangement = verticalArrangement
     ) {
-        items(items) { item ->
+        items(items, key = { it.hashCode() }) { item ->
             itemContent(item)
         }
     }
@@ -546,7 +546,7 @@ fun <T> ResponsiveFixedGrid(
         horizontalArrangement = horizontalArrangement,
         verticalArrangement = verticalArrangement
     ) {
-        items(items) { item ->
+        items(items, key = { it.hashCode() }) { item ->
             itemContent(item)
         }
     }

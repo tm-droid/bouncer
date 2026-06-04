@@ -416,7 +416,7 @@ fun InningsSummaryCard(
                         letterSpacing = 1.5.sp
                     )
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        items(wickets) { wicket ->
+                        items(wickets, key = { it }) { wicket ->
                             Box(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(8.dp))

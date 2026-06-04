@@ -270,7 +270,7 @@ fun EnhancedRecentBallsStrip(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             contentPadding = PaddingValues(horizontal = 4.dp)
         ) {
-            items(balls) { ball ->
+            items(balls, key = { it.id }) { ball ->
                 AnimatedBallChip(
                     ball = ball,
                     isSelected = selectedBall == ball,

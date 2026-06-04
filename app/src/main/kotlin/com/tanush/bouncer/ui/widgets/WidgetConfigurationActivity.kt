@@ -135,7 +135,7 @@ class WidgetConfigurationActivity : ComponentActivity() {
                         modifier = Modifier.weight(1f),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        items(availableMatches) { match ->
+                        items(availableMatches, key = { it.matchId }) { match ->
                             MatchSelectionCard(
                                 match = match,
                                 isSelected = match.matchId == selectedMatchId,

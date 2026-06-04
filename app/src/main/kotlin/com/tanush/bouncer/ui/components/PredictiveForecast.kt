@@ -71,7 +71,7 @@ fun PredictiveForecastSection(
             contentPadding = PaddingValues(horizontal = 4.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            items(predictions) { prediction ->
+            items(predictions, key = { it.ballNumber }) { prediction ->
                 PredictiveBallCard(prediction)
             }
         }

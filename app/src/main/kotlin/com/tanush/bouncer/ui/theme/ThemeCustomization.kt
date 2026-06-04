@@ -293,7 +293,7 @@ fun AccentColorPicker(
         )
 
         LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(PresetAccentColors) { color ->
+            items(PresetAccentColors, key = { it.value }) { color ->
                 Box(
                     modifier = Modifier
                         .size(40.dp)

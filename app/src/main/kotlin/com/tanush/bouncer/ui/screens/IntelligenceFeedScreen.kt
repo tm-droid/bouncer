@@ -158,7 +158,7 @@ fun IntelligenceFeedScreen(
                 }
             }
 
-            items(alerts) { alert ->
+            items(alerts, key = { it.id }) { alert ->
                 ActivityAlertCard(alert = alert)
             }
         }

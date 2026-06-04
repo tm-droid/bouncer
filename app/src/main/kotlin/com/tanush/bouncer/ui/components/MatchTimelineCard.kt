@@ -243,7 +243,7 @@ fun MatchTimelineCard(
                     horizontalArrangement = Arrangement.spacedBy(0.dp),
                     contentPadding = PaddingValues(horizontal = 4.dp)
                 ) {
-                    items(moments.sortedBy { it.over }) { moment ->
+                    items(moments.sortedBy { it.over }, key = { it.id }) { moment ->
                         TimelineMomentItem(
                             moment = moment,
                             isFirst = moment == moments.minByOrNull { it.over },

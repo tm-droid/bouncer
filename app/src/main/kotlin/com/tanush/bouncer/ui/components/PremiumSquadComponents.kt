@@ -379,7 +379,7 @@ fun PremiumSquadGrid(
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                         contentPadding = PaddingValues(horizontal = 4.dp)
                     ) {
-                        items(playersInRole) { player ->
+                        items(playersInRole, key = { it.id }) { player ->
                             PremiumPlayerCard(
                                 playerName = player.name,
                                 playerRole = player.role,

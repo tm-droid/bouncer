@@ -34,7 +34,7 @@ fun HighlightsTabV2(
     val selectedHighlight = remember { mutableStateOf<HighlightEntity?>(null) }
 
     LazyRow(modifier = modifier) {
-        items(highlights) { highlight ->
+        items(highlights, key = { it.id }) { highlight ->
             HighlightClipCard(
                 highlight = highlight,
                 onClick = { selectedHighlight.value = it }

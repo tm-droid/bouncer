@@ -193,7 +193,7 @@ fun ProbabilityGraphView(
                         .fillMaxWidth()
                         .heightIn(max = 200.dp)
                 ) {
-                    items(keyMoments) { event ->
+                    items(keyMoments, key = { it.ball }) { event ->
                         KeyMomentItem(event = event)
                     }
                 }

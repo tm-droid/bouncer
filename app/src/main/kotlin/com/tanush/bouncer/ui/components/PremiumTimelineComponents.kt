@@ -57,7 +57,7 @@ fun PremiumMatchTimeline(
         contentPadding = PaddingValues(horizontal = 20.dp),
         horizontalArrangement = Arrangement.spacedBy(0.dp)
     ) {
-        items(events) { event ->
+        items(events, key = { it.hashCode() }) { event ->
             PremiumTimelineEventItem(event = event)
         }
     }

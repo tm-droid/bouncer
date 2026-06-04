@@ -144,7 +144,7 @@ fun FallOfWicketsCard(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 contentPadding = PaddingValues(horizontal = 4.dp)
             ) {
-                itemsIndexed(wickets) { index, wicket ->
+                itemsIndexed(wickets, key = { index, _ -> index }) { index, wicket ->
                     WicketCard(
                         wicket = wicket,
                         isLatest = index == wickets.size - 1,

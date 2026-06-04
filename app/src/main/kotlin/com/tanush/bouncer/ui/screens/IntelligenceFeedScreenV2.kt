@@ -123,7 +123,7 @@ fun IntelligenceFeedScreenV2(
                 contentPadding = PaddingValues(spacing.lg),
                 verticalArrangement = Arrangement.spacedBy(spacing.sm),
             ) {
-                items(alerts) { alert ->
+                items(alerts, key = { it.hashCode() }) { alert ->
                     AlertCard(alert)
                 }
             }

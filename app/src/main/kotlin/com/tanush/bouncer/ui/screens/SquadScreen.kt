@@ -226,7 +226,7 @@ fun SquadScreen(
                         }
                     }
                 } else {
-                    items(currentSquad) { player ->
+                    items(currentSquad, key = { it.name }) { player ->
                         PlayerRowCard(player = player, onClick = { onPlayerClick?.invoke(player) })
                     }
                 }

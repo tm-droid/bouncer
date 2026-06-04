@@ -62,7 +62,7 @@ fun QuickActionsRow(
         contentPadding = PaddingValues(horizontal = 20.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        items(actions) { action ->
+        items(actions, key = { it.id }) { action ->
             QuickActionWidget(action = action)
         }
     }

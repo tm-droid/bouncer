@@ -115,7 +115,7 @@ fun TrophyRoomScreenV2(onBackClick: () -> Unit) {
                 Spacer(Modifier.height(spacing.md))
             }
 
-            items(sampleTrophies) { trophy ->
+            items(sampleTrophies, key = { it.name }) { trophy ->
                 TrophyCard(trophy)
             }
         }

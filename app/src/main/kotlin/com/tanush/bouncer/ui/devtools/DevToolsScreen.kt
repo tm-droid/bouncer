@@ -94,7 +94,7 @@ fun DevToolsScreen(
         Card(modifier = Modifier.fillMaxWidth().height(140.dp)) {
             LazyColumn(modifier = Modifier.padding(8.dp)) {
                 val recent = logs.takeLast(200)
-                items(recent) { l -> Text(l, style = MaterialTheme.typography.bodySmall) }
+                items(recent, key = { it.hashCode() }) { l -> Text(l, style = MaterialTheme.typography.bodySmall) }
             }
         }
 

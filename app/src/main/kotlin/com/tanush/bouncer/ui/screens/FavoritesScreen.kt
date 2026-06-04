@@ -262,7 +262,7 @@ fun FavoritesScreen(
                                 )
                             }
                         } else {
-                            itemsIndexed(reorderableFavorites) { index, teamName ->
+                            itemsIndexed(reorderableFavorites, key = { _, teamName -> teamName }) { index, teamName ->
                                 val swipeState = rememberSwipeToDismissBoxState(
                                     confirmValueChange = { value ->
                                         if (value == SwipeToDismissBoxValue.EndToStart) {

@@ -391,7 +391,7 @@ fun SettingsScreen(
                 ),
                 verticalArrangement = Arrangement.spacedBy(dimens.xl)
             ) {
-                items(sections) { section ->
+                items(sections, key = { it.title }) { section ->
                     SettingsSectionView(section)
                 }
             }

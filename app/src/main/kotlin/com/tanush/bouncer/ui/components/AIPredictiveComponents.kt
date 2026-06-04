@@ -113,7 +113,7 @@ fun NextOverForecastCarousel(
             contentPadding = PaddingValues(horizontal = 16.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            items(predictions) { prediction ->
+            items(predictions, key = { it.ballNumber }) { prediction ->
                 AIPredictionCard(
                     prediction = prediction,
                     overNumber = overNumber

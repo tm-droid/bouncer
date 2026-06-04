@@ -62,7 +62,7 @@ fun MatchEventTimeline(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(0.dp)
     ) {
-        itemsIndexed(events) { index, event ->
+        itemsIndexed(events, key = { _, event -> event.id }) { index, event ->
             TimelineItem(
                 event = event,
                 isFirst = index == 0,

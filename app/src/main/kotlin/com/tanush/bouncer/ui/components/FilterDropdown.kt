@@ -74,7 +74,7 @@ fun MultiSelectFilterChips(
         }
         
         // Individual option chips
-        items(options.filter { it != allLabel }) { option ->
+        items(options.filter { it != allLabel }, key = { it }) { option ->
             MultiSelectChip(
                 text = option,
                 isSelected = selectedOptions.contains(option),

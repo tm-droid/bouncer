@@ -618,7 +618,7 @@ fun TeamSelectorRow(
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         contentPadding = PaddingValues(horizontal = 4.dp)
     ) {
-        items(teams) { team ->
+        items(teams, key = { it.id }) { team ->
             TeamSelectorChip(
                 team = team,
                 isSelected = team.id == selectedTeam,

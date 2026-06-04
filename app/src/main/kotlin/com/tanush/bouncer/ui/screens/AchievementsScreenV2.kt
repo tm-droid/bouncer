@@ -133,7 +133,7 @@ fun AchievementsScreenV2(
                 Spacer(Modifier.height(spacing.sm))
             }
 
-            items(filtered) { achievement ->
+            items(filtered, key = { it.id }) { achievement ->
                 val isUnlocked = achievement.id in unlockedAchievements
                 AchievementCard(
                     title = achievement.title,

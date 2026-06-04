@@ -285,7 +285,7 @@ fun VipBoxRail(
             contentPadding = PaddingValues(horizontal = 20.dp),
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            items(matches) { match ->
+            items(matches, key = { it.id }) { match ->
                 Surface(
                     modifier = Modifier.width(300.dp).height(140.dp),
                     shape = RoundedCornerShape(28.dp),

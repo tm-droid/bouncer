@@ -57,7 +57,7 @@ fun RemindersScreen() {
             Text("No reminders set", color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f))
         } else {
             LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                items(reminders) { r ->
+                items(reminders, key = { it.id }) { r ->
                     Card(modifier = Modifier.fillMaxWidth()) {
                         Column(modifier = Modifier.padding(12.dp)) {
                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {

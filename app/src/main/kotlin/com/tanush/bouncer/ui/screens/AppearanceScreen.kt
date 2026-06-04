@@ -95,7 +95,7 @@ fun AppearanceScreen(
                 }
                 item {
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(dimens.md)) {
-                        items(ThemeVariant.entries) { variant ->
+                        items(ThemeVariant.entries, key = { it.name }) { variant ->
                             ThemeVariantCard(
                                 variant = variant,
                                 selected = currentThemeVariant == variant,
@@ -112,7 +112,7 @@ fun AppearanceScreen(
                 }
                 item {
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(dimens.md)) {
-                        items(BackgroundSkinType.entries) { skin ->
+                        items(BackgroundSkinType.entries, key = { it.name }) { skin ->
                             BackgroundSkinCard(
                                 skin = skin,
                                 selected = currentBackgroundSkin == skin,

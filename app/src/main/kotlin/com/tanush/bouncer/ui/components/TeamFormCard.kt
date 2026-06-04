@@ -184,7 +184,7 @@ fun TeamFormCard(
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 Text("RECENT ENGAGEMENTS", color = colors.textMuted, fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 1.5.sp)
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                    items(recentMatches) { match ->
+                    items(recentMatches, key = { it.id }) { match ->
                         TechnicalRecentMatchItem(match, onMatchClick)
                     }
                 }

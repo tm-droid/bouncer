@@ -130,7 +130,7 @@ fun PremiumScorecardTab(
             
             item { BattingTableHeader() }
             
-            items(innings?.batsmen ?: emptyList()) { batsman ->
+            items(innings?.batsmen ?: emptyList(), key = { it.name }) { batsman ->
                 BattingRow(batsman)
             }
             
@@ -174,7 +174,7 @@ fun PremiumScorecardTab(
             // Bowling Section
             item { SectionHeader("Bowling") }
             item { BowlingTableHeader() }
-            items(innings?.bowlers ?: emptyList()) { bowler ->
+            items(innings?.bowlers ?: emptyList(), key = { it.name }) { bowler ->
                 BowlingRow(bowler)
             }
         }
@@ -358,7 +358,7 @@ private fun FallOfWicketsCarousel(fow: List<String>) {
         contentPadding = PaddingValues(horizontal = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        items(fow) { entry ->
+        items(fow, key = { it }) { entry ->
             val parts = entry.split("(")
             val score = parts.getOrNull(0)?.trim() ?: "-"
             val detail = parts.getOrNull(1)?.replace(")", "") ?: ""

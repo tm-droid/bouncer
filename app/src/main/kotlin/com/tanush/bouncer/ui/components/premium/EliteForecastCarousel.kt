@@ -67,7 +67,7 @@ fun EliteForecastCarousel(
             horizontalArrangement = Arrangement.spacedBy(dimens.cardGap),
             contentPadding = PaddingValues(end = dimens.spacing.lg)
         ) {
-            items(displayPredictions) { prediction ->
+            items(displayPredictions, key = { it.ballNumber }) { prediction ->
                 PredictiveBallCard(prediction = prediction)
             }
         }
