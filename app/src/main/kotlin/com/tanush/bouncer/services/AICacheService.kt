@@ -181,6 +181,12 @@ object AICacheService {
             if (existing != null) {
                 val ageMs = Date().time - existing.timestamp.time
                 if (ageMs < CACHE_EXPIRATION_INTERVAL_MS) return@withLock
+            } else {
+                // Memory cold — check Room before accepting the Realtime push.
+                // Prevents a stale Realtime replay from overwriting a fresher Room entry
+                // after app restart.
+                val cutoffMs = System.currentTimeMillis() - CACHE_EXPIRATION_INTERVAL_MS
+                if (dao?.getCommentary(key, cutoffMs) != null) return@withLock
             }
             val now = Date()
             cache[key] = CommentaryEntry(commentary, now)
