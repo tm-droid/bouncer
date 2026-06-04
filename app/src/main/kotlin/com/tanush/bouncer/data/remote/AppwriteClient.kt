@@ -20,23 +20,22 @@ object AppwriteClient {
     private const val MODEL_FILE_NAME = "score_model_v1.json"
 
     @Volatile
-    var client: Client? = null
-        private set
-    @Volatile
-    var isReady = false
-        private set
+    private var _client: Client? = null
 
+    val client: Client? get() = _client
+    val isReady: Boolean get() = _client != null
+
+    @Synchronized
     fun initialize(context: Context) {
         val endpoint = ApiKeys.appwriteEndpoint.trimEnd('/')
         val projectId = ApiKeys.appwriteProjectId
-        isReady = endpoint.isNotBlank() && projectId.isNotBlank()
-        if (isReady) {
-            client = Client(context)
-                .setEndpoint(endpoint)
-                .setProject(projectId)
-        } else {
+        if (endpoint.isBlank() || projectId.isBlank()) {
             Log.w(TAG, "Appwrite not configured — SDK client disabled")
+            return
         }
+        _client = Client(context.applicationContext)
+            .setEndpoint(endpoint)
+            .setProject(projectId)
     }
 
     /**
