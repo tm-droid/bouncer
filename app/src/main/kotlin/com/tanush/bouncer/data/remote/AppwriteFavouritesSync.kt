@@ -15,25 +15,15 @@ import java.util.UUID
 // Cross-device favourites sync backed by Appwrite TablesDB.
 // Uses a stable device UUID as the row ID — no auth required.
 // Table-level permissions: create("any"), read("any"), update("any").
-object AppwriteFavouritesSync {
+object AppwriteFavouritesSync : AppwriteTableClient("AppwriteFavouritesSync") {
     private const val TAG = "AppwriteFavouritesSync"
     private const val PREF_DEVICE_ID = "appwrite_device_id"
 
-    private var dbId = ""
-    private var tableId = ""
     private var deviceId = ""
-    var isReady = false
-        private set
 
     fun initialize(prefs: SharedPreferences) {
-        dbId = ApiKeys.appwriteAiCacheDbId
-        tableId = ApiKeys.appwriteFavouritesColId
-
-        isReady = AppwriteClient.isReady && listOf(dbId, tableId).all { it.isNotBlank() }
-        if (!isReady) {
-            Log.w(TAG, "Appwrite favourites sync not configured — sync disabled")
-            return
-        }
+        initTable(ApiKeys.appwriteAiCacheDbId, ApiKeys.appwriteFavouritesColId)
+        if (!isReady) return
 
         deviceId = prefs.getString(PREF_DEVICE_ID, null) ?: run {
             val id = UUID.randomUUID().toString()

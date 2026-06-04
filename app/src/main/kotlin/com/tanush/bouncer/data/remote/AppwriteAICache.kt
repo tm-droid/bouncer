@@ -9,7 +9,6 @@ import io.appwrite.Permission
 import io.appwrite.Role
 import io.appwrite.exceptions.AppwriteException
 import io.appwrite.services.Realtime
-import io.appwrite.services.TablesDB
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -26,7 +25,7 @@ import java.time.format.DateTimeFormatter
 // Shared cross-device AI commentary cache backed by Appwrite TablesDB.
 // Reduces OpenRouter free-tier rate limit hits: same match+ball = 1 LLM call
 // total across all users instead of N calls. Falls back silently on any error.
-object AppwriteAICache {
+object AppwriteAICache : AppwriteTableClient("AppwriteAICache") {
     private const val TAG = "AppwriteAICache"
     private val TTL_MS get() = CacheConfig.AI_CACHE_TTL_MS
 
@@ -34,21 +33,8 @@ object AppwriteAICache {
     private val subscriptionStarted = java.util.concurrent.atomic.AtomicBoolean(false)
     private val reconnectScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-    private var dbId = ""
-    private var tableId = ""
-    var isReady = false
-        private set
-
-    private val tablesDB: TablesDB?
-        get() = AppwriteClient.client?.let { TablesDB(it) }
-
     fun initialize() {
-        dbId = ApiKeys.appwriteAiCacheDbId
-        tableId = ApiKeys.appwriteAiCacheColId
-        isReady = AppwriteClient.isReady && dbId.isNotBlank() && tableId.isNotBlank()
-        if (!isReady) {
-            Log.w(TAG, "Appwrite AI cache not configured — remote cache tier disabled")
-        }
+        initTable(ApiKeys.appwriteAiCacheDbId, ApiKeys.appwriteAiCacheColId)
     }
 
     // Returns (commentary, isPermanent). isPermanent=true when expires_at is >1 year away —

@@ -7,7 +7,6 @@ import com.tanush.bouncer.data.local.entities.PlayerCacheEntity
 import io.appwrite.Permission
 import io.appwrite.Role
 import io.appwrite.exceptions.AppwriteException
-import io.appwrite.services.TablesDB
 import io.sentry.Sentry
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -18,24 +17,11 @@ import java.time.format.DateTimeFormatter
 // Eliminates per-device Cricbuzz scraping: first device writes, all others read.
 // Uses the same DB as PlayerFormsClient; separate collection for full profile data.
 // Falls back silently on any error — scraper is always the last resort.
-object AppwritePlayerProfilesClient {
+object AppwritePlayerProfilesClient : AppwriteTableClient("AppwritePlayerProfilesClient") {
     private const val TAG = "AppwritePlayerProfilesClient"
 
-    private var dbId = ""
-    private var tableId = ""
-    var isReady = false
-        private set
-
-    private val tablesDB: TablesDB?
-        get() = AppwriteClient.client?.let { TablesDB(it) }
-
     fun initialize() {
-        dbId = ApiKeys.appwritePlayerFormsDbId  // reuse player forms DB
-        tableId = ApiKeys.appwritePlayerProfilesColId
-        isReady = AppwriteClient.isReady && dbId.isNotBlank() && tableId.isNotBlank()
-        if (!isReady) {
-            Log.w(TAG, "Appwrite player profiles not configured — remote profile cache disabled")
-        }
+        initTable(ApiKeys.appwritePlayerFormsDbId, ApiKeys.appwritePlayerProfilesColId)
     }
 
     /**

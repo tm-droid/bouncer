@@ -5,7 +5,6 @@ import com.tanush.bouncer.ApiKeys
 import io.appwrite.Query
 import io.appwrite.exceptions.AppwriteException
 import io.appwrite.services.Realtime
-import io.appwrite.services.TablesDB
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -16,28 +15,15 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-object AppwriteHighlightsClient {
+object AppwriteHighlightsClient : AppwriteTableClient("AppwriteHighlightsClient") {
     private const val TAG = "AppwriteHighlightsClient"
-
-    private var dbId = ""
-    private var tableId = ""
-    var isReady = false
-        private set
 
     @Volatile private var realtimeSubscription: Any? = null
     private val subscriptionStarted = java.util.concurrent.atomic.AtomicBoolean(false)
     private val reconnectScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-    private val tablesDB: TablesDB?
-        get() = AppwriteClient.client?.let { TablesDB(it) }
-
     fun initialize() {
-        dbId = ApiKeys.appwriteHighlightsDbId
-        tableId = ApiKeys.appwriteHighlightsColId
-        isReady = AppwriteClient.isReady && dbId.isNotBlank() && tableId.isNotBlank()
-        if (!isReady) {
-            Log.w(TAG, "Appwrite highlights not configured")
-        }
+        initTable(ApiKeys.appwriteHighlightsDbId, ApiKeys.appwriteHighlightsColId)
     }
 
     suspend fun getAllHighlights(): List<HighlightRow>? {

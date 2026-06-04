@@ -7,7 +7,6 @@ import io.appwrite.Permission
 import io.appwrite.Query
 import io.appwrite.Role
 import io.appwrite.exceptions.AppwriteException
-import io.appwrite.services.TablesDB
 import io.sentry.Sentry
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -24,24 +23,11 @@ data class PlayerFormSnapshot(
 // Cross-device player form cache backed by Appwrite TablesDB.
 // Syncs recent strike-rate / economy snapshots so ML features stay consistent
 // across devices and sessions. Falls back silently on any error.
-object AppwritePlayerFormsClient {
+object AppwritePlayerFormsClient : AppwriteTableClient("AppwritePlayerFormsClient") {
     private const val TAG = "AppwritePlayerFormsClient"
 
-    private var dbId = ""
-    private var tableId = ""
-    var isReady = false
-        private set
-
-    private val tablesDB: TablesDB?
-        get() = AppwriteClient.client?.let { TablesDB(it) }
-
     fun initialize() {
-        dbId = ApiKeys.appwritePlayerFormsDbId
-        tableId = ApiKeys.appwritePlayerFormsColId
-        isReady = AppwriteClient.isReady && dbId.isNotBlank() && tableId.isNotBlank()
-        if (!isReady) {
-            Log.w(TAG, "Appwrite player forms not configured — remote form sync disabled")
-        }
+        initTable(ApiKeys.appwritePlayerFormsDbId, ApiKeys.appwritePlayerFormsColId)
     }
 
     /**
