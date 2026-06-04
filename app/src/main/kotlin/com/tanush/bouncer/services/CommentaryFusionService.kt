@@ -53,8 +53,8 @@ class CommentaryFusionService(
     private val previousBallsBuffer = ConcurrentHashMap<String, MutableList<String>>()
     // Temp=0.0 verify calls are fully deterministic: same inputs → same PASS/FAIL every time.
     // Cache by content hash to avoid redundant AI calls on retry paths.
-    // ConcurrentHashMap: point reads/writes never cross suspension points so no Mutex needed here.
-    private val verifyCache = ConcurrentHashMap<Int, Boolean>(512)
+    // LinkedHashMap in insertion order — FIFO eviction. All access guarded by verifyCacheMutex.
+    private val verifyCache = LinkedHashMap<Int, Boolean>(512)
     private val verifyCacheMutex = Mutex()
     private val bufferMutex = Mutex()
     private val maxBufferSize = 6
@@ -752,7 +752,7 @@ class CommentaryFusionService(
         batsman: String
     ): Boolean {
         val cacheKey = (aiOutput + snippet1 + snippet2 + ballNumber + bowler + batsman).hashCode()
-        verifyCache[cacheKey]?.let { return it }
+        verifyCacheMutex.withLock { verifyCache[cacheKey] }?.let { return it }
 
         val prompt = VERIFICATION_PROMPT_TEMPLATE
             .replace("{snippet1}", snippet1)
@@ -784,8 +784,7 @@ class CommentaryFusionService(
                     setData("aiOutput", aiOutput.take(200))
                 })
             }
-            // Evict an arbitrary entry when cache exceeds 512 (ConcurrentHashMap has no ordering
-            // guarantee — not LRU/FIFO, but acceptable since values are deterministic and re-computable).
+            // Evict oldest entry when cache exceeds 512 (LinkedHashMap.keys.firstOrNull() = oldest inserted entry, FIFO eviction).
             verifyCacheMutex.withLock {
                 if (verifyCache.size >= 512) {
                     verifyCache.keys.firstOrNull()?.let { verifyCache.remove(it) }
