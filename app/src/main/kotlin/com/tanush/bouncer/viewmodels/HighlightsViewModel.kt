@@ -1,7 +1,8 @@
 package com.tanush.bouncer.viewmodels
 
+import android.app.Application
 import android.content.Context
-import androidx.lifecycle.ViewModel
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.tanush.bouncer.data.AppResult
@@ -14,8 +15,11 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-class HighlightsViewModel(context: Context, val bouncerMatchId: String) : ViewModel() {
-    private val db = BouncerDatabase.getInstance(context)
+class HighlightsViewModel(
+    application: Application,
+    val bouncerMatchId: String,
+) : AndroidViewModel(application) {
+    private val db = BouncerDatabase.getInstance(application)
     private val repo = HighlightsRepository(db.highlightDao(), db.matchDao())
 
     private val _highlights = MutableStateFlow<List<HighlightEntity>>(emptyList())
@@ -44,7 +48,7 @@ class HighlightsViewModel(context: Context, val bouncerMatchId: String) : ViewMo
             object : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")
                 override fun <T : ViewModel> create(modelClass: Class<T>): T =
-                    HighlightsViewModel(context, matchId) as T
+                    HighlightsViewModel(context.applicationContext as Application, matchId) as T
             }
     }
 }
