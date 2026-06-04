@@ -53,10 +53,12 @@ app/src/main/kotlin/com/tanush/bouncer/
 │   ├── theme/          # Material3 theme
 │   └── adaptive/       # Window-size-class layouts
 ├── viewmodels/         # MVVM ViewModels (no Hilt — manual construction)
-├── services/           # FCM, CommentaryFusion, LiveCommentary, WebSocket, Workers, AICacheService
+├── services/           # FCM, CommentaryFusion, LiveCommentary, Workers, AICacheService
+│                       # (LiveScoreWebSocketClient defined but never instantiated — dead code, do not add callers)
 ├── managers/           # Singleton managers (TeamLogo, Acronym, Favourites, MatchSubscription, NotificationInbox)
 ├── network/            # Retrofit + Jsoup scrapers (CricBuzz, CricInfo, Series, Squad)
 ├── data/               # Room DB, repositories, AppResult<T> monad
+│   ├── CacheConfig.kt  # AI_CACHE_TTL_MS + HIGHLIGHTS_FRESHNESS_MS — use these, no magic TTL numbers
 │   └── remote/         # Appwrite clients: AppwriteClient (singleton), AppwriteAICache,
 │                       # AppwriteHighlightsClient, AppwriteFavouritesSync,
 │                       # AppwritePlayerFormsClient, AppwritePlayerProfilesClient
@@ -64,7 +66,7 @@ app/src/main/kotlin/com/tanush/bouncer/
 ├── analysis/           # Cricket analysis + ML models (score prediction, win probability)
 ├── auto/               # Android Auto (BouncerCarAppService)
 ├── mcp/                # Model Context Protocol handlers
-├── utils/              # Utility functions
+├── utils/              # Utility functions (WorkerLogger.kt: WorkerLogger.enqueued/failed — use in all Workers for Sentry breadcrumbs)
 ├── monitoring/         # Sentry + SentryAiSpans
 └── logic/              # Match simulation + game logic
 ```
@@ -84,6 +86,8 @@ app/src/main/kotlin/com/tanush/bouncer/
 **Player profile cache (global):** `PlayerCacheWorker` checks `AppwritePlayerProfilesClient` before scraping Cricbuzz. First device that scrapes a player pushes to Appwrite (`player-profiles` table, `bouncer-db`); all subsequent devices get a cache hit. Row ID = `entity.playerId` (Room format: `virat_kohli`).
 
 **Appwrite project:** single database `bouncer-db`. Known tables: `ai-commentary-cache`, `highlights`, `highlights-meta`, `user-favourites`, `player-profiles`.
+
+**Room DB:** currently at schema version 8. New migrations: add `MIGRATION_N_(N+1)` in `BouncerDatabase.kt` + bump `version` in `@Database`.
 
 **Appwrite MCP workflow:** `appwrite_search_tools` → `appwrite_call_tool` → `ReadMcpResourceTool` (server: `plugin:appwrite:appwrite-api`, URI from truncated result) for full output. Column creation returns `status: "processing"` — call `tables_db_list_columns` to confirm `"available"` before using. Table-level permissions at creation: `["read(\"any\")", "create(\"any\")", "update(\"any\")"]`.
 
@@ -150,6 +154,7 @@ For large data processing, log analysis, or API exploration:
 - `ctx_search`: Query indexed content
 
 ## Git & Deploy
+- "push" = `git push` only. Never open a PR unless explicitly asked.
 - When git commands hang in this sandbox, fall back to the GitHub API rather than retrying indefinitely.
 - Before force-pushing, double-check the commit SHA you're pushing matches the one containing the intended fix.
 - After deploys, verify the change is actually live (hardcoded dates, cache, hydration) before declaring done.
