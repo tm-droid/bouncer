@@ -67,18 +67,22 @@ fun InfoTabV2(
         }
 
         // Toss result card — shown when structured toss data is available
-        if (match.tossWinner != null && match.tossDecision != null && match.teams.size >= 2) {
-            item(key = "toss_card") {
-                TossResultCard(
-                    tossDetails = TossDetails(
-                        team1Name = match.teams[0].name,
-                        team2Name = match.teams[1].name,
-                        team1Logo = match.teams[0].logoUrl ?: "",
-                        team2Logo = match.teams[1].logoUrl ?: "",
-                        tossWinner = match.tossWinner!!,
-                        decision = if (match.tossDecision == "field") "bowl" else match.tossDecision!!,
-                    ),
-                )
+        match.tossWinner?.let { tossWinner ->
+            match.tossDecision?.let { tossDecision ->
+                if (match.teams.size >= 2) {
+                    item(key = "toss_card") {
+                        TossResultCard(
+                            tossDetails = TossDetails(
+                                team1Name = match.teams[0].name,
+                                team2Name = match.teams[1].name,
+                                team1Logo = match.teams[0].logoUrl ?: "",
+                                team2Logo = match.teams[1].logoUrl ?: "",
+                                tossWinner = tossWinner,
+                                decision = if (tossDecision == "field") "bowl" else tossDecision,
+                            ),
+                        )
+                    }
+                }
             }
         }
 
