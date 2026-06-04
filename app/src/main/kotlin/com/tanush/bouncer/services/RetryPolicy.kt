@@ -31,5 +31,5 @@ suspend fun <T> RetryPolicy.withRetry(
             }
         }
     }
-    throw lastThrowable!!
+    throw lastThrowable ?: IllegalStateException("RetryPolicy exhausted ${maxAttempts} attempts with no recorded exception")
 }
