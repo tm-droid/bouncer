@@ -49,7 +49,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -79,7 +78,6 @@ fun SearchScreen(
     val colors = BouncerThemeV2.colors
     val typography = BouncerThemeV2.typography
     val spacing = BouncerThemeV2.spacing
-    val context = LocalContext.current
     val keyboardController = LocalSoftwareKeyboardController.current
 
     val query by viewModel.query.collectAsStateWithLifecycle()
@@ -91,7 +89,7 @@ fun SearchScreen(
 
     LaunchedEffect(Unit) {
         focusRequester.requestFocus()
-        viewModel.loadRecentQueries(context)
+        viewModel.loadRecentQueries()
     }
 
     val displayResults = when (selectedTab) {
@@ -128,7 +126,7 @@ fun SearchScreen(
                     onBack = onBackClick,
                     onSearch = {
                         if (query.isNotBlank()) {
-                            viewModel.onSearchSubmitted(context, query)
+                            viewModel.onSearchSubmitted(query)
                             keyboardController?.hide()
                         }
                     },
@@ -211,7 +209,7 @@ fun SearchScreen(
                             SectionHeaderV2(
                                 title = "Recent Searches",
                                 action = "Clear",
-                                onAction = { viewModel.clearRecentQueries(context) },
+                                onAction = { viewModel.clearRecentQueries() },
                             )
                         }
                         items(recentQueries, key = { "recent_$it" }) { q ->
@@ -283,7 +281,7 @@ fun SearchScreen(
                         MatchCardV2(
                             match = result.match,
                             onClick = {
-                                viewModel.onSearchSubmitted(context, query)
+                                viewModel.onSearchSubmitted(query)
                                 onMatchClick(result.match)
                             },
                             modifier = Modifier
@@ -304,7 +302,7 @@ fun SearchScreen(
                             acronym = result.teamAcronym,
                             logoUrl = result.logoUrl,
                             onClick = {
-                                viewModel.onSearchSubmitted(context, query)
+                                viewModel.onSearchSubmitted(query)
                                 viewModel.onQueryChange(result.teamName, matches, news)
                             },
                         )
@@ -322,7 +320,7 @@ fun SearchScreen(
                             teamName = result.teamName,
                             role = result.role,
                             onClick = {
-                                viewModel.onSearchSubmitted(context, query)
+                                viewModel.onSearchSubmitted(query)
                                 onPlayerClick(result.playerName)
                             },
                         )
@@ -339,7 +337,7 @@ fun SearchScreen(
                             title = result.article.headline,
                             source = result.article.source,
                             onClick = {
-                                viewModel.onSearchSubmitted(context, query)
+                                viewModel.onSearchSubmitted(query)
                                 onNewsClick(result.article)
                             },
                         )
@@ -358,7 +356,7 @@ fun SearchScreen(
                             startDate = result.startDate,
                             endDate = result.endDate,
                             onClick = {
-                                viewModel.onSearchSubmitted(context, query)
+                                viewModel.onSearchSubmitted(query)
                                 onSeriesClick(result.seriesId)
                             },
                         )
@@ -378,7 +376,7 @@ fun SearchScreen(
                             date = result.date,
                             season = result.season,
                             matchType = result.matchType,
-                            onClick = { viewModel.onSearchSubmitted(context, query) },
+                            onClick = { viewModel.onSearchSubmitted(query) },
                         )
                     }
                 }

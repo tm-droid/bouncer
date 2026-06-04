@@ -1,7 +1,6 @@
 package com.tanush.bouncer.viewmodels
 
 import android.app.Application
-import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.tanush.bouncer.data.AppResult
@@ -42,8 +41,8 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
 
     private var searchJob: Job? = null
 
-    fun loadRecentQueries(context: Context) {
-        _recentQueries.value = SearchRepository.getRecentQueries(context)
+    fun loadRecentQueries() {
+        _recentQueries.value = SearchRepository.getRecentQueries(getApplication())
     }
 
     fun onQueryChange(
@@ -100,13 +99,13 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
         _selectedTab.value = tab
     }
 
-    fun onSearchSubmitted(context: Context, query: String) {
-        SearchRepository.addRecentQuery(context, query)
-        _recentQueries.value = SearchRepository.getRecentQueries(context)
+    fun onSearchSubmitted(query: String) {
+        SearchRepository.addRecentQuery(getApplication(), query)
+        _recentQueries.value = SearchRepository.getRecentQueries(getApplication())
     }
 
-    fun clearRecentQueries(context: Context) {
-        SearchRepository.clearRecentQueries(context)
+    fun clearRecentQueries() {
+        SearchRepository.clearRecentQueries(getApplication())
         _recentQueries.value = emptyList()
     }
 }
