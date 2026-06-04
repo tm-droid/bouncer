@@ -38,12 +38,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import android.util.Log
 import com.tanush.bouncer.models.Series
 import com.tanush.bouncer.network.SeriesScraper
 import com.tanush.bouncer.ui.components.v2.BouncerTopBarV2
 import com.tanush.bouncer.ui.components.v2.EmptyStateV2
 import com.tanush.bouncer.ui.components.v2.FilterChipRowV2
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
+import io.sentry.Sentry
 
 /**
  * Screen showing a list of active cricket series/tournaments.
@@ -66,7 +68,11 @@ fun SeriesListScreen(
         try {
             val scraper = SeriesScraper()
             allSeries = scraper.fetchActiveSeries()
-        } catch (_: Exception) {}
+        } catch (e: Exception) {
+            if (e is kotlinx.coroutines.CancellationException) throw e
+            Sentry.captureException(e)
+            Log.w("SeriesListScreen", "Series list operation failed", e)
+        }
         isLoading = false
     }
 
