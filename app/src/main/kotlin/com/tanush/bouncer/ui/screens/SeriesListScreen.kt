@@ -46,6 +46,7 @@ import com.tanush.bouncer.ui.components.v2.EmptyStateV2
 import com.tanush.bouncer.ui.components.v2.FilterChipRowV2
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 import io.sentry.Sentry
+import kotlinx.coroutines.CancellationException
 
 /**
  * Screen showing a list of active cricket series/tournaments.
@@ -69,7 +70,7 @@ fun SeriesListScreen(
             val scraper = SeriesScraper()
             allSeries = scraper.fetchActiveSeries()
         } catch (e: Exception) {
-            if (e is kotlinx.coroutines.CancellationException) throw e
+            if (e is CancellationException) throw e
             Sentry.captureException(e)
             Log.w("SeriesListScreen", "Series list operation failed", e)
         }
