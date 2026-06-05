@@ -430,7 +430,7 @@ class CricBuzzScraper {
         return keywords.any { combined.contains(it) }
     }
 
-    data class MatchDetails(
+    data class ScrapedMatchDetails(
         val recentBalls: List<String>,
         val overNumbers: List<String>,
         val batsmen: List<ScrapedBatsman>,
@@ -445,7 +445,7 @@ class CricBuzzScraper {
         val requiredRunRate: String? = null
     )
 
-    suspend fun fetchBallByBallAndBatsmen(matchId: String): MatchDetails = withContext(Dispatchers.IO) {
+    suspend fun fetchBallByBallAndBatsmen(matchId: String): ScrapedMatchDetails = withContext(Dispatchers.IO) {
         crumb("Fetching ball-by-ball and batsmen data", data = mapOf("matchId" to matchId))
 
         val url = CricBuzzUrls.liveScoresUrl(matchId)
@@ -487,9 +487,9 @@ class CricBuzzScraper {
         emptyMatchDetails()
     }
 
-    private fun emptyMatchDetails() = MatchDetails(emptyList(), emptyList(), emptyList(), null, null, null)
+    private fun emptyMatchDetails() = ScrapedMatchDetails(emptyList(), emptyList(), emptyList(), null, null, null)
 
-    private fun buildMatchDetails(doc: Document): MatchDetails {
+    private fun buildMatchDetails(doc: Document): ScrapedMatchDetails {
         val batsmen = parseBatsmenFromDoc(doc)
         val bowler = parseBowlerFromDoc(doc)
         val cssRecentBalls = parseRecentBallsFromDoc(doc)
@@ -501,7 +501,7 @@ class CricBuzzScraper {
         val (team1Score, team1Overs, team2Score, team2Overs) = parseMiniScoreRowsFromDoc(doc)
         val (currentRunRate, requiredRunRate) = parseRunRatesFromDoc(doc)
 
-        return MatchDetails(
+        return ScrapedMatchDetails(
             recentBalls = recentBalls,
             overNumbers = emptyList(),
             batsmen = batsmen,

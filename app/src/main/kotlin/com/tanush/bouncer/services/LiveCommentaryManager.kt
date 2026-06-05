@@ -206,7 +206,7 @@ class LiveCommentaryManager(
         val matchId = cricbuzzUrl.split("/").lastOrNull() ?: "unknown"
         addBreadcrumb("Getting best commentary", mapOf("matchId" to matchId))
 
-        val details: CricBuzzScraper.MatchDetails? = safeFetch(null) {
+        val details: CricBuzzScraper.ScrapedMatchDetails? = safeFetch(null) {
             cricbuzz.fetchBallByBallAndBatsmen(matchId)
         }
         val ballNumber = details?.overNumbers?.lastOrNull() ?: ""
@@ -332,7 +332,7 @@ class LiveCommentaryManager(
 
         val buzz = safeFetch(emptyList<String>()) { cricbuzz.fetchLiveCommentary(url) }
         val buzzLine = findBestBallSnippet(buzz, keyNames)
-        val details: CricBuzzScraper.MatchDetails? = safeFetch(null) {
+        val details: CricBuzzScraper.ScrapedMatchDetails? = safeFetch(null) {
             cricbuzz.fetchBallByBallAndBatsmen(matchId)
         }
 
