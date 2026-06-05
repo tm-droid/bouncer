@@ -3,6 +3,7 @@ package com.tanush.bouncer.services
 import android.content.Context
 import android.util.Log
 import androidx.work.*
+import com.tanush.bouncer.data.CacheConfig
 import com.tanush.bouncer.data.local.BouncerDatabase
 import com.tanush.bouncer.data.local.entities.SeriesCacheEntity
 import com.tanush.bouncer.network.SeriesScraper
@@ -32,6 +33,11 @@ class SeriesSyncWorker(
 
         return try {
             val db = BouncerDatabase.getInstance(context)
+
+            // Prune highlights older than 7 days. deleteOlderThan exists in the DAO but was never wired — table would grow unbounded.
+            val highlightCutoff = System.currentTimeMillis() - (CacheConfig.HIGHLIGHTS_FRESHNESS_MS * 7 * 24)
+            db.highlightDao().deleteOlderThan(highlightCutoff)
+            Log.d(TAG, "Pruned highlights older than 7 days")
 
             val series = SeriesScraper().fetchActiveSeries()
 
