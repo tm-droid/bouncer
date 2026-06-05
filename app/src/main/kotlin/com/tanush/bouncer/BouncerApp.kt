@@ -95,7 +95,7 @@ class BouncerApp : Application() {
             initializeSafely("TeamLogoManager") { TeamLogoManager.initialize(applicationContext) }
         }
         initializeSafely("TeamAcronymManager") { TeamAcronymManager.initialize(this) }
-        initializeSafely("FavouriteTeamsManager") { FavouriteTeamsManager.initialize(this) }
+        initializeSafely("FavouriteTeamsManager") { FavouriteTeamsManager.initialize(this, applicationScope) }
         initializeSafely("MatchSubscriptionManager") { MatchSubscriptionManager.initialize(this) }
         initializeSafely("MatchCacheService") { MatchCacheService.initDiskCache(this) }
         // Restore trained ML model weights from disk on IO — JSON parse can be 50-200ms.
@@ -162,7 +162,7 @@ class BouncerApp : Application() {
         initializeSafely("AppwriteAICache") { AppwriteAICache.initialize() }
         initializeSafely("AppwriteHighlightsClient") { AppwriteHighlightsClient.initialize() }
         initializeSafely("AppwritePlayerProfilesClient") { AppwritePlayerProfilesClient.initialize() }
-        initializeSafely("NotificationInboxManager") { NotificationInboxManager.initialize(this) }
+        initializeSafely("NotificationInboxManager") { NotificationInboxManager.initialize(this, applicationScope) }
         initializeSafely("AICacheService") {
             AICacheService.initialize(BouncerDatabase.getInstance(this).aiCacheDao())
         }

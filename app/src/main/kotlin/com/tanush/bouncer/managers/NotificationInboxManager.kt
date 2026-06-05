@@ -33,7 +33,7 @@ object NotificationInboxManager {
 
     private val gson = Gson()
     private var prefs: SharedPreferences? = null
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private var scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     private val _items = MutableStateFlow<List<NotificationItem>>(emptyList())
     val items: StateFlow<List<NotificationItem>> = _items.asStateFlow()
@@ -43,7 +43,8 @@ object NotificationInboxManager {
         .map { list -> list.count { !it.isRead } }
         .stateIn(scope, SharingStarted.Eagerly, 0)
 
-    fun initialize(context: Context) {
+    fun initialize(context: Context, appScope: CoroutineScope = scope) {
+        scope = appScope
         if (prefs != null) return
         prefs = context.applicationContext.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
         _items.value = loadFromPrefs()
