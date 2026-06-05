@@ -5,6 +5,7 @@ import android.content.SharedPreferences
 import android.util.Log
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import com.tanush.bouncer.utils.PrefsRegistry
 import io.sentry.Sentry
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -12,8 +13,8 @@ import kotlinx.coroutines.flow.asStateFlow
 
 object MatchSubscriptionManager {
     private const val TAG = "MatchSubscriptionManager"
-    private const val PREFS_NAME = "match_subscriptions"
-    private const val KEY_SUBSCRIBED = "subscribed_match_ids"
+    private val PREFS_NAME = PrefsRegistry.PREFS_MATCH_SUBSCRIPTIONS
+    private val KEY_SUBSCRIBED = PrefsRegistry.MatchSubscriptions.SUBSCRIBED_IDS
 
     private lateinit var prefs: SharedPreferences
     private val gson = Gson()

@@ -18,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
+import com.tanush.bouncer.utils.PrefsRegistry
 import io.sentry.Sentry
 import io.sentry.Breadcrumb
 
@@ -159,6 +160,6 @@ private fun scheduleReminder(
 }
 
 private fun saveReminderPreference(context: Context, matchId: String, minutesBefore: Int) {
-    val prefs = context.getSharedPreferences("bouncer_reminders", Context.MODE_PRIVATE)
-    prefs.edit().putInt("reminder_$matchId", minutesBefore).apply()
+    val prefs = context.getSharedPreferences(PrefsRegistry.PREFS_REMINDERS, Context.MODE_PRIVATE)
+    prefs.edit().putInt("${PrefsRegistry.Reminders.REMINDER_PREFIX}$matchId", minutesBefore).apply()
 }

@@ -12,6 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
+import com.tanush.bouncer.utils.PrefsRegistry
 import io.sentry.Sentry
 import io.sentry.Breadcrumb
 
@@ -24,7 +25,7 @@ data class MatchNotificationPrefs(
 ) {
     companion object {
         fun load(context: Context, matchId: String): MatchNotificationPrefs {
-            val prefs = context.getSharedPreferences("bouncer_match_notif_prefs", Context.MODE_PRIVATE)
+            val prefs = context.getSharedPreferences(PrefsRegistry.PREFS_MATCH_NOTIF, Context.MODE_PRIVATE)
             val prefix = "notif_${matchId}_"
             return MatchNotificationPrefs(
                 wickets = prefs.getBoolean("${prefix}wickets", true),
@@ -36,7 +37,7 @@ data class MatchNotificationPrefs(
         }
 
         fun save(context: Context, matchId: String, prefs: MatchNotificationPrefs) {
-            val sharedPrefs = context.getSharedPreferences("bouncer_match_notif_prefs", Context.MODE_PRIVATE)
+            val sharedPrefs = context.getSharedPreferences(PrefsRegistry.PREFS_MATCH_NOTIF, Context.MODE_PRIVATE)
             val prefix = "notif_${matchId}_"
             sharedPrefs.edit()
                 .putBoolean("${prefix}wickets", prefs.wickets)

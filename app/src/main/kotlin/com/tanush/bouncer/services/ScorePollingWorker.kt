@@ -18,6 +18,7 @@ import com.tanush.bouncer.ui.notifications.RichNotificationBuilder
 import com.tanush.bouncer.ui.widgets.LiveMatchWidgetProvider
 import com.tanush.bouncer.ui.widgets.WidgetUpdateWorker
 import com.tanush.bouncer.utils.WorkerLogger
+import com.tanush.bouncer.utils.PrefsRegistry
 import io.sentry.Breadcrumb
 import io.sentry.Sentry
 import io.sentry.SentryLevel
@@ -208,10 +209,10 @@ class ScorePollingWorker(
 
         private const val UNIQUE_WORK_NAME = "score_polling_periodic"
         private const val ONE_TIME_WORK_TAG = "score_polling_once"
-        private const val PREFS_NAME = "score_polling_cache"
+        private val PREFS_NAME = PrefsRegistry.PREFS_SCORE_POLLING
         private const val MAX_RETRIES = 3
         private const val MAX_LIVE_FOLLOWUPS = 12 // 12 × 5 min = 1 hour cap
-        private const val KEY_FOLLOWUP_COUNT = "live_followup_count"
+        private val KEY_FOLLOWUP_COUNT = PrefsRegistry.ScorePolling.FOLLOWUP_COUNT
 
         const val ACTION_SCORES_UPDATED =
             "com.tanush.bouncer.action.SCORES_UPDATED"
