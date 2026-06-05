@@ -3,6 +3,7 @@ package com.tanush.bouncer.viewmodels
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewModelFactory
 import androidx.lifecycle.viewModelScope
 import com.tanush.bouncer.models.AchievementKind
 import com.tanush.bouncer.models.CricketMatch
@@ -211,11 +212,10 @@ class MatchDetailViewModel(
     }
 
     companion object {
-        fun factory(context: Context, match: CricketMatch): ViewModelProvider.Factory =
-            object : ViewModelProvider.Factory {
-                @Suppress("UNCHECKED_CAST")
-                override fun <T : ViewModel> create(modelClass: Class<T>): T =
-                    MatchDetailViewModel(match, context) as T
+        fun factory(context: Context, match: CricketMatch) = viewModelFactory {
+            initializer {
+                MatchDetailViewModel(match, context.applicationContext)
             }
+        }
     }
 }
