@@ -4,6 +4,7 @@ import android.content.Context
 import android.util.Log
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import com.tanush.bouncer.data.cache.MemoryLruCache
 import com.tanush.bouncer.models.CricketMatch
 import io.sentry.Breadcrumb
 import io.sentry.Sentry
@@ -26,15 +27,16 @@ object MatchCacheService {
     private const val DISK_CACHE_MAX_AGE_MS = 3_600_000L // 1 hour for offline data
     
     private val mutex = Mutex()
-    private val cache = mutableMapOf<String, CacheEntry>()
+    // Shared in-memory tier scaffolding (lock + eviction). TTL is per-status (see
+    // getCacheExpirationInterval), so this is configured with an effectively-infinite TTL
+    // and the service applies the variable TTL externally via getEntry().insertedAt.
+    private val cache = MemoryLruCache<String, List<CricketMatch>>(
+        maxSize = 16,
+        ttlMs = Long.MAX_VALUE,
+    )
     private val gson = Gson()
     private var diskPrefs: android.content.SharedPreferences? = null
-    
-    private data class CacheEntry(
-        val matches: List<CricketMatch>,
-        val timestamp: Date
-    )
-    
+
     /**
      * Initialize disk persistence for offline support.
      * Call this once during Application.onCreate or BouncerActivity.onCreate.
@@ -79,12 +81,12 @@ object MatchCacheService {
             })
             
             // Try memory cache first
-            val cached = cache[status]
+            val cached = cache.getEntry(status)
             if (cached != null) {
-                val ageMs = Date().time - cached.timestamp.time
+                val ageMs = Date().time - cached.insertedAt
                 if (ageMs < getCacheExpirationInterval(status)) {
                     Log.d(TAG, "Using memory-cached data for $status (age: ${ageMs}ms)")
-                    return@withLock cached.matches
+                    return@withLock cached.value
                 }
             }
         
@@ -110,10 +112,10 @@ object MatchCacheService {
             })
             
             // First try memory cache regardless of TTL
-            val memoryCached = cache[status]
+            val memoryCached = cache.getEntry(status)
             if (memoryCached != null) {
                 Log.d(TAG, "Using stale memory cache for offline: $status")
-                return@withLock memoryCached.matches
+                return@withLock memoryCached.value
             }
         
             // Fall back to disk cache
@@ -138,7 +140,7 @@ object MatchCacheService {
             })
             
             Log.d(TAG, "Updating cache for $status with ${matches.size} matches")
-            cache[status] = CacheEntry(matches, Date())
+            cache.put(status, matches)
         
             // Persist to disk for offline access (non-blocking)
             saveToDisk(status, matches)
@@ -157,9 +159,9 @@ object MatchCacheService {
                 category = "service.cache"
                 message = "Clearing all match cache"
                 level = SentryLevel.INFO
-                setData("cacheSize", cache.size)
+                setData("cacheSize", cache.size())
             })
-            
+
             Log.d(TAG, "Clearing all cached data")
             cache.clear()
             diskPrefs?.edit()?.clear()?.apply()
@@ -174,8 +176,8 @@ object MatchCacheService {
      */
     suspend fun isCacheValid(status: String): Boolean = mutex.withLock {
         try {
-            val cached = cache[status] ?: return@withLock false
-            val ageMs = Date().time - cached.timestamp.time
+            val cached = cache.getEntry(status) ?: return@withLock false
+            val ageMs = Date().time - cached.insertedAt
             return@withLock ageMs < getCacheExpirationInterval(status)
         } catch (e: Exception) {
             Sentry.captureException(e)

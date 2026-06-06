@@ -2,6 +2,7 @@ package com.tanush.bouncer.services
 
 import android.util.Log
 import com.tanush.bouncer.data.CacheConfig
+import com.tanush.bouncer.data.cache.MemoryLruCache
 import com.tanush.bouncer.data.local.dao.AICacheDao
 import com.tanush.bouncer.data.local.entities.AICommentaryCacheEntity
 import com.tanush.bouncer.data.remote.AppwriteAICache
@@ -25,24 +26,17 @@ object AICacheService {
     private const val MAX_MEMORY_ENTRIES = 256
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val mutex = Mutex()
-    // LinkedHashMap with access-order = true gives us LRU semantics for free.
-    private val cache: LinkedHashMap<String, CommentaryEntry> =
-        object : LinkedHashMap<String, CommentaryEntry>(MAX_MEMORY_ENTRIES, 0.75f, true) {
-            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, CommentaryEntry>?): Boolean =
-                size > MAX_MEMORY_ENTRIES
-        }
+    private val CACHE_EXPIRATION_INTERVAL_MS = CacheConfig.AI_CACHE_TTL_MS
+    // Shared in-memory LRU tier (256 entries, TTL + permanent semantics). Compound
+    // memory+Room operations are still serialized by [mutex]; this only guards the map.
+    private val cache = MemoryLruCache<String, String>(
+        maxSize = MAX_MEMORY_ENTRIES,
+        ttlMs = CACHE_EXPIRATION_INTERVAL_MS,
+    )
     private var dao: AICacheDao? = null
     // In-flight deduplication: prevents duplicate remote lookups for the same key
     // when multiple coroutines miss memory+Room simultaneously.
     private val inFlight = ConcurrentHashMap<String, Deferred<String?>>()
-
-    private data class CommentaryEntry(
-        val commentary: String,
-        val timestamp: Date,
-        val permanent: Boolean = false
-    )
-
-    private val CACHE_EXPIRATION_INTERVAL_MS = CacheConfig.AI_CACHE_TTL_MS
 
     fun initialize(dao: AICacheDao) {
         this.dao = dao
@@ -68,21 +62,16 @@ object AICacheService {
         // Phase 1: memory + Room under mutex. Both are fast local I/O — holding mutex here is fine.
         val localHit: String? = mutex.withLock {
             try {
-                val cached = cache[key]
-                if (cached != null) {
-                    val ageMs = Date().time - cached.timestamp.time
-                    if (cached.permanent || ageMs < CACHE_EXPIRATION_INTERVAL_MS) {
-                        Log.d(TAG, "Memory hit for key $key")
-                        return@withLock cached.commentary
-                    }
-                    Log.d(TAG, "Memory expired for key $key")
-                    cache.remove(key)
+                val memHit = cache.get(key)
+                if (memHit != null) {
+                    Log.d(TAG, "Memory hit for key $key")
+                    return@withLock memHit
                 }
                 val cutoffMs = System.currentTimeMillis() - CACHE_EXPIRATION_INTERVAL_MS
                 val dbResult = dao?.getCommentary(key, cutoffMs)
                 if (dbResult != null) {
                     Log.d(TAG, "DB hit for key $key, warming memory cache")
-                    cache[key] = CommentaryEntry(dbResult, Date())
+                    cache.put(key, dbResult)
                 }
                 dbResult
             } catch (e: Exception) {
@@ -109,7 +98,7 @@ object AICacheService {
                     Log.d(TAG, "Remote hit for key $key (permanent=$isPermanent), warming local caches")
                     // Phase 3: write-back to local caches under mutex
                     mutex.withLock {
-                        cache[key] = CommentaryEntry(remoteResult, Date(), permanent = isPermanent)
+                        cache.put(key, remoteResult, permanent = isPermanent)
                         val dbTimestamp = if (isPermanent) CacheConfig.AI_CACHE_PERMANENT_TIMESTAMP else Date().time
                         dao?.insert(AICommentaryCacheEntity(key, remoteResult, dbTimestamp))
                     }
@@ -139,7 +128,7 @@ object AICacheService {
 
             val now = Date()
             Log.d(TAG, "Updating cache for key $key (permanent=$permanent)")
-            cache[key] = CommentaryEntry(commentary, now, permanent = permanent)
+            cache.put(key, commentary, permanent = permanent)
             val dbTimestamp = if (permanent) CacheConfig.AI_CACHE_PERMANENT_TIMESTAMP else now.time
             dao?.insert(AICommentaryCacheEntity(key, commentary, dbTimestamp))
             scope.launch {
@@ -163,7 +152,7 @@ object AICacheService {
                 category = "service.ai"
                 message = "Clearing AI commentary cache"
                 level = SentryLevel.INFO
-                setData("cacheSize", cache.size)
+                setData("cacheSize", cache.size())
             })
 
             Log.d(TAG, "Clearing all cached AI commentary")
@@ -177,11 +166,7 @@ object AICacheService {
 
     suspend fun isCacheValid(key: String): Boolean = mutex.withLock {
         try {
-            val cached = cache[key]
-            if (cached != null) {
-                val ageMs = Date().time - cached.timestamp.time
-                return@withLock cached.permanent || ageMs < CACHE_EXPIRATION_INTERVAL_MS
-            }
+            if (cache.isValid(key)) return@withLock true
             val cutoffMs = System.currentTimeMillis() - CACHE_EXPIRATION_INTERVAL_MS
             return@withLock dao?.getCommentary(key, cutoffMs) != null
         } catch (e: Exception) {
@@ -193,19 +178,14 @@ object AICacheService {
     suspend fun ingestFromRealtime(key: String, commentary: String) = mutex.withLock {
         try {
             // Skip if this device already has a valid entry (we originated the write)
-            val existing = cache[key]
-            if (existing != null) {
-                val ageMs = Date().time - existing.timestamp.time
-                if (ageMs < CACHE_EXPIRATION_INTERVAL_MS) return@withLock
-            } else {
-                // Memory cold — check Room before accepting the Realtime push.
-                // Prevents a stale Realtime replay from overwriting a fresher Room entry
-                // after app restart.
-                val cutoffMs = System.currentTimeMillis() - CACHE_EXPIRATION_INTERVAL_MS
-                if (dao?.getCommentary(key, cutoffMs) != null) return@withLock
-            }
+            if (cache.isValid(key)) return@withLock
+            // Memory cold/expired — check Room before accepting the Realtime push.
+            // Prevents a stale Realtime replay from overwriting a fresher Room entry
+            // after app restart.
+            val cutoffMs = System.currentTimeMillis() - CACHE_EXPIRATION_INTERVAL_MS
+            if (dao?.getCommentary(key, cutoffMs) != null) return@withLock
             val now = Date()
-            cache[key] = CommentaryEntry(commentary, now)
+            cache.put(key, commentary)
             dao?.insert(AICommentaryCacheEntity(key, commentary, now.time))
             Log.d(TAG, "Realtime: warmed cache for key $key")
         } catch (e: Exception) {
