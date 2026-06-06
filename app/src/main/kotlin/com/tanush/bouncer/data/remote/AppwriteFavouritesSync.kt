@@ -14,7 +14,9 @@ import java.util.UUID
 
 // Cross-device favourites sync backed by Appwrite TablesDB.
 // Uses a stable device UUID as the row ID — no auth required.
-// Table-level permissions: create("any"), read("any"), update("any").
+// Row-level permissions on createRow: read("any"), update("any") — no create("any").
+// SECURITY NOTE: Existing tables in Appwrite console may have create("any") set at table level;
+// update those via the Appwrite console to match. This client code only controls NEW row permissions.
 object AppwriteFavouritesSync : AppwriteTableClient("AppwriteFavouritesSync") {
     private const val TAG = "AppwriteFavouritesSync"
     private const val PREF_DEVICE_ID = "appwrite_device_id"
@@ -76,6 +78,11 @@ object AppwriteFavouritesSync : AppwriteTableClient("AppwriteFavouritesSync") {
                             tableId = tableId,
                             rowId = deviceId,
                             data = mapOf("teams" to teams),
+                            // Row-level permissions: public read for cross-device sync;
+                            // update but NOT create at role-any level (row is device-scoped).
+                            // SECURITY NOTE: Existing tables in Appwrite console may have
+                            // create("any") at table level — update via console to match.
+                            // This code controls NEW row permissions only, not the table schema.
                             permissions = listOf(
                                 Permission.read(Role.any()),
                                 Permission.update(Role.any())

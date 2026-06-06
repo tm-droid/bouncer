@@ -23,6 +23,8 @@ data class PlayerFormSnapshot(
 // Cross-device player form cache backed by Appwrite TablesDB.
 // Syncs recent strike-rate / economy snapshots so ML features stay consistent
 // across devices and sessions. Falls back silently on any error.
+// SECURITY NOTE: Existing tables in Appwrite console may have create("any") at table level;
+// update those via the Appwrite console to match. This client code only controls NEW row permissions.
 object AppwritePlayerFormsClient : AppwriteTableClient("AppwritePlayerFormsClient") {
     private const val TAG = "AppwritePlayerFormsClient"
 
@@ -68,6 +70,11 @@ object AppwritePlayerFormsClient : AppwriteTableClient("AppwritePlayerFormsClien
                             tableId = tableId,
                             rowId = rowId,
                             data = data,
+                            // Row-level permissions: public read for cross-device ML feature sharing;
+                            // update but NOT create at role-any level (row is player-scoped).
+                            // SECURITY NOTE: Existing tables in Appwrite console may have
+                            // create("any") at table level — update via console to match.
+                            // This code controls NEW row permissions only, not the table schema.
                             permissions = listOf(
                                 Permission.read(Role.any()),
                                 Permission.update(Role.any())

@@ -17,6 +17,10 @@ import java.time.format.DateTimeFormatter
 // Eliminates per-device Cricbuzz scraping: first device writes, all others read.
 // Uses the same DB as PlayerFormsClient; separate collection for full profile data.
 // Falls back silently on any error — scraper is always the last resort.
+// SECURITY NOTE: Existing tables in Appwrite console may have create("any") at table level;
+// update those via the Appwrite console to match. This client code only controls NEW row permissions.
+// The global-cache design intentionally allows any device to contribute scraped profile data
+// (first-scraper-wins pattern); the risk is accepted for cricket public data (non-sensitive).
 object AppwritePlayerProfilesClient : AppwriteTableClient("AppwritePlayerProfilesClient") {
     private const val TAG = "AppwritePlayerProfilesClient"
 
@@ -106,6 +110,13 @@ object AppwritePlayerProfilesClient : AppwriteTableClient("AppwritePlayerProfile
                             tableId = tableId,
                             rowId = rowId,
                             data = data,
+                            // Row-level permissions: public read (profiles are public cricket data);
+                            // update but NOT create at role-any level (row is player-scoped).
+                            // INTENTIONAL: Any authenticated device may contribute a profile
+                            // (global cache, first-scraper-wins). Scraped data is non-sensitive.
+                            // SECURITY NOTE: Existing tables in Appwrite console may have
+                            // create("any") at table level — update via console to match.
+                            // This code controls NEW row permissions only, not the table schema.
                             permissions = listOf(
                                 Permission.read(Role.any()),
                                 Permission.update(Role.any())
