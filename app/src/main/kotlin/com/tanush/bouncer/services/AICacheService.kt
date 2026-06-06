@@ -101,7 +101,7 @@ object AICacheService {
         // Appwrite, reuse its Deferred rather than launching a second remote call. This
         // prevents duplicate LLM invocations when multiple callers miss the local caches
         // simultaneously (e.g. cold start or concurrent ball commentary requests).
-        val deferred: Deferred<String?> = inFlight.getOrPut(key) {
+        val deferred: Deferred<String?> = inFlight.computeIfAbsent(key) {
             scope.async {
                 try {
                     val remoteHit = AppwriteAICache.get(key) ?: return@async null
