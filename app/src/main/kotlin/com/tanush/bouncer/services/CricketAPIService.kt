@@ -248,9 +248,4 @@ class CricketAPIService(private val apiKey: String = "") {
         lastRequestTime = Date()
     }
     
-    sealed class APIError : Exception() {
-        object InvalidResponse : APIError()
-        object InvalidData : APIError()
-        data class DecodingError(override val cause: Throwable) : APIError()
-    }
 }

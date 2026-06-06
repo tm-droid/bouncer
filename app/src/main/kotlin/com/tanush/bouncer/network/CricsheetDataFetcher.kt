@@ -753,11 +753,3 @@ class CricsheetDataFetcher(private val context: Context? = null) {
     }
 }
 
-/**
- * Cricsheet error types
- */
-sealed class CricsheetError : Exception() {
-    object InvalidURL : CricsheetError()
-    object DownloadFailed : CricsheetError()
-    object ParsingFailed : CricsheetError()
-}
