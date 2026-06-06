@@ -10,6 +10,7 @@ import kotlin.math.max
 import io.sentry.Sentry
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.util.concurrent.ConcurrentHashMap
 
 enum class PitchCondition(val value: Double) {
     BATTING_FRIENDLY(1.2),
@@ -66,8 +67,39 @@ class WinProbabilityCalculator(
     private val bowlingTeamForm: List<PlayerForm> = emptyList(),
     private val historicalData: Map<String, Double> = emptyMap(),
     /** Total balls in one innings: T20=120, ODI=300, Test=450. Defaults to 300 (ODI). */
-    val totalBalls: Int = 300
+    val totalBalls: Int = 300,
+    /**
+     * Optional match identifier used for probability-table caching.
+     * When provided alongside [inningsNumber], the computed wicket-probability table is stored
+     * in [tableCache] and reused for every subsequent ball in the same innings — avoiding
+     * 1,200–3,000 redundant iterations per ball update.
+     */
+    private val matchId: String = "",
+    /** Innings number within [matchId] (1 or 2). Cache is invalidated when innings changes. */
+    private val inningsNumber: Int = 0
 ) {
+
+    companion object {
+        /**
+         * Process-wide wicket-probability table cache.
+         * Key: "${matchId}:${inningsNumber}" — unique per innings so the table is invalidated
+         * automatically when the innings changes (different pitch/team conditions may apply).
+         * Value: pre-computed Array<DoubleArray> of size (totalBalls+1) × (maxWickets+1).
+         */
+        private val tableCache = ConcurrentHashMap<String, Array<DoubleArray>>()
+
+        /**
+         * Evict all cached tables for [matchId] (both innings).
+         * Call when a match ends or is removed from the live-match set to reclaim memory.
+         */
+        fun clearCacheForMatch(matchId: String) {
+            tableCache.keys.removeAll { it.startsWith("$matchId:") }
+        }
+
+        /** Visible for testing — number of currently cached tables. */
+        internal fun cachedTableCount(): Int = tableCache.size
+    }
+
     // Constants for the game — use totalBalls so T20/ODI/Test are modelled correctly
     private val maxBalls = totalBalls
     private val maxWickets = 10
@@ -100,13 +132,21 @@ class WinProbabilityCalculator(
     )
 
     init {
-        // Initialize tables
-        wicketTable = Array(maxBalls + 1) { DoubleArray(maxWickets + 1) }
-
-        initializeProbabilityTables()
+        // Use the cached table when a matchId+inningsNumber key is provided, otherwise compute.
+        val cacheKey = if (matchId.isNotEmpty() && inningsNumber > 0) "$matchId:$inningsNumber" else ""
+        if (cacheKey.isNotEmpty()) {
+            wicketTable = tableCache.getOrPut(cacheKey) {
+                val table = Array(maxBalls + 1) { DoubleArray(maxWickets + 1) }
+                initializeProbabilityTables(table)
+                table
+            }
+        } else {
+            wicketTable = Array(maxBalls + 1) { DoubleArray(maxWickets + 1) }
+            initializeProbabilityTables(wicketTable)
+        }
     }
 
-    private fun initializeProbabilityTables() {
+    private fun initializeProbabilityTables(table: Array<DoubleArray>) {
         try {
             for (ball in 0..maxBalls) {
                 for (wicket in 0..maxWickets) {
@@ -115,7 +155,7 @@ class WinProbabilityCalculator(
                     val baseWicketProbability = calculateBaseWicketProbability(ball, wicket)
 
                     // Apply pitch condition modifier; clamp wicket probability to [0,1]
-                    wicketTable[ball][wicket] = (baseWicketProbability * (2 - pitchCondition.value)).coerceIn(0.0, 1.0)
+                    table[ball][wicket] = (baseWicketProbability * (2 - pitchCondition.value)).coerceIn(0.0, 1.0)
                 }
             }
         } catch (e: Exception) {
