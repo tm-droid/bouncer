@@ -3,6 +3,8 @@ package com.tanush.bouncer.viewmodels
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.tanush.bouncer.data.AppResult
+import com.tanush.bouncer.data.report
 import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.network.CricBuzzScraper
 import com.tanush.bouncer.network.CricBuzzUrls
@@ -10,7 +12,6 @@ import io.sentry.Breadcrumb
 import io.sentry.Sentry
 import io.sentry.SentryLogLevel
 import io.sentry.SentryLevel
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -96,66 +97,37 @@ class MainViewModel : ViewModel() {
 
             val url = CricBuzzUrls.urlForStatus(status)
 
-            try {
-                val matches = scraper.fetchLiveMatches(url, status)
-                _currentMatches.value = matches
-                _loadState.value = if (matches.isEmpty()) {
-                    MatchLoadState.Success // Empty but no error
-                } else {
-                    MatchLoadState.Success
+            when (val result = AppResult.runCatchingSuspend { scraper.fetchLiveMatches(url, status) }) {
+                is AppResult.Success -> {
+                    val matches = result.data
+                    _currentMatches.value = matches
+                    _loadState.value = MatchLoadState.Success
+                    Sentry.metrics().gauge("matches.loaded", matches.size.toDouble())
+                    Sentry.metrics().count("matches.fetch.success", 1.0)
+                    Sentry.logger().log(SentryLogLevel.INFO, "MainViewModel fetched %s matches for %s", matches.size.toString(), status)
+                    Log.d(TAG, "Fetched ${matches.size} matches for $status")
                 }
-                Sentry.metrics().gauge("matches.loaded", matches.size.toDouble())
-                Sentry.metrics().count("matches.fetch.success", 1.0)
-                Sentry.logger().log(SentryLogLevel.INFO, "MainViewModel fetched %s matches for %s", matches.size.toString(), status)
-                Log.d(TAG, "Fetched ${matches.size} matches for $status")
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: java.net.UnknownHostException) {
-                Log.e(TAG, "No internet connection", e)
-                Sentry.addBreadcrumb(Breadcrumb().apply {
-                    category = "network.error"
-                    message = "No internet connection while fetching $status matches"
-                    level = SentryLevel.ERROR
-                })
-                Sentry.captureException(e)
-                Sentry.metrics().count("matches.fetch.error.unknown_host", 1.0)
-                _loadState.value = MatchLoadState.Error(
-                    message = "No internet connection. Check your network and try again.",
-                    isRetryable = true
-                )
-            } catch (e: java.net.SocketTimeoutException) {
-                Log.e(TAG, "Request timed out", e)
-                Sentry.addBreadcrumb(Breadcrumb().apply {
-                    category = "network.error"
-                    message = "Socket timeout while fetching $status matches"
-                    level = SentryLevel.ERROR
-                })
-                Sentry.captureException(e)
-                Sentry.metrics().count("matches.fetch.error.timeout", 1.0)
-                _loadState.value = MatchLoadState.Error(
-                    message = "Request timed out. Try again.",
-                    isRetryable = true
-                )
-            } catch (e: Exception) {
-                if (e is CancellationException) throw e
-                Log.e(TAG, "Error fetching matches for $status", e)
-                Sentry.addBreadcrumb(Breadcrumb().apply {
-                    category = "data.error"
-                    message = "Failed to fetch matches for status: $status"
-                    level = SentryLevel.ERROR
-                    setData("status", status)
-                    setData("error_type", e.javaClass.simpleName)
-                })
-                Sentry.captureException(e)
-                Sentry.metrics().count("matches.fetch.error.general", 1.0)
-                Sentry.logger().error("MainViewModel fetch failed for %s: %s", status, e.message ?: "unknown")
-                _loadState.value = MatchLoadState.Error(
-                    message = "Failed to load matches: ${e.localizedMessage ?: "Unknown error"}",
-                    isRetryable = true
-                )
-            } finally {
-                _isLoading.value = false
+                is AppResult.Error -> {
+                    Log.e(TAG, "Error fetching matches for $status", result.exception)
+                    Sentry.addBreadcrumb(Breadcrumb().apply {
+                        category = "data.error"
+                        message = "Failed to fetch matches for status: $status"
+                        level = SentryLevel.ERROR
+                        setData("status", status)
+                        setData("error_type", result.exception.javaClass.simpleName)
+                    })
+                    result.report()
+                    Sentry.metrics().count("matches.fetch.error.general", 1.0)
+                    Sentry.logger().error("MainViewModel fetch failed for %s: %s", status, result.message ?: "unknown")
+                    _loadState.value = MatchLoadState.Error(
+                        message = result.exception.userMessage,
+                        isRetryable = true
+                    )
+                }
+                is AppResult.Loading -> { /* no-op */ }
             }
+
+            _isLoading.value = false
         }
     }
 }

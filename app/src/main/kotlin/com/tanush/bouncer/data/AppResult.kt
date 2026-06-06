@@ -1,5 +1,9 @@
 package com.tanush.bouncer.data
 
+import io.sentry.Sentry
+
+fun AppResult.Error.report() = Sentry.captureException(exception)
+
 sealed class AppResult<out T> {
     data class Success<T>(val data: T) : AppResult<T>()
     data class Error(val exception: AppException) : AppResult<Nothing>() {
