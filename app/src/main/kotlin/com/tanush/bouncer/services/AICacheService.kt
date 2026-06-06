@@ -10,12 +10,15 @@ import io.sentry.Sentry
 import io.sentry.SentryLevel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.util.Date
+import java.util.concurrent.ConcurrentHashMap
 
 object AICacheService {
     private const val TAG = "AICacheService"
@@ -29,6 +32,9 @@ object AICacheService {
                 size > MAX_MEMORY_ENTRIES
         }
     private var dao: AICacheDao? = null
+    // In-flight deduplication: prevents duplicate remote lookups for the same key
+    // when multiple coroutines miss memory+Room simultaneously.
+    private val inFlight = ConcurrentHashMap<String, Deferred<String?>>()
 
     private data class CommentaryEntry(
         val commentary: String,
@@ -90,24 +96,34 @@ object AICacheService {
         // Phase 2: Appwrite network call — mutex NOT held.
         // Holding it during remote I/O would block setCommentary (called every ball) and
         // isCacheValid for the full round-trip, stalling live commentary generation.
-        val remoteHit = try {
-            AppwriteAICache.get(key)
-        } catch (e: Exception) {
-            if (e is CancellationException) throw e
-            Sentry.captureException(e)
-            return null  // treat remote failure as miss, degrade gracefully
-        } ?: return null
-
-        val (remoteResult, isPermanent) = remoteHit
-        Log.d(TAG, "Remote hit for key $key (permanent=$isPermanent), warming local caches")
-
-        // Phase 3: write-back to local caches under mutex
-        mutex.withLock {
-            cache[key] = CommentaryEntry(remoteResult, Date(), permanent = isPermanent)
-            val dbTimestamp = if (isPermanent) CacheConfig.AI_CACHE_PERMANENT_TIMESTAMP else Date().time
-            dao?.insert(AICommentaryCacheEntity(key, remoteResult, dbTimestamp))
+        //
+        // In-flight deduplication: if another coroutine is already fetching this key from
+        // Appwrite, reuse its Deferred rather than launching a second remote call. This
+        // prevents duplicate LLM invocations when multiple callers miss the local caches
+        // simultaneously (e.g. cold start or concurrent ball commentary requests).
+        val deferred: Deferred<String?> = inFlight.getOrPut(key) {
+            scope.async {
+                try {
+                    val remoteHit = AppwriteAICache.get(key) ?: return@async null
+                    val (remoteResult, isPermanent) = remoteHit
+                    Log.d(TAG, "Remote hit for key $key (permanent=$isPermanent), warming local caches")
+                    // Phase 3: write-back to local caches under mutex
+                    mutex.withLock {
+                        cache[key] = CommentaryEntry(remoteResult, Date(), permanent = isPermanent)
+                        val dbTimestamp = if (isPermanent) CacheConfig.AI_CACHE_PERMANENT_TIMESTAMP else Date().time
+                        dao?.insert(AICommentaryCacheEntity(key, remoteResult, dbTimestamp))
+                    }
+                    remoteResult
+                } catch (e: Exception) {
+                    if (e is CancellationException) throw e
+                    Sentry.captureException(e)
+                    null  // treat remote failure as miss, degrade gracefully
+                } finally {
+                    inFlight.remove(key)
+                }
+            }
         }
-        return remoteResult
+        return deferred.await()
     }
 
     suspend fun setCommentary(commentary: String, key: String, permanent: Boolean = false) = mutex.withLock {
