@@ -19,7 +19,7 @@ sealed class MatchStatus {
                 s.contains("live") || s.contains("in progress") || s.contains("innings") ||
                     s.contains("opted to") || s.contains("need") -> Live
                 s.contains("complete") || s.contains("won") || s.contains("draw") ||
-                    s.contains("tied") || s.contains("no result") -> Completed
+                    s.contains("drawn") || s.contains("tied") || s.contains("no result") -> Completed
                 s.isEmpty() || s.contains("upcoming") || s.contains("preview") -> Upcoming
                 else -> Unknown(status)
             }
@@ -73,6 +73,9 @@ data class CricketMatch(
 
     val isCompleted: Boolean
         get() = matchStatus == MatchStatus.Completed
+
+    val isUpcoming: Boolean
+        get() = matchStatus == MatchStatus.Upcoming
 
     /**
      * Heuristic calculation of win probability for Team 1.
