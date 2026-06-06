@@ -6,6 +6,27 @@ import com.google.gson.annotations.SerializedName
 import com.tanush.bouncer.utils.parseRuns
 import com.tanush.bouncer.utils.parseWickets
 
+sealed class MatchStatus {
+    object Live : MatchStatus()
+    object Completed : MatchStatus()
+    object Upcoming : MatchStatus()
+    data class Unknown(val raw: String) : MatchStatus()
+
+    companion object {
+        fun from(status: String): MatchStatus {
+            val s = status.lowercase()
+            return when {
+                s.contains("live") || s.contains("in progress") || s.contains("innings") ||
+                    s.contains("opted to") || s.contains("need") -> Live
+                s.contains("complete") || s.contains("won") || s.contains("draw") ||
+                    s.contains("tied") || s.contains("no result") -> Completed
+                s.isEmpty() || s.contains("upcoming") || s.contains("preview") -> Upcoming
+                else -> Unknown(status)
+            }
+        }
+    }
+}
+
 @Stable
 data class CricketMatch(
     val id: String,
@@ -35,20 +56,23 @@ data class CricketMatch(
     var umpire1: String? = null,
     var umpire2: String? = null,
 ) {
-    val isLive: Boolean 
-        get() = status.lowercase().contains("live") || 
-                currentStatus.lowercase().contains("live") || 
-                currentStatus.lowercase().contains("opted to") || 
-                currentStatus.lowercase().contains("need")
+    // Derived from the most-specific status string available (currentStatus preferred over status).
+    val matchStatus: MatchStatus by lazy {
+        val combined = if (currentStatus.isNotBlank()) currentStatus else status
+        val fromCombined = MatchStatus.from(combined)
+        // If combined string didn't resolve to Live, also check status field directly
+        if (fromCombined != MatchStatus.Live && MatchStatus.from(status) == MatchStatus.Live) {
+            MatchStatus.Live
+        } else {
+            fromCombined
+        }
+    }
+
+    val isLive: Boolean
+        get() = matchStatus == MatchStatus.Live
 
     val isCompleted: Boolean
-        get() {
-            val s = currentStatus.lowercase()
-            val st = status.lowercase()
-            return s.contains("won") || s.contains("drawn") || s.contains("tied") ||
-                s.contains("no result") || st.contains("complete") ||
-                st.contains("won") || st.contains("drawn") || st.contains("tied") || st.contains("no result")
-        }
+        get() = matchStatus == MatchStatus.Completed
 
     /**
      * Heuristic calculation of win probability for Team 1.

@@ -26,6 +26,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.models.MatchFlowData
+import com.tanush.bouncer.models.MatchStatus
 import com.tanush.bouncer.models.Scorecard
 import com.tanush.bouncer.models.ScrapedBatsman
 import com.tanush.bouncer.models.ScrapedBowler
@@ -77,13 +78,12 @@ fun OverviewTabV2(
     val typography = BouncerThemeV2.typography
     val spacing = BouncerThemeV2.spacing
 
-    val isMatchActive = match.isLive || match.currentStatus.lowercase().let {
+    val isMatchActive = match.matchStatus == MatchStatus.Live || match.currentStatus.lowercase().let {
         it.contains("stumps") || it.contains("break") || it.contains("rain") || it.contains("delay")
     }
-    val isCompleted = match.currentStatus.lowercase().let {
-        it.contains("won") || it.contains("drawn") || it.contains("tied") || it.contains("no result")
-    } || match.status.lowercase().contains("complete")
-    val isUpcoming = !isMatchActive && !isCompleted && match.teams.all { it.score.isBlank() || it.score == "0/0" }
+    val isCompleted = match.matchStatus == MatchStatus.Completed
+    val isUpcoming = match.matchStatus == MatchStatus.Upcoming ||
+        (!isMatchActive && !isCompleted && match.teams.all { it.score.isBlank() || it.score == "0/0" })
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
