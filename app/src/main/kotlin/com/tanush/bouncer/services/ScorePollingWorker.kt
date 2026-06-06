@@ -81,11 +81,11 @@ class ScorePollingWorker(
                         val enqueue = synchronized(ScorePollingWorker::class.java) {
                             val count = prefs.getInt(KEY_FOLLOWUP_COUNT, 0)
                             if (count < MAX_LIVE_FOLLOWUPS) {
-                                prefs.edit().putInt(KEY_FOLLOWUP_COUNT, count + 1).commit()
+                                prefs.edit().putInt(KEY_FOLLOWUP_COUNT, count + 1).apply()
                                 true
                             } else {
                                 Log.w(TAG, "Live follow-up cap reached ($MAX_LIVE_FOLLOWUPS); falling back to periodic poll")
-                                prefs.edit().remove(KEY_FOLLOWUP_COUNT).commit()
+                                prefs.edit().remove(KEY_FOLLOWUP_COUNT).apply()
                                 false
                             }
                         }
