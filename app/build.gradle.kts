@@ -258,7 +258,7 @@ configurations.all {
         force("org.bouncycastle:bcprov-jdk18on:1.84")
         force("org.bouncycastle:bcpkix-jdk18on:1.84")
         // Other transitive CVEs
-        force("org.apache.commons:commons-lang3:3.18.0")
+        force("org.apache.commons:commons-lang3:3.20.0")
         force("org.bitbucket.b_c:jose4j:0.9.6")
         force("org.jdom:jdom2:2.0.6.1")
         force("com.google.guava:guava:32.0.0-android")
