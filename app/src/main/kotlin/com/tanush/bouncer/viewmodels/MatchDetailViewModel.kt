@@ -11,8 +11,8 @@ import com.tanush.bouncer.models.PreMatchData
 import com.tanush.bouncer.models.Scorecard
 import com.tanush.bouncer.models.ScrapedBatsman
 import com.tanush.bouncer.models.ScrapedBowler
-import com.tanush.bouncer.network.CricBuzzScraper
-import com.tanush.bouncer.network.CricInfoScraper
+import com.tanush.bouncer.data.CricBuzzMatchRepository
+import com.tanush.bouncer.data.MatchRepository
 import com.tanush.bouncer.services.LiveCommentaryManager
 import io.sentry.Breadcrumb
 import io.sentry.Sentry
@@ -28,6 +28,7 @@ import kotlinx.coroutines.launch
 class MatchDetailViewModel(
     private val match: CricketMatch,
     context: Context,
+    private val matchRepository: MatchRepository = CricBuzzMatchRepository(),
 ) : ViewModel() {
 
     data class UiState(
@@ -48,8 +49,6 @@ class MatchDetailViewModel(
     )
 
     private val appContext = context.applicationContext
-    private val scraper = CricBuzzScraper()
-    private val cricinfo = CricInfoScraper()
     private val commentaryManager = LiveCommentaryManager()
     private var espnMatchUrl: String? = null
 
@@ -79,7 +78,7 @@ class MatchDetailViewModel(
         // Seed commentary history once before the polling loop.
         try {
             val url = "https://www.cricbuzz.com/live-cricket-scores/${match.id}"
-            val allLines = scraper.fetchLiveCommentary(url)
+            val allLines = matchRepository.fetchLiveCommentary(url)
             if (allLines.isNotEmpty()) {
                 commentaryManager.seedHistory(allLines)
                 _uiState.update { it.copy(commentary = commentaryManager.getSeededHistory()) }
@@ -99,10 +98,10 @@ class MatchDetailViewModel(
         // Fetch match flow once (DRS reviews, powerplay summaries, impact subs).
         try {
             val url = espnMatchUrl ?: run {
-                cricinfo.findClosestLiveMatchUrlAndId(match.matchTitle)?.first.also { espnMatchUrl = it }
+                matchRepository.findCricinfoMatchUrlAndId(match.matchTitle)?.first.also { espnMatchUrl = it }
             }
             if (url != null) {
-                val flow = cricinfo.fetchMatchFlow(url)
+                val flow = matchRepository.fetchMatchFlow(url)
                 if (flow.drsReviews.isNotEmpty() || flow.powerplays.isNotEmpty() || flow.impactSubs.isNotEmpty()) {
                     _uiState.update { it.copy(matchFlow = flow) }
                 }
@@ -120,10 +119,10 @@ class MatchDetailViewModel(
         // Fetch pre-match data (pitch report + team news) once at startup.
         try {
             val url = espnMatchUrl ?: run {
-                cricinfo.findClosestLiveMatchUrlAndId(match.matchTitle)?.first.also { espnMatchUrl = it }
+                matchRepository.findCricinfoMatchUrlAndId(match.matchTitle)?.first.also { espnMatchUrl = it }
             }
             if (url != null) {
-                val preMatch = cricinfo.fetchPreMatchData(url)
+                val preMatch = matchRepository.fetchPreMatchData(url)
                 if (preMatch != null) {
                     _uiState.update { it.copy(preMatchData = preMatch) }
                 }
@@ -142,8 +141,8 @@ class MatchDetailViewModel(
 
         while (true) {
             try {
-                val details = scraper.fetchBallByBallAndBatsmen(match.id)
-                val scorecard = scraper.fetchScorecard(match.id)
+                val details = matchRepository.fetchBallByBallAndBatsmen(match.id)
+                val scorecard = matchRepository.fetchScorecard(match.id)
 
                 val keyNames = details.batsmen.map { it.name }.toMutableList()
                 details.bowler?.let { keyNames.add(it.name) }
@@ -211,11 +210,15 @@ class MatchDetailViewModel(
     }
 
     companion object {
-        fun factory(context: Context, match: CricketMatch): ViewModelProvider.Factory =
+        fun factory(
+            context: Context,
+            match: CricketMatch,
+            matchRepository: MatchRepository = CricBuzzMatchRepository(),
+        ): ViewModelProvider.Factory =
             object : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")
                 override fun <T : ViewModel> create(modelClass: Class<T>): T =
-                    MatchDetailViewModel(match, context.applicationContext) as T
+                    MatchDetailViewModel(match, context.applicationContext, matchRepository) as T
             }
     }
 }

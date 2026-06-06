@@ -4,9 +4,10 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tanush.bouncer.data.AppResult
+import com.tanush.bouncer.data.CricBuzzMatchRepository
+import com.tanush.bouncer.data.MatchRepository
 import com.tanush.bouncer.data.report
 import com.tanush.bouncer.models.CricketMatch
-import com.tanush.bouncer.network.CricBuzzScraper
 import com.tanush.bouncer.network.CricBuzzUrls
 import io.sentry.Breadcrumb
 import io.sentry.Sentry
@@ -27,12 +28,12 @@ sealed class MatchLoadState {
     object Success : MatchLoadState()
 }
 
-class MainViewModel : ViewModel() {
+class MainViewModel(
+    private val matchRepository: MatchRepository = CricBuzzMatchRepository(),
+) : ViewModel() {
     companion object {
         private const val TAG = "MainViewModel"
     }
-
-    private val scraper = CricBuzzScraper()
 
     private val _currentMatches = MutableStateFlow<List<CricketMatch>>(emptyList())
     val currentMatches: StateFlow<List<CricketMatch>> = _currentMatches.asStateFlow()
@@ -97,7 +98,7 @@ class MainViewModel : ViewModel() {
 
             val url = CricBuzzUrls.urlForStatus(status)
 
-            when (val result = AppResult.runCatchingSuspend { scraper.fetchLiveMatches(url, status) }) {
+            when (val result = matchRepository.fetchMatches(url, status)) {
                 is AppResult.Success -> {
                     val matches = result.data
                     _currentMatches.value = matches

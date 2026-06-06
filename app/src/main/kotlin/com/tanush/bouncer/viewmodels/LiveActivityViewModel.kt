@@ -10,7 +10,8 @@ import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.models.TimelineEventType
 import com.tanush.bouncer.ui.components.glass.BallEvent
 import com.tanush.bouncer.utils.TimelineEventExtractor
-import com.tanush.bouncer.network.CricBuzzScraper
+import com.tanush.bouncer.data.CricBuzzMatchRepository
+import com.tanush.bouncer.data.MatchRepository
 import com.tanush.bouncer.network.CricBuzzUrls
 import com.tanush.bouncer.services.LiveNotificationManager
 import com.tanush.bouncer.services.MatchCacheService
@@ -51,7 +52,9 @@ data class ProbabilityEvent(
     val impact: Double = 0.0
 )
 
-class LiveActivityViewModel : ViewModel() {
+class LiveActivityViewModel(
+    private val matchRepository: MatchRepository = CricBuzzMatchRepository(),
+) : ViewModel() {
     companion object {
         private const val TAG = "LiveActivityViewModel"
         private const val MIN_MANUAL_REFRESH_INTERVAL_MS = 10_000L
@@ -69,7 +72,6 @@ class LiveActivityViewModel : ViewModel() {
         private const val OVER_BALL_COUNT = 5
     }
 
-    private val scraper = CricBuzzScraper()
     private val liveCommentaryManager = LiveCommentaryManager()
 
     // Set from a context-aware component (Activity / Composable with LocalContext).
@@ -513,7 +515,7 @@ class LiveActivityViewModel : ViewModel() {
         match: CricketMatch,
     ) {
         try {
-            val details = scraper.fetchBallByBallAndBatsmen(match.id)
+            val details = matchRepository.fetchBallByBallAndBatsmen(match.id)
             val batsmenInfo = details.batsmen.map { bat ->
                 LiveNotificationManager.BatsmanInfo(
                     name = bat.name,
@@ -649,7 +651,7 @@ class LiveActivityViewModel : ViewModel() {
 
     private suspend fun updateMatches(status: String) {
         val url = CricBuzzUrls.urlForStatus(status)
-        val distinctMatches = scraper.fetchLiveMatches(url, status).distinctBy { it.id }
+        val distinctMatches = matchRepository.fetchLiveMatches(url, status).distinctBy { it.id }
         Sentry.metrics().gauge("live.matches.count", distinctMatches.size.toDouble())
         Sentry.metrics().count("live.poll.success", 1.0)
 
