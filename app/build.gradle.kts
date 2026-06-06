@@ -231,6 +231,14 @@ dependencies {
     // Car App (Android Auto)
     implementation(libs.car.app)
 
+    // Security: explicit declarations at patched versions so Dependabot closes CVE alerts
+    // (#25 commons-lang3, #29 jdom2, #31 jose4j, #34/#35/#36 bouncycastle)
+    implementation(libs.commons.lang3)
+    implementation(libs.bouncycastle.prov)
+    implementation(libs.bouncycastle.pkix)
+    implementation(libs.jose4j)
+    implementation(libs.jdom2)
+
     // Testing
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
