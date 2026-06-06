@@ -266,12 +266,12 @@ class CricsheetDataFetcher(private val context: Context? = null) {
         val matchDate = allDates.firstOrNull() ?: Date()
         
         val toss = info.toss?.takeIf { it.winner != null && it.decision != null }?.let {
-            CricsheetToss(winner = it.winner!!, decision = it.decision!!)
+            CricsheetToss(winner = it.winner ?: "", decision = it.decision ?: "unknown")
         }
 
         val event = info.event?.takeIf { it.name != null }?.let {
             CricsheetEvent(
-                name = it.name!!,
+                name = it.name ?: "",
                 matchNumber = it.match_number,
                 group = it.group,
                 stage = it.stage
@@ -316,8 +316,8 @@ class CricsheetDataFetcher(private val context: Context? = null) {
                             
                             val review = delivery.review?.takeIf { it.by != null && it.decision != null }?.let {
                                 CricsheetReview(
-                                    by = it.by!!,
-                                    decision = it.decision!!,
+                                    by = it.by ?: "",
+                                    decision = it.decision ?: "unknown",
                                     batter = it.batter,
                                     umpire = it.umpire,
                                     umpiresCall = it.umpires_call ?: false
