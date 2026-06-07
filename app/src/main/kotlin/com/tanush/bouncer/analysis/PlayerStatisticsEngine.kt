@@ -1,5 +1,6 @@
 package com.tanush.bouncer.analysis
 
+import com.tanush.bouncer.analysis.utils.SlidingWindow
 import com.tanush.bouncer.data.remote.PlayerFormSnapshot
 import com.tanush.bouncer.models.CricsheetMatch
 import com.tanush.bouncer.models.CricsheetBall
@@ -228,25 +229,25 @@ class PlayerStatisticsEngine {
     fun getFormSnapshots(): Map<String, PlayerFormSnapshot> {
         val result = mutableMapOf<String, PlayerFormSnapshot>()
         for ((name, acc) in battingAccumulators) {
-            if (acc.recentMatchDates.isNotEmpty()) {
+            if (!acc.recentRunsWindow.isEmpty) {
                 val stats = acc.toStats()
                 result[name] = PlayerFormSnapshot(
                     playerName = name,
                     recentSR = stats.recentFormStrikeRate,
                     recentEconomy = result[name]?.recentEconomy ?: 0.0,
-                    matchCount = acc.recentMatchDates.size
+                    matchCount = acc.recentRunsWindow.size
                 )
             }
         }
         for ((name, acc) in bowlingAccumulators) {
-            if (acc.recentMatchDates.isNotEmpty()) {
+            if (!acc.recentRunsWindow.isEmpty) {
                 val stats = acc.toStats()
                 val existing = result[name]
                 result[name] = PlayerFormSnapshot(
                     playerName = name,
                     recentSR = existing?.recentSR ?: 0.0,
                     recentEconomy = stats.recentFormEconomy,
-                    matchCount = maxOf(acc.recentMatchDates.size, existing?.matchCount ?: 0)
+                    matchCount = maxOf(acc.recentRunsWindow.size, existing?.matchCount ?: 0)
                 )
             }
         }
@@ -275,7 +276,7 @@ class PlayerStatisticsEngine {
         if (snapshot.recentSR > 0.0) {
             val batAcc = battingAccumulators.getOrPut(playerName) { BattingAccumulator(playerName) }
             // Only seed if no local form has been accumulated yet
-            if (batAcc.recentMatchDates.isEmpty()) {
+            if (batAcc.recentRunsWindow.isEmpty) {
                 // Synthetic timestamp = 0 (epoch) ensures real matches always sort after
                 val syntheticBalls = if (snapshot.matchCount > 0) snapshot.matchCount * 18 else 18
                 val syntheticRuns = ((snapshot.recentSR / 100.0) * syntheticBalls).toInt()
@@ -284,7 +285,7 @@ class PlayerStatisticsEngine {
         }
         if (snapshot.recentEconomy > 0.0) {
             val bowlAcc = bowlingAccumulators.getOrPut(playerName) { BowlingAccumulator(playerName) }
-            if (bowlAcc.recentMatchDates.isEmpty()) {
+            if (bowlAcc.recentRunsWindow.isEmpty) {
                 val syntheticBalls = if (snapshot.matchCount > 0) snapshot.matchCount * 18 else 18
                 val syntheticRuns = ((snapshot.recentEconomy / 6.0) * syntheticBalls).toInt()
                 bowlAcc.updateBowlingForm(0L, syntheticRuns, syntheticBalls)
@@ -354,39 +355,24 @@ class PlayerStatisticsEngine {
         val formatStats = mutableMapOf<String, PhaseStats>()
 
         // Recent form — bounded to last 10 matches by date
-        val recentMatchDates: ArrayDeque<Long> = ArrayDeque(10)
-        private val recentMatchRuns: ArrayDeque<Int> = ArrayDeque(10)
-        private val recentMatchBalls: ArrayDeque<Int> = ArrayDeque(10)
-        var recentRuns: Int = 0
-        var recentBallsFaced: Int = 0
+        val recentRunsWindow: SlidingWindow<Int> = SlidingWindow(10)
+        private val recentBallsWindow: SlidingWindow<Int> = SlidingWindow(10)
 
         /**
          * Call once per innings (not per ball). Appends match timestamp, accumulates
          * runs/balls, and evicts the oldest entry when the window exceeds 10 matches.
          */
         fun updateBattingForm(matchTimestamp: Long, inningsRuns: Int, inningsBalls: Int) {
-            if (recentMatchDates.lastOrNull() == matchTimestamp) {
+            if (recentRunsWindow.timestamps().lastOrNull() == matchTimestamp) {
                 // Same match, second innings — merge into last entry instead of appending
-                recentMatchRuns[recentMatchRuns.size - 1] += inningsRuns
-                recentMatchBalls[recentMatchBalls.size - 1] += inningsBalls
-                recentRuns += inningsRuns
-                recentBallsFaced += inningsBalls
+                recentRunsWindow.replaceLast(recentRunsWindow.values().last() + inningsRuns)
+                recentBallsWindow.replaceLast(recentBallsWindow.values().last() + inningsBalls)
                 return
             }
 
-            // New match — append
-            recentMatchDates.addLast(matchTimestamp)
-            recentMatchRuns.addLast(inningsRuns)
-            recentMatchBalls.addLast(inningsBalls)
-            recentRuns += inningsRuns
-            recentBallsFaced += inningsBalls
-
-            // Evict oldest entry if window exceeds 10 matches
-            if (recentMatchDates.size > 10) {
-                recentRuns -= recentMatchRuns.removeFirst()
-                recentBallsFaced -= recentMatchBalls.removeFirst()
-                recentMatchDates.removeFirst()
-            }
+            // New match — append (eviction handled automatically by SlidingWindow)
+            recentRunsWindow.add(matchTimestamp, inningsRuns)
+            recentBallsWindow.add(matchTimestamp, inningsBalls)
         }
 
         fun toStats(): PlayerBattingStats {
@@ -407,6 +393,8 @@ class PlayerStatisticsEngine {
                 if (s.balls > 0) (s.runs.toDouble() / s.balls) * 100.0 else 0.0
             }
 
+            val recentBallsFaced = recentBallsWindow.values().sum()
+            val recentRuns = recentRunsWindow.values().sum()
             val recentFormSR = when {
                 recentBallsFaced > 0 -> recentRuns.toDouble() / recentBallsFaced * 100.0
                 totalBalls > 0       -> avg   // career fallback
@@ -447,39 +435,24 @@ class PlayerStatisticsEngine {
         val venueStats = mutableMapOf<String, PhaseStats>()
 
         // Recent form — bounded to last 10 matches by date
-        val recentMatchDates: ArrayDeque<Long> = ArrayDeque(10)
-        private val recentMatchRunsConceded: ArrayDeque<Int> = ArrayDeque(10)
-        private val recentMatchBallsBowled: ArrayDeque<Int> = ArrayDeque(10)
-        var recentRunsConceded: Int = 0
-        var recentBallsBowled: Int = 0
+        val recentRunsWindow: SlidingWindow<Int> = SlidingWindow(10)
+        private val recentBallsWindow: SlidingWindow<Int> = SlidingWindow(10)
 
         /**
          * Call once per innings. Appends match timestamp, accumulates runs/balls,
          * and evicts the oldest entry when the window exceeds 10 matches.
          */
         fun updateBowlingForm(matchTimestamp: Long, inningsRuns: Int, inningsBalls: Int) {
-            if (recentMatchDates.lastOrNull() == matchTimestamp) {
+            if (recentRunsWindow.timestamps().lastOrNull() == matchTimestamp) {
                 // Same match, second innings — merge into last entry instead of appending
-                recentMatchRunsConceded[recentMatchRunsConceded.size - 1] += inningsRuns
-                recentMatchBallsBowled[recentMatchBallsBowled.size - 1] += inningsBalls
-                recentRunsConceded += inningsRuns
-                recentBallsBowled += inningsBalls
+                recentRunsWindow.replaceLast(recentRunsWindow.values().last() + inningsRuns)
+                recentBallsWindow.replaceLast(recentBallsWindow.values().last() + inningsBalls)
                 return
             }
 
-            // New match — append
-            recentMatchDates.addLast(matchTimestamp)
-            recentMatchRunsConceded.addLast(inningsRuns)
-            recentMatchBallsBowled.addLast(inningsBalls)
-            recentRunsConceded += inningsRuns
-            recentBallsBowled += inningsBalls
-
-            // Evict oldest entry if window exceeds 10 matches
-            if (recentMatchDates.size > 10) {
-                recentRunsConceded -= recentMatchRunsConceded.removeFirst()
-                recentBallsBowled -= recentMatchBallsBowled.removeFirst()
-                recentMatchDates.removeFirst()
-            }
+            // New match — append (eviction handled automatically by SlidingWindow)
+            recentRunsWindow.add(matchTimestamp, inningsRuns)
+            recentBallsWindow.add(matchTimestamp, inningsBalls)
         }
 
         fun toStats(): PlayerBowlingStats {
@@ -501,6 +474,8 @@ class PlayerStatisticsEngine {
                 if (vo > 0) s.runs.toDouble() / vo else 0.0
             }
 
+            val recentBallsBowled = recentBallsWindow.values().sum()
+            val recentRunsConceded = recentRunsWindow.values().sum()
             val recentOvers = recentBallsBowled / 6.0
             val recentFormEco = when {
                 recentOvers > 0 -> recentRunsConceded.toDouble() / recentOvers
