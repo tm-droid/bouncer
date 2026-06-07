@@ -1,64 +1,42 @@
 package com.tanush.bouncer.utils
 
-import io.sentry.Sentry
-
-/**
- * Types of commentary events
- */
 enum class CommentaryEventType {
-    REGULAR,
-    DOT_BALL,
-    SINGLE,
-    DOUBLE,
-    THREE,
-    FOUR,
-    SIX,
-    WICKET,
-    WIDE,
-    NO_BALL,
-    LEG_BYE,
-    OVER_END,
-    INNINGS_END,
-    MILESTONE,
-    REVIEW
+    REGULAR, DOT_BALL, SINGLE, DOUBLE, THREE, FOUR, SIX,
+    WICKET, WIDE, NO_BALL, LEG_BYE, OVER_END, INNINGS_END, MILESTONE, REVIEW
 }
 
-/**
- * Parse commentary text and optional run count to determine event type
- */
+private data class EventRule(
+    val type: CommentaryEventType,
+    val predicate: (String, Int?) -> Boolean,
+)
+
+private fun String.containsAny(vararg words: String) = words.any { contains(it) }
+
+private val EVENT_RULES: List<EventRule> = listOf(
+    // Explicit "dot ball" keyword beats everything (e.g. "Dot ball, well bowled").
+    EventRule(CommentaryEventType.DOT_BALL)    { t, _ -> t.contains("dot ball") },
+    // INNINGS_END before WICKET: "all out" would otherwise match the WICKET "out" keyword.
+    EventRule(CommentaryEventType.INNINGS_END) { t, _ ->
+        t.contains("all out") || (t.contains("innings") && t.contains("end"))
+    },
+    EventRule(CommentaryEventType.WICKET)      { t, _ -> t.containsAny("wicket", "out", "caught", "bowled", "lbw", "run out", "stumped") },
+    EventRule(CommentaryEventType.SIX)         { t, r -> t.contains("six") || r == 6 },
+    EventRule(CommentaryEventType.FOUR)        { t, r -> t.contains("four") || r == 4 },
+    EventRule(CommentaryEventType.MILESTONE)   { t, _ -> t.containsAny("century", "hundred", "fifty", "milestone") },
+    EventRule(CommentaryEventType.WIDE)        { t, _ -> t.contains("wide") },
+    EventRule(CommentaryEventType.NO_BALL)     { t, _ -> t.contains("no ball") || t.contains("no-ball") },
+    EventRule(CommentaryEventType.LEG_BYE)     { t, _ -> t.contains("leg bye") },
+    EventRule(CommentaryEventType.REVIEW)      { t, _ -> t.contains("review") || t.contains("drs") },
+    EventRule(CommentaryEventType.OVER_END)    { t, _ -> t.contains("end of over") },
+    // runs=0 fallback comes AFTER WICKET so wicket text with zero runs → WICKET, not DOT_BALL.
+    EventRule(CommentaryEventType.DOT_BALL)    { _, r -> r == 0 },
+    EventRule(CommentaryEventType.SINGLE)      { _, r -> r == 1 },
+    EventRule(CommentaryEventType.DOUBLE)      { _, r -> r == 2 },
+    EventRule(CommentaryEventType.THREE)       { _, r -> r == 3 },
+)
+
 fun parseCommentaryType(text: String, runs: Int?): CommentaryEventType {
-    try {
-        val lowerText = text.lowercase()
-
-        return when {
-            lowerText.contains("wicket") || lowerText.contains("out") ||
-            lowerText.contains("caught") || lowerText.contains("bowled") ||
-            lowerText.contains("lbw") || lowerText.contains("run out") ||
-            lowerText.contains("stumped") -> CommentaryEventType.WICKET
-
-            lowerText.contains("six") || runs == 6 -> CommentaryEventType.SIX
-            lowerText.contains("four") || runs == 4 -> CommentaryEventType.FOUR
-
-            lowerText.contains("century") || lowerText.contains("hundred") ||
-            lowerText.contains("fifty") || lowerText.contains("milestone") -> CommentaryEventType.MILESTONE
-
-            lowerText.contains("wide") -> CommentaryEventType.WIDE
-            lowerText.contains("no ball") || lowerText.contains("no-ball") -> CommentaryEventType.NO_BALL
-            lowerText.contains("leg bye") -> CommentaryEventType.LEG_BYE
-
-            lowerText.contains("review") || lowerText.contains("drs") -> CommentaryEventType.REVIEW
-            lowerText.contains("end of over") -> CommentaryEventType.OVER_END
-            lowerText.contains("innings") && (lowerText.contains("end") || lowerText.contains("all out")) -> CommentaryEventType.INNINGS_END
-
-            runs == 0 || lowerText.contains("dot ball") -> CommentaryEventType.DOT_BALL
-            runs == 1 -> CommentaryEventType.SINGLE
-            runs == 2 -> CommentaryEventType.DOUBLE
-            runs == 3 -> CommentaryEventType.THREE
-
-            else -> CommentaryEventType.REGULAR
-        }
-    } catch (e: Exception) {
-        Sentry.captureException(e)
-        throw e
-    }
+    val lower = text.lowercase()
+    return EVENT_RULES.firstOrNull { it.predicate(lower, runs) }?.type
+        ?: CommentaryEventType.REGULAR
 }
