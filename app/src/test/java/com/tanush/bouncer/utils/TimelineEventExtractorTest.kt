@@ -223,4 +223,23 @@ class TimelineEventExtractorTest {
         assertEquals(1, events.size)
         assertEquals(TimelineEventType.WICKET, events[0].type)
     }
+
+    // ═══════════════════════════════════════════════════════════
+    // Wicket exclusion phrases
+    // ═══════════════════════════════════════════════════════════
+
+    @Test
+    fun `MID-WICKET does not trigger wicket event`() {
+        val commentary = listOf("4.2 FOUR! Swept to the MID-WICKET boundary")
+        val events = TimelineEventExtractor.extract(commentary)
+        assertTrue("Should have a FOUR event", events.any { it.type == TimelineEventType.FOUR })
+        assertTrue("Should NOT have a WICKET event", events.none { it.type == TimelineEventType.WICKET })
+    }
+
+    @Test
+    fun `OVER THE WICKET does not trigger wicket event`() {
+        val commentary = listOf("7.1 Coming over the wicket to the right-hander")
+        val events = TimelineEventExtractor.extract(commentary)
+        assertTrue("Should NOT have a WICKET event", events.none { it.type == TimelineEventType.WICKET })
+    }
 }

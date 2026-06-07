@@ -113,11 +113,7 @@ object TimelineEventExtractor {
                 currentOver = overMatch.groupValues[1].toFloatOrNull() ?: currentOver
             }
 
-            // Strip false-positive phrases before wicket check
-            val wicketCheckText = wicketExclusionPhrases.fold(cleanLine.uppercase()) { text, phrase ->
-                text.replace(phrase, "")
-            }
-            val isWicket = wicketPatterns.any { it.containsMatchIn(wicketCheckText) }
+            val isWicket = detectBallType(cleanLine) == TimelineEventType.WICKET
 
             val isMilestone = milestonePatterns.any { it.containsMatchIn(cleanLine) }
             val isSix = sixPattern.containsMatchIn(cleanLine)
