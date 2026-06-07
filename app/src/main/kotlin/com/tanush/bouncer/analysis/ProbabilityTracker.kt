@@ -105,24 +105,19 @@ class ProbabilityTracker(
     
     fun getPhaseAnalysis(): String {
         try {
-            var analysis = ""
-        
-            // Power Play Analysis
-            val powerPlayEvents = events.filter { it.ball <= 36 }
-            val powerPlayImpact = powerPlayEvents.sumOf { it.impact }
-            analysis += "Power Play Impact: ${"%.1f".format(powerPlayImpact)}%\n"
-        
-            // Middle Overs Analysis
-            val middleOversEvents = events.filter { it.ball > 36 && it.ball < 240 }
-            val middleOversImpact = middleOversEvents.sumOf { it.impact }
-            analysis += "Middle Overs Impact: ${"%.1f".format(middleOversImpact)}%\n"
-        
-            // Death Overs Analysis
-            val deathOversEvents = events.filter { it.ball >= 240 }
-            val deathOversImpact = deathOversEvents.sumOf { it.impact }
-            analysis += "Death Overs Impact: ${"%.1f".format(deathOversImpact)}%\n"
-        
-            return analysis
+            var powerPlayImpact = 0.0
+            var middleOversImpact = 0.0
+            var deathOversImpact = 0.0
+            for (event in events) {
+                when {
+                    event.ball <= 36  -> powerPlayImpact += event.impact
+                    event.ball < 240  -> middleOversImpact += event.impact
+                    else              -> deathOversImpact += event.impact
+                }
+            }
+            return "Power Play Impact: ${"%.1f".format(powerPlayImpact)}%\n" +
+                   "Middle Overs Impact: ${"%.1f".format(middleOversImpact)}%\n" +
+                   "Death Overs Impact: ${"%.1f".format(deathOversImpact)}%\n"
         } catch (e: Exception) {
             Sentry.captureException(e)
             throw e
@@ -131,24 +126,20 @@ class ProbabilityTracker(
     
     fun getEventAnalysis(): String {
         try {
-            var analysis = ""
-        
-            // Boundary Analysis
-            val boundaryEvents = events.filter { it.eventType == ProbabilityEvent.EventType.BOUNDARY }
-            val boundaryImpact = boundaryEvents.sumOf { it.impact }
-            analysis += "Boundaries Impact: ${"%.1f".format(boundaryImpact)}%\n"
-        
-            // Wicket Analysis
-            val wicketEvents = events.filter { it.eventType == ProbabilityEvent.EventType.WICKET }
-            val wicketImpact = wicketEvents.sumOf { it.impact }
-            analysis += "Wickets Impact: ${"%.1f".format(wicketImpact)}%\n"
-        
-            // Dot Ball Analysis
-            val dotBallEvents = events.filter { it.eventType == ProbabilityEvent.EventType.DOT_BALL }
-            val dotBallImpact = dotBallEvents.sumOf { it.impact }
-            analysis += "Dot Balls Impact: ${"%.1f".format(dotBallImpact)}%\n"
-        
-            return analysis
+            var boundaryImpact = 0.0
+            var wicketImpact = 0.0
+            var dotBallImpact = 0.0
+            for (event in events) {
+                when (event.eventType) {
+                    ProbabilityEvent.EventType.BOUNDARY -> boundaryImpact += event.impact
+                    ProbabilityEvent.EventType.WICKET   -> wicketImpact += event.impact
+                    ProbabilityEvent.EventType.DOT_BALL -> dotBallImpact += event.impact
+                    else -> {}
+                }
+            }
+            return "Boundaries Impact: ${"%.1f".format(boundaryImpact)}%\n" +
+                   "Wickets Impact: ${"%.1f".format(wicketImpact)}%\n" +
+                   "Dot Balls Impact: ${"%.1f".format(dotBallImpact)}%\n"
         } catch (e: Exception) {
             Sentry.captureException(e)
             throw e

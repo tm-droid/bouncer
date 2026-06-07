@@ -92,4 +92,88 @@ class SearchRepositoryTest {
         assertFalse(results.isEmpty)
         assertEquals(2, results.totalCount)
     }
+
+    // ═══════════════════════════════════════════════════════════
+    // Levenshtein two-row DP correctness
+    // ═══════════════════════════════════════════════════════════
+
+    @Test
+    fun `levenshtein distance is symmetric`() {
+        assertEquals(
+            SearchRepository.levenshteinDistance("kitten", "sitting"),
+            SearchRepository.levenshteinDistance("sitting", "kitten"),
+        )
+    }
+
+    @Test
+    fun `levenshtein distance for longer vs shorter string`() {
+        assertEquals(6, SearchRepository.levenshteinDistance("cricket", "c"))
+        assertEquals(6, SearchRepository.levenshteinDistance("c", "cricket"))
+    }
+
+    @Test
+    fun `levenshtein distance known value kitten to sitting is 3`() {
+        assertEquals(3, SearchRepository.levenshteinDistance("kitten", "sitting"))
+    }
+
+    @Test
+    fun `levenshtein distance is correct for typical cricket names`() {
+        assertEquals(1, SearchRepository.levenshteinDistance("kohli", "kohly"))
+        assertEquals(1, SearchRepository.levenshteinDistance("india", "indie"))
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // searchTeams behavior via search()
+    // ═══════════════════════════════════════════════════════════
+
+    @Test
+    fun `searchTeams returns team when query matches name`() {
+        val fakeMatch = com.tanush.bouncer.models.CricketMatch(
+            id = "m1", seriesId = "s1", matchTitle = "India vs Australia",
+            matchType = "T20", status = "Live",
+            teams = listOf(
+                com.tanush.bouncer.models.CricketMatch.Team(
+                    name = "India", score = "100/2", status = "batting",
+                    isBatting = true, logoUrl = "http://logo/india.png",
+                ),
+                com.tanush.bouncer.models.CricketMatch.Team(
+                    name = "Australia", score = "0/0", status = "bowling",
+                    isBatting = false, logoUrl = null,
+                ),
+            ),
+            venue = "MCG", date = "2024-01-01", matchTime = "10:00",
+            score = null, currentStatus = "IND 100/2", info = "",
+        )
+        val teamNames = listOf("India", "Australia")
+        kotlinx.coroutines.runBlocking {
+            val results = SearchRepository.search("india", listOf(fakeMatch), emptyList(), teamNames)
+            assertTrue(results.teams.any { it.teamName == "India" })
+        }
+    }
+
+    @Test
+    fun `searchTeams logo url is populated from match data`() {
+        val fakeMatch = com.tanush.bouncer.models.CricketMatch(
+            id = "m1", seriesId = "s1", matchTitle = "India vs Australia",
+            matchType = "T20", status = "Live",
+            teams = listOf(
+                com.tanush.bouncer.models.CricketMatch.Team(
+                    name = "India", score = "100/2", status = "batting",
+                    isBatting = true, logoUrl = "http://logo/india.png",
+                ),
+                com.tanush.bouncer.models.CricketMatch.Team(
+                    name = "Australia", score = "0/0", status = "bowling",
+                    isBatting = false, logoUrl = null,
+                ),
+            ),
+            venue = "MCG", date = "2024-01-01", matchTime = "10:00",
+            score = null, currentStatus = "IND 100/2", info = "",
+        )
+        kotlinx.coroutines.runBlocking {
+            val results = SearchRepository.search("india", listOf(fakeMatch), emptyList(), listOf("India", "Australia"))
+            val indiaResult = results.teams.find { it.teamName == "India" }
+            assertNotNull(indiaResult)
+            assertEquals("http://logo/india.png", indiaResult!!.logoUrl)
+        }
+    }
 }

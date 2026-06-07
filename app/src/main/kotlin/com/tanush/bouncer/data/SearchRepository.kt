@@ -192,20 +192,14 @@ object SearchRepository {
         teamNames: List<String>,
         matches: List<CricketMatch>,
     ): List<SearchResult.TeamResult> {
-        val allTeams = mutableSetOf<String>()
-        allTeams.addAll(teamNames)
-        matches.forEach { match ->
-            match.teams.forEach { allTeams.add(it.name) }
+        val logoUrlMap = buildMap<String, String?> {
+            matches.forEach { m -> m.teams.forEach { put(it.name.lowercase(), it.logoUrl) } }
         }
-
-        return allTeams.mapNotNull { team ->
+        return teamNames.mapNotNull { team ->
             val score = fuzzyMatchScore(query, team.lowercase())
             if (score > 0.4) {
                 val acronym = team.split(" ").mapNotNull { it.firstOrNull()?.uppercase() }.joinToString("")
-                val logoUrl = matches.flatMap { it.teams }.find {
-                    it.name.equals(team, ignoreCase = true)
-                }?.logoUrl
-                SearchResult.TeamResult(team, acronym, logoUrl, score)
+                SearchResult.TeamResult(team, acronym, logoUrlMap[team.lowercase()], score)
             } else null
         }
     }
@@ -272,23 +266,25 @@ object SearchRepository {
         } else 0.0
     }
 
-    /** Levenshtein distance between two strings. */
+    /** Levenshtein distance between two strings. Two-row DP: O(min(m,n)) space. */
     internal fun levenshteinDistance(a: String, b: String): Int {
-        val m = a.length
-        val n = b.length
-        val dp = Array(m + 1) { IntArray(n + 1) }
-        for (i in 0..m) dp[i][0] = i
-        for (j in 0..n) dp[0][j] = j
-        for (i in 1..m) {
-            for (j in 1..n) {
-                dp[i][j] = if (a[i - 1] == b[j - 1]) {
-                    dp[i - 1][j - 1]
+        val (s, t) = if (a.length <= b.length) Pair(a, b) else Pair(b, a)
+        val sLen = s.length
+        val tLen = t.length
+        var prev = IntArray(sLen + 1) { it }
+        var curr = IntArray(sLen + 1)
+        for (j in 1..tLen) {
+            curr[0] = j
+            for (i in 1..sLen) {
+                curr[i] = if (s[i - 1] == t[j - 1]) {
+                    prev[i - 1]
                 } else {
-                    minOf(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]) + 1
+                    minOf(prev[i], curr[i - 1], prev[i - 1]) + 1
                 }
             }
+            val tmp = prev; prev = curr; curr = tmp
         }
-        return dp[m][n]
+        return prev[sLen]
     }
 
     private fun generateSuggestion(
@@ -296,15 +292,13 @@ object SearchRepository {
         teamNames: List<String>,
         matches: List<CricketMatch>,
     ): String? {
-        val candidates = mutableListOf<String>()
+        val candidates = ArrayList<String>(teamNames.size + matches.size)
         candidates.addAll(teamNames)
-        matches.forEach { m ->
-            m.teams.forEach { candidates.add(it.name) }
-        }
+        matches.forEach { candidates.add(it.matchTitle) }
 
         var bestCandidate: String? = null
         var bestDist = Int.MAX_VALUE
-        candidates.forEach { candidate ->
+        for (candidate in candidates) {
             val dist = levenshteinDistance(query, candidate.lowercase())
             if (dist < bestDist && dist <= 3) {
                 bestDist = dist

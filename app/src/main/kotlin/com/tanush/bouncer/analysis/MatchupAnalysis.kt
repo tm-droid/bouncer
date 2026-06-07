@@ -12,6 +12,8 @@ class MatchupAnalysis {
 
     /** Key: "batter::bowler" → accumulated stats */
     private val matchups = mutableMapOf<String, MatchupAccumulator>()
+    private val batterIndex = mutableMapOf<String, MutableList<MatchupAccumulator>>()
+    private val bowlerIndex = mutableMapOf<String, MutableList<MatchupAccumulator>>()
 
     /**
      * Process matches to build matchup data.
@@ -25,7 +27,10 @@ class MatchupAnalysis {
                         
                         val key = "${ball.batter}::${ball.bowler}"
                         val acc = matchups.getOrPut(key) {
-                            MatchupAccumulator(ball.batter, ball.bowler)
+                            MatchupAccumulator(ball.batter, ball.bowler).also { newAcc ->
+                                batterIndex.getOrPut(ball.batter) { mutableListOf() }.add(newAcc)
+                                bowlerIndex.getOrPut(ball.bowler) { mutableListOf() }.add(newAcc)
+                            }
                         }
                         
                         acc.ballsFaced += 1
@@ -59,8 +64,8 @@ class MatchupAnalysis {
      * Get all matchups for a specific batter (against all bowlers faced).
      */
     fun getBatterMatchups(batter: String): List<MatchupStats> {
-        return matchups.values
-            .filter { it.batter == batter && it.ballsFaced >= 6 }
+        return batterIndex[batter].orEmpty()
+            .filter { it.ballsFaced >= 6 }
             .map { it.toStats() }
             .sortedByDescending { it.ballsFaced }
     }
@@ -69,8 +74,8 @@ class MatchupAnalysis {
      * Get all matchups for a specific bowler (against all batters they've bowled to).
      */
     fun getBowlerMatchups(bowler: String): List<MatchupStats> {
-        return matchups.values
-            .filter { it.bowler == bowler && it.ballsFaced >= 6 }
+        return bowlerIndex[bowler].orEmpty()
+            .filter { it.ballsFaced >= 6 }
             .map { it.toStats() }
             .sortedByDescending { it.ballsFaced }
     }

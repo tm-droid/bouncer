@@ -167,7 +167,7 @@ class PlayerStatisticsEngine {
             }
 
             // Update bowling innings
-            val bowlersInInnings = innings.overs.flatMap { o -> o.balls.map { it.bowler } }.filter { it.isNotBlank() }.toSet()
+            val bowlersInInnings = bowlerInningsFormBalls.keys
             for (bowler in bowlersInInnings) {
                 val acc = bowlingAccumulators[bowler] ?: continue
                 acc.bowlingInnings += 1
