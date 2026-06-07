@@ -176,4 +176,58 @@ class SearchRepositoryTest {
             assertEquals("http://logo/india.png", indiaResult!!.logoUrl)
         }
     }
+
+    // ═══════════════════════════════════════════════════════════
+    // searchPlayers deduplication
+    // ═══════════════════════════════════════════════════════════
+
+    @Test
+    fun `searchPlayers deduplicates player appearing as both batsman and bowler`() {
+        val sharedPlayer = com.tanush.bouncer.models.ScrapedBatsman(
+            name = "Kohli", runs = "50", balls = "40", fours = "5", sixes = "1", strikeRate = "125.0"
+        )
+        val bowler = com.tanush.bouncer.models.ScrapedBowler(
+            name = "Kohli", overs = "4.0", maidens = "0", runs = "30", wickets = "1", economy = "7.5"
+        )
+        val fakeMatch = com.tanush.bouncer.models.CricketMatch(
+            id = "m2", seriesId = "s1", matchTitle = "India vs Australia",
+            matchType = "T20", status = "Live",
+            teams = listOf(
+                com.tanush.bouncer.models.CricketMatch.Team("India", "100/2", "batting", true, null),
+                com.tanush.bouncer.models.CricketMatch.Team("Australia", "0/0", "bowling", false, null),
+            ),
+            venue = "Wankhede", date = "2024-01-01", matchTime = "10:00",
+            score = null, currentStatus = "IND 100/2", info = "",
+            scrapedBatsmen = listOf(sharedPlayer),
+            currentBowler = bowler,
+        )
+        kotlinx.coroutines.runBlocking {
+            val results = SearchRepository.search("kohli", listOf(fakeMatch), emptyList(), emptyList())
+            val playerCount = results.players.count { it.playerName == "Kohli" }
+            assertEquals("Kohli should appear once even when in both roles", 1, playerCount)
+        }
+    }
+
+    @Test
+    fun `searchPlayers returns player from bowler field`() {
+        val bowler = com.tanush.bouncer.models.ScrapedBowler(
+            name = "Bumrah", overs = "4.0", maidens = "1", runs = "20", wickets = "2", economy = "5.0"
+        )
+        val fakeMatch = com.tanush.bouncer.models.CricketMatch(
+            id = "m3", seriesId = "s1", matchTitle = "India vs Australia",
+            matchType = "T20", status = "Live",
+            teams = listOf(
+                com.tanush.bouncer.models.CricketMatch.Team("India", "100/2", "batting", true, null),
+                com.tanush.bouncer.models.CricketMatch.Team("Australia", "0/0", "bowling", false, null),
+            ),
+            venue = "Wankhede", date = "2024-01-01", matchTime = "10:00",
+            score = null, currentStatus = "IND 100/2", info = "",
+            scrapedBatsmen = null,
+            currentBowler = bowler,
+        )
+        kotlinx.coroutines.runBlocking {
+            val results = SearchRepository.search("bumrah", listOf(fakeMatch), emptyList(), emptyList())
+            assertTrue("Bumrah should be found via currentBowler", results.players.any { it.playerName == "Bumrah" })
+        }
+    }
 }

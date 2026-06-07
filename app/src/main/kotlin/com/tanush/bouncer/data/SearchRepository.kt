@@ -124,7 +124,7 @@ object SearchRepository {
         db: com.tanush.bouncer.data.local.BouncerDatabase,
     ): AppResult<Pair<List<SearchResult.SeriesResult>, List<SearchResult.HistoricalMatchResult>>> {
         if (query.trim().length < 2) return AppResult.Success(Pair(emptyList(), emptyList()))
-        val ftsQuery = "${query.trim().replace("\"", "").trim()}*"
+        val ftsQuery = buildFtsQuery(query)
         return AppResult.runCatchingSuspend {
             withContext(Dispatchers.IO) {
                 val seriesResults = db.seriesCacheDao().searchSeries(ftsQuery).map { entity ->
@@ -159,7 +159,7 @@ object SearchRepository {
         db: com.tanush.bouncer.data.local.BouncerDatabase,
     ): AppResult<List<SearchResult.PlayerResult>> {
         if (query.trim().length < 2) return AppResult.Success(emptyList())
-        val ftsQuery = "${query.trim().replace("\"", "").trim()}*"
+        val ftsQuery = buildFtsQuery(query)
         return AppResult.runCatchingSuspend {
             withContext(Dispatchers.IO) {
                 db.playerCacheDao().searchPlayers(ftsQuery).map { entity ->
@@ -204,37 +204,30 @@ object SearchRepository {
         }
     }
 
-    private fun searchPlayers(query: String, matches: List<CricketMatch>): List<SearchResult.PlayerResult> {
-        val playerSet = mutableSetOf<String>()
-        val results = mutableListOf<SearchResult.PlayerResult>()
+    private fun buildFtsQuery(query: String): String =
+        "${query.trim().replace("\"", "").trim()}*"
 
-        matches.forEach { match ->
-            // Search through scraped batsmen
-            match.scrapedBatsmen?.forEach { batsman ->
-                val name = batsman.name
-                if (name !in playerSet) {
-                    val score = fuzzyMatchScore(query, name.lowercase())
-                    if (score > 0.4) {
-                        playerSet.add(name)
-                        val team = match.teams.find { it.isBatting }?.name ?: ""
-                        results.add(SearchResult.PlayerResult(name, team, "Batsman", score))
-                    }
-                }
+    private fun searchPlayers(query: String, matches: List<CricketMatch>): List<SearchResult.PlayerResult> {
+        data class Candidate(val name: String, val team: String, val role: String)
+
+        return matches
+            .flatMap { match ->
+                val battingTeam = match.teams.find { it.isBatting }?.name
+                    ?: match.teams.getOrNull(0)?.name.orEmpty()
+                val bowlingTeam = match.teams.find { !it.isBatting }?.name
+                    ?: match.teams.getOrNull(1)?.name.orEmpty()
+                val batsmen = match.scrapedBatsmen.orEmpty()
+                    .map { Candidate(it.name, battingTeam, "Batsman") }
+                val bowler = listOfNotNull(
+                    match.currentBowler?.let { Candidate(it.name, bowlingTeam, "Bowler") }
+                )
+                batsmen + bowler
             }
-            // Search through bowler
-            match.currentBowler?.let { bowler ->
-                val name = bowler.name
-                if (name !in playerSet) {
-                    val score = fuzzyMatchScore(query, name.lowercase())
-                    if (score > 0.4) {
-                        playerSet.add(name)
-                        val team = match.teams.find { !it.isBatting }?.name ?: ""
-                        results.add(SearchResult.PlayerResult(name, team, "Bowler", score))
-                    }
-                }
+            .distinctBy { it.name.lowercase() }
+            .mapNotNull { c ->
+                val score = fuzzyMatchScore(query, c.name.lowercase())
+                if (score > 0.4) SearchResult.PlayerResult(c.name, c.team, c.role, score) else null
             }
-        }
-        return results
     }
 
     private fun searchNews(query: String, news: List<NewsArticleData>): List<SearchResult.NewsResult> {
