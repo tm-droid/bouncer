@@ -85,7 +85,7 @@ jobs:
       - name: Run unit tests
         run: ./gradlew testDebugUnitTest --no-daemon --stacktrace
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: test-results
@@ -131,7 +131,7 @@ jobs:
       - name: Run lint
         run: ./gradlew lint --no-daemon
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: lint-report
@@ -184,7 +184,7 @@ jobs:
           GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx6g -XX:MaxMetaspaceSize=1g -Dorg.gradle.parallel=true"
         run: ./gradlew bundleRelease --no-daemon --stacktrace -x lintVitalAnalyzeRelease -x lintVitalReportRelease -x lintVitalRelease
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: release-aab
           path: app/build/outputs/bundle/release/app-release.aab
