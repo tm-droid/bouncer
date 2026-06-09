@@ -226,6 +226,7 @@ dependencies {
 
     // Firebase (requires google-services.json from Firebase Console to activate)
     implementation(platform(libs.firebase.bom.lib))
+    implementation(libs.firebase.analytics)
     implementation(libs.firebase.messaging)
 
     // Car App (Android Auto)

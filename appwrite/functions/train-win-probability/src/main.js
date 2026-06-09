@@ -1,4 +1,5 @@
-import { Client, Storage, InputFile } from "node-appwrite";
+import { Client, Storage } from "node-appwrite";
+import { InputFile } from "node-appwrite/file";
 import AdmZip from "adm-zip";
 
 const CRICSHEET_URL = "https://cricsheet.org/downloads/t20s_json.zip";

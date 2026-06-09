@@ -1,4 +1,5 @@
-import { Client, Storage, InputFile } from "node-appwrite";
+import { Client, Storage } from "node-appwrite";
+import { InputFile } from "node-appwrite/file";
 import { createSign } from "crypto";
 
 const VERCEL_BASE = process.env.VERCEL_API_BASE ?? "https://api-iota-jade.vercel.app";
