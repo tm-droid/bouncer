@@ -25,7 +25,7 @@ export default async ({ req, res, log, error }) => {
     return res.json({ error: "Body must be a JSON object" }, 400);
   }
 
-  const { cacheKey, prompt, matchComplete = false } = body;
+  const { cacheKey, prompt, matchComplete = false, maxTokens = 512, temperature = 0.7 } = body;
   if (!cacheKey || !prompt) {
     return res.json({ error: "Missing cacheKey or prompt" }, 400);
   }
@@ -63,7 +63,7 @@ export default async ({ req, res, log, error }) => {
       const resp = await fetch(provider.url, {
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
-        body: JSON.stringify({ model: provider.model, messages: [{ role: "user", content: prompt }], max_tokens: 512, temperature: 0.7 }),
+        body: JSON.stringify({ model: provider.model, messages: [{ role: "user", content: prompt }], max_tokens: maxTokens, temperature }),
         signal: AbortSignal.timeout(15_000),
       });
       if (!resp.ok) { error(`${provider.name} HTTP ${resp.status}`); continue; }

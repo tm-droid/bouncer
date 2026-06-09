@@ -374,7 +374,7 @@ class CommentaryFusionService(
             val prompt = "You are a cricket commentator. One punchy sentence, max 15 words.\n" +
                 "Ball $ballNumber: $rawSnippet$recentContext\nCommentary:"
 
-            val result = callGenerateCommentaryFunction(cacheKey, prompt, isMatchComplete)
+            val result = callGenerateCommentaryFunction(cacheKey, prompt, isMatchComplete, maxTokens = 50, temperature = 0.7)
                 ?: callProviders(prompt, maxTokens = 50, temperature = 0.7)
                 ?: return@withContext FALLBACK_BALL_COMMENTARY
             AICacheService.setCommentary(result, cacheKey, permanent = isMatchComplete)
@@ -490,7 +490,7 @@ class CommentaryFusionService(
                 .replace("{previous_balls_context}", previousContext)
         }
 
-        val functionResult = callGenerateCommentaryFunction(cacheKey, prompt, isMatchComplete)
+        val functionResult = callGenerateCommentaryFunction(cacheKey, prompt, isMatchComplete, maxTokens = 256, temperature = 0.6)
         val (result, usedProviderName) = if (functionResult != null) {
             Pair(functionResult, "appwrite-function")
         } else {
@@ -717,7 +717,7 @@ class CommentaryFusionService(
             "ball-by-ball commentary lines into a single, engaging paragraph, highlighting key events and players.\n\n$numbered"
 
         // 7c: Token budget 256 → 512 for over summaries
-        val result = callGenerateCommentaryFunction(cacheKey, prompt, isMatchComplete)
+        val result = callGenerateCommentaryFunction(cacheKey, prompt, isMatchComplete, maxTokens = 512, temperature = 0.4)
             ?: callProviders(prompt, maxTokens = 512, temperature = 0.4)
             ?: "[Summary unavailable]"
         AICacheService.setCommentary(result, cacheKey, permanent = isMatchComplete)
@@ -742,6 +742,7 @@ class CommentaryFusionService(
                     })
                     return@withContext result
                 } catch (e: Exception) {
+                    if (e is CancellationException) throw e
                     Sentry.addBreadcrumb(Breadcrumb().apply {
                         category = "service.commentary"
                         message = "${provider.name} retry failed — ${e.message}"
@@ -811,12 +812,16 @@ class CommentaryFusionService(
     private suspend fun callGenerateCommentaryFunction(
         cacheKey: String,
         prompt: String,
-        matchComplete: Boolean = false
+        matchComplete: Boolean = false,
+        maxTokens: Int = 512,
+        temperature: Double = 0.7
     ): String? {
         val body = org.json.JSONObject().apply {
             put("cacheKey", cacheKey)
             put("prompt", prompt)
             put("matchComplete", matchComplete)
+            put("maxTokens", maxTokens)
+            put("temperature", temperature)
         }.toString()
         val response = AppwriteClient.executeFunction("bouncer-generate-commentary", body)
             ?: return null
@@ -853,6 +858,7 @@ class CommentaryFusionService(
                 val content = callProvider(provider, prompt, maxTokens, temperature)
                 return@withContext Pair(content, provider.name)
             } catch (e: Exception) {
+                if (e is CancellationException) throw e
                 Sentry.addBreadcrumb(Breadcrumb().apply {
                     category = "service.commentary"
                     message = "${provider.name} failed — ${e.message}"
