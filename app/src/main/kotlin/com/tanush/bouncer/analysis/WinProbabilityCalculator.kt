@@ -128,12 +128,15 @@ class WinProbabilityCalculator(
         battingTeam: String = "",
         bowlingTeam: String = ""
     ): Double {
-        val requestBody = buildString {
-            append("""{"runsNeeded":$runsNeeded,"ballsRemaining":$ballsRemaining,""")
-            append(""""wicketsLost":$wicketsLost,"currentRunRate":$currentRunRate,""")
-            append(""""requiredRunRate":$requiredRunRate,""")
-            append(""""battingTeam":"$battingTeam","bowlingTeam":"$bowlingTeam"}""")
-        }
+        val requestBody = org.json.JSONObject().apply {
+            put("runsNeeded", runsNeeded)
+            put("ballsRemaining", ballsRemaining)
+            put("wicketsLost", wicketsLost)
+            put("currentRunRate", currentRunRate)
+            put("requiredRunRate", requiredRunRate)
+            put("battingTeam", battingTeam)
+            put("bowlingTeam", bowlingTeam)
+        }.toString()
         val responseJson = AppwriteClient.executeFunction("bouncer-win-probability", requestBody)
         return if (responseJson != null) {
             try {
