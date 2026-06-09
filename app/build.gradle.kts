@@ -256,12 +256,12 @@ dependencies {
 configurations.all {
     resolutionStrategy {
         // Netty — covers all Netty CVEs (#17,18,21–24,26–28,30,32,33,37–45)
-        force("io.netty:netty-codec-http:4.1.133.Final")
-        force("io.netty:netty-codec-http2:4.1.133.Final")
-        force("io.netty:netty-codec:4.1.133.Final")
-        force("io.netty:netty-common:4.1.133.Final")
-        force("io.netty:netty-handler:4.1.133.Final")
-        force("io.netty:netty-handler-proxy:4.1.133.Final")
+        force("io.netty:netty-codec-http:4.1.135.Final")
+        force("io.netty:netty-codec-http2:4.1.135.Final")
+        force("io.netty:netty-codec:4.1.135.Final")
+        force("io.netty:netty-common:4.1.135.Final")
+        force("io.netty:netty-handler:4.1.135.Final")
+        force("io.netty:netty-handler-proxy:4.1.135.Final")
         // Bouncy Castle (#34,35,36)
         force("org.bouncycastle:bcprov-jdk18on:1.84")
         force("org.bouncycastle:bcpkix-jdk18on:1.84")
