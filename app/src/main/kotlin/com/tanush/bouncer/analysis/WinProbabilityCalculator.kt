@@ -68,8 +68,7 @@ class WinProbabilityCalculator(
         private const val TAG = "WinProbabilityCalculator"
     }
 
-    // Team stats map — populated by loadCricsheetData() and read by TeamAnalysis extension functions
-    // and CricsheetTrainingWorker. Kept as a mutable map for compatibility.
+    // Team stats map — populated by loadCricsheetData(), read by TeamAnalysis extension functions.
     var teamStats: MutableMap<String, TeamStatistics> = mutableMapOf()
 
     data class VenueStatistics(
@@ -80,10 +79,6 @@ class WinProbabilityCalculator(
         val matchesPlayed: Int
     )
 
-    /**
-     * Load historical match data and build team statistics.
-     * Called by CricsheetTrainingWorker before accessing teamStats.
-     */
     fun loadCricsheetData(matches: List<CricsheetMatch>) {
         for (match in matches) {
             updateTeamStats(match)
