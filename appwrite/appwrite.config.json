@@ -75,6 +75,24 @@
                 { "key": "CEREBRAS_API_KEY",         "value": "" },
                 { "key": "SAMBANOVA_API_KEY",        "value": "" }
             ]
+        },
+        {
+            "$id": "bouncer-poll-live-matches",
+            "name": "bouncer-poll-live-matches",
+            "enabled": true,
+            "logging": true,
+            "runtime": "node-22",
+            "schedule": "* * * * *",
+            "timeout": 30,
+            "entrypoint": "src/main.js",
+            "commands": "npm install",
+            "version": "v3",
+            "path": "functions/poll-live-matches",
+            "vars": [
+                { "key": "APPWRITE_API_KEY",      "value": "" },
+                { "key": "VERCEL_API_BASE",        "value": "https://api-iota-jade.vercel.app" },
+                { "key": "MATCH_CACHE_BUCKET_ID",  "value": "cricket-stats" }
+            ]
         }
     ],
     "buckets": [

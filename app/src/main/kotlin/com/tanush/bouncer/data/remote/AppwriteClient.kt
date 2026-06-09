@@ -162,4 +162,19 @@ object AppwriteClient {
             }.getOrElse { false }
         }
     }
+
+    suspend fun downloadFile(bucketId: String, fileId: String): ByteArray? {
+        if (!isReady) return null
+        val c = client ?: return null
+        return try {
+            withContext(Dispatchers.IO) {
+                Storage(c).getFileDownload(bucketId = bucketId, fileId = fileId)
+            }
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Log.d(TAG, "downloadFile $bucketId/$fileId failed: ${e.message}")
+            null
+        }
+    }
 }

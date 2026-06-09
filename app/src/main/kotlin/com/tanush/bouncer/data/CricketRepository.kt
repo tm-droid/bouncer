@@ -2,8 +2,10 @@ package com.tanush.bouncer.data
 
 import android.content.Context
 import android.util.Log
+import com.google.gson.Gson
 import com.tanush.bouncer.data.local.BouncerDatabase
 import com.tanush.bouncer.data.local.entities.MatchEntity
+import com.tanush.bouncer.data.remote.AppwriteClient
 import com.tanush.bouncer.network.RetrofitClient
 import com.tanush.bouncer.network.models.SanwebMatchResponse
 import com.tanush.bouncer.network.models.SanwebMatchesListResponse
@@ -11,6 +13,7 @@ import io.sentry.Breadcrumb
 import io.sentry.Sentry
 import io.sentry.SentryLogLevel
 import io.sentry.SentryLevel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.flow
@@ -25,6 +28,10 @@ object CricketRepository {
             level = SentryLevel.INFO
             setData("type", type)
         })
+        // Try Appwrite Storage first (updated by backend function every minute)
+        val cached = tryReadMatchesFromStorage(type)
+        if (cached != null) return AppResult.Success(cached)
+        // Fall back to direct Vercel API
         return AppResult.runCatchingSuspend {
             val resp = RetrofitClient.vercelApi.getMatches(type)
             Log.d(TAG, "Successfully fetched matches for type: $type")
@@ -51,6 +58,22 @@ object CricketRepository {
                 Sentry.captureException(it.exception)
                 Sentry.metrics().count("repository.getMatches.error", 1.0)
             }
+        }
+    }
+
+    private suspend fun tryReadMatchesFromStorage(type: String): SanwebMatchesListResponse? {
+        return try {
+            val fileId = "$type-matches"
+            val bytes = AppwriteClient.downloadFile("cricket-stats", fileId) ?: return null
+            val json = org.json.JSONObject(String(bytes))
+            val fetchedAt = json.getLong("fetchedAt")
+            if (System.currentTimeMillis() - fetchedAt > 120_000L) return null // stale > 2 min
+            val dataJson = json.getJSONObject("data").toString()
+            Gson().fromJson(dataJson, SanwebMatchesListResponse::class.java)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            null // graceful fallback
         }
     }
 
