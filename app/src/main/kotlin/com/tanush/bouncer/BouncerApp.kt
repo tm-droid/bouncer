@@ -21,6 +21,7 @@ import com.tanush.bouncer.data.repository.toEntity
 import com.tanush.bouncer.network.HttpClientProvider
 import com.google.firebase.messaging.FirebaseMessaging
 import com.tanush.bouncer.services.AICacheService
+import com.tanush.bouncer.services.DatabaseCleanupWorker
 import com.tanush.bouncer.services.MatchCacheService
 import com.tanush.bouncer.services.ScorePollingWorker
 import com.tanush.bouncer.services.SeriesSyncWorker
@@ -189,6 +190,7 @@ class BouncerApp : Application() {
             kotlinx.coroutines.delay(500L)
             initializeSafely("ScorePollingWorker") { ScorePollingWorker.enqueuePeriodicWork(this@BouncerApp) }
             initializeSafely("SeriesSyncWorker") { SeriesSyncWorker.enqueuePeriodicWork(this@BouncerApp) }
+            initializeSafely("DatabaseCleanupWorker") { DatabaseCleanupWorker.enqueueWeekly(this@BouncerApp) }
         }
 
         Sentry.addBreadcrumb(

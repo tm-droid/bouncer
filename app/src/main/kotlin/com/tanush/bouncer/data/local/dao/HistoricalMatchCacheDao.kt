@@ -21,4 +21,7 @@ interface HistoricalMatchCacheDao {
 
     @Query("SELECT MAX(lastUpdated) FROM historical_match_cache")
     suspend fun getLastSyncTime(): Long?
+
+    @Query("DELETE FROM historical_match_cache WHERE lastUpdated < :before")
+    suspend fun deleteOlderThan(before: Long)
 }

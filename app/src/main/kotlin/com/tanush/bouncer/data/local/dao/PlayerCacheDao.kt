@@ -21,4 +21,7 @@ interface PlayerCacheDao {
 
     @Query("SELECT lastUpdated FROM player_cache WHERE playerId = :id")
     suspend fun getLastUpdated(id: String): Long?
+
+    @Query("DELETE FROM player_cache WHERE lastUpdated < :before")
+    suspend fun deleteOlderThan(before: Long)
 }

@@ -21,4 +21,7 @@ interface CommentaryDao {
 
     @Query("DELETE FROM commentary WHERE matchId = :matchId")
     suspend fun deleteCommentary(matchId: String)
+
+    @Query("DELETE FROM commentary WHERE timestamp < :before")
+    suspend fun deleteOlderThan(before: Long)
 }
