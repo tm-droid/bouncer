@@ -55,6 +55,26 @@
                 { "key": "APPWRITE_API_KEY", "value": "" },
                 { "key": "STATS_BUCKET_ID",  "value": "cricket-stats" }
             ]
+        },
+        {
+            "$id": "bouncer-generate-commentary",
+            "name": "bouncer-generate-commentary",
+            "enabled": true,
+            "logging": true,
+            "runtime": "node-22",
+            "timeout": 30,
+            "entrypoint": "src/main.js",
+            "commands": "npm install",
+            "version": "v3",
+            "path": "functions/generate-commentary",
+            "vars": [
+                { "key": "APPWRITE_API_KEY",         "value": "" },
+                { "key": "APPWRITE_AI_CACHE_DB_ID",  "value": "bouncer-db" },
+                { "key": "APPWRITE_AI_CACHE_COL_ID", "value": "ai-commentary-cache" },
+                { "key": "GROQ_API_KEY",             "value": "" },
+                { "key": "CEREBRAS_API_KEY",         "value": "" },
+                { "key": "SAMBANOVA_API_KEY",        "value": "" }
+            ]
         }
     ],
     "buckets": [

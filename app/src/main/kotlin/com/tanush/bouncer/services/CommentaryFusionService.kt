@@ -2,6 +2,7 @@ package com.tanush.bouncer.services
 
 import android.util.Log
 import com.tanush.bouncer.ApiKeys
+import com.tanush.bouncer.data.remote.AppwriteClient
 import com.tanush.bouncer.network.HttpClientProvider
 import io.sentry.Breadcrumb
 import io.sentry.Sentry
@@ -373,7 +374,8 @@ class CommentaryFusionService(
             val prompt = "You are a cricket commentator. One punchy sentence, max 15 words.\n" +
                 "Ball $ballNumber: $rawSnippet$recentContext\nCommentary:"
 
-            val result = callProviders(prompt, maxTokens = 50, temperature = 0.7)
+            val result = callGenerateCommentaryFunction(cacheKey, prompt, isMatchComplete)
+                ?: callProviders(prompt, maxTokens = 50, temperature = 0.7)
                 ?: return@withContext FALLBACK_BALL_COMMENTARY
             AICacheService.setCommentary(result, cacheKey, permanent = isMatchComplete)
             addBallToBuffer(matchId, result)
@@ -488,8 +490,13 @@ class CommentaryFusionService(
                 .replace("{previous_balls_context}", previousContext)
         }
 
-        val (result, usedProviderName) = callProvidersTracked(prompt, maxTokens = 256, temperature = 0.6)
-            ?: return "[AI Fused] $snippet1 / $snippet2"
+        val functionResult = callGenerateCommentaryFunction(cacheKey, prompt, isMatchComplete)
+        val (result, usedProviderName) = if (functionResult != null) {
+            Pair(functionResult, "appwrite-function")
+        } else {
+            callProvidersTracked(prompt, maxTokens = 256, temperature = 0.6)
+                ?: return "[AI Fused] $snippet1 / $snippet2"
+        }
 
         val verified = verifyCommentary(result, snippet1, snippet2, ballNumber, bowler, batsman)
         if (!verified) {
@@ -710,7 +717,9 @@ class CommentaryFusionService(
             "ball-by-ball commentary lines into a single, engaging paragraph, highlighting key events and players.\n\n$numbered"
 
         // 7c: Token budget 256 → 512 for over summaries
-        val result = callProviders(prompt, maxTokens = 512, temperature = 0.4) ?: "[Summary unavailable]"
+        val result = callGenerateCommentaryFunction(cacheKey, prompt, isMatchComplete)
+            ?: callProviders(prompt, maxTokens = 512, temperature = 0.4)
+            ?: "[Summary unavailable]"
         AICacheService.setCommentary(result, cacheKey, permanent = isMatchComplete)
         return result
     }
@@ -796,6 +805,26 @@ class CommentaryFusionService(
             // P0-5: API failure during verification — fail closed; don't cache unverified content.
             Log.w("CommentaryFusionService", "Verification call failed — failing closed (FAIL): ${e.message}")
             false
+        }
+    }
+
+    private suspend fun callGenerateCommentaryFunction(
+        cacheKey: String,
+        prompt: String,
+        matchComplete: Boolean = false
+    ): String? {
+        val body = org.json.JSONObject().apply {
+            put("cacheKey", cacheKey)
+            put("prompt", prompt)
+            put("matchComplete", matchComplete)
+        }.toString()
+        val response = AppwriteClient.executeFunction("bouncer-generate-commentary", body)
+            ?: return null
+        return try {
+            org.json.JSONObject(response).optString("commentary").takeIf { it.isNotBlank() }
+        } catch (e: Exception) {
+            android.util.Log.w("CommentaryFusionService", "Commentary parse error: ${e.message}")
+            null
         }
     }
 
