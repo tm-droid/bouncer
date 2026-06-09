@@ -55,8 +55,11 @@ object AppwriteClient {
             } else {
                 execution.responseBody
             }
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.e(TAG, "executeFunction $functionId error: ${e.message}", e)
+            Sentry.addBreadcrumb("AppwriteClient.executeFunction[$functionId] failed: ${e.message}")
             null
         }
     }
