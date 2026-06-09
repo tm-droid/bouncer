@@ -12,8 +12,6 @@ import com.tanush.bouncer.managers.TeamLogoManager
 import com.tanush.bouncer.managers.TeamAcronymManager
 import com.tanush.bouncer.data.TeamDirectory
 import com.tanush.bouncer.data.local.BouncerDatabase
-import com.tanush.bouncer.analysis.PlayerStatisticsEngine
-import com.tanush.bouncer.analysis.ml.ModelTrainer
 import com.tanush.bouncer.data.remote.AppwriteAICache
 import com.tanush.bouncer.data.remote.AppwriteClient
 import com.tanush.bouncer.data.remote.AppwriteHighlightsClient
@@ -23,7 +21,6 @@ import com.tanush.bouncer.data.repository.toEntity
 import com.tanush.bouncer.network.HttpClientProvider
 import com.tanush.bouncer.services.AICacheService
 import com.tanush.bouncer.services.MatchCacheService
-import com.tanush.bouncer.services.CricsheetTrainingWorker
 import com.tanush.bouncer.services.ScorePollingWorker
 import com.tanush.bouncer.services.SeriesSyncWorker
 import io.sentry.Breadcrumb
@@ -98,12 +95,6 @@ class BouncerApp : Application() {
         initializeSafely("FavouriteTeamsManager") { FavouriteTeamsManager.initialize(this, applicationScope) }
         initializeSafely("MatchSubscriptionManager") { MatchSubscriptionManager.initialize(this) }
         initializeSafely("MatchCacheService") { MatchCacheService.initDiskCache(this) }
-        // Restore trained ML model weights from disk on IO — JSON parse can be 50-200ms.
-        // Must run after MatchCacheService (filesDir stability). Fire-and-forget; inference
-        // that runs before load completes degrades to untrained-model fallback gracefully.
-        applicationScope.launch(Dispatchers.IO) {
-            initializeSafely("ModelTrainer") { ModelTrainer.loadFromFile(this@BouncerApp) }
-        }
         initializeSafely("AppwriteClient") { AppwriteClient.initialize(this) }
         // Verify Appwrite reachability; reflect in AppHealth so UI can show degraded state.
         // Timeout guards against indefinite hang on slow/captive-portal networks.
@@ -125,40 +116,6 @@ class BouncerApp : Application() {
             AppHealth.setAppwriteReachable(reachable)
         }
         initializeSafely("AppwritePlayerFormsClient") { AppwritePlayerFormsClient.initialize() }
-        // Fire-and-forget: download updated model weights from Appwrite Storage if remote is newer.
-        // Only runs when Appwrite is configured — download is silent/non-blocking on failure.
-        // Reloads the in-memory model if newer weights were downloaded.
-        if (AppwriteClient.isReady) {
-            applicationScope.launch(Dispatchers.IO) {
-                val updated = AppwriteClient.downloadModelWeightsIfNewer(applicationContext)
-                if (updated) ModelTrainer.shared?.loadFromFile(applicationContext)
-            }
-        }
-        // Fire-and-forget: pull remote player form snapshots and pre-warm local accumulators.
-        // Prevents cold-start where recent form falls back to career average until local
-        // match processing catches up.
-        if (AppwriteClient.isReady) {
-            applicationScope.launch(Dispatchers.IO) {
-                val forms = AppwritePlayerFormsClient.pullAllForms()
-                PlayerStatisticsEngine.seedFromRemote(forms)
-            }
-        }
-        // Push updated player form snapshots to Appwrite after each match is processed.
-        // Enables cross-device form sharing so all devices benefit from locally processed matches.
-        PlayerStatisticsEngine.shared.onFormUpdated = { forms ->
-            if (AppwriteClient.isReady) {
-                applicationScope.launch(Dispatchers.IO) {
-                    forms.forEach { (_, snapshot) ->
-                        AppwritePlayerFormsClient.pushFormSnapshot(
-                            playerName = snapshot.playerName,
-                            sr = snapshot.recentSR,
-                            economy = snapshot.recentEconomy,
-                            matchCount = snapshot.matchCount
-                        )
-                    }
-                }
-            }
-        }
         initializeSafely("AppwriteAICache") { AppwriteAICache.initialize() }
         initializeSafely("AppwriteHighlightsClient") { AppwriteHighlightsClient.initialize() }
         initializeSafely("AppwritePlayerProfilesClient") { AppwritePlayerProfilesClient.initialize() }
@@ -222,9 +179,6 @@ class BouncerApp : Application() {
             kotlinx.coroutines.delay(500L)
             initializeSafely("ScorePollingWorker") { ScorePollingWorker.enqueuePeriodicWork(this@BouncerApp) }
             initializeSafely("SeriesSyncWorker") { SeriesSyncWorker.enqueuePeriodicWork(this@BouncerApp) }
-            // Download real Cricsheet T20 data and train ML model on first run (or after 30 days).
-            // Skipped if model is already recent; runs in background with network + battery constraints.
-            initializeSafely("CricsheetTrainingWorker") { CricsheetTrainingWorker.enqueueIfNeeded(this@BouncerApp) }
         }
 
         Sentry.addBreadcrumb(
