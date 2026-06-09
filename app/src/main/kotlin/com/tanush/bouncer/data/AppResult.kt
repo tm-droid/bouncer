@@ -4,6 +4,15 @@ import io.sentry.Sentry
 
 fun AppResult.Error.report() = Sentry.captureException(exception)
 
+private fun Throwable.hasOomCause(): Boolean {
+    var t: Throwable? = this
+    repeat(10) { // guard against cycles
+        if (t is OutOfMemoryError) return true
+        t = t?.cause
+    }
+    return false
+}
+
 sealed class AppResult<out T> {
     data class Success<T>(val data: T) : AppResult<T>()
     data class Error(val exception: AppException) : AppResult<Nothing>() {
@@ -54,7 +63,13 @@ sealed class AppResult<out T> {
             } catch (e: AppException) {
                 Error(e)
             } catch (e: java.io.IOException) {
-                Error(AppException.NetworkException(cause = e))
+                // OkHttp cancels with IOException when OOM occurs during response read.
+                // Walk the cause chain to distinguish resource exhaustion from network failure.
+                if (e.hasOomCause()) {
+                    Error(AppException.UnknownException(message = "Out of memory", cause = e))
+                } else {
+                    Error(AppException.NetworkException(cause = e))
+                }
             } catch (e: Exception) {
                 Error(AppException.UnknownException(cause = e))
             }
@@ -66,7 +81,13 @@ sealed class AppResult<out T> {
             } catch (e: AppException) {
                 Error(e)
             } catch (e: java.io.IOException) {
-                Error(AppException.NetworkException(cause = e))
+                // OkHttp cancels with IOException when OOM occurs during response read.
+                // Walk the cause chain to distinguish resource exhaustion from network failure.
+                if (e.hasOomCause()) {
+                    Error(AppException.UnknownException(message = "Out of memory", cause = e))
+                } else {
+                    Error(AppException.NetworkException(cause = e))
+                }
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
             } catch (e: Exception) {
