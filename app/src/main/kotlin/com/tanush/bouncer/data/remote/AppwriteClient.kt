@@ -6,6 +6,7 @@ import com.tanush.bouncer.ApiKeys
 import io.appwrite.Client
 import io.appwrite.exceptions.AppwriteException
 import io.appwrite.models.InputFile
+import io.appwrite.services.Functions
 import io.appwrite.services.Storage
 import io.sentry.Sentry
 import kotlinx.coroutines.Dispatchers
@@ -36,6 +37,28 @@ object AppwriteClient {
         _client = Client(context.applicationContext)
             .setEndpoint(endpoint)
             .setProject(projectId)
+    }
+
+    private val functionsService: Functions? get() = client?.let { Functions(it) }
+
+    suspend fun executeFunction(functionId: String, body: String): String? {
+        val functions = functionsService ?: return null
+        return try {
+            val execution = functions.createExecution(
+                functionId = functionId,
+                body = body,
+                xAsync = false,
+            )
+            if (execution.status == "failed") {
+                Log.e(TAG, "Function $functionId failed: ${execution.errors}")
+                null
+            } else {
+                execution.responseBody
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "executeFunction $functionId error: ${e.message}", e)
+            null
+        }
     }
 
     /**
