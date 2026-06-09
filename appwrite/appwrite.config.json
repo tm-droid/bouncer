@@ -91,7 +91,8 @@
             "vars": [
                 { "key": "APPWRITE_API_KEY",      "value": "" },
                 { "key": "VERCEL_API_BASE",        "value": "https://api-iota-jade.vercel.app" },
-                { "key": "MATCH_CACHE_BUCKET_ID",  "value": "cricket-stats" }
+                { "key": "MATCH_CACHE_BUCKET_ID",  "value": "cricket-stats" },
+                { "key": "FCM_SERVER_KEY",         "value": "" }
             ]
         }
     ],
