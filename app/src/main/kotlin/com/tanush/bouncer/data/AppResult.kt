@@ -4,7 +4,7 @@ import io.sentry.Sentry
 
 fun AppResult.Error.report() = Sentry.captureException(exception)
 
-private fun Throwable.hasOomCause(): Boolean {
+@PublishedApi internal fun Throwable.hasOomCause(): Boolean {
     var t: Throwable? = this
     repeat(10) { // guard against cycles
         if (t is OutOfMemoryError) return true

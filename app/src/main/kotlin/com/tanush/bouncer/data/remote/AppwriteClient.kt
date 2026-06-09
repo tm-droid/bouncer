@@ -47,9 +47,9 @@ object AppwriteClient {
             val execution = functions.createExecution(
                 functionId = functionId,
                 body = body,
-                xAsync = false,
+                async = false,
             )
-            if (execution.status == "failed") {
+            if (execution.status == io.appwrite.enums.ExecutionStatus.FAILED) {
                 Log.e(TAG, "Function $functionId failed: ${execution.errors}")
                 null
             } else {
