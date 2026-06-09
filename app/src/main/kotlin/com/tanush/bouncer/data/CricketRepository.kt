@@ -67,13 +67,14 @@ object CricketRepository {
             val bytes = AppwriteClient.downloadFile("cricket-stats", fileId) ?: return null
             val json = org.json.JSONObject(String(bytes))
             val fetchedAt = json.getLong("fetchedAt")
-            if (System.currentTimeMillis() - fetchedAt > 120_000L) return null // stale > 2 min
+            if (System.currentTimeMillis() - fetchedAt > CacheConfig.MATCH_CACHE_TTL_MS) return null
             val dataJson = json.getJSONObject("data").toString()
             Gson().fromJson(dataJson, SanwebMatchesListResponse::class.java)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            null // graceful fallback
+            Log.w(TAG, "tryReadMatchesFromStorage failed for $type", e)
+            null
         }
     }
 
