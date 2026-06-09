@@ -38,5 +38,60 @@ export default async ({ req, res, log, error }) => {
       results[types[i]] = "error";
     }
   }
+
+  // Check if live match count changed and send FCM topic message if so
+  const liveResult = settled[0]; // "live" is index 0
+  if (liveResult.status === "fulfilled") {
+    try {
+      const liveData = JSON.parse(Buffer.from(
+        await storage.getFileDownload(BUCKET_ID, FILE_IDS.live)
+      ).toString("utf8"));
+      const newLiveCount = liveData?.data?.matches?.length ?? liveData?.data?.count ?? 0;
+
+      let prevCount = 0;
+      try {
+        const prevBytes = await storage.getFileDownload(BUCKET_ID, "live-count");
+        prevCount = parseInt(Buffer.from(prevBytes).toString("utf8")) || 0;
+      } catch { /* first run */ }
+
+      if (newLiveCount !== prevCount) {
+        log(`Live match count changed: ${prevCount} → ${newLiveCount}`);
+        await storage.deleteFile(BUCKET_ID, "live-count").catch(() => {});
+        await storage.createFile(BUCKET_ID, "live-count",
+          InputFile.fromBuffer(Buffer.from(String(newLiveCount)), "live-count.txt"),
+          ["read(\"any\")"]
+        );
+        const fcmKey = process.env.FCM_SERVER_KEY;
+        if (fcmKey) {
+          await sendFcmTopicMessage(
+            "cricket-live-updates",
+            { type: newLiveCount > prevCount ? "MATCH_STARTED" : "MATCH_ENDED", liveCount: String(newLiveCount) },
+            fcmKey,
+            error
+          );
+        }
+      }
+    } catch (e) {
+      error(`FCM state-change check failed: ${e?.message}`);
+    }
+  }
+
   return res.json(results);
 };
+
+async function sendFcmTopicMessage(topic, data, serverKey, errorFn) {
+  try {
+    const resp = await fetch("https://fcm.googleapis.com/fcm/send", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `key=${serverKey}`,
+      },
+      body: JSON.stringify({ to: `/topics/${topic}`, data }),
+      signal: AbortSignal.timeout(8_000),
+    });
+    if (!resp.ok) errorFn?.(`FCM send failed: HTTP ${resp.status}`);
+  } catch (e) {
+    errorFn?.(`FCM send error: ${e?.message}`);
+  }
+}

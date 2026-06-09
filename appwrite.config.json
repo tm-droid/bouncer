@@ -1,3 +1,10 @@
 {
-    "projectId": "bouncer"
+    "projectId": "bouncer",
+    "functions": {
+        "poll-live-matches": {
+            "vars": [
+                { "key": "FCM_SERVER_KEY", "value": "" }
+            ]
+        }
+    }
 }

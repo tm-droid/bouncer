@@ -13,6 +13,7 @@ import com.tanush.bouncer.R
 import com.tanush.bouncer.ui.notifications.RichNotificationBuilder.CricketNotificationChannel
 import com.tanush.bouncer.ui.screens.NotificationPrefsManager
 import com.tanush.bouncer.ui.widgets.WidgetManager
+import com.tanush.bouncer.ui.widgets.WidgetUpdateWorker
 import io.sentry.Breadcrumb
 import io.sentry.Sentry
 import io.sentry.SentryLevel
@@ -46,6 +47,10 @@ class BouncerFirebaseMessagingService : FirebaseMessagingService() {
         private const val TYPE_BOUNDARY = "boundary"
         private const val TYPE_SCORE_UPDATE = "score_update"
 
+        // Types sent by poll-live-matches Appwrite Function via cricket-live-updates topic
+        private const val TYPE_MATCH_STARTED = "MATCH_STARTED"
+        private const val TYPE_MATCH_ENDED = "MATCH_ENDED"
+
         // Base notification ID offset so FCM notifications don't collide with live ones
         private const val FCM_NOTIFICATION_ID_BASE = 5000
     }
@@ -78,6 +83,20 @@ class BouncerFirebaseMessagingService : FirebaseMessagingService() {
         if (data.isEmpty()) return
 
         val type = data[KEY_TYPE] ?: return
+
+        // Topic messages from poll-live-matches (no match_id) — just refresh widget
+        if (type == TYPE_MATCH_STARTED || type == TYPE_MATCH_ENDED) {
+            Log.d(TAG, "Live match state changed ($type), refreshing widget")
+            Sentry.addBreadcrumb(Breadcrumb().apply {
+                category = "fcm"
+                message = "Widget refresh triggered by topic message: type=$type"
+                level = SentryLevel.INFO
+                setData("type", type)
+            })
+            WidgetUpdateWorker.triggerImmediateUpdate(applicationContext)
+            return
+        }
+
         val matchId = data[KEY_MATCH_ID] ?: return
         val title = data[KEY_TITLE] ?: "Bouncer"
         val body = data[KEY_BODY] ?: ""

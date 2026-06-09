@@ -16,13 +16,16 @@ import kotlin.math.abs
  * WorkManager persists its queue in a local DB; any future process start
  * (reboot, FCM, user re-open) resumes pending work automatically.
  *
- * Interval adapts: 5 min when a live match is cached, 30 min otherwise.
+ * Fallback polling interval is 30 min regardless of live state. FCM push
+ * notifications (topic: cricket-live-updates) are the primary fast path;
+ * polling is offline resilience only.
  * Uses self-rescheduling one-time workers to avoid the 15-min minimum
  * of PeriodicWorkRequest while keeping the adaptive-interval behaviour.
  */
 object WidgetUpdateWorker {
 
-    private const val LIVE_INTERVAL_MS    = 5  * 60 * 1000L
+    // FCM push is the fast path for live updates; polling is offline resilience only.
+    private const val LIVE_INTERVAL_MS    = 30 * 60 * 1000L
     private const val IDLE_INTERVAL_MS    = 30 * 60 * 1000L
     internal const val WORK_NAME          = "bouncer_widget_update"
     internal const val PREFS_WIDGET_CACHE = "widget_cache"

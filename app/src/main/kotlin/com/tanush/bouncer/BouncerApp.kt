@@ -19,6 +19,7 @@ import com.tanush.bouncer.data.remote.AppwritePlayerFormsClient
 import com.tanush.bouncer.data.remote.AppwritePlayerProfilesClient
 import com.tanush.bouncer.data.repository.toEntity
 import com.tanush.bouncer.network.HttpClientProvider
+import com.google.firebase.messaging.FirebaseMessaging
 import com.tanush.bouncer.services.AICacheService
 import com.tanush.bouncer.services.MatchCacheService
 import com.tanush.bouncer.services.ScorePollingWorker
@@ -173,6 +174,14 @@ class BouncerApp : Application() {
 
             coil.Coil.setImageLoader(imageLoader)
         }
+
+        // ── Subscribe to FCM topic for live match state changes ─────────────
+        FirebaseMessaging.getInstance().subscribeToTopic("cricket-live-updates")
+            .addOnCompleteListener { task ->
+                if (!task.isSuccessful) {
+                    Log.w(TAG, "FCM topic subscription failed: ${task.exception?.message}")
+                }
+            }
 
         // ── Enqueue periodic workers after first frame — not needed for launch ──
         applicationScope.launch(Dispatchers.IO) {
