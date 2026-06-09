@@ -20,6 +20,10 @@ export default async ({ req, res, log, error }) => {
     return res.json({ error: "Invalid JSON body" }, 400);
   }
 
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
+    return res.json({ error: "Body must be a JSON object" }, 400);
+  }
+
   const {
     runsNeeded = 0,
     ballsRemaining = 0,
@@ -28,7 +32,7 @@ export default async ({ req, res, log, error }) => {
     requiredRunRate = 0,
     battingTeam = "",
     bowlingTeam = "",
-  } = body ?? {};
+  } = body;
 
   if (ballsRemaining <= 0) {
     return res.json({ team1WinProbability: 0.5, team2WinProbability: 0.5, confidence: 0.0 });
@@ -44,7 +48,7 @@ export default async ({ req, res, log, error }) => {
       log(`Loaded team stats (${Object.keys(cachedTeamStats).length} teams)`);
     } catch (e) {
       error(`Failed to load team stats: ${e?.message}`);
-      cachedTeamStats = {}; // proceed without team stats
+      // Leave cachedTeamStats null so next invocation retries
     }
   }
 
@@ -56,13 +60,14 @@ export default async ({ req, res, log, error }) => {
     requiredRunRate,
     battingTeam,
     bowlingTeam,
-    teamStats: cachedTeamStats,
+    teamStats: cachedTeamStats ?? {},
   });
 
   return res.json(probability);
 };
 
 function calculateWinProbability({ runsNeeded, ballsRemaining, wicketsLost, currentRunRate, requiredRunRate, battingTeam, bowlingTeam, teamStats }) {
+  const FIRST_INNINGS_BREAKEVEN_RR = 8.0; // T20 par score heuristic
   const wicketsInHand = 10 - wicketsLost;
   const oversRemaining = ballsRemaining / 6;
 
@@ -73,7 +78,7 @@ function calculateWinProbability({ runsNeeded, ballsRemaining, wicketsLost, curr
     const oversFactor = Math.min(oversRemaining / 20, 1.0) * 0.1;
     rawProb = sigmoid((rrRatio - 1.0) * 3 + wicketFactor - oversFactor);
   } else {
-    rawProb = sigmoid((currentRunRate - 8.0) * 0.5 + (wicketsInHand / 10 - 0.5) * 1.5);
+    rawProb = sigmoid((currentRunRate - FIRST_INNINGS_BREAKEVEN_RR) * 0.5 + (wicketsInHand / 10 - 0.5) * 1.5);
   }
 
   const battingWinRate = teamStats[battingTeam]?.winRate ?? 0.5;
