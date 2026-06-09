@@ -206,6 +206,7 @@ class MatchDetailViewModel(
 
     override fun onCleared() {
         super.onCleared()
+        commentaryManager.clearMatchState(match.id)
         commentaryManager.close()
     }
 

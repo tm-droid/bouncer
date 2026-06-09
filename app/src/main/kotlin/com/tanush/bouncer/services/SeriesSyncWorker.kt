@@ -6,6 +6,7 @@ import androidx.work.*
 import com.tanush.bouncer.data.CacheConfig
 import com.tanush.bouncer.data.local.BouncerDatabase
 import com.tanush.bouncer.data.local.entities.SeriesCacheEntity
+import com.tanush.bouncer.data.remote.AppwriteClient
 import com.tanush.bouncer.network.SeriesScraper
 import com.tanush.bouncer.utils.WorkerLogger
 import io.sentry.Breadcrumb
@@ -39,17 +40,17 @@ class SeriesSyncWorker(
             db.highlightDao().deleteOlderThan(highlightCutoff)
             Log.d(TAG, "Pruned highlights older than 7 days")
 
-            val series = SeriesScraper().fetchActiveSeries()
-
-            val entities = series.map { s ->
-                SeriesCacheEntity(
-                    seriesId = s.id,
-                    name = s.name,
-                    category = s.category.name,
-                    startDate = s.startDate,
-                    endDate = s.endDate
-                )
-            }
+            // Read from server-side Appwrite Storage first; fall back to on-device Cricbuzz scrape.
+            val entities = tryReadSeriesFromStorage()
+                ?: SeriesScraper().fetchActiveSeries().map { s ->
+                    SeriesCacheEntity(
+                        seriesId = s.id,
+                        name = s.name,
+                        category = s.category.name,
+                        startDate = s.startDate,
+                        endDate = s.endDate
+                    )
+                }
 
             db.seriesCacheDao().upsertAll(entities)
 
@@ -84,10 +85,36 @@ class SeriesSyncWorker(
         }
     }
 
+    private suspend fun tryReadSeriesFromStorage(): List<SeriesCacheEntity>? {
+        return try {
+            val bytes = AppwriteClient.downloadFile("cricket-stats", "active-series") ?: return null
+            val json = org.json.JSONObject(String(bytes))
+            val fetchedAt = json.getLong("fetchedAt")
+            if (System.currentTimeMillis() - fetchedAt > SERIES_STORAGE_TTL_MS) return null
+            val array = json.getJSONArray("data")
+            (0 until array.length()).map { i ->
+                val s = array.getJSONObject(i)
+                SeriesCacheEntity(
+                    seriesId = s.getString("id"),
+                    name = s.getString("name"),
+                    category = s.optString("category", "INTERNATIONAL"),
+                    startDate = s.optString("startDate", ""),
+                    endDate = s.optString("endDate", "")
+                )
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Log.w(TAG, "Series Storage read failed, falling back to scrape", e)
+            null
+        }
+    }
+
     companion object {
         const val TAG = "SeriesSyncWorker"
         private const val UNIQUE_WORK_NAME = "series_sync_periodic"
         private const val MAX_RETRIES = 3
+        private const val SERIES_STORAGE_TTL_MS = 24 * 3_600_000L
 
         private val networkConstraints = Constraints.Builder()
             .setRequiredNetworkType(NetworkType.CONNECTED)

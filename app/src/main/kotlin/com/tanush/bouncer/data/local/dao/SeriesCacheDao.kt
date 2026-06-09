@@ -18,4 +18,7 @@ interface SeriesCacheDao {
 
     @Query("SELECT MAX(lastUpdated) FROM series_cache")
     suspend fun getLastSyncTime(): Long?
+
+    @Query("DELETE FROM series_cache WHERE lastUpdated < :before")
+    suspend fun deleteOlderThan(before: Long)
 }

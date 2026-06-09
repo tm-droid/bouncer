@@ -48,6 +48,7 @@ class CommentaryFusionService(
         Provider("SambaNova", "https://api.sambanova.ai/v1/chat/completions",        ApiKeys.sambaNova, "Meta-Llama-3.3-70B-Instruct"),
     )
     private val providerCooldowns = ConcurrentHashMap<String, Long>()
+    private val provider429Count = ConcurrentHashMap<String, Int>()
 
     // Concurrent access from per-ball coroutines — use ConcurrentHashMap + per-match mutex
     // so reads and writes never see a torn list.
@@ -86,8 +87,9 @@ class CommentaryFusionService(
 
     companion object {
         const val FALLBACK_BALL_COMMENTARY = "Ball delivered. Play continues."
-        // P2-6: Base cooldown after 429; actual cooldown = BASE + jitter(0..BASE) → 30–60s per provider.
+        // P2-6: Exponential backoff after 429 with jitter. attempt N → BASE*2^(N-1) + jitter, capped at MAX.
         const val BASE_COOLDOWN_MS = 30_000L
+        const val MAX_COOLDOWN_MS = 300_000L
 
         // 7b: FUSION prompt variants — one per phase
         const val FUSION_PROMPT_POWERPLAY = """
@@ -584,6 +586,7 @@ class CommentaryFusionService(
                             hasEmittedAny = true
                         }
                     }
+                provider429Count.remove(provider.name)
                 succeeded = true
                 break
             } catch (e: Exception) {
@@ -639,12 +642,12 @@ class CommentaryFusionService(
         try {
             // Check HTTP status BEFORE reading the SSE stream
             if (response.code == 429) {
-                // P2-6: Add jitter to avoid synchronized retry storm when all providers are rate-limited.
-                val cooldownMs = BASE_COOLDOWN_MS + Random.nextLong(0, BASE_COOLDOWN_MS)
+                val attempt = provider429Count.merge(provider.name, 1, Int::plus) ?: 1
+                val cooldownMs = minOf(BASE_COOLDOWN_MS shl minOf(attempt - 1, 4), MAX_COOLDOWN_MS) + Random.nextLong(0, BASE_COOLDOWN_MS)
                 providerCooldowns[provider.name] = System.currentTimeMillis() + cooldownMs
                 Sentry.addBreadcrumb(Breadcrumb().apply {
                     category = "service.commentary"
-                    message = "${provider.name} rate-limited (stream) — ${cooldownMs}ms cooldown"
+                    message = "${provider.name} rate-limited (stream) attempt=$attempt — ${cooldownMs}ms cooldown"
                     level = SentryLevel.WARNING
                 })
                 throw IOException("Rate limited (429)")
@@ -888,12 +891,12 @@ class CommentaryFusionService(
 
         client.newCall(request).execute().use { response ->
             if (response.code == 429) {
-                // P2-6: Add jitter to avoid synchronized retry storm when all providers are rate-limited.
-                val cooldownMs = BASE_COOLDOWN_MS + Random.nextLong(0, BASE_COOLDOWN_MS)
+                val attempt = provider429Count.merge(provider.name, 1, Int::plus) ?: 1
+                val cooldownMs = minOf(BASE_COOLDOWN_MS shl minOf(attempt - 1, 4), MAX_COOLDOWN_MS) + Random.nextLong(0, BASE_COOLDOWN_MS)
                 providerCooldowns[provider.name] = System.currentTimeMillis() + cooldownMs
                 Sentry.addBreadcrumb(Breadcrumb().apply {
                     category = "service.commentary"
-                    message = "${provider.name} rate-limited — ${cooldownMs}ms cooldown"
+                    message = "${provider.name} rate-limited attempt=$attempt — ${cooldownMs}ms cooldown"
                     level = SentryLevel.WARNING
                 })
                 throw IOException("Rate limited (429)")
@@ -906,6 +909,7 @@ class CommentaryFusionService(
                 .getString("content")
                 .trim()
             if (content.isEmpty()) throw IOException("Empty content from ${provider.name}")
+            provider429Count.remove(provider.name)
             Sentry.metrics().count("ai.request.success", 1.0)
             return content
         }

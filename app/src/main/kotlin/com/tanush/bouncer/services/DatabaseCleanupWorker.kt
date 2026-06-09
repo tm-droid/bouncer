@@ -22,6 +22,7 @@ class DatabaseCleanupWorker(
         db.playerCacheDao().deleteOlderThan(now - PLAYER_CACHE_RETENTION_MS)
         db.historicalMatchCacheDao().deleteOlderThan(now - HISTORICAL_MATCH_RETENTION_MS)
         db.highlightDao().deleteOlderThan(now - HIGHLIGHTS_RETENTION_MS)
+        db.seriesCacheDao().deleteOlderThan(now - SERIES_CACHE_RETENTION_MS)
         return Result.success()
     }
 
@@ -31,6 +32,7 @@ class DatabaseCleanupWorker(
         private val PLAYER_CACHE_RETENTION_MS     = 7L  * 24 * 3_600_000
         private val HISTORICAL_MATCH_RETENTION_MS = 90L * 24 * 3_600_000
         private val HIGHLIGHTS_RETENTION_MS       = 14L * 24 * 3_600_000
+        private val SERIES_CACHE_RETENTION_MS     = 30L * 24 * 3_600_000
 
         fun enqueueWeekly(context: Context) {
             WorkManager.getInstance(context).enqueueUniquePeriodicWork(

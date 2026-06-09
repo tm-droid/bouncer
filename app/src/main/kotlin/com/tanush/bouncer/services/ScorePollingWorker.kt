@@ -222,12 +222,14 @@ class ScorePollingWorker(
             .build()
 
         /**
-         * Schedule a periodic poll every 15 minutes (minimum WorkManager interval).
+         * Schedule a periodic poll every 30 minutes as an offline fallback.
+         * FCM topic messages (TYPE_MATCH_STARTED/ENDED) are the fast path — they trigger
+         * [enqueueOneTimeWork] immediately via [BouncerFirebaseMessagingService].
          * Uses [ExistingPeriodicWorkPolicy.KEEP] so duplicate enqueues are no-ops.
          */
         fun enqueuePeriodicWork(context: Context) {
             val request = PeriodicWorkRequestBuilder<ScorePollingWorker>(
-                15, TimeUnit.MINUTES
+                30, TimeUnit.MINUTES
             ).setConstraints(networkConstraints)
                 .addTag(TAG)
                 .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS)
@@ -239,7 +241,7 @@ class ScorePollingWorker(
                 request
             )
 
-            WorkerLogger.enqueued("score_polling", "Periodic work enqueued (15 min)")
+            WorkerLogger.enqueued("score_polling", "Periodic work enqueued (30 min fallback)")
         }
 
         /**

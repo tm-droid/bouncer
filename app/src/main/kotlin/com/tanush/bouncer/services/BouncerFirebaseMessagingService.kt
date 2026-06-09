@@ -84,16 +84,17 @@ class BouncerFirebaseMessagingService : FirebaseMessagingService() {
 
         val type = data[KEY_TYPE] ?: return
 
-        // Topic messages from poll-live-matches (no match_id) — just refresh widget
+        // Topic messages from poll-live-matches (no match_id) — refresh widget + trigger score poll
         if (type == TYPE_MATCH_STARTED || type == TYPE_MATCH_ENDED) {
-            Log.d(TAG, "Live match state changed ($type), refreshing widget")
+            Log.d(TAG, "Live match state changed ($type), refreshing widget and triggering score poll")
             Sentry.addBreadcrumb(Breadcrumb().apply {
                 category = "fcm"
-                message = "Widget refresh triggered by topic message: type=$type"
+                message = "Widget refresh + score poll triggered by topic message: type=$type"
                 level = SentryLevel.INFO
                 setData("type", type)
             })
             WidgetUpdateWorker.triggerImmediateUpdate(applicationContext)
+            ScorePollingWorker.enqueueOneTimeWork(applicationContext)
             return
         }
 

@@ -80,8 +80,83 @@ export default async ({ req, res, log, error }) => {
     }
   }
 
+  // Series sync: scrape Cricbuzz at most once per 24h server-side (replaces N per-device daily scrapes)
+  try {
+    let seriesFresh = false;
+    try {
+      const prevBytes = await storage.getFileDownload(BUCKET_ID, "active-series");
+      const prevJson = JSON.parse(Buffer.from(prevBytes).toString("utf8"));
+      seriesFresh = (Date.now() - (prevJson.fetchedAt ?? 0)) < 24 * 3600 * 1000;
+    } catch { /* missing or parse error — treat as stale */ }
+
+    if (!seriesFresh) {
+      const series = await fetchActiveSeries();
+      if (series.length > 0) {
+        const payload = JSON.stringify({ data: series, fetchedAt: Date.now() });
+        await storage.deleteFile(BUCKET_ID, "active-series").catch(() => {});
+        await storage.createFile(
+          BUCKET_ID, "active-series",
+          InputFile.fromBuffer(Buffer.from(payload, "utf8"), "active-series.json"),
+          ["read(\"any\")"]
+        );
+        log(`Updated active-series (${series.length} series)`);
+      }
+    }
+  } catch (e) {
+    error(`Series sync failed: ${e?.message}`);
+  }
+
   return res.json(results);
 };
+
+async function fetchActiveSeries() {
+  const resp = await fetch("https://www.cricbuzz.com/cricket-schedule/series", {
+    headers: { "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" },
+    signal: AbortSignal.timeout(10_000),
+  });
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+  const html = await resp.text();
+
+  const nextDataMatch = html.match(/<script id="__NEXT_DATA__" type="application\/json">([\s\S]*?)<\/script>/);
+  if (nextDataMatch) {
+    try {
+      const pageProps = JSON.parse(nextDataMatch[1])?.props?.pageProps;
+      const seriesData = pageProps?.seriesMapProto ?? pageProps?.content;
+      if (seriesData) {
+        const result = [];
+        for (const group of seriesData) {
+          for (const s of (group.series ?? [])) {
+            const id = String(s.id ?? s.seriesId ?? "");
+            const name = s.name ?? s.seriesName ?? "";
+            if (!id || !name || name.length < 3) continue;
+            result.push({ id, name, category: seriesCategory(name), startDate: s.startDt ?? "", endDate: s.endDt ?? "" });
+          }
+        }
+        if (result.length > 0) return result;
+      }
+    } catch {}
+  }
+
+  // Regex fallback if __NEXT_DATA__ missing or parse failed
+  const result = [];
+  const seen = new Set();
+  const re = /href="\/cricket-series\/(\d+)\/[^"]*">([^<]+)<\/a>/g;
+  let m;
+  while ((m = re.exec(html)) !== null) {
+    const id = m[1], name = m[2].trim();
+    if (!name || name.length < 3 || seen.has(id)) continue;
+    seen.add(id);
+    result.push({ id, name, category: seriesCategory(name), startDate: "", endDate: "" });
+  }
+  return result;
+}
+
+function seriesCategory(name) {
+  if (/IPL|PSL|BBL|CPL|League|T20/i.test(name)) return "LEAGUE";
+  if (/Women|WPL/i.test(name)) return "WOMEN";
+  if (/Domestic|Ranji|Sheffield/i.test(name)) return "DOMESTIC";
+  return "INTERNATIONAL";
+}
 
 async function getFirebaseAccessToken(serviceAccountJson) {
   const sa = JSON.parse(serviceAccountJson);

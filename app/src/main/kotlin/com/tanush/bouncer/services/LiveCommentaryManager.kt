@@ -510,4 +510,9 @@ class LiveCommentaryManager(
     fun close() {
         supervisorJob.cancel()
     }
+
+    fun clearMatchState(matchId: String) {
+        lastNotifiedBallMap.remove(matchId)
+        lastInsightAt.remove(matchId)
+    }
 }
