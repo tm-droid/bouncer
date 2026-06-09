@@ -439,16 +439,33 @@ class CricsheetDataFetcher(private val context: Context? = null) {
             
             // Download zip file
             Log.d(TAG, "Downloading all historical matches from $urlString")
-            val connection = URL(urlString).openConnection()
-            connection.getInputStream().use { input ->
-                FileOutputStream(zipPath).use { output ->
-                    input.copyTo(output)
-                }
+            val connection = (URL(urlString).openConnection() as java.net.HttpURLConnection).also {
+                it.connect()
             }
-            
+            try {
+                val responseCode = connection.responseCode
+                if (responseCode !in 200..299) {
+                    throw java.io.IOException("HTTP error $responseCode for $urlString")
+                }
+                val expectedLength = connection.contentLengthLong
+                val bytesWritten = connection.inputStream.use { input ->
+                    FileOutputStream(zipPath).use { output ->
+                        input.copyTo(output)
+                    }
+                }
+                if (expectedLength > 0 && bytesWritten != expectedLength) {
+                    zipPath.delete()
+                    throw java.io.IOException(
+                        "Incomplete download: expected $expectedLength bytes but got $bytesWritten for $urlString"
+                    )
+                }
+            } finally {
+                connection.disconnect()
+            }
+
             // Unzip and parse all JSON files
             val matches = unzipAndParseAllMatches(zipPath.absolutePath, filesDir.absolutePath)
-            
+
             // Clean up zip file
             zipPath.delete()
             
@@ -725,13 +742,30 @@ class CricsheetDataFetcher(private val context: Context? = null) {
             val zipPath = File(filesDir, "${label}_json.zip")
             
             Log.d(TAG, "Downloading $label matches from $urlString")
-            val connection = URL(urlString).openConnection()
-            connection.getInputStream().use { input ->
-                FileOutputStream(zipPath).use { output ->
-                    input.copyTo(output)
-                }
+            val connection = (URL(urlString).openConnection() as java.net.HttpURLConnection).also {
+                it.connect()
             }
-            
+            try {
+                val responseCode = connection.responseCode
+                if (responseCode !in 200..299) {
+                    throw java.io.IOException("HTTP error $responseCode for $urlString")
+                }
+                val expectedLength = connection.contentLengthLong
+                val bytesWritten = connection.inputStream.use { input ->
+                    FileOutputStream(zipPath).use { output ->
+                        input.copyTo(output)
+                    }
+                }
+                if (expectedLength > 0 && bytesWritten != expectedLength) {
+                    zipPath.delete()
+                    throw java.io.IOException(
+                        "Incomplete download: expected $expectedLength bytes but got $bytesWritten for $urlString"
+                    )
+                }
+            } finally {
+                connection.disconnect()
+            }
+
             val matches = unzipAndParseAllMatches(zipPath.absolutePath, filesDir.absolutePath)
             zipPath.delete()
             
@@ -748,6 +782,10 @@ class CricsheetDataFetcher(private val context: Context? = null) {
         } catch (e: Exception) {
             Log.e(TAG, "Failed to download $label matches from $urlString", e)
             Sentry.captureException(e)
+            val ctx = context
+            if (ctx != null) {
+                File(ctx.filesDir, "${label}_json.zip").delete()
+            }
             return emptyList()
         }
     }
