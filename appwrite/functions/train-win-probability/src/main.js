@@ -6,15 +6,20 @@ const STATS_BUCKET_ID = process.env.STATS_BUCKET_ID ?? "cricket-stats";
 const TEAM_STATS_FILE_ID = "team-stats";
 
 export default async ({ req, res, log, error }) => {
+  if (!process.env.APPWRITE_API_KEY) {
+    error("APPWRITE_API_KEY is not set");
+    return res.json({ error: "Missing APPWRITE_API_KEY" }, 500);
+  }
+
   const client = new Client()
     .setEndpoint(process.env.APPWRITE_FUNCTION_API_ENDPOINT)
     .setProject(process.env.APPWRITE_FUNCTION_PROJECT_ID)
-    .setKey(process.env.APPWRITE_API_KEY ?? "");
+    .setKey(process.env.APPWRITE_API_KEY);
 
   log("Downloading cricsheet T20 ZIP...");
   let zipBuffer;
   try {
-    const resp = await fetch(CRICSHEET_URL);
+    const resp = await fetch(CRICSHEET_URL, { signal: AbortSignal.timeout(120_000) });
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     zipBuffer = Buffer.from(await resp.arrayBuffer());
     log(`Downloaded ${(zipBuffer.length / 1024 / 1024).toFixed(1)} MB`);
@@ -29,6 +34,7 @@ export default async ({ req, res, log, error }) => {
   let skipped = 0;
 
   const zip = new AdmZip(zipBuffer);
+  zipBuffer = null; // hint GC — 200MB buffer no longer needed once ZIP is loaded
   for (const entry of zip.getEntries()) {
     if (!entry.entryName.endsWith(".json") || entry.isDirectory) continue;
     try {
@@ -36,7 +42,8 @@ export default async ({ req, res, log, error }) => {
       const match = JSON.parse(content);
       processMatch(match, teamStats);
       parsed++;
-    } catch {
+    } catch (e) {
+      if (skipped < 5) error(`Skipped ${entry.entryName}: ${e?.message}`);
       skipped++;
     }
   }
