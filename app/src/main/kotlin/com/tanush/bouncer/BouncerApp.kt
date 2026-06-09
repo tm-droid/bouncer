@@ -180,6 +180,7 @@ class BouncerApp : Application() {
             .addOnCompleteListener { task ->
                 if (!task.isSuccessful) {
                     Log.w(TAG, "FCM topic subscription failed: ${task.exception?.message}")
+                    Sentry.captureException(task.exception ?: Exception("FCM subscribe failed"))
                 }
             }
 
