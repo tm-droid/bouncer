@@ -26,6 +26,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.tanush.bouncer.models.WinProbabilityPoint
 import com.tanush.bouncer.ui.components.BouncerImportance
 import com.tanush.bouncer.ui.components.GlassCard
 import com.tanush.bouncer.ui.components.GlassSurface
@@ -42,13 +43,6 @@ import com.tanush.bouncer.ui.theme.BouncerDesignSystem
  * High-fidelity financial-grade visualization.
  * Updated to BouncerImportance.CRITICAL as it is a flagship metric.
  */
-
-data class WinProbabilityPoint(
-    val over: Float,
-    val team1Probability: Float,
-    val team2Probability: Float,
-    val keyEvent: String? = null,
-)
 
 @Composable
 fun WinProbabilityChartCard(

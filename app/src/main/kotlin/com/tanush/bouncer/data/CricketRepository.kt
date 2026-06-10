@@ -112,7 +112,7 @@ object CricketRepository {
         }
     }
 
-    suspend fun getProbabilityHistory(matchId: String, localApi: com.tanush.bouncer.network.LocalApi? = null): AppResult<List<com.tanush.bouncer.ui.components.premium.WinProbabilityPoint>> {
+    suspend fun getProbabilityHistory(matchId: String, localApi: com.tanush.bouncer.network.LocalApi? = null): AppResult<List<com.tanush.bouncer.models.WinProbabilityPoint>> {
         Sentry.addBreadcrumb(Breadcrumb().apply {
             category = "network.api"
             message = "Fetching probability history"
@@ -123,7 +123,7 @@ object CricketRepository {
             val api = localApi ?: RetrofitClient.localApi
             val resp = api.getProbability(matchId)
             val mapped = resp.map { dto ->
-                com.tanush.bouncer.ui.components.premium.WinProbabilityPoint(
+                com.tanush.bouncer.models.WinProbabilityPoint(
                     over = dto.over,
                     team1Probability = dto.team1Probability,
                     team2Probability = dto.team2Probability,
