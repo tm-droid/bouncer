@@ -3,6 +3,9 @@ package com.tanush.bouncer.services
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 
+/** Shared cap for runAttemptCount-based retry in WorkManager Workers. */
+const val WORKER_MAX_RETRIES = 3
+
 data class RetryPolicy(
     val maxAttempts: Int = 3,
     val baseDelayMs: Long = 1000L,

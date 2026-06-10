@@ -103,9 +103,9 @@ class ScorePollingWorker(
                         message = "Poll failed: ${response.exception.message}"
                         level = SentryLevel.ERROR
                     })
-                    if (runAttemptCount < MAX_RETRIES) Result.retry() else Result.failure()
+                    if (runAttemptCount < WORKER_MAX_RETRIES) Result.retry() else Result.failure()
                 }
-                is AppResult.Loading -> if (runAttemptCount < MAX_RETRIES) Result.retry() else Result.failure()
+                is AppResult.Loading -> if (runAttemptCount < WORKER_MAX_RETRIES) Result.retry() else Result.failure()
             }
         } catch (e: CancellationException) {
             // Normal WorkManager lifecycle cancellation — not an error, re-throw immediately.
@@ -113,7 +113,7 @@ class ScorePollingWorker(
         } catch (e: Exception) {
             Log.e(TAG, "Unexpected error in ScorePollingWorker", e)
             Sentry.captureException(e)
-            if (runAttemptCount < MAX_RETRIES) Result.retry() else Result.failure()
+            if (runAttemptCount < WORKER_MAX_RETRIES) Result.retry() else Result.failure()
         }
     }
 
@@ -210,7 +210,6 @@ class ScorePollingWorker(
         private const val UNIQUE_WORK_NAME = "score_polling_periodic"
         private const val ONE_TIME_WORK_TAG = "score_polling_once"
         private val PREFS_NAME = PrefsRegistry.PREFS_SCORE_POLLING
-        private const val MAX_RETRIES = 3
         private const val MAX_LIVE_FOLLOWUPS = 12 // 12 × 5 min = 1 hour cap
         private val KEY_FOLLOWUP_COUNT = PrefsRegistry.ScorePolling.FOLLOWUP_COUNT
 

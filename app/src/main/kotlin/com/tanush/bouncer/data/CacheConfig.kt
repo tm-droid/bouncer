@@ -11,4 +11,11 @@ object CacheConfig {
     // 2.5 min: Appwrite poll-live-matches runs every 1 min; 150s gives a half-cycle buffer
     // so a slow or skipped run doesn't immediately fall through to direct Vercel polling.
     const val MATCH_CACHE_TTL_MS = 150_000L
+    // Appwrite Realtime reconnect backoff (exponential, reset on successful subscribe).
+    const val REALTIME_RECONNECT_MIN_MS = 2_000L
+    const val REALTIME_RECONNECT_MAX_MS = 60_000L
+    // Appwrite sentinel for rows that should never expire (completed-match commentary).
+    const val AI_CACHE_PERMANENT_EXPIRY_ISO = "2099-01-01T00:00:00.000Z"
+    // Any expiry more than a year out is treated as the permanent sentinel on read.
+    const val AI_CACHE_PERMANENT_THRESHOLD_MS = 365L * 24 * 60 * 60 * 1000
 }

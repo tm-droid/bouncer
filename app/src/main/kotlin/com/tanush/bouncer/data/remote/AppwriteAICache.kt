@@ -61,7 +61,7 @@ object AppwriteAICache : AppwriteTableClient("AppwriteAICache") {
                     }
                     val commentary = (data["commentary"] as? String)?.takeIf { it.isNotBlank() }
                         ?: return@runCatching null
-                    val isPermanent = expiry > now + 365L * 24 * 60 * 60 * 1000
+                    val isPermanent = expiry > now + CacheConfig.AI_CACHE_PERMANENT_THRESHOLD_MS
                     return@runCatching Pair(commentary, isPermanent)
                 }
                 val commentary = (data["commentary"] as? String)?.takeIf { it.isNotBlank() }
@@ -93,7 +93,7 @@ object AppwriteAICache : AppwriteTableClient("AppwriteAICache") {
             runCatching {
                 val db = tablesDB ?: return@runCatching
                 val expiresAt = if (permanent) {
-                    "2099-01-01T00:00:00.000Z"
+                    CacheConfig.AI_CACHE_PERMANENT_EXPIRY_ISO
                 } else {
                     DateTimeFormatter.ISO_INSTANT.format(
                         Instant.ofEpochMilli(System.currentTimeMillis() + TTL_MS)
@@ -156,7 +156,7 @@ object AppwriteAICache : AppwriteTableClient("AppwriteAICache") {
 
     private fun startSubscriptionLoop(onEvent: (io.appwrite.models.RealtimeResponseEvent<Map<String, Any>>) -> Unit) {
         reconnectScope.launch {
-            var backoffMs = 2_000L
+            var backoffMs = CacheConfig.REALTIME_RECONNECT_MIN_MS
             while (isActive) {
                 try {
                     val client = AppwriteClient.client ?: break
@@ -169,7 +169,7 @@ object AppwriteAICache : AppwriteTableClient("AppwriteAICache") {
                         @Suppress("UNCHECKED_CAST")
                         onEvent(response as io.appwrite.models.RealtimeResponseEvent<Map<String, Any>>)
                     }
-                    backoffMs = 2_000L  // reset on successful subscribe
+                    backoffMs = CacheConfig.REALTIME_RECONNECT_MIN_MS  // reset on successful subscribe
                     // Appwrite Realtime is push-based; subscription stays alive until an error
                     // or cancellation. Re-looping immediately after subscribe() returns is safe
                     // — if the socket is healthy the SDK won't throw and we just re-subscribe
@@ -180,7 +180,7 @@ object AppwriteAICache : AppwriteTableClient("AppwriteAICache") {
                     realtimeSubscription = null
                     Log.w(TAG, "Realtime subscription lost, reconnecting in ${backoffMs}ms: ${e.message}")
                     delay(backoffMs)
-                    backoffMs = minOf(backoffMs * 2, 60_000L)
+                    backoffMs = minOf(backoffMs * 2, CacheConfig.REALTIME_RECONNECT_MAX_MS)
                 }
             }
         }

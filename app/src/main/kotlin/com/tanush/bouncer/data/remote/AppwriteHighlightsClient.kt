@@ -2,6 +2,7 @@ package com.tanush.bouncer.data.remote
 
 import android.util.Log
 import com.tanush.bouncer.ApiKeys
+import com.tanush.bouncer.data.CacheConfig
 import io.appwrite.Query
 import io.appwrite.exceptions.AppwriteException
 import io.appwrite.services.Realtime
@@ -76,7 +77,7 @@ object AppwriteHighlightsClient : AppwriteTableClient("AppwriteHighlightsClient"
 
     private fun startSubscriptionLoop(onEvent: (io.appwrite.models.RealtimeResponseEvent<Map<String, Any>>) -> Unit) {
         reconnectScope.launch {
-            var backoffMs = 2_000L
+            var backoffMs = CacheConfig.REALTIME_RECONNECT_MIN_MS
             while (isActive) {
                 try {
                     val client = AppwriteClient.client ?: break
@@ -89,7 +90,7 @@ object AppwriteHighlightsClient : AppwriteTableClient("AppwriteHighlightsClient"
                         @Suppress("UNCHECKED_CAST")
                         onEvent(response as io.appwrite.models.RealtimeResponseEvent<Map<String, Any>>)
                     }
-                    backoffMs = 2_000L  // reset on successful subscribe
+                    backoffMs = CacheConfig.REALTIME_RECONNECT_MIN_MS  // reset on successful subscribe
                     // Appwrite Realtime is push-based; subscription stays alive until an error
                     // or cancellation. Re-looping immediately after subscribe() returns is safe
                     // — if the socket is healthy the SDK won't throw and we just re-subscribe
@@ -100,7 +101,7 @@ object AppwriteHighlightsClient : AppwriteTableClient("AppwriteHighlightsClient"
                     realtimeSubscription = null
                     Log.w(TAG, "Realtime subscription lost, reconnecting in ${backoffMs}ms: ${e.message}")
                     delay(backoffMs)
-                    backoffMs = minOf(backoffMs * 2, 60_000L)
+                    backoffMs = minOf(backoffMs * 2, CacheConfig.REALTIME_RECONNECT_MAX_MS)
                 }
             }
         }

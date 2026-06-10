@@ -114,7 +114,7 @@ class PlayerCacheWorker(
                 message = "Cache failed (timeout) for '$playerName': ${e.message}"
                 level = SentryLevel.WARNING
             })
-            if (runAttemptCount < MAX_RETRIES) Result.retry() else Result.failure()
+            if (runAttemptCount < WORKER_MAX_RETRIES) Result.retry() else Result.failure()
         } catch (e: UnknownHostException) {
             Log.w(TAG, "No network in PlayerCacheWorker for '$playerName'", e)
             Sentry.addBreadcrumb(Breadcrumb().apply {
@@ -122,7 +122,7 @@ class PlayerCacheWorker(
                 message = "Cache failed (no network) for '$playerName': ${e.message}"
                 level = SentryLevel.WARNING
             })
-            if (runAttemptCount < MAX_RETRIES) Result.retry() else Result.failure()
+            if (runAttemptCount < WORKER_MAX_RETRIES) Result.retry() else Result.failure()
         } catch (e: Exception) {
             Log.e(TAG, "Unexpected error in PlayerCacheWorker for '$playerName'", e)
             Sentry.captureException(e)
@@ -158,7 +158,6 @@ class PlayerCacheWorker(
     companion object {
         const val TAG = "PlayerCacheWorker"
         const val KEY_PLAYER_NAME = "player_name"
-        private const val MAX_RETRIES = 3
 
         private val networkConstraints = Constraints.Builder()
             .setRequiredNetworkType(NetworkType.CONNECTED)

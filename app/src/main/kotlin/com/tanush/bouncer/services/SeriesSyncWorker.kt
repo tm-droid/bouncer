@@ -70,7 +70,7 @@ class SeriesSyncWorker(
                 message = "Sync failed (timeout): ${e.message}"
                 level = SentryLevel.WARNING
             })
-            if (runAttemptCount < MAX_RETRIES) Result.retry() else Result.failure()
+            if (runAttemptCount < WORKER_MAX_RETRIES) Result.retry() else Result.failure()
         } catch (e: UnknownHostException) {
             Log.w(TAG, "No network in SeriesSyncWorker", e)
             Sentry.addBreadcrumb(Breadcrumb().apply {
@@ -78,7 +78,7 @@ class SeriesSyncWorker(
                 message = "Sync failed (no network): ${e.message}"
                 level = SentryLevel.WARNING
             })
-            if (runAttemptCount < MAX_RETRIES) Result.retry() else Result.failure()
+            if (runAttemptCount < WORKER_MAX_RETRIES) Result.retry() else Result.failure()
         } catch (e: Exception) {
             Log.e(TAG, "Unexpected error in SeriesSyncWorker", e)
             Sentry.captureException(e)
@@ -114,7 +114,6 @@ class SeriesSyncWorker(
     companion object {
         const val TAG = "SeriesSyncWorker"
         private const val UNIQUE_WORK_NAME = "series_sync_periodic"
-        private const val MAX_RETRIES = 3
         private const val SERIES_STORAGE_TTL_MS = 24 * 3_600_000L
 
         private val networkConstraints = Constraints.Builder()
