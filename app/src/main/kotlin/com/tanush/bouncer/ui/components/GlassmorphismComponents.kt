@@ -276,48 +276,6 @@ fun AnimatedScoreDisplay(
 }
 
 @Composable
-fun StatCard(
-    title: String,
-    value: String,
-    modifier: Modifier = Modifier,
-    color: Color = BouncerDesignSystem.hierarchy.secondary.primary,
-    importance: BouncerImportance = BouncerImportance.STANDARD,
-    icon: @Composable (() -> Unit)? = null
-) {
-    val colors = BouncerDesignSystem.colors
-    val hierarchy = BouncerDesignSystem.hierarchy
-    GlassSurface(
-        modifier = modifier,
-        cornerRadius = 8.dp,
-        importance = importance
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            icon?.invoke()
-            Text(
-                text = value,
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Black,
-                color = if (importance == BouncerImportance.CRITICAL) color else colors.textPrimary,
-                letterSpacing = (-0.5).sp
-            )
-            Text(
-                text = title.uppercase(),
-                fontSize = 9.sp,
-                fontWeight = FontWeight.Bold,
-                color = colors.textTertiary,
-                letterSpacing = 1.2.sp
-            )
-        }
-    }
-}
-
-@Composable
 fun PulsingGlowCircle(
     modifier: Modifier = Modifier,
     color: Color = BouncerDesignSystem.hierarchy.secondary.primary,

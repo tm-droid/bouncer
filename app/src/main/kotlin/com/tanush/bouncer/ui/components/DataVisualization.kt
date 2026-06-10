@@ -30,69 +30,6 @@ import kotlin.math.sin
 import com.tanush.bouncer.ui.theme.GoldPrimary
 
 @Composable
-fun StatCard(
-    label: String,
-    value: String,
-    trend: Float? = null,
-    modifier: Modifier = Modifier
-) {
-    val colors = BouncerDesignSystem.colors
-    val hierarchy = BouncerDesignSystem.hierarchy
-    val shimmer by rememberInfiniteTransition(label = "statShimmer").animateFloat(
-        initialValue = 0.7f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(2000),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "statShimmer"
-    )
-    
-    Box(
-        modifier = modifier
-            .shadow(6.dp, RoundedCornerShape(16.dp), spotColor = hierarchy.secondary.primary.copy(alpha = 0.2f))
-            .background(
-                Brush.linearGradient(
-                    colors = listOf(
-                        colors.surface1,
-                        colors.glassSurface
-                    )
-                ),
-                RoundedCornerShape(16.dp)
-            )
-            .padding(16.dp)
-    ) {
-        Column {
-            Text(
-                text = label,
-                color = colors.textSecondary,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Medium,
-                letterSpacing = 0.5.sp
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Row(
-                verticalAlignment = Alignment.Bottom,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Text(
-                    text = value,
-                    color = hierarchy.secondary.primary.copy(alpha = shimmer),
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    letterSpacing = 0.5.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                trend?.let {
-                    TrendIndicator(trend = it)
-                }
-            }
-        }
-    }
-}
-
-@Composable
 private fun TrendIndicator(trend: Float) {
     val colors = BouncerDesignSystem.colors
     val color = if (trend > 0) colors.statusSuccess else colors.statusLive

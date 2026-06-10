@@ -221,56 +221,6 @@ fun LiveBadge(
 }
 
 /**
- * Premium stat card for displaying statistics
- */
-@Composable
-fun StatCard(
-    label: String,
-    value: String,
-    modifier: Modifier = Modifier,
-    accentColor: Color = GoldPrimary,
-    isHighlighted: Boolean = false
-) {
-    val hierarchy = BouncerDesignSystem.hierarchy
-    val colors = BouncerDesignSystem.colors
-    Surface(
-        modifier = modifier
-            .shadow(
-                elevation = if (isHighlighted) 16.dp else 8.dp,
-                shape = RoundedCornerShape(20.dp),
-                spotColor = if (isHighlighted) accentColor.copy(alpha = 0.4f) else Color.Black.copy(alpha = 0.3f)
-            ),
-        shape = RoundedCornerShape(20.dp),
-        color = if (isHighlighted) colors.glassBorderHighlight else colors.glassSurface,
-        border = androidx.compose.foundation.BorderStroke(
-            1.dp,
-            if (isHighlighted) accentColor.copy(alpha = 0.5f) else colors.glassBorder.copy(alpha = 0.3f)
-        )
-    ) {
-        Column(
-            modifier = Modifier.padding(20.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(
-                text = value,
-                color = if (isHighlighted) accentColor else colors.textPrimary,
-                fontSize = 28.sp,
-                fontWeight = FontWeight.Black,
-                letterSpacing = (-1).sp
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = label.uppercase(),
-                color = colors.textTertiary,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 1.5.sp
-            )
-        }
-    }
-}
-
-/**
  * Premium progress indicator with gold styling
  */
 @Composable

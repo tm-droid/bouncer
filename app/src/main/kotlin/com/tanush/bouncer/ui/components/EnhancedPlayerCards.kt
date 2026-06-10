@@ -735,66 +735,6 @@ private fun buildComparisonBars(
     )
 )
 
-/**
- * HeadToHeadComparison - Side-by-side player stats comparison
- * Compares two players across multiple statistics
- */
-@Composable
-fun HeadToHeadComparison(
-    player1Name: String,
-    player1Stats: PlayerComparisonStats,
-    player2Name: String,
-    player2Stats: PlayerComparisonStats,
-    player1ImageUrl: String? = null,
-    player2ImageUrl: String? = null,
-    modifier: Modifier = Modifier
-) {
-    val hierarchy = BouncerDesignSystem.hierarchy
-    val colors = BouncerDesignSystem.colors
-    Surface(
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(24.dp),
-        color = colors.glassSurface
-    ) {
-        Column(modifier = Modifier.padding(20.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                PlayerComparisonHeader(
-                    name = player1Name,
-                    imageUrl = player1ImageUrl,
-                    color = ChartGreen
-                )
-
-                VersusBadge(accent = hierarchy.secondary.primary)
-
-                PlayerComparisonHeader(
-                    name = player2Name,
-                    imageUrl = player2ImageUrl,
-                    color = colors.statusInfo
-                )
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            val bars = buildComparisonBars(player1Stats, player2Stats)
-            bars.forEachIndexed { index, bar ->
-                ComparisonBar(
-                    label = bar.label,
-                    value1 = bar.value1,
-                    value2 = bar.value2,
-                    displayValue1 = bar.displayValue1,
-                    displayValue2 = bar.displayValue2,
-                    lowerIsBetter = bar.lowerIsBetter
-                )
-                if (index < bars.lastIndex) Spacer(modifier = Modifier.height(12.dp))
-            }
-        }
-    }
-}
-
 data class PlayerComparisonStats(
     val runs: Int = 0,
     val average: Float = 0f,

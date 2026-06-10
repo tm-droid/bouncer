@@ -213,36 +213,6 @@ enum class TrophyType {
     BRONZE, SILVER, GOLD, PLATINUM, DIAMOND
 }
 
-@Composable
-fun CelebrationOverlay(
-    isVisible: Boolean,
-    message: String,
-    modifier: Modifier = Modifier
-) {
-    if (!isVisible) return
-
-    val hierarchy = BouncerDesignSystem.hierarchy
-    val colors = BouncerDesignSystem.colors
-    val particles = remember { buildCelebrationParticles(hierarchy.secondary.primary, hierarchy.secondary.secondary) }
-
-    val infiniteTransition = rememberInfiniteTransition(label = "celebration")
-    val time by repeatingFloat(
-        "time", 0f, 1f, 3000,
-        easing = LinearEasing, repeatMode = RepeatMode.Restart, transition = infiniteTransition
-    )
-    val textScale by repeatingFloat("textScale", 0.9f, 1.1f, 500, transition = infiniteTransition)
-
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .background(colors.backgroundBase.copy(alpha = 0.8f)),
-        contentAlignment = Alignment.Center
-    ) {
-        ParticleCanvas(particles = particles, time = time)
-        CelebrationMessage(message = message, textScale = textScale, accent = hierarchy.secondary.primary)
-    }
-}
-
 private fun buildCelebrationParticles(primary: Color, secondary: Color): List<Particle> {
     val palette = listOf(primary, secondary, primary, Color.White)
     return List(50) {

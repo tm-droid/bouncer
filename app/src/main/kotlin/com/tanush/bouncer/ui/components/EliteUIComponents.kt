@@ -263,91 +263,6 @@ private fun rememberHeroAnimations(): HeroAnimations {
 }
 
 @Composable
-fun HeroLiveMatchCard(
-    match: CricketMatch,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val hierarchy = BouncerDesignSystem.hierarchy
-    val haptic = rememberHapticFeedback()
-    val team1 = match.teams.firstOrNull()
-    val team2 = match.teams.getOrNull(1)
-
-    val scoreInfo1 = parseScore(team1?.score)
-    val scoreInfo2 = parseScore(team2?.score)
-    val score1Display = scoreInfo1.toDisplayString()
-    val score2Display = scoreInfo2.toDisplayString()
-
-    val isLive = isHeroLive(match)
-    val anims = rememberHeroAnimations()
-
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .shadow(
-                elevation = if (isLive) 28.dp else 16.dp,
-                shape = RoundedCornerShape(28.dp),
-                spotColor = if (isLive) hierarchy.secondary.primary.copy(alpha = 0.4f) else Color.Black.copy(alpha = 0.5f)
-            )
-            .clip(RoundedCornerShape(28.dp))
-            .background(
-                Brush.verticalGradient(listOf(Color(0xFF161616), Color(0xFF0D0D0D), BackgroundBase))
-            )
-            .drawBehind {
-                if (isLive) {
-                    drawRect(
-                        brush = Brush.linearGradient(
-                            colors = listOf(
-                                Color.Transparent,
-                                hierarchy.secondary.primary.copy(alpha = 0.03f),
-                                Color.White.copy(alpha = 0.04f),
-                                hierarchy.secondary.primary.copy(alpha = 0.03f),
-                                Color.Transparent
-                            ),
-                            start = Offset(anims.shimmerOffset, 0f),
-                            end = Offset(anims.shimmerOffset + 400f, size.height)
-                        )
-                    )
-                }
-            }
-            .border(
-                1.dp,
-                Brush.linearGradient(
-                    if (isLive) listOf(
-                        hierarchy.secondary.primary.copy(alpha = anims.borderGlow),
-                        GlassSurface,
-                        hierarchy.secondary.primary.copy(alpha = anims.borderGlow * 0.6f)
-                    ) else listOf(GlassBorder, GlassSurface)
-                ),
-                RoundedCornerShape(28.dp)
-            )
-            .clickable { haptic.click(); onClick() }
-    ) {
-        if (isLive) {
-            HeroLiveGlowOverlay(hierarchy)
-        }
-
-        Column(modifier = Modifier.fillMaxWidth().padding(24.dp)) {
-            HeroHeaderRow(match, isLive, anims.livePulse)
-            Spacer(modifier = Modifier.height(28.dp))
-            HeroTeamsRow(
-                team1 = team1,
-                team2 = team2,
-                score1 = score1Display,
-                score2 = score2Display,
-                overs1 = formatOvers(scoreInfo1.overs),
-                overs2 = formatOvers(scoreInfo2.overs)
-            )
-            if (isLive && (score1Display != "-" || score2Display != "-")) {
-                Spacer(modifier = Modifier.height(24.dp))
-                HeroWinProbabilitySection(team1, team2)
-            }
-            HeroStatusFooter(match)
-        }
-    }
-}
-
-@Composable
 private fun HeroLiveGlowOverlay(hierarchy: Hierarchy) {
     Box(
         modifier = Modifier.fillMaxSize().drawBehind {
@@ -713,51 +628,6 @@ private fun rememberListCardState(match: CricketMatch): ListCardState {
         score1Full = scoreInfo1.toFullDisplayString(),
         score2Full = scoreInfo2.toFullDisplayString()
     )
-}
-
-@Composable
-fun PremiumMatchListCard(
-    match: CricketMatch,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val hierarchy = BouncerDesignSystem.hierarchy
-    val haptic = rememberHapticFeedback()
-    val team1 = match.teams.firstOrNull()
-    val team2 = match.teams.getOrNull(1)
-    val state = rememberListCardState(match)
-
-    val infiniteTransition = rememberInfiniteTransition(label = "cardEffects")
-    val livePulse by infiniteTransition.animateFloat(
-        initialValue = 0.6f, targetValue = 1f,
-        animationSpec = infiniteRepeatable(tween(1000), RepeatMode.Reverse),
-        label = "livePulse"
-    )
-
-    Surface(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 6.dp)
-            .shadow(
-                elevation = if (state.isLive) 16.dp else 6.dp,
-                shape = RoundedCornerShape(20.dp),
-                spotColor = if (state.isLive) hierarchy.secondary.primary.copy(alpha = 0.25f) else Color.Black.copy(alpha = 0.3f)
-            ),
-        shape = RoundedCornerShape(20.dp),
-        color = GlassSurface,
-        border = BorderStroke(
-            0.5.dp,
-            if (state.isLive) hierarchy.secondary.primary.copy(alpha = 0.3f) else GlassSurface
-        ),
-        onClick = { haptic.click(); onClick() }
-    ) {
-        Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
-            ListCardHeaderRow(match, state, livePulse)
-            Spacer(modifier = Modifier.height(16.dp))
-            ListCardTeamsRow(team1, team2, state, hierarchy)
-            ListCardStatusFooter(match, state, hierarchy)
-        }
-    }
 }
 
 @Composable
@@ -1218,40 +1088,6 @@ private fun CarouselTeamRow(
 }
 
 @Composable
-fun MarketInsightCard(
-    title: String,
-    value: String,
-    subtitle: String,
-    icon: ImageVector,
-    modifier: Modifier = Modifier,
-    badgeText: String? = null,
-    badgeColor: Color = GoldPrimary,
-    onClick: () -> Unit = {}
-) {
-    val haptic = rememberHapticFeedback()
-
-    Surface(
-        modifier = modifier.shadow(
-            elevation = 8.dp,
-            shape = RoundedCornerShape(16.dp),
-            spotColor = Color.Black.copy(alpha = 0.3f)
-        ),
-        shape = RoundedCornerShape(16.dp),
-        color = GlassSurface,
-        border = BorderStroke(0.5.dp, GlassBorder),
-        onClick = { haptic.click(); onClick() }
-    ) {
-        Column(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            MarketInsightHeader(icon, badgeText, badgeColor)
-            MarketInsightBody(title, value, subtitle)
-        }
-    }
-}
-
-@Composable
 private fun MarketInsightHeader(icon: ImageVector, badgeText: String?, badgeColor: Color) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -1622,21 +1458,6 @@ fun SectionHeader(
     actionText: String? = null,
     onActionClick: () -> Unit = {}
 ) = EliteSectionHeader(title, modifier, actionText, onActionClick)
-
-@Composable
-fun StatusFilterChip(
-    text: String,
-    isSelected: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) = EliteStatusChip(text, isSelected, onClick, modifier)
-
-@Composable
-fun MatchCarouselCard(
-    match: CricketMatch,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) = VIPCarouselCard(match, onClick, modifier)
 
 @Composable
 fun HeroMatchSkeleton(modifier: Modifier = Modifier) = EliteHeroMatchSkeleton(modifier)
