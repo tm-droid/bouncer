@@ -15,6 +15,7 @@ import io.sentry.SentryLevel
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
 import java.util.concurrent.TimeUnit
+import kotlin.coroutines.cancellation.CancellationException
 
 /**
  * WorkManager-based periodic worker that syncs active cricket series into the series_cache table.
