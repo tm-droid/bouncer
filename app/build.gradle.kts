@@ -13,7 +13,12 @@ plugins {
 detekt {
     buildUponDefaultConfig = true
     config.setFrom("$projectDir/config/detekt.yml")
+    baseline = file("$projectDir/config/detekt-baseline.xml")
 }
+
+// detekt 1.23.6 cannot accept the JDK 25 default jvm-target; pin to the project's JVM level.
+tasks.withType<io.gitlab.arturbosch.detekt.Detekt>().configureEach { jvmTarget = "17" }
+tasks.withType<io.gitlab.arturbosch.detekt.DetektCreateBaselineTask>().configureEach { jvmTarget = "17" }
 
 val localProperties = Properties()
 val localPropertiesFile = rootProject.file("local.properties")
