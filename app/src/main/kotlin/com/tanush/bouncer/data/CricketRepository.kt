@@ -9,7 +9,6 @@ import com.tanush.bouncer.data.remote.AppwriteClient
 import com.tanush.bouncer.network.RetrofitClient
 import com.tanush.bouncer.network.models.SanwebMatchResponse
 import com.tanush.bouncer.network.models.SanwebMatchesListResponse
-import io.sentry.Breadcrumb
 import io.sentry.Sentry
 import io.sentry.SentryLogLevel
 import io.sentry.SentryLevel
@@ -17,17 +16,13 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.flow
+import com.tanush.bouncer.utils.sentryBreadcrumb
 
 object CricketRepository {
     private const val TAG = "CricketRepository"
 
     suspend fun getMatches(type: String): AppResult<SanwebMatchesListResponse> {
-        Sentry.addBreadcrumb(Breadcrumb().apply {
-            category = "network.api"
-            message = "Fetching matches"
-            level = SentryLevel.INFO
-            setData("type", type)
-        })
+        sentryBreadcrumb("network.api", "Fetching matches", data = mapOf("type" to type))
         // Try Appwrite Storage first (updated by backend function every minute)
         val cached = tryReadMatchesFromStorage(type)
         if (cached != null) return AppResult.Success(cached)
@@ -38,23 +33,17 @@ object CricketRepository {
             Sentry.metrics().gauge("repository.matches.count", resp.matches.size.toDouble())
             Sentry.metrics().count("repository.getMatches.success", 1.0)
             Sentry.logger().log(SentryLogLevel.INFO, "Repository getMatches success for %s", type)
-            Sentry.addBreadcrumb(Breadcrumb().apply {
-                category = "network.api"
-                message = "Successfully fetched matches"
-                level = SentryLevel.INFO
-                setData("type", type)
-            })
+            sentryBreadcrumb("network.api", "Successfully fetched matches", data = mapOf("type" to type))
             resp
         }.also {
             if (it is AppResult.Error) {
                 Log.e(TAG, "Error fetching matches for type: $type", it.exception)
-                Sentry.addBreadcrumb(Breadcrumb().apply {
-                    category = "network.api"
-                    message = "Error fetching matches"
-                    level = SentryLevel.ERROR
-                    setData("type", type)
-                    setData("error", it.exception.message)
-                })
+                sentryBreadcrumb(
+                    "network.api",
+                    "Error fetching matches",
+                    SentryLevel.ERROR,
+                    mapOf("type" to type, "error" to it.exception.message)
+                )
                 Sentry.captureException(it.exception)
                 Sentry.metrics().count("repository.getMatches.error", 1.0)
             }
@@ -79,33 +68,22 @@ object CricketRepository {
     }
 
     suspend fun getMatchScore(id: String): AppResult<SanwebMatchResponse> {
-        Sentry.addBreadcrumb(Breadcrumb().apply {
-            category = "network.api"
-            message = "Fetching match score"
-            level = SentryLevel.INFO
-            setData("matchId", id)
-        })
+        sentryBreadcrumb("network.api", "Fetching match score", data = mapOf("matchId" to id))
         return AppResult.runCatchingSuspend {
             val resp = RetrofitClient.vercelApi.getMatchScore(id)
             Log.d(TAG, "Successfully fetched match score for id: $id")
             Sentry.metrics().count("repository.getMatchScore.success", 1.0)
-            Sentry.addBreadcrumb(Breadcrumb().apply {
-                category = "network.api"
-                message = "Successfully fetched match score"
-                level = SentryLevel.INFO
-                setData("matchId", id)
-            })
+            sentryBreadcrumb("network.api", "Successfully fetched match score", data = mapOf("matchId" to id))
             resp
         }.also {
             if (it is AppResult.Error) {
                 Log.e(TAG, "Error fetching match score for id: $id", it.exception)
-                Sentry.addBreadcrumb(Breadcrumb().apply {
-                    category = "network.api"
-                    message = "Error fetching match score"
-                    level = SentryLevel.ERROR
-                    setData("matchId", id)
-                    setData("error", it.exception.message)
-                })
+                sentryBreadcrumb(
+                    "network.api",
+                    "Error fetching match score",
+                    SentryLevel.ERROR,
+                    mapOf("matchId" to id, "error" to it.exception.message)
+                )
                 Sentry.captureException(it.exception)
                 Sentry.metrics().count("repository.getMatchScore.error", 1.0)
             }
@@ -113,12 +91,7 @@ object CricketRepository {
     }
 
     suspend fun getProbabilityHistory(matchId: String, localApi: com.tanush.bouncer.network.LocalApi? = null): AppResult<List<com.tanush.bouncer.models.WinProbabilityPoint>> {
-        Sentry.addBreadcrumb(Breadcrumb().apply {
-            category = "network.api"
-            message = "Fetching probability history"
-            level = SentryLevel.INFO
-            setData("matchId", matchId)
-        })
+        sentryBreadcrumb("network.api", "Fetching probability history", data = mapOf("matchId" to matchId))
         return AppResult.runCatchingSuspend {
             val api = localApi ?: RetrofitClient.localApi
             val resp = api.getProbability(matchId)
@@ -132,24 +105,21 @@ object CricketRepository {
             }
             Log.d(TAG, "Successfully fetched probability history for matchId: $matchId")
             Sentry.metrics().distribution("repository.probability.points", mapped.size.toDouble())
-            Sentry.addBreadcrumb(Breadcrumb().apply {
-                category = "network.api"
-                message = "Successfully fetched probability history"
-                level = SentryLevel.INFO
-                setData("matchId", matchId)
-                setData("pointCount", mapped.size)
-            })
+            sentryBreadcrumb(
+                "network.api",
+                "Successfully fetched probability history",
+                data = mapOf("matchId" to matchId, "pointCount" to mapped.size)
+            )
             mapped
         }.also {
             if (it is AppResult.Error) {
                 Log.e(TAG, "Error fetching probability history for matchId: $matchId", it.exception)
-                Sentry.addBreadcrumb(Breadcrumb().apply {
-                    category = "network.api"
-                    message = "Error fetching probability history"
-                    level = SentryLevel.ERROR
-                    setData("matchId", matchId)
-                    setData("error", it.exception.message)
-                })
+                sentryBreadcrumb(
+                    "network.api",
+                    "Error fetching probability history",
+                    SentryLevel.ERROR,
+                    mapOf("matchId" to matchId, "error" to it.exception.message)
+                )
                 Sentry.captureException(it.exception)
                 Sentry.metrics().count("repository.getProbabilityHistory.error", 1.0)
             }
@@ -157,33 +127,22 @@ object CricketRepository {
     }
 
     suspend fun getMatchCommentary(matchId: String): AppResult<String> {
-        Sentry.addBreadcrumb(Breadcrumb().apply {
-            category = "network.api"
-            message = "Fetching match commentary"
-            level = SentryLevel.INFO
-            setData("matchId", matchId)
-        })
+        sentryBreadcrumb("network.api", "Fetching match commentary", data = mapOf("matchId" to matchId))
         return AppResult.runCatchingSuspend {
             val resp = RetrofitClient.localApi.getCommentary(matchId)
             Log.d(TAG, "Successfully fetched match commentary for matchId: $matchId")
             Sentry.metrics().count("repository.getMatchCommentary.success", 1.0)
-            Sentry.addBreadcrumb(Breadcrumb().apply {
-                category = "network.api"
-                message = "Successfully fetched match commentary"
-                level = SentryLevel.INFO
-                setData("matchId", matchId)
-            })
+            sentryBreadcrumb("network.api", "Successfully fetched match commentary", data = mapOf("matchId" to matchId))
             resp.latestCommentary
         }.also {
             if (it is AppResult.Error) {
                 Log.e(TAG, "Error fetching match commentary for matchId: $matchId", it.exception)
-                Sentry.addBreadcrumb(Breadcrumb().apply {
-                    category = "network.api"
-                    message = "Error fetching match commentary"
-                    level = SentryLevel.ERROR
-                    setData("matchId", matchId)
-                    setData("error", it.exception.message)
-                })
+                sentryBreadcrumb(
+                    "network.api",
+                    "Error fetching match commentary",
+                    SentryLevel.ERROR,
+                    mapOf("matchId" to matchId, "error" to it.exception.message)
+                )
                 Sentry.captureException(it.exception)
                 Sentry.metrics().count("repository.getMatchCommentary.error", 1.0)
             }
@@ -223,12 +182,12 @@ object CricketRepository {
                 emit(entity)
             }
         } catch (e: Exception) {
-            Sentry.addBreadcrumb(Breadcrumb().apply {
-                category = "cache"
-                message = "Network fetch failed, using cached data"
-                level = SentryLevel.WARNING
-                setData("matchId", matchId)
-            })
+            sentryBreadcrumb(
+                "cache",
+                "Network fetch failed, using cached data",
+                SentryLevel.WARNING,
+                mapOf("matchId" to matchId)
+            )
             Sentry.captureException(e)
             if (cached == null) emit(null)
         }

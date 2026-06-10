@@ -9,13 +9,13 @@ import com.tanush.bouncer.data.local.entities.SeriesCacheEntity
 import com.tanush.bouncer.data.remote.AppwriteClient
 import com.tanush.bouncer.network.SeriesScraper
 import com.tanush.bouncer.utils.WorkerLogger
-import io.sentry.Breadcrumb
 import io.sentry.Sentry
 import io.sentry.SentryLevel
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
 import java.util.concurrent.TimeUnit
 import kotlin.coroutines.cancellation.CancellationException
+import com.tanush.bouncer.utils.sentryBreadcrumb
 
 /**
  * WorkManager-based periodic worker that syncs active cricket series into the series_cache table.
@@ -27,11 +27,7 @@ class SeriesSyncWorker(
 ) : CoroutineWorker(context, workerParams) {
 
     override suspend fun doWork(): Result {
-        Sentry.addBreadcrumb(Breadcrumb().apply {
-            category = "series_sync"
-            message = "SeriesSyncWorker started (attempt $runAttemptCount)"
-            level = SentryLevel.INFO
-        })
+        sentryBreadcrumb("series_sync", "SeriesSyncWorker started (attempt $runAttemptCount)")
 
         return try {
             val db = BouncerDatabase.getInstance(context)
@@ -56,28 +52,16 @@ class SeriesSyncWorker(
             db.seriesCacheDao().upsertAll(entities)
 
             Log.d(TAG, "Series sync succeeded — ${entities.size} series cached")
-            Sentry.addBreadcrumb(Breadcrumb().apply {
-                category = "series_sync"
-                message = "Sync succeeded — ${entities.size} series cached"
-                level = SentryLevel.INFO
-            })
+            sentryBreadcrumb("series_sync", "Sync succeeded — ${entities.size} series cached")
 
             Result.success()
         } catch (e: SocketTimeoutException) {
             Log.w(TAG, "Network timeout in SeriesSyncWorker", e)
-            Sentry.addBreadcrumb(Breadcrumb().apply {
-                category = "series_sync"
-                message = "Sync failed (timeout): ${e.message}"
-                level = SentryLevel.WARNING
-            })
+            sentryBreadcrumb("series_sync", "Sync failed (timeout): ${e.message}", SentryLevel.WARNING)
             if (runAttemptCount < WORKER_MAX_RETRIES) Result.retry() else Result.failure()
         } catch (e: UnknownHostException) {
             Log.w(TAG, "No network in SeriesSyncWorker", e)
-            Sentry.addBreadcrumb(Breadcrumb().apply {
-                category = "series_sync"
-                message = "Sync failed (no network): ${e.message}"
-                level = SentryLevel.WARNING
-            })
+            sentryBreadcrumb("series_sync", "Sync failed (no network): ${e.message}", SentryLevel.WARNING)
             if (runAttemptCount < WORKER_MAX_RETRIES) Result.retry() else Result.failure()
         } catch (e: Exception) {
             Log.e(TAG, "Unexpected error in SeriesSyncWorker", e)

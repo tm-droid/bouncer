@@ -8,13 +8,13 @@ import com.tanush.bouncer.data.local.entities.PlayerCacheEntity
 import com.tanush.bouncer.data.remote.AppwritePlayerProfilesClient
 import com.tanush.bouncer.network.PlayerProfileScraper
 import com.tanush.bouncer.utils.WorkerLogger
-import io.sentry.Breadcrumb
 import io.sentry.Sentry
 import io.sentry.SentryLevel
 import org.json.JSONObject
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
 import java.util.concurrent.TimeUnit
+import com.tanush.bouncer.utils.sentryBreadcrumb
 
 /**
  * WorkManager-based one-time worker that fetches and caches a single player's profile on-demand.
@@ -29,11 +29,7 @@ class PlayerCacheWorker(
         val playerName = inputData.getString(KEY_PLAYER_NAME)
             ?: return Result.failure()
 
-        Sentry.addBreadcrumb(Breadcrumb().apply {
-            category = "player_cache"
-            message = "PlayerCacheWorker started for '$playerName' (attempt $runAttemptCount)"
-            level = SentryLevel.INFO
-        })
+        sentryBreadcrumb("player_cache", "PlayerCacheWorker started for '$playerName' (attempt $runAttemptCount)")
 
         return try {
             val playerId = playerName.lowercase().replace(" ", "_")
@@ -45,11 +41,7 @@ class PlayerCacheWorker(
 
             if (lastUpdated != null && (now - lastUpdated) < sevenDaysMs) {
                 Log.d(TAG, "Skipping '$playerName' — cached ${(now - lastUpdated) / 1000 / 60 / 60} hours ago")
-                Sentry.addBreadcrumb(Breadcrumb().apply {
-                    category = "player_cache"
-                    message = "Skipped '$playerName' — cached recently"
-                    level = SentryLevel.INFO
-                })
+                sentryBreadcrumb("player_cache", "Skipped '$playerName' — cached recently")
                 return Result.success()
             }
 
@@ -58,32 +50,20 @@ class PlayerCacheWorker(
             if (remoteProfile != null) {
                 db.playerCacheDao().upsert(remoteProfile)
                 Log.d(TAG, "Appwrite hit for '$playerName' — skipped scrape, warmed Room")
-                Sentry.addBreadcrumb(Breadcrumb().apply {
-                    category = "player_cache"
-                    message = "Appwrite cache hit for '$playerName' — skipped scrape"
-                    level = SentryLevel.INFO
-                })
+                sentryBreadcrumb("player_cache", "Appwrite cache hit for '$playerName' — skipped scrape")
                 return Result.success()
             }
 
             val results = PlayerProfileScraper.searchPlayers(playerName)
             val firstResult = results.firstOrNull() ?: run {
                 Log.d(TAG, "Player '$playerName' not found in search — skipping")
-                Sentry.addBreadcrumb(Breadcrumb().apply {
-                    category = "player_cache"
-                    message = "Player '$playerName' not found"
-                    level = SentryLevel.INFO
-                })
+                sentryBreadcrumb("player_cache", "Player '$playerName' not found")
                 return Result.success()
             }
 
             val profile = PlayerProfileScraper.scrapeProfile(firstResult.name) ?: run {
                 Log.d(TAG, "Could not scrape profile for '$playerName'")
-                Sentry.addBreadcrumb(Breadcrumb().apply {
-                    category = "player_cache"
-                    message = "Profile scrape returned null for '$playerName'"
-                    level = SentryLevel.WARNING
-                })
+                sentryBreadcrumb("player_cache", "Profile scrape returned null for '$playerName'", SentryLevel.WARNING)
                 return Result.success()
             }
 
@@ -100,28 +80,24 @@ class PlayerCacheWorker(
             AppwritePlayerProfilesClient.pushProfile(entity)
 
             Log.d(TAG, "Cached player profile for '${profile.name}'")
-            Sentry.addBreadcrumb(Breadcrumb().apply {
-                category = "player_cache"
-                message = "Cached player '${profile.name}' successfully"
-                level = SentryLevel.INFO
-            })
+            sentryBreadcrumb("player_cache", "Cached player '${profile.name}' successfully")
 
             Result.success()
         } catch (e: SocketTimeoutException) {
             Log.w(TAG, "Network timeout in PlayerCacheWorker for '$playerName'", e)
-            Sentry.addBreadcrumb(Breadcrumb().apply {
-                category = "player_cache"
-                message = "Cache failed (timeout) for '$playerName': ${e.message}"
-                level = SentryLevel.WARNING
-            })
+            sentryBreadcrumb(
+                "player_cache",
+                "Cache failed (timeout) for '$playerName': ${e.message}",
+                SentryLevel.WARNING
+            )
             if (runAttemptCount < WORKER_MAX_RETRIES) Result.retry() else Result.failure()
         } catch (e: UnknownHostException) {
             Log.w(TAG, "No network in PlayerCacheWorker for '$playerName'", e)
-            Sentry.addBreadcrumb(Breadcrumb().apply {
-                category = "player_cache"
-                message = "Cache failed (no network) for '$playerName': ${e.message}"
-                level = SentryLevel.WARNING
-            })
+            sentryBreadcrumb(
+                "player_cache",
+                "Cache failed (no network) for '$playerName': ${e.message}",
+                SentryLevel.WARNING
+            )
             if (runAttemptCount < WORKER_MAX_RETRIES) Result.retry() else Result.failure()
         } catch (e: Exception) {
             Log.e(TAG, "Unexpected error in PlayerCacheWorker for '$playerName'", e)

@@ -19,11 +19,11 @@ import com.tanush.bouncer.ui.widgets.LiveMatchWidgetProvider
 import com.tanush.bouncer.ui.widgets.WidgetUpdateWorker
 import com.tanush.bouncer.utils.WorkerLogger
 import com.tanush.bouncer.utils.PrefsRegistry
-import io.sentry.Breadcrumb
 import io.sentry.Sentry
 import io.sentry.SentryLevel
 import kotlinx.coroutines.CancellationException
 import java.util.concurrent.TimeUnit
+import com.tanush.bouncer.utils.sentryBreadcrumb
 
 /**
  * WorkManager-based periodic score poller.
@@ -37,11 +37,7 @@ class ScorePollingWorker(
 ) : CoroutineWorker(context, workerParams) {
 
     override suspend fun doWork(): Result {
-        Sentry.addBreadcrumb(Breadcrumb().apply {
-            category = "score_polling"
-            message = "ScorePollingWorker started (attempt ${runAttemptCount})"
-            level = SentryLevel.INFO
-        })
+        sentryBreadcrumb("score_polling", "ScorePollingWorker started (attempt ${runAttemptCount})")
 
         // Early-exit: no subscriptions → nothing to notify, skip network call entirely.
         if (MatchSubscriptionManager.subscriptions.value.isEmpty()) {
@@ -64,11 +60,7 @@ class ScorePollingWorker(
                     )
                     notifySubscribedMatches(matchesResponse.matches)
 
-                    Sentry.addBreadcrumb(Breadcrumb().apply {
-                        category = "score_polling"
-                        message = "Poll succeeded – $matchCount live matches"
-                        level = SentryLevel.INFO
-                    })
+                    sentryBreadcrumb("score_polling", "Poll succeeded – $matchCount live matches")
 
                     // Adaptive polling: chain a 5-min follow-up while live matches exist.
                     // Cap at MAX_LIVE_FOLLOWUPS (1 hour) so an API that never marks the match
@@ -98,11 +90,7 @@ class ScorePollingWorker(
                 }
                 is AppResult.Error -> {
                     Log.e(TAG, "Poll failed", response.exception)
-                    Sentry.addBreadcrumb(Breadcrumb().apply {
-                        category = "score_polling"
-                        message = "Poll failed: ${response.exception.message}"
-                        level = SentryLevel.ERROR
-                    })
+                    sentryBreadcrumb("score_polling", "Poll failed: ${response.exception.message}", SentryLevel.ERROR)
                     if (runAttemptCount < WORKER_MAX_RETRIES) Result.retry() else Result.failure()
                 }
                 is AppResult.Loading -> if (runAttemptCount < WORKER_MAX_RETRIES) Result.retry() else Result.failure()
