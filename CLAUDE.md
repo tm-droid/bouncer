@@ -35,40 +35,43 @@ cp local.properties.template local.properties  # Fill in secret keys (RAPIDAPI_K
 ./gradlew test                   # Run all unit tests
 ./gradlew test --tests "*MatchUtilsTest"  # Run single test
 ./gradlew clean build            # Clean build (if cache corrupted)
-./gradlew detekt                  # Static analysis
+./gradlew detekt "-Dorg.gradle.java.home=$HOME/Library/Java/JavaVirtualMachines/jbr-21.0.10/Contents/Home"  # Static analysis (see below)
 ./gradlew assembleDebug -PenableComposeCompilerReports  # Compose metrics
 ```
 
+**Detekt:** `maxIssues: 0` is enforced. Pre-existing debt lives in `app/config/detekt-baseline.xml` (~533 entries) — new/modified code must be detekt-clean; never re-baseline files you touch. detekt 1.23.x cannot run on JDK 25 (`EnvironmentFacade` crash), so detekt tasks must run under JDK ≤21 via `-Dorg.gradle.java.home` (JBR 21 is installed at the path above). Regular builds use the default JDK.
+
+**Release builds** require `sentry-cli` at `/opt/homebrew/bin/sentry-cli` (pinned in `sentry.properties`): `brew install getsentry/tools/sentry-cli`. Without it, `uploadSentryProguardMappingsRelease`/`sentryBundleSourcesRelease` fail.
+
 ## Architecture
+
+**Two live source trees.** `app/src/main/kotlin/` (~278 files) is the main tree. `app/src/main/java/` (~37 .kt files) is also LIVE — it contains `BouncerActivity` (the launcher activity), `liveactivity/`, `services/LiveActivityService`, and the `ui/components/glass/` + `ui/components/premium/` component sets used across both trees. Never assume the java tree is legacy; both share `com.tanush.bouncer` package names.
 
 ```
 app/src/main/kotlin/com/tanush/bouncer/
 ├── BouncerApp.kt       # App entry + startup sequence
 ├── ApiKeys.kt          # Single source for all API key access — use this, not BuildConfig directly
+├── SentryOptionsConfig.kt  # Sentry runtime init options
 ├── ui/
 │   ├── screens/        # Full-page Compose screens
-│   ├── components/     # Reusable composables
+│   ├── components/     # Reusable composables (+ components/v2/, components/premium/)
 │   ├── widgets/        # Glance home-screen widgets
 │   ├── navigation/     # BouncerNavHost.kt — single NavHost, all routes
-│   ├── theme/          # Material3 theme
-│   └── adaptive/       # Window-size-class layouts
+│   └── theme/          # Material3 theme
 ├── viewmodels/         # MVVM ViewModels (no Hilt — manual construction)
 ├── services/           # FCM, CommentaryFusion, LiveCommentary, Workers, AICacheService
-│                       # (LiveScoreWebSocketClient defined but never instantiated — dead code, do not add callers)
-├── managers/           # Singleton managers (TeamLogo, Acronym, Favourites, MatchSubscription, NotificationInbox)
-├── network/            # Retrofit + Jsoup scrapers (CricBuzz, CricInfo, Series, Squad)
+│                       # RetryPolicy.kt: WORKER_MAX_RETRIES — shared retry cap for all Workers
+├── managers/           # Singleton managers (TeamLogo, TeamAcronym, FavouriteTeams, MatchSubscription, NotificationInbox)
+├── network/            # Retrofit + Jsoup scrapers (CricBuzz, CricInfo, Series, PointsTable, PlayerProfile)
 ├── data/               # Room DB, repositories, AppResult<T> monad
-│   ├── CacheConfig.kt  # AI_CACHE_TTL_MS + HIGHLIGHTS_FRESHNESS_MS — use these, no magic TTL numbers
-│   └── remote/         # Appwrite clients: AppwriteClient (singleton), AppwriteAICache,
-│                       # AppwriteHighlightsClient, AppwriteFavouritesSync,
-│                       # AppwritePlayerFormsClient, AppwritePlayerProfilesClient
-├── models/             # Data models and entities
+│   ├── CacheConfig.kt  # All cache TTLs + realtime reconnect backoff + permanent-cache sentinel — no magic numbers
+│   └── remote/         # AppwriteClient (singleton) + table clients extending AppwriteTableClient
+├── models/             # Data models and entities (proguard-kept for Gson — never delete on grep evidence)
 ├── analysis/           # Cricket analysis + ML models (score prediction, win probability)
 ├── auto/               # Android Auto (BouncerCarAppService)
 ├── mcp/                # Model Context Protocol handlers
-├── utils/              # Utility functions (WorkerLogger.kt: WorkerLogger.enqueued/failed — use in all Workers for Sentry breadcrumbs)
-├── monitoring/         # Sentry + SentryAiSpans
-└── logic/              # Match simulation + game logic
+└── utils/              # WorkerLogger.enqueued/failed (Workers) + sentryBreadcrumb() (SentryBreadcrumbs.kt)
+                        # — use these instead of raw Breadcrumb().apply boilerplate
 ```
 
 **Appwrite cloud functions** live in `appwrite/functions/` (Node.js, deployed via Appwrite CLI). `appwrite/appwrite.config.json` defines project-level config. The `highlights-sync` function runs on a 15-min schedule; endpoint/projectId are auto-injected by the runtime — only `APPWRITE_API_KEY` and DB/collection IDs need manual env vars.
@@ -79,7 +82,7 @@ app/src/main/kotlin/com/tanush/bouncer/
 
 **Navigation:** Single `BouncerNavHost` with Compose Navigation. Deep link entry via `bouncer://match/{matchId}`.
 
-**Live data flow:** `LiveScoreWebSocketClient` → `LiveCommentaryManager` → `CommentaryFusionService` (OpenRouter, multi-model fallback) + `BallCommentaryService` (Groq → Cerebras → SambaNova per-ball) → UI via StateFlow. `AICacheService` warms cache from Appwrite Realtime events.
+**Live data flow:** score polling (`ScorePollingWorker` + FCM) → `LiveCommentaryManager` → `CommentaryFusionService` (OpenRouter, multi-model fallback) + `BallCommentaryService` (Groq → Cerebras → SambaNova per-ball) → UI via StateFlow. `AICacheService` warms cache from Appwrite Realtime events.
 
 **AI cache (3-tier):** Memory LRU (256 entries) → Room `ai_commentary_cache` → Appwrite `ai-commentary-cache` table. All four commentary functions (`generateBallCommentary`, `fuse`, `streamCommentary`, `summarizeOversWithAI`) check cache before calling any AI provider. Completed matches use **permanent TTL** (`Long.MAX_VALUE` in Room, `expires_at = "2099-01-01T00:00:00.000Z"` in Appwrite) — `isMatchComplete` flag threads from ViewModels → `LiveCommentaryManager` → `CommentaryFusionService` → `AICacheService`. Never set permanent=true for live matches.
 
@@ -91,7 +94,7 @@ app/src/main/kotlin/com/tanush/bouncer/
 
 **Appwrite MCP workflow:** `appwrite_search_tools` → `appwrite_call_tool` → `ReadMcpResourceTool` (server: `plugin:appwrite:appwrite-api`, URI from truncated result) for full output. Column creation returns `status: "processing"` — call `tables_db_list_columns` to confirm `"available"` before using. Table-level permissions at creation: `["read(\"any\")", "create(\"any\")", "update(\"any\")"]`.
 
-**New Appwrite client pattern:** `object` singleton, `initialize()` sets `dbId`/`tableId`/`isReady`, `tablesDB` computed property returns fresh `TablesDB(AppwriteClient.client ?: return null)`, all ops `runCatching` + silent log on failure. Register in `BouncerApp.kt` via `initializeSafely("Name") { Client.initialize() }`.
+**New Appwrite client pattern:** `object` singleton extending `AppwriteTableClient(tag)`. The base provides `initTable()`, `tablesDB`, `isReady`, the Realtime `startSubscriptionLoop()` + reconnect backoff, `stop()`, and `logSilentFailure()` — don't reimplement these. Subclass adds `initialize()` (calls `initTable(dbId, tableId)`) and its table ops as `runCatching` + `logSilentFailure` on failure. Register in `BouncerApp.kt` via `initializeSafely("Name") { Client.initialize() }`.
 
 **API keys:** Always access via `ApiKeys` object (`ApiKeys.kt`), never `BuildConfig` directly. Add new keys to `ApiKeys.kt` + `build.gradle.kts` + `local.properties.template`.
 
@@ -101,11 +104,10 @@ app/src/main/kotlin/com/tanush/bouncer/
 
 - **Jetpack Compose + Navigation**: UI framework + in-app routing
 - **Glance**: Home-screen app widgets
-- **Sentry**: Error monitoring + performance (AI spans via `SentryAiSpans`)
+- **Sentry**: Error monitoring + performance (configured in `SentryOptionsConfig.kt`)
 - **Firebase Cloud Messaging (FCM)**: Push notifications
 - **Room + Paging 3**: Offline cache + paginated queries
 - **Retrofit + OkHttp**: REST APIs; **Jsoup**: HTML scraping for Cricbuzz
-- **Ktor CIO**: WebSocket client for live score stream
 - **Kotlin Symbol Processing (KSP)**: Code generation for Room
 - **Android Auto**: `BouncerCarAppService` for car display
 - **Appwrite Android SDK** (`io.appwrite:sdk-for-android`): Realtime subscriptions, TablesDB sync — endpoint `https://sgp.cloud.appwrite.io/v1`, project `6a02f7f3000e6e100b19`
@@ -129,7 +131,8 @@ app/src/main/kotlin/com/tanush/bouncer/
 - **Compose**: Stateless components, modifiers for layout, remember/derivedStateOf for state
 - **Naming**: camelCase for functions/variables, PascalCase for types
 - **Comments**: Only for non-obvious logic (WHY, not WHAT)
-- **V2 screens**: Most screens have `V1` (legacy) and `V2` (active) variants. `V2` is the current implementation; `V1` files are kept but unused.
+- **V2 naming**: Active screens/components carry a `V2` suffix (`HomeScreenV2`, `MatchDetailViewV2`, `components/v2/`). Legacy `V1` files were deleted in the June 2026 dead-code purge — do not recreate them.
+- **Dead-code caution**: `models/**` and `network/*Dto` are proguard-kept for Gson reflection; manifest-registered classes (`AndroidManifest.xml` `android:name`) and WorkManager `CoroutineWorker` subclasses are reflection roots. Never delete any of these on grep evidence alone.
 
 ---
 
