@@ -8,6 +8,7 @@ import io.appwrite.ID
 import io.appwrite.Permission
 import io.appwrite.Role
 import io.appwrite.exceptions.AppwriteException
+import io.appwrite.services.TablesDB
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -40,31 +41,29 @@ object AppwriteAICache : AppwriteTableClient("AppwriteAICache") {
                     queries = listOf(Query.equal("cache_key", key), Query.limit(1))
                 )
                 val row = result.rows.firstOrNull() ?: return@runCatching null
-                val data = row.data
-                val expiresAt = data["expires_at"] as? String ?: ""
-                val now = System.currentTimeMillis()
-                if (expiresAt.isNotBlank()) {
-                    val expiry = runCatching { Instant.parse(expiresAt).toEpochMilli() }.getOrNull() ?: 0L
-                    if (expiry < now) {
-                        Log.d(TAG, "Remote cache expired for key $key")
-                        return@runCatching null
-                    }
-                    val commentary = (data["commentary"] as? String)?.takeIf { it.isNotBlank() }
-                        ?: return@runCatching null
-                    val isPermanent = expiry > now + CacheConfig.AI_CACHE_PERMANENT_THRESHOLD_MS
-                    return@runCatching Pair(commentary, isPermanent)
-                }
-                val commentary = (data["commentary"] as? String)?.takeIf { it.isNotBlank() }
-                    ?: return@runCatching null
-                Pair(commentary, false)
+                parseCommentaryRow(key, row.data)
             }.onFailure { e ->
-                if (e is AppwriteException) {
-                    Log.d(TAG, "Remote cache get failed (silent): ${e.message} [${e.code}]")
-                } else {
-                    Log.d(TAG, "Remote cache get failed (silent): ${e.message}")
-                }
+                logSilentFailure("Remote cache get failed", e)
             }.getOrNull()
         }
+    }
+
+    // Returns null when the row is expired or has blank commentary.
+    private fun parseCommentaryRow(key: String, data: Map<String, Any?>): Pair<String, Boolean>? {
+        val expiresAt = data["expires_at"] as? String ?: ""
+        val now = System.currentTimeMillis()
+        if (expiresAt.isNotBlank()) {
+            val expiry = runCatching { Instant.parse(expiresAt).toEpochMilli() }.getOrNull() ?: 0L
+            if (expiry < now) {
+                Log.d(TAG, "Remote cache expired for key $key")
+                return null
+            }
+            val commentary = (data["commentary"] as? String)?.takeIf { it.isNotBlank() } ?: return null
+            val isPermanent = expiry > now + CacheConfig.AI_CACHE_PERMANENT_THRESHOLD_MS
+            return Pair(commentary, isPermanent)
+        }
+        val commentary = (data["commentary"] as? String)?.takeIf { it.isNotBlank() } ?: return null
+        return Pair(commentary, false)
     }
 
     /**
@@ -94,32 +93,31 @@ object AppwriteAICache : AppwriteTableClient("AppwriteAICache") {
                     "commentary" to commentary,
                     "expires_at" to expiresAt
                 )
-                // Use a deterministic document ID derived from the cache key so concurrent
-                // set() calls for the same key conflict on ID (409) rather than creating
-                // duplicate rows. Catch 409 and treat as success — the row already exists.
-                val docId = cacheKeyToDocId(key)
-                try {
-                    db.createRow(
-                        databaseId = dbId,
-                        tableId = tableId,
-                        rowId = docId,
-                        data = data,
-                        permissions = listOf(Permission.read(Role.any()))
-                    )
-                } catch (e: AppwriteException) {
-                    if (e.code == 409) {
-                        // Row already exists (concurrent writer or previous call) — idempotent success.
-                        Log.d(TAG, "Remote cache set: row already exists for key $key (409 conflict — OK)")
-                    } else {
-                        throw e
-                    }
-                }
+                createRowIdempotent(db, key, data)
             }.onFailure { e ->
-                if (e is AppwriteException) {
-                    Log.d(TAG, "Remote cache set failed (silent): ${e.message} [${e.code}]")
-                } else {
-                    Log.d(TAG, "Remote cache set failed (silent): ${e.message}")
-                }
+                logSilentFailure("Remote cache set failed", e)
+            }
+        }
+    }
+
+    // Uses a deterministic document ID derived from the cache key so concurrent
+    // set() calls for the same key conflict on ID (409) rather than creating
+    // duplicate rows. Catches 409 and treats it as success — the row already exists.
+    private suspend fun createRowIdempotent(db: TablesDB, key: String, data: Map<String, String>) {
+        try {
+            db.createRow(
+                databaseId = dbId,
+                tableId = tableId,
+                rowId = cacheKeyToDocId(key),
+                data = data,
+                permissions = listOf(Permission.read(Role.any()))
+            )
+        } catch (e: AppwriteException) {
+            if (e.code == 409) {
+                // Row already exists (concurrent writer or previous call) — idempotent success.
+                Log.d(TAG, "Remote cache set: row already exists for key $key (409 conflict — OK)")
+            } else {
+                throw e
             }
         }
     }

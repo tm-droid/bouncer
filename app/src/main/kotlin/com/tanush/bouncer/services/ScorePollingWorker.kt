@@ -13,6 +13,7 @@ import com.tanush.bouncer.R
 import com.tanush.bouncer.data.AppResult
 import com.tanush.bouncer.data.CricketRepository
 import com.tanush.bouncer.network.models.SanwebMatchSummary
+import com.tanush.bouncer.network.models.SanwebMatchesListResponse
 import com.tanush.bouncer.managers.MatchSubscriptionManager
 import com.tanush.bouncer.ui.notifications.RichNotificationBuilder
 import com.tanush.bouncer.ui.widgets.LiveMatchWidgetProvider
@@ -48,52 +49,13 @@ class ScorePollingWorker(
 
         return try {
             when (val response = CricketRepository.getMatches("live")) {
-                is AppResult.Success -> {
-                    val matchesResponse = response.data
-                    val matchCount = matchesResponse.matches.size
-                    Log.d(TAG, "Fetched $matchCount live matches")
-
-                    cacheForWidgets(matchesResponse.matches)
-                    WidgetUpdateWorker.triggerImmediateUpdate(context)
-                    context.sendBroadcast(
-                        Intent(ACTION_SCORES_UPDATED).setPackage(context.packageName)
-                    )
-                    notifySubscribedMatches(matchesResponse.matches)
-
-                    sentryBreadcrumb("score_polling", "Poll succeeded – $matchCount live matches")
-
-                    // Adaptive polling: chain a 5-min follow-up while live matches exist.
-                    // Cap at MAX_LIVE_FOLLOWUPS (1 hour) so an API that never marks the match
-                    // completed can't lock us into a permanent 5-min poll cycle. Counter resets
-                    // whenever no live matches are present.
-                    // Synchronized to prevent a race if WorkManager ever runs two instances
-                    // concurrently (e.g. expedited + periodic overlap).
-                    val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-                    if (matchCount > 0) {
-                        val enqueue = synchronized(ScorePollingWorker::class.java) {
-                            val count = prefs.getInt(KEY_FOLLOWUP_COUNT, 0)
-                            if (count < MAX_LIVE_FOLLOWUPS) {
-                                prefs.edit().putInt(KEY_FOLLOWUP_COUNT, count + 1).apply()
-                                true
-                            } else {
-                                Log.w(TAG, "Live follow-up cap reached ($MAX_LIVE_FOLLOWUPS); falling back to periodic poll")
-                                prefs.edit().remove(KEY_FOLLOWUP_COUNT).apply()
-                                false
-                            }
-                        }
-                        if (enqueue) enqueueLiveFollowUp(context)
-                    } else {
-                        prefs.edit().remove(KEY_FOLLOWUP_COUNT).apply()
-                    }
-
-                    Result.success(workDataOf("match_count" to matchCount))
-                }
+                is AppResult.Success -> onPollSuccess(response.data)
                 is AppResult.Error -> {
                     Log.e(TAG, "Poll failed", response.exception)
                     sentryBreadcrumb("score_polling", "Poll failed: ${response.exception.message}", SentryLevel.ERROR)
-                    if (runAttemptCount < WORKER_MAX_RETRIES) Result.retry() else Result.failure()
+                    retryOrFail()
                 }
-                is AppResult.Loading -> if (runAttemptCount < WORKER_MAX_RETRIES) Result.retry() else Result.failure()
+                is AppResult.Loading -> retryOrFail()
             }
         } catch (e: CancellationException) {
             // Normal WorkManager lifecycle cancellation — not an error, re-throw immediately.
@@ -101,9 +63,56 @@ class ScorePollingWorker(
         } catch (e: Exception) {
             Log.e(TAG, "Unexpected error in ScorePollingWorker", e)
             Sentry.captureException(e)
-            if (runAttemptCount < WORKER_MAX_RETRIES) Result.retry() else Result.failure()
+            retryOrFail()
         }
     }
+
+    private suspend fun onPollSuccess(matchesResponse: SanwebMatchesListResponse): Result {
+        val matchCount = matchesResponse.matches.size
+        Log.d(TAG, "Fetched $matchCount live matches")
+
+        cacheForWidgets(matchesResponse.matches)
+        WidgetUpdateWorker.triggerImmediateUpdate(context)
+        context.sendBroadcast(
+            Intent(ACTION_SCORES_UPDATED).setPackage(context.packageName)
+        )
+        notifySubscribedMatches(matchesResponse.matches)
+
+        sentryBreadcrumb("score_polling", "Poll succeeded – $matchCount live matches")
+
+        scheduleAdaptiveFollowUp(matchCount)
+
+        return Result.success(workDataOf("match_count" to matchCount))
+    }
+
+    // Adaptive polling: chain a 5-min follow-up while live matches exist.
+    // Cap at MAX_LIVE_FOLLOWUPS (1 hour) so an API that never marks the match
+    // completed can't lock us into a permanent 5-min poll cycle. Counter resets
+    // whenever no live matches are present.
+    // Synchronized to prevent a race if WorkManager ever runs two instances
+    // concurrently (e.g. expedited + periodic overlap).
+    private fun scheduleAdaptiveFollowUp(matchCount: Int) {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        if (matchCount > 0) {
+            val enqueue = synchronized(ScorePollingWorker::class.java) {
+                val count = prefs.getInt(KEY_FOLLOWUP_COUNT, 0)
+                if (count < MAX_LIVE_FOLLOWUPS) {
+                    prefs.edit().putInt(KEY_FOLLOWUP_COUNT, count + 1).apply()
+                    true
+                } else {
+                    Log.w(TAG, "Live follow-up cap reached ($MAX_LIVE_FOLLOWUPS); falling back to periodic poll")
+                    prefs.edit().remove(KEY_FOLLOWUP_COUNT).apply()
+                    false
+                }
+            }
+            if (enqueue) enqueueLiveFollowUp(context)
+        } else {
+            prefs.edit().remove(KEY_FOLLOWUP_COUNT).apply()
+        }
+    }
+
+    private fun retryOrFail(): Result =
+        if (runAttemptCount < WORKER_MAX_RETRIES) Result.retry() else Result.failure()
 
     private suspend fun cacheForWidgets(matches: List<SanwebMatchSummary>) {
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)

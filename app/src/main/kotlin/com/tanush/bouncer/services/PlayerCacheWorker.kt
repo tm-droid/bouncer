@@ -32,57 +32,7 @@ class PlayerCacheWorker(
         sentryBreadcrumb("player_cache", "PlayerCacheWorker started for '$playerName' (attempt $runAttemptCount)")
 
         return try {
-            val playerId = playerName.lowercase().replace(" ", "_")
-            val db = BouncerDatabase.getInstance(context)
-
-            val lastUpdated = db.playerCacheDao().getLastUpdated(playerId)
-            val now = System.currentTimeMillis()
-            val sevenDaysMs = 7L * 24 * 60 * 60 * 1000
-
-            if (lastUpdated != null && (now - lastUpdated) < sevenDaysMs) {
-                Log.d(TAG, "Skipping '$playerName' — cached ${(now - lastUpdated) / 1000 / 60 / 60} hours ago")
-                sentryBreadcrumb("player_cache", "Skipped '$playerName' — cached recently")
-                return Result.success()
-            }
-
-            // Check global Appwrite cache before hitting the scraper.
-            val remoteProfile = AppwritePlayerProfilesClient.pullProfile(playerId)
-            if (remoteProfile != null) {
-                db.playerCacheDao().upsert(remoteProfile)
-                Log.d(TAG, "Appwrite hit for '$playerName' — skipped scrape, warmed Room")
-                sentryBreadcrumb("player_cache", "Appwrite cache hit for '$playerName' — skipped scrape")
-                return Result.success()
-            }
-
-            val results = PlayerProfileScraper.searchPlayers(playerName)
-            val firstResult = results.firstOrNull() ?: run {
-                Log.d(TAG, "Player '$playerName' not found in search — skipping")
-                sentryBreadcrumb("player_cache", "Player '$playerName' not found")
-                return Result.success()
-            }
-
-            val profile = PlayerProfileScraper.scrapeProfile(firstResult.name) ?: run {
-                Log.d(TAG, "Could not scrape profile for '$playerName'")
-                sentryBreadcrumb("player_cache", "Profile scrape returned null for '$playerName'", SentryLevel.WARNING)
-                return Result.success()
-            }
-
-            val entity = PlayerCacheEntity(
-                playerId = playerId,
-                name = profile.name,
-                country = profile.country,
-                role = profile.role,
-                teamName = firstResult.country,
-                statsJson = serializeStats(profile.stats)
-            )
-
-            db.playerCacheDao().upsert(entity)
-            AppwritePlayerProfilesClient.pushProfile(entity)
-
-            Log.d(TAG, "Cached player profile for '${profile.name}'")
-            sentryBreadcrumb("player_cache", "Cached player '${profile.name}' successfully")
-
-            Result.success()
+            cachePlayer(playerName)
         } catch (e: SocketTimeoutException) {
             Log.w(TAG, "Network timeout in PlayerCacheWorker for '$playerName'", e)
             sentryBreadcrumb(
@@ -90,7 +40,7 @@ class PlayerCacheWorker(
                 "Cache failed (timeout) for '$playerName': ${e.message}",
                 SentryLevel.WARNING
             )
-            if (runAttemptCount < WORKER_MAX_RETRIES) Result.retry() else Result.failure()
+            retryOrFail()
         } catch (e: UnknownHostException) {
             Log.w(TAG, "No network in PlayerCacheWorker for '$playerName'", e)
             sentryBreadcrumb(
@@ -98,13 +48,70 @@ class PlayerCacheWorker(
                 "Cache failed (no network) for '$playerName': ${e.message}",
                 SentryLevel.WARNING
             )
-            if (runAttemptCount < WORKER_MAX_RETRIES) Result.retry() else Result.failure()
+            retryOrFail()
         } catch (e: Exception) {
             Log.e(TAG, "Unexpected error in PlayerCacheWorker for '$playerName'", e)
             Sentry.captureException(e)
             Result.failure()
         }
     }
+
+    private suspend fun cachePlayer(playerName: String): Result {
+        val playerId = playerName.lowercase().replace(" ", "_")
+        val db = BouncerDatabase.getInstance(context)
+
+        val lastUpdated = db.playerCacheDao().getLastUpdated(playerId)
+        val now = System.currentTimeMillis()
+        val sevenDaysMs = 7L * 24 * 60 * 60 * 1000
+
+        if (lastUpdated != null && (now - lastUpdated) < sevenDaysMs) {
+            Log.d(TAG, "Skipping '$playerName' — cached ${(now - lastUpdated) / 1000 / 60 / 60} hours ago")
+            sentryBreadcrumb("player_cache", "Skipped '$playerName' — cached recently")
+            return Result.success()
+        }
+
+        // Check global Appwrite cache before hitting the scraper.
+        val remoteProfile = AppwritePlayerProfilesClient.pullProfile(playerId)
+        if (remoteProfile != null) {
+            db.playerCacheDao().upsert(remoteProfile)
+            Log.d(TAG, "Appwrite hit for '$playerName' — skipped scrape, warmed Room")
+            sentryBreadcrumb("player_cache", "Appwrite cache hit for '$playerName' — skipped scrape")
+            return Result.success()
+        }
+
+        val results = PlayerProfileScraper.searchPlayers(playerName)
+        val firstResult = results.firstOrNull() ?: run {
+            Log.d(TAG, "Player '$playerName' not found in search — skipping")
+            sentryBreadcrumb("player_cache", "Player '$playerName' not found")
+            return Result.success()
+        }
+
+        val profile = PlayerProfileScraper.scrapeProfile(firstResult.name) ?: run {
+            Log.d(TAG, "Could not scrape profile for '$playerName'")
+            sentryBreadcrumb("player_cache", "Profile scrape returned null for '$playerName'", SentryLevel.WARNING)
+            return Result.success()
+        }
+
+        val entity = PlayerCacheEntity(
+            playerId = playerId,
+            name = profile.name,
+            country = profile.country,
+            role = profile.role,
+            teamName = firstResult.country,
+            statsJson = serializeStats(profile.stats)
+        )
+
+        db.playerCacheDao().upsert(entity)
+        AppwritePlayerProfilesClient.pushProfile(entity)
+
+        Log.d(TAG, "Cached player profile for '${profile.name}'")
+        sentryBreadcrumb("player_cache", "Cached player '${profile.name}' successfully")
+
+        return Result.success()
+    }
+
+    private fun retryOrFail(): Result =
+        if (runAttemptCount < WORKER_MAX_RETRIES) Result.retry() else Result.failure()
 
     private fun serializeStats(stats: Map<String, com.tanush.bouncer.models.FormatStats>): String {
         val root = JSONObject()

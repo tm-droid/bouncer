@@ -21,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.*
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -29,13 +30,10 @@ import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.models.WinProbabilityPoint
 import com.tanush.bouncer.ui.components.BouncerImportance
 import com.tanush.bouncer.ui.components.GlassCard
-import com.tanush.bouncer.ui.components.GlassSurface
 import com.tanush.bouncer.ui.theme.BlackSurface
-import com.tanush.bouncer.ui.theme.ChartBlue
 import com.tanush.bouncer.ui.theme.GoldHairline
 import com.tanush.bouncer.ui.theme.TextPrimary
 import com.tanush.bouncer.ui.theme.TextTertiary
-import com.tanush.bouncer.ui.theme.WicketRed
 import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 
 /**
@@ -54,7 +52,6 @@ fun WinProbabilityChartCard(
     currentTeam1Probability: Float,
     modifier: Modifier = Modifier,
 ) {
-    val colors = BouncerDesignSystem.colors
     val hierarchy = BouncerDesignSystem.hierarchy
     val animatedProgress = remember { Animatable(0f) }
 
@@ -75,47 +72,7 @@ fun WinProbabilityChartCard(
                 .fillMaxWidth()
                 .padding(16.dp),
         ) {
-            // Header - Premium but focused
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier
-                            .size(32.dp)
-                            .background(hierarchy.secondary.primary.copy(alpha = 0.1f), CircleShape)
-                            .border(0.5.dp, GoldHairline.copy(alpha = 0.3f), CircleShape),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.TrendingUp,
-                            contentDescription = null,
-                            tint = hierarchy.secondary.primary,
-                            modifier = Modifier.size(16.dp),
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.width(12.dp))
-
-                    Column {
-                        Text(
-                            text = "WIN PROBABILITY".uppercase(),
-                            color = hierarchy.secondary.primary,
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Black,
-                            letterSpacing = 1.5.sp,
-                        )
-                        Text(
-                            text = "LIVE STRATEGIC ANALYTICS",
-                            color = TextTertiary,
-                            fontSize = 9.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
-            }
+            ChartHeader(goldPrimary = hierarchy.secondary.primary)
 
             Spacer(modifier = Modifier.height(20.dp))
 
@@ -130,146 +87,235 @@ fun WinProbabilityChartCard(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Probability bar - Precision line
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(4.dp)
-                    .clip(CircleShape)
-                    .background(Color.White.copy(alpha = 0.05f)),
-            ) {
-                Row(modifier = Modifier.fillMaxSize()) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxHeight()
-                            .weight((currentTeam1Probability * animatedProgress.value).coerceAtLeast(0.1f))
-                            .background(team1Color),
-                    )
-                    Box(
-                        modifier = Modifier
-                            .fillMaxHeight()
-                            .weight(((100 - currentTeam1Probability) * animatedProgress.value).coerceAtLeast(0.1f))
-                            .background(team2Color),
-                    )
-                }
-            }
+            ProbabilitySplitBar(
+                team1Probability = currentTeam1Probability,
+                team1Color = team1Color,
+                team2Color = team2Color,
+                progress = animatedProgress.value,
+            )
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Capture color for Canvas scope
-            val goldPrimary = hierarchy.secondary.primary
-
-            // Probability chart - Technical Grid
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(180.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(Color.Black.copy(alpha = 0.3f))
-                    .border(0.5.dp, Color.White.copy(alpha = 0.05f), RoundedCornerShape(8.dp))
-                    .padding(12.dp),
-            ) {
-                Canvas(modifier = Modifier.fillMaxSize()) {
-                    val width = size.width
-                    val height = size.height
-                    val points = probabilityHistory
-                    val maxOver = points.maxOfOrNull { it.over } ?: 20f
-
-                    // Draw subtle technical grid (dashed)
-                    val probGridDash = PathEffect.dashPathEffect(floatArrayOf(6f, 6f), 0f)
-                    for (i in 0..4) {
-                        val y = height * (i / 4f)
-                        drawLine(
-                            color = Color.White.copy(alpha = 0.06f),
-                            start = Offset(0f, y),
-                            end = Offset(width, y),
-                            strokeWidth = 0.5f,
-                            pathEffect = probGridDash,
-                        )
-                    }
-
-                    // 50% Baseline - Dotted Technical
-                    drawLine(
-                        color = Color.White.copy(alpha = 0.1f),
-                        start = Offset(0f, height / 2),
-                        end = Offset(width, height / 2),
-                        strokeWidth = 1f,
-                        pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 10f), 0f),
-                    )
-
-                    if (points.size >= 2) {
-                        val team1Path = Path()
-                        points.forEachIndexed { index, point ->
-                            val x = (point.over / maxOver) * width * animatedProgress.value
-                            val y1 = height - (point.team1Probability / 100f) * height
-                            if (index == 0) team1Path.moveTo(x, y1) else team1Path.lineTo(x, y1)
-                        }
-
-                        // Glow layer for the line
-                        drawPath(
-                            path = team1Path,
-                            color = team1Color.copy(alpha = 0.2f),
-                            style = Stroke(width = 6.dp.toPx(), cap = StrokeCap.Round),
-                        )
-
-                        // Sharp Line
-                        drawPath(
-                            path = team1Path,
-                            color = team1Color,
-                            style = Stroke(width = 1.5.dp.toPx(), cap = StrokeCap.Round),
-                        )
-
-                        // Key moment markers
-                        points.filter { it.keyEvent != null }.forEach { point ->
-                            val x = (point.over / maxOver) * width * animatedProgress.value
-                            val y = height - (point.team1Probability / 100f) * height
-                            
-                            drawCircle(color = goldPrimary, radius = 4.dp.toPx(), center = Offset(x, y))
-                            drawCircle(color = BlackSurface, radius = 2.dp.toPx(), center = Offset(x, y))
-                        }
-                    }
-                }
-            }
+            ProbabilityChartCanvas(
+                probabilityHistory = probabilityHistory,
+                team1Color = team1Color,
+                goldPrimary = hierarchy.secondary.primary,
+                progress = animatedProgress.value,
+            )
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // Key moments - Minimalist Technical List
-            val keyEvents = probabilityHistory.filter { it.keyEvent != null }.takeLast(2)
-            if (keyEvents.isNotEmpty()) {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text(
-                        text = "KEY STRATEGIC MOMENTS",
-                        color = TextTertiary,
-                        fontSize = 9.sp,
-                        fontWeight = FontWeight.Black,
-                        letterSpacing = 1.2.sp
-                    )
-                    keyEvents.forEach { event ->
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Box(modifier = Modifier.size(4.dp).clip(CircleShape).background(goldPrimary))
-                            Spacer(modifier = Modifier.width(10.dp))
-                            Text(
-                                text = "OV ${event.over}", 
-                                color = TextTertiary, 
-                                fontSize = 10.sp, 
-                                fontWeight = FontWeight.Black, 
-                                modifier = Modifier.width(50.dp)
-                            )
-                            Text(
-                                text = event.keyEvent ?: "", 
-                                color = TextPrimary, 
-                                fontSize = 12.sp, 
-                                fontWeight = FontWeight.Bold,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.weight(1f)
-                            )
-                        }
-                    }
-                }
+            KeyMomentsList(
+                keyEvents = probabilityHistory.filter { it.keyEvent != null }.takeLast(2),
+                goldPrimary = hierarchy.secondary.primary,
+            )
+        }
+    }
+}
+
+// Header - Premium but focused
+@Composable
+private fun ChartHeader(goldPrimary: Color) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .background(goldPrimary.copy(alpha = 0.1f), CircleShape)
+                    .border(0.5.dp, GoldHairline.copy(alpha = 0.3f), CircleShape),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    Icons.AutoMirrored.Filled.TrendingUp,
+                    contentDescription = null,
+                    tint = goldPrimary,
+                    modifier = Modifier.size(16.dp),
+                )
+            }
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            Column {
+                Text(
+                    text = "WIN PROBABILITY".uppercase(),
+                    color = goldPrimary,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = 1.5.sp,
+                )
+                Text(
+                    text = "LIVE STRATEGIC ANALYTICS",
+                    color = TextTertiary,
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+    }
+}
+
+// Probability bar - Precision line
+@Composable
+private fun ProbabilitySplitBar(
+    team1Probability: Float,
+    team1Color: Color,
+    team2Color: Color,
+    progress: Float,
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(4.dp)
+            .clip(CircleShape)
+            .background(Color.White.copy(alpha = 0.05f)),
+    ) {
+        Row(modifier = Modifier.fillMaxSize()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .weight((team1Probability * progress).coerceAtLeast(0.1f))
+                    .background(team1Color),
+            )
+            Box(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .weight(((100 - team1Probability) * progress).coerceAtLeast(0.1f))
+                    .background(team2Color),
+            )
+        }
+    }
+}
+
+// Probability chart - Technical Grid
+@Composable
+private fun ProbabilityChartCanvas(
+    probabilityHistory: List<WinProbabilityPoint>,
+    team1Color: Color,
+    goldPrimary: Color,
+    progress: Float,
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(180.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(Color.Black.copy(alpha = 0.3f))
+            .border(0.5.dp, Color.White.copy(alpha = 0.05f), RoundedCornerShape(8.dp))
+            .padding(12.dp),
+    ) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            drawProbabilityGrid()
+            if (probabilityHistory.size >= 2) {
+                drawProbabilityLine(probabilityHistory, team1Color, goldPrimary, progress)
+            }
+        }
+    }
+}
+
+private fun DrawScope.drawProbabilityGrid() {
+    // Draw subtle technical grid (dashed)
+    val probGridDash = PathEffect.dashPathEffect(floatArrayOf(6f, 6f), 0f)
+    for (i in 0..4) {
+        val y = size.height * (i / 4f)
+        drawLine(
+            color = Color.White.copy(alpha = 0.06f),
+            start = Offset(0f, y),
+            end = Offset(size.width, y),
+            strokeWidth = 0.5f,
+            pathEffect = probGridDash,
+        )
+    }
+
+    // 50% Baseline - Dotted Technical
+    drawLine(
+        color = Color.White.copy(alpha = 0.1f),
+        start = Offset(0f, size.height / 2),
+        end = Offset(size.width, size.height / 2),
+        strokeWidth = 1f,
+        pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 10f), 0f),
+    )
+}
+
+private fun DrawScope.drawProbabilityLine(
+    points: List<WinProbabilityPoint>,
+    team1Color: Color,
+    goldPrimary: Color,
+    progress: Float,
+) {
+    val width = size.width
+    val height = size.height
+    val maxOver = points.maxOfOrNull { it.over } ?: 20f
+
+    val team1Path = Path()
+    points.forEachIndexed { index, point ->
+        val x = (point.over / maxOver) * width * progress
+        val y1 = height - (point.team1Probability / 100f) * height
+        if (index == 0) team1Path.moveTo(x, y1) else team1Path.lineTo(x, y1)
+    }
+
+    // Glow layer for the line
+    drawPath(
+        path = team1Path,
+        color = team1Color.copy(alpha = 0.2f),
+        style = Stroke(width = 6.dp.toPx(), cap = StrokeCap.Round),
+    )
+
+    // Sharp Line
+    drawPath(
+        path = team1Path,
+        color = team1Color,
+        style = Stroke(width = 1.5.dp.toPx(), cap = StrokeCap.Round),
+    )
+
+    // Key moment markers
+    points.filter { it.keyEvent != null }.forEach { point ->
+        val x = (point.over / maxOver) * width * progress
+        val y = height - (point.team1Probability / 100f) * height
+
+        drawCircle(color = goldPrimary, radius = 4.dp.toPx(), center = Offset(x, y))
+        drawCircle(color = BlackSurface, radius = 2.dp.toPx(), center = Offset(x, y))
+    }
+}
+
+// Key moments - Minimalist Technical List
+@Composable
+private fun KeyMomentsList(keyEvents: List<WinProbabilityPoint>, goldPrimary: Color) {
+    if (keyEvents.isEmpty()) return
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Text(
+            text = "KEY STRATEGIC MOMENTS",
+            color = TextTertiary,
+            fontSize = 9.sp,
+            fontWeight = FontWeight.Black,
+            letterSpacing = 1.2.sp
+        )
+        keyEvents.forEach { event ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(modifier = Modifier.size(4.dp).clip(CircleShape).background(goldPrimary))
+                Spacer(modifier = Modifier.width(10.dp))
+                Text(
+                    text = "OV ${event.over}",
+                    color = TextTertiary,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Black,
+                    modifier = Modifier.width(50.dp)
+                )
+                Text(
+                    text = event.keyEvent ?: "",
+                    color = TextPrimary,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
+                )
             }
         }
     }
@@ -277,14 +323,13 @@ fun WinProbabilityChartCard(
 
 @Composable
 private fun ProbabilityScore(name: String, percent: Float, color: Color, progress: Float, isRightAligned: Boolean = false) {
-    val colors = BouncerDesignSystem.colors
     Column(horizontalAlignment = if (isRightAligned) Alignment.End else Alignment.Start) {
         Text(text = name, color = color.copy(alpha = 0.9f), fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 0.5.sp)
         Text(
-            text = "${(percent * progress).toInt()}%", 
-            color = TextPrimary, 
-            fontSize = 30.sp, 
-            fontWeight = FontWeight.Black, 
+            text = "${(percent * progress).toInt()}%",
+            color = TextPrimary,
+            fontSize = 30.sp,
+            fontWeight = FontWeight.Black,
             letterSpacing = (-1).sp
         )
     }

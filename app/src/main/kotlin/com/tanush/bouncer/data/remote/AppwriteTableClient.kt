@@ -71,6 +71,15 @@ abstract class AppwriteTableClient(private val tag: String) {
         }
     }
 
+    /** Standard silent-failure log used by all remote-tier operations. */
+    protected fun logSilentFailure(prefix: String, e: Throwable) {
+        if (e is io.appwrite.exceptions.AppwriteException) {
+            Log.d(tag, "$prefix (silent): ${e.message} [${e.code}]")
+        } else {
+            Log.d(tag, "$prefix (silent): ${e.message}")
+        }
+    }
+
     fun stop() {
         reconnectScope.cancel()
         realtimeSubscription = null

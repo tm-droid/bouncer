@@ -161,23 +161,7 @@ object CricketRepository {
         try {
             val result = getMatchScore(matchId)
             result.getOrNull()?.let { response ->
-                val entity = MatchEntity(
-                    matchId = matchId,
-                    seriesId = cached?.seriesId ?: "",
-                    matchTitle = response.title,
-                    matchType = cached?.matchType ?: "",
-                    status = response.update,
-                    venue = cached?.venue ?: "",
-                    date = cached?.date ?: "",
-                    matchTime = cached?.matchTime ?: "",
-                    currentStatus = response.update,
-                    info = response.livescore,
-                    team1Name = cached?.team1Name ?: "",
-                    team1Score = response.livescore,
-                    team2Name = cached?.team2Name ?: "",
-                    team2Score = null,
-                    lastUpdated = System.currentTimeMillis()
-                )
+                val entity = mergedMatchEntity(matchId, cached, response)
                 dao.upsertMatch(entity)
                 emit(entity)
             }
@@ -192,6 +176,28 @@ object CricketRepository {
             if (cached == null) emit(null)
         }
     }
+
+    private fun mergedMatchEntity(
+        matchId: String,
+        cached: MatchEntity?,
+        response: SanwebMatchResponse
+    ): MatchEntity = MatchEntity(
+        matchId = matchId,
+        seriesId = cached?.seriesId ?: "",
+        matchTitle = response.title,
+        matchType = cached?.matchType ?: "",
+        status = response.update,
+        venue = cached?.venue ?: "",
+        date = cached?.date ?: "",
+        matchTime = cached?.matchTime ?: "",
+        currentStatus = response.update,
+        info = response.livescore,
+        team1Name = cached?.team1Name ?: "",
+        team1Score = response.livescore,
+        team2Name = cached?.team2Name ?: "",
+        team2Score = null,
+        lastUpdated = System.currentTimeMillis()
+    )
 
     fun observeCachedMatches(context: Context): Flow<List<MatchEntity>> {
         val db = BouncerDatabase.getInstance(context)
