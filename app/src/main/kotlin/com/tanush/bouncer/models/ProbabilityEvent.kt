@@ -1,7 +1,10 @@
 package com.tanush.bouncer.models
 
+import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.Stable
 import java.util.Date
 
+@Immutable
 data class BallPrediction(
     val ballIndex: Int,
     val type: String, // "Wicket", "Boundary", "Dot", etc.
@@ -9,6 +12,7 @@ data class BallPrediction(
     val description: String
 )
 
+@Stable
 data class ProbabilityEvent(
     val timestamp: Date,
     val ball: Int,

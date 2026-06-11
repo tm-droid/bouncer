@@ -1,8 +1,8 @@
 package com.tanush.bouncer.models
 
-/**
- * Represents a cricket series or tournament (e.g., IPL 2025, Ashes 2025).
- */
+import androidx.compose.runtime.Immutable
+
+@Immutable
 data class Series(
     val id: String,
     val name: String,

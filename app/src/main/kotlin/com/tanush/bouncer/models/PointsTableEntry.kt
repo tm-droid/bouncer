@@ -1,8 +1,11 @@
 package com.tanush.bouncer.models
 
+import androidx.compose.runtime.Immutable
+
 /**
  * Represents a single team row in a tournament points table.
  */
+@Immutable
 data class PointsTableEntry(
     val position: Int,
     val teamName: String,
