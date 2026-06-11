@@ -50,12 +50,13 @@ class ProbabilityTrackerTest {
     fun `getPhaseAnalysis sums impacts into correct phases`() {
         val events = tracker.javaClass.getDeclaredField("events").apply { isAccessible = true }
             .get(tracker) as MutableList<ProbabilityEvent>
-        events += makeEvent(ball = 6,   impact = 2.0)
-        events += makeEvent(ball = 36,  impact = 3.0)
-        events += makeEvent(ball = 37,  impact = 1.5)
-        events += makeEvent(ball = 120, impact = 0.5)
-        events += makeEvent(ball = 240, impact = 4.0)
-        events += makeEvent(ball = 250, impact = 1.0)
+        // T20 default: powerplay ends at ball 36, death starts at ball 96
+        events += makeEvent(ball = 6,   impact = 2.0)  // powerplay
+        events += makeEvent(ball = 36,  impact = 3.0)  // powerplay (over 6, last ball)
+        events += makeEvent(ball = 37,  impact = 1.5)  // middle
+        events += makeEvent(ball = 80,  impact = 0.5)  // middle (< 96)
+        events += makeEvent(ball = 96,  impact = 4.0)  // death (T20 death start)
+        events += makeEvent(ball = 110, impact = 1.0)  // death
 
         val result = tracker.getPhaseAnalysis()
         assertTrue(result.contains("Power Play Impact: 5.0%"))
