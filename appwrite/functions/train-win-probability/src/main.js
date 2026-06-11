@@ -6,6 +6,13 @@ const CRICSHEET_URL = "https://cricsheet.org/downloads/t20s_json.zip";
 const STATS_BUCKET_ID = process.env.STATS_BUCKET_ID ?? "cricket-stats";
 const TEAM_STATS_FILE_ID = "team-stats";
 
+// Logistic regression hyperparameters
+const EPOCHS = 30;
+const BATCH_SIZE = 256;
+const LEARNING_RATE = 0.1;
+const L2_LAMBDA = 0.001;
+const MAX_ROWS = 200_000;
+
 export default async ({ req, res, log, error }) => {
   if (!process.env.APPWRITE_API_KEY) {
     error("APPWRITE_API_KEY is not set");
@@ -29,19 +36,29 @@ export default async ({ req, res, log, error }) => {
     return res.json({ error: e?.message }, 500);
   }
 
-  log("Parsing match files...");
+  log("Pass 1: counting team win rates...");
   const teamStats = {};
+  // Pass 2 accumulators
+  const trainingRows = []; // { features: [5], label: 0|1 }
+  // For breakevenRR: sum runs and balls across all first innings
+  let firstInningsTotalRuns = 0;
+  let firstInningsTotalBalls = 0;
+
   let parsed = 0;
   let skipped = 0;
 
   const zip = new AdmZip(zipBuffer);
-  zipBuffer = null; // hint GC — 200MB buffer no longer needed once ZIP is loaded
+  zipBuffer = null; // hint GC — large buffer no longer needed once ZIP is loaded
+
   for (const entry of zip.getEntries()) {
     if (!entry.entryName.endsWith(".json") || entry.isDirectory) continue;
     try {
       const content = entry.getData().toString("utf8");
       const match = JSON.parse(content);
-      processMatch(match, teamStats);
+      processMatch(match, teamStats, trainingRows, (runs, balls) => {
+        firstInningsTotalRuns += runs;
+        firstInningsTotalBalls += balls;
+      });
       parsed++;
     } catch (e) {
       if (skipped < 5) error(`Skipped ${entry.entryName}: ${e?.message}`);
@@ -56,13 +73,88 @@ export default async ({ req, res, log, error }) => {
     delete team.wins; // not needed downstream
   }
 
-  // Upload to Appwrite Storage
+  log(`Collected ${trainingRows.length} raw training rows`);
+
+  // Pass 2 back-fill: teamStrengthDiff is now computable since teamStats is finalised.
+  // We already computed and stored features[4] during match processing, but we used
+  // pre-finalised win rates (wins/matchesPlayed). Since processMatch is called mid-loop
+  // before all matches are processed, feature[4] will be imprecise. Re-derive it now.
+  // NOTE: To avoid this complexity we simply re-compute feature[4] from final winRates here.
+  for (const row of trainingRows) {
+    // row.battingTeam / row.bowlingTeam were stored temporarily for this pass.
+    const bWin = teamStats[row._battingTeam]?.winRate ?? 0.5;
+    const bwWin = teamStats[row._bowlingTeam]?.winRate ?? 0.5;
+    row.features[4] = bWin - bwWin;
+    // Clean up temporary fields
+    delete row._battingTeam;
+    delete row._bowlingTeam;
+  }
+
+  // Compute breakeven run rate from first innings data
+  const breakevenRR = firstInningsTotalBalls > 0
+    ? (firstInningsTotalRuns / firstInningsTotalBalls) * 6
+    : 8.0;
+  log(`Breakeven RR from data: ${breakevenRR.toFixed(3)}`);
+
+  // Feature standardization
+  const NUM_FEATURES = 5;
+  const featureMeans = new Array(NUM_FEATURES).fill(0);
+  const featureStds = new Array(NUM_FEATURES).fill(1);
+  const n = trainingRows.length;
+
+  if (n > 0) {
+    // Compute means
+    for (const row of trainingRows) {
+      for (let j = 0; j < NUM_FEATURES; j++) {
+        featureMeans[j] += row.features[j];
+      }
+    }
+    for (let j = 0; j < NUM_FEATURES; j++) featureMeans[j] /= n;
+
+    // Compute stds
+    const variance = new Array(NUM_FEATURES).fill(0);
+    for (const row of trainingRows) {
+      for (let j = 0; j < NUM_FEATURES; j++) {
+        const diff = row.features[j] - featureMeans[j];
+        variance[j] += diff * diff;
+      }
+    }
+    for (let j = 0; j < NUM_FEATURES; j++) {
+      featureStds[j] = Math.sqrt(variance[j] / n) || 1;
+    }
+
+    // Standardize in place
+    for (const row of trainingRows) {
+      for (let j = 0; j < NUM_FEATURES; j++) {
+        row.features[j] = (row.features[j] - featureMeans[j]) / featureStds[j];
+      }
+    }
+  }
+
+  log(`Feature means: ${featureMeans.map(v => v.toFixed(4)).join(", ")}`);
+  log(`Feature stds:  ${featureStds.map(v => v.toFixed(4)).join(", ")}`);
+
+  // Train logistic regression via mini-batch gradient descent
+  const { weights, bias } = trainLogisticRegression(trainingRows, log);
+
+  // Upload model to Appwrite Storage
   const storage = new Storage(client);
-  const statsJson = JSON.stringify(teamStats);
-  const buffer = Buffer.from(statsJson, "utf8");
+  const modelObj = {
+    version: 2,
+    weights,
+    bias,
+    featureMeans,
+    featureStds,
+    featureNames: ["runRateRatio", "wicketsInHand", "ballsRemainingFraction", "deficitPressure", "teamStrengthDiff"],
+    breakevenRR,
+    teamStats,
+    trainingRows: n,
+    epochs: EPOCHS,
+  };
+  const modelJson = JSON.stringify(modelObj);
+  const buffer = Buffer.from(modelJson, "utf8");
 
   try {
-    // Delete old file if exists, ignore 404
     await storage.deleteFile(STATS_BUCKET_ID, TEAM_STATS_FILE_ID).catch(() => {});
     await storage.createFile(
       STATS_BUCKET_ID,
@@ -70,16 +162,33 @@ export default async ({ req, res, log, error }) => {
       InputFile.fromBuffer(buffer, "team-stats.json"),
       ["read(\"any\")"]
     );
-    log(`Uploaded team-stats.json (${Object.keys(teamStats).length} teams, ${(buffer.length / 1024).toFixed(0)} KB)`);
+    log(`Uploaded model (${Object.keys(teamStats).length} teams, ${n} training rows, ${(buffer.length / 1024).toFixed(0)} KB)`);
   } catch (e) {
-    error(`Failed to upload stats: ${e?.message}`);
+    error(`Failed to upload model: ${e?.message}`);
     return res.json({ error: e?.message }, 500);
   }
 
-  return res.json({ parsed, skipped, teams: Object.keys(teamStats).length });
+  return res.json({
+    parsed,
+    skipped,
+    teams: Object.keys(teamStats).length,
+    trainingRows: n,
+    breakevenRR,
+    weights,
+    bias,
+  });
 };
 
-function processMatch(raw, teamStats) {
+/**
+ * Pass 1 + Pass 2 combined: update teamStats win rates and collect training rows from
+ * 2nd-innings chases in completed T20/IT20 matches.
+ *
+ * @param {object} raw - Cricsheet match JSON
+ * @param {object} teamStats - mutable map of team → stats (accumulates across all calls)
+ * @param {Array}  trainingRows - mutable array to push { features, label, _battingTeam, _bowlingTeam }
+ * @param {Function} onFirstInnings - called with (runs, balls) for each first innings processed
+ */
+function processMatch(raw, teamStats, trainingRows, onFirstInnings) {
   const info = raw?.info;
   if (!info) return;
   if (info.match_type !== "T20" && info.match_type !== "IT20") return;
@@ -87,6 +196,7 @@ function processMatch(raw, teamStats) {
   const teams = info.teams ?? [];
   if (teams.length !== 2) return;
 
+  // --- Pass 1: team win rate bookkeeping ---
   for (const team of teams) {
     if (!teamStats[team]) {
       teamStats[team] = {
@@ -127,4 +237,168 @@ function processMatch(raw, teamStats) {
       teamStats[bowlingTeam].totalRunsConceded += runs;
     }
   }
+
+  // --- Pass 2: emit training rows from completed chases ---
+  // Only process matches with a known winner (completed)
+  if (!outcome?.winner) return;
+  // Need at least 2 innings
+  if (innings.length < 2) return;
+
+  const firstInning = innings[0];
+  const secondInning = innings[1];
+  if (!firstInning || !secondInning) return;
+
+  // Compute first innings total by summing all deliveries
+  let firstInningsTotal = 0;
+  let firstInningsBalls = 0;
+  for (const over of firstInning.overs ?? []) {
+    for (const ball of over.deliveries ?? []) {
+      firstInningsTotal += ball.runs?.total ?? 0;
+      firstInningsBalls++;
+    }
+  }
+
+  // Report first innings totals for breakeven RR computation
+  if (firstInningsBalls > 0) {
+    onFirstInnings(firstInningsTotal, firstInningsBalls);
+  }
+
+  const targetRuns = firstInningsTotal + 1;
+  const chasingTeam = secondInning.team;
+  const bowlingTeam = teams.find(t => t !== chasingTeam) ?? "";
+  const chasingTeamWon = outcome.winner === chasingTeam;
+  const label = chasingTeamWon ? 1 : 0;
+
+  // Walk deliveries in the chase, emitting one row per delivery (post-ball state)
+  let runsScored = 0;
+  let wicketsFallen = 0;
+  let ballsFaced = 0;
+
+  for (const over of secondInning.overs ?? []) {
+    for (const ball of over.deliveries ?? []) {
+      // Update state with this delivery
+      runsScored += ball.runs?.total ?? 0;
+      wicketsFallen += ball.wickets?.length ?? 0;
+      ballsFaced++;
+
+      // Skip if no balls faced yet (shouldn't happen here, but defensive)
+      if (ballsFaced <= 0) continue;
+
+      const runsNeeded = targetRuns - runsScored;
+      const ballsLeft = 120 - ballsFaced;
+
+      // Skip if innings effectively over
+      if (ballsLeft <= 0) continue;
+      if (wicketsFallen >= 10) continue;
+      // Skip if chase is already won
+      if (runsNeeded <= 0) continue;
+
+      const crr = (runsScored * 6) / ballsFaced;
+      const rrr = (runsNeeded * 6) / ballsLeft;
+
+      // Skip rows where rrr is 0 or effectively 0 (very early balls before first run)
+      if (rrr < 0.1) continue;
+
+      const runRateRatio = crr / rrr;
+      const wicketsInHand = (10 - wicketsFallen) / 10;
+      const ballsRemainingFraction = ballsLeft / 120;
+      const deficitPressure = runsNeeded / Math.max(ballsLeft, 1);
+      // teamStrengthDiff uses current (partial) win rates; will be recalculated
+      // after all matches are processed from final win rates.
+      const teamStrengthDiff = 0; // placeholder; overwritten in main after all matches parsed
+
+      const features = [
+        runRateRatio,
+        wicketsInHand,
+        ballsRemainingFraction,
+        deficitPressure,
+        teamStrengthDiff,
+      ];
+
+      // Reservoir sampling: keep max MAX_ROWS rows
+      const currentSize = trainingRows.length;
+      if (currentSize < MAX_ROWS) {
+        trainingRows.push({ features, label, _battingTeam: chasingTeam, _bowlingTeam: bowlingTeam });
+      } else {
+        // rowIndex is 1-based position of this row across all rows seen
+        const rowIndex = currentSize + 1; // we've seen rowIndex rows including this one
+        const swapIdx = Math.floor(Math.random() * rowIndex);
+        if (swapIdx < MAX_ROWS) {
+          trainingRows[swapIdx] = { features, label, _battingTeam: chasingTeam, _bowlingTeam: bowlingTeam };
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Mini-batch gradient descent logistic regression with L2 regularization.
+ * Returns { weights: number[], bias: number }.
+ */
+function trainLogisticRegression(rows, log) {
+  const NUM_FEATURES = 5;
+  const weights = new Array(NUM_FEATURES).fill(0);
+  let bias = 0;
+  const n = rows.length;
+
+  if (n === 0) {
+    log("No training rows — returning zero weights");
+    return { weights, bias };
+  }
+
+  for (let epoch = 0; epoch < EPOCHS; epoch++) {
+    // Shuffle rows (Fisher-Yates)
+    for (let i = n - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      const tmp = rows[i];
+      rows[i] = rows[j];
+      rows[j] = tmp;
+    }
+
+    // Mini-batch updates
+    for (let start = 0; start < n; start += BATCH_SIZE) {
+      const end = Math.min(start + BATCH_SIZE, n);
+      const batchSize = end - start;
+
+      const dw = new Array(NUM_FEATURES).fill(0);
+      let db = 0;
+
+      for (let i = start; i < end; i++) {
+        const { features, label } = rows[i];
+        let logit = bias;
+        for (let j = 0; j < NUM_FEATURES; j++) logit += weights[j] * features[j];
+        const pred = sigmoid(logit);
+        const err = pred - label;
+        for (let j = 0; j < NUM_FEATURES; j++) dw[j] += err * features[j];
+        db += err;
+      }
+
+      // Apply gradients with L2 regularization on weights (not bias)
+      for (let j = 0; j < NUM_FEATURES; j++) {
+        weights[j] -= LEARNING_RATE * (dw[j] / batchSize + L2_LAMBDA * weights[j]);
+      }
+      bias -= LEARNING_RATE * (db / batchSize);
+    }
+
+    // Log final epoch loss
+    if (epoch === EPOCHS - 1) {
+      let loss = 0;
+      for (const { features, label } of rows) {
+        let logit = bias;
+        for (let j = 0; j < NUM_FEATURES; j++) logit += weights[j] * features[j];
+        const pred = sigmoid(logit);
+        const eps = 1e-7;
+        loss += -(label * Math.log(pred + eps) + (1 - label) * Math.log(1 - pred + eps));
+      }
+      loss /= n;
+      log(`Epoch ${epoch + 1}/${EPOCHS} — log-loss: ${loss.toFixed(6)}`);
+    }
+  }
+
+  log(`Training complete. Weights: ${weights.map(w => w.toFixed(4)).join(", ")}, bias: ${bias.toFixed(4)}`);
+  return { weights, bias };
+}
+
+function sigmoid(x) {
+  return 1 / (1 + Math.exp(-x));
 }
