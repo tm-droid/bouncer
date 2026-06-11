@@ -12,14 +12,14 @@ fun WinProbabilityCalculator.updateTeamBattingStats(team: String, match: Cricshe
         val newMatchesPlayed = currentStats.matchesPlayed + 1
     
         // Calculate power play and death overs stats
-        val powerPlayOvers = battingInnings.overs.take(6)
-        val deathOvers = battingInnings.overs.takeLast(4)
-    
+        val powerPlayOvers = battingInnings.overs.take(CricketConstants.T20_POWERPLAY_OVERS)
+        val deathOvers = battingInnings.overs.takeLast(CricketConstants.T20_DEATH_OVERS)
+
         val powerPlayRuns = powerPlayOvers.sumOf { it.runs }
         val deathOversRuns = deathOvers.sumOf { it.runs }
-    
-        val powerPlayRunRate = powerPlayRuns.toDouble() / 6.0
-        val deathOversRunRate = deathOversRuns.toDouble() / 4.0
+
+        val powerPlayRunRate = powerPlayRuns.toDouble() / maxOf(powerPlayOvers.size, 1)
+        val deathOversRunRate = deathOversRuns.toDouble() / maxOf(deathOvers.size, 1)
     
         // Update team statistics
         val newBattingAverage = (currentStats.battingAverage * currentStats.matchesPlayed + battingInnings.total) / newMatchesPlayed
@@ -47,17 +47,18 @@ fun WinProbabilityCalculator.updateTeamBowlingStats(team: String, match: Cricshe
         val currentStats = teamStats[team] ?: TeamStatistics()
         val newMatchesPlayed = currentStats.matchesPlayed + 1
     
-        // Calculate bowling average
         val runsGiven = bowlingInnings.total
         val wicketsTaken = bowlingInnings.wickets
-    
-        val bowlingAverage = if (wicketsTaken > 0) runsGiven.toDouble() / wicketsTaken else runsGiven.toDouble()
-        val newBowlingAverage = (currentStats.bowlingAverage * currentStats.matchesPlayed + bowlingAverage) / newMatchesPlayed
-    
-        teamStats[team] = currentStats.copy(
-            bowlingAverage = newBowlingAverage,
-            matchesPlayed = newMatchesPlayed
-        )
+
+        // Exclude 0-wicket innings from bowling average to avoid inflating the metric
+        // (a team that conceded 80 runs without taking a wicket has no meaningful average for that game)
+        if (wicketsTaken > 0) {
+            val bowlingAverage = runsGiven.toDouble() / wicketsTaken
+            val newBowlingAverage = (currentStats.bowlingAverage * currentStats.matchesPlayed + bowlingAverage) / newMatchesPlayed
+            teamStats[team] = currentStats.copy(bowlingAverage = newBowlingAverage, matchesPlayed = newMatchesPlayed)
+        } else {
+            teamStats[team] = currentStats.copy(matchesPlayed = newMatchesPlayed)
+        }
     } catch (e: Exception) {
         Sentry.captureException(e)
         throw e
