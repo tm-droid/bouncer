@@ -1,5 +1,8 @@
 package com.tanush.bouncer.models
 
+import androidx.compose.runtime.Immutable
+
+@Immutable
 data class WinProbabilityPoint(
     val over: Float,
     val team1Probability: Float,

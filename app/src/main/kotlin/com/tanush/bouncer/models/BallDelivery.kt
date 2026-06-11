@@ -1,5 +1,8 @@
 package com.tanush.bouncer.models
 
+import androidx.compose.runtime.Immutable
+
+@Immutable
 data class BallDelivery(
     val overNumber: Float,
     val bowlerName: String,

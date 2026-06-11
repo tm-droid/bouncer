@@ -1,5 +1,8 @@
 package com.tanush.bouncer.models
 
+import androidx.compose.runtime.Immutable
+
+@Immutable
 data class Highlight(
     val id: String,
     val title: String,

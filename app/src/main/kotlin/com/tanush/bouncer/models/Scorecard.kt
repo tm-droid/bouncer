@@ -1,9 +1,13 @@
 package com.tanush.bouncer.models
 
+import androidx.compose.runtime.Immutable
+
+@Immutable
 data class Scorecard(
     val innings: List<Innings> = emptyList()
 )
 
+@Immutable
 data class Innings(
     val teamName: String,
     val score: String,
@@ -16,6 +20,7 @@ data class Innings(
     val total: String
 )
 
+@Immutable
 data class BatsmanStats(
     val name: String,
     val dismissal: String,
@@ -27,6 +32,7 @@ data class BatsmanStats(
     val profileUrl: String = ""
 )
 
+@Immutable
 data class BowlerStats(
     val name: String,
     val overs: String,
@@ -39,6 +45,7 @@ data class BowlerStats(
     val profileUrl: String = ""
 )
 
+@Immutable
 data class FallOfWicket(
     val score: String,
     val overs: String,
@@ -46,6 +53,7 @@ data class FallOfWicket(
     val number: Int = 0
 )
 
+@Immutable
 data class PartnershipStats(
     val player1: String,
     val player2: String,

@@ -1,5 +1,8 @@
 package com.tanush.bouncer.models
 
+import androidx.compose.runtime.Immutable
+
+@Immutable
 data class RecentInnings(
     val runs: Int,
     val balls: Int = 0,
@@ -8,6 +11,7 @@ data class RecentInnings(
     val date: String = "",
 )
 
+@Immutable
 data class PlayerProfile(
     val id: String,
     val name: String,
@@ -23,6 +27,7 @@ data class PlayerProfile(
     val recentForm: List<RecentInnings> = emptyList(),
 )
 
+@Immutable
 data class FormatStats(
     val matches: Int = 0,
     val innings: Int = 0,
