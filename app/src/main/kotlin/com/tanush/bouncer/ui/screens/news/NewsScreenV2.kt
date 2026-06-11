@@ -77,11 +77,12 @@ fun NewsScreenV2(
                 // Empty or error state
                 if (articles.isEmpty() && !isLoading) {
                     item(key = "empty") {
+                        val error = error // capture delegated property to enable smart cast
                         if (error != null) {
                             val friendlyError = when {
-                                error!!.contains("403") -> "News source temporarily unavailable"
-                                error!!.contains("429") -> "Too many requests — try again in a moment"
-                                error!!.contains("timeout", ignoreCase = true) || error!!.contains("connect", ignoreCase = true) ->
+                                error.contains("403") -> "News source temporarily unavailable"
+                                error.contains("429") -> "Too many requests — try again in a moment"
+                                error.contains("timeout", ignoreCase = true) || error.contains("connect", ignoreCase = true) ->
                                     "Network connection issue"
                                 else -> "Something went wrong"
                             }

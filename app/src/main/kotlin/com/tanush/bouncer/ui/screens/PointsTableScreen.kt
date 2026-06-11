@@ -85,7 +85,7 @@ fun PointsTableScreen(
             }
             error != null -> {
                 Box(modifier = Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
-                    Text(error!!, style = typography.bodyLarge, color = colors.textSecondary)
+                    Text(error ?: "", style = typography.bodyLarge, color = colors.textSecondary)
                 }
             }
             else -> {

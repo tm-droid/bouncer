@@ -111,7 +111,7 @@ object AppwritePlayerFormsClient : AppwriteTableClient("AppwritePlayerFormsClien
                 while (pageCount++ < 100) { // hard cap: 100 pages × 100 rows = 10k players max
                     val queries = buildList {
                         add(Query.limit(100))
-                        if (lastId != null) add(Query.cursorAfter(lastId!!))
+                        if (lastId != null) add(Query.cursorAfter(lastId))
                     }
                     val page = db.listRows(
                         databaseId = dbId,

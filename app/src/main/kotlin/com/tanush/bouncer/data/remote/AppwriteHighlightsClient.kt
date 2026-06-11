@@ -38,7 +38,7 @@ object AppwriteHighlightsClient : AppwriteTableClient("AppwriteHighlightsClient"
         while (pageCount++ < 50) {
             val queries = buildList {
                 add(Query.limit(100))
-                if (lastId != null) add(Query.cursorAfter(lastId!!))
+                if (lastId != null) add(Query.cursorAfter(lastId))
             }
             val page = db.listRows(databaseId = dbId, tableId = tableId, queries = queries)
             @Suppress("UNCHECKED_CAST")
