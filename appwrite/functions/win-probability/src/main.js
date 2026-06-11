@@ -7,6 +7,10 @@ const TEAM_STATS_FILE_ID = "team-stats";
 let cachedModel = null;
 
 export default async ({ req, res, log, error }) => {
+  if (!process.env.APPWRITE_API_KEY) {
+    log("APPWRITE_API_KEY not set — model load will fail, using heuristic fallback");
+  }
+
   const client = new Client()
     .setEndpoint(process.env.APPWRITE_FUNCTION_API_ENDPOINT)
     .setProject(process.env.APPWRITE_FUNCTION_PROJECT_ID)

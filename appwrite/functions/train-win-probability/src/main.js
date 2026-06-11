@@ -378,8 +378,8 @@ function trainLogisticRegression(rows, log) {
       bias -= LEARNING_RATE * (db / batchSize);
     }
 
-    // Log final epoch loss
-    if (epoch === EPOCHS - 1) {
+    // Log loss every 5 epochs and on the final epoch
+    if ((epoch + 1) % 5 === 0 || epoch === EPOCHS - 1) {
       let loss = 0;
       for (const { features, label } of rows) {
         let logit = bias;
