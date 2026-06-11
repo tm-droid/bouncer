@@ -1,5 +1,8 @@
 package com.tanush.bouncer.models
 
+import androidx.compose.runtime.Immutable
+
+@Immutable
 data class MatchFlowData(
     val drsReviews: List<DrsReviewEvent> = emptyList(),
     val powerplays: List<PowerplayEvent> = emptyList(),
@@ -9,6 +12,7 @@ data class MatchFlowData(
     val overMilestones: List<Pair<Int, Int>> = emptyList(),
 )
 
+@Immutable
 data class DrsReviewEvent(
     val over: String,
     val teamName: String,
@@ -19,6 +23,7 @@ data class DrsReviewEvent(
     val isUpheld: Boolean,
 )
 
+@Immutable
 data class PowerplayEvent(
     val phase: Int,
     val overs: String,
@@ -26,6 +31,7 @@ data class PowerplayEvent(
     val wickets: Int,
 )
 
+@Immutable
 data class ImpactSubEvent(
     val team: String,
     val playerIn: String,
@@ -33,6 +39,7 @@ data class ImpactSubEvent(
     val over: String,
 )
 
+@Immutable
 data class PreMatchData(
     val pitchDescription: String,
     val teamNews: String,

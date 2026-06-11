@@ -1,8 +1,10 @@
 package com.tanush.bouncer.models
 
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.runtime.Immutable
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 
+@Immutable
 data class ScrapedBowler(
     val name: String,
     val overs: String,
@@ -12,6 +14,7 @@ data class ScrapedBowler(
     val economy: String
 )
 
+@Immutable
 data class ScrapedBatsman(
     val name: String,
     val runs: String,
@@ -24,6 +27,7 @@ data class ScrapedBatsman(
     val faceImageId: String? = null
 )
 
+@Immutable
 data class DRSReviewData(
     val isSuccessful: Boolean,
     val over: String,
@@ -31,6 +35,7 @@ data class DRSReviewData(
     val umpireName: String,
 )
 
+@Immutable
 data class PowerPlayPhaseData(
     val phaseName: String,
     val overs: String,
@@ -43,6 +48,7 @@ data class PowerPlayPhaseData(
     val isActive: Boolean = false
 )
 
+@Immutable
 data class MomentumEventData(
     val over: String,
     val title: String,
