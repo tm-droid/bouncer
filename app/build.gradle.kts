@@ -262,12 +262,12 @@ dependencies {
 configurations.all {
     resolutionStrategy {
         // Netty — covers all Netty CVEs (#17,18,21–24,26–28,30,32,33,37–45)
-        force("io.netty:netty-codec-http:4.1.133.Final")
-        force("io.netty:netty-codec-http2:4.1.133.Final")
-        force("io.netty:netty-codec:4.1.133.Final")
-        force("io.netty:netty-common:4.1.133.Final")
-        force("io.netty:netty-handler:4.1.133.Final")
-        force("io.netty:netty-handler-proxy:4.1.133.Final")
+        force("io.netty:netty-codec-http:4.1.135.Final")
+        force("io.netty:netty-codec-http2:4.1.135.Final")
+        force("io.netty:netty-codec:4.1.135.Final")
+        force("io.netty:netty-common:4.1.135.Final")
+        force("io.netty:netty-handler:4.1.135.Final")
+        force("io.netty:netty-handler-proxy:4.1.135.Final")
         // Bouncy Castle (#34,35,36)
         force("org.bouncycastle:bcprov-jdk18on:1.84")
         force("org.bouncycastle:bcpkix-jdk18on:1.84")
@@ -275,7 +275,7 @@ configurations.all {
         force("org.apache.commons:commons-lang3:3.20.0")
         force("org.bitbucket.b_c:jose4j:0.9.6")
         force("org.jdom:jdom2:2.0.6.1")
-        force("com.google.guava:guava:32.0.0-android")
+        force("com.google.guava:guava:33.6.0-android")
         force("org.apache.httpcomponents:httpclient:4.5.13")
     }
 }
