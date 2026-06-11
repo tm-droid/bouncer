@@ -143,7 +143,9 @@ class LiveCommentaryManager(
         bowler: String,
         batsman: String,
         scoreContext: String,
-        isMatchComplete: Boolean
+        isMatchComplete: Boolean,
+        currentRunRate: Double? = null,
+        requiredRunRate: Double? = null
     ): String {
         return try {
             fusion.fuse(
@@ -156,7 +158,9 @@ class LiveCommentaryManager(
                 bowler = bowler,
                 batsman = batsman,
                 scoreContext = scoreContext,
-                isMatchComplete = isMatchComplete
+                isMatchComplete = isMatchComplete,
+                currentRunRate = currentRunRate,
+                requiredRunRate = requiredRunRate
             )
         } catch (e: Exception) {
             if (e is CancellationException) throw e
@@ -242,7 +246,9 @@ class LiveCommentaryManager(
                         bowler = bowlerName,
                         batsman = batsmanName,
                         scoreContext = scoreContext,
-                        isMatchComplete = isMatchComplete
+                        isMatchComplete = isMatchComplete,
+                        currentRunRate = details?.currentRunRate?.toDoubleOrNull(),
+                        requiredRunRate = details?.requiredRunRate?.toDoubleOrNull()
                     )
                 )
             }
@@ -254,7 +260,9 @@ class LiveCommentaryManager(
             CommentaryScorer.ComparisonResult.UseSecond -> infoLine
             CommentaryScorer.ComparisonResult.FuseBoth -> fuseLines(
                 buzzLine, infoLine, oversSummary, matchId, over, ballNumber,
-                bowlerName, batsmanName, scoreContext, isMatchComplete
+                bowlerName, batsmanName, scoreContext, isMatchComplete,
+                currentRunRate = details?.currentRunRate?.toDoubleOrNull(),
+                requiredRunRate = details?.requiredRunRate?.toDoubleOrNull()
             )
         }
 
@@ -357,7 +365,9 @@ class LiveCommentaryManager(
                         bowler = singleBowler,
                         batsman = singleBatsman,
                         scoreContext = singleScore,
-                        isMatchComplete = isMatchComplete
+                        isMatchComplete = isMatchComplete,
+                        currentRunRate = details?.currentRunRate?.toDoubleOrNull(),
+                        requiredRunRate = details?.requiredRunRate?.toDoubleOrNull()
                     )
                 )
             }
@@ -373,7 +383,9 @@ class LiveCommentaryManager(
             bowler = singleBowler,
             batsman = singleBatsman,
             scoreContext = singleScore,
-            isMatchComplete = isMatchComplete
+            isMatchComplete = isMatchComplete,
+            currentRunRate = details?.currentRunRate?.toDoubleOrNull(),
+            requiredRunRate = details?.requiredRunRate?.toDoubleOrNull()
         )
         return prefixBallNumber(singleBallNumber, fusionResult)
     }
