@@ -25,7 +25,7 @@ kotlin.daemon.jvmargs=-Xmx5g -XX:+UseG1GC -XX:+UseStringDeduplication
 
 ## API Target & Compile Levels
 
-- Compile SDK: 36
+- Compile SDK: 37
 - Target SDK: 35
 - Min SDK: 26
 - Java version: 17

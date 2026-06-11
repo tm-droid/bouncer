@@ -39,7 +39,7 @@ if (System.getProperty("os.name").lowercase().contains("mac")) {
 
 android {
     namespace = "com.tanush.bouncer"
-    compileSdk = 36
+    compileSdk = 37
 
     signingConfigs {
         create("release") {
