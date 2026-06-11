@@ -133,6 +133,7 @@ class ScorePollingWorker(
             (CricketRepository.getMatchScore(primary.id) as? AppResult.Success)?.data
         } catch (e: Exception) {
             Log.w(TAG, "Score fetch for widget failed", e)
+            Sentry.captureException(e)
             null
         }
 

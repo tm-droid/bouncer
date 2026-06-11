@@ -320,6 +320,6 @@ sentry {
     autoInstallation {
         enabled.set(true)
         // Keep runtime SDK current for Session Replay / Logs / Metrics feature parity.
-        sentryVersion.set("8.35.0")
+        sentryVersion.set("8.43.2")
     }
 }

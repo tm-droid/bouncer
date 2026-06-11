@@ -15,7 +15,7 @@
 - OKHTTP (network timing)
 - COMPOSE disabled: causes duplicate-class DEX errors with androidx.activity.compose.R (AGP 9 + activity-compose 1.12.x conflict)
 
-**Sentry version:** Auto-installed at 8.35.0 (kept current for Session Replay / Logs / Metrics features)
+**Sentry version:** Auto-installed at 8.43.2 (kept current for Session Replay / Logs / Metrics features)
 
 ## Runtime Initialization (BouncerApp.kt)
 

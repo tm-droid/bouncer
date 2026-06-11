@@ -8,6 +8,7 @@ import com.tanush.bouncer.network.HttpClientProvider
 import io.sentry.Breadcrumb
 import io.sentry.Sentry
 import io.sentry.SentryLevel
+import io.sentry.SpanStatus
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
@@ -404,6 +405,10 @@ class CommentaryFusionService(
             val cooldownUntil = providerCooldowns[provider.name] ?: 0L
             if (cooldownUntil > now) continue
 
+            val streamStartMs = System.currentTimeMillis()
+            val streamSpan = Sentry.getSpan()?.startChild("gen_ai.streaming", provider.name)
+            streamSpan?.setData("gen_ai.system", provider.name.lowercase())
+            streamSpan?.setData("gen_ai.request.model", provider.model)
             try {
                 streamFromProvider(provider, prompt, maxTokens = 256, temperature = 0.6f, systemInstruction = SYSTEM_INSTRUCTION)
                     .collect { chunk ->
@@ -413,10 +418,15 @@ class CommentaryFusionService(
                             hasEmittedAny = true
                         }
                     }
+                val streamElapsedMs = System.currentTimeMillis() - streamStartMs
+                streamSpan?.setData("ai.latency_ms", streamElapsedMs)
+                streamSpan?.finish(SpanStatus.OK)
+                Sentry.metrics().distribution("ai.stream_latency_ms", streamElapsedMs.toDouble(), "millisecond")
                 provider429Count.remove(provider.name)
                 succeeded = true
                 break
             } catch (e: Exception) {
+                streamSpan?.finish(SpanStatus.INTERNAL_ERROR)
                 if (e is CancellationException) throw e
                 if (hasEmittedAny) {
                     // Partial output already sent to consumer — don't retry with another provider
@@ -723,6 +733,11 @@ class CommentaryFusionService(
         temperature: Double,
         systemInstruction: String = ""
     ): String {
+        val startMs = System.currentTimeMillis()
+        val span = Sentry.getSpan()?.startChild("gen_ai.chat", provider.name)
+        span?.setData("gen_ai.system", provider.name.lowercase())
+        span?.setData("gen_ai.request.model", provider.model)
+        span?.setData("gen_ai.request.max_tokens", maxTokens)
         val messages = JSONArray()
         if (systemInstruction.isNotEmpty()) {
             messages.put(JSONObject().apply {
@@ -747,29 +762,46 @@ class CommentaryFusionService(
             .post(body)
             .build()
 
-        client.newCall(request).execute().use { response ->
-            if (response.code == 429) {
-                val attempt = provider429Count.merge(provider.name, 1, Int::plus) ?: 1
-                val cooldownMs = minOf(BASE_COOLDOWN_MS shl minOf(attempt - 1, 4), MAX_COOLDOWN_MS) + Random.nextLong(0, BASE_COOLDOWN_MS)
-                providerCooldowns[provider.name] = System.currentTimeMillis() + cooldownMs
-                Sentry.addBreadcrumb(Breadcrumb().apply {
-                    category = "service.commentary"
-                    message = "${provider.name} rate-limited attempt=$attempt — ${cooldownMs}ms cooldown"
-                    level = SentryLevel.WARNING
-                })
-                throw IOException("Rate limited (429)")
+        try {
+            client.newCall(request).execute().use { response ->
+                if (response.code == 429) {
+                    span?.finish(SpanStatus.RESOURCE_EXHAUSTED)
+                    val attempt = provider429Count.merge(provider.name, 1, Int::plus) ?: 1
+                    val cooldownMs = minOf(BASE_COOLDOWN_MS shl minOf(attempt - 1, 4), MAX_COOLDOWN_MS) + Random.nextLong(0, BASE_COOLDOWN_MS)
+                    providerCooldowns[provider.name] = System.currentTimeMillis() + cooldownMs
+                    Sentry.addBreadcrumb(Breadcrumb().apply {
+                        category = "service.commentary"
+                        message = "${provider.name} rate-limited attempt=$attempt — ${cooldownMs}ms cooldown"
+                        level = SentryLevel.WARNING
+                    })
+                    throw IOException("Rate limited (429)")
+                }
+                if (!response.isSuccessful) {
+                    span?.finish(SpanStatus.INTERNAL_ERROR)
+                    throw IOException("HTTP ${response.code}")
+                }
+                val content = JSONObject(response.body?.string() ?: throw IOException("Null body from ${provider.name}"))
+                    .getJSONArray("choices")
+                    .getJSONObject(0)
+                    .getJSONObject("message")
+                    .getString("content")
+                    .trim()
+                if (content.isEmpty()) {
+                    span?.finish(SpanStatus.INTERNAL_ERROR)
+                    throw IOException("Empty content from ${provider.name}")
+                }
+                val elapsedMs = System.currentTimeMillis() - startMs
+                span?.setData("gen_ai.usage.output_tokens", content.length / 4)
+                span?.finish(SpanStatus.OK)
+                provider429Count.remove(provider.name)
+                Sentry.metrics().count("ai.request.success", 1.0)
+                Sentry.metrics().distribution("ai.latency_ms", elapsedMs.toDouble(), "millisecond")
+                Sentry.metrics().count("ai.tokens_generated", (content.length / 4).toDouble())
+                return content
             }
-            if (!response.isSuccessful) throw IOException("HTTP ${response.code}")
-            val content = JSONObject(response.body?.string() ?: throw IOException("Null body from ${provider.name}"))
-                .getJSONArray("choices")
-                .getJSONObject(0)
-                .getJSONObject("message")
-                .getString("content")
-                .trim()
-            if (content.isEmpty()) throw IOException("Empty content from ${provider.name}")
-            provider429Count.remove(provider.name)
-            Sentry.metrics().count("ai.request.success", 1.0)
-            return content
+        } catch (e: Exception) {
+            span?.finish(SpanStatus.INTERNAL_ERROR)
+            throw e
         }
     }
 

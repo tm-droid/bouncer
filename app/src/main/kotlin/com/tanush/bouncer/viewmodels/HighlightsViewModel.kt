@@ -8,6 +8,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.tanush.bouncer.data.AppResult
 import com.tanush.bouncer.data.local.BouncerDatabase
+import io.sentry.Sentry
 import com.tanush.bouncer.data.local.entities.HighlightEntity
 import com.tanush.bouncer.data.remote.AppwriteHighlightsClient
 import com.tanush.bouncer.data.repository.HighlightsRepository
@@ -37,6 +38,7 @@ class HighlightsViewModel(
                     _highlights.value = result.data.sortedWith(compareBy({ if (it.type == "VERIFIED") 0 else 1 }, { -it.fetchedAt }))
                 }
                 is AppResult.Error -> {
+                    Sentry.captureException(result.exception)
                     _highlights.value = emptyList()
                 }
                 is AppResult.Loading -> {}
