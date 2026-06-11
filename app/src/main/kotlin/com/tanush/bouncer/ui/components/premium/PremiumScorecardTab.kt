@@ -27,9 +27,10 @@ import com.tanush.bouncer.models.Scorecard
 import com.tanush.bouncer.models.Innings
 import com.tanush.bouncer.models.BatsmanStats
 import com.tanush.bouncer.models.BowlerStats
+import com.tanush.bouncer.analysis.CricketConstants
+import com.tanush.bouncer.analysis.MatchProjections
 import com.tanush.bouncer.ui.theme.*
 import com.tanush.bouncer.utils.parseRuns
-import io.sentry.Sentry
 
 @Composable
 fun PremiumScorecardTab(
@@ -280,75 +281,37 @@ private fun ExtrasRow(extras: String, innings: Innings?) {
     }
 }
 
-/**
- * Calculate current run rate from innings data
- */
 private fun calculateCurrentRunRate(innings: Innings?): String {
-    try {
-        if (innings == null) return "-"
-    
-        // Parse score (e.g., "245/7" -> 245)
-        val runs = parseRuns(innings.score)
-    
-        // Parse overs (e.g., "35.4" -> 35.67 overs)
-        val oversStr = innings.overs.replace("Ov", "").trim()
-        val oversParts = oversStr.split(".")
-        val completedOvers = oversParts.getOrNull(0)?.toDoubleOrNull() ?: 0.0
-        val balls = oversParts.getOrNull(1)?.toIntOrNull() ?: 0
-        val totalOvers = completedOvers + (balls / 6.0)
-    
-        if (totalOvers <= 0) return "-"
-    
-        val crr = runs / totalOvers
-        return String.format("%.2f", crr)
-    } catch (e: Exception) {
-        Sentry.captureException(e)
-        throw e
-    }
+    if (innings == null) return "-"
+    val runs = parseRuns(innings.score)
+    val oversParts = innings.overs.replace("Ov", "").trim().split(".")
+    val completedOvers = oversParts.getOrNull(0)?.toIntOrNull() ?: 0
+    val balls = oversParts.getOrNull(1)?.toIntOrNull() ?: 0
+    val ballsBowled = completedOvers * CricketConstants.BALLS_PER_OVER + balls
+    return MatchProjections.currentRunRate(runs, ballsBowled)
+        ?.let { String.format("%.2f", it) } ?: "-"
 }
 
-/**
- * Calculate required run rate for second innings
- */
 private fun calculateRequiredRunRate(scorecard: Scorecard, currentInningsIndex: Int): String? {
-    try {
-        // RRR only applies to second innings (chasing)
-        if (currentInningsIndex != 1 || scorecard.innings.size < 2) return null
-    
-        val firstInnings = scorecard.innings.getOrNull(0) ?: return null
-        val secondInnings = scorecard.innings.getOrNull(1) ?: return null
-    
-        // Get target (first innings score + 1)
-        val targetRuns = parseRuns(firstInnings.score) + 1
-    
-        // Get current score
-        val currentRuns = parseRuns(secondInnings.score)
-        val runsNeeded = targetRuns - currentRuns
-    
-        if (runsNeeded <= 0) return null
-    
-        // Calculate remaining overs (assuming 50 or 20 over match)
-        val oversStr = secondInnings.overs.replace("Ov", "").trim()
-        val oversParts = oversStr.split(".")
-        val completedOvers = oversParts.getOrNull(0)?.toDoubleOrNull() ?: 0.0
-        val balls = oversParts.getOrNull(1)?.toIntOrNull() ?: 0
-        val bowledOvers = completedOvers + (balls / 6.0)
-    
-        // Estimate total overs from first innings
-        val firstOversStr = firstInnings.overs.replace("Ov", "").trim()
-        val firstOversParts = firstOversStr.split(".")
-        val firstCompletedOvers = firstOversParts.getOrNull(0)?.toDoubleOrNull() ?: 50.0
-    
-        val remainingOvers = firstCompletedOvers - bowledOvers
-    
-        if (remainingOvers <= 0) return null
-    
-        val rrr = runsNeeded / remainingOvers
-        return String.format("%.2f", rrr)
-    } catch (e: Exception) {
-        Sentry.captureException(e)
-        throw e
+    if (currentInningsIndex != 1 || scorecard.innings.size < 2) return null
+    val firstInnings = scorecard.innings.getOrNull(0) ?: return null
+    val secondInnings = scorecard.innings.getOrNull(1) ?: return null
+    val targetRuns = parseRuns(firstInnings.score) + 1
+    val currentRuns = parseRuns(secondInnings.score)
+    // Infer format from first innings overs: ≤20 completed overs → T20, else ODI
+    val firstInningsOvers = firstInnings.overs.replace("Ov", "").trim()
+        .split(".").getOrNull(0)?.toIntOrNull() ?: 50
+    val totalBalls = if (firstInningsOvers <= CricketConstants.T20_INNINGS_BALLS / CricketConstants.BALLS_PER_OVER) {
+        CricketConstants.T20_INNINGS_BALLS
+    } else {
+        CricketConstants.ODI_INNINGS_BALLS
     }
+    val secondOversParts = secondInnings.overs.replace("Ov", "").trim().split(".")
+    val completedOvers = secondOversParts.getOrNull(0)?.toIntOrNull() ?: 0
+    val balls = secondOversParts.getOrNull(1)?.toIntOrNull() ?: 0
+    val ballsBowled = completedOvers * CricketConstants.BALLS_PER_OVER + balls
+    return MatchProjections.requiredRunRate(targetRuns, currentRuns, ballsBowled, totalBalls)
+        ?.let { String.format("%.2f", it) }
 }
 
 @Composable

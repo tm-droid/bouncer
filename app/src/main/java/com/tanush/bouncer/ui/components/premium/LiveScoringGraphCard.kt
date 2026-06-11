@@ -32,6 +32,8 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.tanush.bouncer.analysis.CricketConstants
+import com.tanush.bouncer.analysis.MatchProjections
 import com.tanush.bouncer.ui.theme.*
 import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 
@@ -46,6 +48,7 @@ data class LiveScoringData(
     val team2Scores: List<Int>,
     val currentOver: Int,
     val projectedScore: Int,
+    val totalOvers: Int = 20,
 )
 
 @Composable
@@ -413,7 +416,7 @@ fun LiveScoringGraphCard(
                 ScoringStatItem(
                     label = "Current Over",
                     value = "${scoringData.currentOver}",
-                    subtext = "of 20",
+                    subtext = "of ${scoringData.totalOvers}",
                 )
 
                 ScoringStatItem(
@@ -426,13 +429,15 @@ fun LiveScoringGraphCard(
                     val target = scoringData.team2Scores.last()
                     val current = scoringData.team1Scores.lastOrNull() ?: 0
                     val required = target - current + 1
-                    val remaining = 20 - scoringData.currentOver
-                    val rrr = if (remaining > 0) (required.toFloat() / remaining) else 0f
+                    val oversRemaining = scoringData.totalOvers - scoringData.currentOver
+                    val totalBalls = scoringData.totalOvers * CricketConstants.BALLS_PER_OVER
+                    val ballsBowled = scoringData.currentOver * CricketConstants.BALLS_PER_OVER
+                    val rrr = MatchProjections.requiredRunRate(target + 1, current, ballsBowled, totalBalls) ?: 0.0
 
                     ScoringStatItem(
                         label = "Required RR",
                         value = String.format("%.2f", rrr),
-                        subtext = "$required from $remaining",
+                        subtext = "$required from $oversRemaining",
                     )
                 }
             }

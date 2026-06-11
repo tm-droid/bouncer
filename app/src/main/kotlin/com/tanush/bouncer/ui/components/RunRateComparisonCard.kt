@@ -24,6 +24,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.tanush.bouncer.analysis.MatchProjections
 import com.tanush.bouncer.ui.theme.*
 import kotlin.math.max
 import kotlin.math.min
@@ -71,12 +72,8 @@ fun RunRateComparisonCard(
     val team1Cumulative = overData.runningFold(0) { acc, data -> acc + data.team1Runs }.drop(1)
     val team2Cumulative = overData.mapNotNull { it.team2Runs }.runningFold(0) { acc, runs -> acc + runs }.drop(1)
     
-    val team1RunRates = team1Cumulative.mapIndexed { index, total ->
-        if (index == 0) total.toFloat() else total.toFloat() / (index + 1)
-    }
-    val team2RunRates = team2Cumulative.mapIndexed { index, total ->
-        if (index == 0) total.toFloat() else total.toFloat() / (index + 1)
-    }
+    val team1RunRates = MatchProjections.overRunRates(team1Cumulative)
+    val team2RunRates = MatchProjections.overRunRates(team2Cumulative)
     
     val maxRunRate = max(
         team1RunRates.maxOrNull() ?: 0f,
