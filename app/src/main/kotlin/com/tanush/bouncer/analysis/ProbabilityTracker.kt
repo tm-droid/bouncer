@@ -19,8 +19,12 @@ data class TrackerMatchSituation(
 class ProbabilityTracker(
     private val matchId: String,
     private val calculator: WinProbabilityCalculator,
-    private val context: Context
+    private val context: Context,
+    totalBalls: Int = CricketConstants.T20_INNINGS_BALLS
 ) {
+    private val matchFormat = CricketConstants.formatFromInningsBalls(totalBalls)
+    private val powerplayEndBall = CricketConstants.powerplayEndBall(matchFormat)
+    private val deathStartBall = CricketConstants.deathStartBall(matchFormat)
     private val events: MutableList<ProbabilityEvent> = mutableListOf()
     private var currentProbability: Double = 50.0
     private val prefs: SharedPreferences = context.getSharedPreferences("probability_cache", Context.MODE_PRIVATE)
@@ -81,9 +85,8 @@ class ProbabilityTracker(
             isWicket -> ProbabilityEvent.EventType.WICKET to "Wicket: ${wicketType ?: "Unknown"}"
             runs >= 4 -> ProbabilityEvent.EventType.BOUNDARY to "$runs runs"
             runs == 0 -> ProbabilityEvent.EventType.DOT_BALL to "Dot ball"
-            ball <= 36 -> ProbabilityEvent.EventType.POWER_PLAY to "Power play ball"
-            ball >= 240 -> ProbabilityEvent.EventType.DEATH_OVERS to "Death overs ball"
-            runs == 50 || runs == 100 -> ProbabilityEvent.EventType.MILESTONE to "$runs runs milestone"
+            ball <= powerplayEndBall -> ProbabilityEvent.EventType.POWER_PLAY to "Power play ball"
+            ball >= deathStartBall -> ProbabilityEvent.EventType.DEATH_OVERS to "Death overs ball"
             else -> ProbabilityEvent.EventType.OTHER to "$runs runs"
         }
     }
@@ -95,7 +98,7 @@ class ProbabilityTracker(
     fun getKeyMoments(): List<ProbabilityEvent> {
         try {
             // Return events that had significant impact on the probability
-            return events.filter { kotlin.math.abs(it.impact) > 5.0 }
+            return events.filter { kotlin.math.abs(it.impact) > CricketConstants.KEY_MOMENT_IMPACT_THRESHOLD }
                 .sortedByDescending { kotlin.math.abs(it.impact) }
         } catch (e: Exception) {
             Sentry.captureException(e)
@@ -110,9 +113,9 @@ class ProbabilityTracker(
             var deathOversImpact = 0.0
             for (event in events) {
                 when {
-                    event.ball <= 36  -> powerPlayImpact += event.impact
-                    event.ball < 240  -> middleOversImpact += event.impact
-                    else              -> deathOversImpact += event.impact
+                    event.ball <= powerplayEndBall -> powerPlayImpact += event.impact
+                    event.ball < deathStartBall    -> middleOversImpact += event.impact
+                    else                           -> deathOversImpact += event.impact
                 }
             }
             return "Power Play Impact: ${"%.1f".format(powerPlayImpact)}%\n" +

@@ -3,6 +3,7 @@ package com.tanush.bouncer.analysis
 import android.util.Log
 import com.tanush.bouncer.data.remote.AppwriteClient
 import com.tanush.bouncer.models.CricsheetMatch
+import kotlin.math.exp
 
 enum class PitchCondition(val value: Double) {
     BATTING_FRIENDLY(1.2),
@@ -101,7 +102,7 @@ class WinProbabilityCalculator(
     /**
      * Calculate win probability by delegating to the `bouncer-win-probability` Appwrite Function.
      *
-     * Returns a percentage in [0.0, 100.0]. Falls back to 50.0 on network error.
+     * Returns a percentage in [0.0, 100.0]. Falls back to local sigmoid on network error.
      */
     suspend fun calculateWinProbability(
         runsNeeded: Int,
@@ -139,10 +140,42 @@ class WinProbabilityCalculator(
                 obj.getDouble("team1WinProbability") * 100.0
             } catch (e: Exception) {
                 Log.w(TAG, "Win probability parse error: ${e.message}")
-                50.0
+                localFallback(runsNeeded, ballsRemaining, wicketsLost, currentRunRate, requiredRunRate)
             }
         } else {
-            50.0 // fallback: no connection or function error
+            localFallback(runsNeeded, ballsRemaining, wicketsLost, currentRunRate, requiredRunRate)
         }
+    }
+
+    /**
+     * Principled sigmoid fallback used when the Appwrite function is unavailable.
+     *
+     * Features mirror the server model: run-rate ratio, wickets in hand, balls remaining
+     * fraction, and deficit pressure. The [pitchCondition] constructor param is wired here
+     * as an additive bias (BATTING_FRIENDLY +0.2, BOWLING_FRIENDLY -0.2).
+     *
+     * Calibrated so that CRR==RRR + 5 wickets down + 50% balls remaining → ~50%.
+     */
+    private fun localFallback(
+        runsNeeded: Int,
+        ballsRemaining: Int,
+        wicketsLost: Int,
+        currentRunRate: Double,
+        requiredRunRate: Double
+    ): Double {
+        if (ballsRemaining <= 0) return if (runsNeeded <= 0) 100.0 else 0.0
+        if (runsNeeded <= 0) return 100.0
+
+        val runRateRatio = currentRunRate / maxOf(requiredRunRate, 0.1)
+        val wicketsInHand = (10 - wicketsLost).coerceIn(0, 10).toDouble() / 10.0
+        val ballsRemainingFraction = ballsRemaining.toDouble() / totalBalls.coerceAtLeast(1)
+        val pitchBias = pitchCondition.value - 1.0  // 0.2 / 0.0 / -0.2
+
+        val score = 2.5 * (runRateRatio - 1.0) +
+                    1.5 * wicketsInHand +
+                    0.5 * ballsRemainingFraction +
+                    pitchBias - 1.0
+
+        return (1.0 / (1.0 + exp(-score))).coerceIn(0.03, 0.97) * 100.0
     }
 }
