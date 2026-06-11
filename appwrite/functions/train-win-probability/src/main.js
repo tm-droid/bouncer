@@ -279,13 +279,11 @@ function processMatch(raw, teamStats, trainingRows, onFirstInnings) {
       // Update state with this delivery
       runsScored += ball.runs?.total ?? 0;
       wicketsFallen += ball.wickets?.length ?? 0;
-      ballsFaced++;
-
-      // Skip if no balls faced yet (shouldn't happen here, but defensive)
-      if (ballsFaced <= 0) continue;
 
       const runsNeeded = targetRuns - runsScored;
-      const ballsLeft = 120 - ballsFaced;
+      const ballsLeft = 120 - ballsFaced; // ballsFaced not yet incremented: balls left before this delivery lands
+
+      ballsFaced++; // ballsFaced ≥ 1 here; crr division is always safe
 
       // Skip if innings effectively over
       if (ballsLeft <= 0) continue;
@@ -296,10 +294,10 @@ function processMatch(raw, teamStats, trainingRows, onFirstInnings) {
       const crr = (runsScored * 6) / ballsFaced;
       const rrr = (runsNeeded * 6) / ballsLeft;
 
-      // Skip rows where rrr is 0 or effectively 0 (very early balls before first run)
-      if (rrr < 0.1) continue;
+      // Clamp rrr to match inference behaviour (avoids skipping valid rows)
+      const rrrClamped = Math.max(rrr, 0.1);
 
-      const runRateRatio = crr / rrr;
+      const runRateRatio = crr / rrrClamped;
       const wicketsInHand = (10 - wicketsFallen) / 10;
       const ballsRemainingFraction = ballsLeft / 120;
       const deficitPressure = runsNeeded / Math.max(ballsLeft, 1);
@@ -315,14 +313,14 @@ function processMatch(raw, teamStats, trainingRows, onFirstInnings) {
         teamStrengthDiff,
       ];
 
-      // Reservoir sampling: keep max MAX_ROWS rows
-      const currentSize = trainingRows.length;
-      if (currentSize < MAX_ROWS) {
+      // Reservoir sampling: keep max MAX_ROWS rows using a global counter so
+      // acceptance probability is always 1/totalRowsSeen (never stuck at ≈1.0).
+      trainingRows._totalRowsSeen = (trainingRows._totalRowsSeen ?? 0) + 1;
+      const totalRowsSeen = trainingRows._totalRowsSeen;
+      if (trainingRows.length < MAX_ROWS) {
         trainingRows.push({ features, label, _battingTeam: chasingTeam, _bowlingTeam: bowlingTeam });
       } else {
-        // rowIndex is 1-based position of this row across all rows seen
-        const rowIndex = currentSize + 1; // we've seen rowIndex rows including this one
-        const swapIdx = Math.floor(Math.random() * rowIndex);
+        const swapIdx = Math.floor(Math.random() * totalRowsSeen);
         if (swapIdx < MAX_ROWS) {
           trainingRows[swapIdx] = { features, label, _battingTeam: chasingTeam, _bowlingTeam: bowlingTeam };
         }
