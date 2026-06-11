@@ -1,6 +1,7 @@
 package com.tanush.bouncer.models
 
 import android.content.Context
+import androidx.compose.runtime.Stable
 import io.sentry.Sentry
 
 enum class AchievementKind(val id: String) {
@@ -65,6 +66,7 @@ enum class AchievementKind(val id: String) {
     }
 }
 
+@Stable
 data class Achievement(
     val id: AchievementKind,
     val title: String,

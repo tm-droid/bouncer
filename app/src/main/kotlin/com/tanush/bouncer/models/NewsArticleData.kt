@@ -1,5 +1,6 @@
 package com.tanush.bouncer.models
 
+import androidx.compose.runtime.Immutable
 import com.google.gson.annotations.SerializedName
 
 /**
@@ -7,16 +8,19 @@ import com.google.gson.annotations.SerializedName
  * Fetched from: https://cricbuzz-cricket.p.rapidapi.com/news/v1/index
  */
 
+@Immutable
 data class CricbuzzNewsResponse(
     @SerializedName("storyList") val storyList: List<StoryListItem>,
     @SerializedName("lastUpdatedTime") val lastUpdatedTime: String? = null
 )
 
+@Immutable
 data class StoryListItem(
     @SerializedName("story") val story: CricbuzzStory? = null,
     @SerializedName("ad") val ad: CricbuzzAd? = null
 )
 
+@Immutable
 data class CricbuzzStory(
     @SerializedName("id") val id: Long,
     @SerializedName("hline") val headline: String,
@@ -30,12 +34,14 @@ data class CricbuzzStory(
     @SerializedName("coverImage") val coverImage: CricbuzzCoverImage? = null
 )
 
+@Immutable
 data class CricbuzzCoverImage(
     @SerializedName("id") val id: String,
     @SerializedName("caption") val caption: String? = null,
     @SerializedName("source") val source: String? = null
 )
 
+@Immutable
 data class CricbuzzAd(
     @SerializedName("name") val name: String,
     @SerializedName("layout") val layout: String,
@@ -45,7 +51,7 @@ data class CricbuzzAd(
 /**
  * UI-friendly news article model converted from API response.
  */
-data class NewsArticleData(
+data class NewsArticleData(      // intentionally unannotated: timeAgo uses System.currentTimeMillis()
     val id: Long,
     val headline: String,
     val intro: String,
