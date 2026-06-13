@@ -19,7 +19,6 @@ class PointsTableScraper {
 
     companion object {
         private const val TAG = "PointsTableScraper"
-        private const val USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
         private const val MAX_RETRIES = 3
         private const val INITIAL_BACKOFF_MS = 1000L
     }
@@ -42,7 +41,7 @@ class PointsTableScraper {
             try {
                 val url = "${CricBuzzUrls.BASE}/cricket-series/$seriesId/points-table"
                 val doc = Jsoup.connect(url)
-                    .userAgent(USER_AGENT)
+                    .userAgent(randomUserAgent())
                     .timeout(10000)
                     .get()
 

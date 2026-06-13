@@ -10,6 +10,7 @@ import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.models.TimelineEventType
 import com.tanush.bouncer.ui.components.glass.BallEvent
 import com.tanush.bouncer.utils.TimelineEventExtractor
+import com.tanush.bouncer.utils.bouncerExceptionHandler
 import com.tanush.bouncer.data.CricBuzzMatchRepository
 import com.tanush.bouncer.data.MatchRepository
 import com.tanush.bouncer.network.CricBuzzUrls
@@ -23,6 +24,7 @@ import io.sentry.SentryLevel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -132,8 +134,8 @@ class LiveActivityViewModel(
     val firstInningsEndBall: StateFlow<Map<String, Int>> = _firstInningsEndBall.asStateFlow()
 
     private val cachedMatches = mutableMapOf<String, List<CricketMatch>>()
-    private val pollingTasks = mutableMapOf<String, Job>()
-    private var isPollingActive = false
+    private val pollingTasks = ConcurrentHashMap<String, Job>()
+    @Volatile private var isPollingActive = false
     private var hasCompletedInitialFetch = false
     private var initialFetchJob: Job? = null
     private val consecutiveFailures = mutableMapOf<String, Int>()
@@ -153,7 +155,7 @@ class LiveActivityViewModel(
     }
 
     private fun onLiveKeyEvent(title: String, body: String) {
-        viewModelScope.launch {
+        viewModelScope.launch(bouncerExceptionHandler) {
             try {
                 breadcrumb("live.event", "Key event: $title")
                 _keyEvent.value = title to body
@@ -235,7 +237,7 @@ class LiveActivityViewModel(
     }
 
     fun clearKeyEvent() {
-        viewModelScope.launch {
+        viewModelScope.launch(bouncerExceptionHandler) {
             _keyEvent.value = null
         }
     }
@@ -250,7 +252,7 @@ class LiveActivityViewModel(
         val now = System.currentTimeMillis()
         if (_isRefreshing.value || (now - lastManualRefreshMs) < MIN_MANUAL_REFRESH_INTERVAL_MS) return
         lastManualRefreshMs = now
-        viewModelScope.launch {
+        viewModelScope.launch(bouncerExceptionHandler) {
             breadcrumb("user.action", "Manual refresh triggered")
             _isRefreshing.value = true
             _loadingState.value = LoadingState.Refreshing
@@ -266,7 +268,7 @@ class LiveActivityViewModel(
         cachedMatches[status]?.let { filterAndEmitMatches(it) }
 
         if (!cachedMatches.containsKey(status)) {
-            viewModelScope.launch {
+            viewModelScope.launch(bouncerExceptionHandler) {
                 runCatching { updateMatches(status) }
             }
         }
@@ -339,7 +341,7 @@ class LiveActivityViewModel(
     }
 
     private fun runInitialFetch() {
-        initialFetchJob = viewModelScope.launch {
+        initialFetchJob = viewModelScope.launch(bouncerExceptionHandler) {
             if (_currentMatches.value.isEmpty()) {
                 _isLoading.value = true
             }
@@ -371,7 +373,7 @@ class LiveActivityViewModel(
     private fun runFastResumeFetch() {
         // Fast resume path to avoid waiting for the next polling tick.
         val selectedStatus = _selectedStatus.value
-        viewModelScope.launch {
+        viewModelScope.launch(bouncerExceptionHandler) {
             runCatching { updateMatches("Live") }
             if (selectedStatus != "Live") {
                 runCatching { updateMatches(selectedStatus) }
@@ -393,7 +395,7 @@ class LiveActivityViewModel(
 
     private fun startPollingForStatus(status: String) {
         Log.d(TAG, "Starting polling task for $status")
-        val job = viewModelScope.launch {
+        val job = viewModelScope.launch(bouncerExceptionHandler) {
             while (isPollingActive) {
                 try {
                     awaitNextPollTick(status)

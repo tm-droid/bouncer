@@ -120,10 +120,9 @@ class CricBuzzScraper {
 
     companion object {
         private const val TAG = "CricBuzzScraper"
-        private const val USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
         private const val MAX_RETRIES = 3
         private const val INITIAL_BACKOFF_MS = 1000L
-        private const val DRIFT_ALARM_THRESHOLD = 3
+        private const val DRIFT_ALARM_THRESHOLD = 1
         private const val LIST_TIMEOUT_MS = 10000
         private const val DETAILS_TIMEOUT_MS = 10000
         private const val COMMENTARY_TIMEOUT_MS = 12000
@@ -140,7 +139,7 @@ class CricBuzzScraper {
 
         for (attempt in 1..MAX_RETRIES) {
             try {
-                val doc = Jsoup.connect(url).userAgent(USER_AGENT).timeout(LIST_TIMEOUT_MS).get()
+                val doc = Jsoup.connect(url).userAgent(randomUserAgent()).timeout(LIST_TIMEOUT_MS).get()
                 val matches = parseNextJsData(doc.html())
                 val filteredMatches = filterMatches(matches, matchState)
                 Log.d(TAG, "Found ${matches.size} total matches, filtered down to ${filteredMatches.size} for state: $matchState")
@@ -454,7 +453,7 @@ class CricBuzzScraper {
 
         for (attempt in 1..MAX_RETRIES) {
             try {
-                val doc = Jsoup.connect(url).userAgent(USER_AGENT).timeout(DETAILS_TIMEOUT_MS).get()
+                val doc = Jsoup.connect(url).userAgent(randomUserAgent()).timeout(DETAILS_TIMEOUT_MS).get()
                 return@withContext buildMatchDetails(doc)
             } catch (e: UnknownHostException) {
                 Log.e(TAG, "No internet fetching match details for $matchId", e)
@@ -521,7 +520,7 @@ class CricBuzzScraper {
         crumb("Fetching live commentary", data = mapOf("url" to matchUrl))
 
         try {
-            val doc = Jsoup.connect(matchUrl).userAgent(USER_AGENT).timeout(COMMENTARY_TIMEOUT_MS).get()
+            val doc = Jsoup.connect(matchUrl).userAgent(randomUserAgent()).timeout(COMMENTARY_TIMEOUT_MS).get()
             val html = doc.html()
 
             val nextJsLines = parseCommentaryFromNextJs(html)
@@ -600,7 +599,7 @@ class CricBuzzScraper {
 
         val url = CricBuzzUrls.scorecardUrl(matchId)
         try {
-            val doc = Jsoup.connect(url).userAgent(USER_AGENT).timeout(SCORECARD_TIMEOUT_MS).get()
+            val doc = Jsoup.connect(url).userAgent(randomUserAgent()).timeout(SCORECARD_TIMEOUT_MS).get()
             val inningsList = mutableListOf<Innings>()
 
             for (header in doc.select("div[id^=team-][id*=-innings-]")) {

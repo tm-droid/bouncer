@@ -18,7 +18,6 @@ class SeriesScraper {
 
     companion object {
         private const val TAG = "SeriesScraper"
-        private const val USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
         private const val MAX_RETRIES = 3
         private const val INITIAL_BACKOFF_MS = 1000L
         private const val SERIES_LIST_URL = "${CricBuzzUrls.BASE}/cricket-schedule/series"
@@ -40,7 +39,7 @@ class SeriesScraper {
         for (attempt in 1..MAX_RETRIES) {
             try {
                 val doc = Jsoup.connect(SERIES_LIST_URL)
-                    .userAgent(USER_AGENT)
+                    .userAgent(randomUserAgent())
                     .timeout(10000)
                     .get()
 

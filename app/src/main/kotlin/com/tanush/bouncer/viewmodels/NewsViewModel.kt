@@ -6,6 +6,8 @@ import androidx.lifecycle.viewModelScope
 import com.tanush.bouncer.ApiKeys
 import com.tanush.bouncer.models.NewsArticleData
 import com.tanush.bouncer.network.RetrofitClient
+import com.tanush.bouncer.network.randomUserAgent
+import com.tanush.bouncer.utils.bouncerExceptionHandler
 import io.sentry.Breadcrumb
 import io.sentry.Sentry
 import io.sentry.SentryLogLevel
@@ -31,8 +33,6 @@ class NewsViewModel : ViewModel() {
         private const val TAG = "NewsViewModel"
         private const val REFRESH_INTERVAL_MS = 4 * 60 * 60 * 1000L
         private const val MIN_REFRESH_INTERVAL_MS = 5 * 60 * 1000L
-        private const val USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-
         private fun newsFetchMessageFor(statusCode: Int): String = when (statusCode) {
             401, 403 -> "News is temporarily unavailable."
             429 -> "News is temporarily rate limited. Please try again later."
@@ -92,7 +92,7 @@ class NewsViewModel : ViewModel() {
             return
         }
 
-        viewModelScope.launch {
+        viewModelScope.launch(bouncerExceptionHandler) {
             try {
                 if (_articles.value.isEmpty()) _isLoading.value = true else _isRefreshing.value = true
                 _error.value = null
@@ -168,7 +168,7 @@ class NewsViewModel : ViewModel() {
     }
 
     fun refresh() {
-        viewModelScope.launch {
+        viewModelScope.launch(bouncerExceptionHandler) {
             _isRefreshing.value = true
             _error.value = null
             try {
@@ -182,7 +182,7 @@ class NewsViewModel : ViewModel() {
 
     private fun startAutoRefresh() {
         pollingJob?.cancel()
-        pollingJob = viewModelScope.launch {
+        pollingJob = viewModelScope.launch(bouncerExceptionHandler) {
             while (true) {
                 delay(REFRESH_INTERVAL_MS)
                 try {
@@ -217,12 +217,12 @@ class NewsViewModel : ViewModel() {
     }
 
     private fun fetchArticleBody(url: String) {
-        viewModelScope.launch {
+        viewModelScope.launch(bouncerExceptionHandler) {
             _isLoadingArticle.value = true
             try {
                 val paragraphs = withContext(Dispatchers.IO) {
                     val doc = Jsoup.connect(url)
-                        .userAgent(USER_AGENT)
+                        .userAgent(randomUserAgent())
                         .timeout(15000)
                         .get()
 

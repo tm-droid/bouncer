@@ -63,17 +63,27 @@ fun TeamRowV2(
             horizontalArrangement = Arrangement.spacedBy(4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(
-                text = score,
-                style = if (isBatting) typography.scoreLarge else typography.scoreMedium,
-                fontWeight = if (isBatting) FontWeight.ExtraBold else FontWeight.Bold,
-                color = scoreColor,
-            )
+            if (score.isBlank()) {
+                Text(
+                    text = "—",
+                    style = typography.bodyMedium,
+                    color = colors.textSecondary,
+                    maxLines = 1,
+                )
+            } else {
+                AnimatedScoreText(
+                    text = score,
+                    style = if (isBatting) typography.scoreLarge else typography.scoreMedium,
+                    fontWeight = if (isBatting) FontWeight.ExtraBold else FontWeight.Bold,
+                    color = scoreColor,
+                )
+            }
             if (overs.isNotBlank() && overs != "0.0") {
                 Text(
                     text = "($overs)",
                     style = typography.bodySmall,
                     color = colors.textSecondary,
+                    maxLines = 1,
                 )
             }
         }

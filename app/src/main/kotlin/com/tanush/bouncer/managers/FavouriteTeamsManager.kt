@@ -29,7 +29,7 @@ object FavouriteTeamsManager {
 
     private lateinit var prefs: SharedPreferences
     private val gson = Gson()
-    private var scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     private val _favourites = MutableStateFlow<List<String>>(emptyList())
     val favourites: StateFlow<List<String>> = _favourites.asStateFlow()
@@ -40,8 +40,7 @@ object FavouriteTeamsManager {
     val isAtMax: Boolean
         get() = _favourites.value.size >= MAX_FAVOURITES
 
-    fun initialize(context: Context, appScope: CoroutineScope = scope) {
-        scope = appScope
+    fun initialize(context: Context) {
         if (::prefs.isInitialized) return
         try {
             prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)

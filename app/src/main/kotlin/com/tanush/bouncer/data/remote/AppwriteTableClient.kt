@@ -49,6 +49,8 @@ abstract class AppwriteTableClient(private val tag: String) {
                     // TablesDB tables are backed by Appwrite collections internally, so the standard
                     // databases.{db}.collections.{table}.documents channel format is correct.
                     val channel = "databases.$dbId.collections.$tableId.documents"
+                    (realtimeSubscription as? java.io.Closeable)?.close()
+                    realtimeSubscription = null
                     @Suppress("UNCHECKED_CAST")
                     realtimeSubscription = realtime.subscribe(channel) { response ->
                         @Suppress("UNCHECKED_CAST")
@@ -82,6 +84,7 @@ abstract class AppwriteTableClient(private val tag: String) {
 
     fun stop() {
         reconnectScope.cancel()
+        (realtimeSubscription as? java.io.Closeable)?.close()
         realtimeSubscription = null
     }
 }

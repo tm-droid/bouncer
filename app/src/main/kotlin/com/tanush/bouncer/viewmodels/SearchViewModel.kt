@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.tanush.bouncer.data.AppResult
 import com.tanush.bouncer.data.SearchRepository
 import com.tanush.bouncer.data.local.BouncerDatabase
+import com.tanush.bouncer.utils.bouncerExceptionHandler
 import io.sentry.Sentry
 import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.models.NewsArticleData
@@ -57,7 +58,7 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
             _isLoading.value = false
             return
         }
-        searchJob = viewModelScope.launch {
+        searchJob = viewModelScope.launch(bouncerExceptionHandler) {
             delay(300) // debounce
             _isLoading.value = true
             try {

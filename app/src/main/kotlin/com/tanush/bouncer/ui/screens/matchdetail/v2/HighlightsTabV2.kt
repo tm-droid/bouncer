@@ -4,7 +4,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Text
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Movie
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -13,7 +14,7 @@ import androidx.compose.ui.Modifier
 import com.tanush.bouncer.data.local.entities.HighlightEntity
 import com.tanush.bouncer.ui.components.HighlightClipCard
 import com.tanush.bouncer.ui.components.HighlightPlayerDialog
-import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
+import com.tanush.bouncer.ui.components.v2.EmptyStateV2
 
 @Composable
 fun HighlightsTabV2(
@@ -22,10 +23,10 @@ fun HighlightsTabV2(
 ) {
     if (highlights.isEmpty()) {
         Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text(
-                text = "No highlights available yet",
-                style = BouncerThemeV2.typography.bodyMedium,
-                color = BouncerThemeV2.colors.textSecondary,
+            EmptyStateV2(
+                icon = Icons.Outlined.Movie,
+                title = "No highlights yet",
+                subtitle = "Clips appear here once key moments are available for this match.",
             )
         }
         return

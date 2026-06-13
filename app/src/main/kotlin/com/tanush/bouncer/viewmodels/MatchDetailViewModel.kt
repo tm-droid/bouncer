@@ -11,9 +11,11 @@ import com.tanush.bouncer.models.PreMatchData
 import com.tanush.bouncer.models.Scorecard
 import com.tanush.bouncer.models.ScrapedBatsman
 import com.tanush.bouncer.models.ScrapedBowler
+import com.tanush.bouncer.data.AppResult
 import com.tanush.bouncer.data.CricBuzzMatchRepository
 import com.tanush.bouncer.data.MatchRepository
 import com.tanush.bouncer.services.LiveCommentaryManager
+import com.tanush.bouncer.utils.bouncerExceptionHandler
 import io.sentry.Breadcrumb
 import io.sentry.Sentry
 import io.sentry.SentryLevel
@@ -69,7 +71,7 @@ class MatchDetailViewModel(
     private var unlockedAchievements: Set<AchievementKind> = emptySet()
 
     init {
-        viewModelScope.launch { startLiveDataFlow() }
+        viewModelScope.launch(bouncerExceptionHandler) { startLiveDataFlow() }
     }
 
     private suspend fun startLiveDataFlow() {
@@ -96,7 +98,7 @@ class MatchDetailViewModel(
         }
 
         // Fetch match flow once (DRS reviews, powerplay summaries, impact subs).
-        try {
+        AppResult.runCatchingSuspend {
             val url = espnMatchUrl ?: run {
                 matchRepository.findCricinfoMatchUrlAndId(match.matchTitle)?.first.also { espnMatchUrl = it }
             }
@@ -106,18 +108,16 @@ class MatchDetailViewModel(
                     _uiState.update { it.copy(matchFlow = flow) }
                 }
             }
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
+        }.onError {
             Sentry.addBreadcrumb(Breadcrumb().apply {
                 category = "match_detail_v2.matchflow"
-                message = "Match flow fetch failed: ${e.message}"
+                message = "Match flow fetch failed: ${it.message}"
                 level = SentryLevel.WARNING
             })
         }
 
         // Fetch pre-match data (pitch report + team news) once at startup.
-        try {
+        AppResult.runCatchingSuspend {
             val url = espnMatchUrl ?: run {
                 matchRepository.findCricinfoMatchUrlAndId(match.matchTitle)?.first.also { espnMatchUrl = it }
             }
@@ -127,12 +127,10 @@ class MatchDetailViewModel(
                     _uiState.update { it.copy(preMatchData = preMatch) }
                 }
             }
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
+        }.onError {
             Sentry.addBreadcrumb(Breadcrumb().apply {
                 category = "match_detail_v2.prematch"
-                message = "Pre-match data fetch failed: ${e.message}"
+                message = "Pre-match data fetch failed: ${it.message}"
                 level = SentryLevel.WARNING
             })
         }

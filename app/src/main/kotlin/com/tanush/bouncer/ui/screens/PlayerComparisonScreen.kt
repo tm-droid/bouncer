@@ -25,6 +25,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import com.tanush.bouncer.ui.components.v2.ShimmerBox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -242,13 +243,9 @@ private fun PlayerPickerCard(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             if (loading) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(40.dp),
-                    color = colors.primary,
-                    strokeWidth = 2.dp,
-                )
+                ShimmerBox(modifier = Modifier.width(40.dp), height = 40.dp)
                 Spacer(Modifier.height(spacing.sm))
-                Text("Loading…", style = typography.labelSmall, color = colors.textSecondary)
+                ShimmerBox(modifier = Modifier.fillMaxWidth(0.6f), height = 12.dp)
             } else if (player != null && player.stats.isNotEmpty()) {
                 // Player loaded with stats
                 val imgUrl = player.imageUrl

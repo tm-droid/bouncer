@@ -17,7 +17,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.TableChart
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -41,6 +42,8 @@ import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.models.PointsTableEntry
 import com.tanush.bouncer.network.PointsTableScraper
 import com.tanush.bouncer.ui.components.v2.BouncerTopBarV2
+import com.tanush.bouncer.ui.components.v2.EmptyStateV2
+import com.tanush.bouncer.ui.components.v2.ShimmerTableRows
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 
 /**
@@ -52,7 +55,6 @@ fun PointsTableScreen(
     onBackClick: () -> Unit,
 ) {
     val colors = BouncerThemeV2.colors
-    val typography = BouncerThemeV2.typography
     val spacing = BouncerThemeV2.spacing
 
     var entries by remember { mutableStateOf<List<PointsTableEntry>>(emptyList()) }
@@ -79,13 +81,15 @@ fun PointsTableScreen(
     ) { innerPadding ->
         when {
             isLoading -> {
-                Box(modifier = Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = colors.primary)
-                }
+                ShimmerTableRows(modifier = Modifier.fillMaxSize().padding(innerPadding))
             }
             error != null -> {
                 Box(modifier = Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
-                    Text(error ?: "", style = typography.bodyLarge, color = colors.textSecondary)
+                    EmptyStateV2(
+                        icon = Icons.Outlined.TableChart,
+                        title = "No standings available",
+                        subtitle = error ?: "",
+                    )
                 }
             }
             else -> {

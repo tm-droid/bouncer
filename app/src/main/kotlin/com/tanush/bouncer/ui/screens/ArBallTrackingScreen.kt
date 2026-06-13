@@ -23,6 +23,8 @@ import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.ui.components.CoilImage
 import com.tanush.bouncer.ui.theme.*
+import com.tanush.bouncer.ui.theme.v2.DarkBg
+import com.tanush.bouncer.ui.theme.v2.ScrimDark
 
 @Composable
 fun ArBallTrackingScreen(
@@ -52,7 +54,7 @@ fun ArBallTrackingScreen(
                 .fillMaxSize()
                 .background(
                     Brush.verticalGradient(
-                        listOf(Color.Black.copy(alpha = 0.4f), Color.Transparent, Color.Black.copy(alpha = 0.6f))
+                        listOf(ScrimDark.copy(alpha = 0.4f), Color.Transparent, ScrimDark.copy(alpha = 0.6f))
                     )
                 )
         )
@@ -182,7 +184,7 @@ private fun EliteArHeader(match: CricketMatch? = null, onBackClick: () -> Unit) 
             .fillMaxWidth()
             .height(56.dp),
         shape = RoundedCornerShape(28.dp),
-        color = Color.Black.copy(alpha = 0.6f),
+        color = ScrimDark.copy(alpha = 0.6f),
         border = BorderStroke(1.dp, GlassBorder)
     ) {
         Row(
@@ -233,7 +235,7 @@ private fun ArSpeedHeadline(match: CricketMatch? = null) {
         Text("KPH", color = colors.textPrimary, fontSize = 24.sp, fontWeight = FontWeight.Bold)
         
         Spacer(modifier = Modifier.height(12.dp))
-        Surface(color = Color.Black.copy(alpha = 0.4f), border = BorderStroke(1.dp, ChartCyan.copy(alpha = 0.2f)), shape = RoundedCornerShape(4.dp)) {
+        Surface(color = ScrimDark.copy(alpha = 0.4f), border = BorderStroke(1.dp, ChartCyan.copy(alpha = 0.2f)), shape = RoundedCornerShape(4.dp)) {
             Text("TRAJECTORY LOCKED", color = ChartCyan, fontSize = 10.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp), letterSpacing = 2.sp)
         }
     }
@@ -260,7 +262,7 @@ private fun ArBottomSection(match: CricketMatch? = null) {
         Surface(
             modifier = Modifier.fillMaxWidth().height(80.dp),
             shape = RoundedCornerShape(24.dp),
-            color = Color.Black.copy(alpha = 0.6f),
+            color = ScrimDark.copy(alpha = 0.6f),
             border = BorderStroke(1.dp, GlassBorder)
         ) {
             Row(
@@ -283,7 +285,7 @@ private fun ArBottomSection(match: CricketMatch? = null) {
                         .clickable { },
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(Icons.Default.Videocam, null, tint = Color.Black, modifier = Modifier.size(32.dp))
+                    Icon(Icons.Default.Videocam, null, tint = DarkBg, modifier = Modifier.size(32.dp))
                 }
 
                 IconButton(onClick = {}) {
@@ -299,7 +301,7 @@ private fun ArWidget(label: String, value: String, icon: androidx.compose.ui.gra
     Surface(
         modifier = Modifier.width(130.dp).height(100.dp),
         shape = RoundedCornerShape(16.dp),
-        color = Color.Black.copy(alpha = 0.6f),
+        color = ScrimDark.copy(alpha = 0.6f),
         border = BorderStroke(1.dp, GlassSurface)
     ) {
         Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.SpaceBetween) {

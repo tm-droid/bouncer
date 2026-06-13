@@ -50,7 +50,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.google.firebase.messaging.FirebaseMessaging
 import com.tanush.bouncer.managers.FavouriteTeamsManager
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
@@ -202,8 +201,8 @@ fun OnboardingScreenV2(onComplete: () -> Unit) {
                                 ) {
                                     Text(
                                         text = team,
+                                        style = typography.labelLarge,
                                         color = if (selected) colors.onPrimary else colors.textSecondary,
-                                        fontSize = 13.sp,
                                         fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
                                     )
                                 }
@@ -231,8 +230,8 @@ fun OnboardingScreenV2(onComplete: () -> Unit) {
                                 ) {
                                     Text(
                                         text = category,
+                                        style = typography.labelMedium,
                                         color = if (selected) colors.onPrimary else colors.textSecondary,
-                                        fontSize = 12.sp,
                                         fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
                                     )
                                 }

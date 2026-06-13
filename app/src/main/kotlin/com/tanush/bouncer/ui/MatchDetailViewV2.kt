@@ -47,11 +47,13 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.tanush.bouncer.managers.TeamLogoManager
 import com.tanush.bouncer.models.CricketMatch
+import com.tanush.bouncer.ui.components.v2.AnimatedScoreText
 import com.tanush.bouncer.ui.components.v2.MatchNotificationPrefsSheet
 import com.tanush.bouncer.ui.components.v2.MatchStatusType
 import com.tanush.bouncer.ui.components.v2.RecentBallsStripV2
@@ -443,10 +445,12 @@ private fun TeamScoreRow(
             style = typography.titleMedium,
             color = activeColor,
             fontWeight = if (isBatting) FontWeight.Bold else FontWeight.Normal,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f),
         )
         if (score.isNotBlank()) {
-            Text(
+            AnimatedScoreText(
                 text = score,
                 style = typography.scoreMedium,
                 color = activeColor,
@@ -458,6 +462,7 @@ private fun TeamScoreRow(
                     text = "($overs)",
                     style = typography.bodySmall,
                     color = colors.textSecondary,
+                    maxLines = 1,
                 )
             }
         }

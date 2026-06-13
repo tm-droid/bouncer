@@ -26,7 +26,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -45,6 +44,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.runtime.Immutable
 import coil.compose.AsyncImage
 import com.tanush.bouncer.models.FormatStats
 import com.tanush.bouncer.models.PlayerProfile
@@ -54,8 +54,11 @@ import com.tanush.bouncer.ui.components.premium.PlayerFormCard
 import com.tanush.bouncer.ui.components.v2.BouncerTopBarV2
 import com.tanush.bouncer.ui.components.v2.FilterChipRowV2
 import com.tanush.bouncer.ui.components.v2.SectionHeaderV2
+import com.tanush.bouncer.ui.components.v2.ShimmerPlayerHeader
+import com.tanush.bouncer.ui.components.v2.ShimmerStatGrid
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 
+@Immutable
 private data class PlayerDetailsV2(
     val name: String, val role: String, val imageUrl: String?, val country: String,
     val age: Int, val battingStyle: String, val bowlingStyle: String,
@@ -63,12 +66,14 @@ private data class PlayerDetailsV2(
     val battingStats: BattingStatsV2, val bowlingStats: BowlingStatsV2?,
 )
 
+@Immutable
 private data class BattingStatsV2(
     val matches: Int, val innings: Int, val runs: Int, val highScore: String,
     val average: Double, val strikeRate: Double, val hundreds: Int, val fifties: Int,
     val fours: Int, val sixes: Int,
 )
 
+@Immutable
 private data class BowlingStatsV2(
     val matches: Int, val wickets: Int, val bestBowling: String,
     val average: Double, val economy: Double, val fiveWickets: Int,
@@ -136,12 +141,16 @@ fun PlayerDetailScreenV2(
     ) { padding ->
         when (loadState) {
             LoadState.Loading -> {
-                Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        CircularProgressIndicator(color = colors.primary)
-                        Spacer(Modifier.height(spacing.lg))
-                        Text("Loading player data…", style = typography.bodyMedium, color = colors.textSecondary)
-                    }
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(padding)
+                        .padding(spacing.lg),
+                    verticalArrangement = Arrangement.spacedBy(spacing.lg),
+                ) {
+                    ShimmerPlayerHeader()
+                    ShimmerStatGrid()
+                    ShimmerStatGrid(rows = 3)
                 }
             }
 

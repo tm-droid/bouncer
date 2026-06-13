@@ -18,4 +18,6 @@ object CacheConfig {
     const val AI_CACHE_PERMANENT_EXPIRY_ISO = "2099-01-01T00:00:00.000Z"
     // Any expiry more than a year out is treated as the permanent sentinel on read.
     const val AI_CACHE_PERMANENT_THRESHOLD_MS = 365L * 24 * 60 * 60 * 1000
+    const val AI_CACHE_MAX_PERMANENT_ENTRIES = 500
+    const val AI_CACHE_EVICTION_BATCH = 50
 }

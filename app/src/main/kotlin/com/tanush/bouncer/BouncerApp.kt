@@ -94,7 +94,7 @@ class BouncerApp : Application() {
             initializeSafely("TeamLogoManager") { TeamLogoManager.initialize(applicationContext) }
         }
         initializeSafely("TeamAcronymManager") { TeamAcronymManager.initialize(this) }
-        initializeSafely("FavouriteTeamsManager") { FavouriteTeamsManager.initialize(this, applicationScope) }
+        initializeSafely("FavouriteTeamsManager") { FavouriteTeamsManager.initialize(this) }
         initializeSafely("MatchSubscriptionManager") { MatchSubscriptionManager.initialize(this) }
         initializeSafely("MatchCacheService") { MatchCacheService.initDiskCache(this) }
         initializeSafely("AppwriteClient") { AppwriteClient.initialize(this) }

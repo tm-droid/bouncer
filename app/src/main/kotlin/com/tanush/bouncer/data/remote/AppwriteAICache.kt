@@ -9,6 +9,8 @@ import io.appwrite.Permission
 import io.appwrite.Role
 import io.appwrite.exceptions.AppwriteException
 import io.appwrite.services.TablesDB
+import com.tanush.bouncer.services.RetryPolicy
+import com.tanush.bouncer.services.withRetry
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -28,6 +30,10 @@ object AppwriteAICache : AppwriteTableClient("AppwriteAICache") {
         initTable(ApiKeys.appwriteAiCacheDbId, ApiKeys.appwriteAiCacheColId)
     }
 
+    private val remoteRetry = RetryPolicy(maxAttempts = 3, baseDelayMs = 500L)
+    private fun isTransient(e: Throwable) =
+        e is java.io.IOException || (e is AppwriteException && (e.code ?: 0) >= 500)
+
     // Returns (commentary, isPermanent). isPermanent=true when expires_at is >1 year away —
     // used by AICacheService to decide whether to warm local caches permanently.
     suspend fun get(key: String): Pair<String, Boolean>? {
@@ -35,11 +41,13 @@ object AppwriteAICache : AppwriteTableClient("AppwriteAICache") {
         return withContext(Dispatchers.IO) {
             runCatching {
                 val db = tablesDB ?: return@runCatching null
-                val result = db.listRows(
-                    databaseId = dbId,
-                    tableId = tableId,
-                    queries = listOf(Query.equal("cache_key", key), Query.limit(1))
-                )
+                val result = remoteRetry.withRetry(isRetryable = ::isTransient) {
+                    db.listRows(
+                        databaseId = dbId,
+                        tableId = tableId,
+                        queries = listOf(Query.equal("cache_key", key), Query.limit(1))
+                    )
+                }
                 val row = result.rows.firstOrNull() ?: return@runCatching null
                 parseCommentaryRow(key, row.data)
             }.onFailure { e ->
@@ -93,7 +101,10 @@ object AppwriteAICache : AppwriteTableClient("AppwriteAICache") {
                     "commentary" to commentary,
                     "expires_at" to expiresAt
                 )
-                createRowIdempotent(db, key, data)
+                remoteRetry.withRetry(isRetryable = ::isTransient) {
+                    createRowIdempotent(db, key, data)
+                }
+                if (permanent) evictOldestPermanentIfNeeded(db)
             }.onFailure { e ->
                 logSilentFailure("Remote cache set failed", e)
             }
@@ -119,6 +130,47 @@ object AppwriteAICache : AppwriteTableClient("AppwriteAICache") {
             } else {
                 throw e
             }
+        }
+    }
+
+    private suspend fun evictOldestPermanentIfNeeded(db: TablesDB) {
+        runCatching {
+            val checkResult = remoteRetry.withRetry(isRetryable = ::isTransient) {
+                db.listRows(
+                    databaseId = dbId,
+                    tableId = tableId,
+                    queries = listOf(
+                        Query.equal("expires_at", CacheConfig.AI_CACHE_PERMANENT_EXPIRY_ISO),
+                        Query.limit(1),
+                        Query.offset(CacheConfig.AI_CACHE_MAX_PERMANENT_ENTRIES)
+                    )
+                )
+            }
+            if (checkResult.rows.isEmpty()) return@runCatching
+
+            val toDelete = remoteRetry.withRetry(isRetryable = ::isTransient) {
+                db.listRows(
+                    databaseId = dbId,
+                    tableId = tableId,
+                    queries = listOf(
+                        Query.equal("expires_at", CacheConfig.AI_CACHE_PERMANENT_EXPIRY_ISO),
+                        Query.orderAsc("\$createdAt"),
+                        Query.limit(CacheConfig.AI_CACHE_EVICTION_BATCH)
+                    )
+                )
+            }
+
+            for (row in toDelete.rows) {
+                remoteRetry.withRetry(isRetryable = ::isTransient) {
+                    db.deleteRow(
+                        databaseId = dbId,
+                        tableId = tableId,
+                        rowId = row.id
+                    )
+                }
+            }
+        }.onFailure { e ->
+            logSilentFailure("Permanent cache eviction failed", e)
         }
     }
 

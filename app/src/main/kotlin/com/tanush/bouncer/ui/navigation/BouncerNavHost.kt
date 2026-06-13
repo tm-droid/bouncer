@@ -1,7 +1,6 @@
 package com.tanush.bouncer.ui.navigation
 
 import androidx.compose.animation.*
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -66,10 +65,10 @@ fun BouncerNavHost(
         // Onboarding — only shown on first launch
         composable(
             BouncerScreen.Onboarding.route,
-            enterTransition = { fadeIn(tween(300)) },
-            exitTransition = { fadeOut(tween(300)) },
-            popEnterTransition = { fadeIn(tween(300)) },
-            popExitTransition = { fadeOut(tween(300)) },
+            enterTransition = { fadeIn(BouncerMotion.Specs.FadeIn) },
+            exitTransition = { fadeOut(BouncerMotion.Specs.FadeOut) },
+            popEnterTransition = { fadeIn(BouncerMotion.Specs.FadeIn) },
+            popExitTransition = { fadeOut(BouncerMotion.Specs.FadeOut) },
         ) {
             OnboardingScreenV2(
                 onComplete = { navController.navigateAndClearStack(BouncerScreen.Home.route) }

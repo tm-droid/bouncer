@@ -41,6 +41,7 @@ import com.tanush.bouncer.ui.theme.GoldPrimary
 /**
  * Enhanced premium match card with advanced animations and glass effects
  */
+// Superseded by MatchCardV2 (ui.components.v2); no screen renders this anymore.
 @Composable
 fun EnhancedPremiumMatchCard(
     match: CricketMatch,
@@ -99,7 +100,7 @@ fun EnhancedPremiumMatchCard(
                 elevation = if (isLive) 20.dp else 12.dp,
                 shape = RoundedCornerShape(24.dp),
                 spotColor = if (isLive) colors.statusLive.copy(alpha = 0.3f * liveGlow) else hierarchy.secondary.primary.copy(alpha = 0.2f),
-                ambientColor = Color.Black.copy(alpha = 0.4f)
+                ambientColor = com.tanush.bouncer.ui.theme.v2.ScrimDark.copy(alpha = 0.4f)
             )
             .clip(RoundedCornerShape(24.dp))
             .background(

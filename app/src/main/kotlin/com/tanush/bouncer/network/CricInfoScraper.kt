@@ -24,7 +24,6 @@ class CricInfoScraper {
 
     companion object {
         private const val TAG = "CricInfoScraper"
-        private const val USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 
         // Circuit breaker thresholds
         private const val CIRCUIT_BREAKER_FAILURE_THRESHOLD = 3
@@ -107,7 +106,7 @@ class CricInfoScraper {
     }
 
     private fun connect(url: String) = Jsoup.connect(url)
-        .userAgent(USER_AGENT)
+        .userAgent(randomUserAgent())
         .header("Referer", "https://www.espncricinfo.com/")
         .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7")
         .header("Accept-Language", "en-US,en;q=0.9")

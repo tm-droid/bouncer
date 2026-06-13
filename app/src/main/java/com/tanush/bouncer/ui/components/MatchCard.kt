@@ -65,6 +65,7 @@ import com.tanush.bouncer.utils.parseRuns
 
 /**
  * Primary match card — glass morphism variant.
+ * Superseded by MatchCardV2 (ui.components.v2); no screen renders this anymore.
  *
  * Layout (top → bottom):
  * 1. Header — match-type chip (glass pill), series/title, LiveIndicator
@@ -448,7 +449,9 @@ private fun TeamRow(
                 Text(
                     text = team.name,
                     style = typography.labelSmall,
-                    color = colors.textTertiary
+                    color = colors.textTertiary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
         }
@@ -560,7 +563,8 @@ private fun StrikeRow(batters: List<ScrapedBatsman>) {
                         text = batter.name,
                         style = typography.bodySmall,
                         color = if (batter.isStriker) colors.textPrimary else colors.textSecondary,
-                        fontWeight = if (batter.isStriker) FontWeight.Bold else FontWeight.Normal
+                        fontWeight = if (batter.isStriker) FontWeight.Bold else FontWeight.Normal,
+                        maxLines = 1, overflow = TextOverflow.Ellipsis
                     )
                     if (batter.isStriker) {
                         Spacer(modifier = Modifier.width(dimens.spacing.xs))

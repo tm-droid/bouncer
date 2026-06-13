@@ -47,6 +47,54 @@ val ScheduledGray = Color(0xFF9CA3AF)
 val DividerLight = Color(0xFFF0F0F0)
 val ScrimDark = Color(0x99000000)
 
+/**
+ * Semantic colors for cricket events (wicket, boundaries, extras, match lifecycle).
+ * Single source of truth — screens must use these instead of hex literals so
+ * light/dark variants stay consistent everywhere an event is rendered.
+ */
+@Immutable
+data class CricketEventColors(
+    val wicket: Color,
+    val four: Color,
+    val six: Color,
+    val wide: Color,
+    val noBall: Color,
+    val maiden: Color,
+    val milestone: Color,
+    val matchStart: Color,
+    val matchEnd: Color,
+    val dotBall: Color,
+    val onEvent: Color,
+)
+
+val LightCricketEventColors = CricketEventColors(
+    wicket = LiveRed,
+    four = WinGreen,
+    six = Color(0xFF7C3AED),
+    wide = Color(0xFFF59E0B),
+    noBall = Color(0xFFF97316),
+    maiden = Color(0xFF0D9488),
+    milestone = Gold800,
+    matchStart = Color(0xFF3B82F6),
+    matchEnd = Color(0xFF94A3B8),
+    dotBall = Gray400,
+    onEvent = White,
+)
+
+val DarkCricketEventColors = CricketEventColors(
+    wicket = LiveRedDark,
+    four = WinGreenDark,
+    six = Color(0xFF8B5CF6),
+    wide = Color(0xFFFBBF24),
+    noBall = Color(0xFFFB923C),
+    maiden = Color(0xFF2DD4BF),
+    milestone = Gold300,
+    matchStart = Color(0xFF60A5FA),
+    matchEnd = Color(0xFF64748B),
+    dotBall = Gray500,
+    onEvent = White,
+)
+
 @Immutable
 data class BouncerColorsV2(
     // Brand
@@ -85,6 +133,9 @@ data class BouncerColorsV2(
     // Misc
     val shimmer: Color,
     val shimmerHighlight: Color,
+
+    // Cricket event semantics
+    val cricket: CricketEventColors,
 )
 
 val LightColors = BouncerColorsV2(
@@ -116,6 +167,8 @@ val LightColors = BouncerColorsV2(
 
     shimmer = Gray200,
     shimmerHighlight = Gray100,
+
+    cricket = LightCricketEventColors,
 )
 
 val DarkColors = BouncerColorsV2(
@@ -147,6 +200,8 @@ val DarkColors = BouncerColorsV2(
 
     shimmer = DarkSurfaceVariant,
     shimmerHighlight = DarkBorder,
+
+    cricket = DarkCricketEventColors,
 )
 
 val LocalBouncerColorsV2 = staticCompositionLocalOf { LightColors }

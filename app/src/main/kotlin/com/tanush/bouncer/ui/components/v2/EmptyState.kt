@@ -31,6 +31,7 @@ fun EmptyStateV2(
     modifier: Modifier = Modifier,
     icon: ImageVector = Icons.Outlined.SearchOff,
     onRetry: (() -> Unit)? = null,
+    actionLabel: String = "Retry",
 ) {
     val colors = BouncerThemeV2.colors
     val typography = BouncerThemeV2.typography
@@ -66,7 +67,7 @@ fun EmptyStateV2(
         if (onRetry != null) {
             Spacer(Modifier.height(spacing.lg))
             Button(onClick = onRetry) {
-                Text("Retry")
+                Text(actionLabel)
             }
         }
     }

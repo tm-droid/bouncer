@@ -30,6 +30,7 @@ import com.tanush.bouncer.models.BowlerStats
 import com.tanush.bouncer.analysis.CricketConstants
 import com.tanush.bouncer.analysis.MatchProjections
 import com.tanush.bouncer.ui.theme.*
+import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 import com.tanush.bouncer.utils.parseRuns
 
 @Composable
@@ -83,7 +84,7 @@ fun PremiumScorecardTab(
                 .padding(horizontal = 16.dp, vertical = 8.dp)
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(12.dp))
-                .background(Color(0xFF121212))
+                .background(BouncerThemeV2.colors.surfaceVariant)
                 .border(0.5.dp, GlassSurface, RoundedCornerShape(12.dp))
                 .padding(4.dp),
             horizontalArrangement = Arrangement.spacedBy(4.dp)
@@ -95,7 +96,7 @@ fun PremiumScorecardTab(
                     modifier = Modifier.weight(1f),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = if (isSelected) GoldPrimary else Color.Transparent,
-                        contentColor = if (isSelected) Color.Black else TextSecondary
+                        contentColor = if (isSelected) BouncerThemeV2.colors.onPrimary else TextSecondary
                     ),
                     shape = RoundedCornerShape(8.dp),
                     contentPadding = PaddingValues(vertical = 8.dp)
@@ -123,7 +124,7 @@ fun PremiumScorecardTab(
                         Spacer(modifier = Modifier.width(8.dp))
                         Text("Batting", color = TextPrimary, fontSize = 18.sp, fontWeight = FontWeight.Bold)
                     }
-                    Surface(color = Color(0xFF121212), shape = RoundedCornerShape(4.dp), border = BorderStroke(1.dp, GlassSurface)) {
+                    Surface(color = BouncerThemeV2.colors.surfaceVariant, shape = RoundedCornerShape(4.dp), border = BorderStroke(1.dp, GlassSurface)) {
                         Text("Live", color = TextSecondary, fontSize = 10.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
                     }
                 }
@@ -227,7 +228,7 @@ private fun BattingRow(batsman: BatsmanStats) {
         modifier = Modifier
             .padding(horizontal = 16.dp)
             .fillMaxWidth()
-            .background(if (isNotOut) GlassSurface else Color(0xFF121212))
+            .background(if (isNotOut) GlassSurface else BouncerThemeV2.colors.surfaceVariant)
             .border(0.5.dp, GlassSurface)
             .padding(horizontal = 12.dp, vertical = 12.dp)
     ) {
@@ -249,7 +250,7 @@ private fun BattingRow(batsman: BatsmanStats) {
                 )
                 Text(
                     text = if (isNotOut) "Batting" else batsman.dismissal,
-                    color = if (isNotOut) Color(0xFF4ADE80) else TextMuted,
+                    color = if (isNotOut) BouncerThemeV2.colors.win else TextMuted,
                     fontSize = 10.sp,
                     fontStyle = if (!isNotOut) FontStyle.Italic else FontStyle.Normal
                 )
@@ -330,7 +331,7 @@ private fun FallOfWicketsCarousel(fow: List<String>) {
                 modifier = Modifier
                     .width(140.dp)
                     .clip(RoundedCornerShape(12.dp))
-                    .background(Color(0xFF121212))
+                    .background(BouncerThemeV2.colors.surfaceVariant)
                     .border(0.5.dp, GlassSurface, RoundedCornerShape(12.dp))
                     .padding(12.dp)
             ) {
@@ -371,7 +372,7 @@ private fun BowlingRow(bowler: BowlerStats) {
         modifier = Modifier
             .padding(horizontal = 16.dp)
             .fillMaxWidth()
-            .background(Color(0xFF121212))
+            .background(BouncerThemeV2.colors.surfaceVariant)
             .border(0.5.dp, GlassSurface)
             .padding(horizontal = 12.dp, vertical = 12.dp),
         horizontalArrangement = Arrangement.SpaceBetween,

@@ -38,8 +38,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.runtime.Immutable
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 
+@Immutable
 private data class TrophyItem(
     val name: String, val requirement: String, val tier: String, val isLocked: Boolean,
 )

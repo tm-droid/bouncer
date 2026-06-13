@@ -22,7 +22,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
@@ -45,14 +44,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.runtime.Immutable
 import com.tanush.bouncer.models.TimelineEventType
 import com.tanush.bouncer.ui.components.v2.EmptyStateV2
 import com.tanush.bouncer.ui.components.v2.FilterChipRowV2
+import com.tanush.bouncer.ui.components.v2.ShimmerCommentaryList
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 import com.tanush.bouncer.utils.TimelineEventExtractor
 
 // ── Internal parsed ball model ──────────────────────────────────────────────
 
+@Immutable
 private data class ParsedBall(
     val overNumber: Float,
     val ballText: String,
@@ -116,9 +118,7 @@ fun CommentaryTabV2(
     val spacing = BouncerThemeV2.spacing
 
     if (isLoading) {
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator(color = colors.primary)
-        }
+        ShimmerCommentaryList(modifier = Modifier.fillMaxSize())
         return
     }
 
@@ -265,14 +265,14 @@ private fun OverSeparatorCard(overNumber: Int, balls: List<ParsedBall>) {
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(6.dp))
-                            .background(MaidenTeal.copy(alpha = 0.2f))
+                            .background(colors.cricket.maiden.copy(alpha = 0.2f))
                             .padding(horizontal = spacing.sm, vertical = spacing.xs),
                         contentAlignment = Alignment.Center,
                     ) {
                         Text(
                             text = "MAIDEN",
                             style = typography.labelSmall,
-                            color = MaidenTeal,
+                            color = colors.cricket.maiden,
                             fontWeight = FontWeight.Bold,
                         )
                     }
@@ -423,12 +423,13 @@ private fun NonBallLine(text: String) {
 private fun ResultPill(ball: ParsedBall) {
     val colors = BouncerThemeV2.colors
 
+    val cricket = colors.cricket
     val (text, fg, bg) = when {
-        ball.isWicket -> Triple("W", colors.live, colors.live.copy(alpha = 0.2f))
-        ball.isSix -> Triple("6", colors.primary, colors.primary.copy(alpha = 0.2f))
-        ball.isFour -> Triple("4", colors.win, colors.win.copy(alpha = 0.2f))
-        ball.isWide -> Triple("WD", Color(0xFFF59E0B), Color(0xFFF59E0B).copy(alpha = 0.15f))
-        ball.isNoBall -> Triple("NB", Color(0xFFF97316), Color(0xFFF97316).copy(alpha = 0.15f))
+        ball.isWicket -> Triple("W", cricket.wicket, cricket.wicket.copy(alpha = 0.2f))
+        ball.isSix -> Triple("6", cricket.six, cricket.six.copy(alpha = 0.2f))
+        ball.isFour -> Triple("4", cricket.four, cricket.four.copy(alpha = 0.2f))
+        ball.isWide -> Triple("WD", cricket.wide, cricket.wide.copy(alpha = 0.15f))
+        ball.isNoBall -> Triple("NB", cricket.noBall, cricket.noBall.copy(alpha = 0.15f))
         ball.runs == 0 -> Triple("·", colors.onSurface.copy(alpha = 0.35f), colors.surfaceVariant)
         else -> Triple(ball.runs.toString(), colors.onSurface.copy(alpha = 0.6f), colors.surfaceVariant)
     }
@@ -453,12 +454,13 @@ private fun ResultPill(ball: ParsedBall) {
 private fun BallBadge(ball: String, size: Dp = 28.dp) {
     val colors = BouncerThemeV2.colors
     val b = ball.trim().uppercase()
+    val cricket = colors.cricket
     val (bg, fg) = when {
-        b == "W" -> colors.live.copy(alpha = 0.2f) to colors.live
-        b == "6" -> colors.primary.copy(alpha = 0.2f) to colors.primary
-        b == "4" -> colors.win.copy(alpha = 0.2f) to colors.win
+        b == "W" -> cricket.wicket.copy(alpha = 0.2f) to cricket.wicket
+        b == "6" -> cricket.six.copy(alpha = 0.2f) to cricket.six
+        b == "4" -> cricket.four.copy(alpha = 0.2f) to cricket.four
         b.startsWith("WD") || b.startsWith("NB") || b.startsWith("LB") || b.startsWith("B") ->
-            Color(0xFFF59E0B).copy(alpha = 0.15f) to Color(0xFFF59E0B)
+            cricket.wide.copy(alpha = 0.15f) to cricket.wide
         b == "." -> colors.surfaceVariant to colors.onSurface.copy(alpha = 0.3f)
         else -> colors.surfaceVariant to colors.onSurface
     }
@@ -480,8 +482,6 @@ private fun BallBadge(ball: String, size: Dp = 28.dp) {
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
-
-private val MaidenTeal = Color(0xFF0D9488)
 
 private fun buildShareText(ball: ParsedBall): String =
     if (ball.overNumber > 0f) "Over ${"%.1f".format(ball.overNumber)}: ${ball.ballText}"

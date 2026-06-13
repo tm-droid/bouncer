@@ -11,6 +11,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
+import org.jsoup.HttpStatusException
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 
@@ -27,8 +28,6 @@ data class PlayerSearchResult(
 object PlayerProfileScraper {
 
     private const val TAG = "PlayerProfileScraper"
-    private const val USER_AGENT =
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
     private const val MAX_RETRIES = 3
     private const val INITIAL_BACKOFF_MS = 1000L
     private const val SEARCH_TIMEOUT_MS = 10000
@@ -64,6 +63,16 @@ object PlayerProfileScraper {
                 results.addAll(searchPlayersViaHtml(query, results))
             }
             results.take(MAX_SEARCH_RESULTS)
+        } catch (e: HttpStatusException) {
+            Sentry.captureException(e)
+            if (e.statusCode == 401 || e.statusCode == 403) {
+                // Auth/forbidden — do NOT fall back to HTML (would mask the real problem)
+                emptyList()
+            } else {
+                // Non-auth HTTP error (404, 5xx) — try HTML fallback
+                runCatching { searchPlayersViaHtml(query, emptyList()).take(MAX_SEARCH_RESULTS) }
+                    .getOrDefault(emptyList())
+            }
         } catch (e: Exception) {
             Sentry.captureException(e)
             emptyList()
@@ -73,7 +82,7 @@ object PlayerProfileScraper {
     private fun searchPlayersViaApi(query: String): List<PlayerSearchResult> {
         val searchUrl = "${CricBuzzUrls.BASE}/api/search/results?q=${encode(query)}&type=player"
         val response = Jsoup.connect(searchUrl)
-            .userAgent(USER_AGENT)
+            .userAgent(randomUserAgent())
             .ignoreContentType(true)
             .timeout(SEARCH_TIMEOUT_MS)
             .execute()
@@ -122,7 +131,7 @@ object PlayerProfileScraper {
     ): List<PlayerSearchResult> {
         val htmlUrl = "${CricBuzzUrls.BASE}/search?q=${encode(query)}"
         val doc = Jsoup.connect(htmlUrl)
-            .userAgent(USER_AGENT)
+            .userAgent(randomUserAgent())
             .timeout(SEARCH_TIMEOUT_MS)
             .get()
 
@@ -183,7 +192,7 @@ object PlayerProfileScraper {
 
             val profileUrl = buildProfileUrl(bestMatch)
             val doc = Jsoup.connect(profileUrl)
-                .userAgent(USER_AGENT)
+                .userAgent(randomUserAgent())
                 .timeout(PROFILE_TIMEOUT_MS)
                 .get()
 

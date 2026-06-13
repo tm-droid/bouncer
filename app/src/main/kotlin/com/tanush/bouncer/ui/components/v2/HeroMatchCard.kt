@@ -20,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.ui.theme.rememberMatchTeamPalette
@@ -73,6 +74,8 @@ fun HeroMatchCard(
                         text = "${match.matchTitle} • ${match.matchType}",
                         style = typography.bodySmall,
                         color = colors.textSecondary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f),
                     )
                     if (match.isLive) {
@@ -121,6 +124,8 @@ fun HeroMatchCard(
                         text = match.currentStatus,
                         style = typography.titleSmall,
                         color = if (match.isLive) battingColor else colors.textSecondary,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
                     )
                 }
 

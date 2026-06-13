@@ -37,7 +37,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.managers.NotificationInboxManager
 import com.tanush.bouncer.managers.NotificationItem
 import com.tanush.bouncer.ui.components.v2.EmptyStateV2
@@ -118,12 +117,12 @@ private fun NotificationRow(item: NotificationItem) {
     val spacing = BouncerThemeV2.spacing
 
     val accentColor = when (item.type) {
-        "wicket" -> Color(0xFFFF3B30)
-        "six" -> Color(0xFF8B5CF6)
-        "four" -> Color(0xFF22C55E)
-        "milestone" -> Color(0xFFFFD700)
-        "match_start" -> Color(0xFF3B82F6)
-        "match_end" -> Color(0xFF94A3B8)
+        "wicket" -> colors.cricket.wicket
+        "six" -> colors.cricket.six
+        "four" -> colors.cricket.four
+        "milestone" -> colors.cricket.milestone
+        "match_start" -> colors.cricket.matchStart
+        "match_end" -> colors.cricket.matchEnd
         else -> colors.primary
     }
 
@@ -169,9 +168,8 @@ private fun NotificationRow(item: NotificationItem) {
                 )
                 Text(
                     text = formatTimestamp(item.timestamp),
-                    style = typography.bodySmall,
+                    style = typography.labelSmall,
                     color = colors.textSecondary,
-                    fontSize = 11.sp,
                 )
             }
             Spacer(Modifier.height(2.dp))
@@ -184,10 +182,8 @@ private fun NotificationRow(item: NotificationItem) {
             Spacer(Modifier.height(4.dp))
             Text(
                 text = typeLabel,
-                style = typography.bodySmall,
+                style = typography.labelSmall,
                 color = accentColor,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Medium,
             )
         }
     }

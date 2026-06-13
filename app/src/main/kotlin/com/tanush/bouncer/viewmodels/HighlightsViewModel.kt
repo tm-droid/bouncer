@@ -12,6 +12,7 @@ import io.sentry.Sentry
 import com.tanush.bouncer.data.local.entities.HighlightEntity
 import com.tanush.bouncer.data.remote.AppwriteHighlightsClient
 import com.tanush.bouncer.data.repository.HighlightsRepository
+import com.tanush.bouncer.utils.bouncerExceptionHandler
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -32,7 +33,7 @@ class HighlightsViewModel(
     }
 
     private fun fetchHighlights() {
-        viewModelScope.launch {
+        viewModelScope.launch(bouncerExceptionHandler) {
             when (val result = repo.fetchForMatch(bouncerMatchId)) {
                 is AppResult.Success -> {
                     _highlights.value = result.data.sortedWith(compareBy({ if (it.type == "VERIFIED") 0 else 1 }, { -it.fetchedAt }))

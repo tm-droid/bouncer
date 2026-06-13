@@ -27,6 +27,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.ui.theme.rememberMatchTeamPalette
@@ -84,6 +85,8 @@ fun MatchCardV2(
                     text = "${match.matchTitle} • ${match.matchType}",
                     style = typography.bodySmall,
                     color = colors.textSecondary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f),
                 )
                 StatusBadgeV2(statusType = statusType)
@@ -145,6 +148,7 @@ fun MatchCardV2(
                     colors.textSecondary
                 },
                     maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
 

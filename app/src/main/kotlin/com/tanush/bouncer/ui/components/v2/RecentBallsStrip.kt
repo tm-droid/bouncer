@@ -54,12 +54,13 @@ fun RecentBallsStripV2(
 
 private fun ballStyle(ball: String, colors: BouncerColorsToken): Pair<Color, Color> {
     val b = ball.trim().uppercase()
+    val cricket = colors.cricket
     return when {
-        b.contains("W") && !b.contains("WD") -> colors.live.copy(alpha = 0.85f) to Color.White
-        b == "4" -> Color(0xFF16A34A).copy(alpha = 0.85f) to Color.White
-        b == "6" -> Color(0xFF7C3AED).copy(alpha = 0.85f) to Color.White
+        b.contains("W") && !b.contains("WD") -> cricket.wicket.copy(alpha = 0.85f) to cricket.onEvent
+        b == "4" -> cricket.four.copy(alpha = 0.85f) to cricket.onEvent
+        b == "6" -> cricket.six.copy(alpha = 0.85f) to cricket.onEvent
         b.contains("WD") || b.contains("NB") || b.contains("LB") || b.contains("B") ->
-            Color(0xFFF59E0B).copy(alpha = 0.85f) to Color.White
+            cricket.wide.copy(alpha = 0.85f) to cricket.onEvent
         b == "0" || b == "." -> colors.textSecondary.copy(alpha = 0.3f) to colors.onSurface
         else -> colors.primary.copy(alpha = 0.2f) to colors.onSurface
     }

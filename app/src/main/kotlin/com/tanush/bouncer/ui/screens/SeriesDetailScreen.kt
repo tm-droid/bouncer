@@ -6,6 +6,9 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.BarChart
+import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.Tab
@@ -17,9 +20,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.tanush.bouncer.ui.components.v2.BouncerTopBarV2
+import com.tanush.bouncer.ui.components.v2.EmptyStateV2
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 
 /**
@@ -72,25 +77,31 @@ fun SeriesDetailScreen(
             }
 
             when (selectedTab) {
-                0 -> {
-                    // Schedule placeholder
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text("Match schedule coming soon", style = typography.bodyLarge, color = colors.textSecondary)
-                    }
-                }
-                2 -> {
-                    // Stats placeholder
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text("Series stats coming soon", style = typography.bodyLarge, color = colors.textSecondary)
-                    }
-                }
+                0 -> SeriesTabPlaceholder(
+                    icon = Icons.Outlined.CalendarMonth,
+                    title = "Schedule coming soon",
+                    subtitle = "Fixtures for this series will appear here.",
+                )
+                2 -> SeriesTabPlaceholder(
+                    icon = Icons.Outlined.BarChart,
+                    title = "Stats coming soon",
+                    subtitle = "Series statistics will appear here.",
+                )
             }
         }
+    }
+}
+
+@Composable
+private fun SeriesTabPlaceholder(
+    icon: ImageVector,
+    title: String,
+    subtitle: String,
+) {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center,
+    ) {
+        EmptyStateV2(icon = icon, title = title, subtitle = subtitle)
     }
 }

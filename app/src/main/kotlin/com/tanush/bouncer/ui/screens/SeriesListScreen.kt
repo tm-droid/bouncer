@@ -1,7 +1,6 @@
 package com.tanush.bouncer.ui.screens
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,7 +21,6 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -44,6 +42,7 @@ import com.tanush.bouncer.network.SeriesScraper
 import com.tanush.bouncer.ui.components.v2.BouncerTopBarV2
 import com.tanush.bouncer.ui.components.v2.EmptyStateV2
 import com.tanush.bouncer.ui.components.v2.FilterChipRowV2
+import com.tanush.bouncer.ui.components.v2.ShimmerListItem
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 import io.sentry.Sentry
 import kotlinx.coroutines.CancellationException
@@ -62,10 +61,13 @@ fun SeriesListScreen(
 
     var allSeries by remember { mutableStateOf<List<Series>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
+    var hasError by remember { mutableStateOf(false) }
     var selectedFilter by remember { mutableStateOf("All") }
+    var fetchKey by remember { mutableStateOf(0) }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(fetchKey) {
         isLoading = true
+        hasError = false
         try {
             val scraper = SeriesScraper()
             allSeries = scraper.fetchActiveSeries()
@@ -73,6 +75,7 @@ fun SeriesListScreen(
             if (e is CancellationException) throw e
             Sentry.captureException(e)
             Log.w("SeriesListScreen", "Series list operation failed", e)
+            hasError = true
         }
         isLoading = false
     }
@@ -95,8 +98,23 @@ fun SeriesListScreen(
     ) { innerPadding ->
         when {
             isLoading -> {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(innerPadding)
+                        .padding(spacing.lg),
+                    verticalArrangement = Arrangement.spacedBy(spacing.sm),
+                ) {
+                    repeat(6) { ShimmerListItem() }
+                }
+            }
+            hasError -> {
                 Box(modifier = Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = colors.primary)
+                    EmptyStateV2(
+                        title = "Couldn't load series",
+                        subtitle = "Check your connection and try again",
+                        onRetry = { fetchKey++ },
+                    )
                 }
             }
             allSeries.isEmpty() -> {
@@ -139,13 +157,13 @@ private fun SeriesCard(series: Series, onClick: () -> Unit) {
     val spacing = BouncerThemeV2.spacing
 
     Card(
+        onClick = onClick,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = spacing.lg, vertical = spacing.xs)
-            .clickable(onClick = onClick),
+            .padding(horizontal = spacing.lg, vertical = spacing.xs),
         colors = CardDefaults.cardColors(containerColor = colors.surface),
-        shape = RoundedCornerShape(12.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+        shape = BouncerThemeV2.shapes.medium,
+        elevation = CardDefaults.cardElevation(defaultElevation = BouncerThemeV2.elevation.card),
     ) {
         Row(
             modifier = Modifier

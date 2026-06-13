@@ -1,5 +1,6 @@
 package com.tanush.bouncer.data.cache
 
+import android.os.SystemClock
 import java.util.concurrent.locks.ReentrantReadWriteLock
 import kotlin.concurrent.read
 import kotlin.concurrent.write
@@ -55,7 +56,7 @@ open class MemoryLruCache<K, V>(
 
     fun put(key: K, value: V, permanent: Boolean = false) = lock.write {
         if (!cache.containsKey(key) && cache.size >= maxSize) evictOldest()
-        cache[key] = CacheEntry(value, System.currentTimeMillis(), permanent)
+        cache[key] = CacheEntry(value, SystemClock.elapsedRealtime(), permanent)
     }
 
     fun remove(key: K) {
@@ -69,7 +70,7 @@ open class MemoryLruCache<K, V>(
     fun size(): Int = lock.read { cache.size }
 
     private fun isExpired(entry: CacheEntry<V>): Boolean =
-        !entry.permanent && System.currentTimeMillis() - entry.insertedAt > ttlMs
+        !entry.permanent && SystemClock.elapsedRealtime() - entry.insertedAt > ttlMs
 
     private fun evictOldest() {
         cache.entries.firstOrNull()?.let { cache.remove(it.key) }

@@ -36,7 +36,11 @@ import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.ui.theme.*
 import com.tanush.bouncer.utils.*
 import com.tanush.bouncer.ui.theme.GoldPrimary
+import com.tanush.bouncer.ui.theme.v2.DarkBg
+import com.tanush.bouncer.ui.theme.v2.DarkSurfaceVariant
+import com.tanush.bouncer.ui.theme.v2.ScrimDark
 
+// Superseded by MatchCardV2 (ui.components.v2); no screen renders this anymore.
 @Composable
 fun PredictionMatchCard(
     match: CricketMatch,
@@ -68,7 +72,7 @@ fun PredictionMatchCard(
             .shadow(
                 elevation = 14.dp,
                 shape = RoundedCornerShape(28.dp),
-                spotColor = if (isLive) colors.statusInfo.copy(alpha = 0.3f) else Color.Black.copy(alpha = 0.25f)
+                spotColor = if (isLive) colors.statusInfo.copy(alpha = 0.3f) else ScrimDark.copy(alpha = 0.25f)
             )
             .clip(RoundedCornerShape(28.dp))
             .background(
@@ -176,8 +180,8 @@ private fun PredictionTeamsSection(
                     .background(
                         Brush.radialGradient(
                             colors = listOf(
-                                Color(0xFF1E293B),
-                                Color(0xFF0F172A)
+                                DarkSurfaceVariant,
+                                DarkBg
                             )
                         ),
                         CircleShape
@@ -266,8 +270,8 @@ private fun PredictionTeamsSection(
                     .background(
                         Brush.radialGradient(
                             colors = listOf(
-                                Color(0xFF1E293B),
-                                Color(0xFF0F172A)
+                                DarkSurfaceVariant,
+                                DarkBg
                             )
                         ),
                         CircleShape

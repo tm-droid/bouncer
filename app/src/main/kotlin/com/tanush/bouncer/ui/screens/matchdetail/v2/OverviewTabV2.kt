@@ -23,6 +23,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.models.MatchFlowData
@@ -36,6 +37,7 @@ import com.tanush.bouncer.ui.components.premium.LiveScoringData
 import com.tanush.bouncer.ui.components.premium.LiveScoringGraphCard
 import com.tanush.bouncer.ui.components.premium.PowerPlayAnalysisCard
 import com.tanush.bouncer.ui.components.premium.PowerPlayPhase
+import com.tanush.bouncer.ui.components.v2.AnimatedScoreText
 import com.tanush.bouncer.ui.components.v2.BouncerCard
 import com.tanush.bouncer.ui.components.v2.RecentBallsStripV2
 import com.tanush.bouncer.ui.components.v2.SectionHeaderV2
@@ -235,9 +237,11 @@ fun OverviewTabV2(
                                 style = typography.titleSmall,
                                 color = colors.onSurface,
                                 fontWeight = if (bat.isStriker) FontWeight.Bold else FontWeight.Normal,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
                                 modifier = Modifier.weight(1f),
                             )
-                            Text(
+                            AnimatedScoreText(
                                 text = "${bat.runs} (${bat.balls})",
                                 style = typography.scoreMedium,
                                 color = colors.onSurface,
@@ -321,9 +325,11 @@ fun OverviewTabV2(
                                 text = bowler.name,
                                 style = typography.titleSmall,
                                 color = colors.onSurface,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
                                 modifier = Modifier.weight(1f),
                             )
-                            Text(
+                            AnimatedScoreText(
                                 text = "${bowler.overs}-${bowler.maidens}-${bowler.runs}-${bowler.wickets}",
                                 style = typography.scoreMedium,
                                 color = colors.onSurface,
