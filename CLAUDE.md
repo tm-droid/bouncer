@@ -66,6 +66,8 @@ app/src/main/kotlin/com/tanush/bouncer/
 ├── data/               # Room DB, repositories, AppResult<T> monad
 │   ├── CacheConfig.kt  # All cache TTLs + realtime reconnect backoff + permanent-cache sentinel — no magic numbers
 │   └── remote/         # AppwriteClient (singleton) + table clients extending AppwriteTableClient
+│                       # AppwriteAICache, AppwriteHighlightsClient, AppwritePlayerProfilesClient,
+│                       # AppwritePlayerFormsClient, AppwriteFavouritesSync
 ├── models/             # Data models and entities (proguard-kept for Gson — never delete on grep evidence)
 ├── analysis/           # Cricket analysis + ML models (score prediction, win probability)
 ├── auto/               # Android Auto (BouncerCarAppService)
@@ -74,7 +76,14 @@ app/src/main/kotlin/com/tanush/bouncer/
                         # — use these instead of raw Breadcrumb().apply boilerplate
 ```
 
-**Appwrite cloud functions** live in `appwrite/functions/` (Node.js, deployed via Appwrite CLI). `appwrite/appwrite.config.json` defines project-level config. The `highlights-sync` function runs on a 15-min schedule; endpoint/projectId are auto-injected by the runtime — only `APPWRITE_API_KEY` and DB/collection IDs need manual env vars.
+**Appwrite cloud functions** live in `appwrite/functions/` (Node.js, deployed via Appwrite CLI). `appwrite/appwrite.config.json` defines project-level config. Five functions:
+- `highlights-sync` — 15-min schedule; syncs cricket highlight clips to Appwrite
+- `generate-commentary` — on-demand; LLM commentary via OpenRouter (called by `CommentaryFusionService`)
+- `poll-live-matches` — scheduled; fetches live match data server-side
+- `win-probability` — on-demand; calculates real-time win probability
+- `train-win-probability` — scheduled; retrains win-probability model from match history
+
+Endpoint/projectId are auto-injected by the runtime — only `APPWRITE_API_KEY` and DB/collection IDs need manual env vars.
 
 **No dependency injection framework.** ViewModels are constructed manually; managers use `object` singletons initialized in `BouncerApp.onCreate`.
 
@@ -82,7 +91,7 @@ app/src/main/kotlin/com/tanush/bouncer/
 
 **Navigation:** Single `BouncerNavHost` with Compose Navigation. Deep link entry via `bouncer://match/{matchId}`.
 
-**Live data flow:** score polling (`ScorePollingWorker` + FCM) → `LiveCommentaryManager` → `CommentaryFusionService` (OpenRouter, multi-model fallback) + `BallCommentaryService` (Groq → Cerebras → SambaNova per-ball) → UI via StateFlow. `AICacheService` warms cache from Appwrite Realtime events.
+**Live data flow:** score polling (`ScorePollingWorker` + FCM) → `LiveCommentaryManager` → `CommentaryFusionService` (delegates to `bouncer-generate-commentary` Appwrite function; OpenRouter used server-side) + `BallCommentaryService` (Groq → Cerebras → SambaNova per-ball) → UI via StateFlow. `AICacheService` warms cache from Appwrite Realtime events.
 
 **AI cache (3-tier):** Memory LRU (256 entries) → Room `ai_commentary_cache` → Appwrite `ai-commentary-cache` table. All four commentary functions (`generateBallCommentary`, `fuse`, `streamCommentary`, `summarizeOversWithAI`) check cache before calling any AI provider. Completed matches use **permanent TTL** (`Long.MAX_VALUE` in Room, `expires_at = "2099-01-01T00:00:00.000Z"` in Appwrite) — `isMatchComplete` flag threads from ViewModels → `LiveCommentaryManager` → `CommentaryFusionService` → `AICacheService`. Never set permanent=true for live matches.
 
@@ -90,7 +99,7 @@ app/src/main/kotlin/com/tanush/bouncer/
 
 **Appwrite project:** single database `bouncer-db`. Known tables: `ai-commentary-cache`, `highlights`, `highlights-meta`, `user-favourites`, `player-profiles`.
 
-**Room DB:** currently at schema version 8. New migrations: add `MIGRATION_N_(N+1)` in `BouncerDatabase.kt` + bump `version` in `@Database`.
+**Room DB:** currently at schema version 9. New migrations: add `MIGRATION_N_(N+1)` in `BouncerDatabase.kt` + bump `version` in `@Database`.
 
 **Appwrite MCP workflow:** `appwrite_search_tools` → `appwrite_call_tool` → `ReadMcpResourceTool` (server: `plugin:appwrite:appwrite-api`, URI from truncated result) for full output. Column creation returns `status: "processing"` — call `tables_db_list_columns` to confirm `"available"` before using. Table-level permissions at creation: `["read(\"any\")", "create(\"any\")", "update(\"any\")"]`.
 
@@ -98,7 +107,7 @@ app/src/main/kotlin/com/tanush/bouncer/
 
 **API keys:** Always access via `ApiKeys` object (`ApiKeys.kt`), never `BuildConfig` directly. Add new keys to `ApiKeys.kt` + `build.gradle.kts` + `local.properties.template`.
 
-**Background workers:** `ScorePollingWorker`, `SeriesSyncWorker`, `PlayerCacheWorker` (WorkManager), `WidgetUpdateWorker` (Glance).
+**Background workers:** `ScorePollingWorker`, `SeriesSyncWorker`, `PlayerCacheWorker`, `DatabaseCleanupWorker` (weekly cleanup, WorkManager), `WidgetUpdateWorker` (Glance).
 
 ## Key Dependencies
 
