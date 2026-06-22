@@ -56,11 +56,11 @@ abstract class AppwriteTableClient(private val tag: String) {
                         @Suppress("UNCHECKED_CAST")
                         onEvent(response as io.appwrite.models.RealtimeResponseEvent<Map<String, Any>>)
                     }
-                    backoffMs = CacheConfig.REALTIME_RECONNECT_MIN_MS  // reset on successful subscribe
-                    // Appwrite Realtime is push-based; subscription stays alive until an error
-                    // or cancellation. Re-looping immediately after subscribe() returns is safe
-                    // — if the socket is healthy the SDK won't throw and we just re-subscribe
-                    // (which the SDK deduplicates). If the socket died, we reconnect after backoff.
+                    backoffMs = CacheConfig.REALTIME_RECONNECT_MIN_MS
+                    // Park until scope cancellation or subscribe() throws. The Appwrite SDK manages
+                    // WebSocket reconnection internally; spinning subscribe() in a tight loop sends
+                    // thousands of frames/sec and floods the network.
+                    delay(Long.MAX_VALUE)
                 } catch (e: CancellationException) {
                     throw e
                 } catch (e: Exception) {

@@ -48,17 +48,24 @@ class LiveActivityRepository(
         matchId: String,
         intervalMs: Long = 7_000L
     ): Flow<Pair<MatchState, LiveMatchUpdate?>> = flow {
+        var errorBackoffMs = 0L
         while (true) {
-            val previous = getCachedState(matchId)
-            val state = refreshState(matchId)
-            if (state != null) {
-                val update = dataSource.fetchLatestUpdate(matchId, previous)
-                if (update != null) {
-                    cacheUpdate(update)
+            try {
+                val previous = getCachedState(matchId)
+                val state = refreshState(matchId)
+                if (state != null) {
+                    val update = dataSource.fetchLatestUpdate(matchId, previous)
+                    if (update != null) cacheUpdate(update)
+                    emit(state to update)
                 }
-                emit(state to update)
+                errorBackoffMs = 0L
+                delay(intervalMs)
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                errorBackoffMs = minOf(if (errorBackoffMs == 0L) 5_000L else errorBackoffMs * 2, 60_000L)
+                delay(errorBackoffMs)
             }
-            delay(intervalMs)
         }
     }.flowOn(ioDispatcher)
 
