@@ -40,6 +40,7 @@ import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -92,27 +93,31 @@ fun SearchScreen(
         viewModel.loadRecentQueries()
     }
 
-    val displayResults = when (selectedTab) {
-        SearchTab.ALL -> results
-        SearchTab.MATCHES -> results.copy(
-            teams = emptyList(), players = emptyList(), news = emptyList(), series = emptyList()
-        )
-        SearchTab.PLAYERS -> results.copy(
-            matches = emptyList(), teams = emptyList(), news = emptyList(),
-            series = emptyList(), historicalMatches = emptyList()
-        )
-        SearchTab.TEAMS -> results.copy(
-            matches = emptyList(), players = emptyList(), news = emptyList(),
-            series = emptyList(), historicalMatches = emptyList()
-        )
-        SearchTab.TOURNAMENTS -> results.copy(
-            matches = emptyList(), teams = emptyList(), players = emptyList(),
-            news = emptyList(), historicalMatches = emptyList()
-        )
-        SearchTab.NEWS -> results.copy(
-            matches = emptyList(), teams = emptyList(), players = emptyList(),
-            series = emptyList(), historicalMatches = emptyList()
-        )
+    val displayResults by remember(selectedTab, results) {
+        derivedStateOf {
+            when (selectedTab) {
+                SearchTab.ALL -> results
+                SearchTab.MATCHES -> results.copy(
+                    teams = emptyList(), players = emptyList(), news = emptyList(), series = emptyList()
+                )
+                SearchTab.PLAYERS -> results.copy(
+                    matches = emptyList(), teams = emptyList(), news = emptyList(),
+                    series = emptyList(), historicalMatches = emptyList()
+                )
+                SearchTab.TEAMS -> results.copy(
+                    matches = emptyList(), players = emptyList(), news = emptyList(),
+                    series = emptyList(), historicalMatches = emptyList()
+                )
+                SearchTab.TOURNAMENTS -> results.copy(
+                    matches = emptyList(), teams = emptyList(), players = emptyList(),
+                    news = emptyList(), historicalMatches = emptyList()
+                )
+                SearchTab.NEWS -> results.copy(
+                    matches = emptyList(), teams = emptyList(), players = emptyList(),
+                    series = emptyList(), historicalMatches = emptyList()
+                )
+            }
+        }
     }
 
     Scaffold(

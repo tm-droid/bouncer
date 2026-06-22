@@ -44,9 +44,14 @@ android {
     signingConfigs {
         create("release") {
             storeFile = file("bouncer-release.keystore")
-            storePassword = localProperties.getProperty("KEYSTORE_PASSWORD") ?: System.getenv("KEYSTORE_PASSWORD") ?: ""
+            val isReleaseBuild = gradle.startParameter.taskNames.any { it.contains("release", ignoreCase = true) }
+            storePassword = localProperties.getProperty("KEYSTORE_PASSWORD")
+                ?: System.getenv("KEYSTORE_PASSWORD")
+                ?: if (isReleaseBuild) error("KEYSTORE_PASSWORD must be set for release builds") else ""
             keyAlias = localProperties.getProperty("KEY_ALIAS") ?: System.getenv("KEY_ALIAS") ?: ""
-            keyPassword = localProperties.getProperty("KEY_PASSWORD") ?: System.getenv("KEY_PASSWORD") ?: ""
+            keyPassword = localProperties.getProperty("KEY_PASSWORD")
+                ?: System.getenv("KEY_PASSWORD")
+                ?: if (isReleaseBuild) error("KEY_PASSWORD must be set for release builds") else ""
         }
     }
 
@@ -74,7 +79,9 @@ buildConfigField("String", "APPWRITE_AI_CACHE_DB_ID", "\"${localProperties.getPr
         buildConfigField("String", "APPWRITE_PLAYER_FORMS_DB_ID", "\"${localProperties.getProperty("APPWRITE_PLAYER_FORMS_DB_ID") ?: System.getenv("APPWRITE_PLAYER_FORMS_DB_ID") ?: ""}\"")
         buildConfigField("String", "APPWRITE_PLAYER_FORMS_COL_ID", "\"${localProperties.getProperty("APPWRITE_PLAYER_FORMS_COL_ID") ?: System.getenv("APPWRITE_PLAYER_FORMS_COL_ID") ?: ""}\"")
         buildConfigField("String", "APPWRITE_PLAYER_PROFILES_COL_ID", "\"${localProperties.getProperty("APPWRITE_PLAYER_PROFILES_COL_ID") ?: System.getenv("APPWRITE_PLAYER_PROFILES_COL_ID") ?: ""}\"")
-        manifestPlaceholders["sentryDsn"] = localProperties.getProperty("SENTRY_DSN", "https://e9ade5d835c36a97939191077734e5a7@o4510958403518464.ingest.us.sentry.io/4510963429212160")
+        manifestPlaceholders["sentryDsn"] = localProperties.getProperty("SENTRY_DSN")
+            ?: System.getenv("SENTRY_DSN")
+            ?: ""
         // Default environment; overridden per build type below
         manifestPlaceholders["sentryEnvironment"] = "production"
         manifestPlaceholders["sentryDebug"] = "false"

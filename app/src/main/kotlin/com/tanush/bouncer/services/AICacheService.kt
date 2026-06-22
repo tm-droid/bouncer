@@ -15,6 +15,7 @@ import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -37,6 +38,8 @@ object AICacheService {
     // In-flight deduplication: prevents duplicate remote lookups for the same key
     // when multiple coroutines miss memory+Room simultaneously.
     private val inFlight = ConcurrentHashMap<String, Deferred<String?>>()
+
+    fun close() { scope.cancel() }
 
     fun initialize(dao: AICacheDao) {
         this.dao = dao

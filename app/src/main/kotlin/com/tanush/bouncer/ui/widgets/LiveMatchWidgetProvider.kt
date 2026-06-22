@@ -21,7 +21,9 @@ import com.tanush.bouncer.models.CricketMatch
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import io.sentry.Sentry
 
 /**
@@ -35,10 +37,9 @@ import io.sentry.Sentry
  * - Quick actions for match details
  */
 class LiveMatchWidgetProvider : AppWidgetProvider() {
-    
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
-    
+
     companion object {
+        private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
         const val ACTION_REFRESH = "com.tanush.bouncer.widget.REFRESH"
         const val ACTION_NEXT_MATCH = "com.tanush.bouncer.widget.NEXT_MATCH"
         const val EXTRA_MATCH_ID = "match_id"
@@ -68,14 +69,21 @@ class LiveMatchWidgetProvider : AppWidgetProvider() {
     }
     
     override fun onUpdate(context: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray) {
-        try {
-            appWidgetIds.forEach { appWidgetId ->
-                updateWidget(context, appWidgetManager, appWidgetId)
+        scope.launch {
+            try {
+                appWidgetIds.forEach { appWidgetId ->
+                    updateWidget(context, appWidgetManager, appWidgetId)
+                }
+            } catch (e: Exception) {
+                Sentry.captureException(e)
+                throw e
             }
-        } catch (e: Exception) {
-            Sentry.captureException(e)
-            throw e
         }
+    }
+
+    override fun onDisabled(context: Context) {
+        super.onDisabled(context)
+        scope.cancel()
     }
     
     override fun onReceive(context: Context, intent: Intent) {
@@ -110,7 +118,7 @@ class LiveMatchWidgetProvider : AppWidgetProvider() {
         }
     }
     
-    private fun updateWidget(context: Context, appWidgetManager: AppWidgetManager, appWidgetId: Int) {
+    private suspend fun updateWidget(context: Context, appWidgetManager: AppWidgetManager, appWidgetId: Int) {
         try {
             // Main click intent
             val mainIntent = Intent(context, BouncerActivity::class.java).apply {
@@ -140,6 +148,10 @@ class LiveMatchWidgetProvider : AppWidgetProvider() {
             )
 
             // Build the widget views
+            val prefs = context.getSharedPreferences("widget_cache", Context.MODE_PRIVATE)
+            val winProbability = prefs.getFloat("win_probability", 0.5f)
+            val team1Color = prefs.getInt("team1_color", WidgetRemoteViewsColors.primary)
+
             val views = RemoteViews(context.packageName, R.layout.widget_live_match_premium).apply {
                 // Set click handlers
                 setOnClickPendingIntent(R.id.widget_root, mainPendingIntent)
@@ -147,19 +159,16 @@ class LiveMatchWidgetProvider : AppWidgetProvider() {
                 setOnClickPendingIntent(R.id.next_match_button, nextMatchPendingIntent)
                 setInt(R.id.refresh_button, "setColorFilter", WidgetRemoteViewsColors.primaryLight)
                 setInt(R.id.next_match_button, "setColorFilter", WidgetRemoteViewsColors.primaryLight)
-            
+
                 // Load cached match data
-                val prefs = context.getSharedPreferences("widget_cache", Context.MODE_PRIVATE)
                 val team1Name = prefs.getString("team1_name", "Team 1") ?: "Team 1"
                 val team2Name = prefs.getString("team2_name", "Team 2") ?: "Team 2"
                 val team1Score = prefs.getString("team1_score", "-") ?: "-"
                 val team2Score = prefs.getString("team2_score", "-")
                 val matchStatus = prefs.getString("match_status", "No live match") ?: "No live match"
                 val matchType = prefs.getString("match_type", "Cricket") ?: "Cricket"
-                val winProbability = prefs.getFloat("win_probability", 0.5f)
                 val isLive = prefs.getBoolean("is_live", false)
                 val recentBallsJson = prefs.getString("recent_balls", null)
-                val team1Color = prefs.getInt("team1_color", WidgetRemoteViewsColors.primary)
                 val team1Leading = winProbability >= 0.5f
             
                 // Update team names
@@ -210,14 +219,6 @@ class LiveMatchWidgetProvider : AppWidgetProvider() {
                 setTextViewText(R.id.win_probability_text, "$winProbPercent%")
                 setTextColor(R.id.win_probability_text, WidgetRemoteViewsColors.primary)
             
-                // Set win probability progress bar with team gradient
-                try {
-                    val progressBitmap = createTeamGradientProgressBitmap(winProbability, 200, 8, team1Color)
-                    setImageViewBitmap(R.id.win_probability_bar, progressBitmap)
-                } catch (e: Exception) {
-                    // Fallback if bitmap creation fails
-                }
-            
                 // Recent balls display (iOS Live Activity parity)
                 if (recentBallsJson != null && isLive) {
                     try {
@@ -257,13 +258,22 @@ class LiveMatchWidgetProvider : AppWidgetProvider() {
                 }
             }
 
+            try {
+                val progressBitmap = withContext(Dispatchers.Default) {
+                    createTeamGradientProgressBitmap(winProbability, 200, 8, team1Color)
+                }
+                views.setImageViewBitmap(R.id.win_probability_bar, progressBitmap)
+            } catch (e: Exception) {
+                // Fallback if bitmap creation fails
+            }
+
             appWidgetManager.updateAppWidget(appWidgetId, views)
         } catch (e: Exception) {
             Sentry.captureException(e)
             throw e
         }
     }
-    
+
     /**
      * Get ball colors based on ball result (iOS Live Activity parity)
      */

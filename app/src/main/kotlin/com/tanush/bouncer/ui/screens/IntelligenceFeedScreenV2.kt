@@ -26,6 +26,8 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.remember
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -63,22 +65,26 @@ fun IntelligenceFeedScreenV2(
     val loadingState by liveActivityViewModel?.loadingState?.collectAsStateWithLifecycle()
         ?: androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(LoadingState.Idle) }
 
-    val alerts = buildList {
-        probabilityEvents.forEach { (matchId, events) ->
-            events.takeLast(10).forEachIndexed { i, event ->
-                add(
-                    ActivityAlertV2(
-                        title = event.description,
-                        subtitle = "Match: $matchId",
-                        time = "${10 - i}m ago",
-                        type = when {
-                            event.description.contains("wicket", true) -> AlertTypeV2.WICKET
-                            event.description.contains("50") || event.description.contains("100") || event.description.contains("milestone", true) -> AlertTypeV2.MILESTONE
-                            event.description.contains("boundary", true) || event.description.contains("six", true) -> AlertTypeV2.WARNING
-                            else -> AlertTypeV2.INFO
-                        },
-                    ),
-                )
+    val alerts by remember(probabilityEvents) {
+        derivedStateOf {
+            buildList {
+                probabilityEvents.forEach { (matchId, events) ->
+                    events.takeLast(10).forEachIndexed { i, event ->
+                        add(
+                            ActivityAlertV2(
+                                title = event.description,
+                                subtitle = "Match: $matchId",
+                                time = "${10 - i}m ago",
+                                type = when {
+                                    event.description.contains("wicket", true) -> AlertTypeV2.WICKET
+                                    event.description.contains("50") || event.description.contains("100") || event.description.contains("milestone", true) -> AlertTypeV2.MILESTONE
+                                    event.description.contains("boundary", true) || event.description.contains("six", true) -> AlertTypeV2.WARNING
+                                    else -> AlertTypeV2.INFO
+                                },
+                            ),
+                        )
+                    }
+                }
             }
         }
     }
@@ -123,7 +129,7 @@ fun IntelligenceFeedScreenV2(
                 contentPadding = PaddingValues(spacing.lg),
                 verticalArrangement = Arrangement.spacedBy(spacing.sm),
             ) {
-                items(alerts, key = { it.hashCode() }) { alert ->
+                items(alerts, key = { "${it.subtitle}_${it.type}_${it.title}" }) { alert ->
                     AlertCard(alert)
                 }
             }

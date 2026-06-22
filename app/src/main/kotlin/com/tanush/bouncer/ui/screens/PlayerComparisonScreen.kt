@@ -35,11 +35,13 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.tanush.bouncer.viewmodels.PlayerComparisonViewModel
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -49,7 +51,6 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.tanush.bouncer.models.FormatStats
 import com.tanush.bouncer.models.PlayerProfile
-import com.tanush.bouncer.network.PlayerProfileScraper
 import com.tanush.bouncer.network.PlayerSearchResult
 import com.tanush.bouncer.ui.components.v2.BouncerTopBarV2
 import com.tanush.bouncer.ui.components.v2.FilterChipRowV2
@@ -61,6 +62,7 @@ import kotlinx.coroutines.delay
 @Composable
 fun PlayerComparisonScreen(
     onBackClick: () -> Unit,
+    viewModel: PlayerComparisonViewModel = viewModel(),
 ) {
     val colors = BouncerThemeV2.colors
     val typography = BouncerThemeV2.typography
@@ -69,10 +71,10 @@ fun PlayerComparisonScreen(
     val formats = remember { listOf("Test", "ODI", "T20I", "IPL") }
     var selectedFormat by remember { mutableStateOf("Test") }
 
-    var player1 by remember { mutableStateOf<PlayerProfile?>(null) }
-    var player2 by remember { mutableStateOf<PlayerProfile?>(null) }
-    var loadingPlayer1 by remember { mutableStateOf(false) }
-    var loadingPlayer2 by remember { mutableStateOf(false) }
+    val player1 by viewModel.player1.collectAsState()
+    val player2 by viewModel.player2.collectAsState()
+    val loadingPlayer1 by viewModel.loadingPlayer1.collectAsState()
+    val loadingPlayer2 by viewModel.loadingPlayer2.collectAsState()
 
     // Which picker is active (0 = none, 1 = player1, 2 = player2)
     var activePickerSlot by remember { mutableStateOf(0) }
@@ -104,7 +106,7 @@ fun PlayerComparisonScreen(
                         label = "Player 1",
                         isActive = activePickerSlot == 1,
                         onTap = { activePickerSlot = if (activePickerSlot == 1) 0 else 1 },
-                        onClear = { player1 = null },
+                        onClear = { viewModel.clearPlayer(1) },
                         modifier = Modifier.weight(1f),
                     )
                     PlayerPickerCard(
@@ -113,7 +115,7 @@ fun PlayerComparisonScreen(
                         label = "Player 2",
                         isActive = activePickerSlot == 2,
                         onTap = { activePickerSlot = if (activePickerSlot == 2) 0 else 2 },
-                        onClear = { player2 = null },
+                        onClear = { viewModel.clearPlayer(2) },
                         modifier = Modifier.weight(1f),
                     )
                 }
@@ -126,25 +128,13 @@ fun PlayerComparisonScreen(
                         onPlayerSelected = { result ->
                             val slot = activePickerSlot
                             activePickerSlot = 0
-                            if (slot == 1) {
-                                loadingPlayer1 = true
-                                player1 = null
-                            } else {
-                                loadingPlayer2 = true
-                                player2 = null
-                            }
-                            // Kick off loading in a LaunchedEffect below
-                            if (slot == 1) {
-                                player1 = PlayerProfile(
+                            viewModel.setPlayer(
+                                slot = slot,
+                                stub = PlayerProfile(
                                     id = result.id, name = result.name,
                                     country = result.country, role = "",
-                                )
-                            } else {
-                                player2 = PlayerProfile(
-                                    id = result.id, name = result.name,
-                                    country = result.country, role = "",
-                                )
-                            }
+                                ),
+                            )
                         },
                     )
                 }
@@ -198,21 +188,6 @@ fun PlayerComparisonScreen(
         }
     }
 
-    // Side effects to load full player profiles
-    LaunchedEffect(player1?.id, loadingPlayer1) {
-        val p = player1 ?: return@LaunchedEffect
-        if (!loadingPlayer1) return@LaunchedEffect
-        val full = PlayerProfileScraper.scrapeProfile(p.name)
-        player1 = full ?: p
-        loadingPlayer1 = false
-    }
-    LaunchedEffect(player2?.id, loadingPlayer2) {
-        val p = player2 ?: return@LaunchedEffect
-        if (!loadingPlayer2) return@LaunchedEffect
-        val full = PlayerProfileScraper.scrapeProfile(p.name)
-        player2 = full ?: p
-        loadingPlayer2 = false
-    }
 }
 
 // ── Player Picker Card ──────────────────────────────────────────────────────────

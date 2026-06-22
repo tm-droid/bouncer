@@ -38,13 +38,15 @@ object NotificationInboxManager {
     private val _items = MutableStateFlow<List<NotificationItem>>(emptyList())
     val items: StateFlow<List<NotificationItem>> = _items.asStateFlow()
 
-    // Derived from items — guaranteed consistent.
-    val unreadCount: StateFlow<Int> = _items
-        .map { list -> list.count { !it.isRead } }
-        .stateIn(scope, SharingStarted.Eagerly, 0)
+    // Initialized in initialize() once scope is assigned, so stateIn uses the correct scope.
+    private var _unreadCount: StateFlow<Int> = MutableStateFlow(0)
+    val unreadCount: StateFlow<Int> get() = _unreadCount
 
     fun initialize(context: Context, appScope: CoroutineScope = scope) {
         scope = appScope
+        _unreadCount = _items
+            .map { list -> list.count { !it.isRead } }
+            .stateIn(scope, SharingStarted.WhileSubscribed(5_000), 0)
         if (prefs != null) return
         prefs = context.applicationContext.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
         _items.value = loadFromPrefs()

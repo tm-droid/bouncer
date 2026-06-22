@@ -47,7 +47,7 @@ fun BouncerAppContent(
     var currentMatch by remember { mutableStateOf<CricketMatch?>(null) }
     var showArTracking by remember { mutableStateOf(false) }
     val context = LocalContext.current
-    var themeMode by remember { mutableStateOf(ThemeModeV2.Dark) }
+    var themeMode by rememberSaveable { mutableStateOf(ThemeModeV2.Dark) }
 
     LaunchedEffect(Unit) {
         BouncerMotion.applyReducedMotionPreference(

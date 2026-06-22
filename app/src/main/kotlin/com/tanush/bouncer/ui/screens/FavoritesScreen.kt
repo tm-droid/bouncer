@@ -144,8 +144,8 @@ fun FavoritesScreen(
     val context = LocalContext.current
 
     val favorites by FavouriteTeamsManager.favourites.collectAsStateWithLifecycle()
-    var showAddTeamSheet by remember { mutableStateOf(false) }
-    var isEditMode by remember { mutableStateOf(false) }
+    var showAddTeamSheet by rememberSaveable { mutableStateOf(false) }
+    var isEditMode by rememberSaveable { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     var lastRemovedTeam by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()

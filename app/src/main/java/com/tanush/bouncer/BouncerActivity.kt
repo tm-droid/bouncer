@@ -13,7 +13,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
-import androidx.core.view.WindowCompat
 import com.tanush.bouncer.liveactivity.LiveActivityNotificationBuilder
 import com.tanush.bouncer.managers.FavouriteTeamsManager
 import com.tanush.bouncer.utils.PreferencesHelper
@@ -45,7 +44,6 @@ class BouncerActivity : ComponentActivity() {
         )
 
         enableEdgeToEdge()
-        WindowCompat.setDecorFitsSystemWindows(window, false)
 
         LiveActivityNotificationBuilder(applicationContext).createNotificationChannel()
         // Onboarding handles the permission prompt for new users.

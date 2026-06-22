@@ -34,6 +34,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -69,14 +70,16 @@ fun MoreScreenV2(
 
     data class ExploreItem(val icon: ImageVector, val label: String, val onClick: () -> Unit)
 
-    val exploreItems = listOf(
-        ExploreItem(Icons.Default.BarChart, "Stats", onStatsClick),
-        ExploreItem(Icons.Default.EmojiEvents, "Trophies", onStatsClick),
-        ExploreItem(Icons.Default.SportsCricket, "Achievements", onAchievementsClick),
-        ExploreItem(Icons.Default.Timeline, "Activity", onActivityClick),
-        ExploreItem(Icons.Default.ViewInAr, "AR Track", onArTrackingClick),
-        ExploreItem(Icons.Default.DateRange, "Series", onSeriesClick),
-    )
+    val exploreItems = remember(onStatsClick, onAchievementsClick, onActivityClick, onArTrackingClick, onSeriesClick) {
+        listOf(
+            ExploreItem(Icons.Default.BarChart, "Stats", onStatsClick),
+            ExploreItem(Icons.Default.EmojiEvents, "Trophies", onStatsClick),
+            ExploreItem(Icons.Default.SportsCricket, "Achievements", onAchievementsClick),
+            ExploreItem(Icons.Default.Timeline, "Activity", onActivityClick),
+            ExploreItem(Icons.Default.ViewInAr, "AR Track", onArTrackingClick),
+            ExploreItem(Icons.Default.DateRange, "Series", onSeriesClick),
+        )
+    }
 
     Scaffold(
         topBar = { BouncerTopBarV2(title = "BOUNCER") },

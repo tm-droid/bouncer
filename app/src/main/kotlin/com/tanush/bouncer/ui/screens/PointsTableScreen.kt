@@ -24,10 +24,10 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.tanush.bouncer.viewmodels.PointsTableViewModel
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -40,7 +40,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.models.PointsTableEntry
-import com.tanush.bouncer.network.PointsTableScraper
 import com.tanush.bouncer.ui.components.v2.BouncerTopBarV2
 import com.tanush.bouncer.ui.components.v2.EmptyStateV2
 import com.tanush.bouncer.ui.components.v2.ShimmerTableRows
@@ -53,25 +52,16 @@ import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 fun PointsTableScreen(
     seriesId: String,
     onBackClick: () -> Unit,
+    viewModel: PointsTableViewModel = viewModel(),
 ) {
     val colors = BouncerThemeV2.colors
     val spacing = BouncerThemeV2.spacing
 
-    var entries by remember { mutableStateOf<List<PointsTableEntry>>(emptyList()) }
-    var isLoading by remember { mutableStateOf(true) }
-    var error by remember { mutableStateOf<String?>(null) }
+    val entries by viewModel.entries.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
+    val error by viewModel.error.collectAsState()
 
-    LaunchedEffect(seriesId) {
-        isLoading = true
-        try {
-            val scraper = PointsTableScraper()
-            entries = scraper.fetchPointsTable(seriesId)
-            if (entries.isEmpty()) error = "No points table available for this series"
-        } catch (e: Exception) {
-            error = "Failed to load points table"
-        }
-        isLoading = false
-    }
+    LaunchedEffect(seriesId) { viewModel.load(seriesId) }
 
     Scaffold(
         topBar = {

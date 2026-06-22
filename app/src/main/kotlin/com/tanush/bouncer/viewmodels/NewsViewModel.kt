@@ -4,9 +4,9 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tanush.bouncer.ApiKeys
+import com.tanush.bouncer.data.repository.CricbuzzNewsRepository
+import com.tanush.bouncer.data.repository.NewsRepository
 import com.tanush.bouncer.models.NewsArticleData
-import com.tanush.bouncer.network.RetrofitClient
-import com.tanush.bouncer.network.randomUserAgent
 import com.tanush.bouncer.utils.bouncerExceptionHandler
 import io.sentry.Breadcrumb
 import io.sentry.Sentry
@@ -19,16 +19,15 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import org.jsoup.Jsoup
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 
 /**
  * ViewModel for Cricbuzz News.
  * Fetches headlines from RapidAPI and scrapes article bodies from cricbuzz.com.
  * Auto-refreshes every 4 hours (6x/day).
  */
-class NewsViewModel : ViewModel() {
+class NewsViewModel(
+    private val repository: NewsRepository = CricbuzzNewsRepository(),
+) : ViewModel() {
     companion object {
         private const val TAG = "NewsViewModel"
         private const val REFRESH_INTERVAL_MS = 4 * 60 * 60 * 1000L
@@ -105,36 +104,7 @@ class NewsViewModel : ViewModel() {
                     return@launch
                 }
 
-                val response = RetrofitClient.cricbuzzNewsApi.getNewsIndex()
-                if (!response.isSuccessful) {
-                    val statusCode = response.code()
-                    Log.w(TAG, "News API returned HTTP $statusCode")
-                    breadcrumb(
-                        category = "news.fetch",
-                        message = "News API returned a handled HTTP error",
-                        level = SentryLevel.WARNING,
-                        data = mapOf("status_code" to statusCode),
-                    )
-                    Sentry.metrics().count("news.fetch.http_error", 1.0)
-                    _error.value = newsFetchMessageFor(statusCode)
-                    return@launch
-                }
-
-                val responseBody = response.body()
-                if (responseBody == null) {
-                    Log.w(TAG, "News API returned an empty response body")
-                    breadcrumb("news.fetch", "News API returned an empty body", SentryLevel.WARNING)
-                    Sentry.metrics().count("news.fetch.empty_body", 1.0)
-                    _error.value = "News is temporarily unavailable."
-                    return@launch
-                }
-
-                val stories = responseBody.storyList
-                    .mapNotNull { it.story }
-                    .mapIndexed { index, story ->
-                        NewsArticleData.fromCricbuzzStory(story, isFirst = index == 0)
-                    }
-
+                val stories = repository.fetchHeadlines()
                 _articles.value = stories
                 lastFetchTime = System.currentTimeMillis()
                 Sentry.metrics().gauge("news.articles.count", stories.size.toDouble())
@@ -220,27 +190,7 @@ class NewsViewModel : ViewModel() {
         viewModelScope.launch(bouncerExceptionHandler) {
             _isLoadingArticle.value = true
             try {
-                val paragraphs = withContext(Dispatchers.IO) {
-                    val doc = Jsoup.connect(url)
-                        .userAgent(randomUserAgent())
-                        .timeout(15000)
-                        .get()
-
-                    // Cricbuzz article body uses Tailwind utility classes; selectFirst handles class-order variation.
-                    val bodyContainer = doc.selectFirst("div.flex.flex-col.gap-6.text-base")
-                        ?: doc.selectFirst("div[class*=flex][class*=flex-col][class*=gap-6][class*=text-base]")
-
-                    if (bodyContainer != null) {
-                        bodyContainer.children()
-                            .map { it.text().trim() }
-                            .filter { it.isNotBlank() }
-                    } else {
-                        val fallback = doc.select("div.cb-nws-dtl-itms p, div.cb-nws-intr p, article p")
-                            .map { it.text().trim() }
-                            .filter { it.isNotBlank() }
-                        fallback.ifEmpty { listOf("Unable to load article content. Please try again.") }
-                    }
-                }
+                val paragraphs = repository.fetchArticleBody(url)
                 _articleBody.value = paragraphs
                 Sentry.metrics().distribution("news.article.paragraphs", paragraphs.size.toDouble())
                 Log.d(TAG, "Scraped ${paragraphs.size} paragraphs for article")

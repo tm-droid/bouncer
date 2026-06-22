@@ -42,19 +42,19 @@ data class CricketMatch(
     val currentStatus: String,
     val info: String,
     // Scraped live data
-    var recentBalls: List<String>? = null,
-    var currentBowler: ScrapedBowler? = null,
-    var scrapedBatsmen: List<ScrapedBatsman>? = null,
+    val recentBalls: List<String>? = null,
+    val currentBowler: ScrapedBowler? = null,
+    val scrapedBatsmen: List<ScrapedBatsman>? = null,
     // Add category for filtering
-    var category: String? = null,
-    var gender: String = "Men",
-    var competitionType: String = "International",
-    var winProbability: Double = 50.0,
+    val category: String? = null,
+    val gender: String = "Men",
+    val competitionType: String = "International",
+    val winProbability: Double = 50.0,
     // Toss and officials — populated when available from live match page
-    var tossWinner: String? = null,
-    var tossDecision: String? = null,
-    var umpire1: String? = null,
-    var umpire2: String? = null,
+    val tossWinner: String? = null,
+    val tossDecision: String? = null,
+    val umpire1: String? = null,
+    val umpire2: String? = null,
 ) {
     // Derived from the most-specific status string available (currentStatus preferred over status).
     val matchStatus: MatchStatus by lazy {

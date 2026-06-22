@@ -25,27 +25,25 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.tanush.bouncer.viewmodels.SeriesListViewModel
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import android.util.Log
 import com.tanush.bouncer.models.Series
-import com.tanush.bouncer.network.SeriesScraper
 import com.tanush.bouncer.ui.components.v2.BouncerTopBarV2
 import com.tanush.bouncer.ui.components.v2.EmptyStateV2
 import com.tanush.bouncer.ui.components.v2.FilterChipRowV2
 import com.tanush.bouncer.ui.components.v2.ShimmerListItem
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
-import io.sentry.Sentry
-import kotlinx.coroutines.CancellationException
 
 /**
  * Screen showing a list of active cricket series/tournaments.
@@ -54,31 +52,16 @@ import kotlinx.coroutines.CancellationException
 fun SeriesListScreen(
     onSeriesClick: (String) -> Unit,
     onBackClick: () -> Unit,
+    viewModel: SeriesListViewModel = viewModel(),
 ) {
     val colors = BouncerThemeV2.colors
     val typography = BouncerThemeV2.typography
     val spacing = BouncerThemeV2.spacing
 
-    var allSeries by remember { mutableStateOf<List<Series>>(emptyList()) }
-    var isLoading by remember { mutableStateOf(true) }
-    var hasError by remember { mutableStateOf(false) }
+    val allSeries by viewModel.series.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
+    val hasError by viewModel.hasError.collectAsState()
     var selectedFilter by remember { mutableStateOf("All") }
-    var fetchKey by remember { mutableStateOf(0) }
-
-    LaunchedEffect(fetchKey) {
-        isLoading = true
-        hasError = false
-        try {
-            val scraper = SeriesScraper()
-            allSeries = scraper.fetchActiveSeries()
-        } catch (e: Exception) {
-            if (e is CancellationException) throw e
-            Sentry.captureException(e)
-            Log.w("SeriesListScreen", "Series list operation failed", e)
-            hasError = true
-        }
-        isLoading = false
-    }
 
     val filteredSeries = when (selectedFilter) {
         "International" -> allSeries.filter { it.category == Series.SeriesCategory.INTERNATIONAL }
@@ -113,7 +96,7 @@ fun SeriesListScreen(
                     EmptyStateV2(
                         title = "Couldn't load series",
                         subtitle = "Check your connection and try again",
-                        onRetry = { fetchKey++ },
+                        onRetry = { viewModel.retry() },
                     )
                 }
             }

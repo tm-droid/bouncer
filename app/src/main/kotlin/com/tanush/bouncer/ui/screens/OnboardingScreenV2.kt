@@ -83,8 +83,8 @@ fun OnboardingScreenV2(onComplete: () -> Unit) {
     val pagerState = rememberPagerState(pageCount = { PAGE_COUNT })
     val isLastPage = pagerState.currentPage == PAGE_COUNT - 1
 
-    var selectedTeams by remember { mutableStateOf<Set<String>>(emptySet()) }
-    var selectedCategory by remember { mutableStateOf("All") }
+    var selectedTeams by rememberSaveable { mutableStateOf<Set<String>>(emptySet()) }
+    var selectedCategory by rememberSaveable { mutableStateOf("All") }
 
     val notifPermLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()

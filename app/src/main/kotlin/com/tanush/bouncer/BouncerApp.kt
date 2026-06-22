@@ -95,7 +95,9 @@ class BouncerApp : Application() {
         }
         initializeSafely("TeamAcronymManager") { TeamAcronymManager.initialize(this) }
         initializeSafely("FavouriteTeamsManager") { FavouriteTeamsManager.initialize(this) }
-        initializeSafely("MatchSubscriptionManager") { MatchSubscriptionManager.initialize(this) }
+        applicationScope.launch(Dispatchers.IO) {
+            initializeSafely("MatchSubscriptionManager") { MatchSubscriptionManager.initialize(this@BouncerApp) }
+        }
         initializeSafely("MatchCacheService") { MatchCacheService.initDiskCache(this) }
         initializeSafely("AppwriteClient") { AppwriteClient.initialize(this) }
         // Verify Appwrite reachability; reflect in AppHealth so UI can show degraded state.
