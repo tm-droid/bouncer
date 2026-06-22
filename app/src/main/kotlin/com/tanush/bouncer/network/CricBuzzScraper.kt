@@ -621,10 +621,15 @@ class CricBuzzScraper {
             Sentry.captureException(classified)
             throw classified
         } catch (e: Exception) {
-            Log.e(TAG, "Error fetching scorecard", e)
-            crumb("Error fetching scorecard", SentryLevel.ERROR,
-                mapOf("matchId" to matchId, "url" to url, "error" to (e.message ?: "Unknown error")))
-            Sentry.captureException(e)
+            if (HttpClientProvider.isConnectivityException(e)) {
+                Log.w(TAG, "No internet fetching scorecard for $matchId")
+                crumb("No internet fetching scorecard", SentryLevel.WARNING, mapOf("matchId" to matchId))
+            } else {
+                Log.e(TAG, "Error fetching scorecard", e)
+                crumb("Error fetching scorecard", SentryLevel.ERROR,
+                    mapOf("matchId" to matchId, "url" to url, "error" to (e.message ?: "Unknown error")))
+                Sentry.captureException(e)
+            }
             Scorecard(emptyList())
         }
     }

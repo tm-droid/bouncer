@@ -81,6 +81,7 @@ class CricInfoScraper {
         // Report to Sentry at most once per circuit-open window
         if (now - lastReportedToSentry <= CIRCUIT_BREAKER_RESET_MS) return
         lastReportedToSentry = now
+        if (HttpClientProvider.isConnectivityException(e)) return
         Sentry.captureException(e)
         addBreadcrumb(
             category = "network.cricinfo",
