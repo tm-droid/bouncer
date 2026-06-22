@@ -45,6 +45,12 @@ fun PremiumScorecardTab(
         }
         return
     }
+    if (scorecard.innings.isEmpty()) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Text("No scorecard available", color = TextSecondary)
+        }
+        return
+    }
 
     var selectedInningsIndex by remember { mutableIntStateOf(0) }
     val innings = scorecard.innings.getOrNull(selectedInningsIndex)

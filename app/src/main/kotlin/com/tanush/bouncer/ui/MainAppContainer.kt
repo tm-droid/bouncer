@@ -181,6 +181,7 @@ fun MainAppContainer(
     val bottomNavRoute = remember(currentRoute) {
         getBottomNavRouteForCurrentRoute(currentRoute)
     }
+    val showBottomNav = currentRoute != BouncerScreen.Onboarding.route
 
     Box(
         modifier = Modifier
@@ -199,17 +200,19 @@ fun MainAppContainer(
             onThemeModeChanged = onThemeModeChanged,
             modifier = Modifier
                 .fillMaxSize()
-                .padding(bottom = 80.dp)
+                .then(if (showBottomNav) Modifier.padding(bottom = 80.dp) else Modifier)
         )
 
         // Bottom Navigation Bar (V2)
-        BottomNavBarV2(
-            currentRoute = bottomNavRoute,
-            onTabSelected = { route ->
-                navController.navigateToTab(route)
-            },
-            modifier = Modifier.align(Alignment.BottomCenter)
-        )
+        if (showBottomNav) {
+            BottomNavBarV2(
+                currentRoute = bottomNavRoute,
+                onTabSelected = { route ->
+                    navController.navigateToTab(route)
+                },
+                modifier = Modifier.align(Alignment.BottomCenter)
+            )
+        }
     }
 }
 

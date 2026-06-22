@@ -135,6 +135,40 @@ class MatchDetailViewModel(
             })
         }
 
+        // Fetch scorecard once for all match states (live polling updates it below for live matches).
+        AppResult.runCatchingSuspend {
+            val scorecard = matchRepository.fetchScorecard(match.id)
+            _uiState.update { it.copy(scorecard = scorecard) }
+        }.onError {
+            Sentry.addBreadcrumb(Breadcrumb().apply {
+                category = "match_detail_v2.scorecard_once"
+                message = "One-shot scorecard fetch failed: ${it.message}"
+                level = SentryLevel.WARNING
+            })
+        }
+
+        // For completed/upcoming matches, try to surface cached commentary once.
+        if (_uiState.value.commentary.isEmpty()) {
+            AppResult.runCatchingSuspend {
+                val commentary = commentaryManager.getBestCommentaryForMatch(
+                    matchTitle = match.matchTitle,
+                    cricbuzzId = match.id,
+                    cricbuzzUrl = "https://www.cricbuzz.com/live-cricket-scores/${match.id}",
+                    keyNames = emptyList(),
+                    isMatchComplete = match.isCompleted,
+                )
+                if (commentary.isNotEmpty()) {
+                    _uiState.update { it.copy(commentary = commentary) }
+                }
+            }.onError {
+                Sentry.addBreadcrumb(Breadcrumb().apply {
+                    category = "match_detail_v2.commentary_once"
+                    message = "One-shot commentary fetch failed: ${it.message}"
+                    level = SentryLevel.WARNING
+                })
+            }
+        }
+
         if (!match.isLive) return
 
         while (true) {
