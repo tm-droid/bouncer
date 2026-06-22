@@ -8,6 +8,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import io.sentry.Sentry
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -63,6 +64,7 @@ class LiveActivityRepository(
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
             } catch (e: Exception) {
+                Sentry.captureException(e)
                 errorBackoffMs = minOf(if (errorBackoffMs == 0L) 5_000L else errorBackoffMs * 2, 60_000L)
                 delay(errorBackoffMs)
             }

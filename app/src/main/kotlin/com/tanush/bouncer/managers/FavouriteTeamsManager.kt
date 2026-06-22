@@ -59,7 +59,10 @@ object FavouriteTeamsManager {
                         _favourites.value = remote
                         prefs.edit().putString(KEY, gson.toJson(remote)).apply()
                     }
-                }.onFailure { e -> Log.d(TAG, "Remote favourites pull failed: ${e.message}") }
+                }.onFailure { e ->
+                    Log.d(TAG, "Remote favourites pull failed: ${e.message}")
+                    Sentry.captureException(e)
+                }
             }
         } catch (e: Exception) {
             Sentry.captureException(e)
@@ -202,6 +205,7 @@ object FavouriteTeamsManager {
                 gson.fromJson(json, type)
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to parse favourites JSON", e)
+                Sentry.captureException(e)
                 emptyList()
             }
         } catch (e: Exception) {

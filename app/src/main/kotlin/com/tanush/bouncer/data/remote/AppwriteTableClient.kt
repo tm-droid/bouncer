@@ -4,6 +4,7 @@ import android.util.Log
 import com.tanush.bouncer.data.CacheConfig
 import io.appwrite.services.Realtime
 import io.appwrite.services.TablesDB
+import io.sentry.Sentry
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -28,6 +29,7 @@ abstract class AppwriteTableClient(private val tag: String) {
         get() = AppwriteClient.client?.let { TablesDB(it) }
 
     @Volatile private var realtimeSubscription: Any? = null  // RealtimeSubscription handle
+    private var realtimeFailureCount = 0
     protected val subscriptionStarted = AtomicBoolean(false)
     private val reconnectScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -57,6 +59,7 @@ abstract class AppwriteTableClient(private val tag: String) {
                         onEvent(response as io.appwrite.models.RealtimeResponseEvent<Map<String, Any>>)
                     }
                     backoffMs = CacheConfig.REALTIME_RECONNECT_MIN_MS
+                    realtimeFailureCount = 0
                     // Park until scope cancellation or subscribe() throws. The Appwrite SDK manages
                     // WebSocket reconnection internally; spinning subscribe() in a tight loop sends
                     // thousands of frames/sec and floods the network.
@@ -65,7 +68,9 @@ abstract class AppwriteTableClient(private val tag: String) {
                     throw e
                 } catch (e: Exception) {
                     realtimeSubscription = null
-                    Log.w(tag, "Realtime subscription lost, reconnecting in ${backoffMs}ms: ${e.message}")
+                    realtimeFailureCount++
+                    Log.w(tag, "Realtime subscription lost (#$realtimeFailureCount), reconnecting in ${backoffMs}ms: ${e.message}")
+                    if (realtimeFailureCount % 3 == 0) Sentry.captureException(e)
                     delay(backoffMs)
                     backoffMs = minOf(backoffMs * 2, CacheConfig.REALTIME_RECONNECT_MAX_MS)
                 }

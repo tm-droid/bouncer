@@ -113,6 +113,7 @@ class BouncerApp : Application() {
                         level = SentryLevel.WARNING
                     }
                 )
+                Sentry.captureException(e)
                 false
             }
             AppHealth.setAppwriteReachable(reachable)
