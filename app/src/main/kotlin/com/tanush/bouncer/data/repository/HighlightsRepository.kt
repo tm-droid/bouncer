@@ -21,7 +21,7 @@ class HighlightsRepository(
     private val FRESHNESS_MS = CacheConfig.HIGHLIGHTS_FRESHNESS_MS
 
     suspend fun fetchForMatch(bouncerMatchId: String): AppResult<List<HighlightEntity>> {
-        return AppResult.runCatching {
+        return AppResult.runCatchingSuspend {
             withContext(Dispatchers.IO) {
                 val freshnessCutoff = System.currentTimeMillis() - FRESHNESS_MS
                 val cached = highlightDao.queryCachedByMatchId(bouncerMatchId, freshnessCutoff)
