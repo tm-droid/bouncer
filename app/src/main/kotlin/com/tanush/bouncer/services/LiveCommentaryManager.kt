@@ -103,16 +103,6 @@ class LiveCommentaryManager(
         } else text
     }
 
-    private fun formatNonBallCommentary(buzzLine: String, infoLine: String): String {
-        val sourceLine = buzzLine.ifEmpty { infoLine }
-        return when (scorer.categorizeCommentary(sourceLine)) {
-            CommentaryScorer.CommentaryType.PRE_MATCH -> "⏳ Pre-match: ${buzzLine.take(100)}..."
-            CommentaryScorer.CommentaryType.POST_MATCH -> "🎙️ Post-match: ${buzzLine.take(100)}..."
-            CommentaryScorer.CommentaryType.MATCH_BREAK -> "☕ Match break: ${buzzLine.take(100)}..."
-            else -> if (buzzLine.isNotEmpty()) "📋 ${buzzLine.take(100)}..." else "Waiting for ball-by-ball commentary..."
-        }
-    }
-
     private suspend fun computeOversSummary(
         matchId: String,
         over: Int,
@@ -226,7 +216,11 @@ class LiveCommentaryManager(
         val infoLine = findBestBallSnippet(infoSnippets, keyNames)
 
         val hasBallContent = scorer.isBallByBallCommentary(buzzLine) || scorer.isBallByBallCommentary(infoLine)
-        if (!hasBallContent) return formatNonBallCommentary(buzzLine, infoLine)
+        if (!hasBallContent) {
+            val sourceLine = buzzLine.ifEmpty { infoLine }
+            if (sourceLine.isEmpty()) return "Waiting for ball-by-ball commentary..."
+            return fusion.rewriteEventCommentary(matchId, sourceLine, isMatchComplete)
+        }
 
         val over = ballNumber.substringBefore(".").toIntOrNull() ?: 0
         val oversSummary = computeOversSummary(matchId, over, buzzLine, isMatchComplete)

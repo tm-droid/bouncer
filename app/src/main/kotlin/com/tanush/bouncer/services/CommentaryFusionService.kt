@@ -5,6 +5,7 @@ import com.tanush.bouncer.ApiKeys
 import com.tanush.bouncer.analysis.CricketConstants
 import com.tanush.bouncer.data.remote.AppwriteClient
 import com.tanush.bouncer.network.HttpClientProvider
+import com.tanush.bouncer.utils.CommentaryFormatter
 import io.sentry.Breadcrumb
 import io.sentry.Sentry
 import io.sentry.SentryLevel
@@ -100,16 +101,18 @@ class CommentaryFusionService(
         const val BASE_COOLDOWN_MS = 30_000L
         const val MAX_COOLDOWN_MS = 300_000L
 
-        // Sent as role:"system" in all commentary LLM calls.
-        // Fixed preamble + anti-hallucination rules live here once, not repeated per-ball.
+        // Sent as role:"system" in all ball-by-ball LLM calls.
         const val SYSTEM_INSTRUCTION =
-            "You are a professional cricket commentator. Write a single natural-sounding commentary line.\n" +
-            "- Start with the ball number (e.g., 18.5: ...).\n" +
-            "- Use only player names from the input; never invent or substitute names.\n" +
-            "- Never invent match details absent from the input.\n" +
-            "- Paraphrase into a concise, vivid, live-commentary sentence.\n" +
-            "- If context shows a momentum shift or notable trend, add a brief remark only if it fits naturally.\n" +
-            "- Avoid repetition. Keep it concise."
+            "You are a professional cricket broadcast commentator. Write exactly one vivid, natural commentary line.\n" +
+            "STRICT FORMAT: Begin with the ball number (e.g., 18.5: ...). One sentence only. No ellipsis at the end.\n" +
+            "HALLUCINATION RULES: Use ONLY player names and match facts present in the input. Never invent runs, wickets, boundaries, or events not stated in the input. The atmosphere is yours — the facts are not.\n" +
+            "STYLE: Cinematic, broadcast-quality. Sharp active verbs. Specific detail from the input. No clichés."
+
+        // Sent as role:"system" for non-ball event rewrites (fielding changes, session updates, etc.)
+        const val EVENT_SYSTEM_INSTRUCTION =
+            "You are a professional cricket broadcast commentator. Rewrite this match event as one clean broadcast sentence.\n" +
+            "HALLUCINATION RULES: Describe ONLY what the input states. No invented statistics, history, or outcomes.\n" +
+            "STYLE: Natural, present-tense, professional. No ball number prefix."
 
         // Collapsed from 4 FUSION_PROMPT_* and 4 SINGLE_SOURCE_PROMPT_* constants.
         // System instruction is sent separately; these are role:"user" content only.
@@ -192,16 +195,38 @@ class CommentaryFusionService(
             val previousBalls = getPreviousBalls(matchId)
             val recentContext = if (previousBalls.isNotEmpty())
                 "\nRecent: ${previousBalls.takeLast(3).joinToString(" | ")}" else ""
-            val prompt = "You are a cricket commentator. One punchy sentence, max 15 words.\n" +
-                "Ball $ballNumber: $rawSnippet$recentContext\nCommentary:"
+            val cleanSnippet = CommentaryFormatter.sanitize(rawSnippet)
+            val prompt = buildString {
+                append("Ball $ballNumber: $cleanSnippet")
+                if (recentContext.isNotEmpty()) append(recentContext)
+                append("\nWrite one vivid broadcast commentary line. Start with $ballNumber: at the beginning.")
+            }
 
-            val result = callGenerateCommentaryFunction(cacheKey, prompt, isMatchComplete, maxTokens = 50, temperature = 0.7)
-                ?: callProviders(prompt, maxTokens = 50, temperature = 0.7)
+            val result = callGenerateCommentaryFunction(cacheKey, prompt, isMatchComplete, maxTokens = 100, temperature = 0.7, systemInstruction = SYSTEM_INSTRUCTION)
+                ?: callProviders(prompt, maxTokens = 100, temperature = 0.7, systemInstruction = SYSTEM_INSTRUCTION)
                 ?: return@withContext FALLBACK_BALL_COMMENTARY
             AICacheService.setCommentary(result, cacheKey, permanent = isMatchComplete)
             addBallToBuffer(matchId, result)
             result
         }
+
+    suspend fun rewriteEventCommentary(
+        matchId: String,
+        rawEvent: String,
+        isMatchComplete: Boolean = false
+    ): String = withContext(Dispatchers.IO) {
+        val cleaned = CommentaryFormatter.sanitize(rawEvent)
+        if (cleaned.isBlank()) return@withContext rawEvent
+        val cacheKey = "event_ai:$matchId:${cleaned.hashCode()}"
+        AICacheService.getCommentary(cacheKey)?.let { return@withContext it }
+
+        val prompt = "Match event: $cleaned\nRewrite as one broadcast commentary sentence."
+        val result = callGenerateCommentaryFunction(cacheKey, prompt, isMatchComplete, maxTokens = 80, temperature = 0.6, systemInstruction = EVENT_SYSTEM_INSTRUCTION)
+            ?: callProviders(prompt, maxTokens = 80, temperature = 0.6, systemInstruction = EVENT_SYSTEM_INSTRUCTION)
+            ?: return@withContext cleaned
+        AICacheService.setCommentary(result, cacheKey, permanent = isMatchComplete)
+        result
+    }
 
     suspend fun fuse(
         snippet1: String,
@@ -318,12 +343,12 @@ class CommentaryFusionService(
                 .replace("{previous_balls_context}", previousContext)
         }
 
-        val functionResult = callGenerateCommentaryFunction(cacheKey, prompt, isMatchComplete, maxTokens = 256, temperature = 0.6)
+        val functionResult = callGenerateCommentaryFunction(cacheKey, prompt, isMatchComplete, maxTokens = 256, temperature = 0.6, systemInstruction = SYSTEM_INSTRUCTION)
         val (result, usedProviderName) = if (functionResult != null) {
             Pair(functionResult, "appwrite-function")
         } else {
             callProvidersTracked(prompt, maxTokens = 256, temperature = 0.6, systemInstruction = SYSTEM_INSTRUCTION)
-                ?: return "[AI Fused] $snippet1 / $snippet2"
+                ?: return CommentaryFormatter.sanitize(snippet1.ifEmpty { snippet2 })
         }
 
         val verified = verifyCommentary(result, snippet1, snippet2, ballNumber, bowler, batsman)
@@ -339,7 +364,7 @@ class CommentaryFusionService(
                 }
                 // retried also unverified — fall through to raw snippet fallback
             }
-            val fallback = snippet1.ifEmpty { snippet2 }
+            val fallback = CommentaryFormatter.sanitize(snippet1.ifEmpty { snippet2 })
             Log.w("CommentaryFusionService", "All providers exhausted — using raw snippet fallback")
             AICacheService.setCommentary(fallback, cacheKey, permanent = isMatchComplete)
             return fallback
@@ -666,7 +691,8 @@ class CommentaryFusionService(
         prompt: String,
         matchComplete: Boolean = false,
         maxTokens: Int = 512,
-        temperature: Double = 0.7
+        temperature: Double = 0.7,
+        systemInstruction: String = ""
     ): String? {
         val body = org.json.JSONObject().apply {
             put("cacheKey", cacheKey)
@@ -674,6 +700,7 @@ class CommentaryFusionService(
             put("matchComplete", matchComplete)
             put("maxTokens", maxTokens)
             put("temperature", temperature)
+            if (systemInstruction.isNotEmpty()) put("systemInstruction", systemInstruction)
         }.toString()
         val response = AppwriteClient.executeFunction("bouncer-generate-commentary", body)
             ?: return null
