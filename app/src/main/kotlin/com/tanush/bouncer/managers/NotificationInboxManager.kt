@@ -2,6 +2,7 @@ package com.tanush.bouncer.managers
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.util.Log
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.CoroutineScope
@@ -30,6 +31,7 @@ object NotificationInboxManager {
     private const val PREF_NAME = "notification_inbox"
     private const val KEY_ITEMS = "inbox_items"
     private const val MAX_ITEMS = 50
+    private const val TAG = "NotificationInboxManager"
 
     private val gson = Gson()
     private var prefs: SharedPreferences? = null
@@ -93,6 +95,7 @@ object NotificationInboxManager {
             val type = object : TypeToken<List<NotificationItem>>() {}.type
             gson.fromJson(json, type) ?: emptyList()
         } catch (e: Exception) {
+            Log.w(TAG, "Failed to deserialize notification inbox, resetting", e)
             emptyList()
         }
     }

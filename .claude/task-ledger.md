@@ -16,21 +16,21 @@
 - [x] 1.1 — Verify PremiumScorecardTab.kt imports (BowlerPerformance, BowlingPerformanceCard)
 - [x] 1.2 — Verify PointsTableScreen.kt imports (SeriesTeam, SeriesStandingsCard) + NavHost call sites
 - [x] 1.3 — Build verify: `./gradlew assembleDebug test` — BUILD SUCCESSFUL in 8s, 47 tasks
-- [~] 1.4 — Commit: `feat: integrate BowlingPerformanceCard and SeriesStandingsCard`
+- [x] 1.4 — Commit: `a122a11 feat(ui): replace custom points table and add bowling card`
 
 ---
 
 ## Phase 2 — Module audit (audit-modules skill)
 
-- [ ] 2.1 — Audit all 6 modules in parallel (ui/, network/, data/, services/, analysis/, managers/)
-- [ ] 2.2 — Fix Critical findings in ui/
-- [ ] 2.3 — Fix Critical findings in network/
-- [ ] 2.4 — Fix Critical findings in data/
-- [ ] 2.5 — Fix Critical findings in services/
-- [ ] 2.6 — Fix Critical findings in analysis/
-- [ ] 2.7 — Fix Critical findings in managers/
-- [ ] 2.8 — Build verify: `./gradlew assembleDebug test`
-- [ ] 2.9 — Commit: `fix: resolve Critical audit findings across all modules`
+- [x] 2.1 — Audit all 6 modules in parallel (ui/, network/, data/, services/, analysis/, managers/)
+- [x] 2.2 — Fix Critical findings in ui/ — CLEAN, no action
+- [x] 2.3 — Fix Critical findings in network/ — 1 finding: intentional `_` catch, skipped
+- [x] 2.4 — Fix Critical findings in data/ — CLEAN, no action
+- [x] 2.5 — Fix Critical findings in services/ — 2 findings: intentional SSE parse + already logged; skipped
+- [x] 2.6 — Fix Critical findings in analysis/ — CLEAN, no action
+- [x] 2.7 — Fix Critical findings in managers/ — FIXED NotificationInboxManager.kt:95 (Log.w added)
+- [x] 2.8 — Build verify: BUILD SUCCESSFUL in 1m 36s, 47 tasks
+- [~] 2.9 — Commit: `fix: resolve Critical audit findings across all modules`
 
 ---
 
@@ -43,7 +43,16 @@
 
 ## Audit Findings (filled in after 2.1)
 
-_TBD_
+| Module | CRITICAL | HIGH | INFO | Action |
+|--------|----------|------|------|--------|
+| ui/ | 0 | 0 | 0 | clean |
+| network/ | 1* | 0 | 0 | skip — intentional `_` catch in recursive JSON walk |
+| data/ | 0 | 0 | 0 | clean |
+| services/ | 2* | 0 | 0 | skip — SSE parse `_` catch + MatchCacheService already logs+Sentry |
+| analysis/ | 0 | 0 | 0 | clean |
+| managers/ | 1 | 0 | 0 | FIXED — NotificationInboxManager.kt:95 silent catch → added Log.w |
+
+*False positives: intentional silent catches (`_` naming) or already logged to Sentry+Log.
 
 ---
 
@@ -52,5 +61,5 @@ _TBD_
 | Task | Result | Notes |
 |------|--------|-------|
 | 1.3  | GREEN  | BUILD SUCCESSFUL in 8s, 47 tasks |
-| 2.8  | -      | -     |
+| 2.8  | GREEN  | BUILD SUCCESSFUL in 1m 36s, 47 tasks |
 | 3.1  | -      | -     |
