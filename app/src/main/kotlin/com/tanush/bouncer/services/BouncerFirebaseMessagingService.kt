@@ -56,6 +56,15 @@ class BouncerFirebaseMessagingService : FirebaseMessagingService() {
     }
 
     // ---------------------------------------------------------------
+    // Lifecycle
+    // ---------------------------------------------------------------
+
+    override fun onCreate() {
+        super.onCreate()
+        CricketNotificationChannel.createNotificationChannels(this)
+    }
+
+    // ---------------------------------------------------------------
     // Token refresh
     // ---------------------------------------------------------------
 

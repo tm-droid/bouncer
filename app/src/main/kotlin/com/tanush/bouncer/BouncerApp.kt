@@ -25,6 +25,7 @@ import com.tanush.bouncer.services.DatabaseCleanupWorker
 import com.tanush.bouncer.services.MatchCacheService
 import com.tanush.bouncer.services.ScorePollingWorker
 import com.tanush.bouncer.services.SeriesSyncWorker
+import com.tanush.bouncer.ui.notifications.RichNotificationBuilder
 import io.sentry.Breadcrumb
 import io.sentry.Sentry
 import io.sentry.SentryLogLevel
@@ -97,6 +98,9 @@ class BouncerApp : Application() {
         initializeSafely("FavouriteTeamsManager") { FavouriteTeamsManager.initialize(this) }
         applicationScope.launch(Dispatchers.IO) {
             initializeSafely("MatchSubscriptionManager") { MatchSubscriptionManager.initialize(this@BouncerApp) }
+        }
+        initializeSafely("NotificationChannels") {
+            RichNotificationBuilder.CricketNotificationChannel.createNotificationChannels(this)
         }
         initializeSafely("MatchCacheService") { MatchCacheService.initDiskCache(this) }
         initializeSafely("AppwriteClient") { AppwriteClient.initialize(this) }
