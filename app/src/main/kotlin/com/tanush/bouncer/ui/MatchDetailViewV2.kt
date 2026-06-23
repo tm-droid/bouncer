@@ -72,6 +72,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.tanush.bouncer.ui.theme.rememberMatchTeamPalette
 import com.tanush.bouncer.ui.theme.rememberTeamColors
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
+import com.tanush.bouncer.ui.components.BatsmanMilestoneCard
 import com.tanush.bouncer.ui.components.ShareCardData
 import com.tanush.bouncer.ui.components.ShareCardGenerator
 import kotlinx.coroutines.launch
@@ -209,7 +210,8 @@ fun MatchDetailViewV2(
         },
         containerColor = colors.background,
     ) { innerPadding ->
-        Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+        Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+            Column(modifier = Modifier.fillMaxSize()) {
             // ── Score Header ──
             ScoreHeaderV2(
                 match = match,
@@ -276,6 +278,8 @@ fun MatchDetailViewV2(
                         scorecard = uiState.scorecard,
                         streamingCommentary = streamingCommentary,
                         matchFlow = uiState.matchFlow,
+                        probabilityHistory = uiState.probabilityHistory,
+                        headToHead = uiState.headToHead,
                     )
                     "Scorecard" -> PremiumScorecardTab(scorecard = uiState.scorecard)
                     "Commentary" -> CommentaryTabV2(
@@ -288,6 +292,17 @@ fun MatchDetailViewV2(
                     "Info" -> InfoTabV2(match = match, preMatchData = uiState.preMatchData)
                     "AI" -> PremiumAiStatisticsTab(match = liveMatch)
                 }
+            }
+            }
+
+            uiState.batsmanMilestone?.let { milestone ->
+                BatsmanMilestoneCard(
+                    milestoneInfo = milestone,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = spacing.lg, vertical = spacing.lg)
+                        .align(Alignment.BottomCenter),
+                )
             }
         }
 

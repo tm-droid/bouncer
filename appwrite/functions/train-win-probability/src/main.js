@@ -5,6 +5,7 @@ import AdmZip from "adm-zip";
 const CRICSHEET_URL = "https://cricsheet.org/downloads/t20s_json.zip";
 const STATS_BUCKET_ID = process.env.STATS_BUCKET_ID ?? "cricket-stats";
 const TEAM_STATS_FILE_ID = "team-stats";
+const H2H_FILE_ID = "h2h-stats";
 
 // Logistic regression hyperparameters
 const EPOCHS = 30;
@@ -38,6 +39,7 @@ export default async ({ req, res, log, error }) => {
 
   log("Pass 1: counting team win rates...");
   const teamStats = {};
+  const h2hAccumulator = {};
   // Pass 2 accumulators
   const trainingRows = []; // { features: [5], label: 0|1 }
   // For breakevenRR: sum runs and balls across all first innings
@@ -59,6 +61,7 @@ export default async ({ req, res, log, error }) => {
         firstInningsTotalRuns += runs;
         firstInningsTotalBalls += balls;
       });
+      processH2H(match, h2hAccumulator);
       parsed++;
     } catch (e) {
       if (skipped < 5) error(`Skipped ${entry.entryName}: ${e?.message}`);
@@ -168,10 +171,29 @@ export default async ({ req, res, log, error }) => {
     return res.json({ error: e?.message }, 500);
   }
 
+  // Write H2H stats (non-fatal — model upload already succeeded)
+  let h2hPairs = 0;
+  try {
+    const h2hFinal = finalizeH2H(h2hAccumulator);
+    h2hPairs = Object.keys(h2hFinal).length;
+    const h2hBuffer = Buffer.from(JSON.stringify({ version: 1, h2h: h2hFinal }), "utf8");
+    await storage.deleteFile(STATS_BUCKET_ID, H2H_FILE_ID).catch(() => {});
+    await storage.createFile(
+      STATS_BUCKET_ID,
+      H2H_FILE_ID,
+      InputFile.fromBuffer(h2hBuffer, "h2h-stats.json"),
+      ["read(\"any\")"]
+    );
+    log(`H2H stats written: ${h2hPairs} team pairs (${(h2hBuffer.length / 1024).toFixed(0)} KB)`);
+  } catch (e) {
+    error(`Failed to upload H2H stats: ${e?.message}`);
+  }
+
   return res.json({
     parsed,
     skipped,
     teams: Object.keys(teamStats).length,
+    h2hPairs,
     trainingRows: n,
     breakevenRR,
     weights,
@@ -399,4 +421,93 @@ function trainLogisticRegression(rows, log) {
 
 function sigmoid(x) {
   return 1 / (1 + Math.exp(-x));
+}
+
+// ── Head-to-head helpers ──────────────────────────────────────────────────────
+
+function h2hInningsTotal(innings) {
+  return (innings?.overs ?? []).reduce(
+    (t, o) => t + (o.deliveries ?? []).reduce((s, d) => s + (d.runs?.total ?? 0), 0), 0
+  );
+}
+
+function h2hInningsWickets(innings) {
+  return (innings?.overs ?? []).reduce(
+    (t, o) => t + (o.deliveries ?? []).filter(d => (d.wickets?.length ?? 0) > 0).length, 0
+  );
+}
+
+function processH2H(raw, acc) {
+  const info = raw?.info;
+  if (!info) return;
+  if (info.match_type !== "T20" && info.match_type !== "IT20") return;
+  const teams = info.teams ?? [];
+  if (teams.length !== 2) return;
+
+  const [t1, t2] = [...teams].sort();
+  const key = `${t1}|||${t2}`;
+
+  if (!acc[key]) {
+    acc[key] = { team1: t1, team2: t2, total: 0, t1Wins: 0, t2Wins: 0, draws: 0,
+      t1RunsList: [], t2RunsList: [], recent: [] };
+  }
+  const h = acc[key];
+  h.total++;
+
+  const winner = info.outcome?.winner;
+  if (winner === t1) h.t1Wins++;
+  else if (winner === t2) h.t2Wins++;
+  else h.draws++;
+
+  const inn1 = raw.innings?.[0];
+  const inn2 = raw.innings?.[1];
+  const r1 = h2hInningsTotal(inn1), w1 = h2hInningsWickets(inn1);
+  const r2 = h2hInningsTotal(inn2), w2 = h2hInningsWickets(inn2);
+
+  const t1BatFirst = inn1?.team === t1;
+  h.t1RunsList.push(t1BatFirst ? r1 : r2);
+  h.t2RunsList.push(t1BatFirst ? r2 : r1);
+
+  const by = info.outcome?.by;
+  const margin = by?.runs ? `${by.runs} runs` : by?.wickets ? `${by.wickets} wickets` : null;
+
+  h.recent.push({
+    date: info.dates?.[0] ?? "",
+    venue: info.venue ?? "",
+    winner: winner ?? null,
+    t1Score: t1BatFirst ? `${r1}/${w1}` : `${r2}/${w2}`,
+    t2Score: t1BatFirst ? `${r2}/${w2}` : `${r1}/${w1}`,
+    format: info.match_type,
+    margin,
+  });
+}
+
+function finalizeH2H(acc) {
+  const result = {};
+  for (const [key, h] of Object.entries(acc)) {
+    if (h.total < 2) continue;
+    h.recent.sort((a, b) => b.date.localeCompare(a.date));
+    result[key] = {
+      team1: h.team1,
+      team2: h.team2,
+      totalMatches: h.total,
+      team1Wins: h.t1Wins,
+      team2Wins: h.t2Wins,
+      draws: h.draws,
+      lastWinner: h.recent[0]?.winner ?? null,
+      lastFive: h.recent.slice(0, 5)
+        .map(m => !m.winner ? "D" : m.winner === h.team1 ? "W1" : "W2")
+        .reverse(),
+      team1HighestScore: h.t1RunsList.length ? String(Math.max(...h.t1RunsList)) : "0",
+      team1LowestScore:  h.t1RunsList.length ? String(Math.min(...h.t1RunsList)) : "0",
+      team2HighestScore: h.t2RunsList.length ? String(Math.max(...h.t2RunsList)) : "0",
+      team2LowestScore:  h.t2RunsList.length ? String(Math.min(...h.t2RunsList)) : "0",
+      recentMatches: h.recent.slice(0, 10).map(m => ({
+        date: m.date, venue: m.venue, winner: m.winner,
+        team1Score: m.t1Score, team2Score: m.t2Score,
+        format: m.format, margin: m.margin,
+      })),
+    };
+  }
+  return result;
 }

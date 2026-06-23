@@ -51,14 +51,40 @@ import androidx.compose.material.icons.filled.Flare
 import androidx.compose.material.icons.filled.HeartBroken
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Speed
+import com.tanush.bouncer.models.WinProbabilityPoint
 import com.tanush.bouncer.ui.components.premium.EliteMomentumTracker
 import com.tanush.bouncer.ui.components.premium.InsightGridCard
 import com.tanush.bouncer.ui.components.premium.MomentumEvent
 import com.tanush.bouncer.ui.components.premium.PremiumWinProbabilityHero
+import com.tanush.bouncer.ui.components.premium.WinProbabilityChartCard
+import com.tanush.bouncer.data.remote.H2HPair
+import com.tanush.bouncer.models.BatsmanStats
+import com.tanush.bouncer.models.FallOfWicket as ModelFallOfWicket
+import com.tanush.bouncer.models.PowerplayEvent
+import com.tanush.bouncer.ui.components.DismissalType
+import com.tanush.bouncer.ui.components.FallOfWicket as UiFallOfWicket
+import com.tanush.bouncer.ui.components.FallOfWicketsCard
+import com.tanush.bouncer.ui.components.HighlightHighlightMomentType
+import com.tanush.bouncer.ui.components.HighlightMoment
+import com.tanush.bouncer.ui.components.HighlightMomentsCard
+import com.tanush.bouncer.ui.components.MatchPhaseData
+import com.tanush.bouncer.ui.components.MatchPhasesCard
+import com.tanush.bouncer.ui.components.MatchPredictionCard
+import com.tanush.bouncer.ui.components.MatchPredictionInfo
+import com.tanush.bouncer.ui.components.MomentumShift
+import com.tanush.bouncer.ui.components.HeadToHeadCard
+import com.tanush.bouncer.ui.components.HistoricalStatsCard
+import com.tanush.bouncer.ui.components.OverByOverComparisonCard
+import com.tanush.bouncer.ui.components.OverByOverComparisonInfo
+import com.tanush.bouncer.ui.components.OverRunRate
+import com.tanush.bouncer.ui.components.PredictionFactor
+import com.tanush.bouncer.ui.components.PredictionTrend
+import com.tanush.bouncer.ui.components.RunRateComparisonCard
 import com.tanush.bouncer.ui.theme.Gold400
 import com.tanush.bouncer.ui.theme.StatusInfo
 import com.tanush.bouncer.ui.theme.StatusLive
 import com.tanush.bouncer.ui.theme.StatusSuccess
+import kotlin.math.abs
 
 /**
  * OverviewTabV2 — Quick stats, batsmen at crease, current bowler, commentary preview, win probability.
@@ -75,6 +101,8 @@ fun OverviewTabV2(
     scorecard: Scorecard? = null,
     streamingCommentary: String = "",
     matchFlow: MatchFlowData? = null,
+    probabilityHistory: List<WinProbabilityPoint> = emptyList(),
+    headToHead: H2HPair? = null,
 ) {
     val colors = BouncerThemeV2.colors
     val typography = BouncerThemeV2.typography
@@ -86,6 +114,21 @@ fun OverviewTabV2(
     val isCompleted = match.matchStatus == MatchStatus.Completed
     val isUpcoming = match.matchStatus == MatchStatus.Upcoming ||
         (!isMatchActive && !isCompleted && match.teams.all { it.score.isBlank() || it.score == "0/0" })
+
+    val overMilestones = matchFlow?.overMilestones
+    val maxOver = overMilestones?.maxOfOrNull { it.first } ?: 0
+    val cumulativeScores: List<Int> = if (!overMilestones.isNullOrEmpty()) {
+        buildList {
+            var prev = 0
+            for (over in 1..maxOver) {
+                val milestone = overMilestones.lastOrNull { it.first <= over }
+                val cumulative = milestone?.second ?: prev
+                add(cumulative)
+                prev = cumulative
+            }
+        }
+    } else emptyList()
+    val hasOverData = cumulativeScores.isNotEmpty() && match.teams.size >= 2
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -401,12 +444,59 @@ fun OverviewTabV2(
             }
         }
 
-        // Win Probability — premium animated hero card
+        // Win Probability — simple hero (always shown when heuristic available)
         if (heuristicProb != 50.0 && match.teams.size >= 2) {
             item(key = "win_prob") {
                 PremiumWinProbabilityHero(
                     team1Name = match.teams[0].acronym.ifBlank { match.teams[0].name.take(3).uppercase() },
                     team1Probability = (heuristicProb.toFloat() / 100f).coerceIn(0.05f, 0.95f),
+                )
+            }
+        }
+
+        // Win Probability chart — full time-series analytics (shown when history data is available)
+        if (probabilityHistory.size >= 2 && match.teams.size >= 2) {
+            item(key = "win_prob_chart") {
+                WinProbabilityChartCard(
+                    team1Name = match.teams[0].acronym.ifBlank { match.teams[0].name.take(3).uppercase() },
+                    team2Name = match.teams[1].acronym.ifBlank { match.teams[1].name.take(3).uppercase() },
+                    probabilityHistory = probabilityHistory,
+                    currentTeam1Probability = probabilityHistory.last().team1Probability,
+                )
+            }
+        }
+
+        // MatchPredictionCard — win probability framed as a prediction card
+        if (probabilityHistory.size >= 2 && match.teams.size >= 2) {
+            val latestProb = probabilityHistory.last()
+            val prevProb = probabilityHistory[probabilityHistory.size - 2]
+            val probDelta = latestProb.team1Probability - prevProb.team1Probability
+            val trend = when {
+                probDelta > 0.05f -> PredictionTrend.TEAM1_RISING
+                probDelta < -0.05f -> PredictionTrend.TEAM2_RISING
+                else -> PredictionTrend.STABLE
+            }
+            item(key = "prediction_card") {
+                MatchPredictionCard(
+                    predictionInfo = MatchPredictionInfo(
+                        team1Name = match.teams[0].name,
+                        team2Name = match.teams[1].name,
+                        team1WinProbability = latestProb.team1Probability,
+                        team2WinProbability = latestProb.team2Probability,
+                        predictionTrend = trend,
+                        predictedWinner = if (latestProb.team1Probability >= 0.5f) match.teams[0].name else match.teams[1].name,
+                        predictionFactors = buildList {
+                            val crr = currentRunRate?.toFloatOrNull()
+                            val rrr = requiredRunRate?.toFloatOrNull()
+                            if (crr != null && rrr != null && rrr > 0f) {
+                                add(PredictionFactor(
+                                    name = "Run Rate",
+                                    impact = ((crr / rrr) - 1f).coerceIn(-1f, 1f),
+                                    description = "CRR $crr vs RRR $rrr",
+                                ))
+                            }
+                        },
+                    ),
                 )
             }
         }
@@ -441,6 +531,23 @@ fun OverviewTabV2(
             }
         }
 
+        // MatchPhasesCard — full phase breakdown (PP + Middle + Death)
+        val matchPhases = buildMatchPhases(
+            overMilestones = overMilestones ?: emptyList(),
+            powerplays = matchFlow?.powerplays ?: emptyList(),
+            scorecard = scorecard,
+            isLive = isMatchActive,
+        )
+        if (matchPhases.size >= 2 && match.teams.size >= 2) {
+            item(key = "match_phases_card") {
+                MatchPhasesCard(
+                    phases = matchPhases,
+                    team1Name = match.teams[0].name,
+                    team2Name = match.teams[1].name,
+                )
+            }
+        }
+
         // DRS reviews from ESPNCricinfo — show most recent review
         val latestDrs = matchFlow?.drsReviews?.lastOrNull()
         if (latestDrs != null) {
@@ -457,18 +564,7 @@ fun OverviewTabV2(
         }
 
         // Over-by-over scoring graph from ESPNCricinfo score milestones
-        val overMilestones = matchFlow?.overMilestones
-        if (!overMilestones.isNullOrEmpty() && match.teams.size >= 2) {
-            val maxOver = overMilestones.maxOf { it.first }
-            val cumulativeScores = buildList {
-                var prev = 0
-                for (over in 1..maxOver) {
-                    val milestone = overMilestones.lastOrNull { it.first <= over }
-                    val cumulative = milestone?.second ?: prev
-                    add(cumulative)
-                    prev = cumulative
-                }
-            }
+        if (hasOverData) {
             item(key = "scoring_graph") {
                 LiveScoringGraphCard(
                     scoringData = LiveScoringData(
@@ -479,6 +575,44 @@ fun OverviewTabV2(
                         currentOver = maxOver,
                         projectedScore = cumulativeScores.lastOrNull() ?: 0,
                     ),
+                )
+            }
+        }
+
+        // OverByOverComparisonCard — cumulative scores as dual-line chart
+        if (hasOverData) {
+            val wicketOvers = scorecard?.innings?.lastOrNull()?.fallOfWickets
+                ?.mapNotNull { it.overs.split(".").firstOrNull()?.toIntOrNull() }
+                ?: emptyList()
+            item(key = "over_by_over_card") {
+                OverByOverComparisonCard(
+                    comparisonInfo = OverByOverComparisonInfo(
+                        team1Name = match.teams[0].acronym.ifBlank { match.teams[0].name.take(3).uppercase() },
+                        team2Name = match.teams[1].acronym.ifBlank { match.teams[1].name.take(3).uppercase() },
+                        team1Scores = cumulativeScores,
+                        team2Scores = emptyList(),
+                        currentOver = maxOver,
+                        highlightOvers = wicketOvers,
+                    ),
+                )
+            }
+        }
+
+        // RunRateComparisonCard — per-over run differential
+        if (!overMilestones.isNullOrEmpty() && match.teams.size >= 2) {
+            val perOverRuns = buildList {
+                var prev = 0
+                overMilestones.sortedBy { it.first }.forEach { (over, cum) ->
+                    add(OverRunRate(over = over, team1Runs = cum - prev, team2Runs = null))
+                    prev = cum
+                }
+            }
+            item(key = "run_rate_card") {
+                RunRateComparisonCard(
+                    overData = perOverRuns,
+                    team1Name = match.teams[0].name,
+                    team2Name = match.teams[1].name,
+                    requiredRunRate = requiredRunRate?.toDoubleOrNull(),
                 )
             }
         }
@@ -512,6 +646,61 @@ fun OverviewTabV2(
                         }
                     }
                 }
+            }
+        }
+
+        // FallOfWicketsCard — from scorecard
+        if (scorecard != null) {
+            scorecard.innings.forEachIndexed { idx, innings ->
+                if (innings.fallOfWickets.isNotEmpty()) {
+                    val uiFow = mapFallOfWickets(innings.fallOfWickets, innings.batsmen)
+                    item(key = "fow_card_$idx") {
+                        FallOfWicketsCard(
+                            wickets = uiFow,
+                            teamName = innings.teamName,
+                            currentScore = innings.score.split("/").firstOrNull()?.toIntOrNull() ?: 0,
+                            currentOvers = innings.overs.toFloatOrNull() ?: 0f,
+                        )
+                    }
+                }
+            }
+        }
+
+        // KeyMomentsCard — pivotal events from probability history
+        val keyMoments = probabilityHistory.mapIndexedNotNull { idx, point ->
+            val event = point.keyEvent ?: return@mapIndexedNotNull null
+            val prevProb = probabilityHistory.getOrNull(idx - 1)
+            val impact = if (prevProb != null) {
+                (abs(point.team1Probability - prevProb.team1Probability) * 2f).coerceIn(0f, 1f)
+            } else 0.5f
+            HighlightMoment(
+                overNumber = point.over,
+                title = event,
+                description = "${(point.team1Probability * 100).toInt()}% win probability",
+                type = when {
+                    event.contains("wicket", ignoreCase = true) -> HighlightHighlightMomentType.WICKET
+                    event.contains("six", ignoreCase = true) -> HighlightHighlightMomentType.SIX
+                    event.contains("four", ignoreCase = true) || event.contains("boundary", ignoreCase = true) -> HighlightHighlightMomentType.FOUR
+                    event.contains("50", ignoreCase = true) || event.contains("half century", ignoreCase = true) -> HighlightHighlightMomentType.FIFTY
+                    event.contains("100", ignoreCase = true) || event.contains("century", ignoreCase = true) -> HighlightHighlightMomentType.CENTURY
+                    else -> HighlightHighlightMomentType.MILESTONE
+                },
+                impactScore = impact,
+                timestamp = "Over ${point.over.toInt()}",
+            )
+        }
+        if (keyMoments.size >= 2) {
+            item(key = "key_moments_header") { SectionHeaderV2(title = "Key Moments") }
+            item(key = "key_moments_card") { HighlightMomentsCard(moments = keyMoments) }
+        }
+
+        // HeadToHeadCard + HistoricalStatsCard — from Appwrite H2H stats (Cricsheet-derived)
+        headToHead?.let { h2h ->
+            item(key = "h2h_card") {
+                HeadToHeadCard(match = match, stats = h2h.stats)
+            }
+            item(key = "historical_card") {
+                HistoricalStatsCard(data = h2h.history)
             }
         }
 
@@ -668,4 +857,156 @@ private fun WinProbRow(teamName: String, probability: Float) {
             fontWeight = FontWeight.Bold,
         )
     }
+}
+
+private fun mapFallOfWickets(
+    fowList: List<ModelFallOfWicket>,
+    batsmen: List<BatsmanStats>,
+): List<UiFallOfWicket> {
+    val batsmanByName = batsmen.associateBy { it.name.lowercase().trim() }
+    var prevScore = 0
+    return fowList
+        .sortedBy { it.number }
+        .mapIndexed { idx, fow ->
+            val stats = batsmanByName[fow.batsman.lowercase().trim()]
+            val (dismissalType, bowlerName) = parseDismissal(stats?.dismissal ?: "")
+            val score = fow.score.toIntOrNull() ?: 0
+            val partnershipRuns = (score - prevScore).coerceAtLeast(0)
+            prevScore = score
+            UiFallOfWicket(
+                wicketNumber = fow.number.takeIf { it > 0 } ?: (idx + 1),
+                score = score,
+                overs = fow.overs.toFloatOrNull() ?: 0f,
+                batsmanName = fow.batsman,
+                batsmanRuns = stats?.runs?.toIntOrNull() ?: 0,
+                batsmanBalls = stats?.balls?.toIntOrNull() ?: 0,
+                bowlerName = bowlerName,
+                dismissalType = dismissalType,
+                partnershipRuns = partnershipRuns,
+            )
+        }
+}
+
+private fun parseDismissal(dismissal: String): Pair<DismissalType, String> {
+    val d = dismissal.lowercase().trim()
+    return when {
+        d.isBlank() || d.contains("not out") || d.contains("batting") ->
+            DismissalType.BOWLED to ""
+        d.startsWith("c&b") || d.startsWith("c & b") -> {
+            val bowler = dismissal.replaceFirst(Regex("^[Cc][\\s&bB]+"), "").trim()
+            DismissalType.CAUGHT_AND_BOWLED to bowler
+        }
+        d.startsWith("lbw") -> {
+            val bowler = dismissal.replaceFirst(Regex("(?i)^lbw\\s+b\\s+"), "").trim()
+            DismissalType.LBW to bowler
+        }
+        d.startsWith("run out") -> {
+            val fielder = dismissal
+                .replaceFirst(Regex("(?i)^run out\\s*\\("), "")
+                .removeSuffix(")")
+                .trim()
+            DismissalType.RUN_OUT to fielder
+        }
+        d.startsWith("st ") -> {
+            val bIdx = dismissal.indexOf(" b ", ignoreCase = true)
+            val bowler = if (bIdx >= 0) dismissal.substring(bIdx + 3).trim() else ""
+            DismissalType.STUMPED to bowler
+        }
+        d.startsWith("hit wicket") -> {
+            val bowler = dismissal.replaceFirst(Regex("(?i)^hit wicket\\s+b\\s+"), "").trim()
+            DismissalType.HIT_WICKET to bowler
+        }
+        d.startsWith("c ") && d.contains(" b ") -> {
+            val bIdx = dismissal.indexOf(" b ", ignoreCase = true)
+            val fielder = if (bIdx >= 0) dismissal.substring(2, bIdx).trim() else ""
+            val bowler = if (bIdx >= 0) dismissal.substring(bIdx + 3).trim() else ""
+            if (fielder.startsWith("†") || fielder.lowercase() == "wk") {
+                DismissalType.CAUGHT_BEHIND to bowler
+            } else {
+                DismissalType.CAUGHT to bowler
+            }
+        }
+        d.startsWith("b ") -> DismissalType.BOWLED to dismissal.substring(2).trim()
+        else -> DismissalType.CAUGHT to ""
+    }
+}
+
+private fun buildMatchPhases(
+    overMilestones: List<Pair<Int, Int>>,
+    powerplays: List<PowerplayEvent>,
+    scorecard: com.tanush.bouncer.models.Scorecard?,
+    isLive: Boolean,
+): List<MatchPhaseData> {
+    val maxOver = overMilestones.maxOfOrNull { it.first } ?: 0
+    if (maxOver < 6 && powerplays.isEmpty()) return emptyList()
+
+    val phases = mutableListOf<MatchPhaseData>()
+    val lastInnings = scorecard?.innings?.lastOrNull()
+
+    fun cumAt(over: Int): Int = overMilestones.lastOrNull { it.first <= over }?.second ?: 0
+    fun wicketsIn(from: Int, to: Int): Int =
+        lastInnings?.fallOfWickets?.count { fow ->
+            (fow.overs.split(".").firstOrNull()?.toIntOrNull() ?: 0) in from..to
+        } ?: 0
+
+    if (powerplays.isNotEmpty()) {
+        powerplays.forEachIndexed { idx, pp ->
+            phases.add(MatchPhaseData(
+                phaseName = "Powerplay ${pp.phase}",
+                description = "${pp.runs} runs, ${pp.wickets} wkts",
+                overs = pp.overs,
+                team1Runs = pp.runs,
+                team1Wickets = pp.wickets,
+                momentumShift = when {
+                    pp.runs >= 60 -> MomentumShift.TEAM1_STRONG
+                    pp.runs <= 30 -> MomentumShift.TEAM2_STRONG
+                    else -> MomentumShift.BALANCED
+                },
+                isActive = isLive && idx == powerplays.size - 1,
+            ))
+        }
+    } else if (maxOver >= 6) {
+        val ppRuns = cumAt(6)
+        val ppWickets = wicketsIn(1, 6)
+        phases.add(MatchPhaseData(
+            phaseName = "Powerplay", description = "$ppRuns runs, $ppWickets wkts",
+            overs = "1-6", team1Runs = ppRuns, team1Wickets = ppWickets,
+            momentumShift = when {
+                ppRuns >= 60 -> MomentumShift.TEAM1_STRONG
+                ppRuns <= 30 -> MomentumShift.TEAM2_STRONG
+                else -> MomentumShift.BALANCED
+            },
+        ))
+    }
+
+    if (maxOver >= 15) {
+        val middleRuns = cumAt(15) - cumAt(6)
+        val middleWickets = wicketsIn(7, 15)
+        phases.add(MatchPhaseData(
+            phaseName = "Middle Overs", description = "$middleRuns runs, $middleWickets wkts",
+            overs = "7-15", team1Runs = middleRuns, team1Wickets = middleWickets,
+            momentumShift = when {
+                middleRuns >= 80 -> MomentumShift.TEAM1_STRONG
+                middleRuns <= 40 -> MomentumShift.TEAM2_STRONG
+                else -> MomentumShift.BALANCED
+            },
+        ))
+    }
+
+    if (maxOver >= 16) {
+        val deathRuns = cumAt(maxOver) - cumAt(15)
+        val deathWickets = wicketsIn(16, 20)
+        phases.add(MatchPhaseData(
+            phaseName = "Death Overs", description = "$deathRuns runs, $deathWickets wkts",
+            overs = "16-$maxOver", team1Runs = deathRuns, team1Wickets = deathWickets,
+            momentumShift = when {
+                deathRuns >= 70 -> MomentumShift.TEAM1_STRONG
+                deathRuns <= 30 -> MomentumShift.TEAM2_STRONG
+                else -> MomentumShift.BALANCED
+            },
+            isActive = isLive,
+        ))
+    }
+
+    return phases
 }

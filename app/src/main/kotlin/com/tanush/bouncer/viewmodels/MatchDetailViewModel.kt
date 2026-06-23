@@ -11,11 +11,17 @@ import com.tanush.bouncer.models.PreMatchData
 import com.tanush.bouncer.models.Scorecard
 import com.tanush.bouncer.models.ScrapedBatsman
 import com.tanush.bouncer.models.ScrapedBowler
+import com.tanush.bouncer.models.WinProbabilityPoint
 import com.tanush.bouncer.data.AppResult
 import com.tanush.bouncer.data.CricBuzzMatchRepository
+import com.tanush.bouncer.data.CricketRepository
 import com.tanush.bouncer.data.MatchRepository
 import com.tanush.bouncer.network.CricBuzzUrls
 import com.tanush.bouncer.services.LiveCommentaryManager
+import com.tanush.bouncer.data.remote.H2HPair
+import com.tanush.bouncer.data.remote.H2HRepository
+import com.tanush.bouncer.ui.components.BatsmanMilestoneInfo
+import com.tanush.bouncer.ui.components.MilestoneType
 import com.tanush.bouncer.utils.bouncerExceptionHandler
 import io.sentry.Breadcrumb
 import io.sentry.Sentry
@@ -49,10 +55,14 @@ class MatchDetailViewModel(
         val liveRequiredRunRate: String? = null,
         val matchFlow: MatchFlowData? = null,
         val preMatchData: PreMatchData? = null,
+        val probabilityHistory: List<WinProbabilityPoint> = emptyList(),
+        val batsmanMilestone: BatsmanMilestoneInfo? = null,
+        val headToHead: H2HPair? = null,
     )
 
     private val appContext = context.applicationContext
     private val commentaryManager = LiveCommentaryManager()
+    private val firedMilestones = mutableSetOf<String>()
     private var espnMatchUrl: String? = null
 
     private val _uiState = MutableStateFlow(
@@ -117,6 +127,20 @@ class MatchDetailViewModel(
             })
         }
 
+        // Fetch head-to-head stats from Appwrite Storage (built by train-win-probability function).
+        AppResult.runCatchingSuspend {
+            val t1 = match.teams.getOrNull(0)?.name ?: return@runCatchingSuspend
+            val t2 = match.teams.getOrNull(1)?.name ?: return@runCatchingSuspend
+            val h2h = H2HRepository.getH2H(t1, t2)
+            if (h2h != null) _uiState.update { it.copy(headToHead = h2h) }
+        }.onError {
+            Sentry.addBreadcrumb(Breadcrumb().apply {
+                category = "match_detail_v2.h2h"
+                message = "H2H fetch failed: ${it.message}"
+                level = SentryLevel.WARNING
+            })
+        }
+
         // Fetch pre-match data (pitch report + team news) once at startup.
         AppResult.runCatchingSuspend {
             val url = espnMatchUrl ?: run {
@@ -170,6 +194,11 @@ class MatchDetailViewModel(
             }
         }
 
+        // Fetch win probability history once (fire-and-forget; errors logged in CricketRepository).
+        CricketRepository.getProbabilityHistory(match.id).onSuccess { history ->
+            if (history.isNotEmpty()) _uiState.update { it.copy(probabilityHistory = history) }
+        }
+
         if (!match.isLive) return
 
         while (true) {
@@ -203,7 +232,7 @@ class MatchDetailViewModel(
                     )
                 }
 
-                checkAchievements(details.batsmen, details.bowler)
+                checkMilestonesAndAchievements(details.batsmen, details.bowler)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -219,11 +248,38 @@ class MatchDetailViewModel(
         }
     }
 
-    private fun checkAchievements(batsmen: List<ScrapedBatsman>, bowler: ScrapedBowler?) {
+    private fun checkMilestonesAndAchievements(batsmen: List<ScrapedBatsman>, bowler: ScrapedBowler?) {
         for (b in batsmen) {
             val runs = b.runs.toIntOrNull() ?: 0
             if (runs >= 50) tryUnlock(AchievementKind.RUNS_50)
             if (runs >= 100) tryUnlock(AchievementKind.RUNS_100)
+            val milestoneType = when {
+                runs >= 200 -> MilestoneType.DOUBLE_HUNDRED
+                runs >= 100 -> MilestoneType.HUNDRED
+                runs >= 50 -> MilestoneType.FIFTY
+                else -> null
+            } ?: continue
+            val key = "${b.name}_${milestoneType.runs}"
+            if (firedMilestones.add(key)) {
+                _uiState.update { it.copy(batsmanMilestone = BatsmanMilestoneInfo(
+                    playerName = b.name,
+                    teamName = match.teams.firstOrNull { t -> t.isBatting }?.name ?: "",
+                    currentRuns = runs,
+                    balls = b.balls.toIntOrNull() ?: 0,
+                    fours = b.fours.toIntOrNull() ?: 0,
+                    sixes = b.sixes.toIntOrNull() ?: 0,
+                    strikeRate = b.strikeRate.toFloatOrNull() ?: 0f,
+                    milestone = milestoneType,
+                    isNewMilestone = true,
+                ))}
+                val playerName = b.name
+                viewModelScope.launch {
+                    delay(15_000)
+                    _uiState.update { s ->
+                        if (s.batsmanMilestone?.playerName == playerName) s.copy(batsmanMilestone = null) else s
+                    }
+                }
+            }
         }
         bowler?.let { b ->
             val w = b.wickets.toIntOrNull() ?: 0
