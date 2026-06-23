@@ -75,12 +75,7 @@ fun IntelligenceFeedScreenV2(
                                 title = event.description,
                                 subtitle = "Match: $matchId",
                                 time = "${10 - i}m ago",
-                                type = when {
-                                    event.description.contains("wicket", true) -> AlertTypeV2.WICKET
-                                    event.description.contains("50") || event.description.contains("100") || event.description.contains("milestone", true) -> AlertTypeV2.MILESTONE
-                                    event.description.contains("boundary", true) || event.description.contains("six", true) -> AlertTypeV2.WARNING
-                                    else -> AlertTypeV2.INFO
-                                },
+                                type = alertTypeFor(event.description),
                             ),
                         )
                     }
@@ -135,6 +130,13 @@ fun IntelligenceFeedScreenV2(
             }
         }
     }
+}
+
+private fun alertTypeFor(description: String): AlertTypeV2 = when {
+    description.contains("wicket", true) -> AlertTypeV2.WICKET
+    description.contains("50") || description.contains("100") || description.contains("milestone", true) -> AlertTypeV2.MILESTONE
+    description.contains("boundary", true) || description.contains("six", true) -> AlertTypeV2.WARNING
+    else -> AlertTypeV2.INFO
 }
 
 @Composable

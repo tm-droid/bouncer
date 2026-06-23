@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -97,100 +98,129 @@ fun PlayerComparisonScreen(
             contentPadding = PaddingValues(spacing.lg),
             verticalArrangement = Arrangement.spacedBy(spacing.lg),
         ) {
-            // Player picker cards
-            item(key = "pickers") {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(spacing.md),
-                ) {
-                    PlayerPickerCard(
-                        player = player1,
-                        loading = loadingPlayer1,
-                        label = "Player 1",
-                        isActive = activePickerSlot == 1,
-                        onTap = { activePickerSlot = if (activePickerSlot == 1) 0 else 1 },
-                        onClear = { viewModel.clearPlayer(1) },
-                        modifier = Modifier.weight(1f),
+            playerPickerSection(
+                player1 = player1,
+                player2 = player2,
+                loadingPlayer1 = loadingPlayer1,
+                loadingPlayer2 = loadingPlayer2,
+                activePickerSlot = activePickerSlot,
+                onSlotChange = { activePickerSlot = it },
+                onClearPlayer = { viewModel.clearPlayer(it) },
+                onPlayerSelected = { result ->
+                    val slot = activePickerSlot
+                    activePickerSlot = 0
+                    viewModel.setPlayer(
+                        slot = slot,
+                        stub = PlayerProfile(
+                            id = result.id, name = result.name,
+                            country = result.country, role = "",
+                        ),
                     )
-                    PlayerPickerCard(
-                        player = player2,
-                        loading = loadingPlayer2,
-                        label = "Player 2",
-                        isActive = activePickerSlot == 2,
-                        onTap = { activePickerSlot = if (activePickerSlot == 2) 0 else 2 },
-                        onClear = { viewModel.clearPlayer(2) },
-                        modifier = Modifier.weight(1f),
-                    )
-                }
-            }
+                },
+            )
 
-            // Search UI when a picker is active
-            if (activePickerSlot != 0) {
-                item(key = "search") {
-                    PlayerSearchBox(
-                        onPlayerSelected = { result ->
-                            val slot = activePickerSlot
-                            activePickerSlot = 0
-                            viewModel.setPlayer(
-                                slot = slot,
-                                stub = PlayerProfile(
-                                    id = result.id, name = result.name,
-                                    country = result.country, role = "",
-                                ),
-                            )
-                        },
-                    )
-                }
-            }
-
-            // Format selector
-            if (player1 != null && player2 != null && !loadingPlayer1 && !loadingPlayer2) {
-                item(key = "format") {
-                    FilterChipRowV2(
-                        items = formats,
-                        selectedItem = selectedFormat,
-                        onItemSelected = { selectedFormat = it },
-                    )
-                }
-
-                val stats1 = player1?.stats?.get(selectedFormat)
-                val stats2 = player2?.stats?.get(selectedFormat)
-
-                if (stats1 != null && stats2 != null) {
-                    item(key = "comparison_header") {
-                        SectionHeaderV2("$selectedFormat Comparison")
-                    }
-
-                    // Comparison rows - computed outside composable context
-                    val comparisonRows = buildComparisonRows(stats1, stats2)
-
-                    items(comparisonRows, key = { it.label }) { row ->
-                        ComparisonRow(
-                            label = row.label,
-                            value1 = row.value1,
-                            value2 = row.value2,
-                            highlight1 = row.highlight1,
-                        )
-                    }
-                } else {
-                    item(key = "no_stats") {
-                        Box(
-                            modifier = Modifier.fillMaxWidth().padding(spacing.xl),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Text(
-                                "No $selectedFormat stats available for comparison",
-                                style = typography.bodyMedium,
-                                color = colors.textSecondary,
-                                textAlign = TextAlign.Center,
-                            )
-                        }
-                    }
-                }
+            // Format selector + stat comparison (when both players are loaded)
+            val p1 = player1
+            val p2 = player2
+            if (p1 != null && p2 != null && !loadingPlayer1 && !loadingPlayer2) {
+                comparisonStatsSection(p1, p2, formats, selectedFormat) { selectedFormat = it }
             }
         }
     }
 
+}
+
+private fun LazyListScope.playerPickerSection(
+    player1: PlayerProfile?,
+    player2: PlayerProfile?,
+    loadingPlayer1: Boolean,
+    loadingPlayer2: Boolean,
+    activePickerSlot: Int,
+    onSlotChange: (Int) -> Unit,
+    onClearPlayer: (Int) -> Unit,
+    onPlayerSelected: (PlayerSearchResult) -> Unit,
+) {
+    item(key = "pickers") {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(BouncerThemeV2.spacing.md),
+        ) {
+            PlayerPickerCard(
+                player = player1,
+                loading = loadingPlayer1,
+                label = "Player 1",
+                isActive = activePickerSlot == 1,
+                onTap = { onSlotChange(if (activePickerSlot == 1) 0 else 1) },
+                onClear = { onClearPlayer(1) },
+                modifier = Modifier.weight(1f),
+            )
+            PlayerPickerCard(
+                player = player2,
+                loading = loadingPlayer2,
+                label = "Player 2",
+                isActive = activePickerSlot == 2,
+                onTap = { onSlotChange(if (activePickerSlot == 2) 0 else 2) },
+                onClear = { onClearPlayer(2) },
+                modifier = Modifier.weight(1f),
+            )
+        }
+    }
+
+    if (activePickerSlot != 0) {
+        item(key = "search") {
+            PlayerSearchBox(onPlayerSelected = onPlayerSelected)
+        }
+    }
+}
+
+private fun LazyListScope.comparisonStatsSection(
+    player1: PlayerProfile,
+    player2: PlayerProfile,
+    formats: List<String>,
+    selectedFormat: String,
+    onFormatSelected: (String) -> Unit,
+) {
+    item(key = "format") {
+        FilterChipRowV2(
+            items = formats,
+            selectedItem = selectedFormat,
+            onItemSelected = onFormatSelected,
+        )
+    }
+
+    val stats1 = player1.stats[selectedFormat]
+    val stats2 = player2.stats[selectedFormat]
+
+    if (stats1 != null && stats2 != null) {
+        item(key = "comparison_header") {
+            SectionHeaderV2("$selectedFormat Comparison")
+        }
+
+        val comparisonRows = buildComparisonRows(stats1, stats2)
+
+        items(comparisonRows, key = { it.label }) { row ->
+            ComparisonRow(
+                label = row.label,
+                value1 = row.value1,
+                value2 = row.value2,
+                highlight1 = row.highlight1,
+            )
+        }
+    } else {
+        item(key = "no_stats") {
+            Box(
+                modifier = Modifier.fillMaxWidth().padding(BouncerThemeV2.spacing.xl),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    "No $selectedFormat stats available for comparison",
+                    style = BouncerThemeV2.typography.bodyMedium,
+                    color = BouncerThemeV2.colors.textSecondary,
+                    textAlign = TextAlign.Center,
+                )
+            }
+        }
+    }
 }
 
 // ── Player Picker Card ──────────────────────────────────────────────────────────

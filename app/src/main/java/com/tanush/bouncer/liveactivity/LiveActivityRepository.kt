@@ -45,6 +45,14 @@ class LiveActivityRepository(
         return fresh
     }
 
+    private suspend fun pollMatchUpdate(matchId: String): Pair<MatchState, LiveMatchUpdate?>? {
+        val previous = getCachedState(matchId)
+        val state = refreshState(matchId) ?: return null
+        val update = dataSource.fetchLatestUpdate(matchId, previous)
+        if (update != null) cacheUpdate(update)
+        return state to update
+    }
+
     fun subscribeToMatch(
         matchId: String,
         intervalMs: Long = 7_000L
@@ -52,13 +60,7 @@ class LiveActivityRepository(
         var errorBackoffMs = 0L
         while (true) {
             try {
-                val previous = getCachedState(matchId)
-                val state = refreshState(matchId)
-                if (state != null) {
-                    val update = dataSource.fetchLatestUpdate(matchId, previous)
-                    if (update != null) cacheUpdate(update)
-                    emit(state to update)
-                }
+                pollMatchUpdate(matchId)?.let { emit(it) }
                 errorBackoffMs = 0L
                 delay(intervalMs)
             } catch (e: kotlinx.coroutines.CancellationException) {

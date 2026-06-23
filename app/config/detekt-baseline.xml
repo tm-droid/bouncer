@@ -50,7 +50,7 @@
     <ID>CognitiveComplexMethod:LiveCommentaryBubbles.kt$@Composable private fun CommentaryBubble( entry: CommentaryEntry, onClick: (() -&gt; Unit)? = null )</ID>
     <ID>CognitiveComplexMethod:LiveCommentaryCard.kt$@Composable private fun OverHeader( over: Int, runs: Int, wickets: Int, balls: List&lt;CommentaryBall&gt;, )</ID>
     <ID>CognitiveComplexMethod:LiveCommentaryCard.kt$@OptIn(ExperimentalFoundationApi::class) @Composable private fun CommentaryBallItem( ball: CommentaryBall, isNew: Boolean, shimmerOffset: Float, )</ID>
-    <ID>CognitiveComplexMethod:LiveMatchWidgetProvider.kt$LiveMatchWidgetProvider$private fun updateWidget(context: Context, appWidgetManager: AppWidgetManager, appWidgetId: Int)</ID>
+    <ID>CognitiveComplexMethod:LiveMatchWidgetProvider.kt$LiveMatchWidgetProvider$private suspend fun updateWidget(context: Context, appWidgetManager: AppWidgetManager, appWidgetId: Int)</ID>
     <ID>CognitiveComplexMethod:LiveNotificationManager.kt$LiveNotificationManager$private fun createExpandedView( match: CricketMatch, winProbability: Float?, lastEvent: MatchEvent?, batsmen: List&lt;BatsmanInfo&gt;? = null, bowler: BowlerInfo? = null, recentBalls: List&lt;String&gt;? = null, requiredRate: String? = null, teamAccentColor: Int = COLOR_MILESTONE ): RemoteViews</ID>
     <ID>CognitiveComplexMethod:LiveScoringGraphCard.kt$@Composable fun LiveScoringGraphCard( scoringData: LiveScoringData, modifier: Modifier = Modifier, )</ID>
     <ID>CognitiveComplexMethod:MatchCard.kt$@Composable fun MatchCard( match: CricketMatch, onClick: () -&gt; Unit, modifier: Modifier = Modifier, isFavourite: Boolean = false, isRefreshing: Boolean = false, liveAiCommentary: String? = null )</ID>
@@ -197,7 +197,7 @@
     <ID>CyclomaticComplexMethod:LiveCommentaryCard.kt$@Composable private fun OverHeader( over: Int, runs: Int, wickets: Int, balls: List&lt;CommentaryBall&gt;, )</ID>
     <ID>CyclomaticComplexMethod:LiveCommentaryCard.kt$private fun getRunsFromResult(result: String): Int</ID>
     <ID>CyclomaticComplexMethod:LiveCommentaryManager.kt$LiveCommentaryManager$private suspend fun getBestCommentary( cricbuzzUrl: String, cricinfoUrl: String, keyNames: List&lt;String&gt;, isMatchComplete: Boolean ): String</ID>
-    <ID>CyclomaticComplexMethod:LiveMatchWidgetProvider.kt$LiveMatchWidgetProvider$private fun updateWidget(context: Context, appWidgetManager: AppWidgetManager, appWidgetId: Int)</ID>
+    <ID>CyclomaticComplexMethod:LiveMatchWidgetProvider.kt$LiveMatchWidgetProvider$private suspend fun updateWidget(context: Context, appWidgetManager: AppWidgetManager, appWidgetId: Int)</ID>
     <ID>CyclomaticComplexMethod:LiveNotificationManager.kt$LiveNotificationManager$fun getNotificationPriority(matchPhase: MatchPhase, eventType: EventType): Int</ID>
     <ID>CyclomaticComplexMethod:LiveNotificationManager.kt$LiveNotificationManager$fun showLiveMatchNotification( match: CricketMatch, winProbability: Float? = null, lastEvent: MatchEvent? = null, batsmen: List&lt;BatsmanInfo&gt;? = null, bowler: BowlerInfo? = null, recentBalls: List&lt;String&gt;? = null, matchPhase: MatchPhase? = null, requiredRate: String? = null )</ID>
     <ID>CyclomaticComplexMethod:LiveNotificationManager.kt$LiveNotificationManager$private fun createExpandedView( match: CricketMatch, winProbability: Float?, lastEvent: MatchEvent?, batsmen: List&lt;BatsmanInfo&gt;? = null, bowler: BowlerInfo? = null, recentBalls: List&lt;String&gt;? = null, requiredRate: String? = null, teamAccentColor: Int = COLOR_MILESTONE ): RemoteViews</ID>
@@ -386,7 +386,7 @@
     <ID>LongMethod:LiveCommentaryCard.kt$@Composable private fun BallBadge( result: String, isLatest: Boolean, shimmerOffset: Float )</ID>
     <ID>LongMethod:LiveCommentaryCard.kt$@Composable private fun OverHeader( over: Int, runs: Int, wickets: Int, balls: List&lt;CommentaryBall&gt;, )</ID>
     <ID>LongMethod:LiveCommentaryCard.kt$@OptIn(ExperimentalFoundationApi::class) @Composable private fun CommentaryBallItem( ball: CommentaryBall, isNew: Boolean, shimmerOffset: Float, )</ID>
-    <ID>LongMethod:LiveMatchWidgetProvider.kt$LiveMatchWidgetProvider$private fun updateWidget(context: Context, appWidgetManager: AppWidgetManager, appWidgetId: Int)</ID>
+    <ID>LongMethod:LiveMatchWidgetProvider.kt$LiveMatchWidgetProvider$private suspend fun updateWidget(context: Context, appWidgetManager: AppWidgetManager, appWidgetId: Int)</ID>
     <ID>LongMethod:LiveNotificationManager.kt$LiveNotificationManager$private fun createExpandedView( match: CricketMatch, winProbability: Float?, lastEvent: MatchEvent?, batsmen: List&lt;BatsmanInfo&gt;? = null, bowler: BowlerInfo? = null, recentBalls: List&lt;String&gt;? = null, requiredRate: String? = null, teamAccentColor: Int = COLOR_MILESTONE ): RemoteViews</ID>
     <ID>LongMethod:LiveNotificationManager.kt$LiveNotificationManager$private fun createScorecardBitmap( match: CricketMatch, winProbability: Float?, batsmen: List&lt;BatsmanInfo&gt;?, bowler: BowlerInfo? ): Bitmap</ID>
     <ID>LongMethod:LiveScoringGraphCard.kt$@Composable fun LiveScoringGraphCard( scoringData: LiveScoringData, modifier: Modifier = Modifier, )</ID>

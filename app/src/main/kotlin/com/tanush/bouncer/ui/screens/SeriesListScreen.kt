@@ -63,13 +63,7 @@ fun SeriesListScreen(
     val hasError by viewModel.hasError.collectAsState()
     var selectedFilter by remember { mutableStateOf("All") }
 
-    val filteredSeries = when (selectedFilter) {
-        "International" -> allSeries.filter { it.category == Series.SeriesCategory.INTERNATIONAL }
-        "League" -> allSeries.filter { it.category == Series.SeriesCategory.LEAGUE }
-        "Domestic" -> allSeries.filter { it.category == Series.SeriesCategory.DOMESTIC }
-        "Women" -> allSeries.filter { it.category == Series.SeriesCategory.WOMEN }
-        else -> allSeries
-    }
+    val filteredSeries = filterSeries(allSeries, selectedFilter)
 
     val filterOptions = listOf("All", "International", "League", "Domestic", "Women")
 
@@ -79,58 +73,94 @@ fun SeriesListScreen(
         },
         containerColor = colors.background,
     ) { innerPadding ->
-        when {
-            isLoading -> {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(innerPadding)
-                        .padding(spacing.lg),
-                    verticalArrangement = Arrangement.spacedBy(spacing.sm),
-                ) {
-                    repeat(6) { ShimmerListItem() }
-                }
-            }
-            hasError -> {
-                Box(modifier = Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
-                    EmptyStateV2(
-                        title = "Couldn't load series",
-                        subtitle = "Check your connection and try again",
-                        onRetry = { viewModel.retry() },
-                    )
-                }
-            }
-            allSeries.isEmpty() -> {
-                Box(modifier = Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
-                    EmptyStateV2(
-                        title = "No series found",
-                        subtitle = "Active cricket series will appear here",
-                    )
-                }
-            }
-            else -> {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize().padding(innerPadding),
-                    contentPadding = PaddingValues(vertical = spacing.sm),
-                ) {
-                    item(key = "filters") {
-                        FilterChipRowV2(
-                            items = filterOptions,
-                            selectedItem = selectedFilter,
-                            onItemSelected = { selectedFilter = it },
-                        )
-                        Spacer(Modifier.height(spacing.sm))
-                    }
+        SeriesListBody(
+            innerPadding = innerPadding,
+            isLoading = isLoading,
+            hasError = hasError,
+            allSeries = allSeries,
+            filteredSeries = filteredSeries,
+            filterOptions = filterOptions,
+            selectedFilter = selectedFilter,
+            onFilterSelected = { selectedFilter = it },
+            onSeriesClick = onSeriesClick,
+            onRetry = { viewModel.retry() },
+        )
+    }
+}
 
-                    items(filteredSeries, key = { it.id }) { series ->
-                        SeriesCard(series = series, onClick = { onSeriesClick(series.id) })
-                    }
-
-                    item(key = "bottom") { Spacer(Modifier.height(80.dp)) }
+@Composable
+private fun SeriesListBody(
+    innerPadding: PaddingValues,
+    isLoading: Boolean,
+    hasError: Boolean,
+    allSeries: List<Series>,
+    filteredSeries: List<Series>,
+    filterOptions: List<String>,
+    selectedFilter: String,
+    onFilterSelected: (String) -> Unit,
+    onSeriesClick: (String) -> Unit,
+    onRetry: () -> Unit,
+) {
+    val spacing = BouncerThemeV2.spacing
+    when {
+        isLoading -> {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .padding(spacing.lg),
+                verticalArrangement = Arrangement.spacedBy(spacing.sm),
+            ) {
+                repeat(6) { ShimmerListItem() }
+            }
+        }
+        hasError -> {
+            Box(modifier = Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
+                EmptyStateV2(
+                    title = "Couldn't load series",
+                    subtitle = "Check your connection and try again",
+                    onRetry = onRetry,
+                )
+            }
+        }
+        allSeries.isEmpty() -> {
+            Box(modifier = Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
+                EmptyStateV2(
+                    title = "No series found",
+                    subtitle = "Active cricket series will appear here",
+                )
+            }
+        }
+        else -> {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize().padding(innerPadding),
+                contentPadding = PaddingValues(vertical = spacing.sm),
+            ) {
+                item(key = "filters") {
+                    FilterChipRowV2(
+                        items = filterOptions,
+                        selectedItem = selectedFilter,
+                        onItemSelected = onFilterSelected,
+                    )
+                    Spacer(Modifier.height(spacing.sm))
                 }
+
+                items(filteredSeries, key = { it.id }) { series ->
+                    SeriesCard(series = series, onClick = { onSeriesClick(series.id) })
+                }
+
+                item(key = "bottom") { Spacer(Modifier.height(80.dp)) }
             }
         }
     }
+}
+
+private fun filterSeries(allSeries: List<Series>, filter: String): List<Series> = when (filter) {
+    "International" -> allSeries.filter { it.category == Series.SeriesCategory.INTERNATIONAL }
+    "League" -> allSeries.filter { it.category == Series.SeriesCategory.LEAGUE }
+    "Domestic" -> allSeries.filter { it.category == Series.SeriesCategory.DOMESTIC }
+    "Women" -> allSeries.filter { it.category == Series.SeriesCategory.WOMEN }
+    else -> allSeries
 }
 
 @Composable
