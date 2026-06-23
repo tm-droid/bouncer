@@ -477,7 +477,7 @@ class LiveActivityViewModel(
                 val commentary = liveCommentaryManager.getBestCommentaryForMatch(
                     matchTitle = match.matchTitle,
                     cricbuzzId = match.id,
-                    cricbuzzUrl = "https://www.cricbuzz.com/live-cricket-scores/${match.id}",
+                    cricbuzzUrl = CricBuzzUrls.liveScoresUrl(match.id),
                     keyNames = match.teams.map { it.name },
                     isMatchComplete = match.isCompleted,
                 )

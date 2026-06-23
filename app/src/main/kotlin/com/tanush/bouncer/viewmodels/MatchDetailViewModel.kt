@@ -14,6 +14,7 @@ import com.tanush.bouncer.models.ScrapedBowler
 import com.tanush.bouncer.data.AppResult
 import com.tanush.bouncer.data.CricBuzzMatchRepository
 import com.tanush.bouncer.data.MatchRepository
+import com.tanush.bouncer.network.CricBuzzUrls
 import com.tanush.bouncer.services.LiveCommentaryManager
 import com.tanush.bouncer.utils.bouncerExceptionHandler
 import io.sentry.Breadcrumb
@@ -79,7 +80,7 @@ class MatchDetailViewModel(
 
         // Seed commentary history once before the polling loop.
         try {
-            val url = "https://www.cricbuzz.com/live-cricket-scores/${match.id}"
+            val url = CricBuzzUrls.liveScoresUrl(match.id)
             val allLines = matchRepository.fetchLiveCommentary(url)
             if (allLines.isNotEmpty()) {
                 commentaryManager.seedHistory(allLines)
@@ -153,7 +154,7 @@ class MatchDetailViewModel(
                 val commentary = commentaryManager.getBestCommentaryForMatch(
                     matchTitle = match.matchTitle,
                     cricbuzzId = match.id,
-                    cricbuzzUrl = "https://www.cricbuzz.com/live-cricket-scores/${match.id}",
+                    cricbuzzUrl = CricBuzzUrls.liveScoresUrl(match.id),
                     keyNames = emptyList(),
                     isMatchComplete = match.isCompleted,
                 )
@@ -181,7 +182,7 @@ class MatchDetailViewModel(
                 val commentary = commentaryManager.getBestCommentaryForMatch(
                     matchTitle = match.matchTitle,
                     cricbuzzId = match.id,
-                    cricbuzzUrl = "https://www.cricbuzz.com/live-cricket-scores/${match.id}",
+                    cricbuzzUrl = CricBuzzUrls.liveScoresUrl(match.id),
                     keyNames = keyNames,
                     isMatchComplete = match.isCompleted,
                 )
