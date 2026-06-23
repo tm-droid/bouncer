@@ -199,40 +199,56 @@ class MatchDetailViewModel(
             if (history.isNotEmpty()) _uiState.update { it.copy(probabilityHistory = history) }
         }
 
-        if (!match.isLive) return
+        // match.isCompleted = definitively over; one-shot above already ran.
+        // match.isLive false but not completed = stale snapshot from the list; must still poll commentary.
+        if (match.isCompleted) return
 
         while (true) {
             try {
-                val details = matchRepository.fetchBallByBallAndBatsmen(match.id)
-                val scorecard = matchRepository.fetchScorecard(match.id)
+                if (match.isLive) {
+                    val details = matchRepository.fetchBallByBallAndBatsmen(match.id)
+                    val scorecard = matchRepository.fetchScorecard(match.id)
 
-                val keyNames = details.batsmen.map { it.name }.toMutableList()
-                details.bowler?.let { keyNames.add(it.name) }
-                val commentary = commentaryManager.getBestCommentaryForMatch(
-                    matchTitle = match.matchTitle,
-                    cricbuzzId = match.id,
-                    cricbuzzUrl = CricBuzzUrls.liveScoresUrl(match.id),
-                    keyNames = keyNames,
-                    isMatchComplete = match.isCompleted,
-                )
-
-                _uiState.update { state ->
-                    state.copy(
-                        batsmen = details.batsmen,
-                        bowler = details.bowler,
-                        recentBalls = details.recentBalls,
-                        scorecard = scorecard.takeIf { it.innings.isNotEmpty() } ?: state.scorecard,
-                        commentary = if (commentary.isNotEmpty()) commentary else state.commentary,
-                        liveTeam1Score = details.team1Score ?: state.liveTeam1Score,
-                        liveTeam2Score = details.team2Score ?: state.liveTeam2Score,
-                        liveTeam1Overs = details.team1Overs ?: state.liveTeam1Overs,
-                        liveTeam2Overs = details.team2Overs ?: state.liveTeam2Overs,
-                        liveCurrentRunRate = details.currentRunRate ?: state.liveCurrentRunRate,
-                        liveRequiredRunRate = details.requiredRunRate ?: state.liveRequiredRunRate,
+                    val keyNames = details.batsmen.map { it.name }.toMutableList()
+                    details.bowler?.let { keyNames.add(it.name) }
+                    val commentary = commentaryManager.getBestCommentaryForMatch(
+                        matchTitle = match.matchTitle,
+                        cricbuzzId = match.id,
+                        cricbuzzUrl = CricBuzzUrls.liveScoresUrl(match.id),
+                        keyNames = keyNames,
+                        isMatchComplete = match.isCompleted,
                     )
-                }
 
-                checkMilestonesAndAchievements(details.batsmen, details.bowler)
+                    _uiState.update { state ->
+                        state.copy(
+                            batsmen = details.batsmen,
+                            bowler = details.bowler,
+                            recentBalls = details.recentBalls,
+                            scorecard = scorecard.takeIf { it.innings.isNotEmpty() } ?: state.scorecard,
+                            commentary = if (commentary.isNotEmpty()) commentary else state.commentary,
+                            liveTeam1Score = details.team1Score ?: state.liveTeam1Score,
+                            liveTeam2Score = details.team2Score ?: state.liveTeam2Score,
+                            liveTeam1Overs = details.team1Overs ?: state.liveTeam1Overs,
+                            liveTeam2Overs = details.team2Overs ?: state.liveTeam2Overs,
+                            liveCurrentRunRate = details.currentRunRate ?: state.liveCurrentRunRate,
+                            liveRequiredRunRate = details.requiredRunRate ?: state.liveRequiredRunRate,
+                        )
+                    }
+
+                    checkMilestonesAndAchievements(details.batsmen, details.bowler)
+                } else {
+                    // isLive is stale false — poll commentary only; hits memory LRU → Room before scraping
+                    val commentary = commentaryManager.getBestCommentaryForMatch(
+                        matchTitle = match.matchTitle,
+                        cricbuzzId = match.id,
+                        cricbuzzUrl = CricBuzzUrls.liveScoresUrl(match.id),
+                        keyNames = emptyList(),
+                        isMatchComplete = match.isCompleted,
+                    )
+                    if (commentary.isNotEmpty()) {
+                        _uiState.update { it.copy(commentary = commentary) }
+                    }
+                }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -244,7 +260,7 @@ class MatchDetailViewModel(
                 })
                 Sentry.captureException(e)
             }
-            delay(8000)
+            delay(if (match.isLive) 8000L else 30_000L)
         }
     }
 
