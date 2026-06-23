@@ -29,6 +29,8 @@ import com.tanush.bouncer.models.BatsmanStats
 import com.tanush.bouncer.models.BowlerStats
 import com.tanush.bouncer.analysis.CricketConstants
 import com.tanush.bouncer.analysis.MatchProjections
+import com.tanush.bouncer.ui.components.BowlerPerformance
+import com.tanush.bouncer.ui.components.BowlingPerformanceCard
 import com.tanush.bouncer.ui.theme.*
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 import com.tanush.bouncer.utils.parseRuns
@@ -184,6 +186,31 @@ fun PremiumScorecardTab(
             item { BowlingTableHeader() }
             items(innings?.bowlers ?: emptyList(), key = { it.name }) { bowler ->
                 BowlingRow(bowler)
+            }
+
+            // Premium bowling analytics card
+            val bowlers = innings?.bowlers
+            if (!bowlers.isNullOrEmpty()) {
+                item(key = "bowling_performance_card") {
+                    BowlingPerformanceCard(
+                        teamName = innings?.teamName ?: "",
+                        bowlers = bowlers.map { b ->
+                            BowlerPerformance(
+                                name = b.name,
+                                imageUrl = b.profileUrl.ifBlank { null },
+                                overs = b.overs.toFloatOrNull() ?: 0f,
+                                maidens = b.maidens.toIntOrNull() ?: 0,
+                                runs = b.runs.toIntOrNull() ?: 0,
+                                wickets = b.wickets.toIntOrNull() ?: 0,
+                                economy = b.economy.toFloatOrNull() ?: 0f,
+                                dots = 0,
+                                wides = b.wides.toIntOrNull() ?: 0,
+                                noBalls = b.noBalls.toIntOrNull() ?: 0,
+                            )
+                        },
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    )
+                }
             }
         }
     }

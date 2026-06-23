@@ -12,6 +12,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Before assuming an API/env var is configured, verify it explicitly (check `.env`, deployment config, or ask). Do not assume RAPIDAPI_KEY, Appwrite keys, etc. are set.
 - For Appwrite changes, prefer the MCP server over CLI push (CLI has caused domain rule conflicts and column schema deletion from config drift).
 
+## Git Workflow
+- After completing requested changes, commit and push directly to main (do not create a PR unless explicitly asked).
+- Always run a clean build and tests before pushing; do not push a broken build.
+
+## Code Tasks
+- When asked to 'look at the app' or audit features, INSPECT THE CODEBASE (Read/Grep) rather than launching, screenshotting, or building mocked/fake screens.
+- Never substitute mocked UI for real screens driven by the app's actual ViewModels.
+
+## Audits & Fixes
+- For audit-then-implement requests, diagnose the true root cause before applying fixes (e.g. trace transitive/build-classpath deps, not just app deps) and verify each fix actually resolves the issue.
+
 ---
 
 # Bouncer Android App
@@ -24,7 +35,8 @@ Cricket live-scoring, match analytics, and team management app built in Kotlin/C
 ```bash
 cp local.properties.template local.properties  # Fill in secret keys (RAPIDAPI_KEY, GROQ_API_KEY, etc.)
 # Most non-secret Appwrite IDs are pre-filled — only secret API keys need manual entry.
-# APPWRITE_PLAYER_FORMS_COL_ID is intentionally blank: that collection doesn't exist yet.
+# APPWRITE_PLAYER_FORMS_COL_ID is intentionally blank: Appwrite collection not yet created.
+# AppwritePlayerFormsClient IS initialized in BouncerApp — it will silently no-op until the collection exists.
 ```
 
 **Build & run:**
@@ -45,7 +57,7 @@ cp local.properties.template local.properties  # Fill in secret keys (RAPIDAPI_K
 
 ## Architecture
 
-**Two live source trees.** `app/src/main/kotlin/` (~278 files) is the main tree. `app/src/main/java/` (~37 .kt files) is also LIVE — it contains `BouncerActivity` (the launcher activity), `liveactivity/`, `services/LiveActivityService`, and the `ui/components/glass/` + `ui/components/premium/` component sets used across both trees. Never assume the java tree is legacy; both share `com.tanush.bouncer` package names.
+**Single kotlin source tree.** `app/src/main/kotlin/` (~325 files) is the only main source tree — the former `app/src/main/java/` was merged into it in June 2026. `BouncerActivity`, `LiveActivityService`, `ui/components/glass/`, and `ui/components/premium/` all live in the kotlin tree. (`app/src/androidTest/java` and `app/src/test/java` remain for test code only.)
 
 ```
 app/src/main/kotlin/com/tanush/bouncer/
@@ -67,7 +79,7 @@ app/src/main/kotlin/com/tanush/bouncer/
 │   ├── CacheConfig.kt  # All cache TTLs + realtime reconnect backoff + permanent-cache sentinel — no magic numbers
 │   └── remote/         # AppwriteClient (singleton) + table clients extending AppwriteTableClient
 │                       # AppwriteAICache, AppwriteHighlightsClient, AppwritePlayerProfilesClient,
-│                       # AppwritePlayerFormsClient, AppwriteFavouritesSync
+│                       # AppwritePlayerFormsClient, AppwriteFavouritesSync, H2HRepository
 ├── models/             # Data models and entities (proguard-kept for Gson — never delete on grep evidence)
 ├── analysis/           # Cricket analysis + ML models (score prediction, win probability)
 ├── auto/               # Android Auto (BouncerCarAppService)
@@ -98,6 +110,8 @@ Endpoint/projectId are auto-injected by the runtime — only `APPWRITE_API_KEY` 
 **Player profile cache (global):** `PlayerCacheWorker` checks `AppwritePlayerProfilesClient` before scraping Cricbuzz. First device that scrapes a player pushes to Appwrite (`player-profiles` table, `bouncer-db`); all subsequent devices get a cache hit. Row ID = `entity.playerId` (Room format: `virat_kohli`).
 
 **Appwrite project:** single database `bouncer-db`. Known tables: `ai-commentary-cache`, `highlights`, `highlights-meta`, `user-favourites`, `player-profiles`.
+
+**Appwrite Storage bucket `cricket-stats`:** read-only from Android via `AppwriteClient.downloadFile(bucketId, fileId)`. Three files: `team-stats` (win-rate model written by `train-win-probability`), `h2h-stats` (H2H stats for 650+ team pairs, written by same function), `active-series` (series list, read by `SeriesSyncWorker`). Bucket is written only by Appwrite cloud functions.
 
 **Room DB:** currently at schema version 9. New migrations: add `MIGRATION_N_(N+1)` in `BouncerDatabase.kt` + bump `version` in `@Database`.
 
