@@ -177,6 +177,11 @@ object CricketRepository {
         }
     }
 
+    private fun parseTeamFromTitle(title: String, index: Int): String =
+        title.split(" vs ", ignoreCase = true)
+            .getOrElse(index) { "" }
+            .split(",").first().trim()
+
     private fun mergedMatchEntity(
         matchId: String,
         cached: MatchEntity?,
@@ -192,9 +197,11 @@ object CricketRepository {
         matchTime = cached?.matchTime ?: "",
         currentStatus = response.update,
         info = response.livescore,
-        team1Name = cached?.team1Name ?: "",
+        team1Name = cached?.team1Name?.takeIf { it.isNotBlank() }
+            ?: parseTeamFromTitle(response.title, 0),
         team1Score = response.livescore,
-        team2Name = cached?.team2Name ?: "",
+        team2Name = cached?.team2Name?.takeIf { it.isNotBlank() }
+            ?: parseTeamFromTitle(response.title, 1),
         team2Score = null,
         lastUpdated = System.currentTimeMillis()
     )

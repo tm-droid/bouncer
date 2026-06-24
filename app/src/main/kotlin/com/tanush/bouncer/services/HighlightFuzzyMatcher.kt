@@ -24,18 +24,26 @@ object HighlightFuzzyMatcher {
         return if (bestScore >= THRESHOLD) bestMatch else null
     }
 
+    private fun parseTeamFromTitle(title: String, index: Int): String =
+        title.split(" vs ", ignoreCase = true)
+            .getOrElse(index) { "" }
+            .split(",").first().trim()
+
     private fun scoreMatch(highlight: HighlightEntity, match: MatchEntity): Int {
         var score = 0
 
+        val t1 = match.team1Name.takeIf { it.isNotBlank() } ?: parseTeamFromTitle(match.matchTitle, 0)
+        val t2 = match.team2Name.takeIf { it.isNotBlank() } ?: parseTeamFromTitle(match.matchTitle, 1)
+
         // Home team (0–30): try both home and away since Highlightly may swap order
-        val homeVsTeam1 = jaroWinkler(highlight.homeTeam.lowercase().trim(), match.team1Name.lowercase().trim())
-        val homeVsTeam2 = jaroWinkler(highlight.homeTeam.lowercase().trim(), match.team2Name.lowercase().trim())
+        val homeVsTeam1 = jaroWinkler(highlight.homeTeam.lowercase().trim(), t1.lowercase().trim())
+        val homeVsTeam2 = jaroWinkler(highlight.homeTeam.lowercase().trim(), t2.lowercase().trim())
         val homeScore = maxOf(homeVsTeam1, homeVsTeam2)
         score += (homeScore * 30).toInt()
 
         // Away team (0–30)
-        val awayVsTeam1 = jaroWinkler(highlight.awayTeam.lowercase().trim(), match.team1Name.lowercase().trim())
-        val awayVsTeam2 = jaroWinkler(highlight.awayTeam.lowercase().trim(), match.team2Name.lowercase().trim())
+        val awayVsTeam1 = jaroWinkler(highlight.awayTeam.lowercase().trim(), t1.lowercase().trim())
+        val awayVsTeam2 = jaroWinkler(highlight.awayTeam.lowercase().trim(), t2.lowercase().trim())
         val awayScore = maxOf(awayVsTeam1, awayVsTeam2)
         score += (awayScore * 30).toInt()
 
