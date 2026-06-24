@@ -1,7 +1,9 @@
 package com.tanush.bouncer.data.repository
 
+import com.google.gson.Gson
+import com.tanush.bouncer.data.remote.AppwriteClient
+import com.tanush.bouncer.models.CricbuzzNewsResponse
 import com.tanush.bouncer.models.NewsArticleData
-import com.tanush.bouncer.network.RetrofitClient
 import com.tanush.bouncer.network.randomUserAgent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -14,18 +16,11 @@ interface NewsRepository {
 
 class CricbuzzNewsRepository : NewsRepository {
     override suspend fun fetchHeadlines(): List<NewsArticleData> {
-        val response = RetrofitClient.cricbuzzNewsApi.getNewsIndex()
-        if (!response.isSuccessful) {
-            val msg = when (response.code()) {
-                401, 403 -> "News is temporarily unavailable."
-                429 -> "News is temporarily rate limited. Please try again later."
-                in 500..599 -> "News service is unavailable. Please try again later."
-                else -> "Failed to load news (HTTP ${response.code()})."
-            }
-            error(msg)
-        }
-        val body = response.body() ?: error("News is temporarily unavailable.")
-        return body.storyList
+        val body = AppwriteClient.executeFunction("bouncer-news-sync", "")
+            ?: error("News is temporarily unavailable.")
+        val newsResponse = Gson().fromJson(body, CricbuzzNewsResponse::class.java)
+            ?: error("News is temporarily unavailable.")
+        return newsResponse.storyList
             .mapNotNull { it.story }
             .mapIndexed { index, story -> NewsArticleData.fromCricbuzzStory(story, isFirst = index == 0) }
     }

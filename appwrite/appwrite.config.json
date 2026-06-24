@@ -95,6 +95,23 @@
                 { "key": "FIREBASE_SERVICE_ACCOUNT_JSON", "value": "" },
                 { "key": "FIREBASE_PROJECT_ID",           "value": "" }
             ]
+        },
+        {
+            "$id": "bouncer-news-sync",
+            "name": "bouncer-news-sync",
+            "enabled": true,
+            "logging": true,
+            "runtime": "node-22",
+            "timeout": 30,
+            "entrypoint": "src/main.js",
+            "commands": "npm install",
+            "version": "v3",
+            "path": "functions/news-sync",
+            "vars": [
+                { "key": "APPWRITE_API_KEY", "value": "" },
+                { "key": "RAPIDAPI_KEY",     "value": "" },
+                { "key": "STATS_BUCKET_ID",  "value": "cricket-stats" }
+            ]
         }
     ],
     "buckets": [

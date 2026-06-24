@@ -3,7 +3,7 @@ package com.tanush.bouncer.viewmodels
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.tanush.bouncer.ApiKeys
+import com.tanush.bouncer.data.remote.AppwriteClient
 import com.tanush.bouncer.data.repository.CricbuzzNewsRepository
 import com.tanush.bouncer.data.repository.NewsRepository
 import com.tanush.bouncer.models.NewsArticleData
@@ -96,9 +96,9 @@ class NewsViewModel(
                 if (_articles.value.isEmpty()) _isLoading.value = true else _isRefreshing.value = true
                 _error.value = null
 
-                if (ApiKeys.rapidApi.isBlank()) {
-                    Log.w(TAG, "Skipping news fetch because RAPIDAPI_KEY is empty")
-                    breadcrumb("news.fetch", "Skipped news fetch because RapidAPI key is missing", SentryLevel.WARNING)
+                if (!AppwriteClient.isReady) {
+                    Log.w(TAG, "Skipping news fetch — Appwrite not initialized")
+                    breadcrumb("news.fetch", "Skipped news fetch — Appwrite not ready", SentryLevel.WARNING)
                     Sentry.metrics().count("news.fetch.skipped.missing_key", 1.0)
                     _error.value = "News is unavailable in this build."
                     return@launch

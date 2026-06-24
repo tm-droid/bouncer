@@ -6,7 +6,6 @@ import retrofit2.converter.gson.GsonConverterFactory
 object RetrofitClient {
     private const val BASE_URL_VERCEL = "https://api-iota-jade.vercel.app/"
     private const val BASE_URL_RAPID = "https://cricket-api-free-data.p.rapidapi.com/"
-    private const val BASE_URL_CRICBUZZ_RAPID = "https://cricbuzz-cricket.p.rapidapi.com/"
     // Local development API (Android emulator uses 10.0.2.2 to reach host localhost)
     private const val BASE_URL_LOCAL = "http://10.0.2.2:8000/"
 
@@ -35,11 +34,7 @@ object RetrofitClient {
             .create(LocalApi::class.java)
     }
 
-    // Cricbuzz News API via RapidAPI
-    val cricbuzzNewsApi: CricbuzzNewsApi by lazy {
-        retrofit(BASE_URL_CRICBUZZ_RAPID)
-            .create(CricbuzzNewsApi::class.java)
-    }
+
 }
 
 // Local API definitions (used for dev/test only)
