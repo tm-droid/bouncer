@@ -39,10 +39,13 @@ export default async ({ req, res, log, error }) => {
   const db = new Databases(client);
 
   // 1. Read the live-matches list written by poll-live-matches.
+  // node-appwrite auto-parses JSON files (returns the object); older/plain files return bytes.
   let matches = [];
   try {
-    const bytes = await storage.getFileDownload(BUCKET_ID, LIVE_FILE);
-    const parsed = JSON.parse(Buffer.from(bytes).toString("utf8"));
+    const raw = await storage.getFileDownload(BUCKET_ID, LIVE_FILE);
+    const parsed = Buffer.isBuffer(raw) || raw instanceof ArrayBuffer
+      ? JSON.parse(Buffer.from(raw).toString("utf8"))
+      : raw;
     matches = parsed?.data?.matches ?? [];
   } catch (e) {
     error(`Failed to read ${LIVE_FILE}: ${e?.message}`);
