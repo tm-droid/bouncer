@@ -24,10 +24,18 @@ object HighlightFuzzyMatcher {
         return if (bestScore >= THRESHOLD) bestMatch else null
     }
 
-    private fun parseTeamFromTitle(title: String, index: Int): String =
-        title.split(" vs ", ignoreCase = true)
-            .getOrElse(index) { "" }
-            .split(",").first().trim()
+    private val TITLE_SEPARATORS = listOf(" vs ", " v ", " vs. ", " against ")
+
+    private fun parseTeamFromTitle(title: String, index: Int): String {
+        for (sep in TITLE_SEPARATORS) {
+            val parts = title.split(sep, ignoreCase = true)
+            if (parts.size >= 2) {
+                return parts.getOrElse(index) { "" }
+                    .split(",", "|").first().trim()
+            }
+        }
+        return ""
+    }
 
     private fun scoreMatch(highlight: HighlightEntity, match: MatchEntity): Int {
         var score = 0
