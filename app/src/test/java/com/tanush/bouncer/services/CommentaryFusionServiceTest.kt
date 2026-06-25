@@ -165,12 +165,12 @@ class CommentaryFusionServiceTest {
 
         // First call: all 3 providers hit 429 and enter 30s cooldown.
         val result1 = defaultFuse(service)
-        assertEquals("[AI Fused] $snippet1 / $snippet2", result1)
+        assertEquals(snippet1, result1)
         val callsAfterFirst = httpCalls
 
         // Second call: all providers still in cooldown — zero new HTTP calls.
         val result2 = defaultFuse(service)
-        assertEquals("[AI Fused] $snippet1 / $snippet2", result2)
+        assertEquals(snippet1, result2)
         assertEquals(callsAfterFirst, httpCalls)
     }
 
@@ -180,7 +180,7 @@ class CommentaryFusionServiceTest {
 
         val result = defaultFuse(service)
 
-        assertEquals("[AI Fused] $snippet1 / $snippet2", result)
+        assertEquals(snippet1, result)
     }
 
     @Test
@@ -232,7 +232,7 @@ class CommentaryFusionServiceTest {
 
         val result = defaultFuse(service)
 
-        assertEquals("[AI Fused] $snippet1 / $snippet2", result)
+        assertEquals(snippet1, result)
     }
 
     @Test
@@ -242,7 +242,7 @@ class CommentaryFusionServiceTest {
         })
 
         val result = defaultFuse(service)
-        assertEquals("[AI Fused] $snippet1 / $snippet2", result)
+        assertEquals(snippet1, result)
     }
 
     // ── summarizeOversWithAI() tests ─────────────────────────────────────────
