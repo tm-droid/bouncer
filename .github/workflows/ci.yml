@@ -178,6 +178,11 @@ jobs:
           APPWRITE_PLAYER_PROFILES_COL_ID=${{ secrets.APPWRITE_PLAYER_PROFILES_COL_ID }}
           EOF
 
+      - name: Install sentry-cli
+        run: |
+          curl -sL https://sentry.io/get-cli/ | INSTALL_DIR=/usr/local/bin bash
+          printf 'defaults.project=android\ndefaults.org=tanush-4w\ncli.executable=/usr/local/bin/sentry-cli\n' > sentry.properties
+
       - name: Build release AAB
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
