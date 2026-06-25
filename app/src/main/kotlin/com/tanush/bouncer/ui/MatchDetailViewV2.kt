@@ -72,6 +72,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.tanush.bouncer.ui.theme.rememberMatchTeamPalette
 import com.tanush.bouncer.ui.theme.rememberTeamColors
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
+import com.tanush.bouncer.ui.theme.v2.bouncerScreenBackground
 import com.tanush.bouncer.ui.components.BatsmanMilestoneCard
 import com.tanush.bouncer.ui.components.ShareCardData
 import com.tanush.bouncer.ui.components.ShareCardGenerator
@@ -263,7 +264,9 @@ fun MatchDetailViewV2(
             // ── Tab Content ──
             HorizontalPager(
                 state = pagerState,
-                modifier = Modifier.weight(1f),
+                modifier = Modifier
+                    .weight(1f)
+                    .bouncerScreenBackground(),
             ) { page ->
                 val tabTitle = tabTitles.getOrNull(page) ?: return@HorizontalPager
                 when (tabTitle) {

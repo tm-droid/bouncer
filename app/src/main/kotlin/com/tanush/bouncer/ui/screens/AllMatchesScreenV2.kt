@@ -10,6 +10,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.CloudOff
+import androidx.compose.material.icons.outlined.SportsCricket
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -26,6 +29,7 @@ import com.tanush.bouncer.ui.components.v2.MatchCardV2
 import com.tanush.bouncer.ui.components.v2.PullRefreshWrapperV2
 import com.tanush.bouncer.ui.components.v2.ShimmerMatchCard
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
+import com.tanush.bouncer.ui.theme.v2.bouncerScreenBackground
 import com.tanush.bouncer.viewmodels.LiveActivityViewModel
 import com.tanush.bouncer.viewmodels.LoadingState
 
@@ -81,7 +85,7 @@ fun AllMatchesScreenV2(
             modifier = Modifier.padding(innerPadding),
         ) {
             LazyColumn(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.fillMaxSize().bouncerScreenBackground(),
                 contentPadding = PaddingValues(vertical = spacing.md),
             ) {
                 // Status filter
@@ -124,12 +128,14 @@ fun AllMatchesScreenV2(
                             EmptyStateV2(
                                 title = "Couldn't load matches",
                                 subtitle = errorState.message,
+                                icon = Icons.Outlined.CloudOff,
                                 onRetry = { viewModel.refreshMatches() },
                             )
                         } else {
                             EmptyStateV2(
                                 title = "No matches",
                                 subtitle = if (selectedFormat == "All") "No matches found" else "No $selectedFormat matches found",
+                                icon = Icons.Outlined.SportsCricket,
                             )
                         }
                     }
@@ -143,7 +149,8 @@ fun AllMatchesScreenV2(
                         onClick = { onMatchClick(match) },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = spacing.lg, vertical = spacing.xs),
+                            .padding(horizontal = spacing.lg, vertical = spacing.xs)
+                            .animateItem(),
                     )
                 }
 

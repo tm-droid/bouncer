@@ -15,6 +15,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.outlined.SportsCricket
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Icon
@@ -45,6 +46,7 @@ import com.tanush.bouncer.ui.components.v2.PullRefreshWrapperV2
 import com.tanush.bouncer.ui.components.v2.SectionHeaderV2
 import com.tanush.bouncer.ui.components.v2.ShimmerMatchCard
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
+import com.tanush.bouncer.ui.theme.v2.bouncerScreenBackground
 import com.tanush.bouncer.viewmodels.LiveActivityViewModel
 
 /**
@@ -136,7 +138,7 @@ fun HomeScreenV2(
             modifier = Modifier.padding(innerPadding),
         ) {
             LazyColumn(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.fillMaxSize().bouncerScreenBackground(),
                 contentPadding = PaddingValues(vertical = spacing.md),
             ) {
                 // ── Status filter chips ──
@@ -180,6 +182,7 @@ fun HomeScreenV2(
                         EmptyStateV2(
                             title = "No matches found",
                             subtitle = "Try changing your filters or pull to refresh",
+                            icon = Icons.Outlined.SportsCricket,
                         )
                     }
                     return@LazyColumn
@@ -192,7 +195,9 @@ fun HomeScreenV2(
                         HeroMatchCard(
                             match = fm,
                             onClick = handleHeroClick,
-                            modifier = Modifier.padding(horizontal = spacing.lg),
+                            modifier = Modifier
+                                .padding(horizontal = spacing.lg)
+                                .animateItem(),
                         )
                         Spacer(Modifier.height(spacing.lg))
                     }
@@ -220,7 +225,8 @@ fun HomeScreenV2(
                             onClick = handleMatchClick,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = spacing.lg, vertical = spacing.xs),
+                                .padding(horizontal = spacing.lg, vertical = spacing.xs)
+                                .animateItem(),
                             isSubscribed = match.id in subscriptions,
                             onSubscribeToggle = handleSubscribeToggle,
                         )
