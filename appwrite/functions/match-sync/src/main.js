@@ -104,8 +104,17 @@ async function syncMatch({ db, matchId, log, error }) {
     let line = clean;
     if (ball) {
       // Ball-by-ball line → cinematic AI rewrite (mirror generateBallCommentary).
+      const bowler = detail.bowler?.name ?? "";
+      const batsman = detail.batsmen?.[0]?.name ?? "";
+      const score = detail.score ?? "";
+      const contextLine = [
+        bowler && `Bowler: ${bowler}`,
+        batsman && `Batsman: ${batsman}`,
+        score && `Score: ${score}`,
+      ].filter(Boolean).join(" | ");
       const prompt =
         `Ball ${ball}: ${clean}\n` +
+        (contextLine ? `${contextLine}\n` : "") +
         `Write one vivid broadcast commentary line. Start with ${ball}: at the beginning.`;
       const generated = await generateLine(prompt, { maxTokens: 100, temperature: 0.7, log, error });
       if (generated) {

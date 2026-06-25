@@ -52,6 +52,11 @@ class LiveCommentaryManager(
     // Tracks the last ball number notified to avoid double alerts (e.g., "18.5")
     private val lastNotifiedBallMap = mutableMapOf<String, String>()
 
+    // Set by getBestCommentary / fetchSingleSourceFusion; read by buildAiEntry in the same call chain.
+    @Volatile private var lastFetchedBowler: String = ""
+    @Volatile private var lastFetchedBatsman: String = ""
+    @Volatile private var lastFetchedScore: String = ""
+
     var onKeyEvent: ((title: String, body: String) -> Unit)? = null
     var aiInsightsEnabled: Boolean = false
     var aiInsightCooldownMs: Long = 120_000L
@@ -203,17 +208,24 @@ class LiveCommentaryManager(
         val details: CricBuzzScraper.ScrapedMatchDetails? = safeFetch(null) {
             cricbuzz.fetchBallByBallAndBatsmen(matchId)
         }
-        val ballNumber = details?.overNumbers?.lastOrNull() ?: ""
         val bowlerName = details?.bowler?.name ?: ""
         val batsmanName = details?.batsmen?.firstOrNull { it.isStriker }?.name
             ?: details?.batsmen?.firstOrNull()?.name ?: ""
         val scoreContext = details?.score ?: ""
+        lastFetchedBowler = bowlerName
+        lastFetchedBatsman = batsmanName
+        lastFetchedScore = scoreContext
 
         val buzzSnippets = safeFetch(emptyList<String>()) { cricbuzz.fetchLiveCommentary(cricbuzzUrl) }
         val infoSnippets = safeFetch(emptyList<String>()) { cricinfo.fetchLiveCommentary(cricinfoUrl) }
 
         val buzzLine = findBestBallSnippet(buzzSnippets, keyNames)
         val infoLine = findBestBallSnippet(infoSnippets, keyNames)
+
+        val ballNumber = details?.overNumbers?.lastOrNull()
+            ?: extractBallNumber(buzzLine.trimStart())
+            ?: extractBallNumber(infoLine.trimStart())
+            ?: ""
 
         val hasBallContent = scorer.isBallByBallCommentary(buzzLine) || scorer.isBallByBallCommentary(infoLine)
         if (!hasBallContent) {
@@ -293,7 +305,15 @@ class LiveCommentaryManager(
         val ballNum = extractBallNumber(resultValue.trimStart()) ?: return null
         if (!scorer.isBallByBallCommentary(resultValue)) return null
         return try {
-            val raw = fusion.generateBallCommentary(cricbuzzId, ballNum, resultValue.take(200), isMatchComplete)
+            val raw = fusion.generateBallCommentary(
+                matchId = cricbuzzId,
+                ballNumber = ballNum,
+                rawSnippet = resultValue.take(200),
+                isMatchComplete = isMatchComplete,
+                bowler = lastFetchedBowler,
+                batsman = lastFetchedBatsman,
+                scoreContext = lastFetchedScore,
+            )
             if (!raw.trimStart().matches(BALL_PREFIX_REGEX)) "$ballNum $raw" else raw
         } catch (e: Exception) {
             Sentry.captureException(e)
@@ -338,11 +358,18 @@ class LiveCommentaryManager(
             cricbuzz.fetchBallByBallAndBatsmen(matchId)
         }
 
-        val singleBallNumber = details?.overNumbers?.lastOrNull() ?: ""
+        val singleBallNumber = details?.overNumbers?.lastOrNull()
+            ?: extractBallNumber(buzzLine.trimStart())
+            ?: ""
         val singleOver = singleBallNumber.substringBefore(".").toIntOrNull() ?: 0
         val singleBowler = details?.bowler?.name ?: ""
         val singleBatsman = details?.batsmen?.firstOrNull()?.name ?: ""
         val singleScore = details?.score ?: ""
+        lastFetchedBowler = singleBowler
+        lastFetchedBatsman = singleBatsman
+        lastFetchedScore = singleScore
+
+        val oversSummary = computeOversSummary(matchId, singleOver, buzzLine, isMatchComplete)
 
         // Synchronize cancel+reassign so concurrent calls can't race on currentStreamJob.
         streamJobMutex.withLock {
@@ -355,7 +382,7 @@ class LiveCommentaryManager(
                         ballNumber = singleBallNumber,
                         snippet1 = buzzLine,
                         snippet2 = "",
-                        oversSummary = buzzLine,
+                        oversSummary = oversSummary,
                         bowler = singleBowler,
                         batsman = singleBatsman,
                         scoreContext = singleScore,
@@ -370,7 +397,7 @@ class LiveCommentaryManager(
         val fusionResult = fuseLines(
             buzzLine = buzzLine,
             infoLine = "",
-            oversSummary = buzzLine,
+            oversSummary = oversSummary,
             matchId = matchId,
             over = singleOver,
             ballNumber = singleBallNumber,

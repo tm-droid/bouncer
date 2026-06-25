@@ -36,6 +36,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 
 class MatchDetailViewModel(
     private val match: CricketMatch,
@@ -104,20 +105,24 @@ class MatchDetailViewModel(
     private suspend fun loadInitial() {
         unlockedAchievements = runCatching { AchievementKind.loadUnlocked(appContext) }.getOrDefault(emptySet())
 
-        // Live snapshot (batsmen/bowler/score/scorecard) + commentary feed from Appwrite.
-        applyDetail(AppwriteMatchDetailClient.getForMatch(match.id))
-        // Fallback: if Appwrite has no scorecard (function not synced or scorecard parse failed
-        // server-side), fetch directly from CricBuzz. Same CSS selectors as the server parser.
-        if (_uiState.value.scorecard == null) {
-            runCatching { matchRepository.fetchScorecard(match.id) }
-                .onSuccess { sc -> if (sc.innings.isNotEmpty()) _uiState.update { it.copy(scorecard = sc) } }
-                .onFailure { breadcrumb("scorecard_fallback", "On-device scorecard fetch failed: ${it.message}") }
+        try {
+            // Live snapshot (batsmen/bowler/score/scorecard) + commentary feed from Appwrite.
+            applyDetail(withTimeoutOrNull(10_000L) { AppwriteMatchDetailClient.getForMatch(match.id) })
+            // Fallback: if Appwrite has no scorecard (function not synced or scorecard parse failed
+            // server-side), fetch directly from CricBuzz. Same CSS selectors as the server parser.
+            if (_uiState.value.scorecard == null) {
+                runCatching { matchRepository.fetchScorecard(match.id) }
+                    .onSuccess { sc -> if (sc.innings.isNotEmpty()) _uiState.update { it.copy(scorecard = sc) } }
+                    .onFailure { breadcrumb("scorecard_fallback", "On-device scorecard fetch failed: ${it.message}") }
+            }
+            AppResult.runCatchingSuspend {
+                val lines = withTimeoutOrNull(10_000L) { AppwriteMatchCommentaryClient.getForMatch(match.id) }
+                    ?: emptyList()
+                if (lines.isNotEmpty()) _uiState.update { it.copy(commentary = lines) }
+            }.onError { breadcrumb("commentary_load", "Commentary feed load failed: ${it.message}") }
+        } finally {
+            _uiState.update { it.copy(commentaryLoading = false) }
         }
-        AppResult.runCatchingSuspend {
-            val lines = AppwriteMatchCommentaryClient.getForMatch(match.id)
-            if (lines.isNotEmpty()) _uiState.update { it.copy(commentary = lines) }
-        }.onError { breadcrumb("commentary_load", "Commentary feed load failed: ${it.message}") }
-        _uiState.update { it.copy(commentaryLoading = false) }
 
         loadCricinfoData()
 

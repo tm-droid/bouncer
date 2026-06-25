@@ -186,7 +186,10 @@ class CommentaryFusionService(
         matchId: String,
         ballNumber: String,
         rawSnippet: String,
-        isMatchComplete: Boolean = false
+        isMatchComplete: Boolean = false,
+        bowler: String = "",
+        batsman: String = "",
+        scoreContext: String = "",
     ): String =
         withContext(Dispatchers.IO) {
             val cacheKey = "ball_ai:$matchId:$ballNumber"
@@ -196,8 +199,14 @@ class CommentaryFusionService(
             val recentContext = if (previousBalls.isNotEmpty())
                 "\nRecent: ${previousBalls.takeLast(3).joinToString(" | ")}" else ""
             val cleanSnippet = CommentaryFormatter.sanitize(rawSnippet)
+            val contextLine = listOfNotNull(
+                bowler.takeIf { it.isNotEmpty() }?.let { "Bowler: $it" },
+                batsman.takeIf { it.isNotEmpty() }?.let { "Batsman: $it" },
+                scoreContext.takeIf { it.isNotEmpty() }?.let { "Score: $it" },
+            ).joinToString(" | ")
             val prompt = buildString {
                 append("Ball $ballNumber: $cleanSnippet")
+                if (contextLine.isNotEmpty()) append("\n$contextLine")
                 if (recentContext.isNotEmpty()) append(recentContext)
                 append("\nWrite one vivid broadcast commentary line. Start with $ballNumber: at the beginning.")
             }
