@@ -112,6 +112,29 @@
                 { "key": "RAPIDAPI_KEY",     "value": "" },
                 { "key": "STATS_BUCKET_ID",  "value": "cricket-stats" }
             ]
+        },
+        {
+            "$id": "bouncer-match-sync",
+            "name": "bouncer-match-sync",
+            "enabled": true,
+            "logging": true,
+            "runtime": "node-22",
+            "schedule": "* * * * *",
+            "timeout": 120,
+            "entrypoint": "src/main.js",
+            "commands": "npm install",
+            "version": "v3",
+            "path": "functions/match-sync",
+            "vars": [
+                { "key": "APPWRITE_API_KEY",          "value": "" },
+                { "key": "GROQ_API_KEY",              "value": "" },
+                { "key": "CEREBRAS_API_KEY",          "value": "" },
+                { "key": "SAMBANOVA_API_KEY",         "value": "" },
+                { "key": "MATCH_CACHE_BUCKET_ID",     "value": "cricket-stats" },
+                { "key": "APPWRITE_AI_CACHE_DB_ID",   "value": "bouncer-db" },
+                { "key": "MATCH_COMMENTARY_COL_ID",   "value": "match-commentary" },
+                { "key": "MATCH_LIVE_DETAIL_COL_ID",  "value": "match-live-detail" }
+            ]
         }
     ],
     "buckets": [
@@ -258,6 +281,51 @@
                 { "key": "last_fetch_at", "type": "integer", "required": false,             "array": false }
             ],
             "indexes": []
+        },
+        {
+            "$id": "match-commentary",
+            "$permissions": ["create(\"any\")", "read(\"any\")", "update(\"any\")"],
+            "databaseId": "bouncer-db",
+            "name": "Match Commentary",
+            "enabled": true,
+            "rowSecurity": false,
+            "columns": [
+                { "key": "match_id",   "type": "varchar", "required": true,  "size": 32, "array": false },
+                { "key": "innings",    "type": "integer", "required": false, "default": 1, "array": false },
+                { "key": "ball",       "type": "varchar", "required": false, "size": 16, "default": "", "array": false },
+                { "key": "sort_key",   "type": "double",  "required": true,              "array": false },
+                { "key": "commentary", "type": "text",    "required": true,              "array": false },
+                { "key": "created_at", "type": "varchar", "required": false, "size": 40, "default": "", "array": false }
+            ],
+            "indexes": [
+                {
+                    "key": "idx_match_sort",
+                    "type": "key",
+                    "attributes": ["match_id", "sort_key"],
+                    "orders": ["ASC", "DESC"]
+                }
+            ]
+        },
+        {
+            "$id": "match-live-detail",
+            "$permissions": ["create(\"any\")", "read(\"any\")", "update(\"any\")"],
+            "databaseId": "bouncer-db",
+            "name": "Match Live Detail",
+            "enabled": true,
+            "rowSecurity": false,
+            "columns": [
+                { "key": "match_id",   "type": "varchar", "required": true,  "size": 32, "array": false },
+                { "key": "payload",    "type": "text",    "required": true,              "array": false },
+                { "key": "updated_at", "type": "varchar", "required": false, "size": 40, "default": "", "array": false }
+            ],
+            "indexes": [
+                {
+                    "key": "idx_match_id",
+                    "type": "unique",
+                    "attributes": ["match_id"],
+                    "orders": ["ASC"]
+                }
+            ]
         }
     ]
 }

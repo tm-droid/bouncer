@@ -15,6 +15,8 @@ import com.tanush.bouncer.data.local.BouncerDatabase
 import com.tanush.bouncer.data.remote.AppwriteAICache
 import com.tanush.bouncer.data.remote.AppwriteClient
 import com.tanush.bouncer.data.remote.AppwriteHighlightsClient
+import com.tanush.bouncer.data.remote.AppwriteMatchCommentaryClient
+import com.tanush.bouncer.data.remote.AppwriteMatchDetailClient
 import com.tanush.bouncer.data.remote.AppwritePlayerFormsClient
 import com.tanush.bouncer.data.remote.AppwritePlayerProfilesClient
 import com.tanush.bouncer.data.repository.toEntity
@@ -128,6 +130,8 @@ class BouncerApp : Application() {
         initializeSafely("AppwriteAICache") { AppwriteAICache.initialize() }
         initializeSafely("AppwriteHighlightsClient") { AppwriteHighlightsClient.initialize() }
         initializeSafely("AppwritePlayerProfilesClient") { AppwritePlayerProfilesClient.initialize() }
+        initializeSafely("AppwriteMatchCommentaryClient") { AppwriteMatchCommentaryClient.initialize() }
+        initializeSafely("AppwriteMatchDetailClient") { AppwriteMatchDetailClient.initialize() }
         initializeSafely("NotificationInboxManager") { NotificationInboxManager.initialize(this, applicationScope) }
         initializeSafely("AICacheService") {
             AICacheService.initialize(BouncerDatabase.getInstance(this).aiCacheDao())
@@ -158,6 +162,9 @@ class BouncerApp : Application() {
                     }
                 }
             )
+            // Table-wide subscriptions; MatchDetailViewModel filters the shared flows by matchId.
+            AppwriteMatchCommentaryClient.startRealtime()
+            AppwriteMatchDetailClient.startRealtime()
         }
 
         // ── Configure Coil ImageLoader ───────────────────────────────────

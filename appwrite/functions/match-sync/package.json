@@ -1,0 +1,9 @@
+{
+  "name": "match-sync",
+  "version": "1.0.0",
+  "type": "module",
+  "dependencies": {
+    "node-appwrite": "^15.0.0",
+    "cheerio": "^1.0.0"
+  }
+}
