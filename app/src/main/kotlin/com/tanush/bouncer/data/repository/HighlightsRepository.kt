@@ -38,6 +38,9 @@ class HighlightsRepository(
                 }
 
                 val bouncerMatches = matchDao.getAllMatches().first()
+                if (bouncerMatches.isEmpty()) {
+                    Log.w(TAG, "matchDao.getAllMatches() returned empty — all highlights will be stored unmatched")
+                }
                 val results = mutableListOf<HighlightEntity>()
 
                 for (row in allHighlights) {

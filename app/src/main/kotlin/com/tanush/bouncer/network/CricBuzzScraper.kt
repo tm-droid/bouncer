@@ -630,7 +630,7 @@ class CricBuzzScraper {
                     mapOf("matchId" to matchId, "url" to url, "error" to (e.message ?: "Unknown error")))
                 Sentry.captureException(e)
             }
-            Scorecard(emptyList())
+            throw e
         }
     }
 

@@ -107,7 +107,9 @@ class MatchDetailViewModel(
 
         try {
             // Live snapshot (batsmen/bowler/score/scorecard) + commentary feed from Appwrite.
-            applyDetail(withTimeoutOrNull(10_000L) { AppwriteMatchDetailClient.getForMatch(match.id) })
+            val detail = withTimeoutOrNull(10_000L) { AppwriteMatchDetailClient.getForMatch(match.id) }
+            if (detail == null) breadcrumb("scorecard", "Appwrite live-detail fetch timed out or returned null")
+            applyDetail(detail)
             // Fallback: if Appwrite has no scorecard (function not synced or scorecard parse failed
             // server-side), fetch directly from CricBuzz. Same CSS selectors as the server parser.
             if (_uiState.value.scorecard == null) {
@@ -126,7 +128,7 @@ class MatchDetailViewModel(
         } finally {
             _uiState.update { it.copy(
                 commentaryLoading = false,
-                scorecard = it.scorecard ?: Scorecard(),
+                scorecard = it.scorecard,
             )}
         }
 
@@ -178,7 +180,7 @@ class MatchDetailViewModel(
                 batsmen = p.batsmen.ifEmpty { st.batsmen },
                 bowler = pick(p.bowler, st.bowler),
                 recentBalls = p.recentBalls.ifEmpty { st.recentBalls },
-                scorecard = pick(p.scorecard?.takeIf { it.innings.isNotEmpty() || st.scorecard == null }, st.scorecard),
+                scorecard = pick(p.scorecard?.takeIf { it.innings.isNotEmpty() }, st.scorecard),
                 liveTeam1Score = pick(p.team1Score, st.liveTeam1Score),
                 liveTeam2Score = pick(p.team2Score, st.liveTeam2Score),
                 liveTeam1Overs = pick(p.team1Overs, st.liveTeam1Overs),

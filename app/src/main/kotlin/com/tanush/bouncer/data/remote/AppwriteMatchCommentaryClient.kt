@@ -55,8 +55,8 @@ object AppwriteMatchCommentaryClient : AppwriteTableClient("AppwriteMatchComment
         if (!isReady) return
         if (!subscriptionStarted.compareAndSet(false, true)) return
         startSubscriptionLoop { response ->
-            val isCreate = response.events.any { it.contains(".create") }
-            if (!isCreate) return@startSubscriptionLoop
+            val isWrite = response.events.any { it.contains(".create") || it.contains(".update") }
+            if (!isWrite) return@startSubscriptionLoop
             @Suppress("UNCHECKED_CAST")
             val payload = response.payload as? Map<String, Any> ?: return@startSubscriptionLoop
             val matchId = payload["match_id"] as? String ?: return@startSubscriptionLoop

@@ -1,6 +1,5 @@
 package com.tanush.bouncer.data.remote
 
-import android.util.Log
 import com.tanush.bouncer.ApiKeys
 import com.tanush.bouncer.data.CacheConfig
 import io.appwrite.Query
@@ -11,7 +10,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 object AppwriteHighlightsClient : AppwriteTableClient("AppwriteHighlightsClient") {
-    private const val TAG = "AppwriteHighlightsClient"
 
     fun initialize() {
         initTable(ApiKeys.appwriteHighlightsDbId, ApiKeys.appwriteHighlightsColId)
@@ -60,7 +58,7 @@ object AppwriteHighlightsClient : AppwriteTableClient("AppwriteHighlightsClient"
                 val row = HighlightRow.fromMap(response.payload as? Map<String, Any?> ?: return@startSubscriptionLoop)
                 scope.launch { onNewHighlight(row) }
             }.onFailure {
-                Log.d(TAG, "Realtime highlight payload unparseable: ${it.message}")
+                logSilentFailure("Realtime highlight payload parse failed", it)
             }
         }
     }
