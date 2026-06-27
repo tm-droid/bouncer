@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tanush.bouncer.models.PointsTableEntry
 import com.tanush.bouncer.network.PointsTableScraper
+import io.sentry.Sentry
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -34,6 +35,7 @@ class PointsTableViewModel : ViewModel() {
                 if (result.isEmpty()) _error.value = "No points table available for this series"
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
+                Sentry.captureException(e)
                 _error.value = "Failed to load points table"
             } finally {
                 _isLoading.value = false

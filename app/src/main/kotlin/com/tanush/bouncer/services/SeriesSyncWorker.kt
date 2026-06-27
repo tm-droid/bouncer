@@ -58,11 +58,21 @@ class SeriesSyncWorker(
         } catch (e: SocketTimeoutException) {
             Log.w(TAG, "Network timeout in SeriesSyncWorker", e)
             sentryBreadcrumb("series_sync", "Sync failed (timeout): ${e.message}", SentryLevel.WARNING)
-            if (runAttemptCount < WORKER_MAX_RETRIES) Result.retry() else Result.failure()
+            if (runAttemptCount < WORKER_MAX_RETRIES) {
+                Result.retry()
+            } else {
+                Sentry.captureMessage("SeriesSyncWorker exhausted retries on timeout after $runAttemptCount attempts", SentryLevel.ERROR)
+                Result.failure()
+            }
         } catch (e: UnknownHostException) {
             Log.w(TAG, "No network in SeriesSyncWorker", e)
             sentryBreadcrumb("series_sync", "Sync failed (no network): ${e.message}", SentryLevel.WARNING)
-            if (runAttemptCount < WORKER_MAX_RETRIES) Result.retry() else Result.failure()
+            if (runAttemptCount < WORKER_MAX_RETRIES) {
+                Result.retry()
+            } else {
+                Sentry.captureMessage("SeriesSyncWorker exhausted retries (no network) after $runAttemptCount attempts", SentryLevel.ERROR)
+                Result.failure()
+            }
         } catch (e: Exception) {
             Log.e(TAG, "Unexpected error in SeriesSyncWorker", e)
             Sentry.captureException(e)
@@ -91,6 +101,7 @@ class SeriesSyncWorker(
             throw e
         } catch (e: Exception) {
             Log.w(TAG, "Series Storage read failed, falling back to scrape", e)
+            sentryBreadcrumb("series_sync", "Appwrite storage read failed (falling back to scrape): ${e.message}", SentryLevel.WARNING)
             null
         }
     }

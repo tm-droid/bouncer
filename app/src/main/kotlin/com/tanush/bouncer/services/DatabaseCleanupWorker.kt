@@ -6,7 +6,9 @@ import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
+import android.util.Log
 import com.tanush.bouncer.data.local.BouncerDatabase
+import com.tanush.bouncer.utils.WorkerLogger
 import java.util.concurrent.TimeUnit
 
 class DatabaseCleanupWorker(
@@ -15,15 +17,20 @@ class DatabaseCleanupWorker(
 ) : CoroutineWorker(context, params) {
 
     override suspend fun doWork(): Result {
-        val db = BouncerDatabase.getInstance(applicationContext)
-        val now = System.currentTimeMillis()
-        db.matchDao().deleteOlderThan(now - MATCH_RETENTION_MS)
-        db.commentaryDao().deleteOlderThan(now - COMMENTARY_RETENTION_MS)
-        db.playerCacheDao().deleteOlderThan(now - PLAYER_CACHE_RETENTION_MS)
-        db.historicalMatchCacheDao().deleteOlderThan(now - HISTORICAL_MATCH_RETENTION_MS)
-        db.highlightDao().deleteOlderThan(now - HIGHLIGHTS_RETENTION_MS)
-        db.seriesCacheDao().deleteOlderThan(now - SERIES_CACHE_RETENTION_MS)
-        return Result.success()
+        return try {
+            val db = BouncerDatabase.getInstance(applicationContext)
+            val now = System.currentTimeMillis()
+            db.matchDao().deleteOlderThan(now - MATCH_RETENTION_MS)
+            db.commentaryDao().deleteOlderThan(now - COMMENTARY_RETENTION_MS)
+            db.playerCacheDao().deleteOlderThan(now - PLAYER_CACHE_RETENTION_MS)
+            db.historicalMatchCacheDao().deleteOlderThan(now - HISTORICAL_MATCH_RETENTION_MS)
+            db.highlightDao().deleteOlderThan(now - HIGHLIGHTS_RETENTION_MS)
+            db.seriesCacheDao().deleteOlderThan(now - SERIES_CACHE_RETENTION_MS)
+            Result.success()
+        } catch (e: Exception) {
+            WorkerLogger.failed("database_cleanup", "DB cleanup failed", e)
+            Result.failure()
+        }
     }
 
     companion object {

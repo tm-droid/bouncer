@@ -3,12 +3,14 @@ package com.tanush.bouncer.data.remote
 import android.content.Context
 import android.util.Log
 import com.tanush.bouncer.ApiKeys
+import com.tanush.bouncer.utils.sentryBreadcrumb
 import io.appwrite.Client
 import io.appwrite.exceptions.AppwriteException
 import io.appwrite.models.InputFile
 import io.appwrite.services.Functions
 import io.appwrite.services.Storage
 import io.sentry.Sentry
+import io.sentry.SentryLevel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -60,6 +62,7 @@ object AppwriteClient {
         } catch (e: Exception) {
             Log.e(TAG, "executeFunction $functionId error: ${e.message}", e)
             Sentry.addBreadcrumb("AppwriteClient.executeFunction[$functionId] failed: ${e.message}")
+            Sentry.captureException(e)
             null
         }
     }
@@ -104,10 +107,11 @@ object AppwriteClient {
                 Log.d(TAG, "uploadModelWeights: uploaded ${localFile.length()} bytes")
             }.onFailure { e ->
                 Sentry.addBreadcrumb("AppwriteClient.uploadModelWeights failed: ${e.message}")
+                Sentry.captureException(e)
                 if (e is AppwriteException) {
-                    Log.d(TAG, "uploadModelWeights failed (silent): ${e.message} [${e.code}]")
+                    Log.d(TAG, "uploadModelWeights failed: ${e.message} [${e.code}]")
                 } else {
-                    Log.d(TAG, "uploadModelWeights failed (silent): ${e.message}")
+                    Log.d(TAG, "uploadModelWeights failed: ${e.message}")
                 }
             }
         }
@@ -150,14 +154,15 @@ object AppwriteClient {
                 true
             }.onFailure { e ->
                 if (e is AppwriteException) {
-                    // 404 = bucket/file doesn't exist yet — expected on first run
                     if (e.code != 404) {
                         Sentry.addBreadcrumb("AppwriteClient.downloadModelWeightsIfNewer failed: ${e.message}")
+                        Sentry.captureException(e)
                     }
-                    Log.d(TAG, "downloadModelWeightsIfNewer failed (silent): ${e.message} [${e.code}]")
+                    Log.d(TAG, "downloadModelWeightsIfNewer failed: ${e.message} [${e.code}]")
                 } else {
                     Sentry.addBreadcrumb("AppwriteClient.downloadModelWeightsIfNewer failed: ${e.message}")
-                    Log.d(TAG, "downloadModelWeightsIfNewer failed (silent): ${e.message}")
+                    Sentry.captureException(e)
+                    Log.d(TAG, "downloadModelWeightsIfNewer failed: ${e.message}")
                 }
             }.getOrElse { false }
         }
@@ -174,6 +179,8 @@ object AppwriteClient {
             throw e
         } catch (e: Exception) {
             Log.d(TAG, "downloadFile $bucketId/$fileId failed: ${e.message}")
+            sentryBreadcrumb("appwrite", "downloadFile $bucketId/$fileId failed: ${e.message}", SentryLevel.WARNING)
+            Sentry.captureException(e)
             null
         }
     }

@@ -53,6 +53,7 @@ class ScorePollingWorker(
                 is AppResult.Error -> {
                     Log.e(TAG, "Poll failed", response.exception)
                     sentryBreadcrumb("score_polling", "Poll failed: ${response.exception.message}", SentryLevel.ERROR)
+                    Sentry.captureException(response.exception)
                     retryOrFail()
                 }
                 is AppResult.Loading -> retryOrFail()
@@ -198,6 +199,7 @@ class ScorePollingWorker(
                 notifManager.notify(("bg_${match.id}").hashCode(), notification)
             } catch (e: SecurityException) {
                 Log.w(TAG, "Notification permission not granted", e)
+                sentryBreadcrumb("score_polling", "Notification permission denied: ${e.message}", SentryLevel.WARNING)
             }
         }
     }

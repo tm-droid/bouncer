@@ -6,6 +6,7 @@ import com.tanush.bouncer.analysis.CricketConstants
 import com.tanush.bouncer.data.remote.AppwriteClient
 import com.tanush.bouncer.network.HttpClientProvider
 import com.tanush.bouncer.utils.CommentaryFormatter
+import com.tanush.bouncer.utils.sentryBreadcrumb
 import io.sentry.Breadcrumb
 import io.sentry.Sentry
 import io.sentry.SentryLevel
@@ -552,7 +553,8 @@ class CommentaryFusionService(
                         .getJSONObject(0)
                         .getJSONObject("delta")
                         .optString("content", "")
-                } catch (_: Exception) {
+                } catch (e: Exception) {
+                    sentryBreadcrumb("commentary_fusion", "SSE delta parse failed: ${e.message}", SentryLevel.WARNING)
                     continue
                 }
                 if (delta.isNotEmpty()) emit(delta)
@@ -689,8 +691,8 @@ class CommentaryFusionService(
             }
             passed
         } catch (e: Exception) {
-            // P0-5: API failure during verification — fail closed; don't cache unverified content.
             Log.w("CommentaryFusionService", "Verification call failed — failing closed (FAIL): ${e.message}")
+            sentryBreadcrumb("commentary_fusion", "Verification API call failed: ${e.message}", SentryLevel.WARNING)
             false
         }
     }
@@ -717,6 +719,7 @@ class CommentaryFusionService(
             org.json.JSONObject(response).optString("commentary").takeIf { it.isNotBlank() }
         } catch (e: Exception) {
             android.util.Log.w("CommentaryFusionService", "Commentary parse error: ${e.message}")
+            sentryBreadcrumb("commentary_fusion", "Commentary response parse failed: ${e.message}", SentryLevel.WARNING)
             null
         }
     }

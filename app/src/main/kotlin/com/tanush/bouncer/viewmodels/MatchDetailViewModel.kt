@@ -113,7 +113,10 @@ class MatchDetailViewModel(
             if (_uiState.value.scorecard == null) {
                 runCatching { matchRepository.fetchScorecard(match.id) }
                     .onSuccess { sc -> _uiState.update { it.copy(scorecard = sc) } }
-                    .onFailure { breadcrumb("scorecard_fallback", "On-device scorecard fetch failed: ${it.message}") }
+                    .onFailure {
+                        breadcrumb("scorecard_fallback", "On-device scorecard fetch failed: ${it.message}")
+                        Sentry.captureException(it)
+                    }
             }
             AppResult.runCatchingSuspend {
                 val lines = withTimeoutOrNull(10_000L) { AppwriteMatchCommentaryClient.getForMatch(match.id) }

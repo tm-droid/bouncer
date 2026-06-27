@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tanush.bouncer.models.PlayerProfile
 import com.tanush.bouncer.network.PlayerProfileScraper
+import io.sentry.Sentry
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -48,7 +49,7 @@ class PlayerComparisonViewModel : ViewModel() {
                 }
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
-                // Keep stub on failure
+                Sentry.captureException(e)
             } finally {
                 if (slot == 1) _loadingPlayer1.value = false else _loadingPlayer2.value = false
             }
