@@ -179,8 +179,12 @@ object AppwriteClient {
             throw e
         } catch (e: Exception) {
             Log.d(TAG, "downloadFile $bucketId/$fileId failed: ${e.message}")
-            sentryBreadcrumb("appwrite", "downloadFile $bucketId/$fileId failed: ${e.message}", SentryLevel.WARNING)
-            Sentry.captureException(e)
+            if (e is AppwriteException && e.code == 404) {
+                sentryBreadcrumb("appwrite", "downloadFile $bucketId/$fileId: not found (404)", SentryLevel.WARNING)
+            } else {
+                sentryBreadcrumb("appwrite", "downloadFile $bucketId/$fileId failed: ${e.message}", SentryLevel.WARNING)
+                Sentry.captureException(e)
+            }
             null
         }
     }
