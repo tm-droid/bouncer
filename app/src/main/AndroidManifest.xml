@@ -180,7 +180,7 @@
     <meta-data android:name="io.sentry.session-replay.mask-all-images" android:value="true" />
 
     <!-- Custom options configuration class for beforeSend / event filtering -->
-    <meta-data android:name="io.sentry.options-configuration"
+    <meta-data android:name="io.sentry.options-configuration-class"
               android:value="com.tanush.bouncer.SentryOptionsConfig" />
 
     <!-- enable automatic breadcrumbs for user interactions (clicks, swipes, scrolls) -->
