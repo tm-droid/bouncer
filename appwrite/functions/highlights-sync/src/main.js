@@ -19,18 +19,16 @@ export default async ({ req, res, log, error }) => {
   // ── Midnight reset ──────────────────────────────────────────────────────
   const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
 
-  // ── Fail-CLOSED Cricbuzz gate ──────────────────────────────────────────
-  // Old behavior assumed live matches when the API errored; that re-upserted
-  // yesterday's highlights every run. Now we skip the fetch unless we
-  // positively confirm relevant matches exist.
+  // ── Cricbuzz gate (fail-OPEN on 429/error) ────────────────────────────
+  // Only skip when Cricbuzz positively confirms no live/recent matches.
+  // On 429 or network error, proceed — Cricbuzz 429 ≠ "no matches live".
   const gate = await checkForLiveOrRecentMatches(RAPIDAPI_KEY, log, error);
-  if (!gate.confirmed) {
-    log(`Cricbuzz gate not confirmed (${gate.reason}) — skipping fetch`);
-    return res.json({ skipped: true, reason: gate.reason });
-  }
-  if (!gate.hasRelevantMatches) {
-    log("No live/recent matches — skipping Highlightly fetch (counter not consumed)");
+  if (gate.confirmed && !gate.hasRelevantMatches) {
+    log("No live/recent matches confirmed — skipping Highlightly fetch");
     return res.json({ skipped: true, reason: "no_live_matches" });
+  }
+  if (!gate.confirmed) {
+    log(`Cricbuzz gate unconfirmed (${gate.reason}) — proceeding with Highlightly anyway`);
   }
 
   // ── Fetch highlights from Highlightly API ───────────────────────────────
