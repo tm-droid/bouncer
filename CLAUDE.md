@@ -79,7 +79,9 @@ app/src/main/kotlin/com/tanush/bouncer/
 │   ├── CacheConfig.kt  # All cache TTLs + realtime reconnect backoff + permanent-cache sentinel — no magic numbers
 │   └── remote/         # AppwriteClient (singleton) + table clients extending AppwriteTableClient
 │                       # AppwriteAICache, AppwriteHighlightsClient, AppwritePlayerProfilesClient,
-│                       # AppwritePlayerFormsClient, AppwriteFavouritesSync, H2HRepository
+│                       # AppwritePlayerFormsClient, AppwriteFavouritesSync, H2HRepository,
+│                       # AppwriteMatchCommentaryClient (match-commentary table),
+│                       # AppwriteMatchDetailClient (match-live-detail table)
 ├── models/             # Data models and entities (proguard-kept for Gson — never delete on grep evidence)
 ├── analysis/           # Cricket analysis + ML models (score prediction, win probability)
 ├── auto/               # Android Auto (BouncerCarAppService)
@@ -109,7 +111,13 @@ Endpoint/projectId are auto-injected by the runtime — only `APPWRITE_API_KEY` 
 
 **Player profile cache (global):** `PlayerCacheWorker` checks `AppwritePlayerProfilesClient` before scraping Cricbuzz. First device that scrapes a player pushes to Appwrite (`player-profiles` table, `bouncer-db`); all subsequent devices get a cache hit. Row ID = `entity.playerId` (Room format: `virat_kohli`).
 
-**Appwrite project:** single database `bouncer-db`. Known tables: `ai-commentary-cache`, `highlights`, `highlights-meta`, `user-favourites`, `player-profiles`.
+**Appwrite project:** single database `bouncer-db`. Known tables: `ai-commentary-cache`, `highlights`, `highlights-meta`, `user-favourites`, `player-profiles`, `match-commentary`, `match-live-detail`.
+
+**`match-commentary` table:** written by `bouncer-match-sync` (every minute). Columns: `match_id`, `innings`, `ball`, `sort_key` (timestamp, used for ordering), `commentary` (AI-rewritten line), `created_at`. Read by `AppwriteMatchCommentaryClient` — newest-first 60 rows ordered by `sort_key` desc; Realtime subscription emits `CommentaryEvent` on create.
+
+**`match-live-detail` table:** written by `bouncer-match-sync` (every minute). One row per match, upserted. Columns: `match_id`, `payload` (JSON `MatchLiveDetailPayload`), `updated_at`. Row ID = sanitized `matchId`. Read by `AppwriteMatchDetailClient`; Realtime emits `DetailEvent` on create/update. Both clients use `appwriteAiCacheDbId` as their DB ID.
+
+**`bouncer-match-sync` Appwrite function:** scheduled `* * * * *`. Reads `live-matches.json` from `cricket-stats` bucket (written by `bouncer-poll-live-matches`); if file absent, returns 200 `{skipped:true}` (not an error). For each live match: fetches Cricbuzz live HTML + scorecard → upserts `match-live-detail` → generates AI commentary lines → writes to `match-commentary`. Up to 10 new rows/match/run, 12 matches max. Env vars: `APPWRITE_AI_CACHE_DB_ID`, `MATCH_COMMENTARY_COL_ID`, `MATCH_LIVE_DETAIL_COL_ID`, `MATCH_CACHE_BUCKET_ID`, `APPWRITE_API_KEY`, `GROQ_API_KEY` (+ fallbacks).
 
 **Appwrite Storage bucket `cricket-stats`:** read-only from Android via `AppwriteClient.downloadFile(bucketId, fileId)`. Three files: `team-stats` (win-rate model written by `train-win-probability`), `h2h-stats` (H2H stats for 650+ team pairs, written by same function), `active-series` (series list, read by `SeriesSyncWorker`). Bucket is written only by Appwrite cloud functions.
 
