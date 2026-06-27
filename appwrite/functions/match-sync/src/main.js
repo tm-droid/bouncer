@@ -75,7 +75,7 @@ async function syncMatch({ db, matchId, log, error }) {
   // 2. Fetch live page + scorecard in parallel.
   const [liveHtml, scoreHtml] = await Promise.all([
     fetchHtml(liveScoresUrl(matchId)),
-    fetchHtml(scorecardUrl(matchId)).catch(() => null),
+    fetchHtml(scorecardUrl(matchId)).catch((e) => { error(`Scorecard fetch failed for ${matchId}: ${e?.message}`); return null; }),
   ]);
 
   // 3. Build + upsert the live-detail snapshot.
