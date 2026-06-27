@@ -46,10 +46,12 @@ object AppwriteClient {
     suspend fun executeFunction(functionId: String, body: String): String? {
         val functions = functionsService ?: return null
         return try {
+            val secret = com.tanush.bouncer.ApiKeys.bouncerFunctionSecret
             val execution = functions.createExecution(
                 functionId = functionId,
                 body = body,
                 async = false,
+                headers = if (secret.isNotBlank()) mapOf("x-bouncer-secret" to secret) else null,
             )
             if (execution.status == io.appwrite.enums.ExecutionStatus.FAILED) {
                 Log.e(TAG, "Function $functionId failed: ${execution.errors}")

@@ -24,6 +24,7 @@ HIGHLIGHTLY_API_KEY=
 GROQ_API_KEY=
 CEREBRAS_API_KEY=
 SAMBANOVA_API_KEY=
+BOUNCER_FUNCTION_SECRET=
 
 # Release signing — generated via keytool; never commit actual values
 KEYSTORE_PASSWORD=your_keystore_password_here

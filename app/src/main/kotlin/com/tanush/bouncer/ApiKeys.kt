@@ -21,4 +21,5 @@ object ApiKeys {
     val appwritePlayerFormsDbId     = BuildConfig.APPWRITE_PLAYER_FORMS_DB_ID
     val appwritePlayerFormsColId    = BuildConfig.APPWRITE_PLAYER_FORMS_COL_ID
     val appwritePlayerProfilesColId = BuildConfig.APPWRITE_PLAYER_PROFILES_COL_ID
+    val bouncerFunctionSecret        = BuildConfig.BOUNCER_FUNCTION_SECRET
 }

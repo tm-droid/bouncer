@@ -74,7 +74,8 @@
                 { "key": "APPWRITE_AI_CACHE_COL_ID", "value": "ai-commentary-cache" },
                 { "key": "GROQ_API_KEY",             "value": "" },
                 { "key": "CEREBRAS_API_KEY",         "value": "" },
-                { "key": "SAMBANOVA_API_KEY",        "value": "" }
+                { "key": "SAMBANOVA_API_KEY",        "value": "" },
+                { "key": "BOUNCER_FUNCTION_SECRET",  "value": "" }
             ]
         },
         {

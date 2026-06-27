@@ -13,6 +13,14 @@ const PROVIDERS = [
 ];
 
 export default async ({ req, res, log, error }) => {
+  const expectedSecret = process.env.BOUNCER_FUNCTION_SECRET;
+  if (expectedSecret) {
+    const provided = req.headers["x-bouncer-secret"];
+    if (!provided || provided !== expectedSecret) {
+      return res.json({ error: "Unauthorized" }, 401);
+    }
+  }
+
   if (!process.env.APPWRITE_API_KEY) {
     return res.json({ error: "Missing APPWRITE_API_KEY" }, 500);
   }
