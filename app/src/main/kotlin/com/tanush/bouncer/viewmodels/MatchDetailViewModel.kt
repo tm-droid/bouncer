@@ -112,7 +112,7 @@ class MatchDetailViewModel(
             // server-side), fetch directly from CricBuzz. Same CSS selectors as the server parser.
             if (_uiState.value.scorecard == null) {
                 runCatching { matchRepository.fetchScorecard(match.id) }
-                    .onSuccess { sc -> if (sc.innings.isNotEmpty()) _uiState.update { it.copy(scorecard = sc) } }
+                    .onSuccess { sc -> _uiState.update { it.copy(scorecard = sc) } }
                     .onFailure { breadcrumb("scorecard_fallback", "On-device scorecard fetch failed: ${it.message}") }
             }
             AppResult.runCatchingSuspend {
@@ -121,7 +121,10 @@ class MatchDetailViewModel(
                 if (lines.isNotEmpty()) _uiState.update { it.copy(commentary = lines) }
             }.onError { breadcrumb("commentary_load", "Commentary feed load failed: ${it.message}") }
         } finally {
-            _uiState.update { it.copy(commentaryLoading = false) }
+            _uiState.update { it.copy(
+                commentaryLoading = false,
+                scorecard = it.scorecard ?: Scorecard(),
+            )}
         }
 
         loadCricinfoData()
@@ -172,7 +175,7 @@ class MatchDetailViewModel(
                 batsmen = p.batsmen.ifEmpty { st.batsmen },
                 bowler = pick(p.bowler, st.bowler),
                 recentBalls = p.recentBalls.ifEmpty { st.recentBalls },
-                scorecard = pick(p.scorecard, st.scorecard),
+                scorecard = pick(p.scorecard?.takeIf { it.innings.isNotEmpty() || st.scorecard == null }, st.scorecard),
                 liveTeam1Score = pick(p.team1Score, st.liveTeam1Score),
                 liveTeam2Score = pick(p.team2Score, st.liveTeam2Score),
                 liveTeam1Overs = pick(p.team1Overs, st.liveTeam1Overs),

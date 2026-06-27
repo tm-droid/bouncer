@@ -48,8 +48,8 @@ export default async ({ req, res, log, error }) => {
       : raw;
     matches = parsed?.data?.matches ?? [];
   } catch (e) {
-    error(`Failed to read ${LIVE_FILE}: ${e?.message}`);
-    return res.json({ error: "No live-matches file" }, 503);
+    log(`No live-matches file — nothing to sync`);
+    return res.json({ skipped: true, reason: "no_live_matches" }, 200);
   }
 
   const live = matches.filter((m) => m && m.id).slice(0, MAX_MATCHES);
