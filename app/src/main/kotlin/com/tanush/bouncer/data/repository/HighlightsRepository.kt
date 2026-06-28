@@ -6,7 +6,9 @@ import com.tanush.bouncer.data.CacheConfig
 import com.tanush.bouncer.data.local.dao.HighlightDao
 import com.tanush.bouncer.data.local.dao.MatchDao
 import com.tanush.bouncer.data.local.entities.HighlightEntity
+import com.tanush.bouncer.data.local.entities.MatchEntity
 import com.tanush.bouncer.data.remote.AppwriteHighlightsClient
+import com.tanush.bouncer.data.remote.HighlightRow
 import com.tanush.bouncer.services.HighlightFallbackUrlBuilder
 import com.tanush.bouncer.services.HighlightFuzzyMatcher
 import kotlinx.coroutines.Dispatchers
@@ -37,32 +39,33 @@ class HighlightsRepository(
                     return@withContext emptyList()
                 }
 
-                val bouncerMatches = matchDao.getAllMatches().first()
-                if (bouncerMatches.isEmpty()) {
-                    Log.w(TAG, "matchDao.getAllMatches() returned empty — all highlights will be stored unmatched")
-                }
-                val results = mutableListOf<HighlightEntity>()
-
-                for (row in allHighlights) {
-                    val entity = row.toEntity()
-                    val matched = HighlightFuzzyMatcher.matchHighlightToBouncerMatch(entity, bouncerMatches)
-                    if (matched != null) {
-                        entity.copy(matchedBouncerMatchId = matched.matchId).let { enriched ->
-                            val fallback = HighlightFallbackUrlBuilder.buildFallbackUrl(enriched, highlightDao)
-                            val final = enriched.copy(fallbackUrl = fallback)
-                            results.add(final)
-                        }
-                    } else {
-                        results.add(entity)
-                    }
-                }
-
-                highlightDao.upsertAll(results)
-                Log.d(TAG, "Upserted ${results.size} highlights; ${results.count { it.matchedBouncerMatchId != null }} matched")
-
-                results.filter { it.matchedBouncerMatchId == bouncerMatchId }
+                ingestRows(allHighlights).filter { it.matchedBouncerMatchId == bouncerMatchId }
             }
         }
+    }
+
+    // Fuzzy-match each Appwrite row to a local match, enrich, persist to Room, return enriched rows.
+    // Shared by the one-shot screen fetch and the Realtime ingest path so live-inserted clips also
+    // get a matchedBouncerMatchId (without it, every per-match query filters them out).
+    suspend fun ingestRows(rows: List<HighlightRow>): List<HighlightEntity> {
+        if (rows.isEmpty()) return emptyList()
+        return withContext(Dispatchers.IO) {
+            val bouncerMatches = matchDao.getAllMatches().first()
+            if (bouncerMatches.isEmpty()) {
+                Log.w(TAG, "matchDao.getAllMatches() returned empty — highlights will be stored unmatched")
+            }
+            val results = rows.map { enrich(it.toEntity(), bouncerMatches) }
+            highlightDao.upsertAll(results)
+            Log.d(TAG, "Upserted ${results.size} highlights; ${results.count { it.matchedBouncerMatchId != null }} matched")
+            results
+        }
+    }
+
+    private suspend fun enrich(entity: HighlightEntity, bouncerMatches: List<MatchEntity>): HighlightEntity {
+        val matched = HighlightFuzzyMatcher.matchHighlightToBouncerMatch(entity, bouncerMatches)
+            ?: return entity
+        val withId = entity.copy(matchedBouncerMatchId = matched.matchId)
+        return withId.copy(fallbackUrl = HighlightFallbackUrlBuilder.buildFallbackUrl(withId, highlightDao))
     }
 
     suspend fun refreshIfStale(bouncerMatchId: String): AppResult<List<HighlightEntity>> {

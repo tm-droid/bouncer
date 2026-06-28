@@ -1,4 +1,4 @@
-import { Client, Storage, Databases } from "node-appwrite";
+import { Client, Storage, Databases, Query } from "node-appwrite";
 import { createHash } from "crypto";
 import {
   liveScoresUrl,
@@ -91,11 +91,16 @@ async function syncMatch({ db, matchId, log, error }) {
 
   // 4. Commentary: newest-first, generate AI only for new ball lines.
   const commentary = parseCommentary(liveHtml).slice(0, SCAN_NEWEST);
+
+  // Single read per match for existence: fetch the newest rows once and dedupe in memory,
+  // instead of a getDocument per candidate (~30x fewer reads — keeps us under the org read budget).
+  const existingIds = await existingCommentaryIds({ db, matchId, error });
+
   let written = 0;
   for (const item of commentary) {
     if (written >= MAX_NEW_PER_MATCH) break;
     const rowId = docId(`${matchId}:${item.timestamp}`);
-    if (await rowExists(db, COMMENTARY_COL, rowId)) continue;
+    if (existingIds.has(rowId)) continue;
 
     const clean = sanitize(item.commText);
     const ballMatch = clean.match(BALL_RE);
@@ -170,11 +175,18 @@ async function upsertDetail({ db, matchId, detail, error }) {
   }
 }
 
-async function rowExists(db, col, rowId) {
+// One read per match: the newest commentary row IDs for this match. The create-on-409
+// path stays as the race backstop, so a missed/blank result only risks a redundant write.
+async function existingCommentaryIds({ db, matchId, error }) {
   try {
-    await db.getDocument(DB_ID, col, rowId);
-    return true;
+    const result = await db.listRows(DB_ID, COMMENTARY_COL, [
+      Query.equal("match_id", matchId),
+      Query.orderDesc("sort_key"),
+      Query.limit(SCAN_NEWEST),
+    ]);
+    return new Set((result.rows ?? []).map((r) => r.$id));
   } catch (e) {
-    return e?.code !== 404; // unknown error → treat as exists (skip, don't double-write)
+    error(`Commentary existence read failed (${matchId}): ${e?.message}`);
+    return new Set();
   }
 }

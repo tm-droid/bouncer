@@ -19,7 +19,7 @@ import com.tanush.bouncer.data.remote.AppwriteMatchCommentaryClient
 import com.tanush.bouncer.data.remote.AppwriteMatchDetailClient
 import com.tanush.bouncer.data.remote.AppwritePlayerFormsClient
 import com.tanush.bouncer.data.remote.AppwritePlayerProfilesClient
-import com.tanush.bouncer.data.repository.toEntity
+import com.tanush.bouncer.data.repository.HighlightsRepository
 import com.tanush.bouncer.network.HttpClientProvider
 import com.google.firebase.messaging.FirebaseMessaging
 import com.tanush.bouncer.services.AICacheService
@@ -143,12 +143,16 @@ class BouncerApp : Application() {
 
         // Start Appwrite Realtime subscriptions (app-lifetime)
         initializeSafely("AppwriteRealtime") {
-            val highlightDao = BouncerDatabase.getInstance(this).highlightDao()
+            val database = BouncerDatabase.getInstance(this)
+            val highlightsRepo = HighlightsRepository(database.highlightDao(), database.matchDao())
             AppwriteHighlightsClient.startRealtimeSubscription(
                 scope = applicationScope,
                 onNewHighlight = { row ->
+                    // Fuzzy-match + enrich before persisting so the row gets a matchedBouncerMatchId
+                    // and actually appears on its match's Highlights tab.
                     applicationScope.launch(Dispatchers.IO) {
-                        highlightDao.upsertAll(listOf(row.toEntity()))
+                        runCatching { highlightsRepo.ingestRows(listOf(row)) }
+                            .onFailure { Sentry.captureException(it) }
                     }
                 }
             )

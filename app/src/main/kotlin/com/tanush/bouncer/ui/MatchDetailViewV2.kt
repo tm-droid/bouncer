@@ -61,7 +61,7 @@ import com.tanush.bouncer.ui.components.v2.ReminderBottomSheet
 import com.tanush.bouncer.ui.components.v2.StatusBadgeV2
 import com.tanush.bouncer.ui.components.v2.determineMatchStatus
 import com.tanush.bouncer.ui.components.premium.PremiumAiStatisticsTab
-import com.tanush.bouncer.ui.components.premium.PremiumScorecardTab
+import com.tanush.bouncer.ui.components.premium.ScorecardTab
 import com.tanush.bouncer.ui.screens.matchdetail.v2.CommentaryTabV2
 import com.tanush.bouncer.ui.screens.matchdetail.v2.HighlightsTabV2
 import com.tanush.bouncer.ui.screens.matchdetail.v2.InfoTabV2
@@ -284,7 +284,10 @@ fun MatchDetailViewV2(
                         probabilityHistory = uiState.probabilityHistory,
                         headToHead = uiState.headToHead,
                     )
-                    "Scorecard" -> PremiumScorecardTab(scorecard = uiState.scorecard)
+                    "Scorecard" -> ScorecardTab(
+                        scorecard = uiState.scorecard,
+                        isLoading = uiState.scorecardLoading,
+                    )
                     "Commentary" -> CommentaryTabV2(
                         commentary = uiState.commentary,
                         recentBalls = uiState.recentBalls,

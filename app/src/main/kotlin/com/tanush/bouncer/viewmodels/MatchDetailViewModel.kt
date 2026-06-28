@@ -49,6 +49,7 @@ class MatchDetailViewModel(
         val bowler: ScrapedBowler? = null,
         val recentBalls: List<String> = emptyList(),
         val scorecard: Scorecard? = null,
+        val scorecardLoading: Boolean = true,
         val commentary: List<String> = emptyList(),
         val commentaryLoading: Boolean = true,
         val liveTeam1Score: String = "",
@@ -128,7 +129,7 @@ class MatchDetailViewModel(
         } finally {
             _uiState.update { it.copy(
                 commentaryLoading = false,
-                scorecard = it.scorecard,
+                scorecardLoading = false,
             )}
         }
 

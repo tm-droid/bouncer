@@ -10,12 +10,12 @@ import com.tanush.bouncer.data.AppResult
 import com.tanush.bouncer.data.local.BouncerDatabase
 import io.sentry.Sentry
 import com.tanush.bouncer.data.local.entities.HighlightEntity
-import com.tanush.bouncer.data.remote.AppwriteHighlightsClient
 import com.tanush.bouncer.data.repository.HighlightsRepository
 import com.tanush.bouncer.utils.bouncerExceptionHandler
-import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 class HighlightsViewModel(
@@ -25,25 +25,21 @@ class HighlightsViewModel(
     private val db = BouncerDatabase.getInstance(application)
     private val repo = HighlightsRepository(db.highlightDao(), db.matchDao())
 
-    private val _highlights = MutableStateFlow<List<HighlightEntity>>(emptyList())
-    val highlights: StateFlow<List<HighlightEntity>> = _highlights.asStateFlow()
+    // Observe Room reactively: any later write (Realtime ingest, refresh) flows to the UI.
+    val highlights: StateFlow<List<HighlightEntity>> =
+        db.highlightDao().queryByBouncerMatchId(bouncerMatchId)
+            .map { rows -> rows.sortedWith(compareBy({ if (it.type == "VERIFIED") 0 else 1 }, { -it.fetchedAt })) }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     init {
-        fetchHighlights()
+        refresh()
     }
 
-    private fun fetchHighlights() {
+    // One-shot trigger that refreshes Room from Appwrite; results surface via the [highlights] Flow.
+    private fun refresh() {
         viewModelScope.launch(bouncerExceptionHandler) {
-            when (val result = repo.fetchForMatch(bouncerMatchId)) {
-                is AppResult.Success -> {
-                    _highlights.value = result.data.sortedWith(compareBy({ if (it.type == "VERIFIED") 0 else 1 }, { -it.fetchedAt }))
-                }
-                is AppResult.Error -> {
-                    Sentry.captureException(result.exception)
-                    _highlights.value = emptyList()
-                }
-                is AppResult.Loading -> {}
-            }
+            val result = repo.fetchForMatch(bouncerMatchId)
+            if (result is AppResult.Error) Sentry.captureException(result.exception)
         }
     }
 
