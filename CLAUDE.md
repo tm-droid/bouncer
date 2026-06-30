@@ -90,9 +90,11 @@ app/src/main/kotlin/com/tanush/bouncer/
                         # — use these instead of raw Breadcrumb().apply boilerplate
 ```
 
-**Appwrite cloud functions** live in `appwrite/functions/` (Node.js, deployed via Appwrite CLI). `appwrite/appwrite.config.json` defines project-level config. Five functions:
+**Appwrite cloud functions** live in `appwrite/functions/` (Node.js, deployed via Appwrite CLI). `appwrite/appwrite.config.json` defines project-level config. Seven functions:
 - `highlights-sync` — 15-min schedule; syncs cricket highlight clips to Appwrite
 - `generate-commentary` — on-demand; LLM commentary via OpenRouter (called by `CommentaryFusionService`)
+- `match-sync` — every-minute schedule; fetches live match HTML + scorecard → upserts `match-live-detail` → AI commentary → `match-commentary` (see detailed section below)
+- `news-sync` — on-demand; fetches cricket news from Cricbuzz via RapidAPI, caches to `cricket-stats` bucket (`news-cache` file, 4-hr TTL caps RapidAPI at ~6 calls/day). Requires `RAPIDAPI_KEY`.
 - `poll-live-matches` — scheduled; fetches live match data server-side
 - `win-probability` — on-demand; calculates real-time win probability
 - `train-win-probability` — scheduled; retrains win-probability model from match history
@@ -125,7 +127,7 @@ Endpoint/projectId are auto-injected by the runtime — only `APPWRITE_API_KEY` 
 
 **Appwrite MCP workflow:** `appwrite_search_tools` → `appwrite_call_tool` → `ReadMcpResourceTool` (server: `plugin:appwrite:appwrite-api`, URI from truncated result) for full output. Column creation returns `status: "processing"` — call `tables_db_list_columns` to confirm `"available"` before using. Table-level permissions at creation: `["read(\"any\")", "create(\"any\")", "update(\"any\")"]`.
 
-**New Appwrite client pattern:** `object` singleton extending `AppwriteTableClient(tag)`. The base provides `initTable()`, `tablesDB`, `isReady`, the Realtime `startSubscriptionLoop()` + reconnect backoff, `stop()`, and `logSilentFailure()` — don't reimplement these. Subclass adds `initialize()` (calls `initTable(dbId, tableId)`) and its table ops as `runCatching` + `logSilentFailure` on failure. Register in `BouncerApp.kt` via `initializeSafely("Name") { Client.initialize() }`.
+**New Appwrite client pattern:** `object` singleton extending `AppwriteTableClient(tag)`. The base provides `initTable()`, `tablesDB`, `isReady`, the Realtime `startSubscriptionLoop()` + reconnect backoff, `stop()`, and `logSilentFailure()` — don't reimplement these. Subclass adds `initialize()` (calls `initTable(dbId, tableId)`) and its table ops as `runCatching` + `logSilentFailure` on failure. Register in `BouncerApp.kt` via `initializeSafely("Name") { Client.initialize() }`. Exception: `AppwriteFavouritesSync` is in `data/remote/` but is **not** registered in `BouncerApp` via `initializeSafely` — do not assume it follows the standard init pattern.
 
 **API keys:** Always access via `ApiKeys` object (`ApiKeys.kt`), never `BuildConfig` directly. Add new keys to `ApiKeys.kt` + `build.gradle.kts` + `local.properties.template`.
 
