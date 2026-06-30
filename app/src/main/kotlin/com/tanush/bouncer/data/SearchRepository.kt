@@ -42,6 +42,7 @@ object SearchRepository {
             val teamName: String,
             val role: String,
             override val relevanceScore: Double,
+            val imageUrl: String? = null,
         ) : SearchResult()
 
         data class NewsResult(
@@ -86,6 +87,34 @@ object SearchRepository {
         val totalCount: Int
             get() = matches.size + teams.size + players.size + news.size + series.size + historicalMatches.size
     }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // Known Teams (static list so search works even with no live matches loaded)
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    val KNOWN_CRICKET_TEAMS: List<String> = listOf(
+        // International
+        "India", "Australia", "England", "Pakistan", "South Africa",
+        "New Zealand", "West Indies", "Sri Lanka", "Bangladesh", "Zimbabwe",
+        "Afghanistan", "Ireland", "Netherlands", "Scotland", "Namibia",
+        "Papua New Guinea", "UAE", "Nepal", "Oman", "USA",
+        // IPL
+        "Mumbai Indians", "Chennai Super Kings", "Royal Challengers Bangalore",
+        "Kolkata Knight Riders", "Delhi Capitals", "Sunrisers Hyderabad",
+        "Punjab Kings", "Rajasthan Royals", "Lucknow Super Giants",
+        "Gujarat Titans",
+        // BBL
+        "Sydney Sixers", "Perth Scorchers", "Melbourne Stars",
+        "Brisbane Heat", "Adelaide Strikers", "Hobart Hurricanes",
+        "Melbourne Renegades", "Sydney Thunder",
+        // PSL
+        "Karachi Kings", "Lahore Qalandars", "Peshawar Zalmi",
+        "Quetta Gladiators", "Multan Sultans", "Islamabad United",
+        // SA20 / CPL
+        "MI Cape Town", "Paarl Royals", "Sunrisers Eastern Cape",
+        "Trinbago Knight Riders", "Barbados Royals", "Guyana Amazon Warriors",
+        "St Kitts and Nevis Patriots",
+    )
 
     // ═══════════════════════════════════════════════════════════════════════════
     // Search Logic

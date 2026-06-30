@@ -82,7 +82,7 @@ fun BouncerNavHost(
         moreChildDestinations(navController, liveActivityViewModel, newsViewModel, onMatchClick, onArTrackingClick, themeMode, onThemeModeChanged)
 
         // Parameterized screens
-        parameterizedDestinations(navController, newsViewModel, liveActivityViewModel)
+        parameterizedDestinations(navController, newsViewModel, liveActivityViewModel, onMatchClick)
     }
 }
 
@@ -273,6 +273,11 @@ private fun NavGraphBuilder.moreChildDestinations(
                     BouncerScreen.PlayerDetail.createRoute(playerName)
                 )
             },
+            onTeamClick = { teamName ->
+                navController.navigateForward(
+                    BouncerScreen.TeamDetail.createRoute(teamName)
+                )
+            },
             onSeriesClick = { seriesId ->
                 navController.navigateForward(
                     BouncerScreen.SeriesDetail.createRoute(seriesId)
@@ -400,7 +405,8 @@ private fun NavGraphBuilder.moreChildDestinations(
 private fun NavGraphBuilder.parameterizedDestinations(
     navController: NavHostController,
     newsViewModel: NewsViewModel,
-    liveActivityViewModel: LiveActivityViewModel
+    liveActivityViewModel: LiveActivityViewModel,
+    onMatchClick: (com.tanush.bouncer.models.CricketMatch) -> Unit,
 ) {
     // News Detail with article ID
     composable(
@@ -489,6 +495,23 @@ private fun NavGraphBuilder.parameterizedDestinations(
                 navController.navigateForward(BouncerScreen.PointsTable.createRoute(id))
             },
             onBackClick = { navController.popBackStack() }
+        )
+    }
+
+    // Team Detail
+    composable(
+        route = BouncerScreen.TeamDetail.ROUTE_PATTERN,
+        arguments = BouncerScreen.TeamDetail.arguments,
+    ) { backStackEntry ->
+        val teamName = backStackEntry.arguments
+            ?.getString(BouncerScreen.TeamDetail.ARG_TEAM_NAME)
+            ?.decodeUrlSafe() ?: return@composable
+
+        TeamDetailScreen(
+            teamName = teamName,
+            liveActivityViewModel = liveActivityViewModel,
+            onMatchClick = onMatchClick,
+            onBackClick = { navController.popBackStack() },
         )
     }
 

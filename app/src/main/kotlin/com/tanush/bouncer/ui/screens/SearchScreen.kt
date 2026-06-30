@@ -72,6 +72,7 @@ fun SearchScreen(
     news: List<NewsArticleData>,
     onMatchClick: (CricketMatch) -> Unit,
     onPlayerClick: (String) -> Unit,
+    onTeamClick: (String) -> Unit,
     onSeriesClick: (String) -> Unit,
     onNewsClick: (NewsArticleData) -> Unit,
     onBackClick: () -> Unit,
@@ -308,7 +309,7 @@ fun SearchScreen(
                             logoUrl = result.logoUrl,
                             onClick = {
                                 viewModel.onSearchSubmitted(query)
-                                viewModel.onQueryChange(result.teamName, matches, news)
+                                onTeamClick(result.teamName)
                             },
                         )
                     }
@@ -324,6 +325,7 @@ fun SearchScreen(
                             playerName = result.playerName,
                             teamName = result.teamName,
                             role = result.role,
+                            imageUrl = result.imageUrl,
                             onClick = {
                                 viewModel.onSearchSubmitted(query)
                                 onPlayerClick(result.playerName)
@@ -531,6 +533,7 @@ private fun PlayerSearchRow(
     playerName: String,
     teamName: String,
     role: String,
+    imageUrl: String? = null,
     onClick: () -> Unit,
 ) {
     val colors = BouncerThemeV2.colors
@@ -544,16 +547,25 @@ private fun PlayerSearchRow(
             .padding(horizontal = spacing.lg, vertical = spacing.sm),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(
-            modifier = Modifier.size(32.dp).clip(CircleShape).background(colors.primaryContainer),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(Icons.Default.Person, contentDescription = null, tint = colors.primary, modifier = Modifier.size(18.dp))
+        if (imageUrl != null) {
+            AsyncImage(
+                model = imageUrl,
+                contentDescription = playerName,
+                modifier = Modifier.size(32.dp).clip(CircleShape),
+            )
+        } else {
+            Box(
+                modifier = Modifier.size(32.dp).clip(CircleShape).background(colors.primaryContainer),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(Icons.Default.Person, contentDescription = null, tint = colors.primary, modifier = Modifier.size(18.dp))
+            }
         }
         Spacer(Modifier.width(spacing.md))
         Column {
             Text(playerName, style = typography.bodyMedium, color = colors.onSurface, fontWeight = FontWeight.Medium)
-            Text("$teamName · $role", style = typography.bodySmall, color = colors.textSecondary)
+            val subtitle = listOfNotNull(teamName.takeIf { it.isNotEmpty() }, role.takeIf { it.isNotEmpty() }).joinToString(" · ")
+            Text(subtitle.ifEmpty { teamName }, style = typography.bodySmall, color = colors.textSecondary)
         }
     }
 }

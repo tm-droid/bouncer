@@ -5,6 +5,8 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.tanush.bouncer.data.AppResult
 import com.tanush.bouncer.data.SearchRepository
+import com.tanush.bouncer.network.PlayerProfileScraper
+import com.tanush.bouncer.network.SeriesScraper
 import com.tanush.bouncer.data.local.BouncerDatabase
 import com.tanush.bouncer.utils.bouncerExceptionHandler
 import io.sentry.Sentry
@@ -21,9 +23,17 @@ import kotlinx.coroutines.launch
 
 enum class SearchTab { ALL, MATCHES, PLAYERS, TEAMS, TOURNAMENTS, NEWS }
 
+private data class SearchBundle(
+    val live: SearchRepository.SearchResults,
+    val dbFrom: AppResult<Pair<List<SearchRepository.SearchResult.SeriesResult>, List<SearchRepository.SearchResult.HistoricalMatchResult>>>,
+    val dbPlayers: AppResult<List<SearchRepository.SearchResult.PlayerResult>>,
+    val networkPlayers: List<SearchRepository.SearchResult.PlayerResult>,
+)
+
 class SearchViewModel(application: Application) : AndroidViewModel(application) {
 
     private val db = BouncerDatabase.getInstance(application)
+    private val seriesScraper = SeriesScraper()
 
     private val _query = MutableStateFlow("")
     val query: StateFlow<String> = _query.asStateFlow()
@@ -62,13 +72,29 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
             delay(300) // debounce
             _isLoading.value = true
             try {
-                val teamNames = matches.flatMap { m -> m.teams.map { it.name } }.distinct()
-                val (liveResults, dbFromResult, dbPlayersResult) = coroutineScope {
-                    val live = async { SearchRepository.search(newQuery, matches, news, teamNames) }
-                    val dbFrom = async { SearchRepository.searchFromDb(newQuery, db) }
-                    val dbPlayers = async { SearchRepository.searchPlayersFromDb(newQuery, db) }
-                    Triple(live.await(), dbFrom.await(), dbPlayers.await())
+                val teamNames = (matches.flatMap { m -> m.teams.map { it.name } } + SearchRepository.KNOWN_CRICKET_TEAMS).distinct()
+                val bundle = coroutineScope {
+                    val liveDeferred = async { SearchRepository.search(newQuery, matches, news, teamNames) }
+                    val dbFromDeferred = async { SearchRepository.searchFromDb(newQuery, db) }
+                    val dbPlayersDeferred = async { SearchRepository.searchPlayersFromDb(newQuery, db) }
+                    val networkPlayersDeferred = async {
+                        runCatching { PlayerProfileScraper.searchPlayers(newQuery) }.getOrDefault(emptyList())
+                            .map { p ->
+                                SearchRepository.SearchResult.PlayerResult(
+                                    playerName = p.name,
+                                    teamName = p.country,
+                                    role = "",
+                                    relevanceScore = 0.9,
+                                    imageUrl = p.imageUrl,
+                                )
+                            }
+                    }
+                    SearchBundle(liveDeferred.await(), dbFromDeferred.await(), dbPlayersDeferred.await(), networkPlayersDeferred.await())
                 }
+                val liveResults = bundle.live
+                val dbFromResult = bundle.dbFrom
+                val dbPlayersResult = bundle.dbPlayers
+                val networkPlayerResults = bundle.networkPlayers
 
                 val (dbSeries, dbHistorical) = when (dbFromResult) {
                     is AppResult.Success -> dbFromResult.data
@@ -76,18 +102,47 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
                     is AppResult.Loading -> Pair(emptyList(), emptyList())
                 }
 
+                // Fall back to live network fetch if Room DB has no series yet
+                val resolvedSeries: List<SearchRepository.SearchResult.SeriesResult> = if (dbSeries.isEmpty()) {
+                    runCatching {
+                        val q = newQuery.trim().lowercase()
+                        seriesScraper.fetchActiveSeries()
+                            .filter { series ->
+                                series.name.lowercase().contains(q) ||
+                                    series.category.name.lowercase().contains(q)
+                            }
+                            .map { series ->
+                                SearchRepository.SearchResult.SeriesResult(
+                                    seriesId = series.id,
+                                    name = series.name,
+                                    category = series.category.name,
+                                    startDate = series.startDate,
+                                    endDate = series.endDate,
+                                    relevanceScore = if (series.name.lowercase().contains(q)) 1.0 else 0.7,
+                                )
+                            }
+                    }.getOrDefault(emptyList())
+                } else {
+                    dbSeries
+                }
+
                 val dbPlayers = dbPlayersResult.let { result ->
                     if (result is AppResult.Error) Sentry.captureException(result.exception)
                     result.getOrDefault(emptyList())
                 }
 
-                // Merge DB players with live players (deduplicate by name)
-                val livePlayerNames = liveResults.players.map { it.playerName }.toSet()
-                val mergedPlayers = liveResults.players + dbPlayers.filter { it.playerName !in livePlayerNames }
+                // Merge live + DB + network players (deduplicate by name, case-insensitive)
+                val livePlayerNames = liveResults.players.map { it.playerName.lowercase() }.toSet()
+                val dbPlayerNames = dbPlayers.map { it.playerName.lowercase() }.toSet()
+                val mergedPlayers = liveResults.players +
+                    dbPlayers.filter { it.playerName.lowercase() !in livePlayerNames } +
+                    networkPlayerResults.filter {
+                        it.playerName.lowercase() !in livePlayerNames && it.playerName.lowercase() !in dbPlayerNames
+                    }
 
                 _results.value = liveResults.copy(
                     players = mergedPlayers.sortedByDescending { it.relevanceScore }.take(10),
-                    series = dbSeries,
+                    series = resolvedSeries,
                     historicalMatches = dbHistorical,
                 )
             } finally {

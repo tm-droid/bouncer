@@ -233,6 +233,25 @@ sealed class BouncerScreen(val route: String) {
     }
 
     /**
+     * Team detail screen with team name argument.
+     */
+    data class TeamDetail(val teamName: String) : BouncerScreen("team/$teamName") {
+        companion object {
+            const val ROUTE_PATTERN = "team/{teamName}"
+            const val ARG_TEAM_NAME = "teamName"
+
+            fun createRoute(teamName: String): String = "team/${teamName.encodeUrlSafe()}"
+
+            val arguments = listOf(
+                navArgument(ARG_TEAM_NAME) {
+                    type = NavType.StringType
+                    nullable = false
+                }
+            )
+        }
+    }
+
+    /**
      * Match info/scorecard screen.
      *
      * @property matchId The unique identifier for the match
@@ -302,6 +321,7 @@ sealed class BouncerScreen(val route: String) {
                 isMoreChildRoute(route) -> More.route
                 route.startsWith("match/") || route.startsWith("match-info/") -> Matches.route
                 route.startsWith("player/") -> More.route
+                route.startsWith("team/") -> More.route
                 route.startsWith("squad/") -> Matches.route
                 route.startsWith("series/") -> More.route
                 route.startsWith("points-table/") -> More.route
