@@ -201,12 +201,15 @@ async function existingCommentaryIds({ db, matchId, error }) {
     throw new Error(`[READ-BUDGET-402] per-run read cap exceeded (${readsThisRun} > ${READ_BUDGET_PER_RUN}) — aborting`);
   }
   try {
-    const result = await db.listRows(DB_ID, COMMENTARY_COL, [
+    // node-appwrite 15 Databases API: listDocuments (listRows only exists on the
+    // TablesDB service of newer SDKs — calling it here threw on every run, silently
+    // disabling dedupe and pushing every write through the 409 backstop).
+    const result = await db.listDocuments(DB_ID, COMMENTARY_COL, [
       Query.equal("match_id", matchId),
       Query.orderDesc("sort_key"),
       Query.limit(SCAN_NEWEST),
     ]);
-    return new Set((result.rows ?? []).map((r) => r.$id));
+    return new Set((result.documents ?? []).map((r) => r.$id));
   } catch (e) {
     if (isBudget402(e)) {
       budget402UntilMs = Date.now() + READ_402_BACKOFF_MS;
