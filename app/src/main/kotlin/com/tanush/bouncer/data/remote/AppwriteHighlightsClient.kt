@@ -3,7 +3,6 @@ package com.tanush.bouncer.data.remote
 import com.tanush.bouncer.ApiKeys
 import com.tanush.bouncer.data.CacheConfig
 import io.appwrite.Query
-import io.appwrite.services.TablesDB
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -19,8 +18,8 @@ object AppwriteHighlightsClient : AppwriteTableClient("AppwriteHighlightsClient"
         if (!isReady) return null
         return withContext(Dispatchers.IO) {
             runCatching {
-                val db = tablesDB ?: return@runCatching null
-                fetchAllRows(db)
+                if (tablesDB == null) return@runCatching null
+                fetchAllRows()
             }.onFailure { e ->
                 logSilentFailure("Fetch highlights failed", e)
             }.getOrNull()
@@ -29,7 +28,7 @@ object AppwriteHighlightsClient : AppwriteTableClient("AppwriteHighlightsClient"
 
     // Cursor-based pagination — static limit(100) silently truncates as the table grows
     // (Appwrite default is 25; even 100 misses rows once the table exceeds that cap).
-    private suspend fun fetchAllRows(db: TablesDB): List<HighlightRow> {
+    private suspend fun fetchAllRows(): List<HighlightRow> {
         val allRows = mutableListOf<HighlightRow>()
         var lastId: String? = null
         var pageCount = 0
@@ -38,7 +37,9 @@ object AppwriteHighlightsClient : AppwriteTableClient("AppwriteHighlightsClient"
                 add(Query.limit(100))
                 if (lastId != null) add(Query.cursorAfter(lastId))
             }
-            val page = db.listRows(databaseId = dbId, tableId = tableId, queries = queries)
+            val page = guardedRead("highlights.page") {
+                it.listRows(databaseId = dbId, tableId = tableId, queries = queries)
+            } ?: break
             @Suppress("UNCHECKED_CAST")
             allRows.addAll(page.rows.map { HighlightRow.fromMap(it.data as? Map<String, Any?> ?: emptyMap()) })
             if (page.rows.size < 100) break

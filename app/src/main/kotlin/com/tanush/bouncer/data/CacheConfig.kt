@@ -20,4 +20,15 @@ object CacheConfig {
     const val AI_CACHE_PERMANENT_THRESHOLD_MS = 365L * 24 * 60 * 60 * 1000
     const val AI_CACHE_MAX_PERMANENT_ENTRIES = 500
     const val AI_CACHE_EVICTION_BATCH = 50
+    // Appwrite read-budget guard (402 limit_databases_reads_exceeded protection).
+    // Breaker is a latch: once open, a single probe read is allowed only every 6h —
+    // the org read budget resets monthly, so fast retries are pointless and billed.
+    const val READ_GUARD_PROBE_INTERVAL_MS = 21_600_000L // 6 hours
+    const val READ_GUARD_REPORT_INTERVAL_MS = 21_600_000L // Sentry re-alert at most every 6h per reason
+    // pullAllForms can legitimately burst ~100 pages; 200/min leaves headroom without
+    // hiding runaway loops. Tripping a cap opens the breaker — it always means a bug.
+    const val READ_GUARD_MAX_READS_PER_MINUTE = 200
+    const val READ_GUARD_MAX_READS_PER_HOUR = 1_500 // ~36K/day absolute ceiling per device
+    const val READ_GUARD_MINUTE_WINDOW_MS = 60_000L
+    const val READ_GUARD_HOUR_WINDOW_MS = 3_600_000L
 }

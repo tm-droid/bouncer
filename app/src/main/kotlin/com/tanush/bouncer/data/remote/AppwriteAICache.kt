@@ -40,14 +40,15 @@ object AppwriteAICache : AppwriteTableClient("AppwriteAICache") {
         if (!isReady) return null
         return withContext(Dispatchers.IO) {
             runCatching {
-                val db = tablesDB ?: return@runCatching null
                 val result = remoteRetry.withRetry(isRetryable = ::isTransient) {
-                    db.listRows(
-                        databaseId = dbId,
-                        tableId = tableId,
-                        queries = listOf(Query.equal("cache_key", key), Query.limit(1))
-                    )
-                }
+                    guardedRead("aiCache.get") {
+                        it.listRows(
+                            databaseId = dbId,
+                            tableId = tableId,
+                            queries = listOf(Query.equal("cache_key", key), Query.limit(1))
+                        )
+                    }
+                } ?: return@runCatching null
                 val row = result.rows.firstOrNull() ?: return@runCatching null
                 parseCommentaryRow(key, row.data)
             }.onFailure { e ->

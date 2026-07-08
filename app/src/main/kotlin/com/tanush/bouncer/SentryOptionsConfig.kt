@@ -111,8 +111,10 @@ class SentryOptionsConfig : Sentry.OptionsConfiguration<SentryAndroidOptions> {
                 if (value.contains(substring)) return true
             }
 
-            // 3. Transient connectivity errors — offline device, DNS failure, TCP refused
-            if (type == "ConnectException") return true
+            // 3. Transient connectivity errors — offline device, DNS failure, TCP refused.
+            //    ConnectException is only dropped for Sentry's own ingest endpoint: failures
+            //    reaching owned/third-party backends (Appwrite, RapidAPI, …) are actionable.
+            if (type == "ConnectException" && value.contains("sentry.io")) return true
             if (type == "SocketTimeoutException") return true
             if (type == "SocketException") return true
         }

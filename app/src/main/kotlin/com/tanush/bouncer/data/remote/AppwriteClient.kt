@@ -155,6 +155,7 @@ object AppwriteClient {
                 Log.d(TAG, "downloadModelWeightsIfNewer: downloaded ${bytes.size} bytes (remote newer by ${remoteUpdatedAt - localModified}ms)")
                 true
             }.onFailure { e ->
+                AppwriteReadGuard.reportIfBudget402("storage.modelWeights", e)
                 if (e is AppwriteException) {
                     if (e.code != 404) {
                         Sentry.addBreadcrumb("AppwriteClient.downloadModelWeightsIfNewer failed: ${e.message}")
@@ -181,6 +182,7 @@ object AppwriteClient {
             throw e
         } catch (e: Exception) {
             Log.d(TAG, "downloadFile $bucketId/$fileId failed: ${e.message}")
+            AppwriteReadGuard.reportIfBudget402("storage.downloadFile", e)
             if (e is AppwriteException && e.code == 404) {
                 sentryBreadcrumb("appwrite", "downloadFile $bucketId/$fileId: not found (404)", SentryLevel.WARNING)
             } else {

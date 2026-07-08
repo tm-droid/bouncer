@@ -6,6 +6,9 @@ const COL_ID = process.env.APPWRITE_AI_CACHE_COL_ID ?? "ai-commentary-cache";
 const TTL_MS = 60 * 60 * 1000;
 const PERM_EXPIRES = "2099-01-01T00:00:00.000Z";
 
+// Org-level monthly read budget exhausted — every DB read 402s project-wide.
+const isBudget402 = (e) => e?.code === 402 || e?.type === "limit_databases_reads_exceeded";
+
 const PROVIDERS = [
   { name: "groq",      url: "https://api.groq.com/openai/v1/chat/completions",      model: "llama-3.3-70b-versatile",         keyEnv: "GROQ_API_KEY" },
   { name: "cerebras",  url: "https://api.cerebras.ai/v1/chat/completions",           model: "llama-3.3-70b",                   keyEnv: "CEREBRAS_API_KEY" },
@@ -58,6 +61,11 @@ export default async ({ req, res, log, error }) => {
     }
     log(`Cache STALE: ${cacheKey}`);
   } catch (e) {
+    if (isBudget402(e)) {
+      // Abort before spending LLM tokens: cache reads AND the follow-up write are both dead.
+      error(`[READ-BUDGET-402] limit_databases_reads_exceeded — aborting generation`);
+      return res.json({ error: "read_budget_exceeded" }, 402);
+    }
     if (e?.code !== 404) error(`Cache read error: ${e?.message}`);
     log(`Cache MISS: ${cacheKey}`);
   }

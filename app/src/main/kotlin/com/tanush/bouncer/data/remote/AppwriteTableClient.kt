@@ -41,6 +41,8 @@ abstract class AppwriteTableClient(private val tag: String) {
         }
     }
 
+    // NOTE: Realtime is intentionally NOT paused by AppwriteReadGuard — websocket events
+    // are not billed DB reads; any follow-up fetches they trigger go through guardedRead.
     protected fun startSubscriptionLoop(onEvent: (io.appwrite.models.RealtimeResponseEvent<Map<String, Any>>) -> Unit) {
         reconnectScope.launch {
             var backoffMs = CacheConfig.REALTIME_RECONNECT_MIN_MS
@@ -76,6 +78,29 @@ abstract class AppwriteTableClient(private val tag: String) {
                 }
             }
         }
+    }
+
+    /**
+     * Funnel for all billed TablesDB reads. Returns null when the table is not configured
+     * or [AppwriteReadGuard] is blocking (breaker open / rate capped) — callers already
+     * treat null like the not-ready path. Failures are recorded (402 latches the guard)
+     * and then RETHROWN so each caller's existing runCatching + logSilentFailure handling
+     * is unchanged — the guard never suppresses errors.
+     */
+    protected suspend fun <T> guardedRead(name: String, block: suspend (TablesDB) -> T): T? {
+        val db = tablesDB ?: return null
+        if (AppwriteReadGuard.checkAndCount(name) != null) {
+            Log.w(tag, "Appwrite read '$name' blocked by AppwriteReadGuard")
+            return null
+        }
+        val result = runCatching { block(db) }
+        result.fold(
+            onSuccess = { AppwriteReadGuard.recordSuccess() },
+            onFailure = { e ->
+                if (e !is CancellationException) AppwriteReadGuard.recordFailure(name, e)
+            }
+        )
+        return result.getOrThrow()
     }
 
     /** Standard silent-failure log used by all remote-tier operations. */

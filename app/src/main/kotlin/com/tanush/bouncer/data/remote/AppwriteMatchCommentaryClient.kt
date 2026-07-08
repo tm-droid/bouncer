@@ -2,7 +2,6 @@ package com.tanush.bouncer.data.remote
 
 import com.tanush.bouncer.ApiKeys
 import io.appwrite.Query
-import io.appwrite.services.TablesDB
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -33,27 +32,29 @@ object AppwriteMatchCommentaryClient : AppwriteTableClient("AppwriteMatchComment
     suspend fun getForMatch(matchId: String): List<String> {
         if (!isReady) return emptyList()
         return withContext(Dispatchers.IO) {
-            val db = tablesDB ?: return@withContext emptyList()
             // Server-side order needs a sort_key index; if that's missing the ordered query 400s.
             // Fall back to an unordered fetch + client-side sort so a missing index never blanks the feed.
             runCatching {
-                queryRows(db, matchId, ordered = true)
+                queryRows(matchId, ordered = true)
             }.recoverCatching { e ->
                 logSilentFailure("Commentary ordered fetch failed; retrying unordered", e)
-                queryRows(db, matchId, ordered = false)
+                queryRows(matchId, ordered = false)
             }.onFailure { e ->
                 logSilentFailure("Commentary feed fetch failed", e)
             }.getOrDefault(emptyList())
         }
     }
 
-    private suspend fun queryRows(db: TablesDB, matchId: String, ordered: Boolean): List<String> {
+    private suspend fun queryRows(matchId: String, ordered: Boolean): List<String> {
         val queries = buildList {
             add(Query.equal("match_id", matchId))
             if (ordered) add(Query.orderDesc("sort_key"))
             add(Query.limit(FEED_LIMIT))
         }
-        val rows = db.listRows(databaseId = dbId, tableId = tableId, queries = queries).rows
+        val name = if (ordered) "commentary.ordered" else "commentary.unordered"
+        val rows = guardedRead(name) {
+            it.listRows(databaseId = dbId, tableId = tableId, queries = queries)
+        }?.rows ?: return emptyList()
         val sorted = if (ordered) rows else rows.sortedByDescending { (it.data["sort_key"] as? Number)?.toDouble() ?: 0.0 }
         return sorted.mapNotNull { (it.data["commentary"] as? String)?.takeIf { c -> c.isNotBlank() } }
     }

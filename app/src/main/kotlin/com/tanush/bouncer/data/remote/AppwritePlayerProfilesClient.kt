@@ -36,11 +36,12 @@ object AppwritePlayerProfilesClient : AppwriteTableClient("AppwritePlayerProfile
         if (!isReady) return null
         return withContext(Dispatchers.IO) {
             runCatching {
-                val db = tablesDB ?: return@runCatching null
                 // getRow() uses the primary key directly; Query.equal("$id") is unsupported in TablesDB
                 // and silently returns no rows, causing every profile lookup to miss the cache.
                 val row = try {
-                    db.getRow(databaseId = dbId, tableId = tableId, rowId = playerId)
+                    guardedRead("playerProfiles.getRow") {
+                        it.getRow(databaseId = dbId, tableId = tableId, rowId = playerId)
+                    } ?: return@runCatching null
                 } catch (e: AppwriteException) {
                     if (e.code == 404) return@runCatching null
                     throw e

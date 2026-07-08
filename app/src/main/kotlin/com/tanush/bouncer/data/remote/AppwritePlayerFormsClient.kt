@@ -104,7 +104,6 @@ object AppwritePlayerFormsClient : AppwriteTableClient("AppwritePlayerFormsClien
         if (!isReady) return emptyMap()
         return withContext(Dispatchers.IO) {
             runCatching {
-                val db = tablesDB ?: return@runCatching emptyMap<String, PlayerFormSnapshot>()
                 val allRows = mutableListOf<Map<String, Any>>()
                 var lastId: String? = null
                 var pageCount = 0
@@ -113,11 +112,15 @@ object AppwritePlayerFormsClient : AppwriteTableClient("AppwritePlayerFormsClien
                         add(Query.limit(100))
                         if (lastId != null) add(Query.cursorAfter(lastId))
                     }
-                    val page = db.listRows(
-                        databaseId = dbId,
-                        tableId = tableId,
-                        queries = queries
-                    )
+                    // Guard-blocked mid-loop → partial results; this loop is exactly the kind
+                    // of read burst AppwriteReadGuard's rate caps exist to contain.
+                    val page = guardedRead("playerForms.page") {
+                        it.listRows(
+                            databaseId = dbId,
+                            tableId = tableId,
+                            queries = queries
+                        )
+                    } ?: break
                     @Suppress("UNCHECKED_CAST")
                     allRows.addAll(page.rows.map { it.data as? Map<String, Any> ?: emptyMap() })
                     if (page.rows.size < 100) break

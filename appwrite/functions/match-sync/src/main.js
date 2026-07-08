@@ -24,6 +24,15 @@ const MAX_MATCHES = 12; // cap live matches processed per run
 const BALL_RE = /(\d{1,3}\.\d)/;
 const READ_ANY = ['read("any")'];
 
+// Read-budget protection: Appwrite bills DB reads at the org level (monthly budget);
+// exhausting it 402s every read project-wide. Expected reads/run = 1 listRows per live
+// match (max 12) — anything above READ_BUDGET_PER_RUN can only be a future bug.
+const READ_BUDGET_PER_RUN = 20;
+const READ_402_BACKOFF_MS = 6 * 60 * 60 * 1000; // budget resets monthly; retrying sooner is pointless
+let budget402UntilMs = 0; // survives warm invocations of the 1-min cron
+let readsThisRun = 0;
+const isBudget402 = (e) => e?.code === 402 || e?.type === "limit_databases_reads_exceeded";
+
 const docId = (s) => createHash("sha256").update(s).digest("hex").slice(0, 36);
 const sanitizeMatchId = (id) => String(id).replace(/[^a-zA-Z0-9._-]/g, "").slice(0, 36);
 
@@ -31,6 +40,11 @@ export default async ({ req, res, log, error }) => {
   if (!process.env.APPWRITE_API_KEY) {
     return res.json({ error: "Missing APPWRITE_API_KEY" }, 500);
   }
+  if (Date.now() < budget402UntilMs) {
+    error(`[READ-BUDGET-402] skipping run — read budget exhausted, cooldown until ${new Date(budget402UntilMs).toISOString()}`);
+    return res.json({ error: "read_budget_exceeded" }, 402);
+  }
+  readsThisRun = 0;
   const client = new Client()
     .setEndpoint(process.env.APPWRITE_FUNCTION_API_ENDPOINT)
     .setProject(process.env.APPWRITE_FUNCTION_PROJECT_ID)
@@ -68,6 +82,10 @@ export default async ({ req, res, log, error }) => {
     })
   );
 
+  if (Date.now() < budget402UntilMs) {
+    // A 402 surfaced mid-run: mark the whole execution failed so it's visible in the console.
+    return res.json({ error: "read_budget_exceeded", summary }, 402);
+  }
   return res.json({ processed: live.length, summary });
 };
 
@@ -178,6 +196,10 @@ async function upsertDetail({ db, matchId, detail, error }) {
 // One read per match: the newest commentary row IDs for this match. The create-on-409
 // path stays as the race backstop, so a missed/blank result only risks a redundant write.
 async function existingCommentaryIds({ db, matchId, error }) {
+  if (++readsThisRun > READ_BUDGET_PER_RUN) {
+    // Hard stop: expected max is 1 read per match (12 matches); exceeding this is a bug.
+    throw new Error(`[READ-BUDGET-402] per-run read cap exceeded (${readsThisRun} > ${READ_BUDGET_PER_RUN}) — aborting`);
+  }
   try {
     const result = await db.listRows(DB_ID, COMMENTARY_COL, [
       Query.equal("match_id", matchId),
@@ -186,6 +208,11 @@ async function existingCommentaryIds({ db, matchId, error }) {
     ]);
     return new Set((result.rows ?? []).map((r) => r.$id));
   } catch (e) {
+    if (isBudget402(e)) {
+      budget402UntilMs = Date.now() + READ_402_BACKOFF_MS;
+      error(`[READ-BUDGET-402] limit_databases_reads_exceeded on ${matchId} — aborting run, cooldown ${READ_402_BACKOFF_MS / 60000} min`);
+      throw e; // fail the match (and run) loudly instead of silently emptying the dedupe set
+    }
     error(`Commentary existence read failed (${matchId}): ${e?.message}`);
     return new Set();
   }

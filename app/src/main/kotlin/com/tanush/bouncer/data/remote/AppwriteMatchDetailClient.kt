@@ -50,12 +50,13 @@ object AppwriteMatchDetailClient : AppwriteTableClient("AppwriteMatchDetail") {
         if (!isReady) return null
         return withContext(Dispatchers.IO) {
             runCatching {
-                val db = tablesDB ?: return@runCatching null
-                val result = db.listRows(
-                    databaseId = dbId,
-                    tableId = tableId,
-                    queries = listOf(Query.equal("match_id", matchId), Query.limit(1))
-                )
+                val result = guardedRead("matchDetail.fetch") {
+                    it.listRows(
+                        databaseId = dbId,
+                        tableId = tableId,
+                        queries = listOf(Query.equal("match_id", matchId), Query.limit(1))
+                    )
+                } ?: return@runCatching null
                 val raw = result.rows.firstOrNull()?.data?.get("payload") as? String ?: return@runCatching null
                 parsePayload(raw)
             }.onFailure { e ->
