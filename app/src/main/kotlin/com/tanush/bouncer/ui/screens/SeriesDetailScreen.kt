@@ -59,9 +59,12 @@ fun SeriesDetailScreen(
                     Tab(
                         selected = selectedTab == index,
                         onClick = {
-                            selectedTab = index
+                            // Points Table opens its own screen; keep the current
+                            // tab selected so returning here doesn't land on a blank body.
                             if (index == 1) {
                                 onPointsTableClick(seriesId)
+                            } else {
+                                selectedTab = index
                             }
                         },
                         text = {

@@ -91,8 +91,7 @@ private fun isTabActive(currentRoute: String?, tabRoute: String): Boolean {
     }
     // "Matches" tab for match detail routes
     if (tabRoute == "all_matches") {
-        return currentRoute.startsWith("match/") || currentRoute.startsWith("match-info/") ||
-                currentRoute.startsWith("squad/")
+        return currentRoute.startsWith("match/")
     }
     // "News" tab for news detail
     if (tabRoute == "news") {

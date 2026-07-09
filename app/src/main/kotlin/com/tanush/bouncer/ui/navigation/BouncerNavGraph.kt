@@ -190,49 +190,6 @@ sealed class BouncerScreen(val route: String) {
     }
 
     /**
-     * Team squad screen.
-     *
-     * @property teamId The unique identifier for the team
-     * @property matchId Optional match ID for match-specific squad
-     */
-    data class Squad(val teamId: String, val matchId: String? = null) : BouncerScreen(
-        if (matchId != null) "squad/$teamId/$matchId" else "squad/$teamId"
-    ) {
-        companion object {
-            const val ROUTE_PATTERN = "squad/{teamId}"
-            const val ROUTE_PATTERN_WITH_MATCH = "squad/{teamId}/{matchId}"
-            const val ARG_TEAM_ID = "teamId"
-            const val ARG_MATCH_ID = "matchId"
-
-            fun createRoute(teamId: String, matchId: String? = null): String =
-                if (matchId != null) {
-                    "squad/${teamId.encodeUrlSafe()}/${matchId.encodeUrlSafe()}"
-                } else {
-                    "squad/${teamId.encodeUrlSafe()}"
-                }
-
-            val arguments = listOf(
-                navArgument(ARG_TEAM_ID) {
-                    type = NavType.StringType
-                    nullable = false
-                }
-            )
-
-            val argumentsWithMatch = listOf(
-                navArgument(ARG_TEAM_ID) {
-                    type = NavType.StringType
-                    nullable = false
-                },
-                navArgument(ARG_MATCH_ID) {
-                    type = NavType.StringType
-                    nullable = true
-                    defaultValue = null
-                }
-            )
-        }
-    }
-
-    /**
      * Team detail screen with team name argument.
      */
     data class TeamDetail(val teamName: String) : BouncerScreen("team/$teamName") {
@@ -244,27 +201,6 @@ sealed class BouncerScreen(val route: String) {
 
             val arguments = listOf(
                 navArgument(ARG_TEAM_NAME) {
-                    type = NavType.StringType
-                    nullable = false
-                }
-            )
-        }
-    }
-
-    /**
-     * Match info/scorecard screen.
-     *
-     * @property matchId The unique identifier for the match
-     */
-    data class MatchInfo(val matchId: String) : BouncerScreen("match-info/$matchId") {
-        companion object {
-            const val ROUTE_PATTERN = "match-info/{matchId}"
-            const val ARG_MATCH_ID = "matchId"
-
-            fun createRoute(matchId: String): String = "match-info/${matchId.encodeUrlSafe()}"
-
-            val arguments = listOf(
-                navArgument(ARG_MATCH_ID) {
                     type = NavType.StringType
                     nullable = false
                 }
@@ -319,10 +255,9 @@ sealed class BouncerScreen(val route: String) {
                 route in primaryTabs.map { it.route } -> route
                 route.startsWith("news/") -> News.route
                 isMoreChildRoute(route) -> More.route
-                route.startsWith("match/") || route.startsWith("match-info/") -> Matches.route
+                route.startsWith("match/") -> Matches.route
                 route.startsWith("player/") -> More.route
                 route.startsWith("team/") -> More.route
-                route.startsWith("squad/") -> Matches.route
                 route.startsWith("series/") -> More.route
                 route.startsWith("points-table/") -> More.route
                 else -> Home.route

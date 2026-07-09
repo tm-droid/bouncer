@@ -44,7 +44,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.runtime.Immutable
 import coil.compose.AsyncImage
 import com.tanush.bouncer.models.FormatStats
 import com.tanush.bouncer.models.PlayerProfile
@@ -52,32 +51,12 @@ import com.tanush.bouncer.network.PlayerProfileScraper
 import com.tanush.bouncer.ui.components.premium.BatterForm
 import com.tanush.bouncer.ui.components.premium.PlayerFormCard
 import com.tanush.bouncer.ui.components.v2.BouncerTopBarV2
+import com.tanush.bouncer.ui.components.v2.EmptyStateV2
 import com.tanush.bouncer.ui.components.v2.FilterChipRowV2
 import com.tanush.bouncer.ui.components.v2.SectionHeaderV2
 import com.tanush.bouncer.ui.components.v2.ShimmerPlayerHeader
 import com.tanush.bouncer.ui.components.v2.ShimmerStatGrid
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
-
-@Immutable
-private data class PlayerDetailsV2(
-    val name: String, val role: String, val imageUrl: String?, val country: String,
-    val age: Int, val battingStyle: String, val bowlingStyle: String,
-    val isCaptain: Boolean, val isWicketKeeper: Boolean,
-    val battingStats: BattingStatsV2, val bowlingStats: BowlingStatsV2?,
-)
-
-@Immutable
-private data class BattingStatsV2(
-    val matches: Int, val innings: Int, val runs: Int, val highScore: String,
-    val average: Double, val strikeRate: Double, val hundreds: Int, val fifties: Int,
-    val fours: Int, val sixes: Int,
-)
-
-@Immutable
-private data class BowlingStatsV2(
-    val matches: Int, val wickets: Int, val bestBowling: String,
-    val average: Double, val economy: Double, val fiveWickets: Int,
-)
 
 private enum class LoadState { Loading, Success, Error }
 
@@ -103,9 +82,6 @@ fun PlayerDetailScreenV2(
     var loadState by remember { mutableStateOf(LoadState.Loading) }
     var retryCount by remember { mutableIntStateOf(0) }
 
-    // Fallback mock data
-    var mockPlayer by remember { mutableStateOf<PlayerDetailsV2?>(null) }
-
     LaunchedEffect(playerName, retryCount) {
         loadState = LoadState.Loading
         val scraped = PlayerProfileScraper.scrapeProfile(playerName)
@@ -116,8 +92,6 @@ fun PlayerDetailScreenV2(
             val firstAvailable = formats.firstOrNull { scraped.stats.containsKey(it) }
             if (firstAvailable != null) selectedFormat = firstAvailable
         } else {
-            // Fallback to mock data so the screen isn't empty
-            mockPlayer = generateMockPlayer(playerName, playerRole, playerImageUrl, isCaptain, isWicketKeeper)
             loadState = LoadState.Error
         }
     }
@@ -155,48 +129,30 @@ fun PlayerDetailScreenV2(
             }
 
             LoadState.Error -> {
-                // Show mock data with a retry banner at the top
-                val p = mockPlayer ?: return@Scaffold
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize().padding(padding),
-                    contentPadding = PaddingValues(spacing.lg),
-                    verticalArrangement = Arrangement.spacedBy(spacing.lg),
+                // Honest failure state — no placeholder stats masquerading as real data.
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(padding)
+                        .padding(spacing.lg),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center,
                 ) {
-                    item(key = "retry_banner") {
-                        Card(
-                            colors = CardDefaults.cardColors(containerColor = colors.surfaceVariant),
-                        ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth().padding(spacing.md),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Text(
-                                    "Could not load live data",
-                                    style = typography.bodySmall,
-                                    color = colors.textSecondary,
-                                    modifier = Modifier.weight(1f),
-                                )
-                                Button(
-                                    onClick = { retryCount++ },
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = colors.primary,
-                                        contentColor = colors.onPrimary,
-                                    ),
-                                ) {
-                                    Icon(Icons.Default.Refresh, "Retry", Modifier.size(16.dp))
-                                    Spacer(Modifier.width(spacing.xs))
-                                    Text("Retry", style = typography.labelMedium)
-                                }
-                            }
-                        }
-                    }
-                    item(key = "header") { MockPlayerHeader(p) }
-                    item(key = "quick_info") { MockQuickInfo(p) }
-                    item(key = "batting") { MockBattingStats(p) }
-                    val bs = p.bowlingStats
-                    if (bs != null) {
-                        item(key = "bowling") { MockBowlingStats(bs) }
+                    EmptyStateV2(
+                        icon = Icons.Default.Person,
+                        title = "Couldn't load $playerName",
+                        subtitle = "The profile isn't available right now. Check your connection and try again.",
+                    )
+                    Button(
+                        onClick = { retryCount++ },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = colors.primary,
+                            contentColor = colors.onPrimary,
+                        ),
+                    ) {
+                        Icon(Icons.Default.Refresh, "Retry", Modifier.size(16.dp))
+                        Spacer(Modifier.width(spacing.xs))
+                        Text("Retry", style = typography.labelMedium)
                     }
                 }
             }
@@ -383,102 +339,6 @@ private fun buildBatterForm(profile: PlayerProfile): BatterForm? {
     )
 }
 
-// ── Mock data fallback composables ──────────────────────────────────────────────
-
-@Composable
-private fun MockPlayerHeader(p: PlayerDetailsV2) {
-    val colors = BouncerThemeV2.colors
-    val typography = BouncerThemeV2.typography
-    val spacing = BouncerThemeV2.spacing
-    Card(
-        colors = CardDefaults.cardColors(containerColor = colors.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = BouncerThemeV2.elevation.card),
-    ) {
-        Column(
-            modifier = Modifier.fillMaxWidth().padding(spacing.xl),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            if (p.imageUrl != null) {
-                AsyncImage(model = p.imageUrl, contentDescription = p.name, modifier = Modifier.size(72.dp).clip(CircleShape))
-            } else {
-                Box(Modifier.size(72.dp).clip(CircleShape).background(colors.surfaceVariant), contentAlignment = Alignment.Center) {
-                    Icon(Icons.Default.Person, "Player", Modifier.size(36.dp), tint = colors.textSecondary)
-                }
-            }
-            Spacer(Modifier.height(spacing.md))
-            Text(p.name, style = typography.headlineMedium, fontWeight = FontWeight.Bold, color = colors.onSurface)
-            Text(p.role, style = typography.bodyMedium, color = colors.textSecondary)
-            Spacer(Modifier.height(spacing.sm))
-            Row(horizontalArrangement = Arrangement.Center) {
-                Text(p.country, style = typography.bodySmall, color = colors.textSecondary)
-                if (p.isCaptain) { Spacer(Modifier.width(spacing.sm)); PillBadge("C") }
-                if (p.isWicketKeeper) { Spacer(Modifier.width(spacing.sm)); PillBadge("WK") }
-            }
-        }
-    }
-}
-
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun MockQuickInfo(p: PlayerDetailsV2) {
-    val spacing = BouncerThemeV2.spacing
-    FlowRow(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(spacing.sm),
-        verticalArrangement = Arrangement.spacedBy(spacing.sm),
-    ) {
-        InfoPill("Age: ${p.age}")
-        InfoPill(p.battingStyle)
-        if (p.bowlingStyle.isNotBlank()) InfoPill(p.bowlingStyle)
-    }
-}
-
-@Composable
-private fun MockBattingStats(p: PlayerDetailsV2) {
-    val spacing = BouncerThemeV2.spacing
-    val colors = BouncerThemeV2.colors
-    SectionHeaderV2("Batting Career")
-    Spacer(Modifier.height(spacing.sm))
-    Card(
-        colors = CardDefaults.cardColors(containerColor = colors.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = BouncerThemeV2.elevation.card),
-    ) {
-        Column(Modifier.padding(spacing.lg)) {
-            StatGrid(
-                listOf(
-                    "Matches" to "${p.battingStats.matches}", "Innings" to "${p.battingStats.innings}",
-                    "Runs" to "${p.battingStats.runs}", "HS" to p.battingStats.highScore,
-                    "Avg" to "%.1f".format(p.battingStats.average), "SR" to "%.1f".format(p.battingStats.strikeRate),
-                    "100s" to "${p.battingStats.hundreds}", "50s" to "${p.battingStats.fifties}",
-                    "4s" to "${p.battingStats.fours}", "6s" to "${p.battingStats.sixes}",
-                ),
-            )
-        }
-    }
-}
-
-@Composable
-private fun MockBowlingStats(bs: BowlingStatsV2) {
-    val spacing = BouncerThemeV2.spacing
-    val colors = BouncerThemeV2.colors
-    SectionHeaderV2("Bowling Career")
-    Spacer(Modifier.height(spacing.sm))
-    Card(
-        colors = CardDefaults.cardColors(containerColor = colors.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = BouncerThemeV2.elevation.card),
-    ) {
-        Column(Modifier.padding(spacing.lg)) {
-            StatGrid(
-                listOf(
-                    "Matches" to "${bs.matches}", "Wickets" to "${bs.wickets}",
-                    "Best" to bs.bestBowling, "Avg" to "%.1f".format(bs.average),
-                    "Econ" to "%.1f".format(bs.economy), "5W" to "${bs.fiveWickets}",
-                ),
-            )
-        }
-    }
-}
-
 // ── Shared composables ──────────────────────────────────────────────────────────
 
 @Composable
@@ -526,39 +386,5 @@ private fun InfoPill(text: String) {
         modifier = Modifier
             .background(colors.surfaceVariant, RoundedCornerShape(8.dp))
             .padding(horizontal = 12.dp, vertical = 6.dp),
-    )
-}
-
-// ── Mock data generator (fallback) ──────────────────────────────────────────────
-
-private fun generateMockPlayer(
-    name: String, role: String, imageUrl: String?,
-    isCaptain: Boolean, isWicketKeeper: Boolean,
-): PlayerDetailsV2 {
-    val hash = name.hashCode().toLong().let { kotlin.math.abs(it) }
-    return PlayerDetailsV2(
-        name = name, role = role, imageUrl = imageUrl,
-        country = "India", age = (25 + (hash % 15)).toInt(),
-        battingStyle = if (hash % 2 == 0L) "Right Hand Bat" else "Left Hand Bat",
-        bowlingStyle = when {
-            role.contains("Bowl", true) -> if (hash % 2 == 0L) "Right Arm Fast" else "Left Arm Spin"
-            role.contains("All", true) -> "Right Arm Medium"
-            else -> ""
-        },
-        isCaptain = isCaptain, isWicketKeeper = isWicketKeeper,
-        battingStats = BattingStatsV2(
-            matches = (50 + (hash % 200)).toInt(), innings = (40 + (hash % 180)).toInt(),
-            runs = (1000 + (hash % 10000)).toInt(), highScore = "${100 + (hash % 150)}",
-            average = 30.0 + (hash % 30), strikeRate = 60.0 + (hash % 80),
-            hundreds = (hash % 30).toInt(), fifties = (hash % 50).toInt(),
-            fours = (100 + hash % 500).toInt(), sixes = (20 + hash % 100).toInt(),
-        ),
-        bowlingStats = if (role.contains("Bat", true) && !role.contains("All", true)) null
-        else BowlingStatsV2(
-            matches = (50 + (hash % 200)).toInt(), wickets = (10 + (hash % 200)).toInt(),
-            bestBowling = "${3 + (hash % 5)}/${20 + (hash % 40)}",
-            average = 25.0 + (hash % 20), economy = 3.0 + (hash % 5),
-            fiveWickets = (hash % 8).toInt(),
-        ),
     )
 }
