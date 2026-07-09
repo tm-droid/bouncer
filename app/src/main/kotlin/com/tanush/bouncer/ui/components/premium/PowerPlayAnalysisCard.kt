@@ -43,6 +43,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.ui.theme.ChartBlue
 import com.tanush.bouncer.ui.theme.BouncerDesignSystem
+import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 
 /**
  * PowerPlay Analysis Card
@@ -104,7 +105,7 @@ fun PowerPlayAnalysisCard(
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF1A1A2E)),
+        colors = CardDefaults.cardColors(containerColor = BouncerThemeV2.colors.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 12.dp),
     ) {
         Column(

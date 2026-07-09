@@ -24,6 +24,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.ui.theme.*
+import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 import kotlin.math.*
 
 /**
@@ -81,7 +82,7 @@ fun OverByOverComparisonCard(
     Card(
         modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = Color(0xFF0D1117)
+            containerColor = BouncerThemeV2.colors.surface
         ),
         shape = RoundedCornerShape(20.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)

@@ -36,6 +36,7 @@ import com.tanush.bouncer.analysis.CricketConstants
 import com.tanush.bouncer.analysis.MatchProjections
 import com.tanush.bouncer.ui.theme.*
 import com.tanush.bouncer.ui.theme.BouncerDesignSystem
+import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 
 /**
  * Live scoring graph card
@@ -85,7 +86,7 @@ fun LiveScoringGraphCard(
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF1A1A2E)),
+        colors = CardDefaults.cardColors(containerColor = BouncerThemeV2.colors.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 12.dp),
     ) {
         Column(
@@ -106,7 +107,7 @@ fun LiveScoringGraphCard(
                             .clip(CircleShape)
                             .background(
                                 Brush.linearGradient(
-                                    colors = listOf(colors.statusInfo, Color(0xFF2196F3)),
+                                    colors = listOf(colors.statusInfo, colors.statusInfo.copy(alpha = 0.7f)),
                                 ),
                             ),
                         contentAlignment = Alignment.Center,
@@ -184,7 +185,7 @@ fun LiveScoringGraphCard(
                     .fillMaxWidth()
                     .height(200.dp)
                     .clip(RoundedCornerShape(12.dp))
-                    .background(Color(0xFF2D2D44))
+                    .background(BouncerThemeV2.colors.surfaceVariant)
                     .padding(16.dp),
             ) {
                 Canvas(modifier = Modifier.fillMaxSize()) {

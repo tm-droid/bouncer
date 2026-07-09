@@ -26,6 +26,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.ui.theme.*
+import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 
 /**
  * Premium batsman milestone card with celebration effects
@@ -99,8 +100,8 @@ fun BatsmanMilestoneCard(
         MilestoneType.FIFTY -> colors.statusInfo
         MilestoneType.HUNDRED -> hierarchy.secondary.primary
         MilestoneType.DOUBLE_HUNDRED -> colors.statusSuccess
-        MilestoneType.TRIPLE_HUNDRED -> Color(0xFFFF6B6B)
-        MilestoneType.QUADRUPLE_HUNDRED -> Color(0xFFE040FB)
+        MilestoneType.TRIPLE_HUNDRED -> colors.statusLive
+        MilestoneType.QUADRUPLE_HUNDRED -> BouncerThemeV2.colors.cricket.six
     }
     
     Card(

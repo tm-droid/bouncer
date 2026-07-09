@@ -33,6 +33,7 @@ import com.tanush.bouncer.ui.theme.ChartBlue
 import com.tanush.bouncer.ui.theme.ShinyGoldMid
 import com.tanush.bouncer.ui.theme.SuccessGreen
 import com.tanush.bouncer.ui.theme.BouncerDesignSystem
+import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 
 /**
  * Partnership Breakdown Card
@@ -99,7 +100,7 @@ fun PartnershipBreakdownCard(
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF1A1A2E)),
+        colors = CardDefaults.cardColors(containerColor = BouncerThemeV2.colors.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 12.dp),
     ) {
         Column(
