@@ -127,3 +127,142 @@ Four commits, each built (`assembleDebug` + unit tests) and detekt-gated (zero n
 | Layout Inspector recomposition-count verification + on-device accessibility-scanner pass | Needs an attached device/emulator session; code-level checks (memoization, semantics, contrast math) done — runtime verification recommended before release |
 | `HighlightsTabV2` (52-line shell) | Needs highlight data wiring, not UX polish — product decision |
 | Live-region tuning under rapid updates | `Polite` mode chosen to avoid TalkBack spam; verify announcement frequency on-device with a real live match |
+
+---
+
+# Delta Audit — July 2026 round 2
+
+Second pass under five lenses (A visual system, B interaction/feedback, C mobile structure, D emotional engagement, E behavioral psychology). Scope: delta only — items shipped in §4 are not re-audited; findings below are new or were deferred. Stitch mockups (`design/stitch-mocks/`, project "Bouncer Mocks") treated as intended direction. Verified against code, not screenshots.
+
+## Corrections to prior audit / exploration false-positives
+
+- Trophy Room, Achievements, Activity Feed, Stats Hub **do exist** as V2 screens (`TrophyRoomScreenV2`, `AchievementsScreenV2`, `IntelligenceFeedScreenV2`, `StatsHubScreenV2`) — Stitch gaps are content depth, not missing screens.
+- Stitch mocks use Space Grotesk headlines; app is Inter-only — accepted deviation, single-font rule wins (Lens A typography: **Pass**).
+- `ScreenBackgroundV2.kt` working-tree diff was whitespace only.
+
+## Lens A — Visual System Consistency
+
+> **Principle:** Component consistency & token discipline
+> **Status:** Pass (V2 layer) / Fail (legacy layer)
+> **Rationale:** `ui/theme/v2/` + `ui/components/v2/` fully tokenized — zero hex, zero glow, 6 shape tokens, 13-step Inter scale, tonal dark elevation. All debt confined to legacy `ui/components/` root (~24 files with hex; PitchMapView 12, LiveActivityStyles 10), `glass/` (5 files glassmorphism), `premium/` (~14 files gradient/glow).
+> **Recommendation:** Delete verified-dead legacy files (S3); defer wholesale glass/premium removal (blast radius).
+
+> **Principle:** Visual economy (gradient/glow earning its place)
+> **Status:** Pass (V2) / Fail (legacy)
+> **Rationale:** V2 gradients are limited to team-color hero backgrounds and shimmer — earning their place. ~47 legacy files use glow/blur decoratively.
+> **Recommendation:** Same as above; no V2 change needed.
+
+> **Principle:** Redundant primitives
+> **Status:** Fail
+> **Rationale:** 3 empty-state components, 2 pull-refresh wrappers, 2 skeletons, 2 bottom navs, 2 top bars still coexist.
+> **Recommendation:** Dedup empty states → `EmptyStateV2` (S1) and pull-refresh → `PullRefreshWrapperV2` with cricket-ball indicator (S2) now; nav/top-bar/skeleton dedup deferred (whole-app chrome, needs screenshot review).
+
+> **Principle:** Deprecation hygiene
+> **Status:** Fail
+> **Rationale:** `BouncerColors.kt` `@Deprecated` points at nonexistent `UnifiedColors.kt`; `BouncerNavGraph` comments claim Favorites/Stats are bottom tabs (actual: Home/Matches/News/More).
+> **Recommendation:** Fix pointers/comments (Q4).
+
+## Lens B — Interaction, Affordance & Feedback
+
+> **Principle:** Every action gets explicit feedback
+> **Status:** Fail
+> **Rationale:** Subscribe bell (`MatchCardV2` L150) flips icon silently — primary action on primary card, no haptic. Onboarding team follow fires `subscribeToTopic` with zero acknowledgement. Player favorite toggle silent. Preference-gated haptic system (`utils/HapticFeedback.kt` with CONFIRM/REJECT) exists and is unused at these sites.
+> **Recommendation:** Haptic + micro-bounce on bell; haptic on onboarding select and favorite toggle (Q1).
+
+> **Principle:** Error states exist everywhere data is fetched
+> **Status:** Fail (systemic)
+> **Rationale:** Error frequently collapses into "empty": PointsTable ViewModel exposes `_error` but the screen's `when{}` ignores it; News same; Search swallows `AppResult.Error` into empty lists (reads as "no results" on network failure); match-detail container has no top-level error; refresh failures show nothing anywhere.
+> **Recommendation:** Render error branches with `EmptyStateV2(onRetry)` (Q2); match-detail UiState error (M1); refresh-failure snackbars (M2). Copy: cricket-flavored, honest ("Rain delay — couldn't reach the server").
+
+> **Principle:** No blank screens
+> **Status:** Fail
+> **Rationale:** `InfoTabV2` and `OverviewTabV2` render blank when data absent (sections gated on `isNotEmpty()`); `StatsHubScreenV2`, `TeamDetailScreen`, `NewsDetailScreenV2` lack loading/empty affordances.
+> **Recommendation:** Skeletons + `EmptyStateV2` (M1).
+
+> **Principle:** Gestures where they fit
+> **Status:** Needs Improvement
+> **Rationale:** Pull-refresh only on Home/AllMatches/News; PointsTable/TeamDetail/SeriesList are data screens with staleness and refresh functions already on their ViewModels. Long-press context menus already exist (MatchCardV2, Commentary) — prior audit shipped those.
+> **Recommendation:** `PullRefreshWrapperV2` on the three screens (M4).
+
+> **Principle:** Text over imagery legibility
+> **Status:** Pass
+> **Rationale:** App places text below/beside images, never overlaid; `CoilImage` wrapper handles broken images. Scrim tokens exist if ever needed.
+> **Recommendation:** None.
+
+## Lens C — Mobile Structure & Navigation
+
+> **Principle:** Bottom nav 3–5 destinations, ≥44px targets
+> **Status:** Pass
+> **Rationale:** 4 tabs (Home/Matches/News/More), Material3 NavigationBar defaults ≥48dp. Prior audit fixed sub-48dp targets.
+> **Recommendation:** None.
+
+> **Principle:** One screen one job / no double-nesting
+> **Status:** Pass
+> **Rationale:** Match detail's 6 tabs are progressive disclosure done right; secondary actions already in bottom sheets (`MatchContextMenuSheet`, `ReminderBottomSheet`); cards not double-nested in V2.
+> **Recommendation:** None.
+
+## Lens D — Emotional Engagement & Polish
+
+> **Principle:** Motion as feedback, not decoration
+> **Status:** Fail
+> **Rationale:** Zero `Crossfade` and zero `animateContentSize` app-wide — skeleton→content pops, expand/collapse snaps. Peaks (wicket/boundary flash + haptic) shipped in Phase B; transitions did not.
+> **Recommendation:** Fade skeleton→content on state-branch screens; `animateContentSize` on expandables; Material default specs, reduced-motion gated (M3).
+
+> **Principle:** Reduced-motion respect
+> **Status:** Fail (one site)
+> **Rationale:** `BatsmanMilestoneCard` infinite sparkle ignores reduced-motion (deferred item from round 1); StatusBadge pattern exists to copy.
+> **Recommendation:** Gate it + sweep remaining `rememberInfiniteTransition` sites (Q3).
+
+> **Principle:** Mascot/character moment
+> **Status:** Pass (deliberate skip — user decision)
+> **Rationale:** Cricket-ball pull-refresh indicator is the app's brand-delight moment; a new illustrated character is high-effort/subjective.
+> **Recommendation:** Preserve the cricket ball through pull-refresh dedup (S2). Future option only.
+
+> **Principle:** Warm copy at high-stakes moments
+> **Status:** Needs Improvement
+> **Rationale:** New error states are the opportunity; notification permission page is structurally fine but clinical.
+> **Recommendation:** Cricket-flavored error copy (Q2/M1); one priming line before permission button (Q1).
+
+## Lens E — Behavioral Psychology (applies only where flows exist)
+
+> **Principle:** Loss aversion / contrast (premium, upsell, ads)
+> **Status:** N/A — explicitly
+> **Rationale:** Free app: no paywall, no signup, no ads, no premium tier in code (Stitch "AI Forecast (Premium)" mock has no code counterpart). Nothing to audit; not inventing one.
+> **Recommendation:** None.
+
+> **Principle:** Reciprocity (value before permission)
+> **Status:** Pass (structure) / Needs Improvement (copy)
+> **Rationale:** Onboarding picks teams before the notification-permission page, which has an explicit skip path — ordering already correct.
+> **Recommendation:** Priming line "Follow your teams first — we'll only ping you about them" (Q1).
+
+> **Principle:** IKEA effect
+> **Status:** Pass
+> **Rationale:** Team selection during onboarding + favourites-shape-the-feed (Phase B2) already implement investment-before-commitment.
+> **Recommendation:** None.
+
+> **Principle:** Smart defaults
+> **Status:** Pass
+> **Rationale:** Notification prefs default sensibly; onboarding is pre-seeded (no "0%" moment — pager, not a progress form).
+> **Recommendation:** None.
+
+## Stitch alignment gaps (flagged, not built — user decision)
+
+Content-depth gaps vs mocks, all needing product/data work, out of scope this round: Trophy Room & Achievements depth, Activity Feed population, Analytics Hub visualizations, AI Forecast premium layout, `HighlightsTabV2` data wiring, home-screen widget redesign (RemoteViews token system prerequisite).
+
+## Round-2 backlog (implemented this round unless marked deferred)
+
+| ID | Change | Lens | Effort |
+|----|--------|------|--------|
+| Q1 | Haptics/bounce on silent toggles + onboarding priming line | B/D/E | S |
+| Q2 | Render existing errors: PointsTable, News, Search (+`_error` flow) | B | S |
+| Q3 | Reduced-motion gates on infinite animations | D/a11y | S |
+| Q4 | Deprecation pointer + stale nav comments | A | S |
+| M1 | Blank-render screens get states; match-detail top-level error | B | M |
+| M3 | Crossfade skeleton→content; animateContentSize expandables | D | M |
+| M2 | Refresh-failure snackbars (News, AllMatches, Home) | B | M |
+| M4 | Pull-refresh: PointsTable, TeamDetail, SeriesList | B/C | S |
+| S1 | Empty-state dedup → EmptyStateV2 | A | M |
+| S2 | Pull-refresh dedup, cricket ball kept | A/D | M |
+| S3 | Verified dead legacy file deletion | A | M |
+
+Still deferred (unchanged reasons + new): nav/top-bar/skeleton/spacing dedup, gold-discipline sweep (needs allowlist decision), LiveActivityViewModel refactor, widgets/notifications hex, wholesale glass/premium deletion, HighlightsTab wiring, on-device passes, full `ScreenState<T>` adoption.
