@@ -171,7 +171,11 @@ private fun NavGraphBuilder.primaryTabDestinations(
             onBackClick = {
                 navController.navigateToTab(BouncerScreen.Home.route)
             },
-            onTeamClick = { }
+            onTeamClick = { teamName ->
+                navController.navigateForward(
+                    BouncerScreen.TeamDetail.createRoute(teamName)
+                )
+            }
         )
     }
 

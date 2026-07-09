@@ -59,7 +59,7 @@ fun EmptyStateV2(
                 imageVector = icon,
                 contentDescription = null,
                 modifier = Modifier.size(56.dp),
-                tint = colors.textSecondary.copy(alpha = 0.5f),
+                tint = colors.textSecondary.copy(alpha = 0.7f),
             )
             Spacer(Modifier.height(spacing.lg))
             Text(

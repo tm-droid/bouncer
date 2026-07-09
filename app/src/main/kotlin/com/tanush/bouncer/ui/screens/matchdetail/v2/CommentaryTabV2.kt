@@ -430,8 +430,10 @@ private fun ResultPill(ball: ParsedBall) {
         ball.isFour -> Triple("4", cricket.four, cricket.four.copy(alpha = 0.2f))
         ball.isWide -> Triple("WD", cricket.wide, cricket.wide.copy(alpha = 0.15f))
         ball.isNoBall -> Triple("NB", cricket.noBall, cricket.noBall.copy(alpha = 0.15f))
-        ball.runs == 0 -> Triple("·", colors.onSurface.copy(alpha = 0.35f), colors.surfaceVariant)
-        else -> Triple(ball.runs.toString(), colors.onSurface.copy(alpha = 0.6f), colors.surfaceVariant)
+        // textSecondary keeps dot/run balls visually quieter than boundaries
+        // while staying above the 4.5:1 AA contrast floor (raw alpha dips failed it).
+        ball.runs == 0 -> Triple("·", colors.textSecondary, colors.surfaceVariant)
+        else -> Triple(ball.runs.toString(), colors.onSurface, colors.surfaceVariant)
     }
 
     Box(
@@ -461,7 +463,7 @@ private fun BallBadge(ball: String, size: Dp = 28.dp) {
         b == "4" -> cricket.four.copy(alpha = 0.2f) to cricket.four
         b.startsWith("WD") || b.startsWith("NB") || b.startsWith("LB") || b.startsWith("B") ->
             cricket.wide.copy(alpha = 0.15f) to cricket.wide
-        b == "." -> colors.surfaceVariant to colors.onSurface.copy(alpha = 0.3f)
+        b == "." -> colors.surfaceVariant to colors.textSecondary
         else -> colors.surfaceVariant to colors.onSurface
     }
 

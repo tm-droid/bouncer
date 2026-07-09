@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -27,6 +28,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.tanush.bouncer.models.CricketMatch
@@ -64,8 +67,12 @@ fun MatchCardV2(
         match.teams.getOrNull(1)?.name,
     )
 
+    val cardDescription = remember(match) { matchCardDescription(match) }
+
     BouncerCard(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .semantics { contentDescription = cardDescription },
         onClick = {
             if (hapticEnabled) haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
             onClick()
@@ -93,7 +100,12 @@ fun MatchCardV2(
                 if (onSubscribeToggle != null) {
                     IconButton(
                         onClick = onSubscribeToggle,
-                        modifier = Modifier.size(32.dp).padding(start = 4.dp),
+                        // 48dp touch target overflowing the 32dp layout slot so the
+                        // header row height stays unchanged.
+                        modifier = Modifier
+                            .padding(start = 4.dp)
+                            .size(32.dp)
+                            .requiredSize(48.dp),
                     ) {
                         Icon(
                             imageVector = if (isSubscribed) Icons.Default.Notifications else Icons.Default.NotificationsNone,
@@ -195,5 +207,24 @@ fun MatchCardV2(
             onDismiss = { showContextMenu = false },
             onSetReminder = onSetReminder
         )
+    }
+}
+
+/** One-utterance TalkBack description so the card reads as a unit, not fragments. */
+private fun matchCardDescription(match: CricketMatch): String = buildString {
+    append(match.matchTitle)
+    val team1 = match.teams.getOrNull(0)
+    val team2 = match.teams.getOrNull(1)
+    if (team1 != null && team2 != null) {
+        append(". ")
+        append(team1.name)
+        if (team1.score.isNotBlank()) append(" ${team1.score}")
+        append(" versus ")
+        append(team2.name)
+        if (team2.score.isNotBlank()) append(" ${team2.score}")
+    }
+    if (match.currentStatus.isNotBlank()) {
+        append(". ")
+        append(match.currentStatus)
     }
 }

@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -279,7 +280,8 @@ private fun PlayerPickerCard(
                 Text(player.country, style = typography.labelSmall, color = colors.textSecondary)
                 // Clear button
                 Spacer(Modifier.height(spacing.xs))
-                IconButton(onClick = onClear, modifier = Modifier.size(24.dp)) {
+                // 48dp touch target overflowing the 24dp layout slot.
+                IconButton(onClick = onClear, modifier = Modifier.size(24.dp).requiredSize(48.dp)) {
                     Icon(Icons.Default.Close, "Clear", Modifier.size(14.dp), tint = colors.textSecondary)
                 }
             } else if (player != null) {

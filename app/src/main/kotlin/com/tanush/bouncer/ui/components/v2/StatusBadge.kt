@@ -22,6 +22,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import com.tanush.bouncer.models.CricketMatch
+import com.tanush.bouncer.ui.theme.BouncerMotion
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 
 /**
@@ -106,6 +107,17 @@ private fun PulsingDot(
     color: androidx.compose.ui.graphics.Color,
     modifier: Modifier = Modifier,
 ) {
+    // Infinite pulse is a vestibular trigger and constant-invalidation cost;
+    // reduced-motion users get a static dot (LIVE color still signals state).
+    if (BouncerMotion.reducedMotionEnabled) {
+        Box(
+            modifier = modifier
+                .size(6.dp)
+                .clip(CircleShape)
+                .background(color)
+        )
+        return
+    }
     val infiniteTransition = rememberInfiniteTransition(label = "pulse")
     val alpha by infiniteTransition.animateFloat(
         initialValue = 1f,

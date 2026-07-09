@@ -19,6 +19,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -117,18 +118,29 @@ fun OverviewTabV2(
 
     val overMilestones = matchFlow?.overMilestones
     val maxOver = overMilestones?.maxOfOrNull { it.first } ?: 0
-    val cumulativeScores: List<Int> = if (!overMilestones.isNullOrEmpty()) {
-        buildList {
-            var prev = 0
-            for (over in 1..maxOver) {
-                val milestone = overMilestones.lastOrNull { it.first <= over }
-                val cumulative = milestone?.second ?: prev
-                add(cumulative)
-                prev = cumulative
-            }
-        }
-    } else emptyList()
+
+    // This tab recomposes on every ball of a live match; all list transforms are
+    // remembered against their inputs so recomposition never re-derives them.
+    val derived = rememberOverviewDerivedData(
+        match = match,
+        scorecard = scorecard,
+        matchFlow = matchFlow,
+        isMatchActive = isMatchActive,
+        probabilityHistory = probabilityHistory,
+        commentary = commentary,
+    )
+    val cumulativeScores = derived.cumulativeScores
     val hasOverData = cumulativeScores.isNotEmpty() && match.teams.size >= 2
+    val fallbackBatsmen = derived.fallbackBatsmen
+    val fallbackHasNotOut = derived.fallbackHasNotOut
+    val ppPhaseList = derived.ppPhaseList
+    val matchPhases = derived.matchPhases
+    val wicketOvers = derived.wicketOvers
+    val perOverRuns = derived.perOverRuns
+    val uniqueInnings = derived.uniqueInnings
+    val fallOfWicketsByInnings = derived.fallOfWicketsByInnings
+    val keyMoments = derived.keyMoments
+    val meaningfulCommentary = derived.meaningfulCommentary
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -300,16 +312,12 @@ fun OverviewTabV2(
                     }
                 }
             }
-        } else if ((isMatchActive || isCompleted) && scorecard != null && scorecard.innings.isNotEmpty()) {
+        } else if ((isMatchActive || isCompleted) && fallbackBatsmen.isNotEmpty()) {
             // Fallback: show top batsmen from latest innings when live data unavailable
-            val latestInnings = scorecard.innings.last()
-            val notOutBatsmen = latestInnings.batsmen.filter {
-                it.dismissal.lowercase().contains("not out") || it.dismissal.lowercase().contains("batting")
-            }.take(2)
-            val topBatsmen = notOutBatsmen.ifEmpty { latestInnings.batsmen.takeLast(2) }
-            if (topBatsmen.isNotEmpty()) {
+            val topBatsmen = fallbackBatsmen
+            run {
                 item(key = "crease_header") {
-                    SectionHeaderV2(title = if (notOutBatsmen.isNotEmpty()) "At the Crease" else "Last Batsmen")
+                    SectionHeaderV2(title = if (fallbackHasNotOut) "At the Crease" else "Last Batsmen")
                 }
                 items(topBatsmen.size, key = { "scbat_$it" }) { idx ->
                     val bat = topBatsmen[idx]
@@ -502,42 +510,18 @@ fun OverviewTabV2(
         }
 
         // Powerplay summary from ESPNCricinfo
-        val ppPhases = matchFlow?.powerplays
-        if (!ppPhases.isNullOrEmpty()) {
+        if (ppPhaseList.isNotEmpty()) {
             val battingTeamName = match.teams.firstOrNull { it.isBatting }?.name
                 ?: match.teams.firstOrNull()?.name ?: ""
             item(key = "powerplay_card") {
                 PowerPlayAnalysisCard(
                     teamName = battingTeamName,
-                    phases = ppPhases.map { pp ->
-                        PowerPlayPhase(
-                            name = "PP${pp.phase}",
-                            overs = pp.overs,
-                            runs = pp.runs,
-                            wickets = pp.wickets,
-                            runRate = if (pp.overs.contains("-")) {
-                                val parts = pp.overs.split(Regex("[–\\-]"))
-                                val start = parts.firstOrNull()?.toDoubleOrNull() ?: 0.0
-                                val end = parts.lastOrNull()?.toDoubleOrNull() ?: 6.0
-                                val oversPlayed = (end - start).coerceAtLeast(0.1)
-                                pp.runs / oversPlayed
-                            } else 0.0,
-                            boundaries = 0,
-                            sixes = 0,
-                            dotBalls = 0,
-                        )
-                    },
+                    phases = ppPhaseList,
                 )
             }
         }
 
         // MatchPhasesCard — full phase breakdown (PP + Middle + Death)
-        val matchPhases = buildMatchPhases(
-            overMilestones = overMilestones ?: emptyList(),
-            powerplays = matchFlow?.powerplays ?: emptyList(),
-            scorecard = scorecard,
-            isLive = isMatchActive,
-        )
         if (matchPhases.size >= 2 && match.teams.size >= 2) {
             item(key = "match_phases_card") {
                 MatchPhasesCard(
@@ -581,9 +565,6 @@ fun OverviewTabV2(
 
         // OverByOverComparisonCard — cumulative scores as dual-line chart
         if (hasOverData) {
-            val wicketOvers = scorecard?.innings?.lastOrNull()?.fallOfWickets
-                ?.mapNotNull { it.overs.split(".").firstOrNull()?.toIntOrNull() }
-                ?: emptyList()
             item(key = "over_by_over_card") {
                 OverByOverComparisonCard(
                     comparisonInfo = OverByOverComparisonInfo(
@@ -599,14 +580,7 @@ fun OverviewTabV2(
         }
 
         // RunRateComparisonCard — per-over run differential
-        if (!overMilestones.isNullOrEmpty() && match.teams.size >= 2) {
-            val perOverRuns = buildList {
-                var prev = 0
-                overMilestones.sortedBy { it.first }.forEach { (over, cum) ->
-                    add(OverRunRate(over = over, team1Runs = cum - prev, team2Runs = null))
-                    prev = cum
-                }
-            }
+        if (perOverRuns.isNotEmpty() && match.teams.size >= 2) {
             item(key = "run_rate_card") {
                 RunRateComparisonCard(
                     overData = perOverRuns,
@@ -618,8 +592,7 @@ fun OverviewTabV2(
         }
 
         // Scorecard Summary for completed/stumps matches
-        if (batsmen.isEmpty() && scorecard != null && scorecard.innings.isNotEmpty()) {
-            val uniqueInnings = scorecard.innings.distinctBy { "${it.teamName}_${it.score}_${it.overs}" }
+        if (batsmen.isEmpty() && uniqueInnings.isNotEmpty()) {
             item(key = "scorecard_summary_header") {
                 SectionHeaderV2(title = "Innings Summary")
             }
@@ -652,8 +625,8 @@ fun OverviewTabV2(
         // FallOfWicketsCard — from scorecard
         if (scorecard != null) {
             scorecard.innings.forEachIndexed { idx, innings ->
-                if (innings.fallOfWickets.isNotEmpty()) {
-                    val uiFow = mapFallOfWickets(innings.fallOfWickets, innings.batsmen)
+                val uiFow = fallOfWicketsByInnings.getOrNull(idx).orEmpty()
+                if (uiFow.isNotEmpty()) {
                     item(key = "fow_card_$idx") {
                         FallOfWicketsCard(
                             wickets = uiFow,
@@ -667,28 +640,6 @@ fun OverviewTabV2(
         }
 
         // KeyMomentsCard — pivotal events from probability history
-        val keyMoments = probabilityHistory.mapIndexedNotNull { idx, point ->
-            val event = point.keyEvent ?: return@mapIndexedNotNull null
-            val prevProb = probabilityHistory.getOrNull(idx - 1)
-            val impact = if (prevProb != null) {
-                (abs(point.team1Probability - prevProb.team1Probability) * 2f).coerceIn(0f, 1f)
-            } else 0.5f
-            HighlightMoment(
-                overNumber = point.over,
-                title = event,
-                description = "${(point.team1Probability * 100).toInt()}% win probability",
-                type = when {
-                    event.contains("wicket", ignoreCase = true) -> HighlightHighlightMomentType.WICKET
-                    event.contains("six", ignoreCase = true) -> HighlightHighlightMomentType.SIX
-                    event.contains("four", ignoreCase = true) || event.contains("boundary", ignoreCase = true) -> HighlightHighlightMomentType.FOUR
-                    event.contains("50", ignoreCase = true) || event.contains("half century", ignoreCase = true) -> HighlightHighlightMomentType.FIFTY
-                    event.contains("100", ignoreCase = true) || event.contains("century", ignoreCase = true) -> HighlightHighlightMomentType.CENTURY
-                    else -> HighlightHighlightMomentType.MILESTONE
-                },
-                impactScore = impact,
-                timestamp = "Over ${point.over.toInt()}",
-            )
-        }
         if (keyMoments.size >= 2) {
             item(key = "key_moments_header") { SectionHeaderV2(title = "Key Moments") }
             item(key = "key_moments_card") { HighlightMomentsCard(moments = keyMoments) }
@@ -705,11 +656,6 @@ fun OverviewTabV2(
         }
 
         // Recent Commentary (skip for upcoming matches — no meaningful commentary yet)
-        val meaningfulCommentary = TimelineEventExtractor.deduplicateByBall(
-            commentary
-                .map { it.trimEnd('/').trim() }
-                .filter { it.isNotBlank() && it.length > 2 && it != "Loading commentary..." }
-        )
         val hasStreaming = !isUpcoming && streamingCommentary.isNotBlank()
         val hasCommentary = !isUpcoming && (meaningfulCommentary.isNotEmpty() || hasStreaming)
         if (hasCommentary) {
@@ -859,154 +805,3 @@ private fun WinProbRow(teamName: String, probability: Float) {
     }
 }
 
-private fun mapFallOfWickets(
-    fowList: List<ModelFallOfWicket>,
-    batsmen: List<BatsmanStats>,
-): List<UiFallOfWicket> {
-    val batsmanByName = batsmen.associateBy { it.name.lowercase().trim() }
-    var prevScore = 0
-    return fowList
-        .sortedBy { it.number }
-        .mapIndexed { idx, fow ->
-            val stats = batsmanByName[fow.batsman.lowercase().trim()]
-            val (dismissalType, bowlerName) = parseDismissal(stats?.dismissal ?: "")
-            val score = fow.score.toIntOrNull() ?: 0
-            val partnershipRuns = (score - prevScore).coerceAtLeast(0)
-            prevScore = score
-            UiFallOfWicket(
-                wicketNumber = fow.number.takeIf { it > 0 } ?: (idx + 1),
-                score = score,
-                overs = fow.overs.toFloatOrNull() ?: 0f,
-                batsmanName = fow.batsman,
-                batsmanRuns = stats?.runs?.toIntOrNull() ?: 0,
-                batsmanBalls = stats?.balls?.toIntOrNull() ?: 0,
-                bowlerName = bowlerName,
-                dismissalType = dismissalType,
-                partnershipRuns = partnershipRuns,
-            )
-        }
-}
-
-private fun parseDismissal(dismissal: String): Pair<DismissalType, String> {
-    val d = dismissal.lowercase().trim()
-    return when {
-        d.isBlank() || d.contains("not out") || d.contains("batting") ->
-            DismissalType.BOWLED to ""
-        d.startsWith("c&b") || d.startsWith("c & b") -> {
-            val bowler = dismissal.replaceFirst(Regex("^[Cc][\\s&bB]+"), "").trim()
-            DismissalType.CAUGHT_AND_BOWLED to bowler
-        }
-        d.startsWith("lbw") -> {
-            val bowler = dismissal.replaceFirst(Regex("(?i)^lbw\\s+b\\s+"), "").trim()
-            DismissalType.LBW to bowler
-        }
-        d.startsWith("run out") -> {
-            val fielder = dismissal
-                .replaceFirst(Regex("(?i)^run out\\s*\\("), "")
-                .removeSuffix(")")
-                .trim()
-            DismissalType.RUN_OUT to fielder
-        }
-        d.startsWith("st ") -> {
-            val bIdx = dismissal.indexOf(" b ", ignoreCase = true)
-            val bowler = if (bIdx >= 0) dismissal.substring(bIdx + 3).trim() else ""
-            DismissalType.STUMPED to bowler
-        }
-        d.startsWith("hit wicket") -> {
-            val bowler = dismissal.replaceFirst(Regex("(?i)^hit wicket\\s+b\\s+"), "").trim()
-            DismissalType.HIT_WICKET to bowler
-        }
-        d.startsWith("c ") && d.contains(" b ") -> {
-            val bIdx = dismissal.indexOf(" b ", ignoreCase = true)
-            val fielder = if (bIdx >= 0) dismissal.substring(2, bIdx).trim() else ""
-            val bowler = if (bIdx >= 0) dismissal.substring(bIdx + 3).trim() else ""
-            if (fielder.startsWith("†") || fielder.lowercase() == "wk") {
-                DismissalType.CAUGHT_BEHIND to bowler
-            } else {
-                DismissalType.CAUGHT to bowler
-            }
-        }
-        d.startsWith("b ") -> DismissalType.BOWLED to dismissal.substring(2).trim()
-        else -> DismissalType.CAUGHT to ""
-    }
-}
-
-private fun buildMatchPhases(
-    overMilestones: List<Pair<Int, Int>>,
-    powerplays: List<PowerplayEvent>,
-    scorecard: com.tanush.bouncer.models.Scorecard?,
-    isLive: Boolean,
-): List<MatchPhaseData> {
-    val maxOver = overMilestones.maxOfOrNull { it.first } ?: 0
-    if (maxOver < 6 && powerplays.isEmpty()) return emptyList()
-
-    val phases = mutableListOf<MatchPhaseData>()
-    val lastInnings = scorecard?.innings?.lastOrNull()
-
-    fun cumAt(over: Int): Int = overMilestones.lastOrNull { it.first <= over }?.second ?: 0
-    fun wicketsIn(from: Int, to: Int): Int =
-        lastInnings?.fallOfWickets?.count { fow ->
-            (fow.overs.split(".").firstOrNull()?.toIntOrNull() ?: 0) in from..to
-        } ?: 0
-
-    if (powerplays.isNotEmpty()) {
-        powerplays.forEachIndexed { idx, pp ->
-            phases.add(MatchPhaseData(
-                phaseName = "Powerplay ${pp.phase}",
-                description = "${pp.runs} runs, ${pp.wickets} wkts",
-                overs = pp.overs,
-                team1Runs = pp.runs,
-                team1Wickets = pp.wickets,
-                momentumShift = when {
-                    pp.runs >= 60 -> MomentumShift.TEAM1_STRONG
-                    pp.runs <= 30 -> MomentumShift.TEAM2_STRONG
-                    else -> MomentumShift.BALANCED
-                },
-                isActive = isLive && idx == powerplays.size - 1,
-            ))
-        }
-    } else if (maxOver >= 6) {
-        val ppRuns = cumAt(6)
-        val ppWickets = wicketsIn(1, 6)
-        phases.add(MatchPhaseData(
-            phaseName = "Powerplay", description = "$ppRuns runs, $ppWickets wkts",
-            overs = "1-6", team1Runs = ppRuns, team1Wickets = ppWickets,
-            momentumShift = when {
-                ppRuns >= 60 -> MomentumShift.TEAM1_STRONG
-                ppRuns <= 30 -> MomentumShift.TEAM2_STRONG
-                else -> MomentumShift.BALANCED
-            },
-        ))
-    }
-
-    if (maxOver >= 15) {
-        val middleRuns = cumAt(15) - cumAt(6)
-        val middleWickets = wicketsIn(7, 15)
-        phases.add(MatchPhaseData(
-            phaseName = "Middle Overs", description = "$middleRuns runs, $middleWickets wkts",
-            overs = "7-15", team1Runs = middleRuns, team1Wickets = middleWickets,
-            momentumShift = when {
-                middleRuns >= 80 -> MomentumShift.TEAM1_STRONG
-                middleRuns <= 40 -> MomentumShift.TEAM2_STRONG
-                else -> MomentumShift.BALANCED
-            },
-        ))
-    }
-
-    if (maxOver >= 16) {
-        val deathRuns = cumAt(maxOver) - cumAt(15)
-        val deathWickets = wicketsIn(16, 20)
-        phases.add(MatchPhaseData(
-            phaseName = "Death Overs", description = "$deathRuns runs, $deathWickets wkts",
-            overs = "16-$maxOver", team1Runs = deathRuns, team1Wickets = deathWickets,
-            momentumShift = when {
-                deathRuns >= 70 -> MomentumShift.TEAM1_STRONG
-                deathRuns <= 30 -> MomentumShift.TEAM2_STRONG
-                else -> MomentumShift.BALANCED
-            },
-            isActive = isLive,
-        ))
-    }
-
-    return phases
-}

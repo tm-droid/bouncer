@@ -14,7 +14,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import coil.compose.AsyncImage
+import com.tanush.bouncer.ui.components.CoilImage
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 
 /**
@@ -42,7 +42,7 @@ fun TeamRowV2(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (logoUrl != null) {
-            AsyncImage(
+            CoilImage(
                 model = logoUrl,
                 contentDescription = teamName,
                 modifier = Modifier.size(24.dp),

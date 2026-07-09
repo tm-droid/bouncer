@@ -50,7 +50,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import coil.compose.AsyncImage
+import com.tanush.bouncer.ui.components.CoilImage
 import com.tanush.bouncer.managers.TeamLogoManager
 import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.ui.components.v2.AnimatedScoreText
@@ -452,8 +452,10 @@ private fun TeamScoreRow(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (logoUrl != null) {
-            AsyncImage(
+            CoilImage(
                 model = logoUrl,
+                // Decorative: the team name Text sits directly beside this logo,
+                // so a description here would double-announce in TalkBack.
                 contentDescription = null,
                 modifier = Modifier
                     .size(24.dp)

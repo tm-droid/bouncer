@@ -193,7 +193,8 @@ fun BatsmanMilestoneCard(
                         }
                         if (onShare != null) {
                             Spacer(modifier = Modifier.width(8.dp))
-                            IconButton(onClick = onShare, modifier = Modifier.size(32.dp)) {
+                            // 48dp touch target overflowing the 32dp layout slot.
+                            IconButton(onClick = onShare, modifier = Modifier.size(32.dp).requiredSize(48.dp)) {
                                 Icon(
                                     imageVector = Icons.Filled.Share,
                                     contentDescription = "Share milestone",
