@@ -1,5 +1,10 @@
 package com.tanush.bouncer.ui
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,6 +17,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
@@ -27,10 +33,14 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import com.tanush.bouncer.managers.FavouriteTeamsManager
 import com.tanush.bouncer.managers.MatchSubscriptionManager
 import com.tanush.bouncer.managers.NotificationInboxManager
 import com.tanush.bouncer.utils.PreferencesHelper
@@ -80,14 +90,30 @@ fun HomeScreenV2(
     val unreadCount by NotificationInboxManager.unreadCount.collectAsStateWithLifecycle()
     val subscriptions by MatchSubscriptionManager.subscriptions.collectAsStateWithLifecycle()
     val isOffline = rememberIsOffline()
+    val favourites by FavouriteTeamsManager.favourites.collectAsStateWithLifecycle()
 
     val spacing = BouncerThemeV2.spacing
+    val colors = BouncerThemeV2.colors
 
-    val featuredMatch by remember {
-        derivedStateOf { currentMatches.firstOrNull() }
+    // Personalization: matches involving followed teams float to the top and
+    // the hero slot prefers a live favourite-team match (serial position —
+    // "your cricket" is what the feed opens with).
+    val favouriteTeamNames = remember(favourites) {
+        favourites.map { it.trim().lowercase() }.toSet()
     }
-    val remainingMatches by remember {
-        derivedStateOf { if (featuredMatch != null) currentMatches.drop(1) else emptyList() }
+    val featuredMatch = remember(currentMatches, favouriteTeamNames) {
+        currentMatches.firstOrNull { it.isLive && it.hasFavouriteTeam(favouriteTeamNames) }
+            ?: currentMatches.firstOrNull()
+    }
+    val remainingMatches = remember(currentMatches, featuredMatch, favouriteTeamNames) {
+        if (featuredMatch == null) {
+            emptyList()
+        } else {
+            val (fav, others) = currentMatches
+                .filterNot { it.id == featuredMatch.id }
+                .partition { it.hasFavouriteTeam(favouriteTeamNames) }
+            fav + others
+        }
     }
     val statusCounts by remember {
         derivedStateOf {
@@ -101,6 +127,15 @@ fun HomeScreenV2(
 
     val statusOptions = listOf("All", "Live", "Upcoming", "Recent")
     val categoryOptions = listOf("All", "International", "League", "Domestic")
+
+    // Category chips are progressive-disclosure (Hick's law: one row of choices
+    // by default). Auto-expand whenever a non-default category is active so a
+    // hidden filter can never silently shape the feed.
+    var filtersExpanded by rememberSaveable { mutableStateOf(false) }
+    val categoryActive = selectedCompetitionType.isNotBlank() && selectedCompetitionType != "All"
+    LaunchedEffect(categoryActive) {
+        if (categoryActive) filtersExpanded = true
+    }
 
     Scaffold(
         topBar = {
@@ -141,7 +176,7 @@ fun HomeScreenV2(
                 modifier = Modifier.fillMaxSize().bouncerScreenBackground(),
                 contentPadding = PaddingValues(vertical = spacing.md),
             ) {
-                // ── Status filter chips ──
+                // ── Status filter chips (+ toggle for category filters) ──
                 item(key = "status_chips") {
                     FilterChipRowV2(
                         items = statusOptions,
@@ -150,19 +185,34 @@ fun HomeScreenV2(
                             viewModel.setAndFetchMatches(mapChipToStatus(chip))
                         },
                         counts = statusCounts,
+                        trailingContent = {
+                            IconButton(onClick = { filtersExpanded = !filtersExpanded }) {
+                                Icon(
+                                    Icons.Default.FilterList,
+                                    contentDescription = if (filtersExpanded) "Hide category filters" else "Show category filters",
+                                    tint = if (categoryActive) colors.primary else colors.textSecondary,
+                                )
+                            }
+                        },
                     )
                     Spacer(Modifier.height(spacing.xs))
                 }
 
-                // ── Category filter chips ──
+                // ── Category filter chips (collapsed by default) ──
                 item(key = "category_chips") {
-                    FilterChipRowV2(
-                        items = categoryOptions,
-                        selectedItem = selectedCompetitionType.ifBlank { "All" },
-                        onItemSelected = { chip ->
-                            viewModel.setCompetitionType(if (chip == "All") "All" else chip)
-                        },
-                    )
+                    AnimatedVisibility(
+                        visible = filtersExpanded,
+                        enter = fadeIn() + expandVertically(),
+                        exit = fadeOut() + shrinkVertically(),
+                    ) {
+                        FilterChipRowV2(
+                            items = categoryOptions,
+                            selectedItem = selectedCompetitionType.ifBlank { "All" },
+                            onItemSelected = { chip ->
+                                viewModel.setCompetitionType(if (chip == "All") "All" else chip)
+                            },
+                        )
+                    }
                     Spacer(Modifier.height(spacing.md))
                 }
 
@@ -229,6 +279,7 @@ fun HomeScreenV2(
                                 .animateItem(),
                             isSubscribed = match.id in subscriptions,
                             onSubscribeToggle = handleSubscribeToggle,
+                            isFavouriteTeam = match.hasFavouriteTeam(favouriteTeamNames),
                         )
                     }
                     item(key = "matches_spacer") {
@@ -246,6 +297,9 @@ fun HomeScreenV2(
 }
 
 // ─── Helpers ──────────────────────────────────────────────
+
+private fun CricketMatch.hasFavouriteTeam(favouriteNames: Set<String>): Boolean =
+    favouriteNames.isNotEmpty() && teams.any { it.name.trim().lowercase() in favouriteNames }
 
 private fun mapStatus(vmStatus: String): String = when (vmStatus) {
     "Live" -> "Live"

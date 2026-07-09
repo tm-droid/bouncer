@@ -27,6 +27,7 @@ fun FilterChipRowV2(
     onItemSelected: (String) -> Unit,
     modifier: Modifier = Modifier,
     counts: Map<String, Int>? = null,
+    trailingContent: (@Composable () -> Unit)? = null,
 ) {
     val colors = BouncerThemeV2.colors
     val typography = BouncerThemeV2.typography
@@ -61,9 +62,12 @@ fun FilterChipRowV2(
                         style = typography.labelLarge,
                     )
                 },
+                // Selection reads as gold border + gold label rather than a filled
+                // gold block, so gold mass stays reserved for the hero/primary CTA
+                // (Von Restorff — the isolate only pops if it is rare).
                 colors = FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = colors.primary,
-                    selectedLabelColor = colors.onPrimary,
+                    selectedContainerColor = colors.surfaceVariant,
+                    selectedLabelColor = colors.primary,
                     containerColor = colors.surfaceVariant,
                     labelColor = colors.onSurface,
                 ),
@@ -75,5 +79,6 @@ fun FilterChipRowV2(
                 ),
             )
         }
+        trailingContent?.invoke()
     }
 }

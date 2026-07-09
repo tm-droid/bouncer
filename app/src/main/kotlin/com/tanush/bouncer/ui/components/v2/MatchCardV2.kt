@@ -14,6 +14,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.NotificationsNone
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -33,6 +34,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.tanush.bouncer.models.CricketMatch
+import com.tanush.bouncer.ui.theme.MatchTeamPalette
 import com.tanush.bouncer.ui.theme.rememberMatchTeamPalette
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 import com.tanush.bouncer.utils.PreferencesManager
@@ -50,6 +52,7 @@ fun MatchCardV2(
     isSubscribed: Boolean = false,
     onSubscribeToggle: (() -> Unit)? = null,
     onSetReminder: () -> Unit = {},
+    isFavouriteTeam: Boolean = false,
 ) {
     val colors = BouncerThemeV2.colors
     val typography = BouncerThemeV2.typography
@@ -83,121 +86,17 @@ fun MatchCardV2(
         },
     ) {
         Column(modifier = Modifier.padding(spacing.lg)) {
-            // Series & format header row
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = "${match.matchTitle} • ${match.matchType}",
-                    style = typography.bodySmall,
-                    color = colors.textSecondary,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f),
-                )
-                StatusBadgeV2(statusType = statusType)
-                if (onSubscribeToggle != null) {
-                    IconButton(
-                        onClick = onSubscribeToggle,
-                        // 48dp touch target overflowing the 32dp layout slot so the
-                        // header row height stays unchanged.
-                        modifier = Modifier
-                            .padding(start = 4.dp)
-                            .size(32.dp)
-                            .requiredSize(48.dp),
-                    ) {
-                        Icon(
-                            imageVector = if (isSubscribed) Icons.Default.Notifications else Icons.Default.NotificationsNone,
-                            contentDescription = if (isSubscribed) "Unsubscribe" else "Subscribe",
-                            tint = if (isSubscribed) colors.primary else colors.textSecondary,
-                            modifier = Modifier.size(18.dp),
-                        )
-                    }
-                }
-            }
-
+            MatchCardHeaderRow(
+                match = match,
+                statusType = statusType,
+                isFavouriteTeam = isFavouriteTeam,
+                isSubscribed = isSubscribed,
+                onSubscribeToggle = onSubscribeToggle,
+            )
             Spacer(Modifier.height(spacing.md))
-
-            // Team rows
-            if (match.teams.size >= 2) {
-                val team1 = match.teams[0]
-                val team2 = match.teams[1]
-
-                TeamRowV2(
-                    teamName = team1.name,
-                    teamAcronym = team1.acronym,
-                    score = team1.score,
-                    overs = team1.overs,
-                    isBatting = team1.isBatting,
-                    logoUrl = team1.logoUrl,
-                    teamColor = teamPalette.home.primary,
-                )
-                Spacer(Modifier.height(spacing.sm))
-                TeamRowV2(
-                    teamName = team2.name,
-                    teamAcronym = team2.acronym,
-                    score = team2.score,
-                    overs = team2.overs,
-                    isBatting = team2.isBatting,
-                    logoUrl = team2.logoUrl,
-                    teamColor = teamPalette.away.primary,
-                )
-            }
-
-            // Status line
-            if (match.currentStatus.isNotBlank()) {
-                HorizontalDivider(
-                    modifier = Modifier.padding(vertical = spacing.sm),
-                    color = colors.divider,
-                )
-                Text(
-                    text = match.currentStatus,
-                    style = typography.bodySmall,
-                    color = if (match.isLive) {
-                    if (match.teams.getOrNull(0)?.isBatting == true) teamPalette.home.primary else teamPalette.away.primary
-                } else {
-                    colors.textSecondary
-                },
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-
-            // Win probability mini bar
-            if (winProb != 50.0 && match.teams.size >= 2) {
-                Spacer(Modifier.height(spacing.sm))
-                val fraction = (winProb / 100.0).toFloat().coerceIn(0.05f, 0.95f)
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        text = "${match.teams[0].acronym} ${winProb.toInt()}%",
-                        style = typography.bodySmall,
-                        color = teamPalette.home.primary,
-                    )
-                    Spacer(Modifier.weight(1f))
-                    Text(
-                        text = "${(100 - winProb.toInt())}% ${match.teams[1].acronym}",
-                        style = typography.bodySmall,
-                        color = teamPalette.away.primary,
-                    )
-                }
-                Spacer(Modifier.height(4.dp))
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(4.dp)
-                        .clip(RoundedCornerShape(2.dp))
-                        .background(
-                            Brush.horizontalGradient(
-                                fraction to teamPalette.home.primary,
-                                fraction to teamPalette.away.primary.copy(alpha = 0.7f),
-                            )
-                        )
-                )
-            }
+            MatchCardTeamRows(match = match, teamPalette = teamPalette)
+            MatchCardStatusLine(match = match, teamPalette = teamPalette)
+            MatchCardWinProbBar(match = match, winProb = winProb, teamPalette = teamPalette)
         }
     }
 
@@ -208,6 +107,156 @@ fun MatchCardV2(
             onSetReminder = onSetReminder
         )
     }
+}
+
+@Composable
+private fun MatchCardHeaderRow(
+    match: CricketMatch,
+    statusType: MatchStatusType,
+    isFavouriteTeam: Boolean,
+    isSubscribed: Boolean,
+    onSubscribeToggle: (() -> Unit)?,
+) {
+    val colors = BouncerThemeV2.colors
+    val typography = BouncerThemeV2.typography
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (isFavouriteTeam) {
+            Icon(
+                imageVector = Icons.Default.Star,
+                contentDescription = "Following",
+                tint = colors.primary,
+                modifier = Modifier.size(14.dp).padding(end = 2.dp),
+            )
+        }
+        Text(
+            text = "${match.matchTitle} • ${match.matchType}",
+            style = typography.bodySmall,
+            color = colors.textSecondary,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
+        )
+        StatusBadgeV2(statusType = statusType)
+        if (onSubscribeToggle != null) {
+            SubscribeBellButton(isSubscribed = isSubscribed, onToggle = onSubscribeToggle)
+        }
+    }
+}
+
+@Composable
+private fun SubscribeBellButton(isSubscribed: Boolean, onToggle: () -> Unit) {
+    val colors = BouncerThemeV2.colors
+    IconButton(
+        onClick = onToggle,
+        // 48dp touch target overflowing the 32dp layout slot so the
+        // header row height stays unchanged.
+        modifier = Modifier
+            .padding(start = 4.dp)
+            .size(32.dp)
+            .requiredSize(48.dp),
+    ) {
+        Icon(
+            imageVector = if (isSubscribed) Icons.Default.Notifications else Icons.Default.NotificationsNone,
+            contentDescription = if (isSubscribed) "Unsubscribe" else "Subscribe",
+            tint = if (isSubscribed) colors.primary else colors.textSecondary,
+            modifier = Modifier.size(18.dp),
+        )
+    }
+}
+
+@Composable
+private fun MatchCardTeamRows(match: CricketMatch, teamPalette: MatchTeamPalette) {
+    val spacing = BouncerThemeV2.spacing
+    if (match.teams.size >= 2) {
+        val team1 = match.teams[0]
+        val team2 = match.teams[1]
+        TeamRowV2(
+            teamName = team1.name,
+            teamAcronym = team1.acronym,
+            score = team1.score,
+            overs = team1.overs,
+            isBatting = team1.isBatting,
+            logoUrl = team1.logoUrl,
+            teamColor = teamPalette.home.primary,
+        )
+        Spacer(Modifier.height(spacing.sm))
+        TeamRowV2(
+            teamName = team2.name,
+            teamAcronym = team2.acronym,
+            score = team2.score,
+            overs = team2.overs,
+            isBatting = team2.isBatting,
+            logoUrl = team2.logoUrl,
+            teamColor = teamPalette.away.primary,
+        )
+    }
+}
+
+@Composable
+private fun MatchCardStatusLine(match: CricketMatch, teamPalette: MatchTeamPalette) {
+    if (match.currentStatus.isBlank()) return
+    val colors = BouncerThemeV2.colors
+    val typography = BouncerThemeV2.typography
+    val spacing = BouncerThemeV2.spacing
+    HorizontalDivider(
+        modifier = Modifier.padding(vertical = spacing.sm),
+        color = colors.divider,
+    )
+    Text(
+        text = match.currentStatus,
+        style = typography.bodySmall,
+        // Live chase line keeps the batting team's color (open loop);
+        // a decided result reads in win green so resolution is scannable.
+        color = when {
+            match.isLive ->
+                if (match.teams.getOrNull(0)?.isBatting == true) teamPalette.home.primary else teamPalette.away.primary
+            match.currentStatus.contains("won", ignoreCase = true) -> colors.win
+            else -> colors.textSecondary
+        },
+        maxLines = 2,
+        overflow = TextOverflow.Ellipsis,
+    )
+}
+
+@Composable
+private fun MatchCardWinProbBar(match: CricketMatch, winProb: Double, teamPalette: MatchTeamPalette) {
+    if (winProb == 50.0 || match.teams.size < 2) return
+    val typography = BouncerThemeV2.typography
+    val spacing = BouncerThemeV2.spacing
+    Spacer(Modifier.height(spacing.sm))
+    val fraction = (winProb / 100.0).toFloat().coerceIn(0.05f, 0.95f)
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = "${match.teams[0].acronym} ${winProb.toInt()}%",
+            style = typography.bodySmall,
+            color = teamPalette.home.primary,
+        )
+        Spacer(Modifier.weight(1f))
+        Text(
+            text = "${(100 - winProb.toInt())}% ${match.teams[1].acronym}",
+            style = typography.bodySmall,
+            color = teamPalette.away.primary,
+        )
+    }
+    Spacer(Modifier.height(4.dp))
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(4.dp)
+            .clip(RoundedCornerShape(2.dp))
+            .background(
+                Brush.horizontalGradient(
+                    fraction to teamPalette.home.primary,
+                    fraction to teamPalette.away.primary.copy(alpha = 0.7f),
+                )
+            )
+    )
 }
 
 /** One-utterance TalkBack description so the card reads as a unit, not fragments. */

@@ -15,9 +15,11 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Alarm
+import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
@@ -35,6 +37,7 @@ import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -45,7 +48,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -53,6 +58,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.tanush.bouncer.ui.components.CoilImage
 import com.tanush.bouncer.managers.TeamLogoManager
 import com.tanush.bouncer.models.CricketMatch
+import com.tanush.bouncer.models.MatchStatus
 import com.tanush.bouncer.ui.components.v2.AnimatedScoreText
 import com.tanush.bouncer.ui.components.v2.MatchNotificationPrefsSheet
 import com.tanush.bouncer.ui.components.v2.MatchStatusType
@@ -69,14 +75,20 @@ import com.tanush.bouncer.ui.screens.matchdetail.v2.OverviewTabV2
 import com.tanush.bouncer.viewmodels.HighlightsViewModel
 import com.tanush.bouncer.viewmodels.MatchDetailViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.tanush.bouncer.ui.theme.BouncerMotion
 import com.tanush.bouncer.ui.theme.rememberMatchTeamPalette
 import com.tanush.bouncer.ui.theme.rememberTeamColors
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
+import com.tanush.bouncer.ui.theme.v2.CricketEventColors
+import com.tanush.bouncer.utils.PreferencesManager
+import kotlinx.coroutines.delay
 import com.tanush.bouncer.ui.theme.v2.bouncerScreenBackground
 import com.tanush.bouncer.ui.components.BatsmanMilestoneCard
 import com.tanush.bouncer.ui.components.ShareCardData
 import com.tanush.bouncer.ui.components.ShareCardGenerator
 import kotlinx.coroutines.launch
+
+private const val EVENT_FLASH_MILLIS = 1500L
 
 /**
  * MatchDetailViewV2 — Clean match detail screen with score header and tabbed content.
@@ -360,10 +372,13 @@ private fun ScoreHeaderV2(
 
     val statusType = determineMatchStatus(match)
 
+    val flashOverlay = rememberEventFlashOverlay(recentBalls)
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .background(brush = headerBrush)
+            .background(flashOverlay)
             .padding(horizontal = spacing.lg, vertical = spacing.md),
     ) {
         // Context line
@@ -400,15 +415,9 @@ private fun ScoreHeaderV2(
         )
         Spacer(Modifier.height(spacing.sm))
 
-        // Status line
-        if (match.currentStatus.isNotBlank()) {
-            Text(
-                text = match.currentStatus,
-                style = typography.bodySmall,
-                color = if (match.isLive) livePrimaryColor else colors.textSecondary,
-                fontWeight = FontWeight.Medium,
-            )
-        }
+        // Status line — a decided match gets a designed end moment (Peak-End:
+        // the last thing seen of a match is its result, not a stale score).
+        MatchStatusLine(match = match, livePrimaryColor = livePrimaryColor)
 
         // Run rates
         if (currentRunRate != null || requiredRunRate != null) {
@@ -431,6 +440,102 @@ private fun ScoreHeaderV2(
         }
     }
     HorizontalDivider(color = colors.divider)
+}
+
+/**
+ * Peak moment: a wicket / four / six briefly tints the score header in that
+ * event's semantic color and fires one haptic — the update should be felt,
+ * not just read. Flash is skipped entirely under reduced motion; haptics
+ * follow the user's existing haptic setting.
+ */
+@Composable
+private fun rememberEventFlashOverlay(recentBalls: List<String>): Color {
+    val context = LocalContext.current
+    val haptic = LocalHapticFeedback.current
+    val hapticEnabled = remember { PreferencesManager.getInstance(context).hapticFeedbackEnabled }
+    val cricket = BouncerThemeV2.colors.cricket
+    var flashTint by remember { mutableStateOf(Color.Unspecified) }
+    var prevBalls by remember { mutableStateOf<List<String>?>(null) }
+    LaunchedEffect(recentBalls) {
+        val prev = prevBalls
+        prevBalls = recentBalls
+        if (!isNewBall(prev, recentBalls)) return@LaunchedEffect
+        val ball = recentBalls.last().trim().uppercase()
+        val eventColor = eventFlashColor(ball, cricket) ?: return@LaunchedEffect
+        if (hapticEnabled) {
+            haptic.performHapticFeedback(
+                if (ball.contains("W")) HapticFeedbackType.LongPress else HapticFeedbackType.TextHandleMove
+            )
+        }
+        if (!BouncerMotion.reducedMotionEnabled) {
+            flashTint = eventColor
+            delay(EVENT_FLASH_MILLIS)
+            flashTint = Color.Unspecified
+        }
+    }
+    val flashOverlay by animateColorAsState(
+        targetValue = if (flashTint == Color.Unspecified) Color.Transparent else flashTint.copy(alpha = 0.15f),
+        animationSpec = tween(300),
+        label = "eventFlash",
+    )
+    return flashOverlay
+}
+
+/** prev == null is the first composition — never flash on screen open. */
+private fun isNewBall(prev: List<String>?, current: List<String>): Boolean =
+    prev != null && current.isNotEmpty() && current != prev
+
+private fun eventFlashColor(ball: String, cricket: CricketEventColors): Color? = when {
+    ball.contains("W") && !ball.startsWith("WD") -> cricket.wicket
+    ball == "6" -> cricket.six
+    ball == "4" -> cricket.four
+    else -> null
+}
+
+@Composable
+private fun MatchStatusLine(match: CricketMatch, livePrimaryColor: Color) {
+    if (match.currentStatus.isBlank()) return
+    val colors = BouncerThemeV2.colors
+    val typography = BouncerThemeV2.typography
+    if (match.matchStatus == MatchStatus.Completed) {
+        MatchResultBanner(text = match.currentStatus)
+    } else {
+        Text(
+            text = match.currentStatus,
+            style = typography.bodySmall,
+            color = if (match.isLive) livePrimaryColor else colors.textSecondary,
+            fontWeight = FontWeight.Medium,
+        )
+    }
+}
+
+@Composable
+private fun MatchResultBanner(text: String) {
+    val colors = BouncerThemeV2.colors
+    val typography = BouncerThemeV2.typography
+    val spacing = BouncerThemeV2.spacing
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .background(colors.win.copy(alpha = 0.12f))
+            .padding(horizontal = spacing.md, vertical = spacing.sm),
+    ) {
+        Icon(
+            imageVector = Icons.Default.EmojiEvents,
+            contentDescription = null,
+            tint = colors.win,
+            modifier = Modifier.size(16.dp),
+        )
+        Spacer(Modifier.width(spacing.sm))
+        Text(
+            text = text,
+            style = typography.bodySmall,
+            color = colors.win,
+            fontWeight = FontWeight.Bold,
+        )
+    }
 }
 
 @Composable

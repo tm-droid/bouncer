@@ -17,6 +17,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.tanush.bouncer.models.CricketMatch
@@ -59,12 +60,14 @@ fun AllMatchesScreenV2(
     // Format chips
     val formatOptions = listOf("All", "T20", "ODI", "Test", "First Class")
 
-    // Apply local format filter
-    val filteredMatches = if (selectedFormat == "All") {
-        currentMatches
-    } else {
-        currentMatches.filter {
-            it.matchType.contains(selectedFormat, ignoreCase = true)
+    // Apply local format filter (memoized — list recomposes on live score ticks)
+    val filteredMatches = remember(currentMatches, selectedFormat) {
+        if (selectedFormat == "All") {
+            currentMatches
+        } else {
+            currentMatches.filter {
+                it.matchType.contains(selectedFormat, ignoreCase = true)
+            }
         }
     }
 
