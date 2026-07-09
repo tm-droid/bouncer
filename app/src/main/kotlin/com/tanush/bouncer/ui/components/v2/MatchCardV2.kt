@@ -1,5 +1,8 @@
 package com.tanush.bouncer.ui.components.v2
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,11 +23,13 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
@@ -34,10 +39,12 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.tanush.bouncer.models.CricketMatch
+import com.tanush.bouncer.ui.theme.BouncerMotion
 import com.tanush.bouncer.ui.theme.MatchTeamPalette
 import com.tanush.bouncer.ui.theme.rememberMatchTeamPalette
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 import com.tanush.bouncer.utils.PreferencesManager
+import com.tanush.bouncer.utils.rememberHapticFeedback
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 
@@ -149,8 +156,15 @@ private fun MatchCardHeaderRow(
 @Composable
 private fun SubscribeBellButton(isSubscribed: Boolean, onToggle: () -> Unit) {
     val colors = BouncerThemeV2.colors
+    val context = LocalContext.current
+    val hapticEnabled = remember { PreferencesManager.getInstance(context).hapticFeedbackEnabled }
+    val haptics = rememberHapticFeedback()
+    val bellScale = bellBounceScale(isSubscribed)
     IconButton(
-        onClick = onToggle,
+        onClick = {
+            if (hapticEnabled) haptics.toggle(turningOn = !isSubscribed)
+            onToggle()
+        },
         // 48dp touch target overflowing the 32dp layout slot so the
         // header row height stays unchanged.
         modifier = Modifier
@@ -162,9 +176,28 @@ private fun SubscribeBellButton(isSubscribed: Boolean, onToggle: () -> Unit) {
             imageVector = if (isSubscribed) Icons.Default.Notifications else Icons.Default.NotificationsNone,
             contentDescription = if (isSubscribed) "Unsubscribe" else "Subscribe",
             tint = if (isSubscribed) colors.primary else colors.textSecondary,
-            modifier = Modifier.size(18.dp),
+            modifier = Modifier
+                .size(18.dp)
+                .scale(bellScale),
         )
     }
+}
+
+/** Bounces once per subscription change (skips first composition; honors reduced-motion). */
+@Composable
+private fun bellBounceScale(isSubscribed: Boolean): Float {
+    val scale = remember { Animatable(1f) }
+    var skipInitialBounce by remember { mutableStateOf(true) }
+    LaunchedEffect(isSubscribed) {
+        when {
+            skipInitialBounce -> skipInitialBounce = false
+            !BouncerMotion.reducedMotionEnabled -> {
+                scale.snapTo(1.25f)
+                scale.animateTo(1f, spring(dampingRatio = Spring.DampingRatioMediumBouncy))
+            }
+        }
+    }
+    return scale.value
 }
 
 @Composable

@@ -43,6 +43,11 @@ class HapticFeedback(private val view: View) {
             throw e
         }
     }
+
+    /** Confirm-style haptic when a toggle turns on, plain click when it turns off. */
+    fun toggle(turningOn: Boolean) {
+        if (turningOn) success() else click()
+    }
 }
 
 @Composable

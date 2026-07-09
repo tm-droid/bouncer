@@ -56,6 +56,8 @@ import com.tanush.bouncer.managers.FavouriteTeamsManager
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 import com.tanush.bouncer.ui.widgets.BouncerGlanceWidgetReceiver
 import com.tanush.bouncer.utils.PreferencesHelper
+import com.tanush.bouncer.utils.PreferencesManager
+import com.tanush.bouncer.utils.rememberHapticFeedback
 import kotlinx.coroutines.launch
 
 private val POPULAR_TEAMS = listOf(
@@ -80,6 +82,8 @@ fun OnboardingScreenV2(onComplete: () -> Unit) {
     val spacing = BouncerThemeV2.spacing
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    val haptics = rememberHapticFeedback()
+    val hapticEnabled = remember { PreferencesManager.getInstance(context).hapticFeedbackEnabled }
 
     val pagerState = rememberPagerState(pageCount = { PAGE_COUNT })
     val isLastPage = pagerState.currentPage == PAGE_COUNT - 1
@@ -196,6 +200,7 @@ fun OnboardingScreenV2(onComplete: () -> Unit) {
                                         .background(if (selected) colors.primary else colors.surfaceVariant)
                                         .border(1.dp, if (selected) colors.primary else colors.surfaceVariant, RoundedCornerShape(20.dp))
                                         .clickable {
+                                            if (hapticEnabled) haptics.toggle(turningOn = !selected)
                                             selectedTeams = if (selected) selectedTeams - team else selectedTeams + team
                                         }
                                         .padding(horizontal = 14.dp, vertical = 8.dp)
@@ -226,7 +231,10 @@ fun OnboardingScreenV2(onComplete: () -> Unit) {
                                         .clip(RoundedCornerShape(16.dp))
                                         .background(if (selected) colors.primary else colors.surfaceVariant)
                                         .border(1.dp, if (selected) colors.primary else colors.surfaceVariant, RoundedCornerShape(16.dp))
-                                        .clickable { selectedCategory = category }
+                                        .clickable {
+                                            if (hapticEnabled) haptics.click()
+                                            selectedCategory = category
+                                        }
                                         .padding(horizontal = 12.dp, vertical = 6.dp)
                                 ) {
                                     Text(
@@ -261,6 +269,19 @@ fun OnboardingScreenV2(onComplete: () -> Unit) {
                             "Enable notifications for wickets, milestones, and match starts for your followed teams.",
                             style = typography.bodyMedium,
                             color = colors.textSecondary,
+                            textAlign = TextAlign.Center,
+                        )
+                        Spacer(Modifier.height(spacing.sm))
+                        Text(
+                            // Reciprocity priming: the value (followed teams) came first,
+                            // so the permission ask is scoped to it, not open-ended.
+                            if (selectedTeams.isNotEmpty()) {
+                                "You follow ${selectedTeams.size} team${if (selectedTeams.size > 1) "s" else ""} — we'll only ping you about them."
+                            } else {
+                                "Follow your teams first — we'll only ping you about them."
+                            },
+                            style = typography.labelMedium,
+                            color = colors.primary,
                             textAlign = TextAlign.Center,
                         )
                         Spacer(Modifier.height(spacing.xl))

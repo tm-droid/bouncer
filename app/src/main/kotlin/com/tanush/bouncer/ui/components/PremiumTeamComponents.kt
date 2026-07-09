@@ -26,6 +26,7 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -34,6 +35,8 @@ import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.ui.components.CoilImage
 import com.tanush.bouncer.ui.theme.*
 import com.tanush.bouncer.ui.theme.GoldPrimary
+import com.tanush.bouncer.utils.PreferencesManager
+import com.tanush.bouncer.utils.rememberHapticFeedback
 
 /**
  * Premium team profile card with stats and animations
@@ -243,20 +246,42 @@ private fun PremiumTeamHeader(
             }
         }
 
-        IconButton(
-            onClick = onFavoriteClick,
-            modifier = Modifier.graphicsLayer {
-                scaleX = favoriteScale
-                scaleY = favoriteScale
-            }
-        ) {
-            Icon(
-                imageVector = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                contentDescription = "Favorite",
-                tint = if (isFavorite) colors.statusLive else colors.textMuted,
-                modifier = Modifier.size(24.dp)
-            )
+        FavoriteToggleButton(
+            isFavorite = isFavorite,
+            favoriteScale = favoriteScale,
+            onFavoriteClick = onFavoriteClick
+        )
+    }
+}
+
+@Composable
+private fun FavoriteToggleButton(
+    isFavorite: Boolean,
+    favoriteScale: Float,
+    onFavoriteClick: () -> Unit
+) {
+    val colors = BouncerDesignSystem.colors
+    val context = LocalContext.current
+    val haptics = rememberHapticFeedback()
+    val hapticEnabled = remember {
+        PreferencesManager.getInstance(context).hapticFeedbackEnabled
+    }
+    IconButton(
+        onClick = {
+            if (hapticEnabled) haptics.toggle(turningOn = !isFavorite)
+            onFavoriteClick()
+        },
+        modifier = Modifier.graphicsLayer {
+            scaleX = favoriteScale
+            scaleY = favoriteScale
         }
+    ) {
+        Icon(
+            imageVector = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+            contentDescription = if (isFavorite) "Remove from favorites" else "Add to favorites",
+            tint = if (isFavorite) colors.statusLive else colors.textMuted,
+            modifier = Modifier.size(24.dp)
+        )
     }
 }
 
