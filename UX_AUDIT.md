@@ -79,10 +79,51 @@ Sorted by impact-to-effort. Impact H/M/L · Effort S/M/L · Risk = shared compon
 
 **Deferred** (see §5 at end of project): component dedup, gold-discipline audit (~59 files), `LiveActivityViewModel` single-UiState refactor, full hex migration (dead-file subset).
 
-## 4. Changelog (updated as implemented)
+## 4. Changelog — what actually shipped (July 2026)
 
-*(pending — filled in per commit)*
+Four commits, each built (`assembleDebug` + unit tests) and detekt-gated (zero new findings vs the 23 pre-existing at HEAD) before push.
 
-## 5. Not done yet
+### Phase A — quick wins (`65ab126`)
+| Item | Principle | Outcome |
+|------|-----------|---------|
+| A1 favourites team tap | Affordance honesty | Was a no-op `{}`; now opens TeamDetailScreen |
+| A2 OverviewTab memoization | Doherty threshold | All 10 derived list transforms hoisted into `rememberOverviewDerivedData` (new `OverviewDerivedData.kt`); no more per-ball re-derivation. OverviewTabV2 complexity *improved* vs HEAD (645→587 lines) |
+| A3 TalkBack | Feedback parity | Polite `liveRegion` on `AnimatedScoreText` (scores now announced), one-utterance merged semantics on `MatchCardV2`, score clip fixed at large font scale |
+| A4 touch targets | Fitts's law | 48dp on subscribe bell, search/comparison clear, milestone share — via `requiredSize` overflow so layouts don't shift. **Two audit items were false alarms**: `HighlightClipCard:76` (decorative icon, not clickable) and `PlayerDetailScreenV2:187` (icon inside a full `Button`) |
+| A5 contrast + motion | Legibility, WCAG 2.3.3 | Dot-ball text alpha 0.3/0.35 → full `textSecondary`; EmptyState icon 0.5→0.7; LIVE pulse honors reduced-motion. **False alarm**: `RecentBallsStrip:64` alpha was the *background*, fg was fine |
+| A6 Coil placeholders | Perceived perf | Team logos now use the existing `CoilImage` wrapper (placeholder/error/fallback) instead of raw `AsyncImage` |
+| A8 deviation | — | Match-detail team logo kept `contentDescription = null` **deliberately**: the team name Text sits beside it; labeling would double-announce. Documented in code |
 
-*(pending — filled at end)*
+### Phase B — core polish (`83de46d`)
+| Item | Principle | Outcome |
+|------|-----------|---------|
+| B1 home hierarchy | Hick's law, progressive disclosure, Von Restorff | Category chips collapsed behind a filter toggle (auto-expands when a non-default category is active — a hidden filter can never silently shape the feed). Chip selection restyled gold-fill → gold border+label, so the hero is the one gold mass above the fold |
+| B2 personalization | Serial position, Von Restorff | Favourite-team matches float to top with gold star marker; hero slot prefers a live favourite match; `match.id` keys kept so reorder animates. No VM change — partition in `remember(matches, favourites)` |
+| B3 Peak-End | Peak-End, feedback | Wicket/4/6 tints score header with semantic `CricketEventColors` for 1.5s + one haptic (LongPress wicket, tick boundary). Completed matches show trophy result banner in win green. Flash gated on reduced-motion, haptics on the user's setting |
+| B4 Zeigarnik | Honest open loops | Completed-card status ("won by…") reads in win green; live chase line keeps batting-team color. No manufactured urgency |
+| B5 filter hygiene | Perf | AllMatchesScreenV2 format filter memoized. (Home already used `derivedStateOf` — audit item A-9 was partially stale) |
+
+### Phase C1 — trust (`55efdb1`)
+- StatsHub fake summary ("1,234 / 98,321 / 4,321") deleted — hub is honest navigation only.
+- PlayerDetail: failed load shows `EmptyStateV2` + Retry instead of silently rendering `generateMockPlayer` output as if real (~170 lines of mock code removed).
+- SeriesDetail: Points Table tab no longer steals selection (returning used to land on a blank body). Its "coming soon" tabs were already honest `EmptyStateV2` — kept.
+- Orphaned `squad/*` and `match-info/*` route definitions deleted along with tab-mapping references.
+
+### Phase C2 — token discipline, reachable subset (`aa5c892`)
+- All hex literals in components reachable from the live nav graph migrated to `BouncerThemeV2` tokens (premium card containers, chip backgrounds, gradient companion, milestone tier colors → `statusLive`/`cricket.six`).
+- Reachable-component hex count: 10 → 1 (the survivor is a `@Preview` annotation requiring a compile-time const). Non-theme `ui/` hex occurrences now 270, concentrated in widgets/notifications (RemoteViews — *cannot* read Compose theme; legitimately hardcoded) and dead legacy files.
+
+## 5. Not done yet (high-impact, deferred, with reasons)
+
+| Item | Why deferred |
+|------|--------------|
+| Component dedup (2 skeletons, 3 empty states, 2 pull-refresh, 2 bottom navs, 2 top bars, 2 spacing systems) | Per-pair PRs with screenshot comparison; touching shared primitives across many screens is its own project |
+| Gold-discipline sweep (~59 files) | Needs an allowlist doc first (gold = primary action / hero / favourite marker / brand chrome), then mechanical pass; depends on dedup landing |
+| Dead legacy file deletion (EliteShareCard, BouncerSnackbar, LiveActivityStyles, PremiumShimmer etc. appear unreferenced) | Dead-code caution rules: manifest/Worker/Gson reflection roots must be verified beyond grep before deleting |
+| `LiveActivityViewModel` single-UiState refactor (13+ scattered flows) | Layout-coupled; only needed if home tab taxonomy changes; explicitly out of scope per plan |
+| Full hex migration of widgets/notifications | RemoteViews/Glance can't read Compose theme — needs a parallel resource-based token set, not a find-replace |
+| `BatsmanMilestoneCard` infinite sparkle/pulse ignores reduced-motion | Legacy celebration component; same gating pattern as StatusBadge applies — small follow-up |
+| `BouncerColors.kt` deprecation pointer to nonexistent `UnifiedColors.kt` | Fix alongside component dedup when the legacy theme family is next touched |
+| Layout Inspector recomposition-count verification + on-device accessibility-scanner pass | Needs an attached device/emulator session; code-level checks (memoization, semantics, contrast math) done — runtime verification recommended before release |
+| `HighlightsTabV2` (52-line shell) | Needs highlight data wiring, not UX polish — product decision |
+| Live-region tuning under rapid updates | `Polite` mode chosen to avoid TalkBack spam; verify announcement frequency on-device with a real live match |
