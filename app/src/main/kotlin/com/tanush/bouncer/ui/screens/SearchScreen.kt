@@ -60,6 +60,7 @@ import coil.compose.AsyncImage
 import com.tanush.bouncer.data.SearchRepository
 import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.models.NewsArticleData
+import com.tanush.bouncer.ui.components.v2.EmptyStateV2
 import com.tanush.bouncer.ui.components.v2.MatchCardV2
 import com.tanush.bouncer.ui.components.v2.SectionHeaderV2
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
@@ -87,6 +88,7 @@ fun SearchScreen(
     val results by viewModel.results.collectAsStateWithLifecycle()
     val selectedTab by viewModel.selectedTab.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
+    val searchError by viewModel.error.collectAsStateWithLifecycle()
     val recentQueries by viewModel.recentQueries.collectAsStateWithLifecycle()
     val focusRequester = remember { FocusRequester() }
 
@@ -258,24 +260,21 @@ fun SearchScreen(
                     return@LazyColumn
                 }
 
+                // Failed search — distinct from genuinely empty results
+                if (searchError != null && displayResults.isEmpty && query.length >= 2) {
+                    item(key = "search_error") {
+                        EmptyStateV2(
+                            title = "Search interrupted",
+                            subtitle = searchError ?: "",
+                            onRetry = { viewModel.retrySearch(matches, news) },
+                        )
+                    }
+                    return@LazyColumn
+                }
+
                 // Empty results state
                 if (displayResults.isEmpty && query.length >= 2) {
-                    item(key = "no_results") {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(spacing.xxl),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                        ) {
-                            Text("No results found", style = typography.titleMedium, color = colors.onSurface)
-                            Spacer(Modifier.height(spacing.xs))
-                            Text(
-                                "Try a different search term",
-                                style = typography.bodyMedium,
-                                color = colors.textSecondary,
-                            )
-                        }
-                    }
+                    item(key = "no_results") { NoResultsMessage() }
                     return@LazyColumn
                 }
 
@@ -398,6 +397,27 @@ fun SearchScreen(
 // ═══════════════════════════════════════════════════════════════════════════════
 // Search Bar
 // ═══════════════════════════════════════════════════════════════════════════════
+
+@Composable
+private fun NoResultsMessage() {
+    val colors = BouncerThemeV2.colors
+    val typography = BouncerThemeV2.typography
+    val spacing = BouncerThemeV2.spacing
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(spacing.xxl),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text("No results found", style = typography.titleMedium, color = colors.onSurface)
+        Spacer(Modifier.height(spacing.xs))
+        Text(
+            "Try a different search term",
+            style = typography.bodyMedium,
+            color = colors.textSecondary,
+        )
+    }
+}
 
 @Composable
 private fun SearchBarHeader(

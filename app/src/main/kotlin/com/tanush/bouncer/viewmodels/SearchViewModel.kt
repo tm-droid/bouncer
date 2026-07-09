@@ -47,6 +47,10 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
+    /** Non-null when the whole search failed (vs. genuinely empty results). */
+    private val _error = MutableStateFlow<String?>(null)
+    val error: StateFlow<String?> = _error.asStateFlow()
+
     private val _recentQueries = MutableStateFlow<List<String>>(emptyList())
     val recentQueries: StateFlow<List<String>> = _recentQueries.asStateFlow()
 
@@ -63,6 +67,7 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
     ) {
         _query.value = newQuery
         searchJob?.cancel()
+        _error.value = null
         if (newQuery.length < 2) {
             _results.value = SearchRepository.SearchResults()
             _isLoading.value = false
@@ -72,83 +77,107 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
             delay(300) // debounce
             _isLoading.value = true
             try {
-                val teamNames = (matches.flatMap { m -> m.teams.map { it.name } } + SearchRepository.KNOWN_CRICKET_TEAMS).distinct()
-                val bundle = coroutineScope {
-                    val liveDeferred = async { SearchRepository.search(newQuery, matches, news, teamNames) }
-                    val dbFromDeferred = async { SearchRepository.searchFromDb(newQuery, db) }
-                    val dbPlayersDeferred = async { SearchRepository.searchPlayersFromDb(newQuery, db) }
-                    val networkPlayersDeferred = async {
-                        runCatching { PlayerProfileScraper.searchPlayers(newQuery) }.getOrDefault(emptyList())
-                            .map { p ->
-                                SearchRepository.SearchResult.PlayerResult(
-                                    playerName = p.name,
-                                    teamName = p.country,
-                                    role = "",
-                                    relevanceScore = 0.9,
-                                    imageUrl = p.imageUrl,
-                                )
-                            }
-                    }
-                    SearchBundle(liveDeferred.await(), dbFromDeferred.await(), dbPlayersDeferred.await(), networkPlayersDeferred.await())
-                }
-                val liveResults = bundle.live
-                val dbFromResult = bundle.dbFrom
-                val dbPlayersResult = bundle.dbPlayers
-                val networkPlayerResults = bundle.networkPlayers
-
-                val (dbSeries, dbHistorical) = when (dbFromResult) {
-                    is AppResult.Success -> dbFromResult.data
-                    is AppResult.Error -> { Sentry.captureException(dbFromResult.exception); Pair(emptyList(), emptyList()) }
-                    is AppResult.Loading -> Pair(emptyList(), emptyList())
-                }
-
-                // Fall back to live network fetch if Room DB has no series yet
-                val resolvedSeries: List<SearchRepository.SearchResult.SeriesResult> = if (dbSeries.isEmpty()) {
-                    runCatching {
-                        val q = newQuery.trim().lowercase()
-                        seriesScraper.fetchActiveSeries()
-                            .filter { series ->
-                                series.name.lowercase().contains(q) ||
-                                    series.category.name.lowercase().contains(q)
-                            }
-                            .map { series ->
-                                SearchRepository.SearchResult.SeriesResult(
-                                    seriesId = series.id,
-                                    name = series.name,
-                                    category = series.category.name,
-                                    startDate = series.startDate,
-                                    endDate = series.endDate,
-                                    relevanceScore = if (series.name.lowercase().contains(q)) 1.0 else 0.7,
-                                )
-                            }
-                    }.getOrDefault(emptyList())
-                } else {
-                    dbSeries
-                }
-
-                val dbPlayers = dbPlayersResult.let { result ->
-                    if (result is AppResult.Error) Sentry.captureException(result.exception)
-                    result.getOrDefault(emptyList())
-                }
-
-                // Merge live + DB + network players (deduplicate by name, case-insensitive)
-                val livePlayerNames = liveResults.players.map { it.playerName.lowercase() }.toSet()
-                val dbPlayerNames = dbPlayers.map { it.playerName.lowercase() }.toSet()
-                val mergedPlayers = liveResults.players +
-                    dbPlayers.filter { it.playerName.lowercase() !in livePlayerNames } +
-                    networkPlayerResults.filter {
-                        it.playerName.lowercase() !in livePlayerNames && it.playerName.lowercase() !in dbPlayerNames
-                    }
-
-                _results.value = liveResults.copy(
-                    players = mergedPlayers.sortedByDescending { it.relevanceScore }.take(10),
-                    series = resolvedSeries,
-                    historicalMatches = dbHistorical,
-                )
+                performSearch(newQuery, matches, news)
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // Partial-source failures degrade silently inside performSearch;
+                // this is the whole-search failure path — surface it instead of
+                // faking "no results".
+                Sentry.captureException(e)
+                _error.value = "Search hit a rain delay — check your connection and retry."
             } finally {
                 _isLoading.value = false
             }
         }
+    }
+
+    private suspend fun performSearch(
+        newQuery: String,
+        matches: List<CricketMatch>,
+        news: List<NewsArticleData>,
+    ) {
+        val teamNames = (matches.flatMap { m -> m.teams.map { it.name } } + SearchRepository.KNOWN_CRICKET_TEAMS).distinct()
+        val bundle = coroutineScope {
+            val liveDeferred = async { SearchRepository.search(newQuery, matches, news, teamNames) }
+            val dbFromDeferred = async { SearchRepository.searchFromDb(newQuery, db) }
+            val dbPlayersDeferred = async { SearchRepository.searchPlayersFromDb(newQuery, db) }
+            val networkPlayersDeferred = async {
+                runCatching { PlayerProfileScraper.searchPlayers(newQuery) }.getOrDefault(emptyList())
+                    .map { p ->
+                        SearchRepository.SearchResult.PlayerResult(
+                            playerName = p.name,
+                            teamName = p.country,
+                            role = "",
+                            relevanceScore = 0.9,
+                            imageUrl = p.imageUrl,
+                        )
+                    }
+            }
+            SearchBundle(liveDeferred.await(), dbFromDeferred.await(), dbPlayersDeferred.await(), networkPlayersDeferred.await())
+        }
+        val liveResults = bundle.live
+        val dbFromResult = bundle.dbFrom
+        val dbPlayersResult = bundle.dbPlayers
+        val networkPlayerResults = bundle.networkPlayers
+
+        val (dbSeries, dbHistorical) = when (dbFromResult) {
+            is AppResult.Success -> dbFromResult.data
+            is AppResult.Error -> { Sentry.captureException(dbFromResult.exception); Pair(emptyList(), emptyList()) }
+            is AppResult.Loading -> Pair(emptyList(), emptyList())
+        }
+
+        val resolvedSeries = resolveSeries(newQuery, dbSeries)
+
+        val dbPlayers = dbPlayersResult.let { result ->
+            if (result is AppResult.Error) Sentry.captureException(result.exception)
+            result.getOrDefault(emptyList())
+        }
+
+        // Merge live + DB + network players (deduplicate by name, case-insensitive)
+        val livePlayerNames = liveResults.players.map { it.playerName.lowercase() }.toSet()
+        val dbPlayerNames = dbPlayers.map { it.playerName.lowercase() }.toSet()
+        val mergedPlayers = liveResults.players +
+            dbPlayers.filter { it.playerName.lowercase() !in livePlayerNames } +
+            networkPlayerResults.filter {
+                it.playerName.lowercase() !in livePlayerNames && it.playerName.lowercase() !in dbPlayerNames
+            }
+
+        _results.value = liveResults.copy(
+            players = mergedPlayers.sortedByDescending { it.relevanceScore }.take(10),
+            series = resolvedSeries,
+            historicalMatches = dbHistorical,
+        )
+    }
+
+    /** Falls back to a live network fetch when Room has no series yet. */
+    private suspend fun resolveSeries(
+        newQuery: String,
+        dbSeries: List<SearchRepository.SearchResult.SeriesResult>,
+    ): List<SearchRepository.SearchResult.SeriesResult> {
+        if (dbSeries.isNotEmpty()) return dbSeries
+        return runCatching {
+            val q = newQuery.trim().lowercase()
+            seriesScraper.fetchActiveSeries()
+                .filter { series ->
+                    series.name.lowercase().contains(q) ||
+                        series.category.name.lowercase().contains(q)
+                }
+                .map { series ->
+                    SearchRepository.SearchResult.SeriesResult(
+                        seriesId = series.id,
+                        name = series.name,
+                        category = series.category.name,
+                        startDate = series.startDate,
+                        endDate = series.endDate,
+                        relevanceScore = if (series.name.lowercase().contains(q)) 1.0 else 0.7,
+                    )
+                }
+        }.getOrDefault(emptyList())
+    }
+
+    fun retrySearch(matches: List<CricketMatch>, news: List<NewsArticleData>) {
+        onQueryChange(_query.value, matches, news)
     }
 
     fun onTabSelected(tab: SearchTab) {

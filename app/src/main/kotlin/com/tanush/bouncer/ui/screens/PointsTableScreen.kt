@@ -77,6 +77,7 @@ fun PointsTableScreen(
                         icon = Icons.Outlined.TableChart,
                         title = "No standings available",
                         subtitle = error ?: "",
+                        onRetry = viewModel::retry,
                     )
                 }
             }

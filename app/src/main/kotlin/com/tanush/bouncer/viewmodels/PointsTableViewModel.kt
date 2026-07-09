@@ -36,10 +36,16 @@ class PointsTableViewModel : ViewModel() {
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
                 Sentry.captureException(e)
-                _error.value = "Failed to load points table"
+                _error.value = "Rain delay — couldn't reach the scorers. Check your connection and retry."
             } finally {
                 _isLoading.value = false
             }
         }
+    }
+
+    fun retry() {
+        val seriesId = lastSeriesId ?: return
+        lastSeriesId = null
+        load(seriesId)
     }
 }
