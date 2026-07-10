@@ -63,38 +63,46 @@ fun BatsmanMilestoneCard(
 ) {
     val colors = BouncerDesignSystem.colors
     val hierarchy = BouncerDesignSystem.hierarchy
-    val infiniteTransition = rememberInfiniteTransition(label = "milestone_animation")
-    
-    // Star sparkle animation
-    val sparkleRotation by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 360f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(8000, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "sparkle_rotation"
-    )
-    
-    val pulseScale by infiniteTransition.animateFloat(
-        initialValue = 1f,
-        targetValue = 1.15f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1000, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "pulse_scale"
-    )
-    
-    val goldGlow by infiniteTransition.animateFloat(
-        initialValue = 0.4f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1500, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "gold_glow"
-    )
+
+    // Reduced-motion users get the static celebration (same gate as StatusBadge):
+    // full color and layout, no infinite sparkle/pulse/glow.
+    val sparkleRotation: Float
+    val pulseScale: Float
+    val goldGlow: Float
+    if (BouncerMotion.reducedMotionEnabled) {
+        sparkleRotation = 0f
+        pulseScale = 1f
+        goldGlow = 1f
+    } else {
+        val infiniteTransition = rememberInfiniteTransition(label = "milestone_animation")
+        sparkleRotation = infiniteTransition.animateFloat(
+            initialValue = 0f,
+            targetValue = 360f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(8000, easing = LinearEasing),
+                repeatMode = RepeatMode.Restart
+            ),
+            label = "sparkle_rotation"
+        ).value
+        pulseScale = infiniteTransition.animateFloat(
+            initialValue = 1f,
+            targetValue = 1.15f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(1000, easing = FastOutSlowInEasing),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "pulse_scale"
+        ).value
+        goldGlow = infiniteTransition.animateFloat(
+            initialValue = 0.4f,
+            targetValue = 1f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(1500, easing = FastOutSlowInEasing),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "gold_glow"
+        ).value
+    }
     
     val milestoneColor = when (milestoneInfo.milestone) {
         MilestoneType.FIFTY -> colors.statusInfo
