@@ -24,3 +24,4 @@ fun Modifier.bouncerScreenBackground(): Modifier {
         ),
     )
 }
+ 

@@ -266,3 +266,23 @@ Content-depth gaps vs mocks, all needing product/data work, out of scope this ro
 | S3 | Verified dead legacy file deletion | A | M |
 
 Still deferred (unchanged reasons + new): nav/top-bar/skeleton/spacing dedup, gold-discipline sweep (needs allowlist decision), LiveActivityViewModel refactor, widgets/notifications hex, wholesale glass/premium deletion, HighlightsTab wiring, on-device passes, full `ScreenState<T>` adoption.
+
+## Round-2 changelog — what shipped (July 2026)
+
+Eleven commits, each `assembleDebug` + unit tests green and detekt-gated. detekt findings ended at **20**, below the 23 pre-existing at round-1 HEAD (SearchViewModel refactor removed three).
+
+| Batch | Commit | Outcome |
+|-------|--------|---------|
+| Q1 | `8678323` | Subscribe bell: toggle haptic (confirm on / click off) + one-shot spring bounce, reduced-motion gated. Onboarding team/category chips + player-favorite toggle share the haptic language (`HapticFeedback.toggle()`). Notification page gains reciprocity line scoped to followed teams |
+| Q2 | `2eb648d` | Search: whole-search failure now renders "Search interrupted" + retry instead of fake "No results" (`SearchViewModel.error`); points table error gains retry. **News was already fixed — round-1 gap listing was stale** |
+| Q3 | `2f283a8` | `BatsmanMilestoneCard` sparkle/pulse/glow honors reduced-motion (StatusBadge pattern) — last reachable ungated infinite animation |
+| Q4 | `0b06699` | Dead deprecation pointers (`UnifiedColors.kt` never existed) now point at real V2 tokens; stale "Favourites/Stats are tabs" nav comments fixed |
+| M1 | `3033bb8` | Team detail: shimmer + EmptyStateV2. News detail: honest body-scrape error + retry (was error-string-as-fake-paragraph). Match detail: `loadError`/`commentaryError` in UiState, retry banner in container, commentary feed-failure state; Realtime clears errors. Overview tab: no-data message. **StatsHub + InfoTab round-1 blank-screen flags were stale** |
+| M3 | `3331357` | Series list + points table crossfade between states (reduced-motion → shorter opacity-only spec). No `animateContentSize` sites exist — expandables already animated |
+| M2 | `cacf0ba` | **Root cause found:** `refreshMatches()` clobbered `LoadingState.Error` with `Idle` — refresh failures were invisible with content on screen. Fixed + snackbars on Home/AllMatches/News over stale content |
+| M4 | `d892aaa` | Pull-to-refresh: points table, team detail, series list (user opted series list in) |
+| S1 | `9fcb404` | `EmptyStateView`/`EmptyStateCard`/`ErrorCard` + dead `ErrorState`/`LoadingState`/`RetryingOverlay`/`AutoRetryHandler`/`SuccessSnackbar` deleted (zero refs). Empty-state primitives 4 → 1. `NetworkStatusBanner` pulse reduced-motion gated |
+| S2 | `27538f4` | `PullRefreshWrapperV2` renders the cricket-ball indicator everywhere; unused `CricketBallPullRefreshBox` deleted. Pull-refresh APIs 2 → 1 |
+| S3 | `dbf75df` | `BouncerSnackbar.kt`, `LiveActivityStyles.kt`, `PremiumShimmer.kt` deleted after per-symbol verification (~19 hex literals gone). **`EliteShareCard.kt` kept** — `ShareCardGenerator` is live in match-detail share |
+
+Also landed: `LiveMatchDetailSource` seam + debug-only showcase build (`app/src/debug/`) that fakes Realtime for demo recording (pre-existing WIP, committed with M1/final).
