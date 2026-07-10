@@ -15,7 +15,7 @@ import java.nio.charset.StandardCharsets
 sealed class BouncerScreen(val route: String) {
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // Primary Tab Destinations (Bottom Navigation)
+    // Primary Tab Destinations (Bottom Navigation: Home / Matches / News / More)
     // ═══════════════════════════════════════════════════════════════════════════
 
     /** Home tab - Live matches, featured content */
@@ -24,10 +24,10 @@ sealed class BouncerScreen(val route: String) {
     /** All Matches tab - Complete match listings */
     data object Matches : BouncerScreen("all_matches")
 
-    /** Favourites tab - Saved teams and matches */
+    /** Favourites - saved teams and matches (deep-link route, not a bottom tab) */
     data object Favorites : BouncerScreen("favourites")
 
-    /** Stats/Trophy Room tab - User achievements and statistics */
+    /** Stats/Trophy Room - achievements and statistics (reached via More, not a bottom tab) */
     data object Stats : BouncerScreen("stats")
 
     /** More tab - Settings, About, News, DevTools access */
@@ -49,7 +49,7 @@ sealed class BouncerScreen(val route: String) {
     /** Developer Tools screen - API diagnostics and debug */
     data object DevTools : BouncerScreen("devtools")
 
-    /** News listing screen */
+    /** News tab - cricket headlines (bottom-nav destination) */
     data object News : BouncerScreen("news")
 
     /** Search screen */
