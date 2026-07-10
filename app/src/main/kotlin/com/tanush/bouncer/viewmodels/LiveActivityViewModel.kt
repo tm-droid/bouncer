@@ -258,7 +258,11 @@ class LiveActivityViewModel(
             _loadingState.value = LoadingState.Refreshing
             fetchMatchesInternal()
             _isRefreshing.value = false
-            _loadingState.value = LoadingState.Idle
+            // fetchMatchesInternal sets Error on failure — don't clobber it with Idle,
+            // or the refresh failure is never surfaced to the UI.
+            if (_loadingState.value == LoadingState.Refreshing) {
+                _loadingState.value = LoadingState.Idle
+            }
         }
     }
 

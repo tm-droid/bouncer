@@ -14,7 +14,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CloudOff
 import androidx.compose.material.icons.outlined.SportsCricket
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -73,6 +76,14 @@ fun AllMatchesScreenV2(
 
     // No grouping — card already displays match/series info
 
+    // Refresh failed while content is on screen: keep the stale list, say so.
+    val snackbarHostState = remember { SnackbarHostState() }
+    RefreshFailureSnackbarEffect(
+        loadingState = loadingState,
+        hasContent = currentMatches.isNotEmpty(),
+        snackbarHostState = snackbarHostState,
+    )
+
     Scaffold(
         topBar = {
             Column {
@@ -80,6 +91,7 @@ fun AllMatchesScreenV2(
                 NetworkStatusBanner(isOffline = isOffline)
             }
         },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         containerColor = BouncerThemeV2.colors.background,
     ) { innerPadding ->
         PullRefreshWrapperV2(
@@ -171,4 +183,19 @@ private fun mapStatusToChip(vmStatus: String): String = when {
     vmStatus.contains("Upcoming", ignoreCase = true) -> "Upcoming"
     vmStatus.contains("Recent", ignoreCase = true) || vmStatus.contains("Completed", ignoreCase = true) -> "Recent"
     else -> "Live"
+}
+
+/** Shows the refresh-failure message as a snackbar when stale content is still visible. */
+@Composable
+internal fun RefreshFailureSnackbarEffect(
+    loadingState: LoadingState,
+    hasContent: Boolean,
+    snackbarHostState: SnackbarHostState,
+) {
+    LaunchedEffect(loadingState) {
+        val errorState = loadingState as? LoadingState.Error
+        if (errorState != null && hasContent) {
+            snackbarHostState.showSnackbar(errorState.message)
+        }
+    }
 }

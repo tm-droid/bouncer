@@ -27,6 +27,8 @@ import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -57,6 +59,7 @@ import com.tanush.bouncer.ui.components.v2.SectionHeaderV2
 import com.tanush.bouncer.ui.components.v2.ShimmerMatchCard
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 import com.tanush.bouncer.ui.theme.v2.bouncerScreenBackground
+import com.tanush.bouncer.ui.screens.RefreshFailureSnackbarEffect
 import com.tanush.bouncer.viewmodels.LiveActivityViewModel
 
 /**
@@ -87,6 +90,7 @@ fun HomeScreenV2(
     val currentMatches by viewModel.currentMatches.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
     val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
+    val loadingState by viewModel.loadingState.collectAsStateWithLifecycle()
     val unreadCount by NotificationInboxManager.unreadCount.collectAsStateWithLifecycle()
     val subscriptions by MatchSubscriptionManager.subscriptions.collectAsStateWithLifecycle()
     val isOffline = rememberIsOffline()
@@ -137,7 +141,17 @@ fun HomeScreenV2(
         if (categoryActive) filtersExpanded = true
     }
 
+    // Refresh failed while content is on screen: keep the stale list, say so.
+    // (The empty-list failure case is handled by the EmptyState below.)
+    val snackbarHostState = remember { SnackbarHostState() }
+    RefreshFailureSnackbarEffect(
+        loadingState = loadingState,
+        hasContent = currentMatches.isNotEmpty(),
+        snackbarHostState = snackbarHostState,
+    )
+
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             Column {
                 BouncerTopBarV2(

@@ -11,8 +11,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -50,8 +54,17 @@ fun NewsScreenV2(
     val featuredArticle = articles.firstOrNull()
     val otherArticles = if (articles.size > 1) articles.drop(1) else emptyList()
 
+    // Refresh failed while headlines are on screen: keep the stale list, say so.
+    val snackbarHostState = remember { SnackbarHostState() }
+    LaunchedEffect(error) {
+        if (error != null && articles.isNotEmpty()) {
+            snackbarHostState.showSnackbar("Couldn't refresh headlines — showing earlier stories.")
+        }
+    }
+
     Scaffold(
         topBar = { BouncerTopBarV2(title = "News") },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         containerColor = colors.background,
     ) { innerPadding ->
         PullRefreshWrapperV2(
