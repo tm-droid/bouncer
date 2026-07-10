@@ -41,6 +41,7 @@ import com.tanush.bouncer.managers.TeamLogoManager
 import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.ui.components.v2.EmptyStateV2
 import com.tanush.bouncer.ui.components.v2.MatchCardV2
+import com.tanush.bouncer.ui.components.v2.PullRefreshWrapperV2
 import com.tanush.bouncer.ui.components.v2.SectionHeaderV2
 import com.tanush.bouncer.ui.components.v2.ShimmerMatchCard
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
@@ -60,6 +61,7 @@ fun TeamDetailScreen(
 
     val allMatches by liveActivityViewModel.currentMatches.collectAsStateWithLifecycle()
     val isLoading by liveActivityViewModel.isLoading.collectAsStateWithLifecycle()
+    val isRefreshing by liveActivityViewModel.isRefreshing.collectAsStateWithLifecycle()
     val teamMatches = remember(allMatches, teamName) {
         allMatches.filter { match ->
             match.teams.any { it.name.equals(teamName, ignoreCase = true) }
@@ -88,10 +90,13 @@ fun TeamDetailScreen(
             )
         },
     ) { innerPadding ->
+        PullRefreshWrapperV2(
+            isRefreshing = isRefreshing,
+            onRefresh = liveActivityViewModel::refreshMatches,
+            modifier = Modifier.padding(innerPadding),
+        ) {
         LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding),
+            modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(vertical = spacing.md),
         ) {
             item(key = "team_header") {
@@ -173,6 +178,7 @@ fun TeamDetailScreen(
             }
 
             item(key = "bottom") { Spacer(Modifier.height(80.dp)) }
+        }
         }
     }
 }

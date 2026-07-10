@@ -44,6 +44,7 @@ import com.tanush.bouncer.models.Series
 import com.tanush.bouncer.ui.components.v2.BouncerTopBarV2
 import com.tanush.bouncer.ui.components.v2.EmptyStateV2
 import com.tanush.bouncer.ui.components.v2.FilterChipRowV2
+import com.tanush.bouncer.ui.components.v2.PullRefreshWrapperV2
 import com.tanush.bouncer.ui.components.v2.ShimmerListItem
 import com.tanush.bouncer.ui.theme.BouncerMotion
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
@@ -76,18 +77,23 @@ fun SeriesListScreen(
         },
         containerColor = colors.background,
     ) { innerPadding ->
-        SeriesListBody(
-            innerPadding = innerPadding,
-            isLoading = isLoading,
-            hasError = hasError,
-            allSeries = allSeries,
-            filteredSeries = filteredSeries,
-            filterOptions = filterOptions,
-            selectedFilter = selectedFilter,
-            onFilterSelected = { selectedFilter = it },
-            onSeriesClick = onSeriesClick,
-            onRetry = { viewModel.retry() },
-        )
+        PullRefreshWrapperV2(
+            isRefreshing = isLoading,
+            onRefresh = viewModel::retry,
+        ) {
+            SeriesListBody(
+                innerPadding = innerPadding,
+                isLoading = isLoading,
+                hasError = hasError,
+                allSeries = allSeries,
+                filteredSeries = filteredSeries,
+                filterOptions = filterOptions,
+                selectedFilter = selectedFilter,
+                onFilterSelected = { selectedFilter = it },
+                onSeriesClick = onSeriesClick,
+                onRetry = { viewModel.retry() },
+            )
+        }
     }
 }
 

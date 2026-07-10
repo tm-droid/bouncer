@@ -26,6 +26,7 @@ import com.tanush.bouncer.ui.components.premium.SeriesStandingsCard
 import com.tanush.bouncer.ui.components.premium.SeriesTeam
 import com.tanush.bouncer.ui.components.v2.BouncerTopBarV2
 import com.tanush.bouncer.ui.components.v2.EmptyStateV2
+import com.tanush.bouncer.ui.components.v2.PullRefreshWrapperV2
 import com.tanush.bouncer.ui.components.v2.ShimmerTableRows
 import com.tanush.bouncer.ui.theme.BouncerMotion
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
@@ -74,6 +75,10 @@ fun PointsTableScreen(
             error != null -> PointsTableState.Error
             else -> PointsTableState.Content
         }
+        PullRefreshWrapperV2(
+            isRefreshing = isLoading,
+            onRefresh = viewModel::retry,
+        ) {
         // Fade between skeleton/error/content instead of hard-swapping.
         Crossfade(
             targetState = screenState,
@@ -98,22 +103,35 @@ fun PointsTableScreen(
                         )
                     }
                 }
-                PointsTableState.Content -> {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize().padding(innerPadding),
-                        contentPadding = PaddingValues(horizontal = spacing.md, vertical = spacing.md),
-                    ) {
-                        item(key = "standings_card") {
-                            SeriesStandingsCard(
-                                seriesName = seriesName,
-                                teams = entries.map { it.toSeriesTeam() },
-                            )
-                        }
-                        item(key = "bottom") { Spacer(Modifier.height(80.dp)) }
-                    }
-                }
+                PointsTableState.Content -> StandingsList(
+                    innerPadding = innerPadding,
+                    seriesName = seriesName,
+                    entries = entries,
+                )
             }
         }
+        }
+    }
+}
+
+@Composable
+private fun StandingsList(
+    innerPadding: PaddingValues,
+    seriesName: String,
+    entries: List<PointsTableEntry>,
+) {
+    val spacing = BouncerThemeV2.spacing
+    LazyColumn(
+        modifier = Modifier.fillMaxSize().padding(innerPadding),
+        contentPadding = PaddingValues(horizontal = spacing.md, vertical = spacing.md),
+    ) {
+        item(key = "standings_card") {
+            SeriesStandingsCard(
+                seriesName = seriesName,
+                teams = entries.map { it.toSeriesTeam() },
+            )
+        }
+        item(key = "bottom") { Spacer(Modifier.height(80.dp)) }
     }
 }
 
