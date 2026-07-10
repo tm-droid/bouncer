@@ -1,5 +1,7 @@
 package com.tanush.bouncer.ui.screens
 
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.FiniteAnimationSpec
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -43,6 +45,7 @@ import com.tanush.bouncer.ui.components.v2.BouncerTopBarV2
 import com.tanush.bouncer.ui.components.v2.EmptyStateV2
 import com.tanush.bouncer.ui.components.v2.FilterChipRowV2
 import com.tanush.bouncer.ui.components.v2.ShimmerListItem
+import com.tanush.bouncer.ui.theme.BouncerMotion
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 
 /**
@@ -102,8 +105,15 @@ private fun SeriesListBody(
     onRetry: () -> Unit,
 ) {
     val spacing = BouncerThemeV2.spacing
-    when {
-        isLoading -> {
+    // Fade between skeleton/error/empty/content instead of hard-swapping.
+    // Opacity-only, so it stays on under reduced motion (shorter spec).
+    Crossfade(
+        targetState = seriesListStateOf(isLoading, hasError, allSeries.isEmpty()),
+        animationSpec = stateFadeSpec(),
+        label = "seriesListState",
+    ) { state ->
+        when (state) {
+        SeriesListState.Loading -> {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -114,7 +124,7 @@ private fun SeriesListBody(
                 repeat(6) { ShimmerListItem() }
             }
         }
-        hasError -> {
+        SeriesListState.Error -> {
             Box(modifier = Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
                 EmptyStateV2(
                     title = "Couldn't load series",
@@ -123,7 +133,7 @@ private fun SeriesListBody(
                 )
             }
         }
-        allSeries.isEmpty() -> {
+        SeriesListState.Empty -> {
             Box(modifier = Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
                 EmptyStateV2(
                     title = "No series found",
@@ -131,29 +141,60 @@ private fun SeriesListBody(
                 )
             }
         }
-        else -> {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize().padding(innerPadding),
-                contentPadding = PaddingValues(vertical = spacing.sm),
-            ) {
-                item(key = "filters") {
-                    FilterChipRowV2(
-                        items = filterOptions,
-                        selectedItem = selectedFilter,
-                        onItemSelected = onFilterSelected,
-                    )
-                    Spacer(Modifier.height(spacing.sm))
-                }
-
-                items(filteredSeries, key = { it.id }) { series ->
-                    SeriesCard(series = series, onClick = { onSeriesClick(series.id) })
-                }
-
-                item(key = "bottom") { Spacer(Modifier.height(80.dp)) }
-            }
+        SeriesListState.Content -> SeriesListContent(
+            innerPadding = innerPadding,
+            filteredSeries = filteredSeries,
+            filterOptions = filterOptions,
+            selectedFilter = selectedFilter,
+            onFilterSelected = onFilterSelected,
+            onSeriesClick = onSeriesClick,
+        )
         }
     }
 }
+
+@Composable
+private fun SeriesListContent(
+    innerPadding: PaddingValues,
+    filteredSeries: List<Series>,
+    filterOptions: List<String>,
+    selectedFilter: String,
+    onFilterSelected: (String) -> Unit,
+    onSeriesClick: (String) -> Unit,
+) {
+    val spacing = BouncerThemeV2.spacing
+    LazyColumn(
+        modifier = Modifier.fillMaxSize().padding(innerPadding),
+        contentPadding = PaddingValues(vertical = spacing.sm),
+    ) {
+        item(key = "filters") {
+            FilterChipRowV2(
+                items = filterOptions,
+                selectedItem = selectedFilter,
+                onItemSelected = onFilterSelected,
+            )
+            Spacer(Modifier.height(spacing.sm))
+        }
+
+        items(filteredSeries, key = { it.id }) { series ->
+            SeriesCard(series = series, onClick = { onSeriesClick(series.id) })
+        }
+
+        item(key = "bottom") { Spacer(Modifier.height(80.dp)) }
+    }
+}
+
+private enum class SeriesListState { Loading, Error, Empty, Content }
+
+private fun seriesListStateOf(isLoading: Boolean, hasError: Boolean, isEmpty: Boolean): SeriesListState = when {
+    isLoading -> SeriesListState.Loading
+    hasError -> SeriesListState.Error
+    isEmpty -> SeriesListState.Empty
+    else -> SeriesListState.Content
+}
+
+private fun stateFadeSpec(): FiniteAnimationSpec<Float> =
+    if (BouncerMotion.reducedMotionEnabled) BouncerMotion.Specs.ReducedFadeIn else BouncerMotion.Specs.FadeIn
 
 private fun filterSeries(allSeries: List<Series>, filter: String): List<Series> = when (filter) {
     "International" -> allSeries.filter { it.category == Series.SeriesCategory.INTERNATIONAL }

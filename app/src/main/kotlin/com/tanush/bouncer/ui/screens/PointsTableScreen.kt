@@ -1,5 +1,6 @@
 package com.tanush.bouncer.ui.screens
 
+import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
@@ -26,6 +27,7 @@ import com.tanush.bouncer.ui.components.premium.SeriesTeam
 import com.tanush.bouncer.ui.components.v2.BouncerTopBarV2
 import com.tanush.bouncer.ui.components.v2.EmptyStateV2
 import com.tanush.bouncer.ui.components.v2.ShimmerTableRows
+import com.tanush.bouncer.ui.theme.BouncerMotion
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 
 /**
@@ -67,35 +69,53 @@ fun PointsTableScreen(
         },
         containerColor = colors.background,
     ) { innerPadding ->
-        when {
-            isLoading -> {
-                ShimmerTableRows(modifier = Modifier.fillMaxSize().padding(innerPadding))
-            }
-            error != null -> {
-                Box(modifier = Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
-                    EmptyStateV2(
-                        icon = Icons.Outlined.TableChart,
-                        title = "No standings available",
-                        subtitle = error ?: "",
-                        onRetry = viewModel::retry,
-                    )
+        val screenState = when {
+            isLoading -> PointsTableState.Loading
+            error != null -> PointsTableState.Error
+            else -> PointsTableState.Content
+        }
+        // Fade between skeleton/error/content instead of hard-swapping.
+        Crossfade(
+            targetState = screenState,
+            animationSpec = if (BouncerMotion.reducedMotionEnabled) {
+                BouncerMotion.Specs.ReducedFadeIn
+            } else {
+                BouncerMotion.Specs.FadeIn
+            },
+            label = "pointsTableState",
+        ) { state ->
+            when (state) {
+                PointsTableState.Loading -> {
+                    ShimmerTableRows(modifier = Modifier.fillMaxSize().padding(innerPadding))
                 }
-            }
-            else -> {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize().padding(innerPadding),
-                    contentPadding = PaddingValues(horizontal = spacing.md, vertical = spacing.md),
-                ) {
-                    item(key = "standings_card") {
-                        SeriesStandingsCard(
-                            seriesName = seriesName,
-                            teams = entries.map { it.toSeriesTeam() },
+                PointsTableState.Error -> {
+                    Box(modifier = Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
+                        EmptyStateV2(
+                            icon = Icons.Outlined.TableChart,
+                            title = "No standings available",
+                            subtitle = error ?: "",
+                            onRetry = viewModel::retry,
                         )
                     }
-                    item(key = "bottom") { Spacer(Modifier.height(80.dp)) }
+                }
+                PointsTableState.Content -> {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize().padding(innerPadding),
+                        contentPadding = PaddingValues(horizontal = spacing.md, vertical = spacing.md),
+                    ) {
+                        item(key = "standings_card") {
+                            SeriesStandingsCard(
+                                seriesName = seriesName,
+                                teams = entries.map { it.toSeriesTeam() },
+                            )
+                        }
+                        item(key = "bottom") { Spacer(Modifier.height(80.dp)) }
+                    }
                 }
             }
         }
     }
 }
+
+private enum class PointsTableState { Loading, Error, Content }
 
