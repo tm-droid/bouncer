@@ -3,9 +3,6 @@ package com.tanush.bouncer.ui.components
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.*
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -156,38 +153,6 @@ fun CricketBallPullRefreshIndicator(
                 )
             )
         }
-    }
-}
-
-/**
- * Convenience wrapper that replaces standard [PullToRefreshBox] with a cricket ball indicator.
- */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun CricketBallPullRefreshBox(
-    isRefreshing: Boolean,
-    onRefresh: () -> Unit,
-    modifier: Modifier = Modifier,
-    content: @Composable () -> Unit
-) {
-    val state = rememberPullToRefreshState()
-
-    PullToRefreshBox(
-        isRefreshing = isRefreshing,
-        onRefresh = onRefresh,
-        state = state,
-        modifier = modifier,
-        indicator = {
-            CricketBallPullRefreshIndicator(
-                isRefreshing = isRefreshing,
-                pullProgress = state.distanceFraction,
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .padding(top = 16.dp)
-            )
-        }
-    ) {
-        content()
     }
 }
 
