@@ -14,12 +14,11 @@ import com.tanush.bouncer.models.ScrapedBowler
 import com.tanush.bouncer.models.WinProbabilityPoint
 import com.tanush.bouncer.data.AppResult
 import com.tanush.bouncer.data.CricBuzzMatchRepository
-import com.tanush.bouncer.data.CricketRepository
 import com.tanush.bouncer.data.MatchRepository
-import com.tanush.bouncer.data.remote.AppwriteMatchCommentaryClient
-import com.tanush.bouncer.data.remote.AppwriteMatchDetailClient
 import com.tanush.bouncer.data.remote.CommentaryEvent
+import com.tanush.bouncer.data.remote.LiveMatchDetailSource
 import com.tanush.bouncer.data.remote.MatchLiveDetailPayload
+import com.tanush.bouncer.data.remote.ProductionLiveDetailSource
 import com.tanush.bouncer.data.remote.H2HPair
 import com.tanush.bouncer.data.remote.H2HRepository
 import com.tanush.bouncer.ui.components.BatsmanMilestoneInfo
@@ -42,6 +41,7 @@ class MatchDetailViewModel(
     private val match: CricketMatch,
     context: Context,
     private val matchRepository: MatchRepository = CricBuzzMatchRepository(),
+    private val liveSource: LiveMatchDetailSource = ProductionLiveDetailSource,
 ) : ViewModel() {
 
     data class UiState(
@@ -63,6 +63,10 @@ class MatchDetailViewModel(
         val probabilityHistory: List<WinProbabilityPoint> = emptyList(),
         val batsmanMilestone: BatsmanMilestoneInfo? = null,
         val headToHead: H2HPair? = null,
+        /** Non-null when the initial load produced no live data at all (network-level failure). */
+        val loadError: String? = null,
+        /** Non-null when the commentary feed failed and no lines are available. */
+        val commentaryError: String? = null,
     )
 
     private val appContext = context.applicationContext
@@ -92,12 +96,12 @@ class MatchDetailViewModel(
     init {
         viewModelScope.launch(bouncerExceptionHandler) { loadInitial() }
         viewModelScope.launch(bouncerExceptionHandler) {
-            AppwriteMatchDetailClient.events
+            liveSource.detailEvents
                 .filter { it.matchId == match.id }
                 .collect { applyDetail(it.payload) }
         }
         viewModelScope.launch(bouncerExceptionHandler) {
-            AppwriteMatchCommentaryClient.events
+            liveSource.commentaryEvents
                 .filter { it.matchId == match.id }
                 .collect { onNewCommentaryEvent(it) }
         }
@@ -108,7 +112,7 @@ class MatchDetailViewModel(
 
         try {
             // Live snapshot (batsmen/bowler/score/scorecard) + commentary feed from Appwrite.
-            val detail = withTimeoutOrNull(10_000L) { AppwriteMatchDetailClient.getForMatch(match.id) }
+            val detail = withTimeoutOrNull(10_000L) { liveSource.getForMatch(match.id) }
             if (detail == null) breadcrumb("scorecard", "Appwrite live-detail fetch timed out or returned null")
             applyDetail(detail)
             // Fallback: if Appwrite has no scorecard (function not synced or scorecard parse failed
@@ -121,16 +125,17 @@ class MatchDetailViewModel(
                         Sentry.captureException(it)
                     }
             }
-            AppResult.runCatchingSuspend {
-                val lines = withTimeoutOrNull(10_000L) { AppwriteMatchCommentaryClient.getForMatch(match.id) }
-                    ?: emptyList()
-                if (lines.isNotEmpty()) _uiState.update { it.copy(commentary = lines) }
-            }.onError { breadcrumb("commentary_load", "Commentary feed load failed: ${it.message}") }
+            loadCommentaryFeed()
         } finally {
-            _uiState.update { it.copy(
-                commentaryLoading = false,
-                scorecardLoading = false,
-            )}
+            _uiState.update { st ->
+                st.copy(
+                    commentaryLoading = false,
+                    scorecardLoading = false,
+                    // Nothing usable arrived from any source: surface it instead of a blank screen.
+                    // Realtime events or a retry clear this.
+                    loadError = noLiveDataError(st),
+                )
+            }
         }
 
         loadCricinfoData()
@@ -141,8 +146,25 @@ class MatchDetailViewModel(
             val t2 = match.teams.getOrNull(1)?.name ?: return@runCatchingSuspend
             H2HRepository.getH2H(t1, t2)?.let { h2h -> _uiState.update { it.copy(headToHead = h2h) } }
         }.onError { breadcrumb("h2h", "H2H fetch failed: ${it.message}") }
-        CricketRepository.getProbabilityHistory(match.id).onSuccess { history ->
+        liveSource.getProbabilityHistory(match.id).onSuccess { history ->
             if (history.isNotEmpty()) _uiState.update { it.copy(probabilityHistory = history) }
+        }
+    }
+
+    private suspend fun loadCommentaryFeed() {
+        AppResult.runCatchingSuspend {
+            val lines = withTimeoutOrNull(10_000L) { liveSource.getCommentaryForMatch(match.id) }
+                ?: emptyList()
+            if (lines.isNotEmpty()) _uiState.update { it.copy(commentary = lines, commentaryError = null) }
+        }.onError {
+            breadcrumb("commentary_load", "Commentary feed load failed: ${it.message}")
+            _uiState.update { st ->
+                if (st.commentary.isEmpty()) {
+                    st.copy(commentaryError = "Commentary feed unreachable — check your connection and retry.")
+                } else {
+                    st
+                }
+            }
         }
     }
 
@@ -171,13 +193,23 @@ class MatchDetailViewModel(
         })
     }
 
-    private fun <T> pick(new: T?, old: T): T = new ?: old
+    /** Clears errors and re-runs the initial load (retry from the error state). */
+    fun retryInitialLoad() {
+        _uiState.update { it.copy(
+            loadError = null,
+            commentaryError = null,
+            scorecardLoading = true,
+            commentaryLoading = true,
+        )}
+        viewModelScope.launch(bouncerExceptionHandler) { loadInitial() }
+    }
 
     // Live snapshot updates (one-shot + Realtime) flow through here. Null fields keep prior values.
     private fun applyDetail(p: MatchLiveDetailPayload?) {
         if (p == null) return
         _uiState.update { st ->
             st.copy(
+                loadError = null,
                 batsmen = p.batsmen.ifEmpty { st.batsmen },
                 bowler = pick(p.bowler, st.bowler),
                 recentBalls = p.recentBalls.ifEmpty { st.recentBalls },
@@ -201,7 +233,7 @@ class MatchDetailViewModel(
             if (st.commentary.contains(ev.commentary)) st
             else {
                 isNew = true
-                st.copy(commentary = listOf(ev.commentary) + st.commentary)
+                st.copy(commentary = listOf(ev.commentary) + st.commentary, commentaryError = null)
             }
         }
         if (!isNew) return
@@ -225,13 +257,6 @@ class MatchDetailViewModel(
         if (runs >= 100) tryUnlock(AchievementKind.RUNS_100)
         val milestoneType = milestoneTypeFor(runs) ?: return
         if (firedMilestones.add("${b.name}_${milestoneType.runs}")) emitBatsmanMilestone(b, runs, milestoneType)
-    }
-
-    private fun milestoneTypeFor(runs: Int): MilestoneType? = when {
-        runs >= 200 -> MilestoneType.DOUBLE_HUNDRED
-        runs >= 100 -> MilestoneType.HUNDRED
-        runs >= 50 -> MilestoneType.FIFTY
-        else -> null
     }
 
     private fun emitBatsmanMilestone(b: ScrapedBatsman, runs: Int, milestoneType: MilestoneType) {
@@ -270,11 +295,30 @@ class MatchDetailViewModel(
             context: Context,
             match: CricketMatch,
             matchRepository: MatchRepository = CricBuzzMatchRepository(),
+            liveSource: LiveMatchDetailSource = ProductionLiveDetailSource,
         ): ViewModelProvider.Factory =
             object : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")
                 override fun <T : ViewModel> create(modelClass: Class<T>): T =
-                    MatchDetailViewModel(match, context.applicationContext, matchRepository) as T
+                    MatchDetailViewModel(match, context.applicationContext, matchRepository, liveSource) as T
             }
     }
 }
+
+// File-level helpers keep the ViewModel's member-function count and per-function
+// complexity inside detekt thresholds.
+private fun <T> pick(new: T?, old: T): T = new ?: old
+
+private fun milestoneTypeFor(runs: Int): MilestoneType? = when {
+    runs >= 200 -> MilestoneType.DOUBLE_HUNDRED
+    runs >= 100 -> MilestoneType.HUNDRED
+    runs >= 50 -> MilestoneType.FIFTY
+    else -> null
+}
+
+private fun noLiveDataError(st: MatchDetailViewModel.UiState): String? =
+    if (st.scorecard == null && st.batsmen.isEmpty() && st.commentary.isEmpty()) {
+        "Rain delay — couldn't fetch live match data. Check your connection and retry."
+    } else {
+        null
+    }

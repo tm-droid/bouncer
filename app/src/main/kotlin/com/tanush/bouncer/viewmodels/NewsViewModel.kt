@@ -61,6 +61,12 @@ class NewsViewModel(
     private val _isLoadingArticle = MutableStateFlow(false)
     val isLoadingArticle: StateFlow<Boolean> = _isLoadingArticle.asStateFlow()
 
+    /** Non-null when the article body failed to load (rendered as an error state, not body text). */
+    private val _articleBodyError = MutableStateFlow<String?>(null)
+    val articleBodyError: StateFlow<String?> = _articleBodyError.asStateFlow()
+
+    private var lastArticleUrl: String? = null
+
     private var pollingJob: Job? = null
     private var lastFetchTime: Long = 0L
 
@@ -178,15 +184,24 @@ class NewsViewModel(
         )
         _selectedArticle.value = article
         _articleBody.value = emptyList()
+        _articleBodyError.value = null
         fetchArticleBody(article.articleUrl)
     }
 
     fun clearSelectedArticle() {
         _selectedArticle.value = null
         _articleBody.value = emptyList()
+        _articleBodyError.value = null
+    }
+
+    fun retryArticleBody() {
+        val url = lastArticleUrl ?: return
+        _articleBodyError.value = null
+        fetchArticleBody(url)
     }
 
     private fun fetchArticleBody(url: String) {
+        lastArticleUrl = url
         viewModelScope.launch(bouncerExceptionHandler) {
             _isLoadingArticle.value = true
             try {
@@ -207,7 +222,7 @@ class NewsViewModel(
                 Sentry.captureException(e)
                 Sentry.metrics().count("news.article.scrape.error", 1.0)
                 Sentry.logger().error("Article scrape failed: %s", e.message ?: "unknown")
-                _articleBody.value = listOf("Failed to load article. Please check your connection and try again.")
+                _articleBodyError.value = "Rain delay — couldn't load this article. Check your connection and retry."
             } finally {
                 _isLoadingArticle.value = false
             }

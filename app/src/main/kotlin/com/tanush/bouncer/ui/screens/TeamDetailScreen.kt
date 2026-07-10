@@ -17,6 +17,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.outlined.SportsCricket
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -38,8 +39,10 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.tanush.bouncer.managers.TeamLogoManager
 import com.tanush.bouncer.models.CricketMatch
+import com.tanush.bouncer.ui.components.v2.EmptyStateV2
 import com.tanush.bouncer.ui.components.v2.MatchCardV2
 import com.tanush.bouncer.ui.components.v2.SectionHeaderV2
+import com.tanush.bouncer.ui.components.v2.ShimmerMatchCard
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 import com.tanush.bouncer.viewmodels.LiveActivityViewModel
 
@@ -56,6 +59,7 @@ fun TeamDetailScreen(
     val spacing = BouncerThemeV2.spacing
 
     val allMatches by liveActivityViewModel.currentMatches.collectAsStateWithLifecycle()
+    val isLoading by liveActivityViewModel.isLoading.collectAsStateWithLifecycle()
     val teamMatches = remember(allMatches, teamName) {
         allMatches.filter { match ->
             match.teams.any { it.name.equals(teamName, ignoreCase = true) }
@@ -139,26 +143,19 @@ fun TeamDetailScreen(
                 HorizontalDivider(color = colors.divider)
             }
 
-            if (teamMatches.isEmpty()) {
+            if (isLoading && teamMatches.isEmpty()) {
+                items(3, key = { "shimmer_$it" }) {
+                    ShimmerMatchCard(
+                        modifier = Modifier.padding(horizontal = spacing.lg, vertical = spacing.xs),
+                    )
+                }
+            } else if (teamMatches.isEmpty()) {
                 item(key = "no_matches") {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(spacing.xxl),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                    ) {
-                        Text(
-                            "No current matches",
-                            style = typography.titleMedium,
-                            color = colors.onSurface,
-                        )
-                        Spacer(Modifier.height(spacing.xs))
-                        Text(
-                            "Live, upcoming and recent matches will appear here",
-                            style = typography.bodyMedium,
-                            color = colors.textSecondary,
-                        )
-                    }
+                    EmptyStateV2(
+                        icon = Icons.Outlined.SportsCricket,
+                        title = "No current matches",
+                        subtitle = "Live, upcoming and recent $teamName matches will appear here",
+                    )
                 }
             } else {
                 item(key = "matches_header") {

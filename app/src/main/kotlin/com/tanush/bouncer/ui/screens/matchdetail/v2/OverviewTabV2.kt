@@ -40,6 +40,7 @@ import com.tanush.bouncer.ui.components.premium.PowerPlayAnalysisCard
 import com.tanush.bouncer.ui.components.premium.PowerPlayPhase
 import com.tanush.bouncer.ui.components.v2.AnimatedScoreText
 import com.tanush.bouncer.ui.components.v2.BouncerCard
+import com.tanush.bouncer.ui.components.v2.EmptyStateV2
 import com.tanush.bouncer.ui.components.v2.RecentBallsStripV2
 import com.tanush.bouncer.ui.components.v2.SectionHeaderV2
 import com.tanush.bouncer.ui.components.v2.StatRowV2
@@ -52,6 +53,8 @@ import androidx.compose.material.icons.filled.Flare
 import androidx.compose.material.icons.filled.HeartBroken
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Speed
+import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.outlined.SportsCricket
 import com.tanush.bouncer.models.WinProbabilityPoint
 import com.tanush.bouncer.ui.components.premium.EliteMomentumTracker
 import com.tanush.bouncer.ui.components.premium.InsightGridCard
@@ -150,6 +153,15 @@ fun OverviewTabV2(
         ),
         verticalArrangement = Arrangement.spacedBy(spacing.md),
     ) {
+        // Nothing to show yet: say so instead of rendering an empty body.
+        val hasAnyContent = batsmen.isNotEmpty() || bowler != null || recentBalls.isNotEmpty() ||
+            scorecard != null || commentary.isNotEmpty() || probabilityHistory.isNotEmpty() ||
+            matchFlow != null || headToHead != null || currentRunRate != null || requiredRunRate != null ||
+            (!match.isLive && match.currentStatus.isNotBlank() && !isUpcoming)
+        if (!hasAnyContent) {
+            item(key = "no_data") { OverviewNoDataMessage(isUpcoming = isUpcoming) }
+        }
+
         // Match situation card for stumps/break/completed
         if (!match.isLive && match.currentStatus.isNotBlank() && !isUpcoming) {
             item(key = "match_situation") {
@@ -805,3 +817,20 @@ private fun WinProbRow(teamName: String, probability: Float) {
     }
 }
 
+
+@Composable
+private fun OverviewNoDataMessage(isUpcoming: Boolean) {
+    if (isUpcoming) {
+        EmptyStateV2(
+            icon = Icons.Outlined.Schedule,
+            title = "Match hasn't started",
+            subtitle = "Live scores, batsmen at the crease and win probability will appear here once play begins.",
+        )
+    } else {
+        EmptyStateV2(
+            icon = Icons.Outlined.SportsCricket,
+            title = "Details on their way",
+            subtitle = "Live match data will appear here shortly.",
+        )
+    }
+}

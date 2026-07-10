@@ -21,6 +21,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Alarm
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.outlined.CloudOff
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.material.icons.filled.Share
@@ -35,6 +36,7 @@ import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -239,6 +241,11 @@ fun MatchDetailViewV2(
                 recentBalls = uiState.recentBalls,
             )
 
+            // Live-data failure: static match info below still renders; this offers the retry.
+            uiState.loadError?.let { message ->
+                LiveDataErrorBanner(message = message, onRetry = vm::retryInitialLoad)
+            }
+
             // ── Tab Row ──
             ScrollableTabRow(
                 selectedTabIndex = pagerState.currentPage,
@@ -305,6 +312,8 @@ fun MatchDetailViewV2(
                         recentBalls = uiState.recentBalls,
                         matchStatus = match.currentStatus,
                         isLoading = uiState.commentaryLoading,
+                        error = uiState.commentaryError,
+                        onRetry = vm::retryInitialLoad,
                     )
                     "Highlights" -> HighlightsTabV2(highlights = highlights)
                     "Info" -> InfoTabV2(match = match, preMatchData = uiState.preMatchData)
@@ -593,6 +602,41 @@ private fun TeamScoreRow(
                     maxLines = 1,
                 )
             }
+        }
+    }
+}
+
+/**
+ * Slim inline banner for live-data failure: static match info below stays usable,
+ * this row owns the retry affordance.
+ */
+@Composable
+private fun LiveDataErrorBanner(message: String, onRetry: () -> Unit) {
+    val colors = BouncerThemeV2.colors
+    val typography = BouncerThemeV2.typography
+    val spacing = BouncerThemeV2.spacing
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(colors.surfaceVariant)
+            .padding(horizontal = spacing.lg, vertical = spacing.sm),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            imageVector = Icons.Outlined.CloudOff,
+            contentDescription = null,
+            tint = colors.textSecondary,
+            modifier = Modifier.size(18.dp),
+        )
+        Spacer(Modifier.width(spacing.sm))
+        Text(
+            text = message,
+            style = typography.bodySmall,
+            color = colors.textSecondary,
+            modifier = Modifier.weight(1f),
+        )
+        TextButton(onClick = onRetry) {
+            Text("Retry", color = colors.primary)
         }
     }
 }

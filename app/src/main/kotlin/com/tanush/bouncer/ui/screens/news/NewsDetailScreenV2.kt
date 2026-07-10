@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Newspaper
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -20,6 +22,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.tanush.bouncer.ui.components.v2.BouncerTopBarV2
+import com.tanush.bouncer.ui.components.v2.EmptyStateV2
 import com.tanush.bouncer.ui.components.v2.ShimmerBox
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 import com.tanush.bouncer.viewmodels.NewsViewModel
@@ -36,6 +39,7 @@ fun NewsDetailScreenV2(
     val selectedArticle by viewModel.selectedArticle.collectAsStateWithLifecycle()
     val articleBody by viewModel.articleBody.collectAsStateWithLifecycle()
     val isLoadingArticle by viewModel.isLoadingArticle.collectAsStateWithLifecycle()
+    val articleBodyError by viewModel.articleBodyError.collectAsStateWithLifecycle()
 
     val colors = BouncerThemeV2.colors
     val typography = BouncerThemeV2.typography
@@ -63,7 +67,13 @@ fun NewsDetailScreenV2(
             contentPadding = PaddingValues(bottom = spacing.xxl),
         ) {
             if (article == null) {
-                item { Spacer(Modifier.height(spacing.xxl)) }
+                item(key = "no_article") {
+                    EmptyStateV2(
+                        icon = Icons.Outlined.Newspaper,
+                        title = "Article unavailable",
+                        subtitle = "This story may have expired. Head back for the latest headlines.",
+                    )
+                }
                 return@LazyColumn
             }
 
@@ -131,6 +141,19 @@ fun NewsDetailScreenV2(
                             .fillMaxWidth()
                             .padding(horizontal = spacing.lg, vertical = spacing.xs),
                         height = 16.dp,
+                    )
+                }
+            }
+
+            // Body failed to load — honest error with retry, not fake body text
+            val bodyError = articleBodyError
+            if (bodyError != null && !isLoadingArticle && articleBody.isEmpty()) {
+                item(key = "body_error") {
+                    EmptyStateV2(
+                        icon = Icons.Outlined.Newspaper,
+                        title = "Couldn't load the full story",
+                        subtitle = bodyError,
+                        onRetry = viewModel::retryArticleBody,
                     )
                 }
             }
