@@ -15,6 +15,11 @@ const COMMENTARY_COL = process.env.MATCH_COMMENTARY_COL_ID ?? "match-commentary"
 const DETAIL_COL = process.env.MATCH_LIVE_DETAIL_COL_ID ?? "match-live-detail";
 const BUCKET_ID = process.env.MATCH_CACHE_BUCKET_ID ?? "cricket-stats";
 const LIVE_FILE = "live-matches";
+// Viewer presence: bouncer-match-presence writes { [matchId]: epochMs } here whenever a
+// client has a live match open. We only generate for matches with a fresh viewer, so idle
+// matches (and idle nights) cost no LLM calls. TTL covers ~2 missed 90s client heartbeats.
+const PRESENCE_FILE = "active-viewers";
+const VIEWER_TTL_MS = 4 * 60 * 1000;
 
 // Per-match per-run bounds (control LLM cost + stay within function timeout).
 const SCAN_NEWEST = 30; // how many newest commentary items to look at
@@ -69,7 +74,15 @@ export default async ({ req, res, log, error }) => {
     return res.json({ skipped: true, reason: "no_live_matches" }, 200);
   }
 
-  const live = matches.filter((m) => m && m.id).slice(0, MAX_MATCHES);
+  // 1b. Gate on viewer presence: only sync matches someone currently has open.
+  const activeViewers = await activeViewerIds({ storage, log, error });
+  const live = matches
+    .filter((m) => m && m.id && activeViewers.has(String(m.id)))
+    .slice(0, MAX_MATCHES);
+  if (live.length === 0) {
+    log(`No matches with active viewers — nothing to sync`);
+    return res.json({ skipped: true, reason: "no_viewers" }, 200);
+  }
   const summary = {};
 
   // Process matches in parallel so per-ball LLM latency doesn't serialize across matches.
@@ -91,6 +104,25 @@ export default async ({ req, res, log, error }) => {
   }
   return res.json({ processed: live.length, summary });
 };
+
+// Read the presence map written by bouncer-match-presence and return the set of matchIds
+// with a viewer seen within VIEWER_TTL_MS. Any failure (missing file, parse error) is
+// treated as "no active viewers" — the gate fails closed so we never generate blind.
+async function activeViewerIds({ storage, log, error }) {
+  const now = Date.now();
+  try {
+    const raw = await storage.getFileDownload(BUCKET_ID, PRESENCE_FILE);
+    const map = JSON.parse(Buffer.from(raw).toString("utf8"));
+    if (!map || typeof map !== "object" || Array.isArray(map)) return new Set();
+    const fresh = Object.entries(map)
+      .filter(([, ts]) => typeof ts === "number" && now - ts <= VIEWER_TTL_MS)
+      .map(([id]) => id);
+    return new Set(fresh);
+  } catch (e) {
+    log(`No active-viewers file (${e?.message ?? "missing"}) — treating as no viewers`);
+    return new Set();
+  }
+}
 
 async function syncMatch({ db, matchId, log, error }) {
   // 2. Fetch live page + scorecard in parallel.

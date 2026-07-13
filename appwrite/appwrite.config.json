@@ -79,6 +79,23 @@
             ]
         },
         {
+            "$id": "bouncer-match-presence",
+            "name": "bouncer-match-presence",
+            "$permissions": ["execute(\"any\")"],
+            "enabled": true,
+            "logging": true,
+            "runtime": "node-22",
+            "timeout": 15,
+            "entrypoint": "src/main.js",
+            "commands": "npm install",
+            "version": "v3",
+            "path": "functions/match-presence",
+            "vars": [
+                { "key": "APPWRITE_API_KEY",      "value": "" },
+                { "key": "MATCH_CACHE_BUCKET_ID", "value": "cricket-stats" }
+            ]
+        },
+        {
             "$id": "bouncer-poll-live-matches",
             "name": "bouncer-poll-live-matches",
             "enabled": true,

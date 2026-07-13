@@ -21,6 +21,7 @@ import com.tanush.bouncer.data.remote.MatchLiveDetailPayload
 import com.tanush.bouncer.data.remote.ProductionLiveDetailSource
 import com.tanush.bouncer.data.remote.H2HPair
 import com.tanush.bouncer.data.remote.H2HRepository
+import com.tanush.bouncer.services.MatchPresenceReporter
 import com.tanush.bouncer.ui.components.BatsmanMilestoneInfo
 import com.tanush.bouncer.ui.components.MilestoneType
 import com.tanush.bouncer.utils.bouncerExceptionHandler
@@ -34,6 +35,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 
@@ -104,6 +106,16 @@ class MatchDetailViewModel(
             liveSource.commentaryEvents
                 .filter { it.matchId == match.id }
                 .collect { onNewCommentaryEvent(it) }
+        }
+        // Presence heartbeat: while this Live match is open, tell the backend a viewer is
+        // watching so bouncer-match-sync generates commentary for it. Stops when the ViewModel
+        // is cleared (screen left) — viewModelScope cancels the loop and the server-side TTL lapses.
+        // Inlined (not its own method) to keep the class under detekt's TooManyFunctions threshold.
+        if (match.isLive) viewModelScope.launch(bouncerExceptionHandler) {
+            while (isActive) {
+                MatchPresenceReporter.ping(match.id)
+                delay(PRESENCE_HEARTBEAT_MS)
+            }
         }
     }
 
@@ -290,6 +302,8 @@ class MatchDetailViewModel(
         private const val TYPEWRITER_CHAR_DELAY_MS = 18L
         private const val TYPEWRITER_HOLD_MS = 1500L
         private const val MILESTONE_BANNER_MS = 15_000L
+        // Re-ping well within match-sync's 4-min VIEWER_TTL_MS so ~2 dropped pings still count.
+        private const val PRESENCE_HEARTBEAT_MS = 90_000L
 
         fun factory(
             context: Context,
