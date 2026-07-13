@@ -22,6 +22,9 @@ const MAX_NEW_PER_MATCH = 10; // max LLM-backed rows to write per match per run
 const MAX_MATCHES = 12; // cap live matches processed per run
 
 const BALL_RE = /(\d{1,3}\.\d)/;
+// Bare section headers Cricbuzz emits as commentary items with no body — render as
+// pointless one-word lines (e.g. "Teams:", "Squads:"). "Drinks!" is a real break marker, kept.
+const JUNK_COMMENTARY_RE = /^(teams|squads|playing xi)\s*:?\s*$/i;
 const READ_ANY = ['read("any")'];
 
 // Read-budget protection: Appwrite bills DB reads at the org level (monthly budget);
@@ -105,7 +108,20 @@ async function syncMatch({ db, matchId, log, error }) {
       error(`Scorecard parse failed for ${matchId}: ${e?.message}`);
     }
   }
-  await upsertDetail({ db, matchId, detail, error });
+  // Skip writing a hollow snapshot: parseLiveDetail returns an all-null skeleton when the
+  // live page has no miniscore yet (pre-toss, parse miss, or error page). Writing it renders
+  // a blank detail screen and — because upsertDetail uses updateDocument — would overwrite
+  // previously-good data. Legit pre-match states still carry a status or a 0/0 score.
+  const detailHasContent =
+    !!detail.score ||
+    !!detail.status ||
+    (detail.batsmen?.length || 0) > 0 ||
+    (detail.scorecard?.innings?.length || 0) > 0;
+  if (detailHasContent) {
+    await upsertDetail({ db, matchId, detail, error });
+  } else {
+    log(`Match ${matchId}: hollow live-detail, skipping upsert`);
+  }
 
   // 4. Commentary: newest-first, generate AI only for new ball lines.
   const commentary = parseCommentary(liveHtml).slice(0, SCAN_NEWEST);
@@ -121,6 +137,7 @@ async function syncMatch({ db, matchId, log, error }) {
     if (existingIds.has(rowId)) continue;
 
     const clean = sanitize(item.commText);
+    if (JUNK_COMMENTARY_RE.test(clean)) continue;
     const ballMatch = clean.match(BALL_RE);
     const ball = ballMatch ? ballMatch[1] : "";
 

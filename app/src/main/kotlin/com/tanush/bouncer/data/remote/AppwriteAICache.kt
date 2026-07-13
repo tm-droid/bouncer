@@ -86,7 +86,9 @@ object AppwriteAICache : AppwriteTableClient("AppwriteAICache") {
     }
 
     suspend fun set(key: String, commentary: String, permanent: Boolean = false) {
-        if (!isReady) return
+        // Never cache an empty/blank result: a provider returning "" is a failure, not a value.
+        // Caching it would pollute the shared table and squat the deterministic docId (below).
+        if (!isReady || commentary.isBlank()) return
         withContext(Dispatchers.IO) {
             runCatching {
                 val db = tablesDB ?: return@runCatching
@@ -116,18 +118,26 @@ object AppwriteAICache : AppwriteTableClient("AppwriteAICache") {
     // set() calls for the same key conflict on ID (409) rather than creating
     // duplicate rows. Catches 409 and treats it as success — the row already exists.
     private suspend fun createRowIdempotent(db: TablesDB, key: String, data: Map<String, String>) {
+        val rowId = cacheKeyToDocId(key)
         try {
             db.createRow(
                 databaseId = dbId,
                 tableId = tableId,
-                rowId = cacheKeyToDocId(key),
+                rowId = rowId,
                 data = data,
                 permissions = listOf(Permission.read(Role.any()))
             )
         } catch (e: AppwriteException) {
             if (e.code == 409) {
-                // Row already exists (concurrent writer or previous call) — idempotent success.
-                Log.d(TAG, "Remote cache set: row already exists for key $key (409 conflict — OK)")
+                // Row exists (concurrent writer, or a stale/expired entry squatting this
+                // deterministic docId). Overwrite so a fresh value replaces stale data instead
+                // of being silently dropped — otherwise the old row blocks this key forever.
+                db.updateRow(
+                    databaseId = dbId,
+                    tableId = tableId,
+                    rowId = rowId,
+                    data = data
+                )
             } else {
                 throw e
             }
