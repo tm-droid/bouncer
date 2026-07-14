@@ -1,7 +1,9 @@
 package com.tanush.bouncer.data.remote
 
+import android.content.Context
 import androidx.annotation.VisibleForTesting
 import com.tanush.bouncer.data.CacheConfig
+import com.tanush.bouncer.utils.PrefsRegistry
 import com.tanush.bouncer.utils.sentryBreadcrumb
 import io.appwrite.exceptions.AppwriteException
 import io.sentry.Sentry
@@ -37,6 +39,18 @@ object AppwriteReadGuard {
     @VisibleForTesting
     internal var reporter: (message: String, tags: Map<String, String>) -> Unit = ::reportToSentry
 
+    /**
+     * Persists the 402 breaker latch across process restarts. Without it, a cold start after a
+     * budget-exhausted 402 resets the breaker to closed and re-probes on the next read, so a
+     * relaunch storm re-hits the (still-exhausted) budget. Abstracted so it needs no Context here.
+     */
+    interface BreakerStore {
+        fun save(open: Boolean, openedAtMs: Long)
+        fun load(): BreakerState?
+    }
+
+    data class BreakerState(val open: Boolean, val openedAtMs: Long)
+
     private val lock = Any()
     private var breakerOpenedAtMs = 0L
     private var breakerOpen = false
@@ -46,6 +60,19 @@ object AppwriteReadGuard {
     private var hourWindowStartMs = 0L
     private var hourCount = 0
     private val lastReportAtMs = mutableMapOf<String, Long>()
+    private var store: BreakerStore? = null
+
+    /**
+     * Wire a persistence backend (call once at startup). Restores any latched breaker state so a
+     * relaunch after a 402 keeps short-circuiting reads until the 6h probe interval elapses.
+     */
+    fun initPersistence(backend: BreakerStore) = synchronized(lock) {
+        store = backend
+        backend.load()?.let {
+            breakerOpen = it.open
+            breakerOpenedAtMs = it.openedAtMs
+        }
+    }
 
     /**
      * Call before every billed DB read. Returns null when the read may proceed (and counts
@@ -82,14 +109,25 @@ object AppwriteReadGuard {
         return null
     }
 
-    /** Call after a guarded read succeeds. Closes the breaker if this was the probe read. */
-    fun recordSuccess() = synchronized(lock) {
+    /**
+     * Call after a guarded read succeeds. Closes the breaker if this was the probe read, and
+     * counts [rows] toward the rate windows. Appwrite bills one read per document returned, but
+     * [checkAndCount] only counted the call as 1 — pass the row count so a limit(N) read is
+     * billed as N (not 1), keeping the per-minute/per-hour caps aligned with true consumption.
+     */
+    fun recordSuccess(rows: Int = 1) = synchronized(lock) {
         if (breakerOpen && probeInFlight) {
             breakerOpen = false
             breakerOpenedAtMs = 0L
+            store?.save(false, 0L)
             sentryBreadcrumb("appwrite.read_guard", "probe succeeded — breaker closed")
         }
         probeInFlight = false
+        if (rows > 1) {
+            val extra = rows - 1
+            minuteCount += extra
+            hourCount += extra
+        }
     }
 
     /**
@@ -135,6 +173,7 @@ object AppwriteReadGuard {
             // Re-latch (failed probe): restart the probe interval from now.
             breakerOpenedAtMs = nowMs()
         }
+        store?.save(breakerOpen, breakerOpenedAtMs)
         sentryBreadcrumb("appwrite.read_guard", "breaker opened ($reason) by $source", SentryLevel.ERROR)
         reportOncePerInterval(reason, source, message)
     }
@@ -156,6 +195,27 @@ object AppwriteReadGuard {
         }
     }
 
+    /** SharedPreferences-backed [BreakerStore] — persists the latch across process restarts. */
+    class PrefsBreakerStore(context: Context) : BreakerStore {
+        private val prefs = context.applicationContext
+            .getSharedPreferences(PrefsRegistry.PREFS_APP, Context.MODE_PRIVATE)
+
+        override fun save(open: Boolean, openedAtMs: Long) {
+            prefs.edit()
+                .putBoolean(PrefsRegistry.ReadGuard.BREAKER_OPEN, open)
+                .putLong(PrefsRegistry.ReadGuard.BREAKER_OPENED_AT, openedAtMs)
+                .apply()
+        }
+
+        override fun load(): BreakerState? {
+            if (!prefs.getBoolean(PrefsRegistry.ReadGuard.BREAKER_OPEN, false)) return null
+            return BreakerState(
+                open = true,
+                openedAtMs = prefs.getLong(PrefsRegistry.ReadGuard.BREAKER_OPENED_AT, 0L)
+            )
+        }
+    }
+
     @VisibleForTesting
     internal fun reset() = synchronized(lock) {
         breakerOpen = false
@@ -166,6 +226,7 @@ object AppwriteReadGuard {
         hourWindowStartMs = 0L
         hourCount = 0
         lastReportAtMs.clear()
+        store = null
         nowMs = System::currentTimeMillis
         reporter = ::reportToSentry
     }

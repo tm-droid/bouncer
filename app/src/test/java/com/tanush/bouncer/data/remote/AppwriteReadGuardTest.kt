@@ -173,6 +173,47 @@ class AppwriteReadGuardTest {
     }
 
     @Test
+    fun `recordSuccess counts documents so a limit-N read trips the cap N times faster`() {
+        // One call reports the minute cap worth of rows minus 1 (checkAndCount already counted 1).
+        assertNull(AppwriteReadGuard.checkAndCount("bulk"))
+        AppwriteReadGuard.recordSuccess(CacheConfig.READ_GUARD_MAX_READS_PER_MINUTE)
+        // The window is now at the cap; the next call trips it even though only 2 calls happened.
+        assertEquals(AppwriteReadGuard.BlockReason.RATE_CAPPED, AppwriteReadGuard.checkAndCount("bulk"))
+    }
+
+    @Test
+    fun `recordSuccess ignores single-row and empty reads`() {
+        assertNull(AppwriteReadGuard.checkAndCount("one"))
+        AppwriteReadGuard.recordSuccess(1)
+        AppwriteReadGuard.recordSuccess(0)
+        // Still far under the cap — a single-row read costs exactly its one already-counted call.
+        assertNull(AppwriteReadGuard.checkAndCount("one"))
+    }
+
+    @Test
+    fun `persisted breaker latch is restored on init`() {
+        val saved = mutableMapOf<String, Any>()
+        val store = object : AppwriteReadGuard.BreakerStore {
+            override fun save(open: Boolean, openedAtMs: Long) {
+                saved["open"] = open; saved["at"] = openedAtMs
+            }
+            override fun load(): AppwriteReadGuard.BreakerState? =
+                (saved["open"] as? Boolean)?.takeIf { it }
+                    ?.let { AppwriteReadGuard.BreakerState(true, saved["at"] as Long) }
+        }
+        // First "process": a 402 latches and persists the breaker.
+        AppwriteReadGuard.initPersistence(store)
+        AppwriteReadGuard.recordFailure("test", budget402ByCode())
+        assertEquals(true, saved["open"])
+
+        // Second "process": in-memory reset, but init restores the latch from the store.
+        AppwriteReadGuard.reset()
+        AppwriteReadGuard.nowMs = { now }
+        AppwriteReadGuard.initPersistence(store)
+        assertEquals(AppwriteReadGuard.BlockReason.BREAKER_OPEN, AppwriteReadGuard.checkAndCount("test"))
+    }
+
+    @Test
     fun `isBudget402 detects code and type`() {
         assertTrue(AppwriteReadGuard.isBudget402(budget402ByCode()))
         assertTrue(AppwriteReadGuard.isBudget402(budget402ByType()))

@@ -19,6 +19,7 @@ import com.tanush.bouncer.data.remote.AppwriteMatchCommentaryClient
 import com.tanush.bouncer.data.remote.AppwriteMatchDetailClient
 import com.tanush.bouncer.data.remote.AppwritePlayerFormsClient
 import com.tanush.bouncer.data.remote.AppwritePlayerProfilesClient
+import com.tanush.bouncer.data.remote.AppwriteReadGuard
 import com.tanush.bouncer.data.repository.HighlightsRepository
 import com.tanush.bouncer.network.HttpClientProvider
 import com.google.firebase.messaging.FirebaseMessaging
@@ -105,6 +106,11 @@ class BouncerApp : Application() {
             RichNotificationBuilder.CricketNotificationChannel.createNotificationChannels(this)
         }
         initializeSafely("MatchCacheService") { MatchCacheService.initDiskCache(this) }
+        // Restore the persisted 402 breaker latch before any Appwrite read can fire, so a
+        // relaunch after a budget-exhausted 402 keeps short-circuiting instead of re-probing.
+        initializeSafely("AppwriteReadGuard") {
+            AppwriteReadGuard.initPersistence(AppwriteReadGuard.PrefsBreakerStore(this))
+        }
         initializeSafely("AppwriteClient") { AppwriteClient.initialize(this) }
         // Verify Appwrite reachability; reflect in AppHealth so UI can show degraded state.
         // Timeout guards against indefinite hang on slow/captive-portal networks.

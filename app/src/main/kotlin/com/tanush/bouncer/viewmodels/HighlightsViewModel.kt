@@ -11,6 +11,7 @@ import com.tanush.bouncer.data.local.BouncerDatabase
 import io.sentry.Sentry
 import com.tanush.bouncer.data.local.entities.HighlightEntity
 import com.tanush.bouncer.data.repository.HighlightsRepository
+import com.tanush.bouncer.data.repository.PrefsHighlightsSyncMarker
 import com.tanush.bouncer.utils.bouncerExceptionHandler
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -23,7 +24,11 @@ class HighlightsViewModel(
     val bouncerMatchId: String,
 ) : AndroidViewModel(application) {
     private val db = BouncerDatabase.getInstance(application)
-    private val repo = HighlightsRepository(db.highlightDao(), db.matchDao())
+    private val repo = HighlightsRepository(
+        db.highlightDao(),
+        db.matchDao(),
+        PrefsHighlightsSyncMarker(application)
+    )
 
     // Observe Room reactively: any later write (Realtime ingest, refresh) flows to the UI.
     val highlights: StateFlow<List<HighlightEntity>> =

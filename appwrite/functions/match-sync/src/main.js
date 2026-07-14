@@ -32,13 +32,20 @@ const BALL_RE = /(\d{1,3}\.\d)/;
 const JUNK_COMMENTARY_RE = /^(teams|squads|playing xi)\s*:?\s*$/i;
 const READ_ANY = ['read("any")'];
 
-// Read-budget protection: Appwrite bills DB reads at the org level (monthly budget);
-// exhausting it 402s every read project-wide. Expected reads/run = 1 listRows per live
-// match (max 12) — anything above READ_BUDGET_PER_RUN can only be a future bug.
+// Read-budget protection: Appwrite bills DB reads at the org level (monthly budget) and
+// bills ONE read PER DOCUMENT RETURNED, not per query — a listDocuments(limit(30)) costs
+// up to 30 reads. Exhausting the budget 402s every read project-wide. The dedupe read below
+// is seeded once per warm container (see seenByMatch) so steady-state runs cost 0 reads;
+// anything above READ_BUDGET_PER_RUN listDocuments calls can only be a future bug.
 const READ_BUDGET_PER_RUN = 20;
 const READ_402_BACKOFF_MS = 6 * 60 * 60 * 1000; // budget resets monthly; retrying sooner is pointless
 let budget402UntilMs = 0; // survives warm invocations of the 1-min cron
 let readsThisRun = 0;
+// Dedupe cache: matchId -> Set<rowId> of commentary rows we know exist. Survives warm 1-min
+// cron invocations (module scope), so we pay the seed read only on a cold container / a
+// match's first appearance — never re-reading the same 30 rows every minute. Pruned each run
+// to the live set so ended matches don't retain memory.
+const seenByMatch = new Map();
 const isBudget402 = (e) => e?.code === 402 || e?.type === "limit_databases_reads_exceeded";
 
 const docId = (s) => createHash("sha256").update(s).digest("hex").slice(0, 36);
@@ -82,6 +89,11 @@ export default async ({ req, res, log, error }) => {
   if (live.length === 0) {
     log(`No matches with active viewers — nothing to sync`);
     return res.json({ skipped: true, reason: "no_viewers" }, 200);
+  }
+  // Prune the warm dedupe cache to matches still live so ended matches don't retain memory.
+  const liveIds = new Set(live.map((m) => String(m.id)));
+  for (const id of seenByMatch.keys()) {
+    if (!liveIds.has(id)) seenByMatch.delete(id);
   }
   const summary = {};
 
@@ -158,9 +170,17 @@ async function syncMatch({ db, matchId, log, error }) {
   // 4. Commentary: newest-first, generate AI only for new ball lines.
   const commentary = parseCommentary(liveHtml).slice(0, SCAN_NEWEST);
 
-  // Single read per match for existence: fetch the newest rows once and dedupe in memory,
-  // instead of a getDocument per candidate (~30x fewer reads — keeps us under the org read budget).
-  const existingIds = await existingCommentaryIds({ db, matchId, error });
+  // Dedupe against known-existing rows. The set is seeded from Appwrite exactly once — on a
+  // cold container or this match's first appearance — then maintained in memory across warm
+  // 1-min invocations, so steady-state runs cost 0 DB reads. Correctness never depends on it:
+  // writes use a deterministic rowId + a 409 backstop, so a cold/empty set only risks a
+  // redundant (409'd) write, never a duplicate row.
+  let existingIds = seenByMatch.get(matchId);
+  if (!existingIds) {
+    existingIds = await existingCommentaryIds({ db, matchId, error });
+    seenByMatch.set(matchId, existingIds);
+    log(`Match ${matchId}: seeded dedupe from Appwrite (${existingIds.size} rows, cold)`);
+  }
 
   // Newly-written commentary belongs to the innings currently being batted. The scorecard
   // carries one entry per innings played so far, so its length is the current innings number
@@ -220,9 +240,12 @@ async function syncMatch({ db, matchId, log, error }) {
         },
         READ_ANY
       );
+      existingIds.add(rowId);
       written++;
     } catch (e) {
-      if (e?.code !== 409) error(`Commentary write failed (${matchId}/${ball}): ${e?.message}`);
+      // 409 = row already exists (race / seed missed it): record it so we don't retry it.
+      if (e?.code === 409) existingIds.add(rowId);
+      else error(`Commentary write failed (${matchId}/${ball}): ${e?.message}`);
     }
   }
   log(`Match ${matchId}: ${written} new commentary rows`);
@@ -251,11 +274,14 @@ async function upsertDetail({ db, matchId, detail, error }) {
   }
 }
 
-// One read per match: the newest commentary row IDs for this match. The create-on-409
-// path stays as the race backstop, so a missed/blank result only risks a redundant write.
+// Seed read: the newest commentary row IDs for this match. Called at most once per match per
+// warm container (see seenByMatch), NOT every run. Bills up to SCAN_NEWEST reads (one per row
+// returned). The create-on-409 path stays as the race backstop, so a missed/blank result only
+// risks a redundant write.
 async function existingCommentaryIds({ db, matchId, error }) {
   if (++readsThisRun > READ_BUDGET_PER_RUN) {
-    // Hard stop: expected max is 1 read per match (12 matches); exceeding this is a bug.
+    // Hard stop: with warm-container dedupe, seed reads/run should stay well under this.
+    // Exceeding it means the cache isn't sticking (cold-loop) or a bug — fail loudly.
     throw new Error(`[READ-BUDGET-402] per-run read cap exceeded (${readsThisRun} > ${READ_BUDGET_PER_RUN}) — aborting`);
   }
   try {

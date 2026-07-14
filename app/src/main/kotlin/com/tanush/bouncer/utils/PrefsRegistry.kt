@@ -21,4 +21,17 @@ object PrefsRegistry {
     object Reminders {
         const val REMINDER_PREFIX = "reminder_"
     }
+
+    object Highlights {
+        // Device-global timestamp of the last full highlights-table scan (throttles the
+        // table-wide Appwrite read that would otherwise fire on every match-tab open).
+        const val LAST_FULL_SYNC_AT = "highlights_last_full_sync_at"
+    }
+
+    object ReadGuard {
+        // Persisted 402 breaker latch (survives process restart so a relaunch after a
+        // budget-exhausted 402 keeps short-circuiting reads until the probe interval elapses).
+        const val BREAKER_OPEN = "appwrite_read_breaker_open"
+        const val BREAKER_OPENED_AT = "appwrite_read_breaker_opened_at"
+    }
 }

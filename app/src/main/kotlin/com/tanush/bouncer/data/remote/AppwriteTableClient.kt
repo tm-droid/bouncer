@@ -95,12 +95,20 @@ abstract class AppwriteTableClient(private val tag: String) {
         }
         val result = runCatching { block(db) }
         result.fold(
-            onSuccess = { AppwriteReadGuard.recordSuccess() },
+            // Appwrite bills one read per document returned; pass the row count so the rate
+            // windows reflect true billed volume, not just the single call.
+            onSuccess = { value -> AppwriteReadGuard.recordSuccess(rowCountOf(value)) },
             onFailure = { e ->
                 if (e !is CancellationException) AppwriteReadGuard.recordFailure(name, e)
             }
         )
         return result.getOrThrow()
+    }
+
+    private fun rowCountOf(value: Any?): Int = when (value) {
+        null -> 0
+        is io.appwrite.models.RowList<*> -> value.rows.size
+        else -> 1 // single-row read (getRow) or non-list result
     }
 
     /** Standard silent-failure log used by all remote-tier operations. */
