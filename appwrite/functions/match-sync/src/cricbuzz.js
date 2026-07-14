@@ -148,6 +148,26 @@ function txt($, el) {
   return $(el).text().trim();
 }
 
+// Cricbuzz player links are relative (e.g. "/profiles/46363/ravi-thapliyal"); absolutize them.
+function absUrl(href) {
+  if (!href) return "";
+  return href.startsWith("http") ? href : `${BASE}${href}`;
+}
+
+// Economy = runs per over. Overs are cricket-notation "X.Y" where Y is balls (0-5) out of 6,
+// so 9.4 overs = 9 + 4/6 overs. Computed rather than scraped (the scorecard's economy cell is
+// unreliable), so it's always present and correct.
+function computeEconomy(runs, overs) {
+  const r = parseFloat(runs);
+  const o = parseFloat(overs);
+  if (!isFinite(r) || !isFinite(o) || o <= 0) return "";
+  const whole = Math.floor(o);
+  const balls = Math.round((o - whole) * 10);
+  const decimalOvers = whole + balls / 6;
+  if (decimalOvers <= 0) return "";
+  return (r / decimalOvers).toFixed(2);
+}
+
 // Live batsmen/bowler/score come from the Next.js flight-payload `miniscore`
 // object — the legacy cb-min-* CSS classes are no longer in Cricbuzz's SSR HTML.
 function collectPayloads(html) {
@@ -229,7 +249,7 @@ function parseScorecardBatsmen($, $content) {
       fours: txt($, stats[3]) || "0",
       sixes: txt($, stats[4]) || "0",
       strikeRate: txt($, stats[5]) || "0",
-      profileUrl: "",
+      profileUrl: absUrl($row.find("a").first().attr("href")),
     });
   });
   return out;
@@ -243,34 +263,81 @@ function parseScorecardBowlers($, $content) {
     if (!name || name.includes("Bowler")) return;
     const stats = $row.children();
     if (stats.length < 5) return;
+    // Grid columns: name, O, M, R, W, NB, WD, ECO, (trailing empty cell). The old code read the
+    // trailing empty cell as economy → always "". Compute economy from runs/overs instead, and
+    // pull the real no-balls/wides columns when present.
+    const overs = txt($, stats[1]) || "0";
+    const runs = txt($, stats[3]) || "0";
     out.push({
       name,
-      overs: txt($, stats[1]) || "0",
+      overs,
       maidens: txt($, stats[2]) || "0",
-      runs: txt($, stats[3]) || "0",
+      runs,
       wickets: txt($, stats[4]) || "0",
-      noBalls: "0",
-      wides: "0",
-      economy: txt($, stats[stats.length - 1]) || "",
-      profileUrl: "",
+      noBalls: stats.length > 5 ? txt($, stats[5]) || "0" : "0",
+      wides: stats.length > 6 ? txt($, stats[6]) || "0" : "0",
+      economy: computeEconomy(runs, overs),
+      profileUrl: absUrl($row.find("a").first().attr("href")),
     });
   });
   return out;
 }
 
-function parseFallOfWickets($, $content) {
+// Fall of Wickets and Partnerships are rendered as sibling `div.scorecard-fow-grid` rows,
+// each section introduced by a bold header row ("Fall of Wickets", "Powerplays",
+// "Partnerships"). Walk the rows and collect the ones under the requested header.
+function fowGridRows($, $content, header) {
   const out = [];
-  const section = $content.find("div:contains(Fall of Wickets)").first();
-  if (section.length === 0) return out;
-  const fowText = section.next().text() || "";
-  fowText.split("),").forEach((item, idx) => {
-    const parts = item.trim().split(" (");
-    if (parts.length < 2) return;
-    const detail = parts[1].replace(/\)/g, "").split(", ");
-    if (detail.length < 2) return;
-    out.push({ score: parts[0], overs: detail[1], batsman: detail[0], number: idx + 1 });
+  let inSection = false;
+  $content.find("div.scorecard-fow-grid").each((_, el) => {
+    const kids = $(el).children().map((__, k) => $(k).text().trim()).get();
+    const head = (kids[0] || "").trim();
+    if (new RegExp(`^${header}$`, "i").test(head)) { inSection = true; return; }
+    if (/^(Fall of Wickets|Powerplays|Partnerships)$/i.test(head)) {
+      if (inSection) { inSection = false; }
+      return;
+    }
+    if (inSection) out.push(kids);
   });
   return out;
+}
+
+function parseFallOfWickets($, $content) {
+  return fowGridRows($, $content, "Fall of Wickets")
+    .filter((kids) => kids.length >= 3)
+    .map((kids, idx) => {
+      // kids = [batsman, "score-wicketNumber" (e.g. "11-1"), over (e.g. "1.6")]
+      const [runs, wkt] = String(kids[1]).split("-");
+      return {
+        score: (runs || kids[1] || "").trim(),
+        overs: kids[2] || "",
+        batsman: kids[0] || "",
+        number: Number(wkt) || idx + 1,
+      };
+    });
+}
+
+function parsePartnerships($, $content) {
+  return fowGridRows($, $content, "Partnerships")
+    .filter((kids) => kids.length >= 2)
+    .map((kids) => {
+      const players = String(kids[0]).split(/\s*\/\s*/);
+      return {
+        player1: players[0] || "",
+        player2: players[1] || "",
+        runs: kids[1] || "",
+        balls: kids[2] || "",
+      };
+    });
+}
+
+// Bold label ("Extras", "Total") whose value sits in the immediately following sibling.
+function scoreLabelValue($, $content, label) {
+  const lbl = $content
+    .find("div.font-bold")
+    .filter((_, e) => $(e).text().trim() === label)
+    .first();
+  return lbl.length ? lbl.next().text().trim() : "";
 }
 
 function parseInnings($, header) {
@@ -290,9 +357,9 @@ function parseInnings($, header) {
     batsmen: parseScorecardBatsmen($, $content),
     bowlers: parseScorecardBowlers($, $content),
     fallOfWickets: parseFallOfWickets($, $content),
-    partnerships: [],
-    extras: "",
-    total: "",
+    partnerships: parsePartnerships($, $content),
+    extras: scoreLabelValue($, $content, "Extras"),
+    total: scoreLabelValue($, $content, "Total"),
   };
 }
 

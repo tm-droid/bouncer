@@ -162,6 +162,12 @@ async function syncMatch({ db, matchId, log, error }) {
   // instead of a getDocument per candidate (~30x fewer reads — keeps us under the org read budget).
   const existingIds = await existingCommentaryIds({ db, matchId, error });
 
+  // Newly-written commentary belongs to the innings currently being batted. The scorecard
+  // carries one entry per innings played so far, so its length is the current innings number
+  // (1 during the 1st innings, 2 during the 2nd, etc). Falls back to 1 when the scorecard
+  // is unavailable. Replaces the previous hardcoded `innings: 1`.
+  const currentInnings = detail.scorecard?.innings?.length || 1;
+
   let written = 0;
   for (const item of commentary) {
     if (written >= MAX_NEW_PER_MATCH) break;
@@ -172,9 +178,12 @@ async function syncMatch({ db, matchId, log, error }) {
     if (JUNK_COMMENTARY_RE.test(clean)) continue;
     const ballMatch = clean.match(BALL_RE);
     const ball = ballMatch ? ballMatch[1] : "";
+    // Only persist ball-by-ball lines. Items with no ball number are session/meta chatter
+    // (breaks, notes) that previously landed as malformed, ball-less rows — skip them.
+    if (!ball) continue;
 
     let line = clean;
-    if (ball) {
+    {
       // Ball-by-ball line → cinematic AI rewrite (mirror generateBallCommentary).
       const bowler = detail.bowler?.name ?? "";
       const batsman = detail.batsmen?.[0]?.name ?? "";
@@ -203,7 +212,7 @@ async function syncMatch({ db, matchId, log, error }) {
         rowId,
         {
           match_id: matchId,
-          innings: 1,
+          innings: currentInnings,
           ball,
           sort_key: item.timestamp,
           commentary: line,

@@ -41,6 +41,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -48,6 +49,7 @@ import coil.compose.AsyncImage
 import com.tanush.bouncer.models.FormatStats
 import com.tanush.bouncer.models.PlayerProfile
 import com.tanush.bouncer.network.PlayerProfileScraper
+import com.tanush.bouncer.services.PlayerCacheWorker
 import com.tanush.bouncer.ui.components.premium.BatterForm
 import com.tanush.bouncer.ui.components.premium.PlayerFormCard
 import com.tanush.bouncer.ui.components.v2.BouncerTopBarV2
@@ -74,6 +76,7 @@ fun PlayerDetailScreenV2(
     val colors = BouncerThemeV2.colors
     val typography = BouncerThemeV2.typography
     val spacing = BouncerThemeV2.spacing
+    val context = LocalContext.current
 
     val formats = remember { listOf("Test", "ODI", "T20I", "IPL") }
     var selectedFormat by remember { mutableStateOf("Test") }
@@ -81,6 +84,12 @@ fun PlayerDetailScreenV2(
     var profile by remember { mutableStateOf<PlayerProfile?>(null) }
     var loadState by remember { mutableStateOf(LoadState.Loading) }
     var retryCount by remember { mutableIntStateOf(0) }
+
+    // Warm the global player-profiles cache (Room + Appwrite) in the background. The worker
+    // dedupes (7-day skip) and pulls Appwrite before scraping, so it's cheap to fire on open.
+    LaunchedEffect(playerName) {
+        PlayerCacheWorker.enqueueFor(context, playerName)
+    }
 
     LaunchedEffect(playerName, retryCount) {
         loadState = LoadState.Loading

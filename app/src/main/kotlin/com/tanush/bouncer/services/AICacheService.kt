@@ -24,6 +24,9 @@ import java.util.concurrent.ConcurrentHashMap
 
 object AICacheService {
     private const val TAG = "AICacheService"
+    // Sentinel returned by commentary generators when every provider fails. Must never be
+    // cached: it would be served back (permanently, for completed matches) and never regenerate.
+    const val UNAVAILABLE_PLACEHOLDER = "[Summary unavailable]"
     private const val MAX_MEMORY_ENTRIES = 256
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val mutex = Mutex()
@@ -118,7 +121,16 @@ object AICacheService {
         return deferred.await()
     }
 
+    // A failed generation must never be persisted: caching the placeholder (or blank) poisons all
+    // three tiers and, when permanent, is served forever without ever regenerating.
+    private fun isUncacheable(commentary: String) =
+        commentary.isBlank() || commentary == UNAVAILABLE_PLACEHOLDER
+
     suspend fun setCommentary(commentary: String, key: String, permanent: Boolean = false) = mutex.withLock {
+        if (isUncacheable(commentary)) {
+            Log.d(TAG, "Skipping cache write for key $key — placeholder/blank commentary")
+            return@withLock
+        }
         try {
             Sentry.addBreadcrumb(Breadcrumb().apply {
                 category = "service.ai"
@@ -129,23 +141,27 @@ object AICacheService {
                 setData("permanent", permanent)
             })
 
-            val now = Date()
             Log.d(TAG, "Updating cache for key $key (permanent=$permanent)")
             cache.put(key, commentary, permanent = permanent)
-            val dbTimestamp = if (permanent) CacheConfig.AI_CACHE_PERMANENT_TIMESTAMP else now.time
+            val dbTimestamp = if (permanent) CacheConfig.AI_CACHE_PERMANENT_TIMESTAMP else Date().time
             dao?.insert(AICommentaryCacheEntity(key, commentary, dbTimestamp))
-            scope.launch {
-                try {
-                    AppwriteAICache.set(key, commentary, permanent)
-                } catch (e: Exception) {
-                    Log.w(TAG, "Appwrite AI cache sync failed for key=$key", e)
-                    Sentry.captureException(e)
-                }
-            }
+            syncToAppwrite(key, commentary, permanent)
         } catch (e: Exception) {
             if (e is CancellationException) throw e
             Sentry.captureException(e)
             return@withLock  // degrade gracefully — commentary was generated, cache write failing is non-fatal
+        }
+    }
+
+    // Fire-and-forget mirror to the Appwrite tier; local caches are already written by the caller.
+    private fun syncToAppwrite(key: String, commentary: String, permanent: Boolean) {
+        scope.launch {
+            try {
+                AppwriteAICache.set(key, commentary, permanent)
+            } catch (e: Exception) {
+                Log.w(TAG, "Appwrite AI cache sync failed for key=$key", e)
+                Sentry.captureException(e)
+            }
         }
     }
 

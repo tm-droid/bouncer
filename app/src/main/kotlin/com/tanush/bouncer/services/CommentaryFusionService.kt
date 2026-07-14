@@ -604,7 +604,9 @@ class CommentaryFusionService(
         // 7c: Token budget 256 → 512 for over summaries
         val result = callGenerateCommentaryFunction(cacheKey, prompt, isMatchComplete, maxTokens = 512, temperature = 0.4)
             ?: callProviders(prompt, maxTokens = 512, temperature = 0.4)
-            ?: "[Summary unavailable]"
+            // Generation failed (e.g. read-budget 402 + all providers down). Return the placeholder
+            // WITHOUT caching, so this over is re-attempted next time instead of being poisoned.
+            ?: return AICacheService.UNAVAILABLE_PLACEHOLDER
         AICacheService.setCommentary(result, cacheKey, permanent = isMatchComplete)
         return result
     }

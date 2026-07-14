@@ -154,6 +154,24 @@
                 { "key": "MATCH_COMMENTARY_COL_ID",   "value": "match-commentary" },
                 { "key": "MATCH_LIVE_DETAIL_COL_ID",  "value": "match-live-detail" }
             ]
+        },
+        {
+            "$id": "bouncer-match-commentary-prune",
+            "name": "bouncer-match-commentary-prune",
+            "enabled": true,
+            "logging": true,
+            "runtime": "node-22",
+            "schedule": "0 3 * * *",
+            "timeout": 300,
+            "entrypoint": "src/main.js",
+            "commands": "npm install",
+            "version": "v1",
+            "path": "functions/match-commentary-prune",
+            "vars": [
+                { "key": "APPWRITE_API_KEY",        "value": "" },
+                { "key": "APPWRITE_AI_CACHE_DB_ID", "value": "bouncer-db" },
+                { "key": "MATCH_COMMENTARY_COL_ID", "value": "match-commentary" }
+            ]
         }
     ],
     "buckets": [
