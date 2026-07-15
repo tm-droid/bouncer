@@ -52,94 +52,96 @@ object H2HRepository {
         queryTeam2: String,
         swapped: Boolean,
     ): H2HPair {
-        val t1Wins = entry.optInt(if (swapped) "team2Wins" else "team1Wins")
-        val t2Wins = entry.optInt(if (swapped) "team1Wins" else "team2Wins")
-        val t1Highest = entry.optString(if (swapped) "team2HighestScore" else "team1HighestScore", "0")
-        val t1Lowest  = entry.optString(if (swapped) "team2LowestScore"  else "team1LowestScore",  "0")
-        val t2Highest = entry.optString(if (swapped) "team1HighestScore" else "team2HighestScore", "0")
-        val t2Lowest  = entry.optString(if (swapped) "team1LowestScore"  else "team2LowestScore",  "0")
-
-        val lastFiveRaw = entry.optJSONArray("lastFive")
-        val lastFive = buildList {
-            if (lastFiveRaw != null) {
-                for (i in 0 until lastFiveRaw.length()) {
-                    val raw = lastFiveRaw.optString(i, "D")
-                    // If swapped, flip W1↔W2
-                    add(if (swapped) when (raw) { "W1" -> "W2"; "W2" -> "W1"; else -> raw } else raw)
-                }
-            }
-        }
-
-        val stats = HeadToHeadStats(
-            totalMatches = entry.optInt("totalMatches"),
-            team1Wins = t1Wins,
-            team2Wins = t2Wins,
-            draws = entry.optInt("draws"),
-            team1HomeWins = 0,
-            team2HomeWins = 0,
-            lastFiveResults = lastFive,
-            team1HighestScore = t1Highest,
-            team2HighestScore = t2Highest,
-            team1LowestScore = t1Lowest,
-            team2LowestScore = t2Lowest,
-            lastWinner = entry.optString("lastWinner").takeIf { it.isNotEmpty() },
-        )
-
-        val recentArray = entry.optJSONArray("recentMatches")
-        val recentMatches = buildList<HistoricalMatch> {
-            if (recentArray != null) {
-                for (i in 0 until recentArray.length()) {
-                    val m = recentArray.optJSONObject(i) ?: continue
-                    val t1Score = m.optString(if (swapped) "team2Score" else "team1Score", "-")
-                    val t2Score = m.optString(if (swapped) "team1Score" else "team2Score", "-")
-                    add(HistoricalMatch(
-                        date = m.optString("date", ""),
-                        venue = m.optString("venue", ""),
-                        winner = m.optString("winner").takeIf { it.isNotEmpty() },
-                        team1Score = t1Score,
-                        team2Score = t2Score,
-                        format = m.optString("format", "T20"),
-                        margin = m.optString("margin").takeIf { it.isNotEmpty() },
-                    ))
-                }
-            }
-        }
-
-        val venueStats = recentMatches
-            .groupBy { it.venue }
-            .maxByOrNull { it.value.size }
-            ?.let { (venue, matches) ->
-                VenueHistoryStats(
-                    venueName = venue,
-                    totalMatches = matches.size,
-                    team1Wins = matches.count { it.winner?.contains(queryTeam1, ignoreCase = true) == true },
-                    team2Wins = matches.count { it.winner?.contains(queryTeam2, ignoreCase = true) == true },
-                )
-            }
-
-        val formatStats = recentMatches
-            .groupBy { it.format }
-            .mapValues { (format, matches) ->
-                FormatStats(
-                    format = format,
-                    totalMatches = matches.size,
-                    team1Wins = matches.count { it.winner?.contains(queryTeam1, ignoreCase = true) == true },
-                    team2Wins = matches.count { it.winner?.contains(queryTeam2, ignoreCase = true) == true },
-                )
-            }
-
+        val stats = parseStats(entry, swapped)
+        val recentMatches = parseRecentMatches(entry, swapped)
         val history = HeadToHeadHistory(
             team1Name = queryTeam1,
             team2Name = queryTeam2,
             totalMatches = stats.totalMatches,
-            team1Wins = t1Wins,
-            team2Wins = t2Wins,
+            team1Wins = stats.team1Wins,
+            team2Wins = stats.team2Wins,
             noResults = stats.draws,
             recentMatches = recentMatches,
-            venueStats = venueStats,
-            formatStats = formatStats,
+            venueStats = buildVenueStats(recentMatches, queryTeam1, queryTeam2),
+            formatStats = buildFormatStats(recentMatches, queryTeam1, queryTeam2),
         )
-
         return H2HPair(stats, history)
     }
+
+    // Storage stores stats in sorted team order; when the query order is swapped we read
+    // the opposite field so team1/team2 always map to the caller's team1/team2.
+    private fun pick(swapped: Boolean, first: String, second: String): String =
+        if (swapped) second else first
+
+    private fun parseLastFive(entry: JSONObject, swapped: Boolean): List<String> {
+        val arr = entry.optJSONArray("lastFive") ?: return emptyList()
+        return (0 until arr.length()).map { i ->
+            val raw = arr.optString(i, "D")
+            if (swapped) when (raw) { "W1" -> "W2"; "W2" -> "W1"; else -> raw } else raw
+        }
+    }
+
+    private fun parseStats(entry: JSONObject, swapped: Boolean): HeadToHeadStats = HeadToHeadStats(
+        totalMatches = entry.optInt("totalMatches"),
+        team1Wins = entry.optInt(pick(swapped, "team1Wins", "team2Wins")),
+        team2Wins = entry.optInt(pick(swapped, "team2Wins", "team1Wins")),
+        draws = entry.optInt("draws"),
+        team1HomeWins = 0,
+        team2HomeWins = 0,
+        lastFiveResults = parseLastFive(entry, swapped),
+        team1HighestScore = entry.optString(pick(swapped, "team1HighestScore", "team2HighestScore"), "0"),
+        team2HighestScore = entry.optString(pick(swapped, "team2HighestScore", "team1HighestScore"), "0"),
+        team1LowestScore = entry.optString(pick(swapped, "team1LowestScore", "team2LowestScore"), "0"),
+        team2LowestScore = entry.optString(pick(swapped, "team2LowestScore", "team1LowestScore"), "0"),
+        lastWinner = entry.optString("lastWinner").takeIf { it.isNotEmpty() },
+    )
+
+    private fun parseRecentMatches(entry: JSONObject, swapped: Boolean): List<HistoricalMatch> {
+        val recentArray = entry.optJSONArray("recentMatches") ?: return emptyList()
+        return buildList {
+            for (i in 0 until recentArray.length()) {
+                val m = recentArray.optJSONObject(i) ?: continue
+                add(HistoricalMatch(
+                    date = m.optString("date", ""),
+                    venue = m.optString("venue", ""),
+                    winner = m.optString("winner").takeIf { it.isNotEmpty() },
+                    team1Score = m.optString(pick(swapped, "team1Score", "team2Score"), "-"),
+                    team2Score = m.optString(pick(swapped, "team2Score", "team1Score"), "-"),
+                    format = m.optString("format", "T20"),
+                    margin = m.optString("margin").takeIf { it.isNotEmpty() },
+                ))
+            }
+        }
+    }
+
+    private fun buildVenueStats(
+        recentMatches: List<HistoricalMatch>,
+        queryTeam1: String,
+        queryTeam2: String,
+    ): VenueHistoryStats? = recentMatches
+        .groupBy { it.venue }
+        .maxByOrNull { it.value.size }
+        ?.let { (venue, matches) ->
+            VenueHistoryStats(
+                venueName = venue,
+                totalMatches = matches.size,
+                team1Wins = matches.count { it.winner?.contains(queryTeam1, ignoreCase = true) == true },
+                team2Wins = matches.count { it.winner?.contains(queryTeam2, ignoreCase = true) == true },
+            )
+        }
+
+    private fun buildFormatStats(
+        recentMatches: List<HistoricalMatch>,
+        queryTeam1: String,
+        queryTeam2: String,
+    ): Map<String, FormatStats> = recentMatches
+        .groupBy { it.format }
+        .mapValues { (format, matches) ->
+            FormatStats(
+                format = format,
+                totalMatches = matches.size,
+                team1Wins = matches.count { it.winner?.contains(queryTeam1, ignoreCase = true) == true },
+                team2Wins = matches.count { it.winner?.contains(queryTeam2, ignoreCase = true) == true },
+            )
+        }
 }

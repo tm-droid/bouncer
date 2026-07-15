@@ -237,28 +237,22 @@ class LiveCommentaryManager(
         val over = ballNumber.substringBefore(".").toIntOrNull() ?: 0
         val oversSummary = computeOversSummary(matchId, over, buzzLine, isMatchComplete)
 
-        // Synchronize cancel+reassign so concurrent calls can't race on currentStreamJob.
-        streamJobMutex.withLock {
-            currentStreamJob?.cancel()
-            currentStreamJob = scope.launch {
-                streamBallCommentary(
-                    CommentaryFusionService.MatchContext(
-                        matchId = matchId,
-                        over = over,
-                        ballNumber = ballNumber,
-                        snippet1 = buzzLine,
-                        snippet2 = infoLine,
-                        oversSummary = oversSummary,
-                        bowler = bowlerName,
-                        batsman = batsmanName,
-                        scoreContext = scoreContext,
-                        isMatchComplete = isMatchComplete,
-                        currentRunRate = details?.currentRunRate?.toDoubleOrNull(),
-                        requiredRunRate = details?.requiredRunRate?.toDoubleOrNull()
-                    )
-                )
-            }
-        }
+        launchStreamingJob(
+            CommentaryFusionService.MatchContext(
+                matchId = matchId,
+                over = over,
+                ballNumber = ballNumber,
+                snippet1 = buzzLine,
+                snippet2 = infoLine,
+                oversSummary = oversSummary,
+                bowler = bowlerName,
+                batsman = batsmanName,
+                scoreContext = scoreContext,
+                isMatchComplete = isMatchComplete,
+                currentRunRate = details?.currentRunRate?.toDoubleOrNull(),
+                requiredRunRate = details?.requiredRunRate?.toDoubleOrNull()
+            )
+        )
 
         val snapshotHistory = stateMutex.withLock { commentaryHistory.toList() }
         val resultValue = when (scorer.compare(buzzLine, infoLine, keyNames, snapshotHistory)) {
@@ -274,6 +268,14 @@ class LiveCommentaryManager(
 
         recordCommentary(resultValue)
         return prefixBallNumber(ballNumber, resultValue)
+    }
+
+    // Synchronize cancel+reassign so concurrent calls can't race on currentStreamJob.
+    private suspend fun launchStreamingJob(context: CommentaryFusionService.MatchContext) {
+        streamJobMutex.withLock {
+            currentStreamJob?.cancel()
+            currentStreamJob = scope.launch { streamBallCommentary(context) }
+        }
     }
 
     private suspend fun resolveBestCommentary(

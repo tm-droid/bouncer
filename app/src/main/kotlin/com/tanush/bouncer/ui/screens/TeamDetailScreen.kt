@@ -57,7 +57,6 @@ fun TeamDetailScreen(
 ) {
     val colors = BouncerThemeV2.colors
     val typography = BouncerThemeV2.typography
-    val spacing = BouncerThemeV2.spacing
 
     val allMatches by liveActivityViewModel.currentMatches.collectAsStateWithLifecycle()
     val isLoading by liveActivityViewModel.isLoading.collectAsStateWithLifecycle()
@@ -95,90 +94,123 @@ fun TeamDetailScreen(
             onRefresh = liveActivityViewModel::refreshMatches,
             modifier = Modifier.padding(innerPadding),
         ) {
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(vertical = spacing.md),
-        ) {
-            item(key = "team_header") {
-                Row(
+            TeamDetailContent(
+                teamMatches = teamMatches,
+                isLoading = isLoading,
+                teamName = teamName,
+                logoUrl = logoUrl,
+                acronym = acronym,
+                onMatchClick = onMatchClick,
+            )
+        }
+    }
+}
+
+@Composable
+private fun TeamDetailContent(
+    teamMatches: List<CricketMatch>,
+    isLoading: Boolean,
+    teamName: String,
+    logoUrl: String?,
+    acronym: String,
+    onMatchClick: (CricketMatch) -> Unit,
+) {
+    val colors = BouncerThemeV2.colors
+    val spacing = BouncerThemeV2.spacing
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(vertical = spacing.md),
+    ) {
+        item(key = "team_header") {
+            TeamHeaderRow(logoUrl = logoUrl, teamName = teamName, acronym = acronym)
+            HorizontalDivider(color = colors.divider)
+        }
+
+        if (isLoading && teamMatches.isEmpty()) {
+            items(3, key = { "shimmer_$it" }) {
+                ShimmerMatchCard(
+                    modifier = Modifier.padding(horizontal = spacing.lg, vertical = spacing.xs),
+                )
+            }
+        } else if (teamMatches.isEmpty()) {
+            item(key = "no_matches") {
+                EmptyStateV2(
+                    icon = Icons.Outlined.SportsCricket,
+                    title = "No current matches",
+                    subtitle = "Live, upcoming and recent $teamName matches will appear here",
+                )
+            }
+        } else {
+            item(key = "matches_header") {
+                SectionHeaderV2(title = "Matches (${teamMatches.size})")
+            }
+            items(teamMatches, key = { "m_${it.id}" }) { match ->
+                MatchCardV2(
+                    match = match,
+                    onClick = { onMatchClick(match) },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = spacing.lg, vertical = spacing.md),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    if (logoUrl != null) {
-                        AsyncImage(
-                            model = logoUrl,
-                            contentDescription = teamName,
-                            modifier = Modifier
-                                .size(56.dp)
-                                .clip(CircleShape),
-                        )
-                    } else {
-                        Box(
-                            modifier = Modifier
-                                .size(56.dp)
-                                .clip(CircleShape)
-                                .background(colors.surfaceVariant),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Text(
-                                acronym.take(2),
-                                style = typography.titleMedium,
-                                color = colors.textSecondary,
-                                fontWeight = FontWeight.Bold,
-                            )
-                        }
-                    }
-                    Spacer(Modifier.width(spacing.md))
-                    Column {
-                        Text(
-                            teamName,
-                            style = typography.titleLarge,
-                            color = colors.onSurface,
-                            fontWeight = FontWeight.Bold,
-                        )
-                        Text(
-                            acronym,
-                            style = typography.bodyMedium,
-                            color = colors.textSecondary,
-                        )
-                    }
-                }
-                HorizontalDivider(color = colors.divider)
+                        .padding(horizontal = spacing.lg, vertical = spacing.xs),
+                )
             }
-
-            if (isLoading && teamMatches.isEmpty()) {
-                items(3, key = { "shimmer_$it" }) {
-                    ShimmerMatchCard(
-                        modifier = Modifier.padding(horizontal = spacing.lg, vertical = spacing.xs),
-                    )
-                }
-            } else if (teamMatches.isEmpty()) {
-                item(key = "no_matches") {
-                    EmptyStateV2(
-                        icon = Icons.Outlined.SportsCricket,
-                        title = "No current matches",
-                        subtitle = "Live, upcoming and recent $teamName matches will appear here",
-                    )
-                }
-            } else {
-                item(key = "matches_header") {
-                    SectionHeaderV2(title = "Matches (${teamMatches.size})")
-                }
-                items(teamMatches, key = { "m_${it.id}" }) { match ->
-                    MatchCardV2(
-                        match = match,
-                        onClick = { onMatchClick(match) },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = spacing.lg, vertical = spacing.xs),
-                    )
-                }
-            }
-
-            item(key = "bottom") { Spacer(Modifier.height(80.dp)) }
         }
+
+        item(key = "bottom") { Spacer(Modifier.height(80.dp)) }
+    }
+}
+
+@Composable
+private fun TeamHeaderRow(
+    logoUrl: String?,
+    teamName: String,
+    acronym: String,
+) {
+    val colors = BouncerThemeV2.colors
+    val typography = BouncerThemeV2.typography
+    val spacing = BouncerThemeV2.spacing
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = spacing.lg, vertical = spacing.md),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (logoUrl != null) {
+            AsyncImage(
+                model = logoUrl,
+                contentDescription = teamName,
+                modifier = Modifier
+                    .size(56.dp)
+                    .clip(CircleShape),
+            )
+        } else {
+            Box(
+                modifier = Modifier
+                    .size(56.dp)
+                    .clip(CircleShape)
+                    .background(colors.surfaceVariant),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    acronym.take(2),
+                    style = typography.titleMedium,
+                    color = colors.textSecondary,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+        }
+        Spacer(Modifier.width(spacing.md))
+        Column {
+            Text(
+                teamName,
+                style = typography.titleLarge,
+                color = colors.onSurface,
+                fontWeight = FontWeight.Bold,
+            )
+            Text(
+                acronym,
+                style = typography.bodyMedium,
+                color = colors.textSecondary,
+            )
         }
     }
 }

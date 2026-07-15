@@ -177,43 +177,6 @@ object CricketRepository {
         }
     }
 
-    private val TITLE_SEPARATORS = listOf(" vs ", " v ", " vs. ", " against ")
-
-    private fun parseTeamFromTitle(title: String, index: Int): String {
-        for (sep in TITLE_SEPARATORS) {
-            val parts = title.split(sep, ignoreCase = true)
-            if (parts.size >= 2) {
-                return parts.getOrElse(index) { "" }
-                    .split(",", "|").first().trim()
-            }
-        }
-        return ""
-    }
-
-    private fun mergedMatchEntity(
-        matchId: String,
-        cached: MatchEntity?,
-        response: SanwebMatchResponse
-    ): MatchEntity = MatchEntity(
-        matchId = matchId,
-        seriesId = cached?.seriesId ?: "",
-        matchTitle = response.title,
-        matchType = cached?.matchType ?: "",
-        status = response.update,
-        venue = cached?.venue ?: "",
-        date = cached?.date ?: "",
-        matchTime = cached?.matchTime ?: "",
-        currentStatus = response.update,
-        info = response.livescore,
-        team1Name = cached?.team1Name?.takeIf { it.isNotBlank() }
-            ?: parseTeamFromTitle(response.title, 0),
-        team1Score = response.livescore,
-        team2Name = cached?.team2Name?.takeIf { it.isNotBlank() }
-            ?: parseTeamFromTitle(response.title, 1),
-        team2Score = null,
-        lastUpdated = System.currentTimeMillis()
-    )
-
     fun observeCachedMatches(context: Context): Flow<List<MatchEntity>> {
         val db = BouncerDatabase.getInstance(context)
         return db.matchDao().getAllMatches()
@@ -238,3 +201,40 @@ object CricketRepository {
         }
     }
 }
+
+private val TITLE_SEPARATORS = listOf(" vs ", " v ", " vs. ", " against ")
+
+private fun parseTeamFromTitle(title: String, index: Int): String {
+    for (sep in TITLE_SEPARATORS) {
+        val parts = title.split(sep, ignoreCase = true)
+        if (parts.size >= 2) {
+            return parts.getOrElse(index) { "" }
+                .split(",", "|").first().trim()
+        }
+    }
+    return ""
+}
+
+private fun mergedMatchEntity(
+    matchId: String,
+    cached: MatchEntity?,
+    response: SanwebMatchResponse
+): MatchEntity = MatchEntity(
+    matchId = matchId,
+    seriesId = cached?.seriesId ?: "",
+    matchTitle = response.title,
+    matchType = cached?.matchType ?: "",
+    status = response.update,
+    venue = cached?.venue ?: "",
+    date = cached?.date ?: "",
+    matchTime = cached?.matchTime ?: "",
+    currentStatus = response.update,
+    info = response.livescore,
+    team1Name = cached?.team1Name?.takeIf { it.isNotBlank() }
+        ?: parseTeamFromTitle(response.title, 0),
+    team1Score = response.livescore,
+    team2Name = cached?.team2Name?.takeIf { it.isNotBlank() }
+        ?: parseTeamFromTitle(response.title, 1),
+    team2Score = null,
+    lastUpdated = System.currentTimeMillis()
+)

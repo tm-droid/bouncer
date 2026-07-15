@@ -108,16 +108,11 @@ fun OverviewTabV2(
     probabilityHistory: List<WinProbabilityPoint> = emptyList(),
     headToHead: H2HPair? = null,
 ) {
-    val colors = BouncerThemeV2.colors
-    val typography = BouncerThemeV2.typography
     val spacing = BouncerThemeV2.spacing
 
-    val isMatchActive = match.matchStatus == MatchStatus.Live || match.currentStatus.lowercase().let {
-        it.contains("stumps") || it.contains("break") || it.contains("rain") || it.contains("delay")
-    }
+    val isMatchActive = matchIsActive(match)
     val isCompleted = match.matchStatus == MatchStatus.Completed
-    val isUpcoming = match.matchStatus == MatchStatus.Upcoming ||
-        (!isMatchActive && !isCompleted && match.teams.all { it.score.isBlank() || it.score == "0/0" })
+    val isUpcoming = matchIsUpcoming(match, isMatchActive, isCompleted)
 
     val overMilestones = matchFlow?.overMilestones
     val maxOver = overMilestones?.maxOfOrNull { it.first } ?: 0
@@ -132,18 +127,12 @@ fun OverviewTabV2(
         probabilityHistory = probabilityHistory,
         commentary = commentary,
     )
-    val cumulativeScores = derived.cumulativeScores
-    val hasOverData = cumulativeScores.isNotEmpty() && match.teams.size >= 2
-    val fallbackBatsmen = derived.fallbackBatsmen
-    val fallbackHasNotOut = derived.fallbackHasNotOut
-    val ppPhaseList = derived.ppPhaseList
-    val matchPhases = derived.matchPhases
-    val wicketOvers = derived.wicketOvers
-    val perOverRuns = derived.perOverRuns
-    val uniqueInnings = derived.uniqueInnings
-    val fallOfWicketsByInnings = derived.fallOfWicketsByInnings
-    val keyMoments = derived.keyMoments
-    val meaningfulCommentary = derived.meaningfulCommentary
+    val hasOverData = derived.cumulativeScores.isNotEmpty() && match.teams.size >= 2
+    val heuristicProb = match.calculateHeuristicProbability()
+    val hasAnyContent = hasAnyOverviewContent(
+        match, batsmen, bowler, recentBalls, scorecard, commentary,
+        probabilityHistory, matchFlow, headToHead, currentRunRate, requiredRunRate, isUpcoming,
+    )
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -153,609 +142,74 @@ fun OverviewTabV2(
         ),
         verticalArrangement = Arrangement.spacedBy(spacing.md),
     ) {
-        // Nothing to show yet: say so instead of rendering an empty body.
-        val hasAnyContent = batsmen.isNotEmpty() || bowler != null || recentBalls.isNotEmpty() ||
-            scorecard != null || commentary.isNotEmpty() || probabilityHistory.isNotEmpty() ||
-            matchFlow != null || headToHead != null || currentRunRate != null || requiredRunRate != null ||
-            (!match.isLive && match.currentStatus.isNotBlank() && !isUpcoming)
-        if (!hasAnyContent) {
-            item(key = "no_data") { OverviewNoDataMessage(isUpcoming = isUpcoming) }
-        }
-
-        // Match situation card for stumps/break/completed
-        if (!match.isLive && match.currentStatus.isNotBlank() && !isUpcoming) {
-            item(key = "match_situation") {
-                BouncerCard {
-                    Column(modifier = Modifier.padding(spacing.md)) {
-                        Text(
-                            text = "Match Status",
-                            style = typography.labelMedium,
-                            color = colors.textSecondary,
-                        )
-                        Spacer(Modifier.height(spacing.xs))
-                        Text(
-                            text = match.currentStatus,
-                            style = typography.titleSmall,
-                            color = if (isCompleted) colors.win else colors.primary,
-                            fontWeight = FontWeight.Bold,
-                        )
-                    }
-                }
-            }
-        }
-
-        // Quick stats row — show for any match with data
-        val heuristicProb = match.calculateHeuristicProbability()
-        val hasWinPct = heuristicProb != 50.0
-        if (currentRunRate != null || requiredRunRate != null || hasWinPct) {
-            item(key = "quick_stats") {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(spacing.sm),
-                ) {
-                    currentRunRate?.let {
-                        InsightGridCard(
-                            modifier = Modifier.weight(1f),
-                            label = "CRR",
-                            value = it,
-                            subValue = "curr rate",
-                            icon = Icons.Default.Speed,
-                        )
-                    }
-                    requiredRunRate?.let {
-                        InsightGridCard(
-                            modifier = Modifier.weight(1f),
-                            label = "RRR",
-                            value = it,
-                            subValue = "reqd rate",
-                            icon = Icons.AutoMirrored.Filled.TrendingUp,
-                        )
-                    }
-                    if (hasWinPct) {
-                        InsightGridCard(
-                            modifier = Modifier.weight(1f),
-                            label = "WIN %",
-                            value = "${heuristicProb.toInt()}%",
-                            subValue = match.teams.firstOrNull()?.acronym?.take(3) ?: "--",
-                            icon = Icons.Default.AutoAwesome,
-                            isHighPriority = true,
-                        )
-                    }
-                }
-            }
-        }
-
-        // Recent balls strip
-        if (recentBalls.isNotEmpty()) {
-            item(key = "recent_balls") {
-                BouncerCard {
-                    Column(modifier = Modifier.padding(spacing.md)) {
-                        Text(
-                            text = "This Over",
-                            style = typography.labelMedium,
-                            color = colors.textSecondary,
-                        )
-                        Spacer(Modifier.height(spacing.xs))
-                        RecentBallsStripV2(balls = recentBalls.takeLast(6))
-                    }
-                }
-            }
-        }
-
-        // Last wicket
-        val lastWicket = match.score?.lastWicket
-        if (!lastWicket.isNullOrBlank() && isMatchActive) {
-            item(key = "last_wicket") {
-                BouncerCard {
-                    Column(modifier = Modifier.padding(spacing.md)) {
-                        Text(
-                            text = "Last Wicket",
-                            style = typography.labelMedium,
-                            color = colors.textSecondary,
-                        )
-                        Spacer(Modifier.height(spacing.xs))
-                        Text(
-                            text = lastWicket,
-                            style = typography.bodyMedium,
-                            color = colors.onSurface,
-                            fontWeight = FontWeight.Medium,
-                        )
-                    }
-                }
-            }
-        }
-
-        // Momentum tracker — key events derived from current over's ball outcomes
-        if (recentBalls.isNotEmpty()) {
-            val battingOvers = match.teams.firstOrNull { it.isBatting }?.overs
-                ?: match.teams.firstOrNull()?.overs ?: "0"
-            val currentOverNum = battingOvers.split(".").firstOrNull()?.toIntOrNull() ?: 0
-            val momentumEvents = recentBalls.takeLast(6).mapIndexedNotNull { idx, ball ->
-                val overLabel = "$currentOverNum.${idx + 1}"
-                when (ball.uppercase()) {
-                    "W" -> MomentumEvent(overLabel, "WICKET", "Fall of wicket", "W", Icons.Default.HeartBroken, StatusLive)
-                    "6" -> MomentumEvent(overLabel, "SIX", "Boundary — 6 runs", "6", Icons.Default.Flare, StatusSuccess)
-                    "4" -> MomentumEvent(overLabel, "FOUR", "Boundary — 4 runs", "4", Icons.Default.Flare, Gold400)
-                    "0" -> MomentumEvent(overLabel, "DOT BALL", "Pressure on batting side", "·", Icons.Default.Security, StatusInfo)
-                    else -> null
-                }
-            }
-            if (momentumEvents.isNotEmpty()) {
-                item(key = "momentum_tracker") {
-                    EliteMomentumTracker(events = momentumEvents)
-                }
-            }
-        }
-
-        // At the Crease
-        if (batsmen.isNotEmpty()) {
-            item(key = "crease_header") {
-                SectionHeaderV2(title = "At the Crease")
-            }
-            items(batsmen, key = { "bat_${it.name}" }) { bat ->
-                BouncerCard {
-                    Column(modifier = Modifier.padding(spacing.md)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Text(
-                                text = bat.name + if (bat.isStriker) " *" else "",
-                                style = typography.titleSmall,
-                                color = colors.onSurface,
-                                fontWeight = if (bat.isStriker) FontWeight.Bold else FontWeight.Normal,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.weight(1f),
-                            )
-                            AnimatedScoreText(
-                                text = "${bat.runs} (${bat.balls})",
-                                style = typography.scoreMedium,
-                                color = colors.onSurface,
-                                fontWeight = FontWeight.Bold,
-                            )
-                        }
-                        Spacer(Modifier.height(spacing.xs))
-                        Text(
-                            text = "SR: ${bat.strikeRate} • 4s: ${bat.fours} • 6s: ${bat.sixes}",
-                            style = typography.bodySmall,
-                            color = colors.textSecondary,
-                        )
-                    }
-                }
-            }
-        } else if ((isMatchActive || isCompleted) && fallbackBatsmen.isNotEmpty()) {
-            // Fallback: show top batsmen from latest innings when live data unavailable
-            val topBatsmen = fallbackBatsmen
-            run {
-                item(key = "crease_header") {
-                    SectionHeaderV2(title = if (fallbackHasNotOut) "At the Crease" else "Last Batsmen")
-                }
-                items(topBatsmen.size, key = { "scbat_$it" }) { idx ->
-                    val bat = topBatsmen[idx]
-                    BouncerCard {
-                        Column(modifier = Modifier.padding(spacing.md)) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Text(
-                                    text = bat.name,
-                                    style = typography.titleSmall,
-                                    color = colors.onSurface,
-                                    modifier = Modifier.weight(1f),
-                                )
-                                Text(
-                                    text = "${bat.runs} (${bat.balls})",
-                                    style = typography.scoreMedium,
-                                    color = colors.onSurface,
-                                    fontWeight = FontWeight.Bold,
-                                )
-                            }
-                            Spacer(Modifier.height(spacing.xs))
-                            val details = buildString {
-                                append("SR: ${bat.strikeRate}")
-                                if (bat.fours != "0") append(" • 4s: ${bat.fours}")
-                                if (bat.sixes != "0") append(" • 6s: ${bat.sixes}")
-                                if (bat.dismissal.isNotBlank() && !bat.dismissal.lowercase().contains("not out")) {
-                                    append(" • ${bat.dismissal}")
-                                }
-                            }
-                            Text(
-                                text = details,
-                                style = typography.bodySmall,
-                                color = colors.textSecondary,
-                            )
-                        }
-                    }
-                }
-            }
-        }
-
-        // Current Bowler
-        if (bowler != null) {
-            item(key = "bowler_header") {
-                SectionHeaderV2(title = "Current Bowler")
-            }
-            item(key = "bowler") {
-                BouncerCard {
-                    Column(modifier = Modifier.padding(spacing.md)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Text(
-                                text = bowler.name,
-                                style = typography.titleSmall,
-                                color = colors.onSurface,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.weight(1f),
-                            )
-                            AnimatedScoreText(
-                                text = "${bowler.overs}-${bowler.maidens}-${bowler.runs}-${bowler.wickets}",
-                                style = typography.scoreMedium,
-                                color = colors.onSurface,
-                                fontWeight = FontWeight.Bold,
-                            )
-                        }
-                        val econ = bowler.economy.takeIf { it.isNotBlank() }
-                            ?: run {
-                                val o = bowler.overs.toDoubleOrNull() ?: 0.0
-                                val r = bowler.runs.toDoubleOrNull() ?: 0.0
-                                if (o > 0) String.format("%.2f", r / o) else null
-                            }
-                        if (econ != null) {
-                            Spacer(Modifier.height(spacing.xs))
-                            Text(
-                                text = "Econ: $econ",
-                                style = typography.bodySmall,
-                                color = colors.textSecondary,
-                            )
-                        }
-                    }
-                }
-            }
-        } else if ((isMatchActive || isCompleted) && scorecard != null && scorecard.innings.isNotEmpty()) {
-            // Fallback: show top bowler from latest innings
-            val latestInnings = scorecard.innings.last()
-            val topBowler = latestInnings.bowlers.maxByOrNull { it.wickets.toIntOrNull() ?: 0 }
-            if (topBowler != null) {
-                item(key = "bowler_header") {
-                    SectionHeaderV2(title = "Best Bowler")
-                }
-                item(key = "bowler") {
-                    BouncerCard {
-                        Column(modifier = Modifier.padding(spacing.md)) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Text(
-                                    text = topBowler.name,
-                                    style = typography.titleSmall,
-                                    color = colors.onSurface,
-                                    modifier = Modifier.weight(1f),
-                                )
-                                Text(
-                                    text = "${topBowler.overs}-${topBowler.maidens}-${topBowler.runs}-${topBowler.wickets}",
-                                    style = typography.scoreMedium,
-                                    color = colors.onSurface,
-                                    fontWeight = FontWeight.Bold,
-                                )
-                            }
-                            val econVal = topBowler.economy.takeIf { it.isNotBlank() }
-                                ?: run {
-                                    val o = topBowler.overs.toDoubleOrNull() ?: 0.0
-                                    val r = topBowler.runs.toDoubleOrNull() ?: 0.0
-                                    if (o > 0) String.format("%.2f", r / o) else null
-                                }
-                            if (econVal != null) {
-                                Spacer(Modifier.height(spacing.xs))
-                                Text(
-                                    text = "Econ: $econVal",
-                                    style = typography.bodySmall,
-                                    color = colors.textSecondary,
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        // Win Probability — simple hero (always shown when heuristic available)
-        if (heuristicProb != 50.0 && match.teams.size >= 2) {
-            item(key = "win_prob") {
-                PremiumWinProbabilityHero(
-                    team1Name = match.teams[0].acronym.ifBlank { match.teams[0].name.take(3).uppercase() },
-                    team1Probability = (heuristicProb.toFloat() / 100f).coerceIn(0.05f, 0.95f),
-                )
-            }
-        }
-
-        // Win Probability chart — full time-series analytics (shown when history data is available)
-        if (probabilityHistory.size >= 2 && match.teams.size >= 2) {
-            item(key = "win_prob_chart") {
-                WinProbabilityChartCard(
-                    team1Name = match.teams[0].acronym.ifBlank { match.teams[0].name.take(3).uppercase() },
-                    team2Name = match.teams[1].acronym.ifBlank { match.teams[1].name.take(3).uppercase() },
-                    probabilityHistory = probabilityHistory,
-                    currentTeam1Probability = probabilityHistory.last().team1Probability,
-                )
-            }
-        }
-
-        // MatchPredictionCard — win probability framed as a prediction card
-        if (probabilityHistory.size >= 2 && match.teams.size >= 2) {
-            val latestProb = probabilityHistory.last()
-            val prevProb = probabilityHistory[probabilityHistory.size - 2]
-            val probDelta = latestProb.team1Probability - prevProb.team1Probability
-            val trend = when {
-                probDelta > 0.05f -> PredictionTrend.TEAM1_RISING
-                probDelta < -0.05f -> PredictionTrend.TEAM2_RISING
-                else -> PredictionTrend.STABLE
-            }
-            item(key = "prediction_card") {
-                MatchPredictionCard(
-                    predictionInfo = MatchPredictionInfo(
-                        team1Name = match.teams[0].name,
-                        team2Name = match.teams[1].name,
-                        team1WinProbability = latestProb.team1Probability,
-                        team2WinProbability = latestProb.team2Probability,
-                        predictionTrend = trend,
-                        predictedWinner = if (latestProb.team1Probability >= 0.5f) match.teams[0].name else match.teams[1].name,
-                        predictionFactors = buildList {
-                            val crr = currentRunRate?.toFloatOrNull()
-                            val rrr = requiredRunRate?.toFloatOrNull()
-                            if (crr != null && rrr != null && rrr > 0f) {
-                                add(PredictionFactor(
-                                    name = "Run Rate",
-                                    impact = ((crr / rrr) - 1f).coerceIn(-1f, 1f),
-                                    description = "CRR $crr vs RRR $rrr",
-                                ))
-                            }
-                        },
-                    ),
-                )
-            }
-        }
-
-        // Powerplay summary from ESPNCricinfo
-        if (ppPhaseList.isNotEmpty()) {
-            val battingTeamName = match.teams.firstOrNull { it.isBatting }?.name
-                ?: match.teams.firstOrNull()?.name ?: ""
-            item(key = "powerplay_card") {
-                PowerPlayAnalysisCard(
-                    teamName = battingTeamName,
-                    phases = ppPhaseList,
-                )
-            }
-        }
-
-        // MatchPhasesCard — full phase breakdown (PP + Middle + Death)
-        if (matchPhases.size >= 2 && match.teams.size >= 2) {
-            item(key = "match_phases_card") {
-                MatchPhasesCard(
-                    phases = matchPhases,
-                    team1Name = match.teams[0].name,
-                    team2Name = match.teams[1].name,
-                )
-            }
-        }
-
-        // DRS reviews from ESPNCricinfo — show most recent review
-        val latestDrs = matchFlow?.drsReviews?.lastOrNull()
-        if (latestDrs != null) {
-            item(key = "drs_card") {
-                DRSReviewCard(
-                    review = DRSReviewData(
-                        isSuccessful = latestDrs.isUpheld,
-                        over = latestDrs.over,
-                        decision = latestDrs.decision,
-                        umpireName = latestDrs.umpireName,
-                    ),
-                )
-            }
-        }
-
-        // Over-by-over scoring graph from ESPNCricinfo score milestones
-        if (hasOverData) {
-            item(key = "scoring_graph") {
-                LiveScoringGraphCard(
-                    scoringData = LiveScoringData(
-                        team1Name = match.teams[0].acronym.ifBlank { match.teams[0].name.take(3).uppercase() },
-                        team2Name = match.teams[1].acronym.ifBlank { match.teams[1].name.take(3).uppercase() },
-                        team1Scores = cumulativeScores,
-                        team2Scores = emptyList(),
-                        currentOver = maxOver,
-                        projectedScore = cumulativeScores.lastOrNull() ?: 0,
-                    ),
-                )
-            }
-        }
-
-        // OverByOverComparisonCard — cumulative scores as dual-line chart
-        if (hasOverData) {
-            item(key = "over_by_over_card") {
-                OverByOverComparisonCard(
-                    comparisonInfo = OverByOverComparisonInfo(
-                        team1Name = match.teams[0].acronym.ifBlank { match.teams[0].name.take(3).uppercase() },
-                        team2Name = match.teams[1].acronym.ifBlank { match.teams[1].name.take(3).uppercase() },
-                        team1Scores = cumulativeScores,
-                        team2Scores = emptyList(),
-                        currentOver = maxOver,
-                        highlightOvers = wicketOvers,
-                    ),
-                )
-            }
-        }
-
-        // RunRateComparisonCard — per-over run differential
-        if (perOverRuns.isNotEmpty() && match.teams.size >= 2) {
-            item(key = "run_rate_card") {
-                RunRateComparisonCard(
-                    overData = perOverRuns,
-                    team1Name = match.teams[0].name,
-                    team2Name = match.teams[1].name,
-                    requiredRunRate = requiredRunRate?.toDoubleOrNull(),
-                )
-            }
-        }
-
-        // Scorecard Summary for completed/stumps matches
-        if (batsmen.isEmpty() && uniqueInnings.isNotEmpty()) {
-            item(key = "scorecard_summary_header") {
-                SectionHeaderV2(title = "Innings Summary")
-            }
-            items(uniqueInnings.size, key = { "inn_summary_$it" }) { idx ->
-                val inn = uniqueInnings[idx]
-                BouncerCard {
-                    Column(modifier = Modifier.padding(spacing.md)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Text(
-                                text = inn.teamName,
-                                style = typography.titleSmall,
-                                color = colors.onSurface,
-                                modifier = Modifier.weight(1f),
-                            )
-                            Text(
-                                text = "${inn.score} (${inn.overs})",
-                                style = typography.scoreMedium,
-                                color = colors.onSurface,
-                                fontWeight = FontWeight.Bold,
-                            )
-                        }
-                    }
-                }
-            }
-        }
-
-        // FallOfWicketsCard — from scorecard
-        if (scorecard != null) {
-            scorecard.innings.forEachIndexed { idx, innings ->
-                val uiFow = fallOfWicketsByInnings.getOrNull(idx).orEmpty()
-                if (uiFow.isNotEmpty()) {
-                    item(key = "fow_card_$idx") {
-                        FallOfWicketsCard(
-                            wickets = uiFow,
-                            teamName = innings.teamName,
-                            currentScore = innings.score.split("/").firstOrNull()?.toIntOrNull() ?: 0,
-                            currentOvers = innings.overs.toFloatOrNull() ?: 0f,
-                        )
-                    }
-                }
-            }
-        }
-
-        // KeyMomentsCard — pivotal events from probability history
-        if (keyMoments.size >= 2) {
-            item(key = "key_moments_header") { SectionHeaderV2(title = "Key Moments") }
-            item(key = "key_moments_card") { HighlightMomentsCard(moments = keyMoments) }
-        }
-
-        // HeadToHeadCard + HistoricalStatsCard — from Appwrite H2H stats (Cricsheet-derived)
-        headToHead?.let { h2h ->
-            item(key = "h2h_card") {
-                HeadToHeadCard(match = match, stats = h2h.stats)
-            }
-            item(key = "historical_card") {
-                HistoricalStatsCard(data = h2h.history)
-            }
-        }
-
-        // Recent Commentary (skip for upcoming matches — no meaningful commentary yet)
-        val hasStreaming = !isUpcoming && streamingCommentary.isNotBlank()
-        val hasCommentary = !isUpcoming && (meaningfulCommentary.isNotEmpty() || hasStreaming)
-        if (hasCommentary) {
-            item(key = "commentary_header") {
-                SectionHeaderV2(title = "Recent Commentary")
-            }
-            // Show streaming (in-flight) text as the top item while a ball is being processed
-            if (hasStreaming) {
-                item(key = "streaming_commentary") {
-                    val displayStreaming = streamingCommentary
-                        .replace(Regex("^\\[AI Fused\\]\\s*"), "")
-                        .trimEnd('/')
-                        .trim()
-                    BouncerCard {
-                        Text(
-                            text = displayStreaming,
-                            style = typography.bodySmall,
-                            color = colors.primary,
-                            modifier = Modifier.padding(spacing.md),
-                        )
-                    }
-                }
-            }
-            val previewLines = meaningfulCommentary.take(5)
-            items(previewLines, key = { line -> "overview_comm_${line.hashCode()}" }) { line ->
-                val formatted = line.replace(Regex("^\\[AI Fused\\]\\s*"), "").trimEnd('/').trim()
-                BouncerCard {
-                    Text(
-                        text = formatted,
-                        style = typography.bodySmall,
-                        color = colors.onSurface,
-                        modifier = Modifier.padding(spacing.md),
-                    )
-                }
-            }
-        } else if (!isUpcoming) {
-            item(key = "no_commentary") {
-                val msg = when {
-                    match.currentStatus.lowercase().contains("stumps") -> "Commentary paused — Stumps"
-                    match.currentStatus.lowercase().contains("break") -> "Commentary paused — Session break"
-                    match.currentStatus.lowercase().contains("rain") -> "Commentary paused — Rain delay"
-                    isCompleted -> "Match completed"
-                    else -> "Waiting for commentary..."
-                }
-                BouncerCard {
-                    Text(
-                        text = msg,
-                        style = typography.bodySmall,
-                        color = colors.textSecondary,
-                        modifier = Modifier.padding(spacing.md),
-                    )
-                }
-            }
-        }
-
-        // Upcoming match info
-        if (isUpcoming) {
-            item(key = "upcoming_info") {
-                BouncerCard {
-                    Column(modifier = Modifier.padding(spacing.md)) {
-                        Text(
-                            text = "Match Preview",
-                            style = typography.labelMedium,
-                            color = colors.textSecondary,
-                        )
-                        Spacer(Modifier.height(spacing.xs))
-                        if (match.matchTime.isNotBlank()) {
-                            Text(
-                                text = "Starts at ${match.matchTime}",
-                                style = typography.titleSmall,
-                                color = colors.onSurface,
-                                fontWeight = FontWeight.Bold,
-                            )
-                            Spacer(Modifier.height(spacing.xs))
-                        }
-                        Text(
-                            text = "${match.matchType} • ${match.venue}",
-                            style = typography.bodySmall,
-                            color = colors.textSecondary,
-                        )
-                    }
-                }
-            }
-        }
-
+        overviewHeaderSections(
+            match, isUpcoming, isCompleted, hasAnyContent,
+            currentRunRate, requiredRunRate, heuristicProb,
+        )
+        overviewLiveSituation(match, recentBalls, isMatchActive)
+        overviewBatsmen(batsmen, isMatchActive, isCompleted, derived.fallbackBatsmen, derived.fallbackHasNotOut)
+        overviewBowler(bowler, isMatchActive, isCompleted, scorecard)
+        overviewWinProbability(match, heuristicProb, probabilityHistory, currentRunRate, requiredRunRate)
+        overviewPhaseCards(match, matchFlow, derived.ppPhaseList, derived.matchPhases)
+        overviewScoringCharts(
+            match, hasOverData, derived.cumulativeScores, maxOver,
+            derived.wicketOvers, derived.perOverRuns, requiredRunRate,
+        )
+        overviewScorecardSections(
+            match, batsmen, derived.uniqueInnings, scorecard,
+            derived.fallOfWicketsByInnings, derived.keyMoments, headToHead,
+        )
+        overviewCommentary(match, isUpcoming, isCompleted, streamingCommentary, derived.meaningfulCommentary)
+        overviewUpcomingInfo(match, isUpcoming)
         item(key = "bottom") { Spacer(Modifier.height(spacing.xxl)) }
     }
 }
+
+private fun matchIsActive(match: CricketMatch): Boolean =
+    match.matchStatus == MatchStatus.Live || match.currentStatus.lowercase().let {
+        it.contains("stumps") || it.contains("break") || it.contains("rain") || it.contains("delay")
+    }
+
+private fun matchIsUpcoming(match: CricketMatch, isMatchActive: Boolean, isCompleted: Boolean): Boolean =
+    match.matchStatus == MatchStatus.Upcoming ||
+        (!isMatchActive && !isCompleted && match.teams.all { it.score.isBlank() || it.score == "0/0" })
+
+private fun hasOverviewData(
+    batsmen: List<ScrapedBatsman>,
+    bowler: ScrapedBowler?,
+    recentBalls: List<String>,
+    scorecard: Scorecard?,
+    commentary: List<String>,
+    probabilityHistory: List<WinProbabilityPoint>,
+): Boolean = batsmen.isNotEmpty() || bowler != null || recentBalls.isNotEmpty() ||
+    scorecard != null || commentary.isNotEmpty() || probabilityHistory.isNotEmpty()
+
+private fun hasOverviewMeta(
+    match: CricketMatch,
+    matchFlow: MatchFlowData?,
+    headToHead: H2HPair?,
+    currentRunRate: String?,
+    requiredRunRate: String?,
+    isUpcoming: Boolean,
+): Boolean = matchFlow != null || headToHead != null || currentRunRate != null || requiredRunRate != null ||
+    (!match.isLive && match.currentStatus.isNotBlank() && !isUpcoming)
+
+@Suppress("LongParameterList")
+private fun hasAnyOverviewContent(
+    match: CricketMatch,
+    batsmen: List<ScrapedBatsman>,
+    bowler: ScrapedBowler?,
+    recentBalls: List<String>,
+    scorecard: Scorecard?,
+    commentary: List<String>,
+    probabilityHistory: List<WinProbabilityPoint>,
+    matchFlow: MatchFlowData?,
+    headToHead: H2HPair?,
+    currentRunRate: String?,
+    requiredRunRate: String?,
+    isUpcoming: Boolean,
+): Boolean = hasOverviewData(batsmen, bowler, recentBalls, scorecard, commentary, probabilityHistory) ||
+    hasOverviewMeta(match, matchFlow, headToHead, currentRunRate, requiredRunRate, isUpcoming)
 
 @Composable
 private fun QuickStatCard(
@@ -819,7 +273,7 @@ private fun WinProbRow(teamName: String, probability: Float) {
 
 
 @Composable
-private fun OverviewNoDataMessage(isUpcoming: Boolean) {
+internal fun OverviewNoDataMessage(isUpcoming: Boolean) {
     if (isUpcoming) {
         EmptyStateV2(
             icon = Icons.Outlined.Schedule,

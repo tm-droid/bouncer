@@ -196,21 +196,7 @@ class CommentaryFusionService(
             val cacheKey = "ball_ai:$matchId:$ballNumber"
             AICacheService.getCommentary(cacheKey)?.let { return@withContext it }
 
-            val previousBalls = getPreviousBalls(matchId)
-            val recentContext = if (previousBalls.isNotEmpty())
-                "\nRecent: ${previousBalls.takeLast(3).joinToString(" | ")}" else ""
-            val cleanSnippet = CommentaryFormatter.sanitize(rawSnippet)
-            val contextLine = listOfNotNull(
-                bowler.takeIf { it.isNotEmpty() }?.let { "Bowler: $it" },
-                batsman.takeIf { it.isNotEmpty() }?.let { "Batsman: $it" },
-                scoreContext.takeIf { it.isNotEmpty() }?.let { "Score: $it" },
-            ).joinToString(" | ")
-            val prompt = buildString {
-                append("Ball $ballNumber: $cleanSnippet")
-                if (contextLine.isNotEmpty()) append("\n$contextLine")
-                if (recentContext.isNotEmpty()) append(recentContext)
-                append("\nWrite one vivid broadcast commentary line. Start with $ballNumber: at the beginning.")
-            }
+            val prompt = buildBallPrompt(matchId, ballNumber, rawSnippet, bowler, batsman, scoreContext)
 
             val result = callGenerateCommentaryFunction(cacheKey, prompt, isMatchComplete, maxTokens = 100, temperature = 0.7, systemInstruction = SYSTEM_INSTRUCTION)
                 ?: callProviders(prompt, maxTokens = 100, temperature = 0.7, systemInstruction = SYSTEM_INSTRUCTION)
@@ -219,6 +205,31 @@ class CommentaryFusionService(
             addBallToBuffer(matchId, result)
             result
         }
+
+    private suspend fun buildBallPrompt(
+        matchId: String,
+        ballNumber: String,
+        rawSnippet: String,
+        bowler: String,
+        batsman: String,
+        scoreContext: String,
+    ): String {
+        val previousBalls = getPreviousBalls(matchId)
+        val recentContext = if (previousBalls.isNotEmpty())
+            "\nRecent: ${previousBalls.takeLast(3).joinToString(" | ")}" else ""
+        val cleanSnippet = CommentaryFormatter.sanitize(rawSnippet)
+        val contextLine = listOfNotNull(
+            bowler.takeIf { it.isNotEmpty() }?.let { "Bowler: $it" },
+            batsman.takeIf { it.isNotEmpty() }?.let { "Batsman: $it" },
+            scoreContext.takeIf { it.isNotEmpty() }?.let { "Score: $it" },
+        ).joinToString(" | ")
+        return buildString {
+            append("Ball $ballNumber: $cleanSnippet")
+            if (contextLine.isNotEmpty()) append("\n$contextLine")
+            if (recentContext.isNotEmpty()) append(recentContext)
+            append("\nWrite one vivid broadcast commentary line. Start with $ballNumber: at the beginning.")
+        }
+    }
 
     suspend fun rewriteEventCommentary(
         matchId: String,

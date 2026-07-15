@@ -412,6 +412,15 @@ private fun NavGraphBuilder.parameterizedDestinations(
     liveActivityViewModel: LiveActivityViewModel,
     onMatchClick: (com.tanush.bouncer.models.CricketMatch) -> Unit,
 ) {
+    detailDestinations(navController, newsViewModel)
+    matchDeepLinkDestination(navController, liveActivityViewModel)
+    entityDestinations(navController, liveActivityViewModel, onMatchClick)
+}
+
+private fun NavGraphBuilder.detailDestinations(
+    navController: NavHostController,
+    newsViewModel: NewsViewModel,
+) {
     // News Detail with article ID
     composable(
         route = BouncerScreen.NewsDetail.ROUTE_PATTERN,
@@ -456,7 +465,13 @@ private fun NavGraphBuilder.parameterizedDestinations(
         )
     }
 
-    // Match Detail with match ID — used by widget/notification deep links
+}
+
+// Match Detail with match ID — used by widget/notification deep links
+private fun NavGraphBuilder.matchDeepLinkDestination(
+    navController: NavHostController,
+    liveActivityViewModel: LiveActivityViewModel,
+) {
     composable(
         route = BouncerScreen.MatchDetail.ROUTE_PATTERN,
         arguments = BouncerScreen.MatchDetail.arguments
@@ -484,7 +499,13 @@ private fun NavGraphBuilder.parameterizedDestinations(
             }
         }
     }
+}
 
+private fun NavGraphBuilder.entityDestinations(
+    navController: NavHostController,
+    liveActivityViewModel: LiveActivityViewModel,
+    onMatchClick: (com.tanush.bouncer.models.CricketMatch) -> Unit,
+) {
     // Series Detail with series ID
     composable(
         route = BouncerScreen.SeriesDetail.ROUTE_PATTERN,

@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -80,8 +81,6 @@ fun SearchScreen(
     onBackClick: () -> Unit,
 ) {
     val colors = BouncerThemeV2.colors
-    val typography = BouncerThemeV2.typography
-    val spacing = BouncerThemeV2.spacing
     val keyboardController = LocalSoftwareKeyboardController.current
 
     val query by viewModel.query.collectAsStateWithLifecycle()
@@ -98,605 +97,387 @@ fun SearchScreen(
     }
 
     val displayResults by remember(selectedTab, results) {
-        derivedStateOf {
-            when (selectedTab) {
-                SearchTab.ALL -> results
-                SearchTab.MATCHES -> results.copy(
-                    teams = emptyList(), players = emptyList(), news = emptyList(), series = emptyList()
-                )
-                SearchTab.PLAYERS -> results.copy(
-                    matches = emptyList(), teams = emptyList(), news = emptyList(),
-                    series = emptyList(), historicalMatches = emptyList()
-                )
-                SearchTab.TEAMS -> results.copy(
-                    matches = emptyList(), players = emptyList(), news = emptyList(),
-                    series = emptyList(), historicalMatches = emptyList()
-                )
-                SearchTab.TOURNAMENTS -> results.copy(
-                    matches = emptyList(), teams = emptyList(), players = emptyList(),
-                    news = emptyList(), historicalMatches = emptyList()
-                )
-                SearchTab.NEWS -> results.copy(
-                    matches = emptyList(), teams = emptyList(), players = emptyList(),
-                    series = emptyList(), historicalMatches = emptyList()
-                )
-            }
-        }
+        derivedStateOf { displayResultsFor(selectedTab, results) }
     }
 
     Scaffold(
         containerColor = colors.background,
         topBar = {
-            Column {
-                SearchBarHeader(
-                    query = query,
-                    onQueryChange = { viewModel.onQueryChange(it, matches, news) },
-                    onClear = { viewModel.onQueryChange("", matches, news) },
-                    onBack = onBackClick,
-                    onSearch = {
-                        if (query.isNotBlank()) {
-                            viewModel.onSearchSubmitted(query)
-                            keyboardController?.hide()
-                        }
-                    },
-                    focusRequester = focusRequester,
-                )
-                AnimatedVisibility(visible = isLoading) {
-                    LinearProgressIndicator(
-                        modifier = Modifier.fillMaxWidth(),
-                        color = colors.primary,
-                        trackColor = colors.surfaceVariant,
-                    )
-                }
-            }
+            SearchTopBar(
+                query = query,
+                isLoading = isLoading,
+                focusRequester = focusRequester,
+                onQueryChange = { viewModel.onQueryChange(it, matches, news) },
+                onClear = { viewModel.onQueryChange("", matches, news) },
+                onBack = onBackClick,
+                onSearch = {
+                    if (query.isNotBlank()) {
+                        viewModel.onSearchSubmitted(query)
+                        keyboardController?.hide()
+                    }
+                },
+            )
         },
     ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding),
-        ) {
-            if (query.length >= 2) {
-                ScrollableTabRow(
-                    selectedTabIndex = selectedTab.ordinal,
-                    containerColor = colors.background,
-                    contentColor = colors.primary,
-                    edgePadding = spacing.md,
-                ) {
-                    SearchTab.values().forEach { tab ->
-                        Tab(
-                            selected = selectedTab == tab,
-                            onClick = { viewModel.onTabSelected(tab) },
-                            text = {
-                                val count = when (tab) {
-                                    SearchTab.ALL -> results.totalCount
-                                    SearchTab.MATCHES -> results.matches.size
-                                    SearchTab.PLAYERS -> results.players.size
-                                    SearchTab.TEAMS -> results.teams.size
-                                    SearchTab.TOURNAMENTS -> results.series.size
-                                    SearchTab.NEWS -> results.news.size
-                                }
-                                val label = tab.name.lowercase().replaceFirstChar { it.uppercase() }
-                                Text(
-                                    if (count > 0) "$label ($count)" else label,
-                                    style = typography.labelMedium,
-                                )
-                            },
-                        )
-                    }
-                }
-            }
-
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(vertical = spacing.md),
-            ) {
-                // Suggestion banner
-                displayResults.suggestion?.let { suggestion ->
-                    item(key = "suggestion") {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { viewModel.onQueryChange(suggestion, matches, news) }
-                                .padding(horizontal = spacing.lg, vertical = spacing.sm),
-                        ) {
-                            Text("Did you mean: ", style = typography.bodyMedium, color = colors.textSecondary)
-                            Text(
-                                suggestion,
-                                style = typography.bodyMedium,
-                                color = colors.primary,
-                                fontWeight = FontWeight.Bold,
-                            )
-                        }
-                    }
-                }
-
-                // Empty state — show recent/trending when no query
-                if (query.length < 2) {
-                    if (recentQueries.isNotEmpty()) {
-                        item(key = "recent_header") {
-                            SectionHeaderV2(
-                                title = "Recent Searches",
-                                action = "Clear",
-                                onAction = { viewModel.clearRecentQueries() },
-                            )
-                        }
-                        items(recentQueries, key = { "recent_$it" }) { q ->
-                            SearchSuggestionRow(
-                                text = q,
-                                onClick = { viewModel.onQueryChange(q, matches, news) },
-                                icon = {
-                                    Icon(
-                                        Icons.Default.Search,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(18.dp),
-                                        tint = colors.textSecondary,
-                                    )
-                                },
-                            )
-                        }
-                        item(key = "recent_divider") {
-                            Spacer(Modifier.height(spacing.md))
-                        }
-                    }
-
-                    item(key = "trending_header") {
-                        SectionHeaderV2(title = "Trending")
-                    }
-                    items(SearchRepository.getTrendingSearches(), key = { "trend_$it" }) { trend ->
-                        SearchSuggestionRow(
-                            text = trend,
-                            onClick = { viewModel.onQueryChange(trend, matches, news) },
-                            icon = {
-                                Icon(
-                                    Icons.Default.Star,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(18.dp),
-                                    tint = colors.primary,
-                                )
-                            },
-                        )
-                    }
-                    return@LazyColumn
-                }
-
-                // Failed search — distinct from genuinely empty results
-                if (searchError != null && displayResults.isEmpty && query.length >= 2) {
-                    item(key = "search_error") {
-                        EmptyStateV2(
-                            title = "Search interrupted",
-                            subtitle = searchError ?: "",
-                            onRetry = { viewModel.retrySearch(matches, news) },
-                        )
-                    }
-                    return@LazyColumn
-                }
-
-                // Empty results state
-                if (displayResults.isEmpty && query.length >= 2) {
-                    item(key = "no_results") { NoResultsMessage() }
-                    return@LazyColumn
-                }
-
-                // Match results
-                if (displayResults.matches.isNotEmpty()) {
-                    item(key = "matches_header") {
-                        SectionHeaderV2(title = "Matches (${displayResults.matches.size})")
-                    }
-                    items(displayResults.matches, key = { "m_${it.match.id}" }) { result ->
-                        MatchCardV2(
-                            match = result.match,
-                            onClick = {
-                                viewModel.onSearchSubmitted(query)
-                                onMatchClick(result.match)
-                            },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = spacing.lg, vertical = spacing.xs),
-                        )
-                    }
-                }
-
-                // Team results
-                if (displayResults.teams.isNotEmpty()) {
-                    item(key = "teams_header") {
-                        SectionHeaderV2(title = "Teams (${displayResults.teams.size})")
-                    }
-                    items(displayResults.teams, key = { "t_${it.teamName}" }) { result ->
-                        TeamSearchRow(
-                            teamName = result.teamName,
-                            acronym = result.teamAcronym,
-                            logoUrl = result.logoUrl,
-                            onClick = {
-                                viewModel.onSearchSubmitted(query)
-                                onTeamClick(result.teamName)
-                            },
-                        )
-                    }
-                }
-
-                // Player results
-                if (displayResults.players.isNotEmpty()) {
-                    item(key = "players_header") {
-                        SectionHeaderV2(title = "Players (${displayResults.players.size})")
-                    }
-                    items(displayResults.players, key = { "p_${it.playerName}" }) { result ->
-                        PlayerSearchRow(
-                            playerName = result.playerName,
-                            teamName = result.teamName,
-                            role = result.role,
-                            imageUrl = result.imageUrl,
-                            onClick = {
-                                viewModel.onSearchSubmitted(query)
-                                onPlayerClick(result.playerName)
-                            },
-                        )
-                    }
-                }
-
-                // News results
-                if (displayResults.news.isNotEmpty()) {
-                    item(key = "news_header") {
-                        SectionHeaderV2(title = "News (${displayResults.news.size})")
-                    }
-                    items(displayResults.news, key = { "n_${it.article.id}" }) { result ->
-                        NewsSearchRow(
-                            title = result.article.headline,
-                            source = result.article.source,
-                            onClick = {
-                                viewModel.onSearchSubmitted(query)
-                                onNewsClick(result.article)
-                            },
-                        )
-                    }
-                }
-
-                // Series / Tournament results
-                if (displayResults.series.isNotEmpty()) {
-                    item(key = "series_header") {
-                        SectionHeaderV2(title = "Tournaments (${displayResults.series.size})")
-                    }
-                    items(displayResults.series, key = { "s_${it.seriesId}" }) { result ->
-                        SeriesSearchRow(
-                            name = result.name,
-                            category = result.category,
-                            startDate = result.startDate,
-                            endDate = result.endDate,
-                            onClick = {
-                                viewModel.onSearchSubmitted(query)
-                                onSeriesClick(result.seriesId)
-                            },
-                        )
-                    }
-                }
-
-                // Historical match results
-                if (displayResults.historicalMatches.isNotEmpty()) {
-                    item(key = "historical_header") {
-                        SectionHeaderV2(title = "Historical Matches (${displayResults.historicalMatches.size})")
-                    }
-                    items(displayResults.historicalMatches, key = { "h_${it.matchId}" }) { result ->
-                        HistoricalMatchSearchRow(
-                            matchTitle = result.matchTitle,
-                            teams = result.teams,
-                            venue = result.venue,
-                            date = result.date,
-                            season = result.season,
-                            matchType = result.matchType,
-                            onClick = { viewModel.onSearchSubmitted(query) },
-                        )
-                    }
-                }
-
-                item(key = "bottom") { Spacer(Modifier.height(80.dp)) }
-            }
-        }
-    }
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// Search Bar
-// ═══════════════════════════════════════════════════════════════════════════════
-
-@Composable
-private fun NoResultsMessage() {
-    val colors = BouncerThemeV2.colors
-    val typography = BouncerThemeV2.typography
-    val spacing = BouncerThemeV2.spacing
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(spacing.xxl),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Text("No results found", style = typography.titleMedium, color = colors.onSurface)
-        Spacer(Modifier.height(spacing.xs))
-        Text(
-            "Try a different search term",
-            style = typography.bodyMedium,
-            color = colors.textSecondary,
+        SearchScreenBody(
+            modifier = Modifier.padding(innerPadding),
+            query = query,
+            selectedTab = selectedTab,
+            results = results,
+            displayResults = displayResults,
+            searchError = searchError,
+            recentQueries = recentQueries,
+            viewModel = viewModel,
+            matches = matches,
+            news = news,
+            onMatchClick = onMatchClick,
+            onTeamClick = onTeamClick,
+            onPlayerClick = onPlayerClick,
+            onNewsClick = onNewsClick,
+            onSeriesClick = onSeriesClick,
         )
     }
 }
 
 @Composable
-private fun SearchBarHeader(
+private fun SearchTopBar(
     query: String,
+    isLoading: Boolean,
+    focusRequester: FocusRequester,
     onQueryChange: (String) -> Unit,
     onClear: () -> Unit,
     onBack: () -> Unit,
     onSearch: () -> Unit,
-    focusRequester: FocusRequester,
 ) {
     val colors = BouncerThemeV2.colors
-    val typography = BouncerThemeV2.typography
-    val spacing = BouncerThemeV2.spacing
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(colors.topBar)
-            .padding(horizontal = spacing.sm, vertical = spacing.md),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        IconButton(onClick = onBack) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = colors.textSecondary)
+    Column {
+        SearchBarHeader(
+            query = query,
+            onQueryChange = onQueryChange,
+            onClear = onClear,
+            onBack = onBack,
+            onSearch = onSearch,
+            focusRequester = focusRequester,
+        )
+        AnimatedVisibility(visible = isLoading) {
+            LinearProgressIndicator(
+                modifier = Modifier.fillMaxWidth(),
+                color = colors.primary,
+                trackColor = colors.surfaceVariant,
+            )
         }
+    }
+}
 
-        Box(
-            modifier = Modifier
-                .weight(1f)
-                .clip(RoundedCornerShape(12.dp))
-                .background(colors.surfaceVariant)
-                .padding(horizontal = spacing.md, vertical = spacing.sm),
+@Composable
+private fun SearchScreenBody(
+    modifier: Modifier,
+    query: String,
+    selectedTab: SearchTab,
+    results: SearchRepository.SearchResults,
+    displayResults: SearchRepository.SearchResults,
+    searchError: String?,
+    recentQueries: List<String>,
+    viewModel: SearchViewModel,
+    matches: List<CricketMatch>,
+    news: List<NewsArticleData>,
+    onMatchClick: (CricketMatch) -> Unit,
+    onTeamClick: (String) -> Unit,
+    onPlayerClick: (String) -> Unit,
+    onNewsClick: (NewsArticleData) -> Unit,
+    onSeriesClick: (String) -> Unit,
+) {
+    val spacing = BouncerThemeV2.spacing
+    Column(modifier = modifier.fillMaxSize()) {
+        if (query.length >= 2) {
+            SearchResultsTabRow(
+                selectedTab = selectedTab,
+                results = results,
+                onTabSelected = viewModel::onTabSelected,
+            )
+        }
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(vertical = spacing.md),
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.Search, contentDescription = null, tint = colors.textSecondary, modifier = Modifier.size(20.dp))
-                Spacer(Modifier.width(spacing.sm))
-                Box(modifier = Modifier.weight(1f)) {
-                    if (query.isEmpty()) {
-                        Text(
-                            "Search matches, players, teams, tournaments…",
-                            style = typography.bodyMedium,
-                            color = colors.textSecondary,
-                        )
-                    }
-                    BasicTextField(
-                        value = query,
-                        onValueChange = onQueryChange,
-                        textStyle = typography.bodyMedium.copy(color = colors.onSurface),
-                        cursorBrush = SolidColor(colors.primary),
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                        keyboardActions = KeyboardActions(onSearch = { onSearch() }),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .focusRequester(focusRequester),
+            displayResults.suggestion?.let { suggestion ->
+                suggestionBanner(suggestion) { viewModel.onQueryChange(suggestion, matches, news) }
+            }
+
+            when {
+                query.length < 2 -> searchSuggestions(
+                    recentQueries = recentQueries,
+                    onQuery = { viewModel.onQueryChange(it, matches, news) },
+                    onClearRecent = { viewModel.clearRecentQueries() },
+                )
+                searchError != null && displayResults.isEmpty -> item(key = "search_error") {
+                    EmptyStateV2(
+                        title = "Search interrupted",
+                        subtitle = searchError ?: "",
+                        onRetry = { viewModel.retrySearch(matches, news) },
                     )
                 }
-                AnimatedVisibility(visible = query.isNotEmpty(), enter = fadeIn(), exit = fadeOut()) {
-                    // 48dp touch target overflowing the 24dp layout slot (keeps bar height).
-                    IconButton(onClick = onClear, modifier = Modifier.size(24.dp).requiredSize(48.dp)) {
-                        Icon(Icons.Default.Clear, contentDescription = "Clear", tint = colors.textSecondary, modifier = Modifier.size(18.dp))
-                    }
+                displayResults.isEmpty -> item(key = "no_results") { NoResultsMessage() }
+                else -> {
+                    searchResultsPrimary(
+                        displayResults = displayResults,
+                        onMatchClick = { viewModel.onSearchSubmitted(query); onMatchClick(it) },
+                        onTeamClick = { viewModel.onSearchSubmitted(query); onTeamClick(it) },
+                        onPlayerClick = { viewModel.onSearchSubmitted(query); onPlayerClick(it) },
+                    )
+                    searchResultsSecondary(
+                        displayResults = displayResults,
+                        onNewsClick = { viewModel.onSearchSubmitted(query); onNewsClick(it) },
+                        onSeriesClick = { viewModel.onSearchSubmitted(query); onSeriesClick(it) },
+                        onHistoricalClick = { viewModel.onSearchSubmitted(query) },
+                    )
+                    item(key = "bottom") { Spacer(Modifier.height(80.dp)) }
                 }
             }
         }
-
-        Spacer(Modifier.width(spacing.sm))
     }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// Result Row Components
-// ═══════════════════════════════════════════════════════════════════════════════
+private fun displayResultsFor(
+    tab: SearchTab,
+    results: SearchRepository.SearchResults,
+): SearchRepository.SearchResults = when (tab) {
+    SearchTab.ALL -> results
+    SearchTab.MATCHES -> results.copy(
+        teams = emptyList(), players = emptyList(), news = emptyList(), series = emptyList()
+    )
+    SearchTab.PLAYERS -> results.copy(
+        matches = emptyList(), teams = emptyList(), news = emptyList(),
+        series = emptyList(), historicalMatches = emptyList()
+    )
+    SearchTab.TEAMS -> results.copy(
+        matches = emptyList(), players = emptyList(), news = emptyList(),
+        series = emptyList(), historicalMatches = emptyList()
+    )
+    SearchTab.TOURNAMENTS -> results.copy(
+        matches = emptyList(), teams = emptyList(), players = emptyList(),
+        news = emptyList(), historicalMatches = emptyList()
+    )
+    SearchTab.NEWS -> results.copy(
+        matches = emptyList(), teams = emptyList(), players = emptyList(),
+        series = emptyList(), historicalMatches = emptyList()
+    )
+}
 
 @Composable
-private fun SearchSuggestionRow(
-    text: String,
-    onClick: () -> Unit,
-    icon: @Composable () -> Unit,
+private fun SearchResultsTabRow(
+    selectedTab: SearchTab,
+    results: SearchRepository.SearchResults,
+    onTabSelected: (SearchTab) -> Unit,
 ) {
     val colors = BouncerThemeV2.colors
     val typography = BouncerThemeV2.typography
     val spacing = BouncerThemeV2.spacing
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = spacing.lg, vertical = spacing.sm),
-        verticalAlignment = Alignment.CenterVertically,
+    ScrollableTabRow(
+        selectedTabIndex = selectedTab.ordinal,
+        containerColor = colors.background,
+        contentColor = colors.primary,
+        edgePadding = spacing.md,
     ) {
-        icon()
-        Spacer(Modifier.width(spacing.md))
-        Text(text, style = typography.bodyMedium, color = colors.onSurface)
-    }
-}
-
-@Composable
-private fun TeamSearchRow(
-    teamName: String,
-    acronym: String,
-    logoUrl: String?,
-    onClick: () -> Unit,
-) {
-    val colors = BouncerThemeV2.colors
-    val typography = BouncerThemeV2.typography
-    val spacing = BouncerThemeV2.spacing
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = spacing.lg, vertical = spacing.sm),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        if (logoUrl != null) {
-            AsyncImage(model = logoUrl, contentDescription = teamName, modifier = Modifier.size(32.dp).clip(CircleShape))
-        } else {
-            Box(
-                modifier = Modifier.size(32.dp).clip(CircleShape).background(colors.surfaceVariant),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(acronym.take(2), style = typography.labelSmall, color = colors.textSecondary, fontWeight = FontWeight.Bold)
-            }
-        }
-        Spacer(Modifier.width(spacing.md))
-        Column {
-            Text(teamName, style = typography.bodyMedium, color = colors.onSurface, fontWeight = FontWeight.Medium)
-            Text(acronym, style = typography.bodySmall, color = colors.textSecondary)
-        }
-    }
-}
-
-@Composable
-private fun PlayerSearchRow(
-    playerName: String,
-    teamName: String,
-    role: String,
-    imageUrl: String? = null,
-    onClick: () -> Unit,
-) {
-    val colors = BouncerThemeV2.colors
-    val typography = BouncerThemeV2.typography
-    val spacing = BouncerThemeV2.spacing
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = spacing.lg, vertical = spacing.sm),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        if (imageUrl != null) {
-            AsyncImage(
-                model = imageUrl,
-                contentDescription = playerName,
-                modifier = Modifier.size(32.dp).clip(CircleShape),
+        SearchTab.values().forEach { tab ->
+            Tab(
+                selected = selectedTab == tab,
+                onClick = { onTabSelected(tab) },
+                text = {
+                    val count = tabCount(tab, results)
+                    val label = tab.name.lowercase().replaceFirstChar { it.uppercase() }
+                    Text(
+                        if (count > 0) "$label ($count)" else label,
+                        style = typography.labelMedium,
+                    )
+                },
             )
-        } else {
-            Box(
-                modifier = Modifier.size(32.dp).clip(CircleShape).background(colors.primaryContainer),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(Icons.Default.Person, contentDescription = null, tint = colors.primary, modifier = Modifier.size(18.dp))
-            }
-        }
-        Spacer(Modifier.width(spacing.md))
-        Column {
-            Text(playerName, style = typography.bodyMedium, color = colors.onSurface, fontWeight = FontWeight.Medium)
-            val subtitle = listOfNotNull(teamName.takeIf { it.isNotEmpty() }, role.takeIf { it.isNotEmpty() }).joinToString(" · ")
-            Text(subtitle.ifEmpty { teamName }, style = typography.bodySmall, color = colors.textSecondary)
         }
     }
 }
 
-@Composable
-private fun NewsSearchRow(
-    title: String,
-    source: String,
-    onClick: () -> Unit,
-) {
-    val colors = BouncerThemeV2.colors
-    val typography = BouncerThemeV2.typography
-    val spacing = BouncerThemeV2.spacing
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = spacing.lg, vertical = spacing.sm),
-    ) {
-        Text(title, style = typography.bodyMedium, color = colors.onSurface, maxLines = 2)
-        Spacer(Modifier.height(2.dp))
-        Text(source, style = typography.bodySmall, color = colors.textSecondary)
-        HorizontalDivider(color = colors.divider, modifier = Modifier.padding(top = spacing.sm))
-    }
+private fun tabCount(tab: SearchTab, results: SearchRepository.SearchResults): Int = when (tab) {
+    SearchTab.ALL -> results.totalCount
+    SearchTab.MATCHES -> results.matches.size
+    SearchTab.PLAYERS -> results.players.size
+    SearchTab.TEAMS -> results.teams.size
+    SearchTab.TOURNAMENTS -> results.series.size
+    SearchTab.NEWS -> results.news.size
 }
 
-@Composable
-private fun SeriesSearchRow(
-    name: String,
-    category: String,
-    startDate: String,
-    endDate: String,
-    onClick: () -> Unit,
-) {
-    val colors = BouncerThemeV2.colors
-    val typography = BouncerThemeV2.typography
-    val spacing = BouncerThemeV2.spacing
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = spacing.lg, vertical = spacing.sm),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Box(
+private fun LazyListScope.suggestionBanner(suggestion: String, onClick: () -> Unit) {
+    item(key = "suggestion") {
+        val colors = BouncerThemeV2.colors
+        val typography = BouncerThemeV2.typography
+        val spacing = BouncerThemeV2.spacing
+        Row(
             modifier = Modifier
-                .size(32.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(colors.primaryContainer),
-            contentAlignment = Alignment.Center,
+                .fillMaxWidth()
+                .clickable { onClick() }
+                .padding(horizontal = spacing.lg, vertical = spacing.sm),
         ) {
+            Text("Did you mean: ", style = typography.bodyMedium, color = colors.textSecondary)
             Text(
-                category.take(1),
-                style = typography.labelSmall,
+                suggestion,
+                style = typography.bodyMedium,
                 color = colors.primary,
                 fontWeight = FontWeight.Bold,
             )
         }
-        Spacer(Modifier.width(spacing.md))
-        Column {
-            Text(name, style = typography.bodyMedium, color = colors.onSurface, fontWeight = FontWeight.Medium, maxLines = 1)
-            val subtitle = if (startDate.isNotEmpty() && endDate.isNotEmpty()) "$startDate – $endDate" else category
-            Text(subtitle, style = typography.bodySmall, color = colors.textSecondary)
-        }
     }
 }
 
-@Composable
-private fun HistoricalMatchSearchRow(
-    matchTitle: String,
-    teams: List<String>,
-    venue: String,
-    date: String,
-    season: String,
-    matchType: String,
-    onClick: () -> Unit,
+private fun LazyListScope.searchSuggestions(
+    recentQueries: List<String>,
+    onQuery: (String) -> Unit,
+    onClearRecent: () -> Unit,
 ) {
-    val colors = BouncerThemeV2.colors
-    val typography = BouncerThemeV2.typography
-    val spacing = BouncerThemeV2.spacing
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = spacing.lg, vertical = spacing.sm),
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                matchTitle,
-                style = typography.bodyMedium,
-                color = colors.onSurface,
-                fontWeight = FontWeight.Medium,
-                modifier = Modifier.weight(1f),
-                maxLines = 1,
+    if (recentQueries.isNotEmpty()) {
+        item(key = "recent_header") {
+            SectionHeaderV2(
+                title = "Recent Searches",
+                action = "Clear",
+                onAction = onClearRecent,
             )
-            Spacer(Modifier.width(spacing.xs))
-            Text(matchType, style = typography.labelSmall, color = colors.primary)
         }
-        val meta = listOfNotNull(
-            venue.takeIf { it.isNotEmpty() },
-            season.takeIf { it.isNotEmpty() },
-            date.takeIf { it.isNotEmpty() },
-        ).joinToString(" · ")
-        if (meta.isNotEmpty()) {
-            Text(meta, style = typography.bodySmall, color = colors.textSecondary)
+        items(recentQueries, key = { "recent_$it" }) { q ->
+            SearchSuggestionRow(
+                text = q,
+                onClick = { onQuery(q) },
+                icon = {
+                    Icon(
+                        Icons.Default.Search,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                        tint = BouncerThemeV2.colors.textSecondary,
+                    )
+                },
+            )
         }
-        HorizontalDivider(color = colors.divider, modifier = Modifier.padding(top = spacing.sm))
+        item(key = "recent_divider") {
+            Spacer(Modifier.height(BouncerThemeV2.spacing.md))
+        }
+    }
+
+    item(key = "trending_header") {
+        SectionHeaderV2(title = "Trending")
+    }
+    items(SearchRepository.getTrendingSearches(), key = { "trend_$it" }) { trend ->
+        SearchSuggestionRow(
+            text = trend,
+            onClick = { onQuery(trend) },
+            icon = {
+                Icon(
+                    Icons.Default.Star,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                    tint = BouncerThemeV2.colors.primary,
+                )
+            },
+        )
     }
 }
+
+private fun LazyListScope.searchResultsPrimary(
+    displayResults: SearchRepository.SearchResults,
+    onMatchClick: (CricketMatch) -> Unit,
+    onTeamClick: (String) -> Unit,
+    onPlayerClick: (String) -> Unit,
+) {
+    if (displayResults.matches.isNotEmpty()) {
+        item(key = "matches_header") {
+            SectionHeaderV2(title = "Matches (${displayResults.matches.size})")
+        }
+        items(displayResults.matches, key = { "m_${it.match.id}" }) { result ->
+            MatchCardV2(
+                match = result.match,
+                onClick = { onMatchClick(result.match) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = BouncerThemeV2.spacing.lg, vertical = BouncerThemeV2.spacing.xs),
+            )
+        }
+    }
+
+    if (displayResults.teams.isNotEmpty()) {
+        item(key = "teams_header") {
+            SectionHeaderV2(title = "Teams (${displayResults.teams.size})")
+        }
+        items(displayResults.teams, key = { "t_${it.teamName}" }) { result ->
+            TeamSearchRow(
+                teamName = result.teamName,
+                acronym = result.teamAcronym,
+                logoUrl = result.logoUrl,
+                onClick = { onTeamClick(result.teamName) },
+            )
+        }
+    }
+
+    if (displayResults.players.isNotEmpty()) {
+        item(key = "players_header") {
+            SectionHeaderV2(title = "Players (${displayResults.players.size})")
+        }
+        items(displayResults.players, key = { "p_${it.playerName}" }) { result ->
+            PlayerSearchRow(
+                playerName = result.playerName,
+                teamName = result.teamName,
+                role = result.role,
+                imageUrl = result.imageUrl,
+                onClick = { onPlayerClick(result.playerName) },
+            )
+        }
+    }
+}
+
+private fun LazyListScope.searchResultsSecondary(
+    displayResults: SearchRepository.SearchResults,
+    onNewsClick: (NewsArticleData) -> Unit,
+    onSeriesClick: (String) -> Unit,
+    onHistoricalClick: () -> Unit,
+) {
+    if (displayResults.news.isNotEmpty()) {
+        item(key = "news_header") {
+            SectionHeaderV2(title = "News (${displayResults.news.size})")
+        }
+        items(displayResults.news, key = { "n_${it.article.id}" }) { result ->
+            NewsSearchRow(
+                title = result.article.headline,
+                source = result.article.source,
+                onClick = { onNewsClick(result.article) },
+            )
+        }
+    }
+
+    if (displayResults.series.isNotEmpty()) {
+        item(key = "series_header") {
+            SectionHeaderV2(title = "Tournaments (${displayResults.series.size})")
+        }
+        items(displayResults.series, key = { "s_${it.seriesId}" }) { result ->
+            SeriesSearchRow(
+                name = result.name,
+                category = result.category,
+                startDate = result.startDate,
+                endDate = result.endDate,
+                onClick = { onSeriesClick(result.seriesId) },
+            )
+        }
+    }
+
+    if (displayResults.historicalMatches.isNotEmpty()) {
+        item(key = "historical_header") {
+            SectionHeaderV2(title = "Historical Matches (${displayResults.historicalMatches.size})")
+        }
+        items(displayResults.historicalMatches, key = { "h_${it.matchId}" }) { result ->
+            HistoricalMatchSearchRow(
+                matchTitle = result.matchTitle,
+                teams = result.teams,
+                venue = result.venue,
+                date = result.date,
+                season = result.season,
+                matchType = result.matchType,
+                onClick = onHistoricalClick,
+            )
+        }
+    }
+}
+

@@ -181,126 +181,53 @@ private fun mapFallOfWickets(
         }
 }
 
+private class DismissalRule(
+    val matches: (String) -> Boolean,
+    val parse: (String) -> Pair<DismissalType, String>,
+)
+
+private fun bowlerAfterB(dismissal: String): String {
+    val bIdx = dismissal.indexOf(" b ", ignoreCase = true)
+    return if (bIdx >= 0) dismissal.substring(bIdx + 3).trim() else ""
+}
+
+private fun parseCaught(dismissal: String): Pair<DismissalType, String> {
+    val bIdx = dismissal.indexOf(" b ", ignoreCase = true)
+    val fielder = if (bIdx >= 0) dismissal.substring(2, bIdx).trim() else ""
+    val bowler = if (bIdx >= 0) dismissal.substring(bIdx + 3).trim() else ""
+    val type = if (fielder.startsWith("†") || fielder.lowercase() == "wk") {
+        DismissalType.CAUGHT_BEHIND
+    } else {
+        DismissalType.CAUGHT
+    }
+    return type to bowler
+}
+
+// Matched against the lowercased dismissal string, in order; parse receives the original.
+private val DISMISSAL_RULES = listOf(
+    DismissalRule({ it.startsWith("c&b") || it.startsWith("c & b") }) {
+        DismissalType.CAUGHT_AND_BOWLED to it.replaceFirst(Regex("^[Cc][\\s&bB]+"), "").trim()
+    },
+    DismissalRule({ it.startsWith("lbw") }) {
+        DismissalType.LBW to it.replaceFirst(Regex("(?i)^lbw\\s+b\\s+"), "").trim()
+    },
+    DismissalRule({ it.startsWith("run out") }) {
+        DismissalType.RUN_OUT to it
+            .replaceFirst(Regex("(?i)^run out\\s*\\("), "").removeSuffix(")").trim()
+    },
+    DismissalRule({ it.startsWith("st ") }) { DismissalType.STUMPED to bowlerAfterB(it) },
+    DismissalRule({ it.startsWith("hit wicket") }) {
+        DismissalType.HIT_WICKET to it.replaceFirst(Regex("(?i)^hit wicket\\s+b\\s+"), "").trim()
+    },
+    DismissalRule({ it.startsWith("c ") && it.contains(" b ") }) { parseCaught(it) },
+    DismissalRule({ it.startsWith("b ") }) { DismissalType.BOWLED to it.substring(2).trim() },
+)
+
 private fun parseDismissal(dismissal: String): Pair<DismissalType, String> {
     val d = dismissal.lowercase().trim()
-    return when {
-        d.isBlank() || d.contains("not out") || d.contains("batting") ->
-            DismissalType.BOWLED to ""
-        d.startsWith("c&b") || d.startsWith("c & b") -> {
-            val bowler = dismissal.replaceFirst(Regex("^[Cc][\\s&bB]+"), "").trim()
-            DismissalType.CAUGHT_AND_BOWLED to bowler
-        }
-        d.startsWith("lbw") -> {
-            val bowler = dismissal.replaceFirst(Regex("(?i)^lbw\\s+b\\s+"), "").trim()
-            DismissalType.LBW to bowler
-        }
-        d.startsWith("run out") -> {
-            val fielder = dismissal
-                .replaceFirst(Regex("(?i)^run out\\s*\\("), "")
-                .removeSuffix(")")
-                .trim()
-            DismissalType.RUN_OUT to fielder
-        }
-        d.startsWith("st ") -> {
-            val bIdx = dismissal.indexOf(" b ", ignoreCase = true)
-            val bowler = if (bIdx >= 0) dismissal.substring(bIdx + 3).trim() else ""
-            DismissalType.STUMPED to bowler
-        }
-        d.startsWith("hit wicket") -> {
-            val bowler = dismissal.replaceFirst(Regex("(?i)^hit wicket\\s+b\\s+"), "").trim()
-            DismissalType.HIT_WICKET to bowler
-        }
-        d.startsWith("c ") && d.contains(" b ") -> {
-            val bIdx = dismissal.indexOf(" b ", ignoreCase = true)
-            val fielder = if (bIdx >= 0) dismissal.substring(2, bIdx).trim() else ""
-            val bowler = if (bIdx >= 0) dismissal.substring(bIdx + 3).trim() else ""
-            if (fielder.startsWith("†") || fielder.lowercase() == "wk") {
-                DismissalType.CAUGHT_BEHIND to bowler
-            } else {
-                DismissalType.CAUGHT to bowler
-            }
-        }
-        d.startsWith("b ") -> DismissalType.BOWLED to dismissal.substring(2).trim()
-        else -> DismissalType.CAUGHT to ""
-    }
+    if (d.isBlank() || d.contains("not out") || d.contains("batting")) return DismissalType.BOWLED to ""
+    return DISMISSAL_RULES.firstOrNull { it.matches(d) }?.parse(dismissal) ?: (DismissalType.CAUGHT to "")
 }
 
-private fun buildMatchPhases(
-    overMilestones: List<Pair<Int, Int>>,
-    powerplays: List<PowerplayEvent>,
-    scorecard: Scorecard?,
-    isLive: Boolean,
-): List<MatchPhaseData> {
-    val maxOver = overMilestones.maxOfOrNull { it.first } ?: 0
-    if (maxOver < 6 && powerplays.isEmpty()) return emptyList()
-
-    val phases = mutableListOf<MatchPhaseData>()
-    val lastInnings = scorecard?.innings?.lastOrNull()
-
-    fun cumAt(over: Int): Int = overMilestones.lastOrNull { it.first <= over }?.second ?: 0
-    fun wicketsIn(from: Int, to: Int): Int =
-        lastInnings?.fallOfWickets?.count { fow ->
-            (fow.overs.split(".").firstOrNull()?.toIntOrNull() ?: 0) in from..to
-        } ?: 0
-
-    if (powerplays.isNotEmpty()) {
-        powerplays.forEachIndexed { idx, pp ->
-            phases.add(MatchPhaseData(
-                phaseName = "Powerplay ${pp.phase}",
-                description = "${pp.runs} runs, ${pp.wickets} wkts",
-                overs = pp.overs,
-                team1Runs = pp.runs,
-                team1Wickets = pp.wickets,
-                momentumShift = when {
-                    pp.runs >= 60 -> MomentumShift.TEAM1_STRONG
-                    pp.runs <= 30 -> MomentumShift.TEAM2_STRONG
-                    else -> MomentumShift.BALANCED
-                },
-                isActive = isLive && idx == powerplays.size - 1,
-            ))
-        }
-    } else if (maxOver >= 6) {
-        val ppRuns = cumAt(6)
-        val ppWickets = wicketsIn(1, 6)
-        phases.add(MatchPhaseData(
-            phaseName = "Powerplay", description = "$ppRuns runs, $ppWickets wkts",
-            overs = "1-6", team1Runs = ppRuns, team1Wickets = ppWickets,
-            momentumShift = when {
-                ppRuns >= 60 -> MomentumShift.TEAM1_STRONG
-                ppRuns <= 30 -> MomentumShift.TEAM2_STRONG
-                else -> MomentumShift.BALANCED
-            },
-        ))
-    }
-
-    if (maxOver >= 15) {
-        val middleRuns = cumAt(15) - cumAt(6)
-        val middleWickets = wicketsIn(7, 15)
-        phases.add(MatchPhaseData(
-            phaseName = "Middle Overs", description = "$middleRuns runs, $middleWickets wkts",
-            overs = "7-15", team1Runs = middleRuns, team1Wickets = middleWickets,
-            momentumShift = when {
-                middleRuns >= 80 -> MomentumShift.TEAM1_STRONG
-                middleRuns <= 40 -> MomentumShift.TEAM2_STRONG
-                else -> MomentumShift.BALANCED
-            },
-        ))
-    }
-
-    if (maxOver >= 16) {
-        val deathRuns = cumAt(maxOver) - cumAt(15)
-        val deathWickets = wicketsIn(16, 20)
-        phases.add(MatchPhaseData(
-            phaseName = "Death Overs", description = "$deathRuns runs, $deathWickets wkts",
-            overs = "16-$maxOver", team1Runs = deathRuns, team1Wickets = deathWickets,
-            momentumShift = when {
-                deathRuns >= 70 -> MomentumShift.TEAM1_STRONG
-                deathRuns <= 30 -> MomentumShift.TEAM2_STRONG
-                else -> MomentumShift.BALANCED
-            },
-            isActive = isLive,
-        ))
-    }
-
-    return phases
-}
+// Match-phase builders live in OverviewMatchPhases.kt (extracted to keep this file's
+// function count under detekt's TooManyFunctions threshold).
