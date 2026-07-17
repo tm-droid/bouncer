@@ -64,14 +64,25 @@ object PlayerProfileScraper {
             }
             results.take(MAX_SEARCH_RESULTS)
         } catch (e: HttpStatusException) {
-            Sentry.captureException(e)
             if (e.statusCode == 401 || e.statusCode == 403) {
                 // Auth/forbidden — do NOT fall back to HTML (would mask the real problem)
+                Sentry.captureException(e)
                 emptyList()
             } else {
-                // Non-auth HTTP error (404, 5xx) — try HTML fallback
+                // Non-auth HTTP error (404, 5xx). The Cricbuzz JSON search endpoint moves
+                // periodically; searchPlayersViaHtml is a working fallback. A successful
+                // fallback means this is handled degradation, not an actionable error — so
+                // only report to Sentry when the fallback ALSO fails.
+                breadcrumb(
+                    "network.player_search",
+                    "Search API HTTP ${e.statusCode}, falling back to HTML",
+                    SentryLevel.WARNING,
+                )
                 runCatching { searchPlayersViaHtml(query, emptyList()).take(MAX_SEARCH_RESULTS) }
-                    .getOrDefault(emptyList())
+                    .getOrElse {
+                        Sentry.captureException(e)
+                        emptyList()
+                    }
             }
         } catch (e: Exception) {
             Sentry.captureException(e)

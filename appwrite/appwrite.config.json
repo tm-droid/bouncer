@@ -26,6 +26,7 @@
         {
             "$id": "bouncer-win-probability",
             "name": "bouncer-win-probability",
+            "$permissions": ["execute(\"any\")"],
             "enabled": true,
             "logging": true,
             "runtime": "node-22",
@@ -118,6 +119,7 @@
         {
             "$id": "bouncer-news-sync",
             "name": "bouncer-news-sync",
+            "$permissions": ["execute(\"any\")"],
             "enabled": true,
             "logging": true,
             "runtime": "node-22",
