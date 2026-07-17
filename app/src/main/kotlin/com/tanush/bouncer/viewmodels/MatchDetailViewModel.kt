@@ -60,6 +60,8 @@ class MatchDetailViewModel(
         val liveTeam2Overs: String = "",
         val liveCurrentRunRate: String? = null,
         val liveRequiredRunRate: String? = null,
+        /** Latest server status line ("... won by ...", innings break, etc.); drives the header. */
+        val liveStatus: String? = null,
         val matchFlow: MatchFlowData? = null,
         val preMatchData: PreMatchData? = null,
         val probabilityHistory: List<WinProbabilityPoint> = emptyList(),
@@ -83,6 +85,7 @@ class MatchDetailViewModel(
             liveTeam2Overs = match.teams.getOrNull(1)?.overs ?: "",
             liveCurrentRunRate = match.score?.currentRunRate,
             liveRequiredRunRate = match.score?.requiredRunRate,
+            liveStatus = match.currentStatus.ifBlank { null },
         )
     )
     val uiState: StateFlow<UiState> = _uiState.asStateFlow()
@@ -232,6 +235,7 @@ class MatchDetailViewModel(
                 liveTeam2Overs = pick(p.team2Overs, st.liveTeam2Overs),
                 liveCurrentRunRate = pick(p.currentRunRate, st.liveCurrentRunRate),
                 liveRequiredRunRate = pick(p.requiredRunRate, st.liveRequiredRunRate),
+                liveStatus = pick(p.status?.takeIf { it.isNotBlank() }, st.liveStatus),
             )
         }
         p.batsmen.forEach { handleBatsmanMilestone(it) }
@@ -250,7 +254,7 @@ class MatchDetailViewModel(
         }
         if (!isNew) return
         typewriterJob?.cancel()
-        typewriterJob = viewModelScope.launch {
+        typewriterJob = viewModelScope.launch(bouncerExceptionHandler) {
             _streamingCommentary.value = ""
             val sb = StringBuilder(ev.commentary.length)
             for (ch in ev.commentary) {

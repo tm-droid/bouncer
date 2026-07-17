@@ -1,8 +1,11 @@
 package com.tanush.bouncer.ui.navigation
 
 import androidx.compose.animation.*
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import com.tanush.bouncer.utils.PreferencesHelper
@@ -486,15 +489,24 @@ private fun NavGraphBuilder.matchDeepLinkDestination(
             }
 
         val matches by liveActivityViewModel.currentMatches.collectAsStateWithLifecycle()
+        val isLoading by liveActivityViewModel.isLoading.collectAsStateWithLifecycle()
+        // Resolve across all cached statuses, not just the active tab — a deep link / notification
+        // tap carries only an id and is independent of the selected tab or type/gender filter.
         val match = matches.firstOrNull { it.id == matchId }
+            ?: liveActivityViewModel.findMatchById(matchId)
 
-        if (match != null) {
-            MatchDetailViewV2(
+        when {
+            match != null -> MatchDetailViewV2(
                 match = match,
                 onBackClick = { navController.popBackStack() }
             )
-        } else {
-            LaunchedEffect(Unit) {
+            // Still fetching: the id may yet arrive. Show a loader instead of bouncing out
+            // (cold notification/widget launch hits this before the first fetch completes).
+            isLoading -> Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
+            // Fetch done and the id resolved nowhere — genuinely unknown match.
+            else -> LaunchedEffect(Unit) {
                 navController.navigateToTab(BouncerScreen.Matches.route)
             }
         }

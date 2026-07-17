@@ -294,6 +294,15 @@ class LiveActivityViewModel(
         cachedMatches[_selectedStatus.value]?.let { filterAndEmitMatches(it) }
     }
 
+    /**
+     * Resolve a match by id across ALL cached statuses (Live/Upcoming/Recent), not just the
+     * currently-selected tab. Deep links / notification taps carry only a matchId and must not
+     * depend on which tab or type/gender filter is active. Falls back to the emitted list.
+     */
+    fun findMatchById(id: String): CricketMatch? =
+        cachedMatches.values.firstNotNullOfOrNull { list -> list.firstOrNull { it.id == id } }
+            ?: _currentMatches.value.firstOrNull { it.id == id }
+
     private fun filterAndEmitMatches(matches: List<CricketMatch>) {
         val type = _selectedCompetitionType.value
         val gender = _selectedGender.value

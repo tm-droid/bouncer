@@ -135,8 +135,13 @@ fun MatchDetailViewV2(
     val overs1 = uiState.liveTeam1Overs.ifBlank { team1?.overs ?: "" }
     val overs2 = uiState.liveTeam2Overs.ifBlank { team2?.overs ?: "" }
 
+    // Live status from the server payload supersedes the static status captured at nav time,
+    // so the header/badge/result banner update when a match progresses or finishes while open.
+    // matchStatus is derived (by lazy) from currentStatus, so overriding it re-derives for free.
+    val liveStatus = uiState.liveStatus?.takeIf { it.isNotBlank() } ?: match.currentStatus
     val liveMatch = if (match.teams.size >= 2) {
         match.copy(
+            currentStatus = liveStatus,
             teams = match.teams.mapIndexed { i, team ->
                 when (i) {
                     0 -> team.copy(score = score1.ifBlank { team.score }, overs = overs1.ifBlank { team.overs })
@@ -146,7 +151,7 @@ fun MatchDetailViewV2(
             },
         )
     } else {
-        match
+        match.copy(currentStatus = liveStatus)
     }
 
     val battingTeam = liveMatch.teams.firstOrNull { it.isBatting }
@@ -229,7 +234,7 @@ fun MatchDetailViewV2(
             Column(modifier = Modifier.fillMaxSize()) {
             // ── Score Header ──
             ScoreHeaderV2(
-                match = match,
+                match = liveMatch,
                 team1 = team1,
                 team2 = team2,
                 score1 = score1,
@@ -310,7 +315,7 @@ fun MatchDetailViewV2(
                     "Commentary" -> CommentaryTabV2(
                         commentary = uiState.commentary,
                         recentBalls = uiState.recentBalls,
-                        matchStatus = match.currentStatus,
+                        matchStatus = liveMatch.currentStatus,
                         isLoading = uiState.commentaryLoading,
                         error = uiState.commentaryError,
                         onRetry = vm::retryInitialLoad,
