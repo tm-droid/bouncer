@@ -31,6 +31,7 @@ import com.tanush.bouncer.services.SeriesSyncWorker
 import com.tanush.bouncer.ui.notifications.RichNotificationBuilder
 import io.sentry.Breadcrumb
 import io.sentry.Sentry
+import io.sentry.android.core.SentryAndroid
 import io.sentry.SentryLogLevel
 import io.sentry.SentryLevel
 import java.io.File
@@ -68,6 +69,14 @@ class BouncerApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
+
+        // ── Initialize Sentry (manual init) ──────────────────────────────
+        // Auto-init is disabled in the manifest: the SDK has no manifest key to register a
+        // custom OptionsConfiguration, so SentryOptionsConfig (beforeSend noise filter,
+        // transport timeouts, replay/trace refinements) only runs via manual init. init still
+        // reads all manifest meta-data (DSN, environment, replay masking), then applies our
+        // configure() on top. Must run first so everything below reports through the filter.
+        SentryAndroid.init(this, SentryOptionsConfig())
 
         // ── Install global uncaught-exception handler ────────────────────
         val defaultHandler = Thread.getDefaultUncaughtExceptionHandler()

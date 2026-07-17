@@ -180,9 +180,10 @@
     <meta-data android:name="io.sentry.session-replay.mask-all-text" android:value="true" />
     <meta-data android:name="io.sentry.session-replay.mask-all-images" android:value="true" />
 
-    <!-- Custom options configuration class for beforeSend / event filtering -->
-    <meta-data android:name="io.sentry.options-configuration-class"
-              android:value="com.tanush.bouncer.SentryOptionsConfig" />
+    <!-- beforeSend / event filtering is wired in BouncerApp via SentryAndroid.init(this,
+         SentryOptionsConfig()). Auto-init is disabled because the SDK has no manifest key for
+         a custom OptionsConfiguration class, so the filter must be applied by manual init. -->
+    <meta-data android:name="io.sentry.auto-init" android:value="false" />
 
     <!-- enable automatic breadcrumbs for user interactions (clicks, swipes, scrolls) -->
     <meta-data android:name="io.sentry.traces.user-interaction.enable" android:value="true" />

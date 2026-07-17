@@ -20,7 +20,7 @@ class CricbuzzNewsRepository : NewsRepository {
             ?: error("News is temporarily unavailable.")
         val newsResponse = Gson().fromJson(body, CricbuzzNewsResponse::class.java)
             ?: error("News is temporarily unavailable.")
-        return newsResponse.storyList
+        return newsResponse.storyList.orEmpty()
             .mapNotNull { it.story }
             .mapIndexed { index, story -> NewsArticleData.fromCricbuzzStory(story, isFirst = index == 0) }
     }

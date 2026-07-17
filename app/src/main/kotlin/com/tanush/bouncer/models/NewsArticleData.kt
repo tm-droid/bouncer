@@ -10,7 +10,9 @@ import com.google.gson.annotations.SerializedName
 
 @Immutable
 data class CricbuzzNewsResponse(
-    @SerializedName("storyList") val storyList: List<StoryListItem>,
+    // Nullable + default: Gson leaves this null when the payload omits storyList (error/empty
+    // response), and a non-null declaration would NPE on the first iteration. See NewsRepository.
+    @SerializedName("storyList") val storyList: List<StoryListItem>? = null,
     @SerializedName("lastUpdatedTime") val lastUpdatedTime: String? = null
 )
 

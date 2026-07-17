@@ -2,6 +2,7 @@ package com.tanush.bouncer.data.remote
 
 import android.content.Context
 import androidx.annotation.VisibleForTesting
+import com.tanush.bouncer.BuildConfig
 import com.tanush.bouncer.data.CacheConfig
 import com.tanush.bouncer.utils.PrefsRegistry
 import com.tanush.bouncer.utils.sentryBreadcrumb
@@ -188,6 +189,10 @@ object AppwriteReadGuard {
     }
 
     private fun reportToSentry(message: String, tags: Map<String, String>) {
+        // Skip in debug: dev testing routinely trips the read caps, and those alerts are noise.
+        // The breaker still latches and breadcrumbs still record; only the Sentry ERROR is gated.
+        // Production read-storm alerts are unaffected.
+        if (BuildConfig.DEBUG) return
         Sentry.withScope { scope ->
             tags.forEach { (key, value) -> scope.setTag(key, value) }
             scope.fingerprint = listOf("appwrite-read-guard", tags["reason"] ?: "unknown")
