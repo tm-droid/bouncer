@@ -4,6 +4,8 @@ import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import com.tanush.bouncer.models.MatchStatusClassifier
+import com.tanush.bouncer.models.StatusSignal
 
 @Entity(
     tableName = "matches",
@@ -33,9 +35,12 @@ data class MatchEntity(
     val isLive: Boolean = computeIsLive(status, currentStatus)
 ) {
     companion object {
-        fun computeIsLive(status: String, currentStatus: String): Boolean {
-            val s = "$status $currentStatus".lowercase()
-            return "live" in s || "in progress" in s
-        }
+        /**
+         * Must agree with [com.tanush.bouncer.models.CricketMatch.isLive] — MatchDao.getLiveMatches()
+         * filters on this column while the UI filters on the model property, and the previous
+         * two-substring implementation here made those two sets differ.
+         */
+        fun computeIsLive(status: String, currentStatus: String): Boolean =
+            MatchStatusClassifier.classify("$status $currentStatus") == StatusSignal.IN_PROGRESS
     }
 }

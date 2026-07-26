@@ -7,6 +7,8 @@ import com.google.gson.JsonParser
 import com.tanush.bouncer.data.AppException
 import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.models.Innings
+import com.tanush.bouncer.models.MatchStatusClassifier
+import com.tanush.bouncer.models.StatusSignal
 import com.tanush.bouncer.models.ScrapedBatsman
 import com.tanush.bouncer.models.ScrapedBowler
 import com.tanush.bouncer.models.Scorecard
@@ -211,13 +213,13 @@ class CricBuzzScraper {
 
     private fun filterMatches(matches: List<CricketMatch>, state: String): List<CricketMatch> {
         return matches.filter { match ->
-            val matchStatus = match.info.lowercase().trim()
-            val isUpcoming = matchStatus.contains("preview") || matchStatus.contains("upcoming") || matchStatus.contains("scheduled")
-            val isRecent = matchStatus.contains("complete") || matchStatus.contains("abandon") || matchStatus.contains("result") || matchStatus.contains("tied")
+            val signal = MatchStatusClassifier.classify(match.info)
             when (state) {
-                "Upcoming" -> isUpcoming
-                "Recent" -> isRecent
-                "Live" -> !isUpcoming && !isRecent
+                "Upcoming" -> signal == StatusSignal.PRE_MATCH
+                "Recent" -> signal == StatusSignal.TERMINAL
+                // Live stays the catch-all it has always been: an unrecognised `info` string
+                // (including a blank one) surfaces in Live rather than vanishing from every tab.
+                "Live" -> signal != StatusSignal.PRE_MATCH && signal != StatusSignal.TERMINAL
                 else -> true
             }
         }.distinctBy { it.id }

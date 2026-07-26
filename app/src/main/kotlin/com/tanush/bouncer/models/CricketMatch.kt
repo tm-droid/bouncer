@@ -5,6 +5,8 @@ import androidx.compose.runtime.Stable
 import com.google.gson.annotations.SerializedName
 import com.tanush.bouncer.utils.parseRuns
 import com.tanush.bouncer.utils.parseWickets
+import com.tanush.bouncer.utils.sentryBreadcrumb
+import io.sentry.SentryLevel
 
 sealed class MatchStatus {
     object Live : MatchStatus()
@@ -13,15 +15,20 @@ sealed class MatchStatus {
     data class Unknown(val raw: String) : MatchStatus()
 
     companion object {
-        fun from(status: String): MatchStatus {
-            val s = status.lowercase()
-            return when {
-                s.contains("live") || s.contains("in progress") || s.contains("innings") ||
-                    s.contains("opted to") || s.contains("need") -> Live
-                s.contains("complete") || s.contains("won") || s.contains("draw") ||
-                    s.contains("drawn") || s.contains("tied") || s.contains("no result") -> Completed
-                s.isEmpty() || s.contains("upcoming") || s.contains("preview") -> Upcoming
-                else -> Unknown(status)
+        fun from(status: String): MatchStatus = when (MatchStatusClassifier.classify(status)) {
+            StatusSignal.TERMINAL -> Completed
+            StatusSignal.IN_PROGRESS -> Live
+            StatusSignal.PRE_MATCH -> Upcoming
+            // A blank status has always meant "not started yet"; a non-blank one we cannot read
+            // is genuinely unknown and is surfaced rather than guessed at.
+            null -> if (status.isBlank()) Upcoming else {
+                sentryBreadcrumb(
+                    category = "match.status",
+                    message = "Unclassified match status",
+                    level = SentryLevel.WARNING,
+                    data = mapOf("status" to status),
+                )
+                Unknown(status)
             }
         }
     }
@@ -56,17 +63,12 @@ data class CricketMatch(
     val umpire1: String? = null,
     val umpire2: String? = null,
 ) {
-    // Derived from the most-specific status string available (currentStatus preferred over status).
-    val matchStatus: MatchStatus by lazy {
-        val combined = if (currentStatus.isNotBlank()) currentStatus else status
-        val fromCombined = MatchStatus.from(combined)
-        // If combined string didn't resolve to Live, also check status field directly
-        if (fromCombined != MatchStatus.Live && MatchStatus.from(status) == MatchStatus.Live) {
-            MatchStatus.Live
-        } else {
-            fromCombined
-        }
-    }
+    // Classified over BOTH status fields at once. Either field can be stale or terse on its own,
+    // and precedence resolves the disagreement correctly: a stale status="Live" alongside a
+    // currentStatus of "India won by 5 wkts" is Completed, because terminal outranks in-progress.
+    // This replaces an explicit force-to-Live bias that existed only to paper over the old
+    // first-match-wins ordering, and which made exactly that case resolve Live.
+    val matchStatus: MatchStatus by lazy { MatchStatus.from("$status $currentStatus") }
 
     val isLive: Boolean
         get() = matchStatus == MatchStatus.Live

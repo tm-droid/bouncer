@@ -3,7 +3,12 @@ package com.tanush.bouncer.utils
 import androidx.compose.ui.graphics.Color
 import com.tanush.bouncer.ui.theme.*
 import com.tanush.bouncer.models.CricketMatch
+import com.tanush.bouncer.models.MatchStatusClassifier
+import com.tanush.bouncer.models.StatusSignal
 import io.sentry.Sentry
+
+private val RAIN_RE = """\brain\b""".toRegex()
+private val TEA_RE = """\btea\b""".toRegex()
 
 /**
  * iOS Parity: Detailed Match Phase Classification
@@ -45,18 +50,25 @@ data class MatchStatusInfo(
 fun getMatchPhase(status: String?, match: CricketMatch? = null): MatchPhase {
     try {
         val s = status?.lowercase() ?: ""
-    
+        // The coarse live/complete axis comes from the shared classifier; this function only
+        // decides the finer phase within it. Previously `contains("won")` was tested first and
+        // unconditionally, so "Rain delay, India won the toss" rendered as Finished.
+        val signal = MatchStatusClassifier.classify(status)
+
         return when {
-            // Result states
-            s.contains("won") || s.contains("drawn") || s.contains("tied") -> MatchPhase.RESULT
-            s.contains("abandoned") -> MatchPhase.ABANDONED
-            s.contains("no result") -> MatchPhase.NO_RESULT
-        
-            // Breaks and delays
-            s.contains("rain") || s.contains("stopped") -> MatchPhase.RAIN_DELAY
+            // Result states — reachable only when the classifier agrees the match is over.
+            signal == StatusSignal.TERMINAL && s.contains("abandoned") -> MatchPhase.ABANDONED
+            signal == StatusSignal.TERMINAL && s.contains("no result") -> MatchPhase.NO_RESULT
+            signal == StatusSignal.TERMINAL -> MatchPhase.RESULT
+
+            // Breaks and delays. Word-anchored so "rain" cannot fire inside "training"/"Bahrain"
+            // and "tea" cannot fire inside "team" — the latter previously needed an explicit
+            // `&& !s.contains("team")` guard, which is what chasing substrings one at a time
+            // looks like.
+            RAIN_RE.containsMatchIn(s) || s.contains("stopped") -> MatchPhase.RAIN_DELAY
             s.contains("bad light") -> MatchPhase.BAD_LIGHT
             s.contains("lunch") -> MatchPhase.LUNCH
-            s.contains("tea") && !s.contains("team") -> MatchPhase.TEA
+            TEA_RE.containsMatchIn(s) -> MatchPhase.TEA
             s.contains("stumps") -> MatchPhase.STUMPS
             s.contains("drinks") -> MatchPhase.DRINKS_BREAK
             s.contains("timeout") || s.contains("strategic") -> MatchPhase.STRATEGIC_TIMEOUT
