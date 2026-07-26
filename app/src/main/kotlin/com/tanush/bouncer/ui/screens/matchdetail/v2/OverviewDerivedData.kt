@@ -2,6 +2,7 @@ package com.tanush.bouncer.ui.screens.matchdetail.v2
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import com.tanush.bouncer.analysis.CricketConstants
 import com.tanush.bouncer.models.BatsmanStats
 import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.models.FallOfWicket as ModelFallOfWicket
@@ -63,6 +64,7 @@ internal fun rememberOverviewDerivedData(
             powerplays = matchFlow?.powerplays ?: emptyList(),
             scorecard = scorecard,
             isLive = isMatchActive,
+            format = CricketConstants.formatFromMatchType(match.matchType, match.matchTitle),
         ),
         wicketOvers = latestInnings?.fallOfWickets
             ?.mapNotNull { it.overs.split(".").firstOrNull()?.toIntOrNull() }

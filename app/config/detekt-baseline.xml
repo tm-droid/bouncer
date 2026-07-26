@@ -209,7 +209,6 @@
     <ID>CyclomaticComplexMethod:MatchDetailViewModel.kt$MatchDetailViewModel$private suspend fun startLiveDataFlow()</ID>
     <ID>CyclomaticComplexMethod:MatchDetailViewV2.kt$@Composable private fun ScoreHeaderV2( match: CricketMatch, team1: CricketMatch.Team?, team2: CricketMatch.Team?, score1: String, score2: String, overs1: String, overs2: String, currentRunRate: String?, requiredRunRate: String?, recentBalls: List&lt;String&gt;, )</ID>
     <ID>CyclomaticComplexMethod:MatchDetailViewV2.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun MatchDetailViewV2( match: CricketMatch, onBackClick: () -&gt; Unit, )</ID>
-    <ID>CyclomaticComplexMethod:MatchIntensityIndicator.kt$IntensityCalculator$fun calculate(factors: IntensityFactors): MatchIntensity</ID>
     <ID>CyclomaticComplexMethod:MatchPhasesCard.kt$@Composable private fun PhaseRow( phase: MatchPhaseData, phaseNumber: Int, team1Name: String, team2Name: String, team1Color: Color, team2Color: Color, isLast: Boolean )</ID>
     <ID>CyclomaticComplexMethod:MatchPredictionCard.kt$@Composable fun MatchPredictionCard( predictionInfo: MatchPredictionInfo, modifier: Modifier = Modifier )</ID>
     <ID>CyclomaticComplexMethod:MatchTimelineComponents.kt$@Composable private fun TimelineItem( event: TimelineEvent, isFirst: Boolean, isLast: Boolean, pulseOffset: Float )</ID>

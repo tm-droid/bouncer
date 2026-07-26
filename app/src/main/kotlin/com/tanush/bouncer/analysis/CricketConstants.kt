@@ -14,8 +14,9 @@ object CricketConstants {
     const val ODI_INNINGS_BALLS = 300
     const val HUNDRED_INNINGS_BALLS = 100
     const val T10_INNINGS_BALLS = 60
-    // Test: no fixed innings length — use 0 as sentinel
-    const val TEST_INNINGS_BALLS = 0
+    // Test has no fixed innings length. There is deliberately no constant for it — inningsBalls()
+    // returns null, which forces callers to handle "no budget" instead of reading a 0 sentinel as
+    // a real ball count.
 
     // --- Par scoring rates (runs per over sustained across a full innings, all wickets intact) ---
     // Approximate contemporary averages. These calibrate the win-probability heuristic: a chase
@@ -43,34 +44,19 @@ object CricketConstants {
     // ODI death starts at ball 240 (300 - 10 × 6 = 240)
     const val ODI_DEATH_START_BALL = ODI_INNINGS_BALLS - (ODI_DEATH_OVERS * BALLS_PER_OVER)  // 240
 
-    // --- Win probability / key moment thresholds ---
-    // A probability swing of this many percentage points is considered a "key moment"
-    const val KEY_MOMENT_IMPACT_THRESHOLD = 5.0
-
-    // --- Match intensity thresholds (used by MatchIntensityIndicator) ---
-    // Run-rate thresholds
-    const val INTENSITY_EXPLOSIVE_RRR = 12.0
-    const val INTENSITY_INTENSE_RRR = 8.0
-    const val INTENSITY_BUILDING_CRR = 6.0
-    // Overs-remaining thresholds
-    const val INTENSITY_EXPLOSIVE_OVERS = 5
-    const val INTENSITY_INTENSE_OVERS = 15
-    // Run-differential thresholds
-    const val INTENSITY_EXPLOSIVE_RUN_DIFF = 30
-    const val INTENSITY_INTENSE_RUN_DIFF = 50
-    // Wicket-count thresholds
-    const val INTENSITY_EXPLOSIVE_WICKETS = 3
-    const val INTENSITY_INTENSE_WICKETS = 2
-    const val INTENSITY_BUILDING_WICKETS = 1
-
-    // --- Head-to-head / matchup minimum sample ---
-    const val MATCHUP_MIN_BALLS = 6
-
-    // --- Partnership highlight threshold ---
-    const val PARTNERSHIP_HIGHLIGHT_RUNS = 50
+    // --- Phase momentum thresholds, as multiples of the format's par run rate ---
+    // These reproduce the T20 run totals that were previously hardcoded in OverviewMatchPhases
+    // (60/30 powerplay, 80/40 middle, 70/30 death) while scaling correctly to other formats.
+    // They differ per phase because scoring is not uniform across an innings: a powerplay is
+    // expected to beat par, the middle overs to sit near it, and the death overs to far exceed it.
+    const val PHASE_POWERPLAY_STRONG_FACTOR = 1.20
+    const val PHASE_POWERPLAY_WEAK_FACTOR = 0.60
+    const val PHASE_MIDDLE_STRONG_FACTOR = 1.05
+    const val PHASE_MIDDLE_WEAK_FACTOR = 0.55
+    const val PHASE_DEATH_STRONG_FACTOR = 1.70
+    const val PHASE_DEATH_WEAK_FACTOR = 0.72
 
     // --- Commentary / timeline defaults ---
-    const val COMMENTARY_MAX_DESCRIPTION_CHARS = 120
     const val DEDUP_MIN_LENGTH = 15
     const val DEDUP_PREFIX_RATIO = 0.4
 
@@ -162,19 +148,31 @@ object CricketConstants {
 
     /**
      * Return the powerplay end ball (exclusive) for the given format.
+     *
+     * Formats without a defined powerplay (Test, unknown) fall back to the T20 window. That is a
+     * presentation fallback only — callers deriving a ball *budget* must use [inningsBalls], which
+     * returns null instead of guessing.
      */
     fun powerplayEndBall(format: MatchFormat): Int = when (format) {
-        MatchFormat.T20 -> T20_POWERPLAY_END_BALL
         MatchFormat.ODI -> ODI_POWERPLAY_END_BALL
-        else -> T20_POWERPLAY_END_BALL   // safe default
+        MatchFormat.T20, MatchFormat.T10, MatchFormat.HUNDRED,
+        MatchFormat.TEST, MatchFormat.UNKNOWN -> T20_POWERPLAY_END_BALL
     }
 
     /**
      * Return the death-overs start ball (inclusive) for the given format.
+     *
+     * Same fallback caveat as [powerplayEndBall].
      */
     fun deathStartBall(format: MatchFormat): Int = when (format) {
-        MatchFormat.T20 -> T20_DEATH_START_BALL
         MatchFormat.ODI -> ODI_DEATH_START_BALL
-        else -> T20_DEATH_START_BALL   // safe default
+        MatchFormat.T20, MatchFormat.T10, MatchFormat.HUNDRED,
+        MatchFormat.TEST, MatchFormat.UNKNOWN -> T20_DEATH_START_BALL
     }
+
+    /** Last over of the powerplay for [format] — 6 for T20, 10 for ODI. */
+    fun powerplayEndOver(format: MatchFormat): Int = powerplayEndBall(format) / BALLS_PER_OVER
+
+    /** First over of the death phase for [format] — 16 for T20, 40 for ODI. */
+    fun deathStartOver(format: MatchFormat): Int = deathStartBall(format) / BALLS_PER_OVER
 }
