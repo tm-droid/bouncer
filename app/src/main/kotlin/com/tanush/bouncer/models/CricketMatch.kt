@@ -3,10 +3,15 @@ package com.tanush.bouncer.models
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
 import com.google.gson.annotations.SerializedName
+import com.tanush.bouncer.analysis.CricketConstants
+import com.tanush.bouncer.analysis.WinProbabilityHeuristic
 import com.tanush.bouncer.utils.parseRuns
 import com.tanush.bouncer.utils.parseWickets
 import com.tanush.bouncer.utils.sentryBreadcrumb
 import io.sentry.SentryLevel
+
+// A drawn/tied/no-result match has no winner; both sides read as an even 50.
+private val RESULT_NO_WINNER = """\b(drawn|tied|no\s+result|abandon(ed)?)\b""".toRegex(RegexOption.IGNORE_CASE)
 
 sealed class MatchStatus {
     object Live : MatchStatus()
@@ -80,88 +85,98 @@ data class CricketMatch(
         get() = matchStatus == MatchStatus.Upcoming
 
     /**
-     * Heuristic calculation of win probability for Team 1.
-     * Handles all match states: completed, live, stumps/break, and upcoming.
+     * Win probability with the side it belongs to made explicit.
+     *
+     * Prefer this over [calculateHeuristicProbability] wherever the batting side matters — the
+     * latter is a team-1-oriented convenience and cannot express "undetermined".
      */
-    fun calculateHeuristicProbability(): Double {
-        // Completed matches: parse result to determine winner
-        if (isCompleted) {
-            val statusLower = currentStatus.lowercase()
-            val statusAlt = status.lowercase()
-            val combined = "$statusLower $statusAlt"
-            if (combined.contains("drawn") || combined.contains("tied") || combined.contains("no result")) {
-                return 50.0
-            }
-            // "Team X won by..."
-            val team1Name = teams.getOrNull(0)?.name?.lowercase() ?: ""
-            val team1Acronym = teams.getOrNull(0)?.acronym?.lowercase() ?: ""
-            return when {
-                (team1Name.isNotBlank() && combined.contains(team1Name)) || 
-                    (team1Acronym.isNotBlank() && combined.contains(team1Acronym)) -> 100.0
-                else -> 0.0 // Team 2 won
-            }
+    fun winProbability(): WinProbability =
+        if (isCompleted) completedWinProbability() else liveWinProbability()
+
+    /** Reads the winner out of the result string. */
+    private fun completedWinProbability(): WinProbability {
+        val combined = "$currentStatus $status"
+        if (RESULT_NO_WINNER.containsMatchIn(combined)) {
+            return WinProbability.forTeam(0, WinProbability.EVEN, WinProbability.Confidence.HIGH)
         }
-
-        // For matches at stumps/break: calculate based on current match situation
-        val matchScore = score
-        val battingTeam = teams.find { it.isBatting }
-        val isChasing = matchScore?.requiredRunRate != null
-
-        // If no score data at all, return 50 (truly unknown)
-        if (matchScore == null && battingTeam == null) return 50.0
-
-        // If chasing, use RRR-based calculation
-        if (isChasing) {
-            val reqRR = matchScore?.requiredRunRate?.toDoubleOrNull() ?: return 50.0
-            val currentRR = matchScore.currentRunRate?.toDoubleOrNull() ?: 6.0
-
-            val oversParts = matchScore.overs?.split(".") ?: return 50.0
-            val oversDone = oversParts[0].toIntOrNull() ?: 0
-            val ballsDoneInOver = if (oversParts.size > 1) oversParts[1].toIntOrNull() ?: 0 else 0
-            val totalBallsDone = (oversDone * 6) + ballsDoneInOver
-
-            val totalBalls = when {
-                matchType.contains("ODI", ignoreCase = true) -> 300
-                matchType.contains("T20", ignoreCase = true) || matchType.contains("Twenty20", ignoreCase = true) -> 120
-                else -> 120
-            }
-            val ballsRemaining = (totalBalls - totalBallsDone).coerceAtLeast(1)
-
-            val scoreText = battingTeam?.score ?: ""
-            val wicketsLost = parseWickets(scoreText)
-            val wicketsInHand = (10 - wicketsLost).coerceIn(0, 10)
-
-            var prob = 50.0
-            // Moderate RR gap impact (capped at 3% per run, not 5%)
-            val rrGap = currentRR - reqRR
-            prob += (rrGap * 3.0).coerceIn(-25.0, 25.0)
-            // Wickets impact (2.5% per wicket difference from 5)
-            prob += (wicketsInHand - 5) * 2.5
-            // Pressure from overs remaining
-            val oversRatio = ballsRemaining.toDouble() / totalBalls
-            if (reqRR > 9.0) {
-                prob -= ((1.0 - oversRatio) * 15.0) // max -15% pressure late in innings
-            }
-
-            return prob.coerceIn(5.0, 95.0)
+        val winnerIndex = teams.indexOfFirst { team -> mentionsTeam(combined, team) }
+        return if (winnerIndex == -1) {
+            WinProbability.UNDETERMINED
+        } else {
+            WinProbability.forTeam(winnerIndex, 100.0, WinProbability.Confidence.HIGH)
         }
+    }
 
-        // For Test matches (first innings) or matches without chase data
-        // Use wickets and runs position as heuristic
-        val scoreText = battingTeam?.score ?: ""
-        val runsVal = parseRuns(scoreText)
-        val wicketsVal = parseWickets(scoreText)
-        val runs: Int? = if (scoreText.isNotBlank()) runsVal else null
-        val wickets: Int? = if (scoreText.isNotBlank()) wicketsVal else null
-        if (runs != null && wickets != null) {
-            // Simple: more runs = stronger, more wickets lost = weaker
-            var prob = 50.0
-            prob += (runs / 50.0).coerceAtMost(10.0)  // max +10 for big scores
-            prob -= wickets * 2.0  // -2% per wicket lost
-            return prob.coerceIn(25.0, 75.0) // First innings: keep range modest
+    /** Everything the heuristic needs, or null when the live payload cannot supply it. */
+    private class LiveSituation(
+        val battingIndex: Int,
+        val format: CricketConstants.MatchFormat,
+        val ballsBowled: Int,
+        val runs: Int?,
+        val wicketsLost: Int,
+        val requiredRunRate: Double?,
+    )
+
+    private fun liveSituation(): LiveSituation? {
+        val battingIndex = teams.indexOfFirst { it.isBatting }
+        if (battingIndex == -1) return null
+        val matchScore = score ?: return null
+        val ballsBowled = CricketConstants.ballsFromOvers(matchScore.overs) ?: return null
+        val battingScore = teams[battingIndex].score
+
+        return LiveSituation(
+            battingIndex = battingIndex,
+            // Format drives the ball budget. UNKNOWN and TEST have none, and the model declines
+            // to score rather than falling back to T20's 120 the way the previous version did.
+            format = CricketConstants.formatFromMatchType(matchType, matchTitle),
+            ballsBowled = ballsBowled,
+            runs = battingScore.takeIf { it.isNotBlank() }?.let(::parseRuns),
+            wicketsLost = battingScore.takeIf { it.isNotBlank() }?.let(::parseWickets) ?: 0,
+            requiredRunRate = matchScore.requiredRunRate?.toDoubleOrNull(),
+        )
+    }
+
+    private fun liveWinProbability(): WinProbability {
+        val situation = liveSituation() ?: return WinProbability.UNDETERMINED
+        val probability = with(situation) {
+            when {
+                requiredRunRate != null -> WinProbabilityHeuristic
+                    .evaluateChase(format, requiredRunRate, ballsBowled, wicketsLost)
+                runs != null -> WinProbabilityHeuristic
+                    .evaluateFirstInnings(format, runs, ballsBowled, wicketsLost)
+                else -> null
+            }
+        } ?: return WinProbability.UNDETERMINED
+
+        return WinProbability.forTeam(
+            teamIndex = situation.battingIndex,
+            probability = probability,
+            // A chase has a target to measure against; a first innings does not.
+            confidence = if (situation.requiredRunRate != null) {
+                WinProbability.Confidence.HIGH
+            } else {
+                WinProbability.Confidence.LOW
+            },
+        )
+    }
+
+    /**
+     * Win probability oriented to `teams[0]`, 0..100. Returns 50.0 when undetermined.
+     *
+     * Note this is now genuinely team 1's probability. It previously returned the *batting*
+     * team's, so it was inverted whenever `teams[1]` was at the crease.
+     */
+    fun calculateHeuristicProbability(): Double = winProbability().forTeam1
+
+    /**
+     * Word-anchored so a team name cannot match inside a longer one — "India" is a substring of
+     * "West Indies", which would otherwise credit a West Indies win to India.
+     */
+    private fun mentionsTeam(text: String, team: Team): Boolean {
+        val candidates = listOf(team.name, team.acronym).filter { it.isNotBlank() }
+        return candidates.any { candidate ->
+            """\b${Regex.escape(candidate)}\b""".toRegex(RegexOption.IGNORE_CASE).containsMatchIn(text)
         }
-
-        return 50.0
     }
 
     @Immutable

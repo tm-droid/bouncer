@@ -42,7 +42,10 @@ import com.tanush.bouncer.ui.theme.*
 @Composable
 fun PremiumAiStatisticsTab(match: CricketMatch) {
     val scrollState = rememberScrollState()
-    val winProb = match.calculateHeuristicProbability().toFloat().coerceIn(5f, 95f)
+    // This tab narrates the BATTING side ("$battingTeam holding strong advantage"), so it reads
+    // the batting-oriented value. calculateHeuristicProbability() is team-1-oriented and was
+    // wrong here whenever teams[1] was at the crease.
+    val winProb = match.winProbability().probability.toFloat().coerceIn(5f, 95f)
     val crr = match.score?.currentRunRate ?: "--"
     val rrr = match.score?.requiredRunRate ?: "--"
     val probDelta = winProb - 50f
