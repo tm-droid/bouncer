@@ -6,7 +6,7 @@ import kotlin.concurrent.read
 import kotlin.concurrent.write
 
 /**
- * Thread-safe in-memory LRU cache with TTL expiration.
+ * Thread-safe in-memory cache with per-key TTL expiration and a hard size ceiling.
  *
  * Extracted from the duplicated memory-tier scaffolding that previously lived inside
  * each cache service (AICacheService, MatchCacheService, ...). This handles ONLY the
@@ -14,6 +14,12 @@ import kotlin.concurrent.write
  *
  * Eviction is least-recently-inserted: [get] does not bump recency (insertion order),
  * matching the access pattern of the callers that warm memory from a slower tier.
+ *
+ * TTL is resolved per key via [ttlResolver], so a caller whose expiry varies by key
+ * (e.g. MatchCacheService: 6s for Live, 60s for Upcoming/Recent) configures it here
+ * instead of re-deriving entry age itself. This is deliberate: entry timestamps are
+ * stamped from [SystemClock.elapsedRealtime] and are meaningless against wall-clock
+ * epoch, so no timestamp is exposed to callers at all — see [peek] and [isValid].
  *
  * [permanent] entries (e.g. completed-match commentary) never expire on TTL, mirroring
  * the `Long.MAX_VALUE` sentinel semantics in the persistent tiers.
@@ -24,13 +30,24 @@ import kotlin.concurrent.write
  */
 open class MemoryLruCache<K, V>(
     private val maxSize: Int = 256,
-    private val ttlMs: Long,
+    private val ttlResolver: (K) -> Long,
+    // The single place this cache's clock is chosen. Injectable because SystemClock is stubbed
+    // to a constant 0 under `isReturnDefaultValues`, which would otherwise make TTL untestable.
+    private val uptimeMs: () -> Long = SystemClock::elapsedRealtime,
 ) {
-    data class CacheEntry<V>(
+    /** Convenience for callers whose TTL is the same for every key. */
+    constructor(maxSize: Int, ttlMs: Long) : this(maxSize, { ttlMs })
+
+    private data class CacheEntry<V>(
         val value: V,
-        val insertedAt: Long,
+        // Monotonic uptime, NOT wall-clock epoch. Never compare against System.currentTimeMillis().
+        val insertedAtUptimeMs: Long,
         val permanent: Boolean = false,
     )
+
+    init {
+        require(maxSize > 0) { "maxSize must be positive, was $maxSize" }
+    }
 
     private val cache = LinkedHashMap<K, CacheEntry<V>>(maxSize, 0.75f, false)
     private val lock = ReentrantReadWriteLock()
@@ -38,25 +55,28 @@ open class MemoryLruCache<K, V>(
     /** Returns the cached value if present and not expired, else null. Expired entries are evicted. */
     fun get(key: K): V? {
         val entry = lock.read { cache[key] } ?: return null
-        if (isExpired(entry)) {
+        if (isExpired(key, entry)) {
             lock.write { cache.remove(key) }
             return null
         }
         return entry.value
     }
 
-    /** Returns the raw entry (incl. metadata) without TTL eviction. Null if absent. */
-    fun getEntry(key: K): CacheEntry<V>? = lock.read { cache[key] }
+    /**
+     * Returns the cached value regardless of TTL, without evicting. For offline/stale-read paths
+     * that deliberately prefer expired data over nothing.
+     */
+    fun peek(key: K): V? = lock.read { cache[key]?.value }
 
     /** True if a non-expired entry exists for [key]. Does not evict. */
     fun isValid(key: K): Boolean {
         val entry = lock.read { cache[key] } ?: return false
-        return !isExpired(entry)
+        return !isExpired(key, entry)
     }
 
     fun put(key: K, value: V, permanent: Boolean = false) = lock.write {
         if (!cache.containsKey(key) && cache.size >= maxSize) evictOldest()
-        cache[key] = CacheEntry(value, SystemClock.elapsedRealtime(), permanent)
+        cache[key] = CacheEntry(value, uptimeMs(), permanent)
     }
 
     fun remove(key: K) {
@@ -69,8 +89,8 @@ open class MemoryLruCache<K, V>(
 
     fun size(): Int = lock.read { cache.size }
 
-    private fun isExpired(entry: CacheEntry<V>): Boolean =
-        !entry.permanent && SystemClock.elapsedRealtime() - entry.insertedAt > ttlMs
+    private fun isExpired(key: K, entry: CacheEntry<V>): Boolean =
+        !entry.permanent && uptimeMs() - entry.insertedAtUptimeMs > ttlResolver(key)
 
     private fun evictOldest() {
         cache.entries.firstOrNull()?.let { cache.remove(it.key) }

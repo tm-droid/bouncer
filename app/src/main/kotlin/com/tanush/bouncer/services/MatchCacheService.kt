@@ -27,12 +27,12 @@ object MatchCacheService {
     private const val DISK_CACHE_MAX_AGE_MS = 3_600_000L // 1 hour for offline data
     
     private val mutex = Mutex()
-    // Shared in-memory tier scaffolding (lock + eviction). TTL is per-status (see
-    // getCacheExpirationInterval), so this is configured with an effectively-infinite TTL
-    // and the service applies the variable TTL externally via getEntry().insertedAt.
+    // Shared in-memory tier scaffolding (lock + eviction). The per-status TTL lives in the
+    // cache itself; this service never computes entry age, so there is no second clock to
+    // get wrong.
     private val cache = MemoryLruCache<String, List<CricketMatch>>(
         maxSize = 16,
-        ttlMs = Long.MAX_VALUE,
+        ttlResolver = { status -> getCacheExpirationInterval(status) },
     )
     private val gson = Gson()
     private var diskPrefs: android.content.SharedPreferences? = null
@@ -81,15 +81,12 @@ object MatchCacheService {
             })
             
             // Try memory cache first
-            val cached = cache.getEntry(status)
+            val cached = cache.get(status)
             if (cached != null) {
-                val ageMs = Date().time - cached.insertedAt
-                if (ageMs < getCacheExpirationInterval(status)) {
-                    Log.d(TAG, "Using memory-cached data for $status (age: ${ageMs}ms)")
-                    return@withLock cached.value
-                }
+                Log.d(TAG, "Using memory-cached data for $status")
+                return@withLock cached
             }
-        
+
             Log.d(TAG, "Memory cache expired or missing for $status")
             return@withLock null
         } catch (e: Exception) {
@@ -112,10 +109,10 @@ object MatchCacheService {
             })
             
             // First try memory cache regardless of TTL
-            val memoryCached = cache.getEntry(status)
+            val memoryCached = cache.peek(status)
             if (memoryCached != null) {
                 Log.d(TAG, "Using stale memory cache for offline: $status")
-                return@withLock memoryCached.value
+                return@withLock memoryCached
             }
         
             // Fall back to disk cache
@@ -176,9 +173,7 @@ object MatchCacheService {
      */
     suspend fun isCacheValid(status: String): Boolean = mutex.withLock {
         try {
-            val cached = cache.getEntry(status) ?: return@withLock false
-            val ageMs = Date().time - cached.insertedAt
-            return@withLock ageMs < getCacheExpirationInterval(status)
+            return@withLock cache.isValid(status)
         } catch (e: Exception) {
             Sentry.captureException(e)
             throw e
