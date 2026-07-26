@@ -551,7 +551,9 @@ class LiveActivityViewModel(
 
             recordOverCompletion(match.id, details.recentBalls.orEmpty())
 
-            val lastEvent = _aiCommentary.value[match.id]?.let { detectEventFromCommentary(it) }
+            val lastEvent = _aiCommentary.value[match.id]?.let {
+                detectEventFromCommentary(match.id, it)
+            }
 
             manager.showLiveMatchNotification(
                 match = match,
@@ -586,7 +588,32 @@ class LiveActivityViewModel(
         recentBallsCache[matchId] = newBalls
     }
 
-    private fun detectEventFromCommentary(commentary: String): LiveNotificationManager.MatchEvent? {
+    /**
+     * Classify the event a notification would announce.
+     *
+     * Prefers the scraped recent-balls array over the commentary prose, matching what
+     * [classifyProbabilityEvent] already does. A "W" in the ball array is the scorer's own record
+     * of a dismissal; prose is an interpretation of it, and interpreting prose is what produced
+     * false "Wicket!" push notifications off lines like "bowled a beauty, no run".
+     */
+    private fun detectEventFromCommentary(
+        matchId: String?,
+        commentary: String,
+    ): LiveNotificationManager.MatchEvent? {
+        val structural = matchId?.let { recentBallsCache[it]?.lastOrNull() }?.let(BallEvent::from)
+        val type = when (structural) {
+            BallEvent.WICKET -> LiveNotificationManager.EventType.WICKET
+            BallEvent.SIX -> LiveNotificationManager.EventType.SIX
+            BallEvent.FOUR -> LiveNotificationManager.EventType.FOUR
+            // Any other scored ball is a known non-event; do not fall through to prose and
+            // second-guess the scorer.
+            null -> return detectEventFromProse(commentary)
+            else -> return null
+        }
+        return LiveNotificationManager.MatchEvent(type, commentary.take(80))
+    }
+
+    private fun detectEventFromProse(commentary: String): LiveNotificationManager.MatchEvent? {
         val type = when (TimelineEventExtractor.detectBallType(commentary)) {
             TimelineEventType.WICKET -> LiveNotificationManager.EventType.WICKET
             TimelineEventType.SIX -> LiveNotificationManager.EventType.SIX

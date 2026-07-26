@@ -9,30 +9,57 @@ object TimelineEventExtractor {
     private val ballNumberRegex = Regex("^\\s*(\\d{1,2}\\.\\d)")
     private val endOfOverPattern = Regex("end of over|over \\d+ complete", RegexOption.IGNORE_CASE)
 
+    /**
+     * A wicket requires an explicit dismissal marker. Fielding verbs on their own never qualify.
+     *
+     * The previous version matched bare `\bBOWLED\b` and `\bCATCH\b`, so ordinary descriptive
+     * commentary — "bowled a beauty, no run", "a good catch attempt, dropped" — produced a WICKET
+     * event, and [com.tanush.bouncer.services.LiveCommentaryManager] fires a user-facing
+     * "Wicket!" push notification off exactly that. It compensated with a list of phrases to
+     * strip ("MID-WICKET", "OVER THE WICKET", ...), which can only ever chase false positives
+     * that have already been observed.
+     *
+     * The discriminator that actually holds is announcement vs description: commentary announces
+     * a dismissal emphatically ("BOWLED!", "OUT!") or in scorecard notation ("c Rahul b Bumrah"),
+     * and describes non-events in plain prose. Requiring the announcement form makes the
+     * exclusion list unnecessary — "MID-WICKET boundary" contains no `WICKET!`.
+     */
     private val wicketPatterns = listOf(
-        Regex("\\bWICKET\\b", RegexOption.IGNORE_CASE),
-        Regex("\\bOUT!", RegexOption.IGNORE_CASE),
-        Regex("\\bCATCH\\b", RegexOption.IGNORE_CASE),
-        Regex("\\bBOWLED\\b", RegexOption.IGNORE_CASE),
-        Regex("\\bLBW\\b", RegexOption.IGNORE_CASE),
-        Regex("\\bRUN OUT\\b", RegexOption.IGNORE_CASE),
-        Regex("\\bSTUMPED\\b", RegexOption.IGNORE_CASE),
-        Regex(", OUT,", RegexOption.IGNORE_CASE),
+        // Terms that are only ever dismissals, in any casing.
+        Regex("""\blbw\b""", RegexOption.IGNORE_CASE),
+        Regex("""\brun\s+out\b""", RegexOption.IGNORE_CASE),
+        Regex("""\bstumped\b""", RegexOption.IGNORE_CASE),
+        Regex("""\bhit\s+wicket\b""", RegexOption.IGNORE_CASE),
+        Regex("""\bcaught\s+(behind|and\s+bowled|by)\b""", RegexOption.IGNORE_CASE),
+        // Scorecard dismissal notation: "c Rahul b Bumrah", "st Pant b Chahal".
+        Regex("""\b(c|st)\s+\w+\s+b\s+\w+""", RegexOption.IGNORE_CASE),
+        Regex(""",\s*OUT\s*,""", RegexOption.IGNORE_CASE),
+        // Announcements — the trailing emphasis is what separates these from description.
+        Regex("""\b(WICKET|OUT|BOWLED|CAUGHT|GONE|TIMBER)\s*!""", RegexOption.IGNORE_CASE),
+        // Explicit predicate forms.
+        Regex("""\bis\s+out\b""", RegexOption.IGNORE_CASE),
+        Regex("""\bout\s+(caught|bowled|lbw|stumped)\b""", RegexOption.IGNORE_CASE),
+        Regex("""\bbowled\s+(him|her|them|'?em)\b""", RegexOption.IGNORE_CASE),
     )
 
-    // Phrases to strip before wicket detection to avoid false positives
-    private val wicketExclusionPhrases = listOf(
-        "MID-WICKET", "MIDWICKET", "MID WICKET",
-        "OVER THE WICKET", "ROUND THE WICKET", "AROUND THE WICKET",
-    )
+    /**
+     * Vetoes a wicket even when a dismissal marker is present: a dropped catch, or a dismissal
+     * off a no-ball or free hit, is not a wicket.
+     */
+    private val wicketVetoPattern =
+        Regex("""\b(dropped|drops\s+(it|him|her)|no\s*[- ]?ball|free\s*hit)\b""", RegexOption.IGNORE_CASE)
 
     private val fourPattern = Regex("\\bFOUR\\b", RegexOption.IGNORE_CASE)
     private val sixPattern = Regex("\\bSIX\\b", RegexOption.IGNORE_CASE)
 
+    /**
+     * Milestones are announced in words. The previous version also matched the bare numbers
+     * 50/100/150/200/300 anywhere in the line, so an ordinary score like "150/3 in 20 overs"
+     * emitted a MILESTONE event.
+     */
     private val milestonePatterns = listOf(
-        Regex("\\b(50|hundred|century|100|150|200|double century|triple century|300)\\b", RegexOption.IGNORE_CASE),
-        Regex("\\b(half.?century|fifty)\\b", RegexOption.IGNORE_CASE),
-        Regex("\\b(5.?wicket|five.?wicket|fifer|hat.?trick)\\b", RegexOption.IGNORE_CASE),
+        Regex("""\b(fifty|half.?century|century|hundred|double\s+century|triple\s+century)\b""", RegexOption.IGNORE_CASE),
+        Regex("""\b(5.?wicket|five.?wicket|fifer|hat.?trick)\b""", RegexOption.IGNORE_CASE),
     )
 
     private val aiFusedPrefix = Regex("^\\[AI Fused\\]\\s*")
@@ -88,11 +115,17 @@ object TimelineEventExtractor {
         return pass1.filterIndexed { idx, _ -> idx !in toRemove }
     }
 
+    /** True when [line] announces a dismissal and nothing vetoes it. */
+    fun isWicketLine(line: String): Boolean {
+        val clean = normalize(line)
+        if (wicketVetoPattern.containsMatchIn(clean)) return false
+        return wicketPatterns.any { it.containsMatchIn(clean) }
+    }
+
     fun detectBallType(line: String): TimelineEventType? {
         val clean = normalize(line)
-        val wicketCheck = wicketExclusionPhrases.fold(clean.uppercase()) { t, p -> t.replace(p, "") }
         return when {
-            wicketPatterns.any { it.containsMatchIn(wicketCheck) } -> TimelineEventType.WICKET
+            isWicketLine(clean) -> TimelineEventType.WICKET
             sixPattern.containsMatchIn(clean) -> TimelineEventType.SIX
             fourPattern.containsMatchIn(clean) -> TimelineEventType.FOUR
             milestonePatterns.any { it.containsMatchIn(clean) } -> TimelineEventType.MILESTONE
