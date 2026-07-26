@@ -7,19 +7,22 @@
 ./gradlew test
 ```
 
+`--tests` is **not** valid on the aggregate `test` task (it fans out to several test tasks and Gradle
+rejects the filter). Every filtered run must name a concrete variant task — `testDebugUnitTest`.
+
 **Single test class:**
 ```bash
-./gradlew test --tests "com.tanush.bouncer.analysis.ml.ScorePredictionModelTest"
+./gradlew testDebugUnitTest --tests "com.tanush.bouncer.analysis.ml.ScorePredictionModelTest"
 ```
 
 **Single test method:**
 ```bash
-./gradlew test --tests "com.tanush.bouncer.analysis.ml.ScorePredictionModelTest.testPredictionAccuracy"
+./gradlew testDebugUnitTest --tests "com.tanush.bouncer.analysis.ml.ScorePredictionModelTest.testPredictionAccuracy"
 ```
 
 **Pattern matching:**
 ```bash
-./gradlew test --tests "*MatchUtilsTest"
+./gradlew testDebugUnitTest --tests "*MatchUtilsTest"
 ```
 
 **With verbose output:**

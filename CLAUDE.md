@@ -45,7 +45,7 @@ cp local.properties.template local.properties  # Fill in secret keys (RAPIDAPI_K
 ./gradlew installDebug           # Install to emulator/device
 ./gradlew assemble               # Dev build (faster, skips Sentry transforms)
 ./gradlew test                   # Run all unit tests
-./gradlew test --tests "*MatchUtilsTest"  # Run single test
+./gradlew testDebugUnitTest --tests "*MatchUtilsTest"  # Run single test (--tests is invalid on the aggregate `test` task)
 ./gradlew clean build            # Clean build (if cache corrupted)
 ./gradlew detekt "-Dorg.gradle.java.home=$HOME/Library/Java/JavaVirtualMachines/jbr-21.0.10/Contents/Home"  # Static analysis (see below)
 ./gradlew assembleDebug -PenableComposeCompilerReports  # Compose metrics
