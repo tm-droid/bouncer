@@ -78,6 +78,9 @@ object AICacheService {
                 if (dbResult != null) {
                     Log.d(TAG, "DB hit for key $key, warming memory cache")
                     cache.put(key, dbResult)
+                    // Recency feeds the row-ceiling eviction; without it every row looks equally
+                    // cold and eviction degrades to arbitrary.
+                    dao?.touch(key, System.currentTimeMillis())
                 }
                 dbResult
             } catch (e: Exception) {
@@ -106,7 +109,9 @@ object AICacheService {
                     mutex.withLock {
                         cache.put(key, remoteResult, permanent = isPermanent)
                         val dbTimestamp = if (isPermanent) CacheConfig.AI_CACHE_PERMANENT_TIMESTAMP else Date().time
-                        dao?.insert(AICommentaryCacheEntity(key, remoteResult, dbTimestamp))
+                        dao?.insert(
+                            AICommentaryCacheEntity(key, remoteResult, dbTimestamp, Date().time)
+                        )
                     }
                     remoteResult
                 } catch (e: Exception) {
@@ -144,7 +149,7 @@ object AICacheService {
             Log.d(TAG, "Updating cache for key $key (permanent=$permanent)")
             cache.put(key, commentary, permanent = permanent)
             val dbTimestamp = if (permanent) CacheConfig.AI_CACHE_PERMANENT_TIMESTAMP else Date().time
-            dao?.insert(AICommentaryCacheEntity(key, commentary, dbTimestamp))
+            dao?.insert(AICommentaryCacheEntity(key, commentary, dbTimestamp, Date().time))
             syncToAppwrite(key, commentary, permanent)
         } catch (e: Exception) {
             if (e is CancellationException) throw e
@@ -205,7 +210,7 @@ object AICacheService {
             if (dao?.getCommentary(key, cutoffMs) != null) return@withLock
             val now = Date()
             cache.put(key, commentary)
-            dao?.insert(AICommentaryCacheEntity(key, commentary, now.time))
+            dao?.insert(AICommentaryCacheEntity(key, commentary, now.time, now.time))
             Log.d(TAG, "Realtime: warmed cache for key $key")
         } catch (e: Exception) {
             if (e is CancellationException) throw e

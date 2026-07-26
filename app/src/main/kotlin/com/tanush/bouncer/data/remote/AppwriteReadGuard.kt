@@ -52,14 +52,57 @@ object AppwriteReadGuard {
 
     data class BreakerState(val open: Boolean, val openedAtMs: Long)
 
+    /**
+     * Sliding-window counter: [bucketCount] buckets each covering [bucketMs], summed over the
+     * whole window. Replaces a fixed window, which reset to zero at an arbitrary instant and so
+     * allowed twice the cap through across the boundary.
+     */
+    private class SlidingCounter(private val bucketCount: Int, private val bucketMs: Long) {
+        private val counts = IntArray(bucketCount)
+        private val bucketIndexes = LongArray(bucketCount) { Long.MIN_VALUE }
+
+        private fun slot(now: Long): Int {
+            val bucket = now / bucketMs
+            val index = (bucket % bucketCount).toInt()
+            // Reuse of a stale slot means a full window has elapsed for it.
+            if (bucketIndexes[index] != bucket) {
+                bucketIndexes[index] = bucket
+                counts[index] = 0
+            }
+            return index
+        }
+
+        fun add(now: Long, amount: Int) {
+            counts[slot(now)] += amount
+        }
+
+        fun total(now: Long): Int {
+            val oldestBucket = now / bucketMs - bucketCount + 1
+            var sum = 0
+            for (i in 0 until bucketCount) {
+                if (bucketIndexes[i] >= oldestBucket) sum += counts[i]
+            }
+            return sum
+        }
+
+        fun reset() {
+            counts.fill(0)
+            bucketIndexes.fill(Long.MIN_VALUE)
+        }
+    }
+
+    private const val MINUTE_BUCKETS = 60
+    private const val HOUR_BUCKETS = 60
+
     private val lock = Any()
     private var breakerOpenedAtMs = 0L
     private var breakerOpen = false
     private var probeInFlight = false
-    private var minuteWindowStartMs = 0L
-    private var minuteCount = 0
-    private var hourWindowStartMs = 0L
-    private var hourCount = 0
+    private val minuteWindow =
+        SlidingCounter(MINUTE_BUCKETS, CacheConfig.READ_GUARD_MINUTE_WINDOW_MS / MINUTE_BUCKETS)
+    private val hourWindow =
+        SlidingCounter(HOUR_BUCKETS, CacheConfig.READ_GUARD_HOUR_WINDOW_MS / HOUR_BUCKETS)
+    private var rateCapUntilMs = 0L
     private val lastReportAtMs = mutableMapOf<String, Long>()
     private var store: BreakerStore? = null
 
@@ -91,22 +134,25 @@ object AppwriteReadGuard {
             }
             return BlockReason.BREAKER_OPEN
         }
-        if (now - minuteWindowStartMs >= CacheConfig.READ_GUARD_MINUTE_WINDOW_MS) {
-            minuteWindowStartMs = now
-            minuteCount = 0
-        }
-        if (now - hourWindowStartMs >= CacheConfig.READ_GUARD_HOUR_WINDOW_MS) {
-            hourWindowStartMs = now
-            hourCount = 0
-        }
-        if (minuteCount >= CacheConfig.READ_GUARD_MAX_READS_PER_MINUTE ||
-            hourCount >= CacheConfig.READ_GUARD_MAX_READS_PER_HOUR
+        // A rate-cap pause self-clears. It is deliberately NOT the 402 latch: a rate cap is local
+        // evidence of too many reads, a 402 is the server saying the month's budget is gone.
+        if (now < rateCapUntilMs) return BlockReason.RATE_CAPPED
+        if (minuteWindow.total(now) >= CacheConfig.READ_GUARD_MAX_READS_PER_MINUTE ||
+            hourWindow.total(now) >= CacheConfig.READ_GUARD_MAX_READS_PER_HOUR
         ) {
-            openBreaker(REASON_RATE_CAPPED, name, "Appwrite read rate cap tripped by $name — breaker latched open")
+            rateCapUntilMs = now + CacheConfig.READ_GUARD_RATE_CAP_PAUSE_MS
+            sentryBreadcrumb("appwrite.read_guard", "rate cap tripped by $name", SentryLevel.ERROR)
+            // Still reported at ERROR — hitting the cap always means a bug worth fixing.
+            reportOncePerInterval(
+                REASON_RATE_CAPPED,
+                name,
+                "Appwrite read rate cap tripped by $name — reads paused for " +
+                    "${CacheConfig.READ_GUARD_RATE_CAP_PAUSE_MS / 60_000}m"
+            )
             return BlockReason.RATE_CAPPED
         }
-        minuteCount++
-        hourCount++
+        minuteWindow.add(now, 1)
+        hourWindow.add(now, 1)
         return null
     }
 
@@ -126,8 +172,9 @@ object AppwriteReadGuard {
         probeInFlight = false
         if (rows > 1) {
             val extra = rows - 1
-            minuteCount += extra
-            hourCount += extra
+            val now = nowMs()
+            minuteWindow.add(now, extra)
+            hourWindow.add(now, extra)
         }
     }
 
@@ -226,10 +273,9 @@ object AppwriteReadGuard {
         breakerOpen = false
         breakerOpenedAtMs = 0L
         probeInFlight = false
-        minuteWindowStartMs = 0L
-        minuteCount = 0
-        hourWindowStartMs = 0L
-        hourCount = 0
+        minuteWindow.reset()
+        hourWindow.reset()
+        rateCapUntilMs = 0L
         lastReportAtMs.clear()
         store = null
         nowMs = System::currentTimeMillis

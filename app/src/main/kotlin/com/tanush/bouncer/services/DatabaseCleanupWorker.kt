@@ -1,12 +1,14 @@
 package com.tanush.bouncer.services
 
 import android.content.Context
+import androidx.work.Constraints
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import android.util.Log
+import com.tanush.bouncer.data.CacheConfig
 import com.tanush.bouncer.data.local.BouncerDatabase
 import com.tanush.bouncer.utils.WorkerLogger
 import java.util.concurrent.TimeUnit
@@ -26,6 +28,10 @@ class DatabaseCleanupWorker(
             db.historicalMatchCacheDao().deleteOlderThan(now - HISTORICAL_MATCH_RETENTION_MS)
             db.highlightDao().deleteOlderThan(now - HIGHLIGHTS_RETENTION_MS)
             db.seriesCacheDao().deleteOlderThan(now - SERIES_CACHE_RETENTION_MS)
+            // ai_commentary_cache is bounded by row count, not age: completed-match rows carry a
+            // permanent sentinel timestamp that no age cutoff can match, so before this the table
+            // grew for the life of the install and was not swept here at all.
+            db.aiCacheDao().enforceRowCeiling(CacheConfig.AI_CACHE_MAX_ROWS)
             Result.success()
         } catch (e: Exception) {
             WorkerLogger.failed("database_cleanup", "DB cleanup failed", e)
@@ -47,6 +53,13 @@ class DatabaseCleanupWorker(
                 ExistingPeriodicWorkPolicy.KEEP,
                 PeriodicWorkRequestBuilder<DatabaseCleanupWorker>(7, TimeUnit.DAYS)
                     .setInitialDelay(1, TimeUnit.DAYS)
+                    // A seven-table delete sweep has no deadline; don't run it on a flat battery.
+                    .setConstraints(
+                        Constraints.Builder()
+                            .setRequiresBatteryNotLow(true)
+                            .setRequiresStorageNotLow(true)
+                            .build()
+                    )
                     .build()
             )
         }

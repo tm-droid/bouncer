@@ -37,7 +37,7 @@ import com.tanush.bouncer.data.local.entities.SeriesFtsEntity
         AICommentaryCacheEntity::class,
         HighlightEntity::class
     ],
-    version = 9,
+    version = 10,
     exportSchema = true
 )
 abstract class BouncerDatabase : RoomDatabase() {
@@ -139,8 +139,19 @@ abstract class BouncerDatabase : RoomDatabase() {
             }
         }
 
+        // ai_commentary_cache.lastAccessedAt: permanent rows carry a sentinel `timestamp` that no
+        // time-based delete can match, so the table needs a row ceiling evicted by recency of
+        // access instead. Existing rows default to 0 and are therefore evicted first — correct,
+        // since nothing has read them since the upgrade.
+        internal val MIGRATION_9_10 = object : Migration(9, 10) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE ai_commentary_cache ADD COLUMN lastAccessedAt INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_ai_commentary_cache_lastAccessedAt` ON ai_commentary_cache(lastAccessedAt)")
+            }
+        }
+
         // Add new migrations here; Room will apply them in order on upgrade.
-        private val MIGRATIONS = arrayOf<Migration>(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9)
+        private val MIGRATIONS = arrayOf<Migration>(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10)
 
         fun getInstance(context: Context): BouncerDatabase {
             return INSTANCE ?: synchronized(this) {

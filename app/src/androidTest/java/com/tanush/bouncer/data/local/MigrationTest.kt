@@ -57,4 +57,36 @@ class MigrationTest {
 
         assertEquals("Expected 3 indices after migration 8→9, found $count", 3, count)
     }
+
+    @Test
+    fun migrate9to10_addsLastAccessedAtAndPreservesRows() {
+        val v9 = helper.createDatabase("test-db-9", 9)
+        v9.execSQL(
+            "INSERT INTO ai_commentary_cache (cacheKey, commentary, timestamp) VALUES ('k1', 'text', 123)"
+        )
+        v9.close()
+
+        val db = helper.runMigrationsAndValidate(
+            "test-db-9", 10, true,
+            BouncerDatabase.MIGRATION_9_10
+        )
+
+        // Existing rows survive and default to 0, so they are evicted first — correct, since
+        // nothing has read them since the upgrade.
+        val rows = db.query("SELECT commentary, lastAccessedAt FROM ai_commentary_cache WHERE cacheKey = 'k1'")
+        rows.moveToFirst()
+        assertEquals("text", rows.getString(0))
+        assertEquals(0L, rows.getLong(1))
+        rows.close()
+
+        val index = db.query(
+            "SELECT name FROM sqlite_master WHERE type='index' AND name = ?",
+            arrayOf("index_ai_commentary_cache_lastAccessedAt")
+        )
+        val indexCount = index.count
+        index.close()
+        db.close()
+
+        assertEquals("Expected the lastAccessedAt index after migration 9→10", 1, indexCount)
+    }
 }

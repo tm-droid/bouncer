@@ -137,6 +137,22 @@ private class FakeAICacheDao : AICacheDao {
         entries.entries.removeIf { it.value.timestamp < cutoffMs }
     }
 
+    override suspend fun touch(key: String, atMs: Long) {
+        entries[key]?.let { entries[key] = it.copy(lastAccessedAt = atMs) }
+    }
+
+    override suspend fun countAll(): Int = entries.size
+
+    override suspend fun enforceRowCeiling(keepRows: Int) {
+        val keep = entries.values
+            .sortedWith(compareByDescending<AICommentaryCacheEntity> { it.lastAccessedAt }
+                .thenByDescending { it.timestamp })
+            .take(keepRows)
+            .map { it.cacheKey }
+            .toSet()
+        entries.entries.removeIf { it.key !in keep }
+    }
+
     override suspend fun clearAll() {
         entries.clear()
     }

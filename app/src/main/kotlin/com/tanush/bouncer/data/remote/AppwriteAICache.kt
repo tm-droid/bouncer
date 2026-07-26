@@ -107,7 +107,7 @@ object AppwriteAICache : AppwriteTableClient("AppwriteAICache") {
                 remoteRetry.withRetry(isRetryable = ::isTransient) {
                     createRowIdempotent(db, key, data)
                 }
-                if (permanent) evictOldestPermanentIfNeeded(db)
+                if (permanent) maybeEvictOldestPermanent()
             }.onFailure { e ->
                 logSilentFailure("Remote cache set failed", e)
             }
@@ -144,33 +144,59 @@ object AppwriteAICache : AppwriteTableClient("AppwriteAICache") {
         }
     }
 
-    private suspend fun evictOldestPermanentIfNeeded(db: TablesDB) {
+    private val permanentWritesSinceEviction = java.util.concurrent.atomic.AtomicInteger(0)
+
+    /**
+     * Eviction costs two billed list reads, and a completed match writes one permanent row per
+     * ball — so running it on every write issued hundreds of extra billed reads per match. Amortise
+     * to one check per [CacheConfig.AI_CACHE_EVICTION_CHECK_EVERY_N_WRITES] writes; the ceiling is
+     * a soft one and overshooting it by a batch between checks is harmless.
+     */
+    private suspend fun maybeEvictOldestPermanent() {
+        if (permanentWritesSinceEviction.incrementAndGet() <
+            CacheConfig.AI_CACHE_EVICTION_CHECK_EVERY_N_WRITES
+        ) {
+            return
+        }
+        permanentWritesSinceEviction.set(0)
+        evictOldestPermanentIfNeeded()
+    }
+
+    private suspend fun evictOldestPermanentIfNeeded() {
         runCatching {
-            val checkResult = remoteRetry.withRetry(isRetryable = ::isTransient) {
-                db.listRows(
-                    databaseId = dbId,
-                    tableId = tableId,
-                    queries = listOf(
-                        Query.equal("expires_at", CacheConfig.AI_CACHE_PERMANENT_EXPIRY_ISO),
-                        Query.limit(1),
-                        Query.offset(CacheConfig.AI_CACHE_MAX_PERMANENT_ENTRIES)
+            // These are billed list reads and MUST go through guardedRead. Calling `db` directly
+            // made them invisible to the rate windows and to the 402 breaker, so the one path that
+            // fired on every permanent write was also the one path the guard could not see.
+            val checkResult = guardedRead("aiCache.evictCheck") { db ->
+                remoteRetry.withRetry(isRetryable = ::isTransient) {
+                    db.listRows(
+                        databaseId = dbId,
+                        tableId = tableId,
+                        queries = listOf(
+                            Query.equal("expires_at", CacheConfig.AI_CACHE_PERMANENT_EXPIRY_ISO),
+                            Query.limit(1),
+                            Query.offset(CacheConfig.AI_CACHE_MAX_PERMANENT_ENTRIES)
+                        )
                     )
-                )
+                }
             }
-            if (checkResult.rows.isEmpty()) return@runCatching
+            if (checkResult == null || checkResult.rows.isEmpty()) return@runCatching
 
-            val toDelete = remoteRetry.withRetry(isRetryable = ::isTransient) {
-                db.listRows(
-                    databaseId = dbId,
-                    tableId = tableId,
-                    queries = listOf(
-                        Query.equal("expires_at", CacheConfig.AI_CACHE_PERMANENT_EXPIRY_ISO),
-                        Query.orderAsc("\$createdAt"),
-                        Query.limit(CacheConfig.AI_CACHE_EVICTION_BATCH)
+            val toDelete = guardedRead("aiCache.evictList") { db ->
+                remoteRetry.withRetry(isRetryable = ::isTransient) {
+                    db.listRows(
+                        databaseId = dbId,
+                        tableId = tableId,
+                        queries = listOf(
+                            Query.equal("expires_at", CacheConfig.AI_CACHE_PERMANENT_EXPIRY_ISO),
+                            Query.orderAsc("\$createdAt"),
+                            Query.limit(CacheConfig.AI_CACHE_EVICTION_BATCH)
+                        )
                     )
-                )
-            }
+                }
+            } ?: return@runCatching
 
+            val db = tablesDB ?: return@runCatching
             for (row in toDelete.rows) {
                 remoteRetry.withRetry(isRetryable = ::isTransient) {
                     db.deleteRow(

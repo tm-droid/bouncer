@@ -102,14 +102,63 @@ class AppwriteReadGuardTest {
     }
 
     @Test
-    fun `minute cap trips and latches breaker`() {
+    fun `minute cap trips and pauses reads`() {
         repeat(CacheConfig.READ_GUARD_MAX_READS_PER_MINUTE) {
             assertNull(AppwriteReadGuard.checkAndCount("burst"))
         }
         assertEquals(AppwriteReadGuard.BlockReason.RATE_CAPPED, AppwriteReadGuard.checkAndCount("burst"))
-        // Latched: even after the minute window would have rolled, reads stay blocked.
-        now += CacheConfig.READ_GUARD_MINUTE_WINDOW_MS
-        assertEquals(AppwriteReadGuard.BlockReason.BREAKER_OPEN, AppwriteReadGuard.checkAndCount("burst"))
+    }
+
+    @Test
+    fun `a rate cap does not latch the 402 breaker and self-clears`() {
+        // Previously a rate-cap trip called openBreaker(), latching the SAME 6-hour breaker as a
+        // real budget 402 — and persisting it across process restarts. A transient over-count
+        // therefore became an app-wide read outage lasting six hours.
+        repeat(CacheConfig.READ_GUARD_MAX_READS_PER_MINUTE) {
+            AppwriteReadGuard.checkAndCount("burst")
+        }
+        assertEquals(AppwriteReadGuard.BlockReason.RATE_CAPPED, AppwriteReadGuard.checkAndCount("burst"))
+
+        // Still paused, and still reported as RATE_CAPPED rather than BREAKER_OPEN.
+        now += CacheConfig.READ_GUARD_RATE_CAP_PAUSE_MS / 2
+        assertEquals(AppwriteReadGuard.BlockReason.RATE_CAPPED, AppwriteReadGuard.checkAndCount("burst"))
+
+        // Pause elapses and the window has slid clear — reads resume with no probe or reset needed.
+        now += CacheConfig.READ_GUARD_RATE_CAP_PAUSE_MS
+        assertNull(AppwriteReadGuard.checkAndCount("burst"))
+    }
+
+    @Test
+    fun `sliding minute window catches a burst straddling the old window boundary`() {
+        // REGRESSION: with fixed windows, 199 reads at t=59s plus 200 at t=61s was 399 reads in
+        // two seconds without tripping, because the window reset at the boundary.
+        val cap = CacheConfig.READ_GUARD_MAX_READS_PER_MINUTE
+        now = 59_000L
+        repeat(cap - 1) { assertNull(AppwriteReadGuard.checkAndCount("edge")) }
+
+        now = 61_000L
+        var blockedAt = -1
+        repeat(cap) { i ->
+            if (blockedAt == -1 && AppwriteReadGuard.checkAndCount("edge") != null) blockedAt = i
+        }
+        assertTrue(
+            "expected the burst to trip within one cap's worth of reads, blockedAt=$blockedAt",
+            blockedAt in 0 until cap,
+        )
+    }
+
+    @Test
+    fun `sliding minute window frees up once the reads age out`() {
+        repeat(CacheConfig.READ_GUARD_MAX_READS_PER_MINUTE) {
+            AppwriteReadGuard.checkAndCount("burst")
+        }
+        assertEquals(AppwriteReadGuard.BlockReason.RATE_CAPPED, AppwriteReadGuard.checkAndCount("burst"))
+
+        // Advance past both the pause and the full minute window.
+        now += CacheConfig.READ_GUARD_RATE_CAP_PAUSE_MS + CacheConfig.READ_GUARD_MINUTE_WINDOW_MS
+        repeat(CacheConfig.READ_GUARD_MAX_READS_PER_MINUTE - 1) {
+            assertNull(AppwriteReadGuard.checkAndCount("burst"))
+        }
     }
 
     @Test
