@@ -68,7 +68,6 @@
     <ID>CognitiveComplexMethod:MatchTimelineComponents.kt$@Composable private fun TimelineItem( event: TimelineEvent, isFirst: Boolean, isLast: Boolean, pulseOffset: Float )</ID>
     <ID>CognitiveComplexMethod:MatchUtils.kt$fun getMatchPhase(status: String?, match: CricketMatch? = null): MatchPhase</ID>
     <ID>CognitiveComplexMethod:MatchVisualization.kt$@Composable fun OverByOverChart( overScores: List&lt;Int&gt;, modifier: Modifier = Modifier )</ID>
-    <ID>CognitiveComplexMethod:MatchupAnalysis.kt$MatchupAnalysis$fun processMatches(matches: List&lt;CricsheetMatch&gt;)</ID>
     <ID>CognitiveComplexMethod:MicroInteractions.kt$@Composable fun SwipeRevealActions( leftActions: List&lt;SwipeAction&gt; = emptyList(), rightActions: List&lt;SwipeAction&gt; = emptyList(), modifier: Modifier = Modifier, actionWidth: Dp = 72.dp, enableHaptics: Boolean = true, content: @Composable () -&gt; Unit )</ID>
     <ID>CognitiveComplexMethod:NewsDetailScreenV2.kt$@Composable fun NewsDetailScreenV2( viewModel: NewsViewModel, onBack: () -&gt; Unit, )</ID>
     <ID>CognitiveComplexMethod:NewsScreenV2.kt$@Composable fun NewsScreenV2( viewModel: NewsViewModel, onArticleClick: (NewsArticleData) -&gt; Unit, )</ID>
@@ -108,8 +107,6 @@
     <ID>CognitiveComplexMethod:PremiumUIElements.kt$@Composable private fun PremiumTab( tab: TabItem, isSelected: Boolean, glowPulse: Float, onClick: () -&gt; Unit )</ID>
     <ID>CognitiveComplexMethod:PremiumUIElements.kt$@Composable private fun SelectableChip( chip: ChipData, isSelected: Boolean, onClick: () -&gt; Unit )</ID>
     <ID>CognitiveComplexMethod:PremiumWidgetComponents.kt$@Composable fun StatSummaryWidget( title: String, value: String, subtitle: String = "", icon: ImageVector, trend: TrendDirection = TrendDirection.NEUTRAL, trendValue: String = "", modifier: Modifier = Modifier )</ID>
-    <ID>CognitiveComplexMethod:ProbabilityGraphView.kt$@Composable fun ProbabilityGraphView( events: List&lt;ProbabilityEvent&gt;, firstInningsEndBall: Int = 120, currentMatchScore: String = "", latestEventDescription: String = "", matchResult: String = "", modifier: Modifier = Modifier, predictiveOverlay: List&lt;Pair&lt;Int, Double&gt;&gt;? = null // List of (ball, probability) for projection )</ID>
-    <ID>CognitiveComplexMethod:ProbabilityGraphView.kt$@Composable private fun ProbabilityGraph( events: List&lt;ProbabilityEvent&gt;, firstInningsEndBall: Int, onEventSelected: (ProbabilityEvent) -&gt; Unit, modifier: Modifier = Modifier, predictiveOverlay: List&lt;Pair&lt;Int, Double&gt;&gt;? = null )</ID>
     <ID>CognitiveComplexMethod:RunRateComparisonCard.kt$@Composable fun RunRateComparisonCard( overData: List&lt;OverRunRate&gt;, team1Name: String, team2Name: String, team1Color: Color = GoldPrimary, team2Color: Color = StatusInfo, requiredRunRate: Double? = null, modifier: Modifier = Modifier )</ID>
     <ID>CognitiveComplexMethod:SearchScreen.kt$@Composable fun SearchScreen( viewModel: SearchViewModel = viewModel(), matches: List&lt;CricketMatch&gt;, news: List&lt;NewsArticleData&gt;, onMatchClick: (CricketMatch) -&gt; Unit, onPlayerClick: (String) -&gt; Unit, onSeriesClick: (String) -&gt; Unit, onNewsClick: (NewsArticleData) -&gt; Unit, onBackClick: () -&gt; Unit, )</ID>
     <ID>CognitiveComplexMethod:SentryOptionsConfig.kt$SentryOptionsConfig$internal fun shouldDropEvent(event: SentryEvent): Boolean</ID>
@@ -220,7 +217,6 @@
     <ID>CyclomaticComplexMethod:MatchUtils.kt$fun getMatchStatusInfo(status: String?, match: CricketMatch? = null): MatchStatusInfo</ID>
     <ID>CyclomaticComplexMethod:MatchUtils.kt$fun parseScore(score: String?): ScoreInfo</ID>
     <ID>CyclomaticComplexMethod:MatchVisualization.kt$@Composable fun WagonWheelMini( runsByDirection: Map&lt;String, Int&gt;, modifier: Modifier = Modifier )</ID>
-    <ID>CyclomaticComplexMethod:MatchupAnalysis.kt$MatchupAnalysis$fun processMatches(matches: List&lt;CricsheetMatch&gt;)</ID>
     <ID>CyclomaticComplexMethod:MicroInteractions.kt$@Composable fun SwipeRevealActions( leftActions: List&lt;SwipeAction&gt; = emptyList(), rightActions: List&lt;SwipeAction&gt; = emptyList(), modifier: Modifier = Modifier, actionWidth: Dp = 72.dp, enableHaptics: Boolean = true, content: @Composable () -&gt; Unit )</ID>
     <ID>CyclomaticComplexMethod:NewsScreenV2.kt$@Composable fun NewsScreenV2( viewModel: NewsViewModel, onArticleClick: (NewsArticleData) -&gt; Unit, )</ID>
     <ID>CyclomaticComplexMethod:NewsViewModel.kt$NewsViewModel$fun fetchNews()</ID>
@@ -256,8 +252,6 @@
     <ID>CyclomaticComplexMethod:PremiumUIElements.kt$@Composable private fun PremiumTab( tab: TabItem, isSelected: Boolean, glowPulse: Float, onClick: () -&gt; Unit )</ID>
     <ID>CyclomaticComplexMethod:PremiumUIElements.kt$@Composable private fun SelectableChip( chip: ChipData, isSelected: Boolean, onClick: () -&gt; Unit )</ID>
     <ID>CyclomaticComplexMethod:PremiumWidgetComponents.kt$@Composable fun StatSummaryWidget( title: String, value: String, subtitle: String = "", icon: ImageVector, trend: TrendDirection = TrendDirection.NEUTRAL, trendValue: String = "", modifier: Modifier = Modifier )</ID>
-    <ID>CyclomaticComplexMethod:ProbabilityGraphView.kt$@Composable private fun ProbabilityGraph( events: List&lt;ProbabilityEvent&gt;, firstInningsEndBall: Int, onEventSelected: (ProbabilityEvent) -&gt; Unit, modifier: Modifier = Modifier, predictiveOverlay: List&lt;Pair&lt;Int, Double&gt;&gt;? = null )</ID>
-    <ID>CyclomaticComplexMethod:ProbabilityTracker.kt$ProbabilityTracker$private fun determineEventType( runs: Int, isWicket: Boolean, wicketType: String?, extras: Int, extraType: String?, ball: Int ): Pair&lt;ProbabilityEvent.EventType, String&gt;</ID>
     <ID>CyclomaticComplexMethod:RecentBallsStrip.kt$private fun ballStyle(ball: String, colors: BouncerColorsToken): Pair&lt;Color, Color&gt;</ID>
     <ID>CyclomaticComplexMethod:RichNotificationBuilder.kt$NotificationPreferences$fun shouldShowNotification( context: Context, matchId: String, notificationType: String ): Boolean</ID>
     <ID>CyclomaticComplexMethod:RunRateComparisonCard.kt$@Composable fun RunRateComparisonCard( overData: List&lt;OverRunRate&gt;, team1Name: String, team2Name: String, team1Color: Color = GoldPrimary, team2Color: Color = StatusInfo, requiredRunRate: Double? = null, modifier: Modifier = Modifier )</ID>
@@ -497,9 +491,6 @@
     <ID>LongMethod:PremiumWidgetComponents.kt$@Composable fun StatSummaryWidget( title: String, value: String, subtitle: String = "", icon: ImageVector, trend: TrendDirection = TrendDirection.NEUTRAL, trendValue: String = "", modifier: Modifier = Modifier )</ID>
     <ID>LongMethod:PremiumWidgetComponents.kt$@Composable fun UpcomingMatchWidget( team1: String, team2: String, matchTime: String, matchDate: String, venue: String, onClick: () -&gt; Unit, modifier: Modifier = Modifier )</ID>
     <ID>LongMethod:PremiumWinProbabilityHero.kt$@Composable fun PremiumWinProbabilityHero( team1Name: String, team1Probability: Float, // 0.0 to 1.0 modifier: Modifier = Modifier )</ID>
-    <ID>LongMethod:ProbabilityGraphView.kt$@Composable fun ProbabilityGraphView( events: List&lt;ProbabilityEvent&gt;, firstInningsEndBall: Int = 120, currentMatchScore: String = "", latestEventDescription: String = "", matchResult: String = "", modifier: Modifier = Modifier, predictiveOverlay: List&lt;Pair&lt;Int, Double&gt;&gt;? = null // List of (ball, probability) for projection )</ID>
-    <ID>LongMethod:ProbabilityGraphView.kt$@Composable private fun EventDetailsCard( event: ProbabilityEvent, onDismiss: () -&gt; Unit )</ID>
-    <ID>LongMethod:ProbabilityGraphView.kt$@Composable private fun ProbabilityGraph( events: List&lt;ProbabilityEvent&gt;, firstInningsEndBall: Int, onEventSelected: (ProbabilityEvent) -&gt; Unit, modifier: Modifier = Modifier, predictiveOverlay: List&lt;Pair&lt;Int, Double&gt;&gt;? = null )</ID>
     <ID>LongMethod:ReminderBottomSheet.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun ReminderBottomSheet( matchId: String, matchTitle: String, matchStartTime: Long, // epoch millis, 0 if unknown onDismiss: () -&gt; Unit, )</ID>
     <ID>LongMethod:RemindersActivity.kt$@Composable fun RemindersScreen()</ID>
     <ID>LongMethod:RunRateComparisonCard.kt$@Composable fun RunRateComparisonCard( overData: List&lt;OverRunRate&gt;, team1Name: String, team2Name: String, team1Color: Color = GoldPrimary, team2Color: Color = StatusInfo, requiredRunRate: Double? = null, modifier: Modifier = Modifier )</ID>
