@@ -391,6 +391,7 @@ export function parseLiveDetail(liveHtml) {
       currentRunRate: null,
       requiredRunRate: null,
       status: null,
+      situation: null,
     };
   }
 
@@ -418,5 +419,46 @@ export function parseLiveDetail(liveHtml) {
     currentRunRate: ms.currentRunRate != null ? String(ms.currentRunRate) : null,
     requiredRunRate: ms.requiredRunRate != null ? String(ms.requiredRunRate) : null,
     status: ms.status ? String(ms.status) : null,
+    situation: liveSituation(ms, isl),
+  };
+}
+
+/**
+ * Numeric match state for the win-probability model.
+ *
+ * Everything above is stringified for direct Gson binding on the device, which throws away the
+ * numbers the model needs. This keeps them, from the same already-parsed miniscore — no second
+ * fetch and no re-parse.
+ *
+ * `team1` throughout means the FIRST-INNINGS batting side, matching the team1Score/team2Score
+ * convention above so a consumer does not need a second mapping.
+ */
+function liveSituation(ms, isl) {
+  const num = (v) => (typeof v === "number" && Number.isFinite(v) ? v : null);
+  const current = isl.find((e) => e.inningsId === ms.inningsId) ?? isl[isl.length - 1];
+  if (!current) return null;
+
+  const ballsBowled = num(current.ballNbr);
+  const isChase = ms.inningsId === 2 && num(ms.target) != null;
+
+  return {
+    inningsId: num(ms.inningsId),
+    matchFormat: ms.matchScoreDetails?.matchFormat ? String(ms.matchScoreDetails.matchFormat) : null,
+    battingTeamName: current.batTeamName ? String(current.batTeamName) : null,
+    // Match on team name, not innings id: a Test has four innings entries, two of them belonging
+    // to the side currently batting, so "some other innings" picks the wrong team.
+    bowlingTeamName: isl.find((e) => e.batTeamName && e.batTeamName !== current.batTeamName)?.batTeamName ?? null,
+    // The batting side is team1 only while the first innings is in progress.
+    battingTeamIsTeam1: current.inningsId === isl[0]?.inningsId,
+    runsScored: num(current.score),
+    wicketsLost: num(current.wickets),
+    ballsBowled,
+    target: isChase ? num(ms.target) : null,
+    runsNeeded: isChase ? num(ms.remRunsToWin) : null,
+    // oversRem is the authoritative balls-left source in a chase; Cricbuzz already accounts for a
+    // reduced-overs match, which deriving from a format budget would not.
+    oversRemaining: num(ms.oversRem),
+    currentRunRate: num(ms.currentRunRate),
+    requiredRunRate: num(ms.requiredRunRate),
   };
 }

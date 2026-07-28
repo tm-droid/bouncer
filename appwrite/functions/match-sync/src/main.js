@@ -1,4 +1,5 @@
 import { Client, Storage, Databases, Query } from "node-appwrite";
+import { InputFile } from "node-appwrite/file";
 import { createHash } from "crypto";
 import {
   liveScoresUrl,
@@ -9,12 +10,23 @@ import {
   parseScorecard,
 } from "./cricbuzz.js";
 import { generateLine, sanitize, stripPreamble } from "./llm.js";
+import { evaluate, formatFromText, ballsRemainingFor } from "./winprob.js";
 
 const DB_ID = process.env.APPWRITE_AI_CACHE_DB_ID ?? "bouncer-db";
 const COMMENTARY_COL = process.env.MATCH_COMMENTARY_COL_ID ?? "match-commentary";
 const DETAIL_COL = process.env.MATCH_LIVE_DETAIL_COL_ID ?? "match-live-detail";
 const BUCKET_ID = process.env.MATCH_CACHE_BUCKET_ID ?? "cricket-stats";
 const LIVE_FILE = "live-matches";
+// Aggregate win probabilities for every live match, keyed by matchId. The device reads this one
+// file for its match-list cards: live-matches.json carries only { id, title, status } with no
+// scores, so nothing upstream of here can compute a probability, and reading one detail row per
+// visible card would cost one billed DB read per card per refresh.
+const WINPROB_FILE = "live-winprob";
+// The trained model written by bouncer-train-win-probability. Without it every match falls back to
+// the heuristic, which is deliberately crude — the calibrated numbers come from the model.
+const TEAM_STATS_FILE = "team-stats";
+let cachedModel = null;        // warm-container cache; one storage read per cold start
+let modelLoadFailed = false;   // retry on the next cold start, not every minute
 // Viewer presence: bouncer-match-presence writes { [matchId]: epochMs } here whenever a
 // client has a live match open. We only generate for matches with a fresh viewer, so idle
 // matches (and idle nights) cost no LLM calls. TTL covers ~2 missed 90s client heartbeats.
@@ -81,28 +93,47 @@ export default async ({ req, res, log, error }) => {
     return res.json({ skipped: true, reason: "no_live_matches" }, 200);
   }
 
-  // 1b. Gate on viewer presence: only sync matches someone currently has open.
+  // 1b. Viewer presence gates the EXPENSIVE work only.
+  //
+  // Commentary generation costs an LLM call per ball, so it stays restricted to matches someone
+  // currently has open. Win probability costs one page fetch and some arithmetic, and the match
+  // list needs it for every live match — nobody has a match "open" while they are looking at the
+  // list. So the two are now separated: every live match gets a probability, only viewed matches
+  // get commentary and a detail row.
   const activeViewers = await activeViewerIds({ storage, log, error });
-  const live = matches
-    .filter((m) => m && m.id && activeViewers.has(String(m.id)))
-    .slice(0, MAX_MATCHES);
-  if (live.length === 0) {
-    log(`No matches with active viewers — nothing to sync`);
-    return res.json({ skipped: true, reason: "no_viewers" }, 200);
+  const allLive = matches.filter((m) => m && m.id).slice(0, MAX_MATCHES);
+  const live = allLive.filter((m) => activeViewers.has(String(m.id)));
+  if (allLive.length === 0) {
+    log(`No live matches — nothing to sync`);
+    return res.json({ skipped: true, reason: "no_live_matches" }, 200);
   }
+  log(`${allLive.length} live, ${live.length} with viewers`);
   // Prune the warm dedupe cache to matches still live so ended matches don't retain memory.
   const liveIds = new Set(live.map((m) => String(m.id)));
   for (const id of seenByMatch.keys()) {
     if (!liveIds.has(id)) seenByMatch.delete(id);
   }
   const summary = {};
+  const winProb = {};
+  const viewed = new Set(live.map((m) => String(m.id)));
+  const model = await loadModel({ storage, log, error });
 
   // Process matches in parallel so per-ball LLM latency doesn't serialize across matches.
   await Promise.allSettled(
-    live.map(async (m) => {
+    allLive.map(async (m) => {
       const matchId = String(m.id);
       try {
-        summary[matchId] = await syncMatch({ db, matchId, log, error });
+        const result = await syncMatch({
+          db,
+          matchId,
+          title: m.title ?? "",
+          withCommentary: viewed.has(matchId),
+          model,
+          log,
+          error,
+        });
+        summary[matchId] = result.status;
+        if (result.winProb) winProb[matchId] = result.winProb;
       } catch (e) {
         error(`Match ${matchId} failed: ${e?.message}`);
         summary[matchId] = "error";
@@ -110,12 +141,97 @@ export default async ({ req, res, log, error }) => {
     })
   );
 
+  await writeWinProbFile({ storage, winProb, log, error });
+
   if (Date.now() < budget402UntilMs) {
     // A 402 surfaced mid-run: mark the whole execution failed so it's visible in the console.
     return res.json({ error: "read_budget_exceeded", summary }, 402);
   }
-  return res.json({ processed: live.length, summary });
+  return res.json({
+    live: allLive.length,
+    processed: live.length,
+    winProbabilities: Object.keys(winProb).length,
+    summary,
+  });
 };
+
+/**
+ * Publish the aggregate win-probability file the match list reads.
+ *
+ * One small storage object rather than a DB row per match: storage is billed on a separate meter
+ * from the org DB-read budget that the 402 breaker protects, and the device pays a single
+ * download regardless of how many cards are on screen.
+ */
+async function writeWinProbFile({ storage, winProb, log, error }) {
+  try {
+    const payload = JSON.stringify({ version: 1, updatedAt: Date.now(), matches: winProb });
+    await storage.deleteFile(BUCKET_ID, WINPROB_FILE).catch(() => {});
+    await storage.createFile(
+      BUCKET_ID,
+      WINPROB_FILE,
+      InputFile.fromBuffer(Buffer.from(payload, "utf8"), "live-winprob.json"),
+      READ_ANY
+    );
+    log(`Wrote ${WINPROB_FILE} (${Object.keys(winProb).length} matches)`);
+  } catch (e) {
+    // Non-fatal: commentary and detail rows are already written, and a stale probability file is
+    // better than failing the run.
+    error(`Failed to write ${WINPROB_FILE}: ${e?.message}`);
+  }
+}
+
+/**
+ * Win probability for the FIRST-INNINGS batting side, matching the team1Score/team2Score
+ * convention the detail payload already uses, so the device needs no second team mapping.
+ */
+async function loadModel({ storage, log, error }) {
+  if (cachedModel || modelLoadFailed) return cachedModel;
+  try {
+    const raw = await storage.getFileDownload(BUCKET_ID, TEAM_STATS_FILE);
+    const parsed = Buffer.isBuffer(raw) || raw instanceof ArrayBuffer
+      ? JSON.parse(Buffer.from(raw).toString("utf8"))
+      : raw;
+    cachedModel = parsed;
+    log(`Loaded win-probability model v${parsed?.version ?? "?"} (${Object.keys(parsed?.teamStats ?? {}).length} teams)`);
+  } catch (e) {
+    modelLoadFailed = true;
+    error(`Could not load ${TEAM_STATS_FILE} (${e?.message}) — falling back to the heuristic`);
+  }
+  return cachedModel;
+}
+
+function winProbFor(detail, title, model) {
+  const s = detail?.situation;
+  if (!s) return null;
+
+  const format = formatFromText(s.matchFormat, title);
+  const ballsRemaining = ballsRemainingFor({
+    oversRemaining: s.oversRemaining,
+    ballsBowled: s.ballsBowled,
+    format,
+  });
+  const result = evaluate({
+    runsNeeded: s.runsNeeded ?? 0,
+    ballsRemaining: ballsRemaining ?? 0,
+    wicketsLost: s.wicketsLost ?? 0,
+    currentRunRate: s.currentRunRate ?? 0,
+    requiredRunRate: s.requiredRunRate ?? 0,
+    battingTeam: s.battingTeamName ?? "",
+    bowlingTeam: s.bowlingTeamName ?? "",
+    format,
+    model,
+  });
+  if (result.undetermined) return null;
+
+  const batting = result.battingTeamWinProbability;
+  return {
+    team1WinProbability: s.battingTeamIsTeam1 ? batting : 1 - batting,
+    confidence: result.confidence,
+    battingTeamName: s.battingTeamName,
+    battingTeamIsTeam1: s.battingTeamIsTeam1,
+    format,
+  };
+}
 
 // Read the presence map written by bouncer-match-presence and return the set of matchIds
 // with a viewer seen within VIEWER_TTL_MS. Any failure (missing file, parse error) is
@@ -136,15 +252,33 @@ async function activeViewerIds({ storage, log, error }) {
   }
 }
 
-async function syncMatch({ db, matchId, log, error }) {
-  // 2. Fetch live page + scorecard in parallel.
+async function syncMatch({ db, matchId, title, withCommentary, model, log, error }) {
+  // 2. Fetch live page, plus the scorecard only when we are going to use it. A match with no
+  // viewer needs the live page alone to produce a win probability.
   const [liveHtml, scoreHtml] = await Promise.all([
     fetchHtml(liveScoresUrl(matchId)),
-    fetchHtml(scorecardUrl(matchId)).catch((e) => { error(`Scorecard fetch failed for ${matchId}: ${e?.message}`); return null; }),
+    withCommentary
+      ? fetchHtml(scorecardUrl(matchId)).catch((e) => { error(`Scorecard fetch failed for ${matchId}: ${e?.message}`); return null; })
+      : Promise.resolve(null),
   ]);
 
   // 3. Build + upsert the live-detail snapshot.
   const detail = parseLiveDetail(liveHtml);
+  const winProb = winProbFor(detail, title, model);
+  // Carried in the detail payload as well as the aggregate file, so the detail screen updates on
+  // the existing realtime channel instead of waiting for a file download. `payload` is an opaque
+  // JSON string column and Gson ignores unknown keys, so this needs no Appwrite schema change and
+  // is safe for older app builds.
+  if (winProb) {
+    detail.winProbabilityTeam1 = winProb.team1WinProbability;
+    detail.winProbabilityConfidence = winProb.confidence;
+  }
+
+  if (!withCommentary) {
+    // No viewer: the probability is the only product. No scorecard, no LLM, no DB write.
+    return { status: winProb ? "winprob_only" : "winprob_undetermined", winProb };
+  }
+
   if (scoreHtml) {
     try {
       detail.scorecard = parseScorecard(scoreHtml);
@@ -249,7 +383,7 @@ async function syncMatch({ db, matchId, log, error }) {
     }
   }
   log(`Match ${matchId}: ${written} new commentary rows`);
-  return { commentaryWritten: written };
+  return { status: { commentaryWritten: written }, winProb };
 }
 
 async function upsertDetail({ db, matchId, detail, error }) {

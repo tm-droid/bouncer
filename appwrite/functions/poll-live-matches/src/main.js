@@ -1,6 +1,7 @@
 import { Client, Storage } from "node-appwrite";
 import { InputFile } from "node-appwrite/file";
 import { createSign } from "crypto";
+import { seriesCategory, isWomensSeries } from "./series.js";
 
 const VERCEL_BASE = process.env.VERCEL_API_BASE ?? "https://api-iota-jade.vercel.app";
 const BUCKET_ID = process.env.MATCH_CACHE_BUCKET_ID ?? "cricket-stats";
@@ -129,7 +130,7 @@ async function fetchActiveSeries() {
             const id = String(s.id ?? s.seriesId ?? "");
             const name = s.name ?? s.seriesName ?? "";
             if (!id || !name || name.length < 3) continue;
-            result.push({ id, name, category: seriesCategory(name), startDate: s.startDt ?? "", endDate: s.endDt ?? "" });
+            result.push({ id, name, category: seriesCategory(name), isWomens: isWomensSeries(name), startDate: s.startDt ?? "", endDate: s.endDt ?? "" });
           }
         }
         if (result.length > 0) return result;
@@ -146,16 +147,9 @@ async function fetchActiveSeries() {
     const id = m[1], name = m[2].trim();
     if (!name || name.length < 3 || seen.has(id)) continue;
     seen.add(id);
-    result.push({ id, name, category: seriesCategory(name), startDate: "", endDate: "" });
+    result.push({ id, name, category: seriesCategory(name), isWomens: isWomensSeries(name), startDate: "", endDate: "" });
   }
   return result;
-}
-
-function seriesCategory(name) {
-  if (/IPL|PSL|BBL|CPL|League|T20/i.test(name)) return "LEAGUE";
-  if (/Women|WPL/i.test(name)) return "WOMEN";
-  if (/Domestic|Ranji|Sheffield/i.test(name)) return "DOMESTIC";
-  return "INTERNATIONAL";
 }
 
 async function getFirebaseAccessToken(serviceAccountJson) {

@@ -80,6 +80,23 @@ export function ballsFromOvers(overs) {
   return completed * 6 + balls;
 }
 
+/**
+ * Balls left in the current innings.
+ *
+ * Prefers the source's own figure (Cricbuzz `oversRem`), which already accounts for a
+ * reduced-overs match. Falls back to the format budget minus balls bowled, because `oversRem` is
+ * frequently absent even on a perfectly scoreable chase — observed missing on a live T20 whose own
+ * status line read "need 100 runs in 95 balls". Returns null when neither source can answer, and
+ * the caller must then report undetermined rather than substituting a guess.
+ */
+export function ballsRemainingFor({ oversRemaining = null, ballsBowled = null, format = "UNKNOWN", totalBalls = null } = {}) {
+  if (Number.isFinite(oversRemaining) && oversRemaining > 0) return Math.round(oversRemaining * 6);
+  const budget = Number.isFinite(totalBalls) && totalBalls > 0 ? totalBalls : inningsBalls(format);
+  if (budget == null || !Number.isFinite(ballsBowled)) return null;
+  const remaining = budget - ballsBowled;
+  return remaining > 0 ? remaining : 0;
+}
+
 const PROB_FLOOR = 0.03;
 const PROB_CEILING = 0.97;
 
