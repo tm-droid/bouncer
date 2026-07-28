@@ -1,6 +1,8 @@
 package com.tanush.bouncer.network
 
 import android.util.Log
+import com.tanush.bouncer.analysis.CricketConstants
+import com.tanush.bouncer.analysis.MatchProjections
 import com.tanush.bouncer.models.BatsmanStats
 import com.tanush.bouncer.models.BowlerStats
 import com.tanush.bouncer.models.FallOfWicket
@@ -195,6 +197,22 @@ internal fun parseScorecardBatsmen(content: Element): List<BatsmanStats> {
     return batsmen
 }
 
+/**
+ * Bowler economy from overs and runs conceded.
+ *
+ * The economy column was previously read as `stats.lastOrNull()?.text()` — the trailing grid cell,
+ * which is usually empty, so `economy` arrived as `""`. Downstream that renders as a blank column
+ * (`PremiumScorecardTab.kt:438`) or, worse, `toFloatOrNull() ?: 0f` turns it into a flawless 0.00
+ * economy (`:205`). Overs and runs are at known indices, so the figure is derivable exactly.
+ *
+ * Over notation is not a decimal: "19.5" is 119 balls, not 19.5 overs.
+ */
+private fun bowlerEconomy(overs: String?, runs: String?): String? {
+    val balls = CricketConstants.ballsFromOvers(overs) ?: return null
+    val conceded = runs?.toIntOrNull() ?: return null
+    return MatchProjections.currentRunRate(conceded, balls)?.let { String.format("%.2f", it) }
+}
+
 internal fun parseScorecardBowlers(content: Element): List<BowlerStats> {
     val bowlers = mutableListOf<BowlerStats>()
     val bowlRows = content.select("div.grid.scorecard-bowl-grid")
@@ -205,15 +223,18 @@ internal fun parseScorecardBowlers(content: Element): List<BowlerStats> {
         val stats = row.children()
         if (stats.size < 5) return@forEach
         try {
+            val overs = stats.getOrNull(1)?.text() ?: "0"
+            val runs = stats.getOrNull(3)?.text() ?: "0"
             bowlers.add(BowlerStats(
                 name,
-                stats.getOrNull(1)?.text() ?: "0",
+                overs,
                 stats.getOrNull(2)?.text() ?: "0",
-                stats.getOrNull(3)?.text() ?: "0",
+                runs,
                 stats.getOrNull(4)?.text() ?: "0",
                 "0",
                 "0",
-                stats.lastOrNull()?.text() ?: ""
+                // Fall back to the grid's own cell only when the overs figure is unparseable.
+                bowlerEconomy(overs, runs) ?: stats.lastOrNull()?.text() ?: ""
             ))
         } catch (e: Exception) {
             Log.w(PARSER_TAG, "Error parsing scorecard bowler: $name", e)

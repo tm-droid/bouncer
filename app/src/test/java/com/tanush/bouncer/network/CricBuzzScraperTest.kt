@@ -277,6 +277,49 @@ class CricBuzzScraperTest {
         assertTrue(parseScorecardBowlers(content).isEmpty())
     }
 
+    /** Bowler row shaped like Cricbuzz's grid: name link, O, M, R, W, and a trailing empty cell. */
+    private fun bowlerGrid(overs: String, maidens: String, runs: String, wickets: String): String =
+        """
+        <div class="grid scorecard-bowl-grid">
+            <div><a href="/profiles/1/x">J Bumrah</a></div>
+            <div>$overs</div><div>$maidens</div><div>$runs</div><div>$wickets</div><div></div>
+        </div>
+        """.trimIndent()
+
+    @Test
+    fun `parseScorecardBowlers computes economy instead of reading the trailing cell`() {
+        // The trailing cell is empty, so `stats.lastOrNull()` yielded "" — which renders as a blank
+        // column, or as a flawless 0.00 economy once `toFloatOrNull() ?: 0f` gets hold of it.
+        val content = Jsoup.parse(bowlerGrid("4", "0", "36", "2")).body()
+        val bowlers = parseScorecardBowlers(content)
+        assertEquals(1, bowlers.size)
+        assertEquals("9.00", bowlers[0].economy)
+    }
+
+    @Test
+    fun `bowler economy treats overs as ball notation, not a decimal`() {
+        // "3.4" is 3 overs and 4 balls = 22 balls. 30 runs off 22 balls is 8.18, not 30/3.4 = 8.82.
+        val content = Jsoup.parse(bowlerGrid("3.4", "0", "30", "1")).body()
+        assertEquals("8.18", parseScorecardBowlers(content)[0].economy)
+    }
+
+    @Test
+    fun `a bowler who has not completed a ball gets no economy rather than a divide by zero`() {
+        val content = Jsoup.parse(bowlerGrid("0", "0", "0", "0")).body()
+        assertEquals("", parseScorecardBowlers(content)[0].economy)
+    }
+
+    @Test
+    fun `unparseable overs fall back to the grid cell`() {
+        val row = """
+            <div class="grid scorecard-bowl-grid">
+                <div><a href="/profiles/1/x">J Bumrah</a></div>
+                <div>-</div><div>0</div><div>36</div><div>2</div><div>9.00</div>
+            </div>
+        """.trimIndent()
+        assertEquals("9.00", parseScorecardBowlers(Jsoup.parse(row).body())[0].economy)
+    }
+
     @Test
     fun `parseFallOfWickets handles missing FOW section without throwing`() {
         val content = Jsoup.parse("<div>No FOW here</div>").body()
