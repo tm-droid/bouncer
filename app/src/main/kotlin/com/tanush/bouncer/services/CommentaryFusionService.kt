@@ -6,6 +6,7 @@ import com.tanush.bouncer.analysis.CricketConstants
 import com.tanush.bouncer.data.remote.AppwriteClient
 import com.tanush.bouncer.network.HttpClientProvider
 import com.tanush.bouncer.utils.CommentaryFormatter
+import com.tanush.bouncer.utils.contentFingerprint
 import com.tanush.bouncer.utils.sentryBreadcrumb
 import io.sentry.Breadcrumb
 import io.sentry.Sentry
@@ -59,7 +60,10 @@ class CommentaryFusionService(
     // Temp=0.0 verify calls are fully deterministic: same inputs → same PASS/FAIL every time.
     // Cache by content hash to avoid redundant AI calls on retry paths.
     // LinkedHashMap in insertion order — FIFO eviction. All access guarded by verifyCacheMutex.
-    private val verifyCache = LinkedHashMap<Int, Boolean>(512)
+    // Keyed on the full text, not its 32-bit hashCode: a collision there returned ANOTHER ball's
+    // PASS/FAIL verdict. Bounded by the existing 512-entry FIFO eviction below, so a String key
+    // costs no extra machinery and skips the hashing.
+    private val verifyCache = LinkedHashMap<String, Boolean>(512)
     private val verifyCacheMutex = Mutex()
     private val bufferMutex = Mutex()
     private val maxBufferSize = 6
@@ -237,7 +241,7 @@ class CommentaryFusionService(
     ): String = withContext(Dispatchers.IO) {
         val cleaned = CommentaryFormatter.sanitize(rawEvent)
         if (cleaned.isBlank()) return@withContext rawEvent
-        val cacheKey = "event_ai:$matchId:${cleaned.hashCode()}"
+        val cacheKey = "event_ai:$matchId:${contentFingerprint(cleaned)}"
         AICacheService.getCommentary(cacheKey)?.let { return@withContext it }
 
         val prompt = "Match event: $cleaned\nRewrite as one broadcast commentary sentence."
@@ -274,7 +278,7 @@ class CommentaryFusionService(
             setData("ballNumber", ballNumber)
         })
 
-        val contextHash = (snippet1 + snippet2 + oversSummary).hashCode().toString()
+        val contextHash = contentFingerprint(snippet1, snippet2, oversSummary)
         // ballNumber included in key: two dot-balls in the same over with identical snippets
         // must not collide and serve the wrong commentary for ball B.
         val cacheKey = "ai_commentary:$matchId:$over:$ballNumber:$contextHash"
@@ -603,7 +607,7 @@ class CommentaryFusionService(
         }
         val lines = amplifiedLines
 
-        val contextHash = lines.joinToString(" ").hashCode().toString()
+        val contextHash = contentFingerprint(lines.joinToString(" "))
         val cacheKey = "ai_summary:$matchId:$over:$contextHash"
         AICacheService.getCommentary(cacheKey)?.let { return it }
 
@@ -661,7 +665,7 @@ class CommentaryFusionService(
         bowler: String,
         batsman: String
     ): Boolean {
-        val cacheKey = (aiOutput + snippet1 + snippet2 + ballNumber + bowler + batsman).hashCode()
+        val cacheKey = contentFingerprint(aiOutput, snippet1, snippet2, ballNumber, bowler, batsman)
         verifyCacheMutex.withLock { verifyCache[cacheKey] }?.let { return it }
 
         val prompt = VERIFICATION_PROMPT_TEMPLATE

@@ -1,5 +1,6 @@
 package com.tanush.bouncer.services
 
+import com.tanush.bouncer.utils.contentFingerprint
 import com.tanush.bouncer.data.local.dao.AICacheDao
 import com.tanush.bouncer.data.local.entities.AICommentaryCacheEntity
 import kotlinx.coroutines.test.runTest
@@ -88,7 +89,7 @@ class CommentaryFusionServiceTest {
     private val oversSummary = "Last 3 overs: 24 runs, 1 wicket"
 
     private fun fuseCacheKey(): String {
-        val hash = (snippet1 + snippet2 + oversSummary).hashCode()
+        val hash = contentFingerprint(snippet1, snippet2, oversSummary)
         return "ai_commentary:$matchId:$over:$ballNumber:$hash"
     }
 
@@ -256,7 +257,7 @@ class CommentaryFusionServiceTest {
         val result = service.summarizeOversWithAI(lines, matchId, over)
 
         assertEquals(summary, result)
-        val cacheKey = "ai_summary:$matchId:$over:${lines.joinToString(" ").hashCode()}"
+        val cacheKey = "ai_summary:$matchId:$over:${contentFingerprint(lines.joinToString(" "))}"
         assertEquals(summary, AICacheService.getCommentary(cacheKey))
     }
 
@@ -277,7 +278,7 @@ class CommentaryFusionServiceTest {
     @Test
     fun `summarizeOversWithAI cache hit - skips HTTP call`() = runTest {
         val lines = listOf("Ball 1", "Ball 2")
-        val cacheKey = "ai_summary:$matchId:$over:${lines.joinToString(" ").hashCode()}"
+        val cacheKey = "ai_summary:$matchId:$over:${contentFingerprint(lines.joinToString(" "))}"
         AICacheService.setCommentary("Cached summary", cacheKey)
 
         var httpCalls = 0
