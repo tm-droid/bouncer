@@ -139,9 +139,13 @@ fun MatchDetailViewV2(
     // so the header/badge/result banner update when a match progresses or finishes while open.
     // matchStatus is derived (by lazy) from currentStatus, so overriding it re-derives for free.
     val liveStatus = uiState.liveStatus?.takeIf { it.isNotBlank() } ?: match.currentStatus
+    // The stored probability is whatever the match list had; the detail payload is fresher, so it
+    // wins when present. A completed match resolves its own from the result string.
+    val liveWinProbability = uiState.liveWinProbability ?: match.winProbability
     val liveMatch = if (match.teams.size >= 2) {
         match.copy(
             currentStatus = liveStatus,
+            winProbability = liveWinProbability,
             teams = match.teams.mapIndexed { i, team ->
                 when (i) {
                     0 -> team.copy(score = score1.ifBlank { team.score }, overs = overs1.ifBlank { team.overs })
@@ -149,9 +153,9 @@ fun MatchDetailViewV2(
                     else -> team
                 }
             },
-        )
+        ).let { if (it.isCompleted) it.copy(winProbability = it.resolvedWinProbability()) else it }
     } else {
-        match.copy(currentStatus = liveStatus)
+        match.copy(currentStatus = liveStatus, winProbability = liveWinProbability)
     }
 
     val battingTeam = liveMatch.teams.firstOrNull { it.isBatting }
@@ -192,7 +196,7 @@ fun MatchDetailViewV2(
                                         matchStatus = liveMatch.status,
                                         matchType = liveMatch.matchType,
                                         venue = liveMatch.venue,
-                                        winProbability = (liveMatch.winProbability / 100.0).toFloat().coerceIn(0f, 1f),
+                                        winProbability = liveMatch.winProbabilityFraction,
                                         isLive = liveMatch.isLive,
                                     )
                                     val bitmap = ShareCardGenerator.generateShareBitmap(data)

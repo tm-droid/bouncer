@@ -62,6 +62,11 @@ class MatchDetailViewModel(
         val liveRequiredRunRate: String? = null,
         /** Latest server status line ("... won by ...", innings break, etc.); drives the header. */
         val liveStatus: String? = null,
+        /**
+         * Win probability for teams[0] as a percentage, computed by bouncer-match-sync and carried
+         * in the detail payload. Null when the server did not score this match.
+         */
+        val liveWinProbability: Double? = null,
         val matchFlow: MatchFlowData? = null,
         val preMatchData: PreMatchData? = null,
         val probabilityHistory: List<WinProbabilityPoint> = emptyList(),
@@ -236,6 +241,9 @@ class MatchDetailViewModel(
                 liveCurrentRunRate = pick(p.currentRunRate, st.liveCurrentRunRate),
                 liveRequiredRunRate = pick(p.requiredRunRate, st.liveRequiredRunRate),
                 liveStatus = pick(p.status?.takeIf { it.isNotBlank() }, st.liveStatus),
+                // Server sends 0..1; the UI works in percent. Keep the previous value when this
+                // update carries none, so the bar does not blink out on a payload that omits it.
+                liveWinProbability = p.winProbabilityTeam1?.let { it * 100.0 } ?: st.liveWinProbability,
             )
         }
         p.batsmen.forEach { handleBatsmanMilestone(it) }

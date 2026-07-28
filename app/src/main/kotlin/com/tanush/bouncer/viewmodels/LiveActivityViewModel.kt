@@ -13,6 +13,7 @@ import com.tanush.bouncer.utils.TimelineEventExtractor
 import com.tanush.bouncer.utils.bouncerExceptionHandler
 import com.tanush.bouncer.data.CricBuzzMatchRepository
 import com.tanush.bouncer.data.MatchRepository
+import com.tanush.bouncer.data.remote.WinProbabilityStore
 import com.tanush.bouncer.network.CricBuzzUrls
 import com.tanush.bouncer.services.LiveNotificationManager
 import com.tanush.bouncer.services.MatchCacheService
@@ -557,7 +558,7 @@ class LiveActivityViewModel(
 
             manager.showLiveMatchNotification(
                 match = match,
-                winProbability = match.winProbability.toFloat() / 100f,
+                winProbability = match.winProbabilityFraction,
                 lastEvent = lastEvent,
                 batsmen = batsmenInfo,
                 bowler = bowlerInfo,
@@ -642,44 +643,36 @@ class LiveActivityViewModel(
         }
     }
 
-    private fun impactForEvent(eventType: ProbabilityEventType): Double = when (eventType) {
-        ProbabilityEventType.WICKET -> IMPACT_WICKET
-        ProbabilityEventType.BOUNDARY -> IMPACT_BOUNDARY
-        ProbabilityEventType.DOT_BALL -> IMPACT_DOT
-        ProbabilityEventType.OTHER -> 0.0
-    }
-
+    /**
+     * Record a key moment from commentary.
+     *
+     * This used to be a second win-probability model: it took the on-device heuristic as a base,
+     * added a fixed delta per event type (wicket/boundary/dot) and wrote the result back into the
+     * match. That made the displayed number the output of two different models layered on each
+     * other, and it drifted further from the real one with every ball. The probability now comes
+     * from the server alone; this timeline records WHAT happened, not what it is worth.
+     */
     private fun updateProbabilityEventsFromCommentary(matchId: String, commentary: String) {
         val match = _currentMatches.value.find { it.id == matchId } ?: return
-
-        // Prefer scraped ball data; fall back to commentary parsing when not yet refreshed
         val eventType = classifyProbabilityEvent(matchId, commentary)
-        val eventImpact = impactForEvent(eventType)
 
         val currentEvents = _probabilityEvents.value[matchId].orEmpty()
-        val baseProb = match.calculateHeuristicProbability()
-        val newProbability = (baseProb + eventImpact).coerceIn(MIN_PROB, MAX_PROB)
+        val probability = match.winProbability ?: return
         val ball = currentEvents.size
 
         val newEvent = ProbabilityEvent(
             timestamp = Date(),
             ball = ball,
             over = ball / 6,
-            probability = newProbability,
+            probability = probability,
             eventType = eventType,
             description = commentary.take(100),
-            impact = newProbability - (currentEvents.lastOrNull()?.probability ?: baseProb),
+            impact = probability - (currentEvents.lastOrNull()?.probability ?: probability),
         )
 
         // Keep only last 300 events (50 overs worth) to bound memory.
-        val trimmedEvents = (currentEvents + newEvent).takeLast(MAX_PROBABILITY_EVENTS)
-
-        _probabilityEvents.value = _probabilityEvents.value + (matchId to trimmedEvents)
-
-        // Emit a new list so Compose recomposes win-probability-bound widgets.
-        _currentMatches.value = _currentMatches.value.map { m ->
-            if (m.id == matchId) m.copy(winProbability = newProbability) else m
-        }
+        _probabilityEvents.value =
+            _probabilityEvents.value + (matchId to (currentEvents + newEvent).takeLast(MAX_PROBABILITY_EVENTS))
     }
 
     fun getAICommentaryForMatch(matchId: String): String? = _aiCommentary.value[matchId]
@@ -697,8 +690,16 @@ class LiveActivityViewModel(
         Sentry.metrics().gauge("live.matches.count", distinctMatches.size.toDouble())
         Sentry.metrics().count("live.poll.success", 1.0)
 
+        // Win probability is computed server-side by bouncer-match-sync and published as one
+        // aggregate file; the device only joins it on. A match the server has no number for keeps
+        // a null probability and renders no bar.
+        WinProbabilityStore.refresh()
         val matchesWithProbability = distinctMatches.map { match ->
-            if (match.isLive) match.copy(winProbability = match.calculateHeuristicProbability()) else match
+            when {
+                match.isCompleted -> match.copy(winProbability = match.resolvedWinProbability())
+                match.isLive -> match.copy(winProbability = WinProbabilityStore.forMatch(match.id))
+                else -> match
+            }
         }
 
         MatchCacheService.updateCache(matchesWithProbability, status)

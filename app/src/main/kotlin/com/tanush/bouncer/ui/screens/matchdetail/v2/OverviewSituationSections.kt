@@ -41,7 +41,7 @@ internal fun LazyListScope.overviewHeaderSections(
     hasAnyContent: Boolean,
     currentRunRate: String?,
     requiredRunRate: String?,
-    heuristicProb: Double,
+    winProb: Double?,
 ) {
     if (!hasAnyContent) {
         item(key = "no_data") { OverviewNoDataMessage(isUpcoming = isUpcoming) }
@@ -49,10 +49,10 @@ internal fun LazyListScope.overviewHeaderSections(
     if (!match.isLive && match.currentStatus.isNotBlank() && !isUpcoming) {
         item(key = "match_situation") { MatchSituationCard(match, isCompleted) }
     }
-    val hasWinPct = heuristicProb != 50.0
+    val hasWinPct = winProb != null
     if (currentRunRate != null || requiredRunRate != null || hasWinPct) {
         item(key = "quick_stats") {
-            QuickStatsRow(match, currentRunRate, requiredRunRate, heuristicProb, hasWinPct)
+            QuickStatsRow(match, currentRunRate, requiredRunRate, winProb ?: 0.0, hasWinPct)
         }
     }
 }

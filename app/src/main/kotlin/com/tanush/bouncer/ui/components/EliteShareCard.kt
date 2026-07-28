@@ -70,7 +70,9 @@ data class ShareCardData(
     val matchStatus: String,
     val matchType: String,
     val venue: String? = null,
-    val winProbability: Float = 0.5f,
+    // Null when the server supplied no probability — the share card then omits the bar rather
+    // than printing a fabricated 50/50.
+    val winProbability: Float? = null,
     val keyPlayer: String? = null,
     val keyPlayerStat: String? = null,
     val isLive: Boolean = false
@@ -321,11 +323,13 @@ fun EliteShareCardPreview(
             Spacer(modifier = Modifier.height(20.dp))
             
             // Win Probability Bar
-            WinProbabilityShareBar(
-                probability = data.winProbability,
-                team1Name = data.team1Name,
-                team2Name = data.team2Name
-            )
+            data.winProbability?.let { probability ->
+                WinProbabilityShareBar(
+                    probability = probability,
+                    team1Name = data.team1Name,
+                    team2Name = data.team2Name
+                )
+            }
             
             // Key Player Highlight
             data.keyPlayer?.let { player ->
@@ -647,44 +651,46 @@ object ShareCardGenerator {
         
         currentY += 120f
         
-        // Win Probability Bar
-        val barWidth = width * 0.8f
-        val barHeight = 24f
-        val barLeft = (width - barWidth) / 2
-        
-        // Background
-        paint.color = 0xFF0F0F0F.toInt()
-        canvas.drawRoundRect(
-            RectF(barLeft, currentY, barLeft + barWidth, currentY + barHeight),
-            barHeight / 2, barHeight / 2, paint
-        )
-        
-        // Team 1 Progress
-        val team1Width = barWidth * data.winProbability
-        paint.shader = LinearGradient(
-            barLeft, 0f, barLeft + team1Width, 0f,
-            intArrayOf(0xFFB39800.toInt(), 0xFFFFD700.toInt()),
-            null,
-            Shader.TileMode.CLAMP
-        )
-        canvas.drawRoundRect(
-            RectF(barLeft, currentY, barLeft + team1Width, currentY + barHeight),
-            barHeight / 2, barHeight / 2, paint
-        )
-        paint.shader = null
-        
-        currentY += barHeight + 40f
-        
-        // Probability Labels
-        paint.textSize = 32f
-        paint.textAlign = Paint.Align.LEFT
-        paint.color = 0xFF22C55E.toInt()
-        canvas.drawText("${(data.winProbability * 100).toInt()}%", barLeft, currentY, paint)
-        
-        paint.textAlign = Paint.Align.RIGHT
-        paint.color = 0xFFEF4444.toInt()
-        canvas.drawText("${((1 - data.winProbability) * 100).toInt()}%", barLeft + barWidth, currentY, paint)
-        
+        // Win Probability Bar — omitted entirely when the server supplied no probability.
+        data.winProbability?.let { probability ->
+            val barWidth = width * 0.8f
+            val barHeight = 24f
+            val barLeft = (width - barWidth) / 2
+
+            // Background
+            paint.color = 0xFF0F0F0F.toInt()
+            canvas.drawRoundRect(
+                RectF(barLeft, currentY, barLeft + barWidth, currentY + barHeight),
+                barHeight / 2, barHeight / 2, paint
+            )
+
+            // Team 1 Progress
+            val team1Width = barWidth * probability
+            paint.shader = LinearGradient(
+                barLeft, 0f, barLeft + team1Width, 0f,
+                intArrayOf(0xFFB39800.toInt(), 0xFFFFD700.toInt()),
+                null,
+                Shader.TileMode.CLAMP
+            )
+            canvas.drawRoundRect(
+                RectF(barLeft, currentY, barLeft + team1Width, currentY + barHeight),
+                barHeight / 2, barHeight / 2, paint
+            )
+            paint.shader = null
+
+            currentY += barHeight + 40f
+
+            // Probability Labels
+            paint.textSize = 32f
+            paint.textAlign = Paint.Align.LEFT
+            paint.color = 0xFF22C55E.toInt()
+            canvas.drawText("${(probability * 100).toInt()}%", barLeft, currentY, paint)
+
+            paint.textAlign = Paint.Align.RIGHT
+            paint.color = 0xFFEF4444.toInt()
+            canvas.drawText("${((1 - probability) * 100).toInt()}%", barLeft + barWidth, currentY, paint)
+        }
+
         // Bouncer Branding at bottom
         paint.color = 0xFFFFD700.toInt()
         paint.textSize = 48f

@@ -49,16 +49,18 @@ import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 
 internal fun LazyListScope.overviewWinProbability(
     match: CricketMatch,
-    heuristicProb: Double,
+    winProb: Double?,
     probabilityHistory: List<WinProbabilityPoint>,
     currentRunRate: String?,
     requiredRunRate: String?,
 ) {
-    if (heuristicProb != 50.0 && match.teams.size >= 2) {
+    // Null means the server has no probability for this match. The previous `!= 50.0` test also
+    // suppressed the hero for a genuinely even match, since 50 was both the sentinel and a value.
+    if (winProb != null && match.teams.size >= 2) {
         item(key = "win_prob") {
             PremiumWinProbabilityHero(
                 team1Name = match.teams[0].acronym.ifBlank { match.teams[0].name.take(3).uppercase() },
-                team1Probability = (heuristicProb.toFloat() / 100f).coerceIn(0.05f, 0.95f),
+                team1Probability = (winProb.toFloat() / 100f).coerceIn(0.05f, 0.95f),
             )
         }
     }

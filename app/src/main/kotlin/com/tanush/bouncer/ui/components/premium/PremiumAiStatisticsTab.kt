@@ -43,20 +43,13 @@ import com.tanush.bouncer.ui.theme.*
 fun PremiumAiStatisticsTab(match: CricketMatch) {
     val scrollState = rememberScrollState()
     // This tab narrates the BATTING side ("$battingTeam holding strong advantage"), so it reads
-    // the batting-oriented value. calculateHeuristicProbability() is team-1-oriented and was
-    // wrong here whenever teams[1] was at the crease.
-    val winProb = match.winProbability().probability.toFloat().coerceIn(5f, 95f)
+    // the batting-oriented value. The stored probability is team-1-oriented and would be inverted
+    // here whenever teams[1] is at the crease.
+    val winProb = match.battingWinProbability?.toFloat()?.coerceIn(5f, 95f)
     val crr = match.score?.currentRunRate ?: "--"
     val rrr = match.score?.requiredRunRate ?: "--"
-    val probDelta = winProb - 50f
-    val probDeltaStr = if (probDelta >= 0) "+${probDelta.toInt()}" else "${probDelta.toInt()}"
     val battingTeam = match.teams.firstOrNull { it.isBatting }?.acronym
         ?: match.teams.firstOrNull()?.acronym ?: "BAT"
-    val insightText = when {
-        winProb > 65 -> "$battingTeam holding strong advantage — ${winProb.toInt()}% win probability"
-        winProb < 35 -> "bowling side dominant — $battingTeam at ${winProb.toInt()}% win probability"
-        else -> "match finely balanced — ${winProb.toInt()}% win probability"
-    }
 
     Column(
         modifier = Modifier
@@ -65,13 +58,28 @@ fun PremiumAiStatisticsTab(match: CricketMatch) {
             .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(32.dp)
     ) {
-        AiImpactHero(winProb)
-        InsightPill(insightText)
-        ValueAddedChart(winProb, probDeltaStr)
+        // Every panel here is a presentation of the win probability, so with no number there is
+        // nothing honest to draw. The run-rate duel does not depend on it and still renders.
+        winProb?.let { ProbabilityPanels(it, battingTeam) }
         DuelMetricsRow(crr, rrr)
-        PredictiveInsightCard(winProb)
+        winProb?.let { PredictiveInsightCard(it) }
         Spacer(modifier = Modifier.height(140.dp))
     }
+}
+
+@Composable
+private fun ProbabilityPanels(winProb: Float, battingTeam: String) {
+    val probDelta = winProb - 50f
+    val probDeltaStr = if (probDelta >= 0) "+${probDelta.toInt()}" else "${probDelta.toInt()}"
+    AiImpactHero(winProb)
+    InsightPill(
+        when {
+            winProb > 65 -> "$battingTeam holding strong advantage — ${winProb.toInt()}% win probability"
+            winProb < 35 -> "bowling side dominant — $battingTeam at ${winProb.toInt()}% win probability"
+            else -> "match finely balanced — ${winProb.toInt()}% win probability"
+        }
+    )
+    ValueAddedChart(winProb, probDeltaStr)
 }
 
 @Composable

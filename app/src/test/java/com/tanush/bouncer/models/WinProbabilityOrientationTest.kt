@@ -1,20 +1,20 @@
 package com.tanush.bouncer.models
 
-import com.tanush.bouncer.analysis.CricketConstants
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertTrue
+import org.junit.Assert.assertNull
 import org.junit.Test
 
 /**
- * The orientation half of the win-probability rebuild: which team the number belongs to.
+ * Win probability is computed server-side and stored oriented to `teams[0]`. These cover the two
+ * things the device still does with it: re-orienting to the batting side, and reading a finished
+ * match's result.
  */
 class WinProbabilityOrientationTest {
 
-    private fun team(name: String, acronym: String, score: String, batting: Boolean) =
+    private fun team(name: String, batting: Boolean = false, acronym: String = "") =
         CricketMatch.Team(
             name = name,
-            score = score,
+            score = "",
             status = "",
             isBatting = batting,
             logoUrl = null,
@@ -22,155 +22,115 @@ class WinProbabilityOrientationTest {
         )
 
     private fun match(
-        matchType: String = "T20",
+        team1: CricketMatch.Team,
+        team2: CricketMatch.Team,
+        probability: Double? = null,
         status: String = "Live",
-        currentStatus: String = "India need 45 runs",
-        battingTeamIndex: Int = 0,
-        battingScore: String = "120/3",
-        overs: String? = "15.0",
-        requiredRunRate: String? = "9.0",
-        team1: String = "India",
-        team2: String = "England",
+        currentStatus: String = "",
     ) = CricketMatch(
         id = "1",
-        seriesId = "s1",
-        matchTitle = "$team1 vs $team2",
-        matchType = matchType,
+        seriesId = "s",
+        matchTitle = "${team1.name} vs ${team2.name}",
+        matchType = "T20",
         status = status,
-        teams = listOf(
-            team(team1, "IND", if (battingTeamIndex == 0) battingScore else "165/8", battingTeamIndex == 0),
-            team(team2, "ENG", if (battingTeamIndex == 1) battingScore else "165/8", battingTeamIndex == 1),
-        ),
-        venue = "Venue",
-        date = "2026-07-25",
-        matchTime = "19:30",
-        score = CricketMatch.MatchScore(
-            currentInnings = "2",
-            batsmen = emptyList(),
-            bowlers = emptyList(),
-            overs = overs,
-            currentRunRate = "8.0",
-            requiredRunRate = requiredRunRate,
-            lastWicket = null,
-            recentBalls = null,
-        ),
+        teams = listOf(team1, team2),
+        venue = "",
+        date = "",
+        matchTime = "",
+        score = null,
         currentStatus = currentStatus,
         info = "",
+        winProbability = probability,
     )
 
-    // ── The inversion bug ──
+    // --- batting-side orientation ------------------------------------------
 
     @Test
-    fun `probability is reported against the team that is actually batting`() {
-        val team1Batting = match(battingTeamIndex = 0)
-        val team2Batting = match(battingTeamIndex = 1)
-
-        assertEquals(0, team1Batting.winProbability().teamIndex)
-        assertEquals(1, team2Batting.winProbability().teamIndex)
+    fun `batting probability is the stored value when team 1 bats`() {
+        val m = match(team("India", batting = true), team("Australia"), probability = 70.0)
+        assertEquals(70.0, m.battingWinProbability!!, 1e-9)
     }
 
     @Test
-    fun `forTeam1 inverts when team 2 is batting`() {
-        // REGRESSION: calculateHeuristicProbability() returned the batting side's probability but
-        // was rendered as team 1's, so this case displayed the wrong team's number entirely.
-        val team1Batting = match(battingTeamIndex = 0)
-        val team2Batting = match(battingTeamIndex = 1)
-
-        val batting = team1Batting.winProbability().probability
-        assertEquals(batting, team1Batting.calculateHeuristicProbability(), 0.001)
-        assertEquals(100.0 - batting, team2Batting.calculateHeuristicProbability(), 0.001)
+    fun `batting probability is inverted when team 2 bats`() {
+        // The defect this guards: the number was reported as team 1's while being computed from
+        // the batting side, so it was backwards whenever teams[1] was at the crease.
+        val m = match(team("India"), team("Australia", batting = true), probability = 70.0)
+        assertEquals(30.0, m.battingWinProbability!!, 1e-9)
     }
 
     @Test
-    fun `symmetry - swapping which side bats mirrors the team-1 probability`() {
-        val a = match(battingTeamIndex = 0).calculateHeuristicProbability()
-        val b = match(battingTeamIndex = 1).calculateHeuristicProbability()
-        assertEquals(100.0, a + b, 0.001)
-    }
-
-    // ── Undetermined rather than guessed ──
-
-    @Test
-    fun `a Test match is undetermined, not scored on a guessed T20 budget`() {
-        val test = match(matchType = "Test", overs = "140.3", requiredRunRate = "3.2")
-        assertFalse(test.winProbability().isDetermined)
-        assertEquals(WinProbability.EVEN, test.calculateHeuristicProbability(), 0.001)
+    fun `batting probability is null when nobody is batting`() {
+        assertNull(match(team("India"), team("Australia"), probability = 70.0).battingWinProbability)
     }
 
     @Test
-    fun `an unrecognised format is undetermined`() {
-        assertFalse(match(matchType = "Exhibition Game").winProbability().isDetermined)
+    fun `batting probability is null when there is no probability`() {
+        assertNull(match(team("India", batting = true), team("Australia")).battingWinProbability)
     }
 
-    @Test
-    fun `unparseable overs are undetermined rather than silently wrong`() {
-        assertFalse(match(overs = null).winProbability().isDetermined)
-        assertFalse(match(overs = "not overs").winProbability().isDetermined)
-    }
+    // --- completed matches --------------------------------------------------
 
     @Test
-    fun `decorated overs strings parse correctly`() {
-        // REGRESSION: split(".") with toIntOrNull() ?: 0 read "19.5 Ov" as 114 balls, not 119.
-        assertEquals(119, CricketConstants.ballsFromOvers("19.5 Ov"))
-        assertEquals(119, CricketConstants.ballsFromOvers("(19.5)"))
-        assertEquals(119, CricketConstants.ballsFromOvers("19.5"))
-        assertEquals(114, CricketConstants.ballsFromOvers("19"))
-        assertEquals(null, CricketConstants.ballsFromOvers("19.7")) // 7 balls is not valid notation
-        assertEquals(null, CricketConstants.ballsFromOvers("Ov"))
-    }
-
-    // ── Completed matches ──
-
-    @Test
-    fun `a completed match credits the winner named in the result`() {
-        val completed = match(
+    fun `a completed match resolves from the result string, not the server`() {
+        val m = match(
+            team("India"), team("Australia"),
+            probability = null,
             status = "Complete",
-            currentStatus = "England won by 5 wickets",
+            currentStatus = "India won by 5 wickets",
         )
-        val probability = completed.winProbability()
-        assertEquals(1, probability.teamIndex)
-        assertEquals(100.0, probability.probability, 0.001)
-        assertEquals(0.0, completed.calculateHeuristicProbability(), 0.001)
+        assertEquals(100.0, m.resolvedWinProbability()!!, 1e-9)
     }
 
     @Test
-    fun `team names are matched on word boundaries`() {
-        // "India" is a substring of "West Indies": a West Indies win must not credit India.
-        val completed = match(
+    fun `a team 2 win resolves to zero for team 1`() {
+        val m = match(
+            team("India"), team("Australia"),
             status = "Complete",
-            currentStatus = "West Indies won by 5 wickets",
-            team1 = "India",
-            team2 = "West Indies",
+            currentStatus = "Australia won by 3 runs",
         )
-        assertEquals(1, completed.winProbability().teamIndex)
+        assertEquals(0.0, m.resolvedWinProbability()!!, 1e-9)
+    }
+
+    @Test
+    fun `India does not win when West Indies do`() {
+        // "India" is a substring of "West Indies"; the match is word-anchored to prevent it.
+        val m = match(
+            team("India"), team("West Indies"),
+            status = "Complete",
+            currentStatus = "West Indies won by 7 wickets",
+        )
+        assertEquals(0.0, m.resolvedWinProbability()!!, 1e-9)
     }
 
     @Test
     fun `a drawn match is even`() {
-        val drawn = match(status = "Complete", currentStatus = "Match drawn")
-        assertEquals(WinProbability.EVEN, drawn.calculateHeuristicProbability(), 0.001)
-        assertTrue(drawn.winProbability().isDetermined)
-    }
-
-    // ── Confidence ──
-
-    @Test
-    fun `a chase is high confidence and a first innings is low`() {
-        assertEquals(
-            WinProbability.Confidence.HIGH,
-            match(requiredRunRate = "9.0").winProbability().confidence,
+        val m = match(
+            team("India"), team("Australia"),
+            status = "Complete",
+            currentStatus = "Match drawn",
         )
-        assertEquals(
-            WinProbability.Confidence.LOW,
-            match(requiredRunRate = null, currentStatus = "India 120/3 (15 Ov)")
-                .winProbability().confidence,
-        )
+        assertEquals(50.0, m.resolvedWinProbability()!!, 1e-9)
     }
 
     @Test
-    fun `undetermined is distinguishable from a computed even split`() {
-        val undetermined = match(matchType = "Test").winProbability()
-        assertEquals(WinProbability.EVEN, undetermined.forTeam1, 0.001)
-        assertFalse("must not look like a real 50-50", undetermined.isDetermined)
+    fun `an unreadable result yields null rather than a guess`() {
+        val m = match(
+            team("India"), team("Australia"),
+            status = "Complete",
+            currentStatus = "Result unclear",
+        )
+        assertNull(m.resolvedWinProbability())
+    }
+
+    @Test
+    fun `a live match passes the server value straight through`() {
+        val m = match(team("India", batting = true), team("Australia"), probability = 62.0)
+        assertEquals(62.0, m.resolvedWinProbability()!!, 1e-9)
+    }
+
+    @Test
+    fun `a live match with no server value stays null`() {
+        assertNull(match(team("India", batting = true), team("Australia")).resolvedWinProbability())
     }
 }

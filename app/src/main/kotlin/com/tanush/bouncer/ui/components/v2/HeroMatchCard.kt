@@ -159,9 +159,12 @@ fun HeroMatchCard(
                     }
                 }
 
-                // Win probability bar
-                val winProb = match.calculateHeuristicProbability()
-                if (winProb != 50.0 && match.teams.size >= 2) {
+                // Win probability bar. Null means the server has no number for this match —
+                // offline, not yet synced, or a format it declines to score — so the bar is
+                // omitted entirely. The old `!= 50.0` guard could not distinguish that from a
+                // genuinely even match.
+                val winProb = match.winProbability
+                if (winProb != null && match.teams.size >= 2) {
                     Spacer(Modifier.height(spacing.md))
                     HorizontalDivider(color = colors.divider)
                     Spacer(Modifier.height(spacing.sm))

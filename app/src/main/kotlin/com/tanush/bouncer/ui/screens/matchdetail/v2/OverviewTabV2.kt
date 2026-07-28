@@ -128,7 +128,7 @@ fun OverviewTabV2(
         commentary = commentary,
     )
     val hasOverData = derived.cumulativeScores.isNotEmpty() && match.teams.size >= 2
-    val heuristicProb = match.calculateHeuristicProbability()
+    val winProb = match.winProbability
     val hasAnyContent = hasAnyOverviewContent(
         match, batsmen, bowler, recentBalls, scorecard, commentary,
         probabilityHistory, matchFlow, headToHead, currentRunRate, requiredRunRate, isUpcoming,
@@ -144,12 +144,12 @@ fun OverviewTabV2(
     ) {
         overviewHeaderSections(
             match, isUpcoming, isCompleted, hasAnyContent,
-            currentRunRate, requiredRunRate, heuristicProb,
+            currentRunRate, requiredRunRate, winProb,
         )
         overviewLiveSituation(match, recentBalls, isMatchActive)
         overviewBatsmen(batsmen, isMatchActive, isCompleted, derived.fallbackBatsmen, derived.fallbackHasNotOut)
         overviewBowler(bowler, isMatchActive, isCompleted, scorecard)
-        overviewWinProbability(match, heuristicProb, probabilityHistory, currentRunRate, requiredRunRate)
+        overviewWinProbability(match, winProb, probabilityHistory, currentRunRate, requiredRunRate)
         overviewPhaseCards(match, matchFlow, derived.ppPhaseList, derived.matchPhases)
         overviewScoringCharts(
             match, hasOverData, derived.cumulativeScores, maxOver,

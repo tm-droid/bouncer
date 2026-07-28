@@ -3,15 +3,12 @@ package com.tanush.bouncer.models
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
 import com.google.gson.annotations.SerializedName
-import com.tanush.bouncer.analysis.CricketConstants
-import com.tanush.bouncer.analysis.WinProbabilityHeuristic
-import com.tanush.bouncer.utils.parseRuns
-import com.tanush.bouncer.utils.parseWickets
 import com.tanush.bouncer.utils.sentryBreadcrumb
 import io.sentry.SentryLevel
 
 // A drawn/tied/no-result match has no winner; both sides read as an even 50.
 private val RESULT_NO_WINNER = """\b(drawn|tied|no\s+result|abandon(ed)?)\b""".toRegex(RegexOption.IGNORE_CASE)
+private const val EVEN_PROBABILITY = 50.0
 
 sealed class MatchStatus {
     object Live : MatchStatus()
@@ -61,7 +58,19 @@ data class CricketMatch(
     val category: String? = null,
     val gender: String = "Men",
     val competitionType: String = "International",
-    val winProbability: Double = 50.0,
+    /**
+     * Win probability for `teams[0]`, 0..100, or null when the server has not supplied one.
+     *
+     * Never computed on device. It is produced by the bouncer-match-sync Appwrite function and
+     * arrives either in the `live-winprob` bucket file (match lists) or the match-live-detail
+     * realtime payload (detail screen). Null means "no number to show" — offline, a match not yet
+     * synced, or a format the model declines to score — and every consumer must render nothing
+     * rather than substituting 50.
+     *
+     * Null rather than a 50.0 default on purpose: 50 is also the genuine value for an even match,
+     * so a sentinel of 50 is indistinguishable from a real result.
+     */
+    val winProbability: Double? = null,
     // Toss and officials — populated when available from live match page
     val tossWinner: String? = null,
     val tossDecision: String? = null,
@@ -84,89 +93,45 @@ data class CricketMatch(
     val isUpcoming: Boolean
         get() = matchStatus == MatchStatus.Upcoming
 
+    /** [winProbability] as a 0..1 fraction for the widgets and notification views that want one. */
+    val winProbabilityFraction: Float?
+        get() = winProbability?.let { (it / 100.0).toFloat().coerceIn(0f, 1f) }
+
     /**
-     * Win probability with the side it belongs to made explicit.
+     * [winProbability] re-oriented to whichever side is batting, or null when there is no number
+     * or no side is marked as batting.
      *
-     * Prefer this over [calculateHeuristicProbability] wherever the batting side matters — the
-     * latter is a team-1-oriented convenience and cannot express "undetermined".
+     * The stored value is always team-1-oriented. Consumers that narrate the batting side must go
+     * through this rather than reading the field directly — mixing the two orientations is what
+     * made the old model report team 2's chances as team 1's.
      */
-    fun winProbability(): WinProbability =
-        if (isCompleted) completedWinProbability() else liveWinProbability()
-
-    /** Reads the winner out of the result string. */
-    private fun completedWinProbability(): WinProbability {
-        val combined = "$currentStatus $status"
-        if (RESULT_NO_WINNER.containsMatchIn(combined)) {
-            return WinProbability.forTeam(0, WinProbability.EVEN, WinProbability.Confidence.HIGH)
-        }
-        val winnerIndex = teams.indexOfFirst { team -> mentionsTeam(combined, team) }
-        return if (winnerIndex == -1) {
-            WinProbability.UNDETERMINED
-        } else {
-            WinProbability.forTeam(winnerIndex, 100.0, WinProbability.Confidence.HIGH)
-        }
-    }
-
-    /** Everything the heuristic needs, or null when the live payload cannot supply it. */
-    private class LiveSituation(
-        val battingIndex: Int,
-        val format: CricketConstants.MatchFormat,
-        val ballsBowled: Int,
-        val runs: Int?,
-        val wicketsLost: Int,
-        val requiredRunRate: Double?,
-    )
-
-    private fun liveSituation(): LiveSituation? {
-        val battingIndex = teams.indexOfFirst { it.isBatting }
-        if (battingIndex == -1) return null
-        val matchScore = score ?: return null
-        val ballsBowled = CricketConstants.ballsFromOvers(matchScore.overs) ?: return null
-        val battingScore = teams[battingIndex].score
-
-        return LiveSituation(
-            battingIndex = battingIndex,
-            // Format drives the ball budget. UNKNOWN and TEST have none, and the model declines
-            // to score rather than falling back to T20's 120 the way the previous version did.
-            format = CricketConstants.formatFromMatchType(matchType, matchTitle),
-            ballsBowled = ballsBowled,
-            runs = battingScore.takeIf { it.isNotBlank() }?.let(::parseRuns),
-            wicketsLost = battingScore.takeIf { it.isNotBlank() }?.let(::parseWickets) ?: 0,
-            requiredRunRate = matchScore.requiredRunRate?.toDoubleOrNull(),
-        )
-    }
-
-    private fun liveWinProbability(): WinProbability {
-        val situation = liveSituation() ?: return WinProbability.UNDETERMINED
-        val probability = with(situation) {
-            when {
-                requiredRunRate != null -> WinProbabilityHeuristic
-                    .evaluateChase(format, requiredRunRate, ballsBowled, wicketsLost)
-                runs != null -> WinProbabilityHeuristic
-                    .evaluateFirstInnings(format, runs, ballsBowled, wicketsLost)
+    val battingWinProbability: Double?
+        get() {
+            val probability = winProbability ?: return null
+            return when (teams.indexOfFirst { it.isBatting }) {
+                0 -> probability
+                1 -> 100.0 - probability
                 else -> null
             }
-        } ?: return WinProbability.UNDETERMINED
-
-        return WinProbability.forTeam(
-            teamIndex = situation.battingIndex,
-            probability = probability,
-            // A chase has a target to measure against; a first innings does not.
-            confidence = if (situation.requiredRunRate != null) {
-                WinProbability.Confidence.HIGH
-            } else {
-                WinProbability.Confidence.LOW
-            },
-        )
-    }
+        }
 
     /**
-     * Win probability oriented to `teams[0]`, 0..100. Returns 50.0 when undetermined.
+     * Win probability for a finished match, read straight out of the result string.
      *
-     * Note this is now genuinely team 1's probability. It previously returned the *batting*
-     * team's, so it was inverted whenever `teams[1]` was at the crease.
+     * The server does not score completed matches — there is nothing to model once the result is
+     * known — so this is the one place a probability is still derived locally. It is a reading of
+     * a stated fact, not a prediction.
      */
-    fun calculateHeuristicProbability(): Double = winProbability().forTeam1
+    fun resolvedWinProbability(): Double? {
+        if (!isCompleted) return winProbability
+        val combined = "$currentStatus $status"
+        if (RESULT_NO_WINNER.containsMatchIn(combined)) return EVEN_PROBABILITY
+        return when (teams.indexOfFirst { team -> mentionsTeam(combined, team) }) {
+            0 -> 100.0
+            1 -> 0.0
+            else -> null
+        }
+    }
 
     /**
      * Word-anchored so a team name cannot match inside a longer one — "India" is a substring of

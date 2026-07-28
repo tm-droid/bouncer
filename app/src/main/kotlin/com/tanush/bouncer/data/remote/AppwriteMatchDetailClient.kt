@@ -28,6 +28,11 @@ data class MatchLiveDetailPayload(
     val requiredRunRate: String? = null,
     val scorecard: Scorecard? = null,
     val status: String? = null,
+    // Win probability for the FIRST-INNINGS batting side, 0..1, matching the team1Score/team2Score
+    // convention above. Null when the server declined to score the match (a Test, an unknown
+    // format, or a pre-toss page with no miniscore) — render nothing rather than 50%.
+    val winProbabilityTeam1: Double? = null,
+    val winProbabilityConfidence: Double? = null,
 )
 
 data class DetailEvent(val matchId: String, val payload: MatchLiveDetailPayload)

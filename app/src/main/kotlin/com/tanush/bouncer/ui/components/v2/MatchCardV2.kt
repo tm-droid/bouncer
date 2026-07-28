@@ -71,7 +71,7 @@ fun MatchCardV2(
     var showContextMenu by remember { mutableStateOf(false) }
 
     val statusType = remember(match) { determineMatchStatus(match) }
-    val winProb = remember(match) { match.calculateHeuristicProbability() }
+    val winProb: Double? = match.winProbability
     val teamPalette = rememberMatchTeamPalette(
         match.teams.getOrNull(0)?.name,
         match.teams.getOrNull(1)?.name,
@@ -255,8 +255,10 @@ private fun MatchCardStatusLine(match: CricketMatch, teamPalette: MatchTeamPalet
 }
 
 @Composable
-private fun MatchCardWinProbBar(match: CricketMatch, winProb: Double, teamPalette: MatchTeamPalette) {
-    if (winProb == 50.0 || match.teams.size < 2) return
+private fun MatchCardWinProbBar(match: CricketMatch, winProb: Double?, teamPalette: MatchTeamPalette) {
+    // Null means the server produced no probability for this match; show nothing rather than an
+    // even split. The old `== 50.0` guard also hid genuinely even matches.
+    if (winProb == null || match.teams.size < 2) return
     val typography = BouncerThemeV2.typography
     val spacing = BouncerThemeV2.spacing
     Spacer(Modifier.height(spacing.sm))

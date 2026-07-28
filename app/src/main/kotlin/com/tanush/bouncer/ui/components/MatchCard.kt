@@ -196,10 +196,12 @@ fun MatchCard(
             }
             
             // ── NEW: Win Probability ────────────────────────────────────
-            if (match.isLive) {
+            // Null means the server produced no probability for this match — show nothing rather
+            // than an implied even split.
+            match.winProbability?.takeIf { match.isLive }?.let { probability ->
                 Spacer(modifier = Modifier.height(dimens.spacing.md))
                 WinProbabilityBar(
-                    probability = match.winProbability,
+                    probability = probability,
                     team1Color = TeamPrimaryColors.getTeamColor(match.teams.getOrNull(0)?.acronym ?: ""),
                     team2Color = TeamPrimaryColors.getTeamColor(match.teams.getOrNull(1)?.acronym ?: "")
                 )
