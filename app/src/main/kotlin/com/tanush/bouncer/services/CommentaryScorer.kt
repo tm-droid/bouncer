@@ -1,5 +1,6 @@
 package com.tanush.bouncer.services
 
+import com.tanush.bouncer.utils.startsWithBallNumber
 import io.sentry.Breadcrumb
 import io.sentry.Sentry
 import io.sentry.SentryLevel
@@ -38,9 +39,6 @@ class CommentaryScorer {
         "bowled", "lbw", "caught", "stumped", "run out", "no ball", "wide", "appeal"
     )
     
-    // Regex pattern for ball number format (e.g., "0.1", "18.5", "45.6")
-    private val ballNumberPattern = Regex("^\\d{1,2}\\.\\d\\s*[:,]?")
-    private val ballNumberLoosePattern = Regex("\\d{1,2}\\.\\d\\s")
     
     /**
      * Determines if the commentary is ball-by-ball content
@@ -51,8 +49,8 @@ class CommentaryScorer {
             if (snippet.isBlank()) return false
             val lower = snippet.lowercase().trim()
             if (nonBallKeywords.any { lower.contains(it) }) return false
-            return ballNumberPattern.containsMatchIn(snippet)
-                || snippet.contains(ballNumberLoosePattern)
+            // The unanchored loose variant this replaces read "45.2 runs per over" as ball 45.2.
+            return startsWithBallNumber(snippet)
                 || ballIndicatorKeywords.any { lower.contains(it) }
         } catch (e: Exception) {
             Sentry.captureException(e)

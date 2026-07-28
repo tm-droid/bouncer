@@ -6,6 +6,7 @@ import com.tanush.bouncer.analysis.CricketConstants
 import com.tanush.bouncer.data.remote.AppwriteClient
 import com.tanush.bouncer.network.HttpClientProvider
 import com.tanush.bouncer.utils.CommentaryFormatter
+import com.tanush.bouncer.utils.ballDigitOf
 import com.tanush.bouncer.utils.contentFingerprint
 import com.tanush.bouncer.utils.sentryBreadcrumb
 import io.sentry.Breadcrumb
@@ -81,7 +82,11 @@ class CommentaryFusionService(
 
     private fun selectPhase(ballNumber: Double, totalOvers: Int): PromptPhase {
         val completedOvers = ballNumber.toInt()
-        val ballsInCurrentOver = ((ballNumber * 10).toInt() % 10)
+        // Shared with the rest of the ball-notation handling. Rounds rather than truncates, which
+        // only matters for a ballNumber that reaches here with arithmetic drift rather than parsed
+        // straight from "18.5" — see ballDigitOf, which records that the IEEE-754 defect this was
+        // originally filed against does not actually exist.
+        val ballsInCurrentOver = ballDigitOf(ballNumber)
         val ballsBowled = completedOvers * CricketConstants.BALLS_PER_OVER + ballsInCurrentOver
         val totalBalls = totalOvers * CricketConstants.BALLS_PER_OVER
         val ballsRemaining = totalBalls - ballsBowled

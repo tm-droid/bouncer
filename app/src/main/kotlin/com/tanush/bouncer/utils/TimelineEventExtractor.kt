@@ -5,8 +5,6 @@ import com.tanush.bouncer.models.TimelineEventType
 
 object TimelineEventExtractor {
 
-    private val overPattern = Regex("^(\\d{1,2}\\.\\d)\\s")
-    private val ballNumberRegex = Regex("^\\s*(\\d{1,2}\\.\\d)")
     private val endOfOverPattern = Regex("end of over|over \\d+ complete", RegexOption.IGNORE_CASE)
 
     /**
@@ -71,25 +69,22 @@ object TimelineEventExtractor {
      *  CricBuzz sends progressive updates for the same ball; this keeps only the most complete.
      *  Internal so OverviewTabV2 and CommentaryTabV2 can reuse it. */
     internal fun deduplicateByBall(lines: List<String>): List<String> {
-        val ballPattern = Regex("^\\s*(\\d+\\.\\d+)")
         val normalized = lines.map {
             normalize(it).replace(' ', ' ').replace(Regex("[\\s\\p{Zs}]+"), " ").trim()
         }.filter { it.isNotBlank() }
         // Pass 1: group by ball number, keep longest (most complete progressive update)
         val bestByBall = mutableMapOf<String, String>()
         for (line in normalized) {
-            val m = ballPattern.find(line.trimStart())
-            if (m != null) {
-                val ball = m.groupValues[1]
+            val ball = ballNumberOf(line)
+            if (ball != null) {
                 val existing = bestByBall[ball]
                 if (existing == null || line.length > existing.length) bestByBall[ball] = line
             }
         }
         val seen = mutableSetOf<String>()
         val pass1 = normalized.mapNotNull { line ->
-            val m = ballPattern.find(line.trimStart())
-            if (m != null) {
-                val ball = m.groupValues[1]
+            val ball = ballNumberOf(line)
+            if (ball != null) {
                 if (ball !in seen) { seen.add(ball); bestByBall[ball] } else null
             } else {
                 val key = line.lowercase()
@@ -141,10 +136,7 @@ object TimelineEventExtractor {
         for (cleanLine in deduped) {
             if (cleanLine.isBlank()) continue
 
-            val overMatch = overPattern.find(cleanLine)
-            if (overMatch != null) {
-                currentOver = overMatch.groupValues[1].toFloatOrNull() ?: currentOver
-            }
+            ballNumberOf(cleanLine)?.toFloatOrNull()?.let { currentOver = it }
 
             val isWicket = detectBallType(cleanLine) == TimelineEventType.WICKET
 

@@ -1,5 +1,7 @@
 package com.tanush.bouncer.services
 
+import com.tanush.bouncer.utils.ballNumberOf
+import com.tanush.bouncer.utils.startsWithBallNumber
 import android.util.Log
 import com.tanush.bouncer.models.TimelineEventType
 import com.tanush.bouncer.network.CricBuzzScraper
@@ -19,12 +21,9 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.launch
-import java.util.regex.Pattern
 import kotlin.math.max
 import kotlin.math.min
 
-private val BALL_PREFIX_REGEX = Regex("^\\d+\\.\\d.*")
-private val BALL_NUMBER_PATTERN: Pattern = Pattern.compile("^(\\d{1,3}\\.\\d)")
 private const val TAG = "LiveCommentaryManager"
 
 class LiveCommentaryManager(
@@ -103,7 +102,7 @@ class LiveCommentaryManager(
     }
 
     private fun prefixBallNumber(ballNumber: String, text: String): String {
-        return if (ballNumber.isNotEmpty() && !text.trimStart().matches(BALL_PREFIX_REGEX)) {
+        return if (ballNumber.isNotEmpty() && !startsWithBallNumber(text)) {
             "$ballNumber $text"
         } else text
     }
@@ -316,7 +315,7 @@ class LiveCommentaryManager(
                 batsman = lastFetchedBatsman,
                 scoreContext = lastFetchedScore,
             )
-            if (!raw.trimStart().matches(BALL_PREFIX_REGEX)) "$ballNum $raw" else raw
+            if (!startsWithBallNumber(raw)) "$ballNum $raw" else raw
         } catch (e: Exception) {
             Sentry.captureException(e)
             "$ballNum ${CommentaryFusionService.FALLBACK_BALL_COMMENTARY}"
@@ -486,10 +485,7 @@ class LiveCommentaryManager(
         }
     }
 
-    private fun extractBallNumber(text: String): String? {
-        val matcher = BALL_NUMBER_PATTERN.matcher(text)
-        return if (matcher.find()) matcher.group(1) else null
-    }
+    private fun extractBallNumber(text: String): String? = ballNumberOf(text)
 
     private fun triggerAiInsight(commentary: String, matchId: String) {
         if (!aiInsightsEnabled) return

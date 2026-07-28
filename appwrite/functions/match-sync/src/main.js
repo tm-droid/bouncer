@@ -38,7 +38,11 @@ const SCAN_NEWEST = 30; // how many newest commentary items to look at
 const MAX_NEW_PER_MATCH = 10; // max LLM-backed rows to write per match per run
 const MAX_MATCHES = 12; // cap live matches processed per run
 
-const BALL_RE = /(\d{1,3}\.\d)/;
+// ANCHORED. Unanchored, this read "45.2 runs per over" as ball 45.2 and wrote a bogus row keyed on
+// a ball that had not been bowled. Every consumer of this pattern means "the line STARTS WITH a
+// ball number". Mirrors BALL_PREFIX in
+// app/src/main/kotlin/com/tanush/bouncer/utils/BallNotation.kt.
+const BALL_RE = /^\s*(\d{1,3}\.\d)/;
 // Bare section headers Cricbuzz emits as commentary items with no body — render as
 // pointless one-word lines (e.g. "Teams:", "Squads:"). "Drinks!" is a real break marker, kept.
 const JUNK_COMMENTARY_RE = /^(teams|squads|playing xi)\s*:?\s*$/i;
