@@ -1,5 +1,6 @@
 package com.tanush.bouncer.data
 
+import com.tanush.bouncer.utils.acronymFor
 import android.content.Context
 import android.content.SharedPreferences
 import com.tanush.bouncer.models.CricketMatch
@@ -227,7 +228,10 @@ object SearchRepository {
         return teamNames.mapNotNull { team ->
             val score = fuzzyMatchScore(query, team.lowercase())
             if (score > 0.4) {
-                val acronym = team.split(" ").mapNotNull { it.firstOrNull()?.uppercase() }.joinToString("")
+                // Shared with TeamAcronymManager. This file used to carry a second, incompatible
+                // initials algorithm that took every word including "of"/"Cricket" and imposed no
+                // length cap, so the same team abbreviated differently here than everywhere else.
+                val acronym = acronymFor(team)
                 SearchResult.TeamResult(team, acronym, logoUrlMap[team.lowercase()], score)
             } else null
         }

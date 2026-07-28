@@ -1,5 +1,6 @@
 package com.tanush.bouncer.managers
 
+import com.tanush.bouncer.utils.acronymFor
 import android.content.Context
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
@@ -21,21 +22,16 @@ object TeamAcronymManager {
 
     fun getAcronym(teamName: String): String {
         try {
-            return acronyms[teamName] ?: generateFallbackAcronym(teamName)
-        } catch (e: Exception) {
-            Sentry.captureException(e)
-            throw e
-        }
-    }
-
-    private fun generateFallbackAcronym(teamName: String): String {
-        try {
-            // Fallback: First 3 letters uppercase
-            return if (teamName.length >= 3) {
-                teamName.substring(0, 3).uppercase()
-            } else {
-                teamName.uppercase()
-            }
+            // The curated map wins, but its lookup is now case-insensitive: it was an exact-key
+            // match, so a scraper returning "royal challengers bengaluru" missed the entry
+            // entirely and fell through to the fallback.
+            acronyms[teamName]?.let { return it }
+            acronyms.entries.firstOrNull { it.key.equals(teamName, ignoreCase = true) }
+                ?.let { return it.value }
+            // Initials of the significant words. The old fallback took the first three letters,
+            // which gave "Royal Challengers Bengaluru" -> "ROY", made both Sunrisers franchises
+            // "SUN", and threw on any name shorter than three characters.
+            return acronymFor(teamName)
         } catch (e: Exception) {
             Sentry.captureException(e)
             throw e

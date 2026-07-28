@@ -2,11 +2,18 @@ package com.tanush.bouncer.services
 
 import com.tanush.bouncer.data.local.entities.HighlightEntity
 import com.tanush.bouncer.data.local.entities.MatchEntity
+import com.tanush.bouncer.utils.daysBetween
 import kotlin.math.max
 import kotlin.math.min
 
 object HighlightFuzzyMatcher {
     private const val THRESHOLD = 65
+
+    // Relative weight of each signal. Scores are normalised over whichever are available, so these
+    // are ratios rather than a budget that must total 100.
+    private const val TEAMS_WEIGHT = 60.0
+    private const val LEAGUE_WEIGHT = 20.0
+    private const val DATE_WEIGHT = 20.0
 
     fun matchHighlightToBouncerMatch(
         highlight: HighlightEntity,
@@ -37,65 +44,83 @@ object HighlightFuzzyMatcher {
         return ""
     }
 
+    /**
+     * Agreement between a highlight and a match, 0–100.
+     *
+     * Normalised over the signals actually available rather than summed against a fixed 100.
+     * Removing the old blank-league freebie (see [leagueScore]) would otherwise have docked 20
+     * points from every candidate whose league name is missing, silently pushing real matches
+     * below THRESHOLD. With normalisation, an unavailable signal neither helps nor hurts, and
+     * THRESHOLD keeps meaning "65% agreement across what we could compare".
+     */
     private fun scoreMatch(highlight: HighlightEntity, match: MatchEntity): Int {
-        var score = 0
-
         val t1 = match.team1Name.takeIf { it.isNotBlank() } ?: parseTeamFromTitle(match.matchTitle, 0)
         val t2 = match.team2Name.takeIf { it.isNotBlank() } ?: parseTeamFromTitle(match.matchTitle, 1)
 
-        // Home team (0–30): try both home and away since Highlightly may swap order
-        val homeVsTeam1 = jaroWinkler(highlight.homeTeam.lowercase().trim(), t1.lowercase().trim())
-        val homeVsTeam2 = jaroWinkler(highlight.homeTeam.lowercase().trim(), t2.lowercase().trim())
-        val homeScore = maxOf(homeVsTeam1, homeVsTeam2)
-        score += (homeScore * 30).toInt()
+        var earned = 0.0
+        var available = 0.0
 
-        // Away team (0–30)
-        val awayVsTeam1 = jaroWinkler(highlight.awayTeam.lowercase().trim(), t1.lowercase().trim())
-        val awayVsTeam2 = jaroWinkler(highlight.awayTeam.lowercase().trim(), t2.lowercase().trim())
-        val awayScore = maxOf(awayVsTeam1, awayVsTeam2)
-        score += (awayScore * 30).toInt()
+        // Teams are always comparable — a highlight with no team names at all matches nothing.
+        earned += teamsScore(highlight, t1, t2)
+        available += TEAMS_WEIGHT
 
-        // League vs match title (0–20): matchTitle usually contains the series/league name
+        leagueScore(highlight, match)?.let {
+            earned += it
+            available += LEAGUE_WEIGHT
+        }
+        scoreDateProximity(highlight.matchStartDate, match.date)?.let {
+            earned += it
+            available += DATE_WEIGHT
+        }
+
+        if (available <= 0.0) return 0
+        return (earned / available * 100).toInt()
+    }
+
+    /**
+     * Team-name agreement, 0–60.
+     *
+     * The two sides are paired EXCLUSIVELY: each of the highlight's teams is assigned to a
+     * different one of the match's teams, and we take the better of the two possible pairings.
+     * Previously home and away each took `max()` over both match teams independently, so one
+     * strong name could satisfy both terms and earn the full 60 on its own.
+     */
+    private fun teamsScore(highlight: HighlightEntity, t1: String, t2: String): Double {
+        val home = highlight.homeTeam.lowercase().trim()
+        val away = highlight.awayTeam.lowercase().trim()
+        val a = t1.lowercase().trim()
+        val b = t2.lowercase().trim()
+
+        val straight = jaroWinkler(home, a) + jaroWinkler(away, b)
+        val swapped = jaroWinkler(home, b) + jaroWinkler(away, a)
+        // Highlightly may list the sides in either order, so the better pairing wins — but only
+        // one pairing is used, so each match team is consumed once.
+        return maxOf(straight, swapped) / 2.0 * TEAMS_WEIGHT
+    }
+
+    /** League/series agreement against the match title, or null when there is no league to compare. */
+    private fun leagueScore(highlight: HighlightEntity, match: MatchEntity): Double? {
         val titleLower = match.matchTitle.lowercase()
         val leagueLower = highlight.leagueName.lowercase().trim()
-        val leagueScore = if (titleLower.contains(leagueLower) || leagueLower.contains(titleLower)) {
+        // A blank league name used to score a free 20 on every candidate:
+        // `titleLower.contains("")` is always true.
+        if (leagueLower.isEmpty() || titleLower.isEmpty()) return null
+        val score = if (titleLower.contains(leagueLower) || leagueLower.contains(titleLower)) {
             1.0
         } else {
             jaroWinkler(leagueLower, titleLower)
         }
-        score += (leagueScore * 20).toInt()
-
-        // Date proximity (0–20)
-        val dateScore = scoreDateProximity(highlight.matchStartDate, match.date)
-        score += dateScore
-
-        return score
+        return score * LEAGUE_WEIGHT
     }
 
-    private fun scoreDateProximity(highlightDate: String, matchDate: String): Int {
-        val hDate = extractDate(highlightDate)
-        val mDate = extractDate(matchDate)
-        if (hDate.isEmpty() || mDate.isEmpty()) return 0
-        return when {
-            hDate == mDate -> 20
-            areDatesAdjacent(hDate, mDate) -> 10
-            else -> 0
+    /** Date agreement, or null when either date is unparseable and so carries no information. */
+    private fun scoreDateProximity(highlightDate: String, matchDate: String): Double? =
+        when (daysBetween(highlightDate, matchDate)) {
+            null -> null
+            0L -> DATE_WEIGHT
+            1L -> DATE_WEIGHT / 2
+            else -> 0.0
         }
-    }
-
-    private fun extractDate(dateStr: String): String {
-        return dateStr.take(10)  // YYYY-MM-DD
-    }
-
-    private fun areDatesAdjacent(date1: String, date2: String): Boolean {
-        if (date1.isEmpty() || date2.isEmpty()) return false
-        return runCatching {
-            val d1 = date1.split("-").map { it.toInt() }
-            val d2 = date2.split("-").map { it.toInt() }
-            val diffDays = ((d1[0] - d2[0]) * 365 + (d1[1] - d2[1]) * 30 + (d1[2] - d2[2])).let { kotlin.math.abs(it) }
-            diffDays <= 1
-        }.getOrDefault(false)
-    }
 
     private fun jaroWinkler(s1: String, s2: String): Double {
         val jaro = jaro(s1, s2)
