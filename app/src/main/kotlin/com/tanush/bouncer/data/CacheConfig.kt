@@ -11,9 +11,15 @@ object CacheConfig {
     // 2.5 min: Appwrite poll-live-matches runs every 1 min; 150s gives a half-cycle buffer
     // so a slow or skipped run doesn't immediately fall through to direct Vercel polling.
     const val MATCH_CACHE_TTL_MS = 150_000L
-    // Appwrite Realtime reconnect backoff (exponential, reset on successful subscribe).
+    // Appwrite Realtime reconnect backoff (exponential + jittered, reset on successful subscribe).
     const val REALTIME_RECONNECT_MIN_MS = 2_000L
     const val REALTIME_RECONNECT_MAX_MS = 60_000L
+    // How often a subscribed client wakes to check that its socket is still delivering events.
+    const val REALTIME_HEARTBEAT_MS = 300_000L // 5 minutes
+    // Silence beyond this is treated as a dead socket and forces a resubscribe. Generous, because
+    // silence is ambiguous: a channel with no live match is quiet for legitimate reasons, and a
+    // resubscribe costs a websocket handshake but no billed reads.
+    const val REALTIME_STALE_TIMEOUT_MS = 1_800_000L // 30 minutes
     // Appwrite sentinel for rows that should never expire (completed-match commentary).
     const val AI_CACHE_PERMANENT_EXPIRY_ISO = "2099-01-01T00:00:00.000Z"
     // Any expiry more than a year out is treated as the permanent sentinel on read.

@@ -1,7 +1,9 @@
 package com.tanush.bouncer.data.remote
 
+import android.os.SystemClock
 import android.util.Log
 import com.tanush.bouncer.data.CacheConfig
+import com.tanush.bouncer.services.backoffDelayMs
 import io.appwrite.services.Realtime
 import io.appwrite.services.TablesDB
 import io.sentry.Sentry
@@ -10,10 +12,23 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.util.concurrent.atomic.AtomicBoolean
+
+/**
+ * Whether a subscription has been silent long enough to be presumed dead.
+ *
+ * Top-level and pure so it can be tested without an Appwrite client.
+ *
+ * @param lastEventAt an [android.os.SystemClock.elapsedRealtime] stamp, seeded at subscribe time so
+ *   a subscription that never delivers a single event is still covered. Zero or negative means the
+ *   clock was never armed, which is not staleness.
+ */
+internal fun isSubscriptionStale(lastEventAt: Long, now: Long, timeoutMs: Long): Boolean =
+    lastEventAt > 0L && now - lastEventAt >= timeoutMs
 
 abstract class AppwriteTableClient(private val tag: String) {
 
@@ -29,6 +44,8 @@ abstract class AppwriteTableClient(private val tag: String) {
         get() = AppwriteClient.client?.let { TablesDB(it) }
 
     @Volatile private var realtimeSubscription: Any? = null  // RealtimeSubscription handle
+    /** Written from the Realtime callback thread, read from the heartbeat coroutine. */
+    @Volatile private var lastEventAt = 0L
     private var realtimeFailureCount = 0
     protected val subscriptionStarted = AtomicBoolean(false)
     private val reconnectScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -45,7 +62,6 @@ abstract class AppwriteTableClient(private val tag: String) {
     // are not billed DB reads; any follow-up fetches they trigger go through guardedRead.
     protected fun startSubscriptionLoop(onEvent: (io.appwrite.models.RealtimeResponseEvent<Map<String, Any>>) -> Unit) {
         reconnectScope.launch {
-            var backoffMs = CacheConfig.REALTIME_RECONNECT_MIN_MS
             while (isActive) {
                 try {
                     val client = AppwriteClient.client ?: break
@@ -55,27 +71,60 @@ abstract class AppwriteTableClient(private val tag: String) {
                     val channel = "databases.$dbId.collections.$tableId.documents"
                     (realtimeSubscription as? java.io.Closeable)?.close()
                     realtimeSubscription = null
+                    // Armed before subscribing so a subscription that never delivers anything is
+                    // still measured from a real instant.
+                    lastEventAt = SystemClock.elapsedRealtime()
                     @Suppress("UNCHECKED_CAST")
                     realtimeSubscription = realtime.subscribe(channel) { response ->
+                        lastEventAt = SystemClock.elapsedRealtime()
                         @Suppress("UNCHECKED_CAST")
                         onEvent(response as io.appwrite.models.RealtimeResponseEvent<Map<String, Any>>)
                     }
-                    backoffMs = CacheConfig.REALTIME_RECONNECT_MIN_MS
                     realtimeFailureCount = 0
-                    // Park until scope cancellation or subscribe() throws. The Appwrite SDK manages
-                    // WebSocket reconnection internally; spinning subscribe() in a tight loop sends
-                    // thousands of frames/sec and floods the network.
-                    delay(Long.MAX_VALUE)
+                    awaitEventsOrStaleness()
                 } catch (e: CancellationException) {
                     throw e
                 } catch (e: Exception) {
                     realtimeSubscription = null
                     realtimeFailureCount++
+                    val backoffMs = backoffDelayMs(
+                        realtimeFailureCount,
+                        CacheConfig.REALTIME_RECONNECT_MIN_MS,
+                        CacheConfig.REALTIME_RECONNECT_MAX_MS,
+                    )
                     Log.w(tag, "Realtime subscription lost (#$realtimeFailureCount), reconnecting in ${backoffMs}ms: ${e.message}")
                     if (realtimeFailureCount % 3 == 0) Sentry.captureException(e)
                     delay(backoffMs)
-                    backoffMs = minOf(backoffMs * 2, CacheConfig.REALTIME_RECONNECT_MAX_MS)
                 }
+            }
+        }
+    }
+
+    /**
+     * Hold the subscription open, waking periodically to check it is still alive.
+     *
+     * This replaces `delay(Long.MAX_VALUE)`. That parked forever on the assumption — asserted in a
+     * comment and validated by nothing — that the Appwrite SDK always reconnects internally. If the
+     * socket died *inside* the SDK without throwing out of `subscribe()`, the catch below never fired
+     * and this client believed it was subscribed for the rest of the process's life, silently
+     * receiving nothing. Returning normally here drops back into the loop, which resubscribes.
+     *
+     * Silence is genuinely ambiguous — a channel with no live match is quiet for good reasons — so
+     * the timeout is deliberately generous and a false positive costs only a websocket handshake.
+     */
+    private suspend fun awaitEventsOrStaleness() {
+        while (currentCoroutineContext().isActive) {
+            delay(CacheConfig.REALTIME_HEARTBEAT_MS)
+            val stale = isSubscriptionStale(
+                lastEventAt,
+                SystemClock.elapsedRealtime(),
+                CacheConfig.REALTIME_STALE_TIMEOUT_MS,
+            )
+            if (stale) {
+                Log.w(tag, "Realtime subscription silent for ${CacheConfig.REALTIME_STALE_TIMEOUT_MS}ms — resubscribing")
+                (realtimeSubscription as? java.io.Closeable)?.close()
+                realtimeSubscription = null
+                return
             }
         }
     }

@@ -13,8 +13,12 @@ const val DEFAULT_MAX_BACKOFF_MS = 30_000L
 /** Base delay shared by the retry loops in the scrapers. */
 const val DEFAULT_BASE_BACKOFF_MS = 1000L
 
-/** Doublings before the growth stops; beyond this [backoffDelayMs] is governed by `maxMs` anyway. */
-private const val MAX_DOUBLINGS = 4
+/**
+ * Bound on the shift so `baseMs shl doublings` cannot overflow — Long shifts use only the low six
+ * bits of the count, so an unbounded attempt number would wrap around to a *small* delay. Set high
+ * enough that `maxMs` is always the effective ceiling rather than the shift being it.
+ */
+private const val MAX_DOUBLINGS = 30
 
 /**
  * Capped, jittered exponential backoff for a 1-based attempt number.
