@@ -1,6 +1,20 @@
 import { Client, Storage } from "node-appwrite";
 import { InputFile } from "node-appwrite/file";
 import AdmZip from "adm-zip";
+import {
+  MODEL_VERSION,
+  NUM_FEATURES,
+  FEATURE_NAMES,
+  chaseRows,
+  matchDate,
+  isSupportedMatch,
+  holdoutCutoffDate,
+  inningsTotals,
+  fitStandardizer,
+  applyStandardizer,
+  evaluateModel,
+  baseRate,
+} from "./training.js";
 
 const CRICSHEET_URL = "https://cricsheet.org/downloads/t20s_json.zip";
 const STATS_BUCKET_ID = process.env.STATS_BUCKET_ID ?? "cricket-stats";
@@ -13,6 +27,21 @@ const BATCH_SIZE = 256;
 const LEARNING_RATE = 0.1;
 const L2_LAMBDA = 0.001;
 const MAX_ROWS = 200_000;
+const MAX_HOLDOUT_ROWS = 50_000;
+const HOLDOUT_FRACTION = 0.2;
+
+const fmt = (v) => (v == null ? "n/a" : v.toFixed(4));
+
+/** Bounded-size sample of a stream, uniform over everything seen. */
+function reservoirPush(sink, row, cap) {
+  sink._seen = (sink._seen ?? 0) + 1;
+  if (sink.length < cap) {
+    sink.push(row);
+    return;
+  }
+  const idx = Math.floor(Math.random() * sink._seen);
+  if (idx < cap) sink[idx] = row;
+}
 
 export default async ({ req, res, log, error }) => {
   if (!process.env.APPWRITE_API_KEY) {
@@ -37,102 +66,136 @@ export default async ({ req, res, log, error }) => {
     return res.json({ error: e?.message }, 500);
   }
 
-  log("Pass 1: counting team win rates...");
-  const teamStats = {};
-  const h2hAccumulator = {};
-  // Pass 2 accumulators
-  const trainingRows = []; // { features: [5], label: 0|1 }
-  // For breakevenRR: sum runs and balls across all first innings
-  let firstInningsTotalRuns = 0;
-  let firstInningsTotalBalls = 0;
-
-  let parsed = 0;
-  let skipped = 0;
-
   const zip = new AdmZip(zipBuffer);
   zipBuffer = null; // hint GC — large buffer no longer needed once ZIP is loaded
 
-  for (const entry of zip.getEntries()) {
-    if (!entry.entryName.endsWith(".json") || entry.isDirectory) continue;
+  const jsonEntries = zip.getEntries().filter(
+    (e) => !e.isDirectory && e.entryName.endsWith(".json")
+  );
+
+  // ---------------------------------------------------------------------------
+  // Pass 1: read `info` only — collect match dates so the temporal split can be chosen, and
+  // accumulate H2H (descriptive, so it legitimately spans the whole corpus).
+  // ---------------------------------------------------------------------------
+  log("Pass 1: reading match info and choosing the temporal split...");
+  const h2hAccumulator = {};
+  const dates = [];
+  let parsed = 0;
+  let skipped = 0;
+
+  const readEntry = (entry) => JSON.parse(entry.getData().toString("utf8"));
+
+  for (const entry of jsonEntries) {
     try {
-      const content = entry.getData().toString("utf8");
-      const match = JSON.parse(content);
-      processMatch(match, teamStats, trainingRows, (runs, balls) => {
-        firstInningsTotalRuns += runs;
-        firstInningsTotalBalls += balls;
-      });
+      const match = readEntry(entry);
       processH2H(match, h2hAccumulator);
       parsed++;
+      if (isSupportedMatch(match?.info)) {
+        const d = matchDate(match.info);
+        if (d) dates.push(d);
+      }
     } catch (e) {
       if (skipped < 5) error(`Skipped ${entry.entryName}: ${e?.message}`);
       skipped++;
     }
   }
-  log(`Parsed ${parsed} matches, skipped ${skipped}`);
+  log(`Parsed ${parsed} matches, skipped ${skipped}, ${dates.length} datable T20s`);
 
-  // Finalize win rates
+  const cutoff = holdoutCutoffDate(dates, HOLDOUT_FRACTION);
+  if (cutoff) {
+    log(`Holdout window starts ${cutoff} (${Math.round(HOLDOUT_FRACTION * 100)}% of matches)`);
+  } else {
+    log("Too few datable matches for a holdout — training on everything, metrics are in-sample");
+  }
+  const inTrainWindow = (d) => cutoff == null || d == null || d < cutoff;
+
+  // ---------------------------------------------------------------------------
+  // Pass 2: team win rates from the TRAINING WINDOW ONLY.
+  //
+  // This is the leakage fix. Win rates used to be finalised over the entire corpus and then
+  // back-filled into every row's features[4], so a 2014 row carried the outcome of matches played
+  // in 2023 — the model could read the future through a feature that looked static.
+  // ---------------------------------------------------------------------------
+  log("Pass 2: accumulating team stats from the training window...");
+  const teamStats = {};
+  let firstInningsTotalRuns = 0;
+  let firstInningsTotalBalls = 0;
+
+  for (const entry of jsonEntries) {
+    let match;
+    try {
+      match = readEntry(entry);
+    } catch {
+      continue;
+    }
+    const info = match?.info;
+    if (!isSupportedMatch(info)) continue;
+
+    const training = inTrainWindow(matchDate(info));
+    // Descriptive per-team aggregates are published to clients for every match, but the winRate
+    // that feeds the model must not see the holdout.
+    accumulateTeamStats(match, teamStats, training);
+
+    if (training) {
+      const first = inningsTotals(match.innings?.[0]);
+      if (first.balls > 0) {
+        firstInningsTotalRuns += first.runs;
+        firstInningsTotalBalls += first.balls;
+      }
+    }
+  }
+
   for (const team of Object.values(teamStats)) {
-    team.winRate = team.matchesPlayed > 0 ? team.wins / team.matchesPlayed : 0.5;
-    delete team.wins; // not needed downstream
+    team.winRate = team.trainMatches > 0 ? team.trainWins / team.trainMatches : 0.5;
+    delete team.trainWins;
+    delete team.trainMatches;
   }
 
-  log(`Collected ${trainingRows.length} raw training rows`);
-
-  // Pass 2 back-fill: teamStrengthDiff is now computable since teamStats is finalised.
-  // We already computed and stored features[4] during match processing, but we used
-  // pre-finalised win rates (wins/matchesPlayed). Since processMatch is called mid-loop
-  // before all matches are processed, feature[4] will be imprecise. Re-derive it now.
-  // NOTE: To avoid this complexity we simply re-compute feature[4] from final winRates here.
-  for (const row of trainingRows) {
-    // row.battingTeam / row.bowlingTeam were stored temporarily for this pass.
-    const bWin = teamStats[row._battingTeam]?.winRate ?? 0.5;
-    const bwWin = teamStats[row._bowlingTeam]?.winRate ?? 0.5;
-    row.features[4] = bWin - bwWin;
-    // Clean up temporary fields
-    delete row._battingTeam;
-    delete row._bowlingTeam;
-  }
-
-  // Compute breakeven run rate from first innings data
   const breakevenRR = firstInningsTotalBalls > 0
     ? (firstInningsTotalRuns / firstInningsTotalBalls) * 6
     : 8.0;
-  log(`Breakeven RR from data: ${breakevenRR.toFixed(3)}`);
+  log(`Breakeven RR from training window: ${breakevenRR.toFixed(3)}`);
 
-  // Feature standardization
-  const NUM_FEATURES = 5;
-  const featureMeans = new Array(NUM_FEATURES).fill(0);
-  const featureStds = new Array(NUM_FEATURES).fill(1);
-  const n = trainingRows.length;
+  // ---------------------------------------------------------------------------
+  // Pass 3: build feature rows, split by match date.
+  // ---------------------------------------------------------------------------
+  log("Pass 3: building feature rows...");
+  const winRateFor = (team) => teamStats[team]?.winRate ?? 0.5;
+  const trainingRows = [];
+  const holdoutRows = [];
 
-  if (n > 0) {
-    // Compute means
-    for (const row of trainingRows) {
-      for (let j = 0; j < NUM_FEATURES; j++) {
-        featureMeans[j] += row.features[j];
-      }
+  for (const entry of jsonEntries) {
+    let match;
+    try {
+      match = readEntry(entry);
+    } catch {
+      continue;
     }
-    for (let j = 0; j < NUM_FEATURES; j++) featureMeans[j] /= n;
+    if (!isSupportedMatch(match?.info)) continue;
+    const rows = chaseRows(match, winRateFor);
+    if (rows.length === 0) continue;
 
-    // Compute stds
-    const variance = new Array(NUM_FEATURES).fill(0);
-    for (const row of trainingRows) {
-      for (let j = 0; j < NUM_FEATURES; j++) {
-        const diff = row.features[j] - featureMeans[j];
-        variance[j] += diff * diff;
-      }
-    }
-    for (let j = 0; j < NUM_FEATURES; j++) {
-      featureStds[j] = Math.sqrt(variance[j] / n) || 1;
-    }
-
-    // Standardize in place
-    for (const row of trainingRows) {
-      for (let j = 0; j < NUM_FEATURES; j++) {
-        row.features[j] = (row.features[j] - featureMeans[j]) / featureStds[j];
-      }
+    const sink = inTrainWindow(matchDate(match.info)) ? trainingRows : holdoutRows;
+    for (const row of rows) {
+      // Reservoir sampling keeps the row count bounded. Sampling is per-sink so the holdout is
+      // never starved by a large training set.
+      reservoirPush(sink, row, sink === trainingRows ? MAX_ROWS : MAX_HOLDOUT_ROWS);
     }
   }
+
+  log(`Rows: ${trainingRows.length} training, ${holdoutRows.length} holdout`);
+  if (holdoutRows.length === 0) {
+    log("WARNING: holdout is empty — reported metrics are in-sample only");
+  }
+
+  // Standardizer is fit on the training rows ONLY, then applied to both. Fitting it over all rows
+  // (as before) leaks the holdout's distribution into training.
+  const standardizer = fitStandardizer(trainingRows);
+  applyStandardizer(trainingRows, standardizer);
+  applyStandardizer(holdoutRows, standardizer);
+  const featureMeans = standardizer.means;
+  const featureStds = standardizer.stds;
+  const n = trainingRows.length;
 
   log(`Feature means: ${featureMeans.map(v => v.toFixed(4)).join(", ")}`);
   log(`Feature stds:  ${featureStds.map(v => v.toFixed(4)).join(", ")}`);
@@ -140,19 +203,45 @@ export default async ({ req, res, log, error }) => {
   // Train logistic regression via mini-batch gradient descent
   const { weights, bias } = trainLogisticRegression(trainingRows, log);
 
+  // Held-out metrics. The previous version reported training log-loss only, which cannot detect
+  // either overfitting or the leakage above.
+  const trainMetrics = evaluateModel(trainingRows, weights, bias);
+  const holdoutMetrics = evaluateModel(holdoutRows, weights, bias);
+  const holdoutBaseRate = baseRate(holdoutRows);
+  log(
+    `Train  — log-loss ${fmt(trainMetrics.logLoss)}, accuracy ${fmt(trainMetrics.accuracy)} (${trainMetrics.rows} rows)`
+  );
+  log(
+    `Holdout — log-loss ${fmt(holdoutMetrics.logLoss)}, accuracy ${fmt(holdoutMetrics.accuracy)} (${holdoutMetrics.rows} rows)`
+  );
+  if (holdoutBaseRate != null) {
+    log(`Holdout base rate (chasing side wins): ${fmt(holdoutBaseRate)} — accuracy must beat this`);
+  }
+
   // Upload model to Appwrite Storage
   const storage = new Storage(client);
   const modelObj = {
-    version: 2,
+    // v3: ballsRemainingFraction is now relative to the match's own innings budget rather than a
+    // hardcoded 120, and features[4] is computed from training-window win rates only. A v2 reader
+    // would misinterpret both, so win-probability refuses anything but v3 on its learned path.
+    version: MODEL_VERSION,
     weights,
     bias,
     featureMeans,
     featureStds,
-    featureNames: ["runRateRatio", "wicketsInHand", "ballsRemainingFraction", "deficitPressure", "teamStrengthDiff"],
+    featureNames: FEATURE_NAMES,
     breakevenRR,
     teamStats,
     trainingRows: n,
     epochs: EPOCHS,
+    holdout: {
+      cutoffDate: cutoff,
+      rows: holdoutMetrics.rows,
+      logLoss: holdoutMetrics.logLoss,
+      accuracy: holdoutMetrics.accuracy,
+      baseRate: holdoutBaseRate,
+    },
+    train: { logLoss: trainMetrics.logLoss, accuracy: trainMetrics.accuracy },
   };
   const modelJson = JSON.stringify(modelObj);
   const buffer = Buffer.from(modelJson, "utf8");
@@ -195,6 +284,13 @@ export default async ({ req, res, log, error }) => {
     teams: Object.keys(teamStats).length,
     h2hPairs,
     trainingRows: n,
+    holdoutRows: holdoutMetrics.rows,
+    holdoutCutoffDate: cutoff,
+    trainLogLoss: trainMetrics.logLoss,
+    trainAccuracy: trainMetrics.accuracy,
+    holdoutLogLoss: holdoutMetrics.logLoss,
+    holdoutAccuracy: holdoutMetrics.accuracy,
+    holdoutBaseRate,
     breakevenRR,
     weights,
     bias,
@@ -202,151 +298,54 @@ export default async ({ req, res, log, error }) => {
 };
 
 /**
- * Pass 1 + Pass 2 combined: update teamStats win rates and collect training rows from
- * 2nd-innings chases in completed T20/IT20 matches.
+ * Accumulate descriptive per-team aggregates.
  *
- * @param {object} raw - Cricsheet match JSON
- * @param {object} teamStats - mutable map of team → stats (accumulates across all calls)
- * @param {Array}  trainingRows - mutable array to push { features, label, _battingTeam, _bowlingTeam }
- * @param {Function} onFirstInnings - called with (runs, balls) for each first innings processed
+ * [countTowardWinRate] gates only the win/played counters that feed the model's teamStrengthDiff
+ * feature. Runs and wickets are descriptive and published to clients for every match, but the win
+ * rate must come from the training window alone — computing it over the whole corpus and then
+ * back-filling it into every row (as this function's predecessor did) let a 2014 row carry the
+ * outcome of a 2023 match.
  */
-function processMatch(raw, teamStats, trainingRows, onFirstInnings) {
+function accumulateTeamStats(raw, teamStats, countTowardWinRate) {
   const info = raw?.info;
-  if (!info) return;
-  if (info.match_type !== "T20" && info.match_type !== "IT20") return;
+  const teams = info?.teams ?? [];
 
-  const teams = info.teams ?? [];
-  if (teams.length !== 2) return;
-
-  // --- Pass 1: team win rate bookkeeping ---
   for (const team of teams) {
     if (!teamStats[team]) {
       teamStats[team] = {
         matchesPlayed: 0,
-        wins: 0,
         totalRunsScored: 0,
         totalRunsConceded: 0,
         totalWicketsLost: 0,
         winRate: 0.5,
+        trainWins: 0,
+        trainMatches: 0,
       };
     }
     teamStats[team].matchesPlayed++;
+    if (countTowardWinRate) teamStats[team].trainMatches++;
   }
 
-  const outcome = info.outcome;
-  if (outcome?.winner) {
-    const winner = outcome.winner;
-    if (teamStats[winner]) teamStats[winner].wins++;
+  const winner = info?.outcome?.winner;
+  if (countTowardWinRate && winner && teamStats[winner]) {
+    teamStats[winner].trainWins++;
   }
 
-  // Batting stats from innings
-  const innings = raw?.innings ?? [];
-  for (const inning of innings) {
+  for (const inning of raw?.innings ?? []) {
     const battingTeam = inning.team;
     if (!teamStats[battingTeam]) continue;
-    let runs = 0;
+    const { runs } = inningsTotals(inning);
     let wickets = 0;
     for (const over of inning.overs ?? []) {
       for (const ball of over.deliveries ?? []) {
-        runs += ball.runs?.total ?? 0;
         if (ball.wickets?.length) wickets += ball.wickets.length;
       }
     }
     teamStats[battingTeam].totalRunsScored += runs;
     teamStats[battingTeam].totalWicketsLost += wickets;
-    const bowlingTeam = teams.find(t => t !== battingTeam);
+    const bowlingTeam = teams.find((t) => t !== battingTeam);
     if (bowlingTeam && teamStats[bowlingTeam]) {
       teamStats[bowlingTeam].totalRunsConceded += runs;
-    }
-  }
-
-  // --- Pass 2: emit training rows from completed chases ---
-  // Only process matches with a known winner (completed)
-  if (!outcome?.winner) return;
-  // Need at least 2 innings
-  if (innings.length < 2) return;
-
-  const firstInning = innings[0];
-  const secondInning = innings[1];
-  if (!firstInning || !secondInning) return;
-
-  // Compute first innings total by summing all deliveries
-  let firstInningsTotal = 0;
-  let firstInningsBalls = 0;
-  for (const over of firstInning.overs ?? []) {
-    for (const ball of over.deliveries ?? []) {
-      firstInningsTotal += ball.runs?.total ?? 0;
-      firstInningsBalls++;
-    }
-  }
-
-  // Report first innings totals for breakeven RR computation
-  if (firstInningsBalls > 0) {
-    onFirstInnings(firstInningsTotal, firstInningsBalls);
-  }
-
-  const targetRuns = firstInningsTotal + 1;
-  const chasingTeam = secondInning.team;
-  const bowlingTeam = teams.find(t => t !== chasingTeam) ?? "";
-  const chasingTeamWon = outcome.winner === chasingTeam;
-  const label = chasingTeamWon ? 1 : 0;
-
-  // Walk deliveries in the chase, emitting one row per delivery (post-ball state)
-  let runsScored = 0;
-  let wicketsFallen = 0;
-  let ballsFaced = 0;
-
-  for (const over of secondInning.overs ?? []) {
-    for (const ball of over.deliveries ?? []) {
-      // Update state with this delivery
-      runsScored += ball.runs?.total ?? 0;
-      wicketsFallen += ball.wickets?.length ?? 0;
-
-      const runsNeeded = targetRuns - runsScored;
-      const ballsLeft = 120 - ballsFaced; // ballsFaced not yet incremented: balls left before this delivery lands
-
-      ballsFaced++; // ballsFaced ≥ 1 here; crr division is always safe
-
-      // Skip if innings effectively over
-      if (ballsLeft <= 0) continue;
-      if (wicketsFallen >= 10) continue;
-      // Skip if chase is already won
-      if (runsNeeded <= 0) continue;
-
-      const crr = (runsScored * 6) / ballsFaced;
-      const rrr = (runsNeeded * 6) / ballsLeft;
-
-      // Clamp rrr to match inference behaviour (avoids skipping valid rows)
-      const rrrClamped = Math.max(rrr, 0.1);
-
-      const runRateRatio = crr / rrrClamped;
-      const wicketsInHand = (10 - wicketsFallen) / 10;
-      const ballsRemainingFraction = ballsLeft / 120;
-      const deficitPressure = runsNeeded / Math.max(ballsLeft, 1);
-      // teamStrengthDiff uses current (partial) win rates; will be recalculated
-      // after all matches are processed from final win rates.
-      const teamStrengthDiff = 0; // placeholder; overwritten in main after all matches parsed
-
-      const features = [
-        runRateRatio,
-        wicketsInHand,
-        ballsRemainingFraction,
-        deficitPressure,
-        teamStrengthDiff,
-      ];
-
-      // Reservoir sampling: keep max MAX_ROWS rows using a global counter so
-      // acceptance probability is always 1/totalRowsSeen (never stuck at ≈1.0).
-      trainingRows._totalRowsSeen = (trainingRows._totalRowsSeen ?? 0) + 1;
-      const totalRowsSeen = trainingRows._totalRowsSeen;
-      if (trainingRows.length < MAX_ROWS) {
-        trainingRows.push({ features, label, _battingTeam: chasingTeam, _bowlingTeam: bowlingTeam });
-      } else {
-        const swapIdx = Math.floor(Math.random() * totalRowsSeen);
-        if (swapIdx < MAX_ROWS) {
-          trainingRows[swapIdx] = { features, label, _battingTeam: chasingTeam, _bowlingTeam: bowlingTeam };
-        }
-      }
     }
   }
 }
@@ -356,7 +355,6 @@ function processMatch(raw, teamStats, trainingRows, onFirstInnings) {
  * Returns { weights: number[], bias: number }.
  */
 function trainLogisticRegression(rows, log) {
-  const NUM_FEATURES = 5;
   const weights = new Array(NUM_FEATURES).fill(0);
   let bias = 0;
   const n = rows.length;

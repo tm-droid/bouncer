@@ -2,6 +2,9 @@
   "name": "train-win-probability",
   "version": "1.0.0",
   "type": "module",
+  "scripts": {
+    "test": "node --test"
+  },
   "dependencies": {
     "node-appwrite": "^15.0.0",
     "adm-zip": "^0.5.16"
