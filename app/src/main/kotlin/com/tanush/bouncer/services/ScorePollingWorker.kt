@@ -246,16 +246,21 @@ class ScorePollingWorker(
         /**
          * Fire a one-time immediate refresh (e.g. pull-to-refresh or app foreground).
          */
-        fun enqueueOneTimeWork(context: Context) {
+        fun enqueueOneTimeWork(context: Context, jitterMs: Long = 0L) {
             val request = OneTimeWorkRequestBuilder<ScorePollingWorker>()
                 .setConstraints(networkConstraints)
                 .addTag(ONE_TIME_WORK_TAG)
+                .apply {
+                    // A push-triggered poll must not fire on every device at once; a user-triggered
+                    // one (pull-to-refresh, foreground) passes no jitter and stays immediate.
+                    if (jitterMs > 0L) setInitialDelay(jitterMs, TimeUnit.MILLISECONDS)
+                }
                 .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
                 .build()
 
             WorkManager.getInstance(context).enqueue(request)
 
-            WorkerLogger.enqueued("score_polling", "One-time work enqueued")
+            WorkerLogger.enqueued("score_polling", "One-time work enqueued (jitter=${jitterMs}ms)")
         }
 
         /**

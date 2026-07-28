@@ -47,6 +47,7 @@ import com.tanush.bouncer.ui.components.v2.SectionHeaderV2
 import com.tanush.bouncer.ui.components.v2.SettingsItemV2
 import com.tanush.bouncer.ui.components.v2.SettingsTrailing
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
+import com.tanush.bouncer.ui.widgets.WidgetUpdateWorker
 import com.tanush.bouncer.utils.PreferencesHelper
 
 /**
@@ -89,8 +90,16 @@ fun SettingsScreenV2(
     var autoRefresh by remember {
         mutableStateOf(PreferencesHelper.getBoolean(context, PreferencesHelper.KEY_AUTO_REFRESH, true))
     }
-    var refreshIntervalSeconds by remember {
-        mutableStateOf(PreferencesHelper.getInt(context, PreferencesHelper.KEY_REFRESH_INTERVAL, 10))
+    // Minutes, matching WidgetUpdateWorker.resolveUpdateDelayMs. The control previously offered
+    // 5/10/15/30 SECONDS, which nothing read and which no fallback poller could have honoured.
+    var refreshIntervalMinutes by remember {
+        mutableStateOf(
+            PreferencesHelper.getInt(
+                context,
+                PreferencesHelper.KEY_REFRESH_INTERVAL,
+                WidgetUpdateWorker.DEFAULT_INTERVAL_MIN,
+            ).coerceIn(WidgetUpdateWorker.MIN_INTERVAL_MIN, WidgetUpdateWorker.MAX_INTERVAL_MIN)
+        )
     }
     var showProbability by remember {
         mutableStateOf(PreferencesHelper.getBoolean(context, PreferencesHelper.KEY_SHOW_WIN_PROBABILITY, true))
@@ -196,18 +205,22 @@ fun SettingsScreenV2(
                     SettingsItemV2(
                         icon = Icons.Default.Speed,
                         title = "Refresh Interval",
-                        subtitle = "Score update frequency: ${refreshIntervalSeconds}s",
-                        trailing = SettingsTrailing.Value("${refreshIntervalSeconds}s"),
+                        subtitle = "Fallback poll when push is unavailable: every ${refreshIntervalMinutes}m",
+                        trailing = SettingsTrailing.Value("${refreshIntervalMinutes}m"),
                         onClick = {
-                            // Cycle through 5s → 10s → 15s → 30s
-                            val next = when (refreshIntervalSeconds) {
-                                5 -> 10
-                                10 -> 15
+                            // 5m → 15m → 30m → 60m. Push is the fast path, so this only sets how
+                            // often the offline fallback runs.
+                            val next = when (refreshIntervalMinutes) {
+                                5 -> 15
                                 15 -> 30
+                                30 -> 60
                                 else -> 5
                             }
                             PreferencesHelper.setInt(context, PreferencesHelper.KEY_REFRESH_INTERVAL, next)
-                            refreshIntervalSeconds = next
+                            refreshIntervalMinutes = next
+                            // Re-arm immediately so the new interval takes effect without waiting
+                            // out the old one.
+                            WidgetUpdateWorker.schedulePeriodicUpdates(context)
                         },
                     )
                     SettingsItemV2(

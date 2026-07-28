@@ -17,6 +17,7 @@ import com.tanush.bouncer.ui.widgets.WidgetUpdateWorker
 import io.sentry.Breadcrumb
 import io.sentry.Sentry
 import io.sentry.SentryLevel
+import kotlin.random.Random
 
 /**
  * Handles incoming Firebase Cloud Messaging notifications for live cricket updates.
@@ -29,6 +30,14 @@ class BouncerFirebaseMessagingService : FirebaseMessagingService() {
 
     companion object {
         private const val TAG = "BouncerFCM"
+
+        /**
+         * Window across which a topic-broadcast refresh is spread.
+         *
+         * Topic messages reach every installed device simultaneously, so an unspread fan-out is a
+         * self-inflicted thundering herd against both Cricbuzz and the Glance APIs.
+         */
+        private const val TOPIC_FANOUT_JITTER_MS = 60_000L
 
         // Data payload keys
         private const val KEY_TYPE = "type"
@@ -102,8 +111,11 @@ class BouncerFirebaseMessagingService : FirebaseMessagingService() {
                 level = SentryLevel.INFO
                 setData("type", type)
             })
-            WidgetUpdateWorker.triggerImmediateUpdate(applicationContext)
-            ScorePollingWorker.enqueueOneTimeWork(applicationContext)
+            // This arrives as a TOPIC broadcast, so every installed device handles it at the same
+            // instant. Without a spread they all hit Cricbuzz and the Glance APIs together.
+            val jitterMs = Random.nextLong(0, TOPIC_FANOUT_JITTER_MS)
+            WidgetUpdateWorker.triggerImmediateUpdate(applicationContext, jitterMs)
+            ScorePollingWorker.enqueueOneTimeWork(applicationContext, jitterMs)
             return
         }
 

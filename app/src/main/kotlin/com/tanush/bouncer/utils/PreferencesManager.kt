@@ -52,6 +52,7 @@ class PreferencesManager(context: Context) {
     var hapticFeedbackEnabled: Boolean by boolPref(KEY_HAPTIC_FEEDBACK, true)
     var animationsEnabled: Boolean by boolPref(KEY_ANIMATIONS, true)
     var autoRefreshEnabled: Boolean by boolPref(KEY_AUTO_REFRESH, true)
+    /** Fallback poll interval in MINUTES. Consumed by WidgetUpdateWorker.resolveUpdateDelayMs. */
     var refreshInterval: Int by intPref(KEY_REFRESH_INTERVAL, 30)
 
     // Display preferences
