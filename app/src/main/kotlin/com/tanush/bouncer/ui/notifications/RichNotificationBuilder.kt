@@ -1,5 +1,7 @@
 package com.tanush.bouncer.ui.notifications
 
+import com.tanush.bouncer.analysis.CricketConstants
+import com.tanush.bouncer.analysis.MatchProjections
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationChannelGroup
@@ -567,11 +569,16 @@ object RichNotificationBuilder {
         val runs: Int,
         val wickets: Int
     ) {
+        /**
+         * Runs per over.
+         *
+         * "3.4 overs" is 3 overs and 4 balls — 22 balls, not 3.4 of them. Dividing by the decimal
+         * treats it as 3.4 overs and overstates the economy by ~3% mid-over.
+         */
         val economy: Double
-            get() {
-                val oversValue = overs.toDoubleOrNull() ?: 0.0
-                return if (oversValue > 0) runs / oversValue else 0.0
-            }
+            get() = CricketConstants.ballsFromOvers(overs)
+                ?.let { MatchProjections.currentRunRate(runs, it) }
+                ?: 0.0
     }
 }
 
@@ -679,25 +686,6 @@ object NotificationStyling {
         }
     }
 
-    fun formatOvers(overs: Float): String {
-        try {
-            val wholeOvers = overs.toInt()
-            val balls = ((overs - wholeOvers) * 10).toInt()
-            return "$wholeOvers.$balls"
-        } catch (e: Exception) {
-            Sentry.captureException(e)
-            throw e
-        }
-    }
-
-    fun calculateRequiredRunRate(runsRequired: Int, oversRemaining: Float): Float {
-        try {
-            return if (oversRemaining > 0) runsRequired / oversRemaining else 0f
-        } catch (e: Exception) {
-            Sentry.captureException(e)
-            throw e
-        }
-    }
 }
 
 object NotificationTemplates {

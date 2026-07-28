@@ -1,5 +1,7 @@
 package com.tanush.bouncer.ui.screens.matchdetail.v2
 
+import com.tanush.bouncer.analysis.CricketConstants
+import com.tanush.bouncer.analysis.MatchProjections
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -34,11 +36,17 @@ import com.tanush.bouncer.ui.theme.StatusSuccess
 
 // Shared, pure helpers + player cards for OverviewTabV2 sections.
 
+/**
+ * Bowler economy, preferring the scorecard's own figure.
+ *
+ * Over notation is not a decimal: "19.5" is 19 overs and 5 balls (119 balls), not 19.5 overs.
+ * Dividing by the decimal reported 5.13 where the true figure was 5.04.
+ */
 internal fun computeEconomy(overs: String, runs: String, declared: String): String? =
     declared.takeIf { it.isNotBlank() } ?: run {
-        val o = overs.toDoubleOrNull() ?: 0.0
-        val r = runs.toDoubleOrNull() ?: 0.0
-        if (o > 0) String.format("%.2f", r / o) else null
+        val balls = CricketConstants.ballsFromOvers(overs) ?: return@run null
+        val r = runs.toIntOrNull() ?: return@run null
+        MatchProjections.currentRunRate(r, balls)?.let { String.format("%.2f", it) }
     }
 
 internal fun momentumEventFor(overLabel: String, ball: String): MomentumEvent? = when (ball.uppercase()) {

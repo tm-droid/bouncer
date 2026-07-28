@@ -1,5 +1,7 @@
 package com.tanush.bouncer.ui.components
 
+import com.tanush.bouncer.analysis.CricketConstants
+import com.tanush.bouncer.analysis.MatchProjections
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
@@ -951,8 +953,11 @@ fun BowlerMiniCard(
     modifier: Modifier = Modifier
 ) {
     val colors = BouncerDesignSystem.colors
-    val oversFloat = overs.toFloatOrNull() ?: 0f
-    val economy = if (oversFloat > 0f) runs / oversFloat else 0f
+    // "3.4 overs" is 3 overs and 4 balls, not 3.4 of them — dividing by the decimal overstates
+    // economy by ~3% mid-over.
+    val economy = CricketConstants.ballsFromOvers(overs)
+        ?.let { MatchProjections.currentRunRate(runs, it)?.toFloat() }
+        ?: 0f
 
     val infiniteTransition = rememberInfiniteTransition(label = "bowlerCard")
     val bowlerGlow by infiniteTransition.animateFloat(

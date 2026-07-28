@@ -103,8 +103,10 @@ fun getMatchPhase(status: String?, match: CricketMatch? = null): MatchPhase {
             else -> MatchPhase.UNKNOWN
         }
     } catch (e: Exception) {
+        // Composition-reachable via getMatchStatusInfo; UNKNOWN is the defined "cannot classify"
+        // value, so return it rather than crashing the screen on an unexpected status string.
         Sentry.captureException(e)
-        throw e
+        return MatchPhase.UNKNOWN
     }
 }
 
@@ -161,19 +163,14 @@ fun getMatchStatusInfo(status: String?, match: CricketMatch? = null): MatchStatu
             }
         }
     } catch (e: Exception) {
+        // Its sole caller renders inside a composable, so a throw here takes the screen down over
+        // an unparseable status. Fall back to the same neutral label an unknown status produces.
         Sentry.captureException(e)
-        throw e
+        return MatchStatusInfo("Upcoming", GoldDark, phase = MatchPhase.UNKNOWN)
     }
 }
 
 private val placeholderScores = setOf("Data Not Found", "-", "TBD")
-
-private fun parseRunsWickets(scorePart: String, separator: Char): Pair<Int, Int> {
-    val parts = scorePart.split(separator)
-    val r = parts.getOrNull(0)?.trim()?.toIntOrNull() ?: 0
-    val w = parts.getOrNull(1)?.trim()?.filter { it.isDigit() }?.toIntOrNull() ?: 0
-    return r to w
-}
 
 /**
  * Parse cricket score from various formats:
@@ -198,47 +195,23 @@ fun parseScore(score: String?): ScoreInfo {
         if (cleanedScore.isBlank()) return ScoreInfo(0, 0, "", score, false)
 
         return try {
-            val overs = when {
-                cleanedScore.contains("(") && cleanedScore.contains(")") -> {
-                    cleanedScore.substringAfter("(")
-                        .substringBefore(")")
-                        .replace("Ov", "")
-                        .replace("ov", "")
-                        .trim()
-                }
-                cleanedScore.lowercase().contains("ov") -> {
-                    cleanedScore.lowercase()
-                        .substringBefore("ov")
-                        .trim()
-                        .split(" ")
-                        .lastOrNull() ?: ""
-                }
-                else -> ""
-            }
+            val overs = extractOvers(cleanedScore)
+            // Validity is decided by whether a score actually parsed, not by whether the string
+            // happens to contain a separator. The old test — `contains("/") || contains("-")` —
+            // made "Not-Started" a valid 0/0, which rendered as the score "0/0".
+            val parsed = parseRunsAndWickets(scorePartOf(cleanedScore))
+                ?: return ScoreInfo(0, 0, overs, score, false)
 
-            val scorePart = cleanedScore
-                .substringBefore("(")
-                .substringBefore(" Ov")
-                .substringBefore(" ov")
-                .trim()
-
-            val (runs, wickets) = when {
-                scorePart.contains("/") -> parseRunsWickets(scorePart, '/')
-                scorePart.contains("-") -> parseRunsWickets(scorePart, '-')
-                scorePart.all { it.isDigit() } -> (scorePart.toIntOrNull() ?: 0) to 0
-                else -> 0 to 0
-            }
-
-            // Valid for "0/1"-style edge cases where runs==0 but a wicket was recorded
-            val isValid = runs > 0 || wickets > 0 || cleanedScore.contains("/") || cleanedScore.contains("-")
-
-            ScoreInfo(runs, wickets, overs, score, isValid)
+            ScoreInfo(parsed.first, parsed.second, overs, score, true)
         } catch (e: Exception) {
             ScoreInfo(0, 0, "", score, false)
         }
     } catch (e: Exception) {
+        // Reached during composition (EliteUIComponents, PredictionMatchCard) on scraped text, so
+        // rethrowing crashes the UI over a malformed score. Report it and return the
+        // already-defined invalid sentinel; the caller falls back to displaying the raw string.
         Sentry.captureException(e)
-        throw e
+        return ScoreInfo(0, 0, "", score ?: "-", false)
     }
 }
 
