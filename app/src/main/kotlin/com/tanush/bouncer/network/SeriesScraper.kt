@@ -1,5 +1,7 @@
 package com.tanush.bouncer.network
 
+import com.tanush.bouncer.services.WORKER_MAX_RETRIES
+import com.tanush.bouncer.services.backoffDelayMs
 import com.tanush.bouncer.models.Series
 import io.sentry.Breadcrumb
 import io.sentry.Sentry
@@ -18,8 +20,7 @@ class SeriesScraper {
 
     companion object {
         private const val TAG = "SeriesScraper"
-        private const val MAX_RETRIES = 3
-        private const val INITIAL_BACKOFF_MS = 1000L
+        private const val MAX_RETRIES = WORKER_MAX_RETRIES
         private const val SERIES_LIST_URL = "${CricBuzzUrls.BASE}/cricket-schedule/series"
     }
 
@@ -34,7 +35,6 @@ class SeriesScraper {
         })
 
         var lastException: Exception? = null
-        var backoff = INITIAL_BACKOFF_MS
 
         for (attempt in 1..MAX_RETRIES) {
             try {
@@ -82,8 +82,7 @@ class SeriesScraper {
                 throw e
             }
 
-            delay(backoff)
-            backoff *= 2
+            delay(backoffDelayMs(attempt))
         }
 
         // All retries exhausted for network errors — throw so WorkManager retries.

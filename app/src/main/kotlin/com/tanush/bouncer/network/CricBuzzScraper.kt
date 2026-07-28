@@ -1,5 +1,7 @@
 package com.tanush.bouncer.network
 
+import com.tanush.bouncer.services.WORKER_MAX_RETRIES
+import com.tanush.bouncer.services.backoffDelayMs
 import android.util.Log
 import com.google.gson.JsonElement
 import com.google.gson.JsonObject
@@ -122,8 +124,7 @@ class CricBuzzScraper {
 
     companion object {
         private const val TAG = "CricBuzzScraper"
-        private const val MAX_RETRIES = 3
-        private const val INITIAL_BACKOFF_MS = 1000L
+        private const val MAX_RETRIES = WORKER_MAX_RETRIES
         private const val DRIFT_ALARM_THRESHOLD = 1
         private const val LIST_TIMEOUT_MS = 10000
         private const val DETAILS_TIMEOUT_MS = 10000
@@ -137,7 +138,6 @@ class CricBuzzScraper {
         crumb("Fetching live matches", data = mapOf("url" to url, "matchState" to matchState))
 
         var lastException: Exception? = null
-        var backoff = INITIAL_BACKOFF_MS
 
         for (attempt in 1..MAX_RETRIES) {
             try {
@@ -173,7 +173,7 @@ class CricBuzzScraper {
                     mapOf("url" to url, "attempt" to attempt, "error" to (e.message ?: "Unknown error")))
             }
 
-            backoff = waitForRetry(attempt, backoff)
+            waitForRetry(attempt)
         }
 
         Log.e(TAG, "All $MAX_RETRIES attempts failed for $url", lastException)
@@ -202,13 +202,11 @@ class CricBuzzScraper {
         }
     }
 
-    private suspend fun waitForRetry(attempt: Int, backoff: Long): Long {
-        if (attempt < MAX_RETRIES) {
-            Log.d(TAG, "Retrying in ${backoff}ms...")
-            delay(backoff)
-            return backoff * 2
-        }
-        return backoff
+    private suspend fun waitForRetry(attempt: Int) {
+        if (attempt >= MAX_RETRIES) return
+        val wait = backoffDelayMs(attempt)
+        Log.d(TAG, "Retrying in ${wait}ms...")
+        delay(wait)
     }
 
     private fun filterMatches(matches: List<CricketMatch>, state: String): List<CricketMatch> {
@@ -451,7 +449,6 @@ class CricBuzzScraper {
 
         val url = CricBuzzUrls.liveScoresUrl(matchId)
         var lastException: Exception? = null
-        var backoff = INITIAL_BACKOFF_MS
 
         for (attempt in 1..MAX_RETRIES) {
             try {
@@ -479,7 +476,7 @@ class CricBuzzScraper {
                     mapOf("matchId" to matchId, "attempt" to attempt, "error" to (e.message ?: "Unknown error")))
             }
 
-            backoff = waitForRetry(attempt, backoff)
+            waitForRetry(attempt)
         }
 
         Log.e(TAG, "All $MAX_RETRIES attempts failed for match details $matchId", lastException)

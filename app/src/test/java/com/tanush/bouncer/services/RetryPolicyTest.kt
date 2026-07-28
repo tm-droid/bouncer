@@ -118,4 +118,89 @@ class RetryPolicyTest {
             assertSame(thrown, e)
         }
     }
+
+    // ── maxDelayMs cap ──────────────────────────────────────────────────────
+
+    @Test
+    fun `the growing delay is capped`() = runTest {
+        // `currentDelay * multiplier` compounded without bound, so attempt 10 of a 1-second policy
+        // waited over eight minutes.
+        val delays = mutableListOf<Long>()
+        val p = RetryPolicy(maxAttempts = 8, baseDelayMs = 1000L, multiplier = 2.0, maxDelayMs = 5000L)
+        try {
+            p.withRetry(onRetry = { _, delayMs, _ -> delays.add(delayMs) }) { throw IOException("fail") }
+        } catch (_: IOException) {}
+
+        assertEquals(listOf(1000L, 2000L, 4000L, 5000L, 5000L, 5000L, 5000L), delays)
+    }
+
+    @Test
+    fun `a base delay above the cap is itself capped`() = runTest {
+        val delays = mutableListOf<Long>()
+        val p = RetryPolicy(maxAttempts = 2, baseDelayMs = 60_000L, maxDelayMs = 5000L)
+        try {
+            p.withRetry(onRetry = { _, delayMs, _ -> delays.add(delayMs) }) { throw IOException("fail") }
+        } catch (_: IOException) {}
+
+        assertEquals(listOf(5000L), delays)
+    }
+
+    // ── default isRetryable ─────────────────────────────────────────────────
+
+    @Test
+    fun `the default policy does not retry an Error`() = runTest {
+        // The old default of `{ true }` would have retried an OutOfMemoryError twice more, each time
+        // after a delay, when the only correct response is to let it propagate.
+        var callCount = 0
+        try {
+            policy.withRetry {
+                callCount++
+                throw OutOfMemoryError("heap")
+            }
+            fail("Expected OutOfMemoryError")
+        } catch (_: OutOfMemoryError) {}
+
+        assertEquals(1, callCount)
+    }
+
+    @Test
+    fun `the default policy still retries an ordinary exception`() = runTest {
+        var callCount = 0
+        try {
+            policy.withRetry { callCount++; throw IOException("transient") }
+        } catch (_: IOException) {}
+        assertEquals(3, callCount)
+    }
+
+    // ── backoffDelayMs ──────────────────────────────────────────────────────
+
+    @Test
+    fun `backoff doubles then stops at the ceiling`() {
+        val base = 1000L
+        val expectedFloors = listOf(1000L, 2000L, 4000L, 8000L, 8000L, 8000L, 8000L, 8000L)
+        expectedFloors.forEachIndexed { i, floor ->
+            // Jitter adds [0, base), so the value sits in [floor, floor + base).
+            val actual = backoffDelayMs(i + 1, baseMs = base, maxMs = 8000L)
+            assertTrue(
+                "attempt ${i + 1} gave $actual, expected [$floor, ${floor + base})",
+                actual >= floor && actual < floor + base,
+            )
+        }
+    }
+
+    @Test
+    fun `backoff carries jitter within one base period`() {
+        val base = 1000L
+        val samples = (1..200).map { backoffDelayMs(1, baseMs = base, maxMs = 30_000L) }
+        assertTrue("every sample is at least the capped delay", samples.all { it >= base })
+        assertTrue("no sample exceeds the delay plus one base period", samples.all { it < base * 2 })
+        // Unjittered backoff synchronises every device that failed at the same instant.
+        assertTrue("jitter must actually vary", samples.distinct().size > 1)
+    }
+
+    @Test
+    fun `a first or zeroth attempt does not shift the exponent negative`() {
+        assertTrue(backoffDelayMs(0, baseMs = 1000L) in 1000L until 2000L)
+        assertTrue(backoffDelayMs(1, baseMs = 1000L) in 1000L until 2000L)
+    }
 }

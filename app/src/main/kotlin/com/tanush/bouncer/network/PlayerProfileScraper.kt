@@ -1,5 +1,7 @@
 package com.tanush.bouncer.network
 
+import com.tanush.bouncer.services.WORKER_MAX_RETRIES
+import com.tanush.bouncer.services.backoffDelayMs
 import com.tanush.bouncer.models.FormatStats
 import com.tanush.bouncer.models.PlayerProfile
 import com.tanush.bouncer.models.RecentInnings
@@ -28,8 +30,7 @@ data class PlayerSearchResult(
 object PlayerProfileScraper {
 
     private const val TAG = "PlayerProfileScraper"
-    private const val MAX_RETRIES = 3
-    private const val INITIAL_BACKOFF_MS = 1000L
+    private const val MAX_RETRIES = WORKER_MAX_RETRIES
     private const val SEARCH_TIMEOUT_MS = 10000
     private const val PROFILE_TIMEOUT_MS = 15000
     private const val MAX_SEARCH_RESULTS = 10
@@ -168,7 +169,6 @@ object PlayerProfileScraper {
         breadcrumb("network.player_profile", "Scraping profile for: $playerName")
 
         var lastException: Exception? = null
-        var backoff = INITIAL_BACKOFF_MS
 
         for (attempt in 1..MAX_RETRIES) {
             val outcome = attemptScrape(playerName)
@@ -181,8 +181,7 @@ object PlayerProfileScraper {
                     break
                 }
             }
-            delay(backoff)
-            backoff *= 2
+            delay(backoffDelayMs(attempt))
         }
 
         Sentry.captureException(lastException ?: Exception("Player profile fetch failed for $playerName"))

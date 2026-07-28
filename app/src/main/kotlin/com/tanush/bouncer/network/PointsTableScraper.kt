@@ -1,5 +1,7 @@
 package com.tanush.bouncer.network
 
+import com.tanush.bouncer.services.WORKER_MAX_RETRIES
+import com.tanush.bouncer.services.backoffDelayMs
 import com.tanush.bouncer.managers.TeamAcronymManager
 import com.tanush.bouncer.models.PointsTableEntry
 import io.sentry.Breadcrumb
@@ -19,8 +21,7 @@ class PointsTableScraper {
 
     companion object {
         private const val TAG = "PointsTableScraper"
-        private const val MAX_RETRIES = 3
-        private const val INITIAL_BACKOFF_MS = 1000L
+        private const val MAX_RETRIES = WORKER_MAX_RETRIES
     }
 
     /**
@@ -35,7 +36,6 @@ class PointsTableScraper {
         })
 
         var lastException: Exception? = null
-        var backoff = INITIAL_BACKOFF_MS
 
         for (attempt in 1..MAX_RETRIES) {
             try {
@@ -94,8 +94,7 @@ class PointsTableScraper {
                 break
             }
 
-            delay(backoff)
-            backoff *= 2
+            delay(backoffDelayMs(attempt))
         }
 
         Sentry.captureException(lastException ?: Exception("Points table fetch failed"))

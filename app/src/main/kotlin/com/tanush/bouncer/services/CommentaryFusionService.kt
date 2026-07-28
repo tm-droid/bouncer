@@ -34,7 +34,6 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.io.IOException
 import java.util.concurrent.ConcurrentHashMap
-import kotlin.random.Random
 
 class CommentaryFusionService(
     private val client: OkHttpClient = HttpClientProvider.sharedClient,
@@ -535,7 +534,7 @@ class CommentaryFusionService(
             // Check HTTP status BEFORE reading the SSE stream
             if (response.code == 429) {
                 val attempt = provider429Count.merge(provider.name, 1, Int::plus) ?: 1
-                val cooldownMs = minOf(BASE_COOLDOWN_MS shl minOf(attempt - 1, 4), MAX_COOLDOWN_MS) + Random.nextLong(0, BASE_COOLDOWN_MS)
+                val cooldownMs = backoffDelayMs(attempt, BASE_COOLDOWN_MS, MAX_COOLDOWN_MS)
                 providerCooldowns[provider.name] = System.currentTimeMillis() + cooldownMs
                 Sentry.addBreadcrumb(Breadcrumb().apply {
                     category = "service.commentary"
@@ -819,7 +818,7 @@ class CommentaryFusionService(
                 if (response.code == 429) {
                     span?.finish(SpanStatus.RESOURCE_EXHAUSTED)
                     val attempt = provider429Count.merge(provider.name, 1, Int::plus) ?: 1
-                    val cooldownMs = minOf(BASE_COOLDOWN_MS shl minOf(attempt - 1, 4), MAX_COOLDOWN_MS) + Random.nextLong(0, BASE_COOLDOWN_MS)
+                    val cooldownMs = backoffDelayMs(attempt, BASE_COOLDOWN_MS, MAX_COOLDOWN_MS)
                     providerCooldowns[provider.name] = System.currentTimeMillis() + cooldownMs
                     Sentry.addBreadcrumb(Breadcrumb().apply {
                         category = "service.commentary"
