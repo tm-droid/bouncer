@@ -17,7 +17,19 @@ object SearchRepository {
     private const val PREFS_NAME = "bouncer_search_prefs"
     private const val KEY_RECENT_QUERIES = "recent_queries"
     private const val MAX_RECENT_QUERIES = 10
-    private const val FUZZY_THRESHOLD = 3
+
+    // Score bands for fuzzyMatchScore. Each tier's floor sits above the next tier's ceiling, so the
+    // kind of match always dominates and coverage only orders candidates within a kind.
+    private const val PREFIX_MIN = 0.95        // target starts with query      → [0.95, 1.00]
+    private const val WORD_PREFIX_MIN = 0.85   // some word starts with query   → [0.85, 0.95)
+    private const val SUBSTRING_MIN = 0.70     // query appears somewhere       → [0.70, 0.85)
+    private const val FUZZY_MAX = 0.65         // within edit distance          → [0.00, 0.65]
+
+    /** Permitted edit distance as a fraction of query length — roughly one typo per three chars. */
+    private const val FUZZY_EDIT_RATIO = 0.34
+
+    /** Candidates scanned by generateSuggestion before giving up, to bound the empty-results path. */
+    private const val MAX_SUGGESTION_CANDIDATES = 200
 
     // ═══════════════════════════════════════════════════════════════════════════
     // Search Result Models
@@ -276,20 +288,54 @@ object SearchRepository {
     // Fuzzy Matching
     // ═══════════════════════════════════════════════════════════════════════════
 
+    /**
+     * Agreement between a query and a candidate string, 0–1.
+     *
+     * Four tiers, ordered strongest first, each occupying its own band so a weaker kind of match can
+     * never outrank a stronger one. Within a band the score varies with how much of the target the
+     * query covers, which is what makes the ranking meaningful: `"in"` now orders India (0.97) above
+     * West Indies (0.87) above Sunrisers Hyderabad (0.71).
+     *
+     * Previously `if (target.contains(query)) return 1.0` came first, so every substring hit tied at
+     * exactly 1.0 and `sortedByDescending` degraded to arbitrary input order. It also made the
+     * `startsWith` 0.95 tier below it unreachable — `startsWith` implies `contains`.
+     */
     private fun fuzzyMatchScore(query: String, target: String): Double {
         if (query.isEmpty() || target.isEmpty()) return 0.0
-        // Exact substring match
-        if (target.contains(query)) return 1.0
-        // Starts-with bonus
-        if (target.startsWith(query)) return 0.95
-        // Word starts-with match
+        val coverage = (query.length.toDouble() / target.length).coerceIn(0.0, 1.0)
+
+        if (target.startsWith(query)) {
+            // An exact equality has coverage 1.0 and so lands on exactly 1.0.
+            return PREFIX_MIN + (1.0 - PREFIX_MIN) * coverage
+        }
+
         val words = target.split(" ", "-", "_")
-        if (words.any { it.startsWith(query) }) return 0.85
-        // Levenshtein on individual words
-        val minDistance = words.minOfOrNull { levenshteinDistance(query, it) } ?: Int.MAX_VALUE
-        return if (minDistance <= FUZZY_THRESHOLD) {
-            (1.0 - minDistance.toDouble() / maxOf(query.length, 1).toDouble()).coerceIn(0.0, 0.8)
-        } else 0.0
+        if (words.any { it.startsWith(query) }) {
+            return WORD_PREFIX_MIN + (PREFIX_MIN - WORD_PREFIX_MIN) * coverage
+        }
+
+        val index = target.indexOf(query)
+        if (index >= 0) {
+            // A match late in the string is weaker evidence than one near the front.
+            val position = 1.0 - index.toDouble() / target.length
+            return SUBSTRING_MIN + (WORD_PREFIX_MIN - SUBSTRING_MIN) * coverage * position
+        }
+
+        return fuzzyWordScore(query, words)
+    }
+
+    /**
+     * Levenshtein tier.
+     *
+     * The tolerance is proportional to the query length rather than a flat 3 edits: three edits on a
+     * two-character query is not a typo, it is a different word, and `"in"` used to fuzzy-match
+     * `"won"`.
+     */
+    private fun fuzzyWordScore(query: String, words: List<String>): Double {
+        val minDistance = words.minOfOrNull { levenshteinDistance(query, it) } ?: return 0.0
+        if (minDistance > editTolerance(query)) return 0.0
+        val ratio = 1.0 - minDistance.toDouble() / query.length
+        return (ratio * FUZZY_MAX).coerceIn(0.0, FUZZY_MAX)
     }
 
     /** Levenshtein distance between two strings. Two-row DP: O(min(m,n)) space. */
@@ -313,26 +359,46 @@ object SearchRepository {
         return prev[sLen]
     }
 
+    /**
+     * "Did you mean…" for the empty-results path.
+     *
+     * This runs on **every keystroke** once a query stops matching anything, and used to compute a
+     * full Levenshtein against every team name *and* every match title with no prefilter and no
+     * early exit. Three bounds fix that without changing which suggestion wins:
+     *  - a length prefilter, since a candidate whose length differs by more than the tolerance
+     *    cannot possibly be within it (length difference is a lower bound on edit distance);
+     *  - an early exit on an exact hit, which cannot be beaten;
+     *  - a cap on candidates scanned, because match titles are unbounded in number.
+     */
     private fun generateSuggestion(
         query: String,
         teamNames: List<String>,
         matches: List<CricketMatch>,
     ): String? {
-        val candidates = ArrayList<String>(teamNames.size + matches.size)
-        candidates.addAll(teamNames)
-        matches.forEach { candidates.add(it.matchTitle) }
+        val maxDist = editTolerance(query)
+        // Team names first: they are the higher-value suggestions and there are few of them. The
+        // length prefilter is exact, not heuristic — the difference in lengths is a lower bound on
+        // the edit distance, so a candidate it rejects could never have been within tolerance.
+        val candidates = (teamNames.asSequence() + matches.asSequence().map { it.matchTitle })
+            .filter { kotlin.math.abs(it.length - query.length) <= maxDist }
+            .take(MAX_SUGGESTION_CANDIDATES)
 
         var bestCandidate: String? = null
-        var bestDist = Int.MAX_VALUE
+        var bestDist = maxDist + 1
         for (candidate in candidates) {
             val dist = levenshteinDistance(query, candidate.lowercase())
-            if (dist < bestDist && dist <= 3) {
+            if (dist < bestDist) {
                 bestDist = dist
                 bestCandidate = candidate
             }
+            if (bestDist == 0) break
         }
         return bestCandidate
     }
+
+    /** Permitted edit distance for [query], proportional to its length with a floor of one. */
+    private fun editTolerance(query: String): Int =
+        maxOf(1, kotlin.math.ceil(query.length * FUZZY_EDIT_RATIO).toInt())
 
     // ═══════════════════════════════════════════════════════════════════════════
     // Search History

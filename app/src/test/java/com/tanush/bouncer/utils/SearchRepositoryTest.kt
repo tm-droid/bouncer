@@ -230,4 +230,97 @@ class SearchRepositoryTest {
             assertTrue("Bumrah should be found via currentBowler", results.players.any { it.playerName == "Bumrah" })
         }
     }
+
+    // ═══════════════════════════════════════════════════════════
+    // Fuzzy ranking — every substring hit used to tie at exactly 1.0
+    // ═══════════════════════════════════════════════════════════
+
+    private fun teamScores(query: String, vararg teamNames: String): Map<String, Double> =
+        kotlinx.coroutines.runBlocking {
+            SearchRepository.search(query, emptyList(), emptyList(), teamNames.toList())
+                .teams.associate { it.teamName to it.relevanceScore }
+        }
+
+    @Test
+    fun `a substring match no longer ties with a prefix match`() {
+        // `if (target.contains(query)) return 1.0` came first, so "India", "West Indies" and
+        // "Chennai Super Kings" all scored exactly 1.0 for "in" and sortedByDescending degraded to
+        // arbitrary input order.
+        val scores = teamScores("in", "Chennai Super Kings", "West Indies", "India")
+        val india = scores.getValue("India")
+        val westIndies = scores.getValue("West Indies")
+        val chennai = scores.getValue("Chennai Super Kings")
+
+        assertTrue("India ($india) must outrank West Indies ($westIndies)", india > westIndies)
+        assertTrue("West Indies ($westIndies) must outrank Chennai ($chennai)", westIndies > chennai)
+    }
+
+    @Test
+    fun `results come back in descending relevance order`() {
+        val ordered = kotlinx.coroutines.runBlocking {
+            SearchRepository.search(
+                "in", emptyList(), emptyList(),
+                listOf("Chennai Super Kings", "West Indies", "India"),
+            ).teams.map { it.teamName }
+        }
+        assertEquals(listOf("India", "West Indies", "Chennai Super Kings"), ordered)
+    }
+
+    @Test
+    fun `an exact match scores one`() {
+        assertEquals(1.0, teamScores("india", "India").getValue("India"), 1e-9)
+    }
+
+    @Test
+    fun `the tiers occupy separate bands so a weaker match never outranks a stronger one`() {
+        // Prefix ≥ 0.95 > word-prefix ≥ 0.85 > substring ≥ 0.70. The old 0.95 startsWith tier was
+        // unreachable dead code, since startsWith implies contains.
+        val prefix = teamScores("in", "India").getValue("India")
+        val wordPrefix = teamScores("in", "West Indies").getValue("West Indies")
+        val substring = teamScores("in", "Chennai Super Kings").getValue("Chennai Super Kings")
+
+        assertTrue("prefix $prefix", prefix >= 0.95)
+        assertTrue("word prefix $wordPrefix", wordPrefix in 0.85..0.95)
+        assertTrue("substring $substring", substring in 0.70..0.85)
+    }
+
+    @Test
+    fun `a longer query still tolerates a typo`() {
+        // The edit tolerance is proportional, not absolute — it must not have become so tight that
+        // real typos stop matching.
+        val scores = teamScores("austrelia", "Australia")
+        assertTrue("Australia should survive one substitution", scores.containsKey("Australia"))
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // generateSuggestion bounds
+    // ═══════════════════════════════════════════════════════════
+
+    private fun suggestionFor(query: String, vararg teamNames: String): String? =
+        kotlinx.coroutines.runBlocking {
+            SearchRepository.search(query, emptyList(), emptyList(), teamNames.toList()).suggestion
+        }
+
+    @Test
+    fun `a short query does not suggest a distant candidate`() {
+        // The flat `dist <= 3` accepted three edits on a four-character query — that is a different
+        // word, not a typo. The tolerance is now proportional to query length.
+        assertNull(suggestionFor("zzzz", "zzzaaa"))
+    }
+
+    @Test
+    fun `a near-miss is still suggested`() {
+        // Three edits on a six-character query stays inside the proportional tolerance, and scores
+        // too low to surface as a team result, so the suggestion path is what answers.
+        assertEquals("zzzaaa", suggestionFor("zzzzzz", "zzzaaa"))
+    }
+
+    @Test
+    fun `the suggestion scan survives a large candidate set`() {
+        // Length prefilter + candidate cap bound the empty-results path, which runs on every
+        // keystroke. A candidate whose length differs by more than the tolerance cannot be within
+        // it, so skipping it changes nothing but the cost.
+        val many = (1..5_000).map { "team-name-number-$it" }.toTypedArray()
+        assertEquals("zzzaaa", suggestionFor("zzzzzz", "zzzaaa", *many))
+    }
 }
