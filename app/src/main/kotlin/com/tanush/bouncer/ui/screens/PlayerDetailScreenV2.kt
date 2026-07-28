@@ -50,8 +50,8 @@ import com.tanush.bouncer.models.FormatStats
 import com.tanush.bouncer.models.PlayerProfile
 import com.tanush.bouncer.network.PlayerProfileScraper
 import com.tanush.bouncer.services.PlayerCacheWorker
-import com.tanush.bouncer.ui.components.premium.BatterForm
 import com.tanush.bouncer.ui.components.premium.PlayerFormCard
+import com.tanush.bouncer.ui.screens.player.buildBatterForm
 import com.tanush.bouncer.ui.components.v2.BouncerTopBarV2
 import com.tanush.bouncer.ui.components.v2.EmptyStateV2
 import com.tanush.bouncer.ui.components.v2.FilterChipRowV2
@@ -322,30 +322,6 @@ fun PlayerDetailScreenV2(
             }
         }
     }
-}
-
-private fun buildBatterForm(profile: PlayerProfile): BatterForm? {
-    val recentScores = profile.recentForm.map { it.runs }
-    if (recentScores.isEmpty()) return null
-    val avg = recentScores.average()
-    val last3avg = recentScores.take(3).average()
-    val trend = when {
-        last3avg > avg * 1.15 -> "Rising"
-        last3avg < avg * 0.85 -> "Declining"
-        else -> "Stable"
-    }
-    val allStats = profile.stats.values
-    val overallSr = allStats.mapNotNull { it.strikeRate.takeIf { v -> v > 0 } }.average().takeIf { !it.isNaN() } ?: 0.0
-    val overallAvg = allStats.mapNotNull { it.average.takeIf { v -> v > 0 } }.average().takeIf { !it.isNaN() } ?: avg
-    val formRating = (avg / overallAvg.coerceAtLeast(1.0)).toFloat().coerceIn(0f, 1f)
-    return BatterForm(
-        name = profile.name,
-        recentScores = recentScores,
-        average = avg,
-        strikeRate = overallSr,
-        formRating = formRating,
-        trend = trend,
-    )
 }
 
 // ── Shared composables ──────────────────────────────────────────────────────────
