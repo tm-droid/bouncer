@@ -12,8 +12,14 @@ test("the Women's Premier League is flagged, not swallowed by the League rule", 
   assert.equal(isWomensSeries("Women's Premier League 2026"), true);
 });
 
-test("WPL by acronym is flagged", () => {
+test("WPL by acronym is flagged, and is still a league", () => {
   assert.equal(isWomensSeries("WPL 2026"), true);
+  // The acronym skips the word "League", so it needs its own entry in the format pattern.
+  assert.equal(seriesCategory("WPL 2026"), "LEAGUE");
+});
+
+test("a league acronym is not found inside an unrelated word", () => {
+  assert.equal(seriesCategory("Multiplex Trophy"), "INTERNATIONAL");
 });
 
 test("men's competitions are not flagged", () => {

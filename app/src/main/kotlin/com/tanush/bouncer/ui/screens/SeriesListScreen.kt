@@ -202,12 +202,26 @@ private fun seriesListStateOf(isLoading: Boolean, hasError: Boolean, isEmpty: Bo
 private fun stateFadeSpec(): FiniteAnimationSpec<Float> =
     if (BouncerMotion.reducedMotionEnabled) BouncerMotion.Specs.ReducedFadeIn else BouncerMotion.Specs.FadeIn
 
-private fun filterSeries(allSeries: List<Series>, filter: String): List<Series> = when (filter) {
+internal fun filterSeries(allSeries: List<Series>, filter: String): List<Series> = when (filter) {
     "International" -> allSeries.filter { it.category == Series.SeriesCategory.INTERNATIONAL }
     "League" -> allSeries.filter { it.category == Series.SeriesCategory.LEAGUE }
     "Domestic" -> allSeries.filter { it.category == Series.SeriesCategory.DOMESTIC }
-    "Women" -> allSeries.filter { it.category == Series.SeriesCategory.WOMEN }
+    // Independent of category, so a women's T20 league appears under both "League" and "Women".
+    "Women" -> allSeries.filter { it.isWomens }
     else -> allSeries
+}
+
+/**
+ * Card subtitle. Category and women's cricket are separate axes, so a women's T20 league reads
+ * "League · Women" rather than having to pick one.
+ */
+internal fun seriesLabelOf(series: Series): String {
+    val category = when (series.category) {
+        Series.SeriesCategory.INTERNATIONAL -> "International"
+        Series.SeriesCategory.LEAGUE -> "League"
+        Series.SeriesCategory.DOMESTIC -> "Domestic"
+    }
+    return if (series.isWomens) "$category · Women" else category
 }
 
 @Composable
@@ -264,12 +278,7 @@ private fun SeriesCard(series: Series, onClick: () -> Unit) {
                         color = colors.textSecondary,
                     )
                 }
-                val categoryLabel = when (series.category) {
-                    Series.SeriesCategory.INTERNATIONAL -> "International"
-                    Series.SeriesCategory.LEAGUE -> "League"
-                    Series.SeriesCategory.DOMESTIC -> "Domestic"
-                    Series.SeriesCategory.WOMEN -> "Women"
-                }
+                val categoryLabel = seriesLabelOf(series)
                 Text(
                     categoryLabel,
                     style = typography.labelSmall,

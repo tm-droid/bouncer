@@ -58,20 +58,13 @@ class SeriesScraper {
                     val name = link.text().trim()
                     if (name.isEmpty() || name.length < 3) continue
 
-                    val category = when {
-                        name.contains("IPL", true) || name.contains("PSL", true) || name.contains("BBL", true) ||
-                        name.contains("CPL", true) || name.contains("League", true) || name.contains("T20", true) -> Series.SeriesCategory.LEAGUE
-                        name.contains("Women", true) || name.contains("WPL", true) -> Series.SeriesCategory.WOMEN
-                        name.contains("Domestic", true) || name.contains("Ranji", true) || name.contains("Sheffield", true) -> Series.SeriesCategory.DOMESTIC
-                        else -> Series.SeriesCategory.INTERNATIONAL
-                    }
-
                     if (seriesList.none { it.id == seriesId }) {
                         seriesList.add(
                             Series(
                                 id = seriesId,
                                 name = name,
-                                category = category,
+                                category = seriesCategoryOf(name),
+                                isWomens = isWomensSeries(name),
                             )
                         )
                     }
@@ -122,12 +115,17 @@ class SeriesScraper {
                     val id = s.get("id")?.asString ?: s.get("seriesId")?.asString ?: continue
                     val name = s.get("name")?.asString ?: s.get("seriesName")?.asString ?: continue
 
+                    // This is the path that actually runs in production (the HTML scrape below is
+                    // only a fallback), and it used to classify nothing at all — every series came
+                    // back INTERNATIONAL, so the Women and League filters had nothing to match.
                     result.add(
                         Series(
                             id = id,
                             name = name,
                             startDate = s.get("startDt")?.asString ?: "",
                             endDate = s.get("endDt")?.asString ?: "",
+                            category = seriesCategoryOf(name),
+                            isWomens = isWomensSeries(name),
                         )
                     )
                 }

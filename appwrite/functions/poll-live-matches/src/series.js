@@ -17,9 +17,19 @@ export function isWomensSeries(name) {
   return /\bwomen(?:'?s)?\b|\bwpl\b/i.test(name);
 }
 
-/** Format/level classification. Deliberately says nothing about whether it is women's cricket. */
+/**
+ * Format/level classification. Deliberately says nothing about whether it is women's cricket.
+ *
+ * Word-bounded so a league acronym is not found inside an unrelated word. WPL is listed because
+ * "Women's Premier League" is often abbreviated past the word "League".
+ *
+ * Must stay identical to `seriesCategoryOf` in
+ * `app/src/main/kotlin/com/tanush/bouncer/network/SeriesClassification.kt` — the device reads this
+ * function's output from the `active-series` bucket file and computes it locally on the scrape
+ * fallback, so a divergence shows up as a series changing category depending on which path ran.
+ */
 export function seriesCategory(name) {
-  if (/IPL|PSL|BBL|CPL|League|T20/i.test(name)) return "LEAGUE";
+  if (/\b(?:IPL|PSL|BBL|CPL|WPL)\b|League|T20/i.test(name)) return "LEAGUE";
   if (/Domestic|Ranji|Sheffield/i.test(name)) return "DOMESTIC";
   return "INTERNATIONAL";
 }
