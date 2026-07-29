@@ -22,9 +22,16 @@ internal class FakeLiveDetailSource(private val elapsed: () -> Long) : LiveMatch
     override suspend fun getCommentaryForMatch(matchId: String): List<String> =
         ShowcaseScript.commentaryLines()
 
-    // The scripted payload already carries the scorecard, so the on-demand table adds nothing here.
+    // The scripted payload already carries the scorecard, so the split table adds nothing here.
     override suspend fun getScorecardForMatch(matchId: String): com.tanush.bouncer.models.Scorecard? =
         ShowcaseScript.detailPayloadAt(elapsed()).scorecard
+
+    override fun observeScorecard(matchId: String): Flow<com.tanush.bouncer.models.Scorecard> = flow {
+        while (true) {
+            delay(DETAIL_TICK_MS)
+            ShowcaseScript.detailPayloadAt(elapsed()).scorecard?.let { emit(it) }
+        }
+    }
 
     override fun observeDetail(matchId: String): Flow<MatchLiveDetailPayload> = flow {
         while (true) {

@@ -299,10 +299,9 @@ async function syncMatch({ db, matchId, title, withCommentary, model, log, error
     (detail.scorecard?.innings?.length || 0) > 0;
   if (detailHasContent) {
     await upsertDetail({ db, matchId, detail, error });
-    // Stage 1 of the scorecard split: written to BOTH places. The scorecard is ~60 KB and rides
-    // every realtime update of the detail row even though only the Scorecard tab renders it, so it
-    // is moving to a row nobody subscribes to. Until app builds that read match-scorecard are the
-    // norm, dropping it from `payload` would push older builds onto the on-device Cricbuzz scrape.
+    // The scorecard now lives ONLY here. upsertDetail strips it from the detail payload, so this
+    // write is the sole source for the Scorecard tab and for the Overview's scorecard-derived
+    // widgets. The app subscribes to this row's own channel for the life of the detail screen.
     if ((detail.scorecard?.innings?.length || 0) > 0) {
       await upsertScorecard({ db, matchId, scorecard: detail.scorecard, error });
     }
@@ -411,7 +410,11 @@ async function upsertDetail({ db, matchId, detail, error }) {
   const rowId = sanitizeMatchId(matchId);
   const data = {
     match_id: matchId,
-    payload: JSON.stringify(detail),
+    // The scorecard is stripped here, not from `detail` itself: the caller still reads
+    // detail.scorecard.innings.length to number the current innings. Measured on live rows, the
+    // scorecard is 85-93% of this payload (4-9 KB of 4-9 KB), and the payload is pushed to every
+    // subscriber of this row every minute. It lives in match-scorecard now, on its own channel.
+    payload: JSON.stringify({ ...detail, scorecard: undefined }),
     updated_at: new Date().toISOString(),
   };
   try {

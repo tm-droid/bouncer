@@ -90,9 +90,19 @@ Appwrite has **no query-filtered channels**. There are two channel shapes:
 - `tableChannel()` → `databases.{db}.collections.{table}.documents` — every row anyone writes.
 
 **Prefer the row channel.** `match-live-detail` on the table channel delivered every match anyone,
-anywhere, had open to every device — a 15–80 KB payload per match per minute. Where the row id is
-unknowable client-side (`match-commentary` ids are `sha256("$matchId:$timestamp")`) the table
-channel is unavoidable; the lever is then **duration**, not scope.
+anywhere, had open to every device. Where the row id is unknowable client-side
+(`match-commentary` ids are `sha256("$matchId:$timestamp")`) the table channel is unavoidable; the
+lever is then **duration**, not scope.
+
+**Then split the row by update shape.** A row is the unit of delivery, so anything in it is pushed
+to every subscriber on every write. Measured on live `match-live-detail` rows, the scorecard was
+85–93% of the payload (4–9 KB of 4–9 KB) while the live card — score, batsmen, bowler, recent balls,
+win probability — was ~650 bytes. Same write cadence, wildly different value per byte, so the
+scorecard moved to `match-scorecard` with its own row id and its own channel. Splitting is only a
+win if the split-off part is genuinely subscribed less or read less; **re-subscribing to both rows
+for the same lifetime saves nothing.** Here it buys a first-paint `getRow` and no billed reads
+after, versus a poll, which would have spent reads — the quota that broke — to save bandwidth that
+was never the constraint.
 
 Two lifetimes, and nothing else:
 

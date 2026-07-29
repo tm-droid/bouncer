@@ -115,6 +115,15 @@ class MatchDetailViewModel(
         viewModelScope.launch(bouncerExceptionHandler) {
             liveSource.observeCommentary(match.id).collect { onNewCommentaryEvent(it) }
         }
+        // The scorecard has its own row and its own channel — it was 85-93% of the detail payload
+        // and was pushed to every subscriber of that row every minute. Subscribed for the whole
+        // screen, not just the Scorecard tab: the Overview's bowler figures, fall-of-wickets phases
+        // and innings summary read the same object.
+        viewModelScope.launch(bouncerExceptionHandler) {
+            liveSource.observeScorecard(match.id).collect { sc ->
+                if (sc.innings.isNotEmpty()) _uiState.update { it.copy(scorecard = sc) }
+            }
+        }
         // Presence heartbeat: while this Live match is open, tell the backend a viewer is
         // watching so bouncer-match-sync generates commentary for it. Stops when the ViewModel
         // is cleared (screen left) — viewModelScope cancels the loop and the server-side TTL lapses.
@@ -135,11 +144,11 @@ class MatchDetailViewModel(
             val detail = withTimeoutOrNull(10_000L) { liveSource.getForMatch(match.id) }
             if (detail == null) breadcrumb("scorecard", "Appwrite live-detail fetch timed out or returned null")
             applyDetail(detail)
-            // Scorecard: the payload still carries it while match-sync dual-writes, so this costs
-            // nothing today. Once the server drops it from `payload` -- the point of the split, so
-            // that ~60 KB stops riding every realtime message to every subscriber -- this fetch from
-            // the unsubscribed `match-scorecard` table takes over, and the on-device CricBuzz scrape
-            // stays as the last resort for matches match-sync has not written.
+            // Scorecard: one billed read for first paint, because the detail payload no longer
+            // carries it and the row's realtime channel only speaks when match-sync next writes --
+            // up to a minute of a blank Overview otherwise. Every update after this arrives free
+            // over observeScorecard. The on-device CricBuzz scrape below stays as the last resort
+            // for matches match-sync has not written (no live viewer, or not yet started).
             if (_uiState.value.scorecard == null) {
                 liveSource.getScorecardForMatch(match.id)
                     ?.takeIf { it.innings.isNotEmpty() }
