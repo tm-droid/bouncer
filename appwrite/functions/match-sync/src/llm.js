@@ -2,12 +2,17 @@
 // Mirrors generate-commentary/src/main.js (PROVIDERS) and the Kotlin
 // CommentaryFusionService.SYSTEM_INSTRUCTION + CommentaryFormatter.sanitize.
 
+// Duplicated in generate-commentary/src/main.js and the Kotlin CommentaryFusionService.providers.
+// No shared config channel exists across Kotlin + two Node functions without codegen or a fetched
+// manifest, so a model bump is a three-place edit — change all three together.
 const PROVIDERS = [
   { name: "groq",      url: "https://api.groq.com/openai/v1/chat/completions",  model: "llama-3.3-70b-versatile",     keyEnv: "GROQ_API_KEY" },
   { name: "cerebras",  url: "https://api.cerebras.ai/v1/chat/completions",      model: "llama-3.3-70b",               keyEnv: "CEREBRAS_API_KEY" },
   { name: "sambanova", url: "https://api.sambanova.ai/v1/chat/completions",     model: "Meta-Llama-3.3-70B-Instruct", keyEnv: "SAMBANOVA_API_KEY" },
 ];
 
+// Kept byte-identical to CommentaryFusionService.SYSTEM_INSTRUCTION. The same ball can be narrated
+// by either, so a drift between them shows up as two different house styles in one match.
 export const SYSTEM_INSTRUCTION =
   "You are a professional cricket broadcast commentator. Write exactly one vivid, natural commentary line.\n" +
   "STRICT FORMAT: Begin with the ball number (e.g., 18.5: ...). One sentence only. No ellipsis at the end.\n" +

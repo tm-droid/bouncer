@@ -15,6 +15,7 @@ import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
 import java.io.IOException
+import java.net.SocketTimeoutException
 import java.util.concurrent.atomic.AtomicInteger
 
 class CommentaryFusionServiceTest {
@@ -173,6 +174,64 @@ class CommentaryFusionServiceTest {
         val result2 = defaultFuse(service)
         assertEquals(snippet1, result2)
         assertEquals(callsAfterFirst, httpCalls)
+    }
+
+    @Test
+    fun `fuse 502 - a down provider enters cooldown just like a rate-limited one`() = runTest {
+        var httpCalls = 0
+        val service = serviceWith(fakeClient { _, _ ->
+            httpCalls++
+            502 to errorBody()
+        })
+
+        // Before this group only a 429 opened a cooldown. A 502 threw straight through, so the same
+        // dead provider was re-dialled on every ball, forever.
+        assertEquals(snippet1, defaultFuse(service))
+        val callsAfterFirst = httpCalls
+        assertTrue("expected the first fuse to actually hit the network", callsAfterFirst > 0)
+
+        assertEquals(snippet1, defaultFuse(service))
+        assertEquals(callsAfterFirst, httpCalls)
+    }
+
+    @Test
+    fun `fuse timeout - a hung provider enters cooldown`() = runTest {
+        var httpCalls = 0
+        val service = serviceWith(
+            OkHttpClient.Builder()
+                .addInterceptor {
+                    httpCalls++
+                    throw SocketTimeoutException("timeout")
+                }
+                .build()
+        )
+
+        assertEquals(snippet1, defaultFuse(service))
+        val callsAfterFirst = httpCalls
+        assertTrue("expected the first fuse to actually hit the network", callsAfterFirst > 0)
+
+        assertEquals(snippet1, defaultFuse(service))
+        assertEquals(callsAfterFirst, httpCalls)
+    }
+
+    @Test
+    fun `fuse 400 - a bad request does not cool the provider down`() = runTest {
+        var httpCalls = 0
+        val service = serviceWith(fakeClient { _, _ ->
+            httpCalls++
+            400 to errorBody()
+        })
+
+        // A 4xx that is not 429 is our request being wrong — a bad model id, a malformed body, a
+        // revoked key. Backing off only delays a failure that will repeat identically, so the chain
+        // must keep falling through to the next provider.
+        assertEquals(snippet1, defaultFuse(service))
+        val callsAfterFirst = httpCalls
+        assertEquals(snippet1, defaultFuse(service))
+        assertTrue(
+            "a 400 must not open a cooldown (calls: $callsAfterFirst then $httpCalls)",
+            httpCalls > callsAfterFirst,
+        )
     }
 
     @Test

@@ -35,6 +35,7 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.IOException
+import java.io.InterruptedIOException
 import java.util.concurrent.ConcurrentHashMap
 
 class CommentaryFusionService(
@@ -45,6 +46,10 @@ class CommentaryFusionService(
 ) {
     private data class Provider(val name: String, val url: String, val key: String, val model: String)
 
+    // Model ids are duplicated in appwrite/functions/match-sync/src/llm.js and
+    // appwrite/functions/generate-commentary/src/main.js. There is no shared config channel between
+    // Kotlin and two Node functions without codegen or a fetched manifest, and both cost more than a
+    // once-per-bump edit in three known places — so bump all three together.
     private val providers: List<Provider> = testProviders?.map { (name, key, model) ->
         Provider(name, "http://test-$name", key, model)
     } ?: listOf(
@@ -53,7 +58,70 @@ class CommentaryFusionService(
         Provider("SambaNova", "https://api.sambanova.ai/v1/chat/completions",        ApiKeys.sambaNova, "Meta-Llama-3.3-70B-Instruct"),
     )
     private val providerCooldowns = ConcurrentHashMap<String, Long>()
-    private val provider429Count = ConcurrentHashMap<String, Int>()
+    private val providerFailureCount = ConcurrentHashMap<String, Int>()
+
+    /**
+     * Open a backoff window for [providerName], skipping it until the window expires.
+     *
+     * Only a 429 used to reach here. A 500/502/503 or a socket timeout threw straight out of
+     * [callProvider] / [streamFromProvider] with no cooldown recorded, so a provider that was not
+     * rate-limiting but simply down got retried on *every ball*, and every ball paid its full
+     * timeout before the chain fell through to the next provider.
+     *
+     * The window is opened at most once per outage. Per-ball coroutines run concurrently and would
+     * otherwise each increment the attempt counter for the same failure, jumping the backoff several
+     * steps at once — the `compute` block is what makes the check-then-open atomic.
+     *
+     * This deliberately does **not** copy [com.tanush.bouncer.network.CricInfoScraper]'s half-open
+     * counter reset. That breaker trips on a failure *count*, so it must forgive the count to give
+     * the source a second chance. This one backs off on the attempt *number*, so resetting it on
+     * window expiry would flatten the exponential curve into a fixed 30-second retry. The counter is
+     * cleared on success instead, which is the same intent expressed for a backoff breaker.
+     */
+    private fun openCooldown(providerName: String, reason: String) {
+        var attempt = 0
+        var cooldownMs = 0L
+        providerCooldowns.compute(providerName) { _, existing ->
+            val now = System.currentTimeMillis()
+            if (existing != null && existing > now) return@compute existing
+            attempt = providerFailureCount.merge(providerName, 1, Int::plus) ?: 1
+            cooldownMs = backoffDelayMs(attempt, BASE_COOLDOWN_MS, MAX_COOLDOWN_MS)
+            now + cooldownMs
+        }
+        if (cooldownMs == 0L) return
+        Sentry.addBreadcrumb(Breadcrumb().apply {
+            category = "service.commentary"
+            message = "$providerName $reason attempt=$attempt — ${cooldownMs}ms cooldown"
+            level = SentryLevel.WARNING
+        })
+    }
+
+    /** Clear both the cooldown window and the attempt counter after a provider answers. */
+    private fun recordProviderSuccess(providerName: String) {
+        providerFailureCount.remove(providerName)
+        providerCooldowns.remove(providerName)
+    }
+
+    /**
+     * Why a status code means "this provider is unavailable", or null when it does not.
+     *
+     * A 4xx other than 429 is our request being wrong — a bad model id, a malformed body, a revoked
+     * key. Backing off would only delay a failure that repeats identically, so those still fall
+     * through to the next provider without opening a window.
+     */
+    private fun cooldownReasonFor(code: Int): String? = when {
+        code == HTTP_TOO_MANY_REQUESTS -> "rate-limited"
+        code >= HTTP_SERVER_ERROR -> "server error $code"
+        else -> null
+    }
+
+    /**
+     * True for a read/connect timeout. [SocketTimeoutException] extends [InterruptedIOException], so
+     * this covers both. Connection refused and DNS failures are excluded on purpose: those are the
+     * device's own connectivity, and cooling down all three providers for it would leave commentary
+     * dead for minutes after the network comes back.
+     */
+    private fun isTimeout(e: Throwable): Boolean = e is InterruptedIOException
 
     // Concurrent access from per-ball coroutines — use ConcurrentHashMap + per-match mutex
     // so reads and writes never see a torn list.
@@ -106,16 +174,26 @@ class CommentaryFusionService(
 
     companion object {
         const val FALLBACK_BALL_COMMENTARY = "Ball delivered. Play continues."
-        // P2-6: Exponential backoff after 429 with jitter. attempt N → BASE*2^(N-1) + jitter, capped at MAX.
+        // P2-6: Exponential backoff after a provider failure, with jitter.
+        // attempt N → BASE*2^(N-1) + jitter, capped at MAX.
         const val BASE_COOLDOWN_MS = 30_000L
         const val MAX_COOLDOWN_MS = 300_000L
 
+        private const val HTTP_TOO_MANY_REQUESTS = 429
+        private const val HTTP_SERVER_ERROR = 500
+
         // Sent as role:"system" in all ball-by-ball LLM calls.
+        // Kept byte-identical to SYSTEM_INSTRUCTION in appwrite/functions/match-sync/src/llm.js —
+        // the same ball can be narrated by either, so a drift between them shows up as two different
+        // house styles in one match. The last line was added server-side and had not been carried
+        // back here; without it the model prefixes answers with "Since there is..." framing.
+        // (generate-commentary takes the instruction from the request body, so there is no third copy.)
         const val SYSTEM_INSTRUCTION =
             "You are a professional cricket broadcast commentator. Write exactly one vivid, natural commentary line.\n" +
             "STRICT FORMAT: Begin with the ball number (e.g., 18.5: ...). One sentence only. No ellipsis at the end.\n" +
             "HALLUCINATION RULES: Use ONLY player names and match facts present in the input. Never invent runs, wickets, boundaries, or events not stated in the input. The atmosphere is yours — the facts are not.\n" +
-            "STYLE: Cinematic, broadcast-quality. Sharp active verbs. Specific detail from the input. No clichés."
+            "STYLE: Cinematic, broadcast-quality. Sharp active verbs. Specific detail from the input. No clichés.\n" +
+            "Output ONLY the commentary line itself — no preamble, no explanation, no 'Since there is...' framing."
 
         // Sent as role:"system" for non-ball event rewrites (fielding changes, session updates, etc.)
         const val EVENT_SYSTEM_INSTRUCTION =
@@ -476,7 +554,7 @@ class CommentaryFusionService(
                 streamSpan?.setData("ai.latency_ms", streamElapsedMs)
                 streamSpan?.finish(SpanStatus.OK)
                 Sentry.metrics().distribution("ai.stream_latency_ms", streamElapsedMs.toDouble(), "millisecond")
-                provider429Count.remove(provider.name)
+                recordProviderSuccess(provider.name)
                 succeeded = true
                 break
             } catch (e: Exception) {
@@ -538,19 +616,18 @@ class CommentaryFusionService(
             .post(body)
             .build()
 
-        val response = withContext(Dispatchers.IO) { client.newCall(request).execute() }
+        val response = try {
+            withContext(Dispatchers.IO) { client.newCall(request).execute() }
+        } catch (e: IOException) {
+            if (isTimeout(e)) openCooldown(provider.name, "timed out (stream)")
+            throw e
+        }
         try {
             // Check HTTP status BEFORE reading the SSE stream
-            if (response.code == 429) {
-                val attempt = provider429Count.merge(provider.name, 1, Int::plus) ?: 1
-                val cooldownMs = backoffDelayMs(attempt, BASE_COOLDOWN_MS, MAX_COOLDOWN_MS)
-                providerCooldowns[provider.name] = System.currentTimeMillis() + cooldownMs
-                Sentry.addBreadcrumb(Breadcrumb().apply {
-                    category = "service.commentary"
-                    message = "${provider.name} rate-limited (stream) attempt=$attempt — ${cooldownMs}ms cooldown"
-                    level = SentryLevel.WARNING
-                })
-                throw IOException("Rate limited (429)")
+            val reason = cooldownReasonFor(response.code)
+            if (reason != null) {
+                openCooldown(provider.name, "$reason (stream)")
+                throw IOException("${provider.name} $reason")
             }
             if (!response.isSuccessful) throw IOException("HTTP ${response.code}")
 
@@ -578,6 +655,10 @@ class CommentaryFusionService(
                 }
                 if (delta.isNotEmpty()) emit(delta)
             }
+        } catch (e: IOException) {
+            // A read timeout part-way through the SSE stream is the same signal as one on connect.
+            if (isTimeout(e)) openCooldown(provider.name, "timed out (stream)")
+            throw e
         } finally {
             response.close()
         }
@@ -824,17 +905,14 @@ class CommentaryFusionService(
 
         try {
             client.newCall(request).execute().use { response ->
-                if (response.code == 429) {
-                    span?.finish(SpanStatus.RESOURCE_EXHAUSTED)
-                    val attempt = provider429Count.merge(provider.name, 1, Int::plus) ?: 1
-                    val cooldownMs = backoffDelayMs(attempt, BASE_COOLDOWN_MS, MAX_COOLDOWN_MS)
-                    providerCooldowns[provider.name] = System.currentTimeMillis() + cooldownMs
-                    Sentry.addBreadcrumb(Breadcrumb().apply {
-                        category = "service.commentary"
-                        message = "${provider.name} rate-limited attempt=$attempt — ${cooldownMs}ms cooldown"
-                        level = SentryLevel.WARNING
-                    })
-                    throw IOException("Rate limited (429)")
+                val reason = cooldownReasonFor(response.code)
+                if (reason != null) {
+                    span?.finish(
+                        if (response.code == HTTP_TOO_MANY_REQUESTS) SpanStatus.RESOURCE_EXHAUSTED
+                        else SpanStatus.INTERNAL_ERROR
+                    )
+                    openCooldown(provider.name, reason)
+                    throw IOException("${provider.name} $reason")
                 }
                 if (!response.isSuccessful) {
                     span?.finish(SpanStatus.INTERNAL_ERROR)
@@ -853,7 +931,7 @@ class CommentaryFusionService(
                 val elapsedMs = System.currentTimeMillis() - startMs
                 span?.setData("gen_ai.usage.output_tokens", content.length / 4)
                 span?.finish(SpanStatus.OK)
-                provider429Count.remove(provider.name)
+                recordProviderSuccess(provider.name)
                 Sentry.metrics().count("ai.request.success", 1.0)
                 Sentry.metrics().distribution("ai.latency_ms", elapsedMs.toDouble(), "millisecond")
                 Sentry.metrics().count("ai.tokens_generated", (content.length / 4).toDouble())
@@ -861,6 +939,7 @@ class CommentaryFusionService(
             }
         } catch (e: Exception) {
             span?.finish(SpanStatus.INTERNAL_ERROR)
+            if (isTimeout(e)) openCooldown(provider.name, "timed out")
             throw e
         }
     }

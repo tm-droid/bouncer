@@ -9,6 +9,9 @@ const PERM_EXPIRES = "2099-01-01T00:00:00.000Z";
 // Org-level monthly read budget exhausted — every DB read 402s project-wide.
 const isBudget402 = (e) => e?.code === 402 || e?.type === "limit_databases_reads_exceeded";
 
+// Duplicated in match-sync/src/llm.js and the Kotlin CommentaryFusionService.providers. No shared
+// config channel exists across Kotlin + two Node functions without codegen or a fetched manifest, so
+// a model bump is a three-place edit — change all three together.
 const PROVIDERS = [
   { name: "groq",      url: "https://api.groq.com/openai/v1/chat/completions",      model: "llama-3.3-70b-versatile",         keyEnv: "GROQ_API_KEY" },
   { name: "cerebras",  url: "https://api.cerebras.ai/v1/chat/completions",           model: "llama-3.3-70b",                   keyEnv: "CEREBRAS_API_KEY" },
