@@ -1,4 +1,4 @@
-import { Client, Storage, Databases, Query } from "node-appwrite";
+import { Client, Storage, Databases } from "node-appwrite";
 import { InputFile } from "node-appwrite/file";
 import { createHash } from "crypto";
 import { parseJsonFile } from "./storageJson.js";
@@ -50,19 +50,22 @@ const JUNK_COMMENTARY_RE = /^(teams|squads|playing xi)\s*:?\s*$/i;
 const READ_ANY = ['read("any")'];
 
 // Read-budget protection: Appwrite bills DB reads at the org level (monthly budget) and
-// bills ONE read PER DOCUMENT RETURNED, not per query — a listDocuments(limit(30)) costs
-// up to 30 reads. Exhausting the budget 402s every read project-wide. The dedupe read below
-// is seeded once per warm container (see seenByMatch) so steady-state runs cost 0 reads;
-// anything above READ_BUDGET_PER_RUN listDocuments calls can only be a future bug.
+// bills ONE read PER DOCUMENT RETURNED, not per query. The seed read used to be a
+// listDocuments(limit(30)) costing up to 30 reads per match per cold container; it is now a
+// single getDocument on the match's own detail row (1 read). Exhausting the budget 402s every
+// read project-wide, so anything above READ_BUDGET_PER_RUN reads can only be a future bug.
 const READ_BUDGET_PER_RUN = 20;
 const READ_402_BACKOFF_MS = 6 * 60 * 60 * 1000; // budget resets monthly; retrying sooner is pointless
 let budget402UntilMs = 0; // survives warm invocations of the 1-min cron
 let readsThisRun = 0;
-// Dedupe cache: matchId -> Set<rowId> of commentary rows we know exist. Survives warm 1-min
-// cron invocations (module scope), so we pay the seed read only on a cold container / a
-// match's first appearance — never re-reading the same 30 rows every minute. Pruned each run
-// to the live set so ended matches don't retain memory.
-const seenByMatch = new Map();
+// Dedupe watermark: matchId -> highest commentary sort_key already written. Survives warm 1-min
+// cron invocations (module scope), so the seed read is paid only on a cold container / a match's
+// first appearance. Pruned each run to the live set so ended matches don't retain memory.
+//
+// A high-water mark replaces the old id-set because the two carry the same information for this
+// purpose — commentary only ever arrives newest-after-oldest — while costing 1 read instead of 30.
+// Correctness never depended on either: writes use a deterministic rowId plus a 409 backstop.
+const watermarkByMatch = new Map();
 const isBudget402 = (e) => e?.code === 402 || e?.type === "limit_databases_reads_exceeded";
 
 const docId = (s) => createHash("sha256").update(s).digest("hex").slice(0, 36);
@@ -112,8 +115,8 @@ export default async ({ req, res, log, error }) => {
   log(`${allLive.length} live, ${live.length} with viewers`);
   // Prune the warm dedupe cache to matches still live so ended matches don't retain memory.
   const liveIds = new Set(live.map((m) => String(m.id)));
-  for (const id of seenByMatch.keys()) {
-    if (!liveIds.has(id)) seenByMatch.delete(id);
+  for (const id of watermarkByMatch.keys()) {
+    if (!liveIds.has(id)) watermarkByMatch.delete(id);
   }
   const summary = {};
   const winProb = {};
@@ -302,16 +305,14 @@ async function syncMatch({ db, matchId, title, withCommentary, model, log, error
   // 4. Commentary: newest-first, generate AI only for new ball lines.
   const commentary = parseCommentary(liveHtml).slice(0, SCAN_NEWEST);
 
-  // Dedupe against known-existing rows. The set is seeded from Appwrite exactly once — on a
-  // cold container or this match's first appearance — then maintained in memory across warm
-  // 1-min invocations, so steady-state runs cost 0 DB reads. Correctness never depends on it:
-  // writes use a deterministic rowId + a 409 backstop, so a cold/empty set only risks a
-  // redundant (409'd) write, never a duplicate row.
-  let existingIds = seenByMatch.get(matchId);
-  if (!existingIds) {
-    existingIds = await existingCommentaryIds({ db, matchId, error });
-    seenByMatch.set(matchId, existingIds);
-    log(`Match ${matchId}: seeded dedupe from Appwrite (${existingIds.size} rows, cold)`);
+  // Dedupe against everything already written, via a high-water mark seeded from Appwrite exactly
+  // once — on a cold container or this match's first appearance — then maintained in memory across
+  // warm 1-min invocations, so steady-state runs cost 0 DB reads.
+  let watermark = watermarkByMatch.get(matchId);
+  if (watermark === undefined) {
+    watermark = await commentaryWatermark({ db, matchId, error });
+    watermarkByMatch.set(matchId, watermark);
+    log(`Match ${matchId}: seeded commentary watermark ${watermark} (cold)`);
   }
 
   // Newly-written commentary belongs to the innings currently being batted. The scorecard
@@ -320,19 +321,28 @@ async function syncMatch({ db, matchId, title, withCommentary, model, log, error
   // is unavailable. Replaces the previous hardcoded `innings: 1`.
   const currentInnings = detail.scorecard?.innings?.length || 1;
 
+  // Oldest-first among items past the watermark. Order matters: the watermark can only advance
+  // contiguously from the bottom, so processing newest-first would strand every older unwritten
+  // item behind it permanently once MAX_NEW_PER_MATCH truncated the run.
+  const fresh = commentary
+    .filter((i) => Number(i.timestamp) > watermark)
+    .sort((a, b) => Number(a.timestamp) - Number(b.timestamp));
+
   let written = 0;
-  for (const item of commentary) {
+  let newWatermark = watermark;
+  for (const item of fresh) {
+    // Checked before any work so the watermark stops at the last FULLY processed item.
     if (written >= MAX_NEW_PER_MATCH) break;
     const rowId = docId(`${matchId}:${item.timestamp}`);
-    if (existingIds.has(rowId)) continue;
+    const itemTs = Number(item.timestamp);
 
-    const clean = sanitize(item.commText);
-    if (JUNK_COMMENTARY_RE.test(clean)) continue;
+    // Skipped items are still "processed" — advance past them or they are re-examined forever.
+    if (JUNK_COMMENTARY_RE.test(clean)) { newWatermark = itemTs; continue; }
     const ballMatch = clean.match(BALL_RE);
     const ball = ballMatch ? ballMatch[1] : "";
     // Only persist ball-by-ball lines. Items with no ball number are session/meta chatter
     // (breaks, notes) that previously landed as malformed, ball-less rows — skip them.
-    if (!ball) continue;
+    if (!ball) { newWatermark = itemTs; continue; }
 
     let line = clean;
     {
@@ -355,7 +365,7 @@ async function syncMatch({ db, matchId, title, withCommentary, model, log, error
         if (line && !line.startsWith(ball)) line = `${ball}: ${line}`;
       }
     }
-    if (!line) continue;
+    if (!line) { newWatermark = itemTs; continue; }
 
     try {
       await db.createDocument(
@@ -372,13 +382,18 @@ async function syncMatch({ db, matchId, title, withCommentary, model, log, error
         },
         READ_ANY
       );
-      existingIds.add(rowId);
+      newWatermark = itemTs;
       written++;
     } catch (e) {
-      // 409 = row already exists (race / seed missed it): record it so we don't retry it.
-      if (e?.code === 409) existingIds.add(rowId);
+      // 409 = row already exists (race / watermark behind): it is durably written, so advance.
+      if (e?.code === 409) newWatermark = itemTs;
       else error(`Commentary write failed (${matchId}/${ball}): ${e?.message}`);
     }
+  }
+
+  if (newWatermark > watermark) {
+    watermarkByMatch.set(matchId, newWatermark);
+    await persistWatermark({ db, matchId, watermark: newWatermark, error });
   }
   log(`Match ${matchId}: ${written} new commentary rows`);
   return { status: { commentaryWritten: written }, winProb };
@@ -406,33 +421,48 @@ async function upsertDetail({ db, matchId, detail, error }) {
   }
 }
 
-// Seed read: the newest commentary row IDs for this match. Called at most once per match per
-// warm container (see seenByMatch), NOT every run. Bills up to SCAN_NEWEST reads (one per row
-// returned). The create-on-409 path stays as the race backstop, so a missed/blank result only
-// risks a redundant write.
-async function existingCommentaryIds({ db, matchId, error }) {
+// Seed read: the highest commentary sort_key already written for this match, stored alongside the
+// match's own detail row. Called at most once per match per warm container (see watermarkByMatch),
+// NOT every run.
+//
+// This replaced a listDocuments(limit(SCAN_NEWEST)) over the commentary table. Appwrite bills one
+// read per document RETURNED, so that query cost up to 30 reads per match per cold container; a
+// getDocument on a row we are already writing every run costs exactly 1. The create-on-409 path
+// stays as the race backstop, so a missed or zero result only risks a redundant write.
+async function commentaryWatermark({ db, matchId, error }) {
   if (++readsThisRun > READ_BUDGET_PER_RUN) {
     // Hard stop: with warm-container dedupe, seed reads/run should stay well under this.
     // Exceeding it means the cache isn't sticking (cold-loop) or a bug — fail loudly.
     throw new Error(`[READ-BUDGET-402] per-run read cap exceeded (${readsThisRun} > ${READ_BUDGET_PER_RUN}) — aborting`);
   }
   try {
-    // node-appwrite 15 Databases API: listDocuments (listRows only exists on the
-    // TablesDB service of newer SDKs — calling it here threw on every run, silently
-    // disabling dedupe and pushing every write through the 409 backstop).
-    const result = await db.listDocuments(DB_ID, COMMENTARY_COL, [
-      Query.equal("match_id", matchId),
-      Query.orderDesc("sort_key"),
-      Query.limit(SCAN_NEWEST),
-    ]);
-    return new Set((result.documents ?? []).map((r) => r.$id));
+    const row = await db.getDocument(DB_ID, DETAIL_COL, sanitizeMatchId(matchId));
+    return Number(row?.last_commentary_sort_key) || 0;
   } catch (e) {
+    // 404 = this match has no detail row yet, so nothing has been written for it either.
+    if (e?.code === 404) return 0;
     if (isBudget402(e)) {
       budget402UntilMs = Date.now() + READ_402_BACKOFF_MS;
       error(`[READ-BUDGET-402] limit_databases_reads_exceeded on ${matchId} — aborting run, cooldown ${READ_402_BACKOFF_MS / 60000} min`);
-      throw e; // fail the match (and run) loudly instead of silently emptying the dedupe set
+      throw e; // fail the match (and run) loudly instead of silently resetting the watermark
     }
-    error(`Commentary existence read failed (${matchId}): ${e?.message}`);
-    return new Set();
+    error(`Commentary watermark read failed (${matchId}): ${e?.message}`);
+    // Rethrow: returning 0 here would re-generate (and re-pay for) every line in the scan window.
+    throw e;
+  }
+}
+
+// Persist the advanced watermark onto the detail row. Deliberately a separate, tiny update rather
+// than folding it into upsertDetail: that upsert runs BEFORE commentary is generated, and delaying
+// it until after would hold back the live-score realtime push by the whole LLM round-trip.
+// At most one extra write per viewed match per run, and only when new commentary was written.
+async function persistWatermark({ db, matchId, watermark, error }) {
+  try {
+    await db.updateDocument(DB_ID, DETAIL_COL, sanitizeMatchId(matchId), {
+      last_commentary_sort_key: watermark,
+    });
+  } catch (e) {
+    // Losing it only costs a re-scan on the next cold container — never fail the match for this.
+    error(`Watermark persist failed (${matchId}): ${e?.message}`);
   }
 }

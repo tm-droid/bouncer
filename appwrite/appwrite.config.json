@@ -184,7 +184,7 @@
             "fileSecurity": false,
             "maximumFileSize": 10485760,
             "allowedFileExtensions": ["json"],
-            "compression": "none",
+            "compression": "gzip",
             "encryption": false,
             "antivirus": false,
             "$permissions": ["read(\"any\")", "create(\"any\")", "update(\"any\")", "delete(\"any\")"]
@@ -343,7 +343,8 @@
             "columns": [
                 { "key": "match_id",   "type": "varchar", "required": true,  "size": 32, "array": false },
                 { "key": "payload",    "type": "text",    "required": true,              "array": false },
-                { "key": "updated_at", "type": "varchar", "required": false, "size": 40, "default": "", "array": false }
+                { "key": "updated_at", "type": "varchar", "required": false, "size": 40, "default": "", "array": false },
+                { "key": "last_commentary_sort_key", "type": "double", "required": false, "default": 0, "array": false }
             ],
             "indexes": [
                 {

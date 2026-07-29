@@ -1,12 +1,36 @@
 import { Client, Storage } from "node-appwrite";
 import { InputFile } from "node-appwrite/file";
-import { createSign } from "crypto";
+import { createSign, createHash } from "crypto";
 import { seriesCategory, isWomensSeries } from "./series.js";
-import { parseJsonFile, fileText } from "./storageJson.js";
+import { parseJsonFile } from "./storageJson.js";
 
 const VERCEL_BASE = process.env.VERCEL_API_BASE ?? "https://api-iota-jade.vercel.app";
 const BUCKET_ID = process.env.MATCH_CACHE_BUCKET_ID ?? "cricket-stats";
 const FILE_IDS = { live: "live-matches", recent: "recent-matches", upcoming: "upcoming-matches" };
+
+// Tracks the last-written content hash per type so an unchanged list is not rewritten every
+// minute. One small download replaces three large uploads.
+const STATE_FILE_ID = "poll-state";
+
+// A skipped write freezes the file's `fetchedAt`, and devices reject a file older than their own
+// staleness bound — so every type must still be refreshed periodically even when unchanged.
+//
+// Defaults are deliberately conservative at 120s, which is inside the 150s bound that ALREADY
+// SHIPPED clients apply to every type. Android updates roll out over days, so raising the
+// upcoming/recent floor before that release has propagated would make old installs reject those
+// files and fall through to the Vercel API — trading an Appwrite bill for a Vercel one.
+//
+// Once the release carrying CacheConfig.matchStorageMaxAgeMs (live 180s / others 900s) is out,
+// raise the static floor to 600000 via the function's env vars. No redeploy needed.
+const REFRESH_FLOOR_LIVE_MS = Number(process.env.REFRESH_FLOOR_LIVE_MS) || 120_000;
+const REFRESH_FLOOR_STATIC_MS = Number(process.env.REFRESH_FLOOR_STATIC_MS) || 120_000;
+const REFRESH_FLOOR_MS = {
+  live: REFRESH_FLOOR_LIVE_MS,
+  recent: REFRESH_FLOOR_STATIC_MS,
+  upcoming: REFRESH_FLOOR_STATIC_MS,
+};
+
+const hashOf = (data) => createHash("sha256").update(JSON.stringify(data)).digest("hex");
 
 export default async ({ req, res, log, error }) => {
   if (!process.env.APPWRITE_API_KEY) {
@@ -18,28 +42,65 @@ export default async ({ req, res, log, error }) => {
     .setKey(process.env.APPWRITE_API_KEY);
   const storage = new Storage(client);
 
+  // Previous content hashes. Missing/corrupt state just means every type is rewritten this run.
+  let prevState = {};
+  try {
+    prevState = parseJsonFile(await storage.getFileDownload(BUCKET_ID, STATE_FILE_ID)) ?? {};
+  } catch { /* first run */ }
+
   // Fetch all three types in parallel to minimize total write-time spread
   const types = ["live", "recent", "upcoming"];
+  const now = Date.now();
   const settled = await Promise.allSettled(types.map(async (type) => {
     const resp = await fetch(`${VERCEL_BASE}/matches?type=${type}`, { signal: AbortSignal.timeout(10_000) });
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     const data = await resp.json();
-    const payload = JSON.stringify({ data, fetchedAt: Date.now() });
+
+    // Hash the DATA only. The stored payload embeds `fetchedAt`, so hashing it would differ on
+    // every run and this comparison would never skip anything.
+    const hash = hashOf(data);
+    const prev = prevState[type];
+    const ageMs = prev?.writtenAt ? now - prev.writtenAt : Infinity;
+    const unchanged = prev?.hash === hash;
+    if (unchanged && ageMs < REFRESH_FLOOR_MS[type]) {
+      log(`Skipped ${type} — unchanged, ${Math.round(ageMs / 1000)}s old`);
+      return { type, data, hash, writtenAt: prev.writtenAt, skipped: true };
+    }
+
+    const payload = JSON.stringify({ data, fetchedAt: now });
     const buffer = Buffer.from(payload, "utf8");
     await storage.deleteFile(BUCKET_ID, FILE_IDS[type]).catch(() => {});
     await storage.createFile(BUCKET_ID, FILE_IDS[type], InputFile.fromBuffer(buffer, `${type}-matches.json`), ["read(\"any\")"]);
-    log(`Updated ${type}`);
-    return { type, data };
+    log(unchanged ? `Refreshed ${type} (floor elapsed)` : `Updated ${type}`);
+    return { type, data, hash, writtenAt: now, skipped: false };
   }));
 
   const results = {};
+  const nextState = { ...prevState };
   for (let i = 0; i < types.length; i++) {
     const s = settled[i];
     if (s.status === "fulfilled") {
-      results[types[i]] = "ok";
+      results[types[i]] = s.value.skipped ? "skipped" : "ok";
+      nextState[types[i]] = { hash: s.value.hash, writtenAt: s.value.writtenAt };
     } else {
       error(`Failed ${types[i]}: ${s.reason?.message}`);
       results[types[i]] = "error";
+      // Leave this type's previous state untouched so a transient failure does not make the next
+      // run believe the file is current.
+    }
+  }
+
+  if (JSON.stringify(nextState) !== JSON.stringify(prevState)) {
+    try {
+      await storage.deleteFile(BUCKET_ID, STATE_FILE_ID).catch(() => {});
+      await storage.createFile(
+        BUCKET_ID, STATE_FILE_ID,
+        InputFile.fromBuffer(Buffer.from(JSON.stringify(nextState), "utf8"), `${STATE_FILE_ID}.json`),
+        ["read(\"any\")"]
+      );
+    } catch (e) {
+      // Losing the state file only costs a redundant rewrite next run — never fail the whole run.
+      error(`poll-state write failed: ${e?.message}`);
     }
   }
 
@@ -51,10 +112,16 @@ export default async ({ req, res, log, error }) => {
       const liveData = liveResult.value?.data;
       const newLiveCount = liveData?.matches?.length ?? liveData?.count ?? 0;
 
+      // Stored as JSON because the bucket's allowedFileExtensions is ["json"]. It was previously
+      // written as `live-count.txt`, which Appwrite rejected; the throw was swallowed by the catch
+      // below, so prevCount was ALWAYS 0 and this branch fired an FCM topic push every single
+      // minute that any match was live.
       let prevCount = 0;
       try {
-        prevCount = parseInt(fileText(await storage.getFileDownload(BUCKET_ID, "live-count"))) || 0;
-      } catch { /* first run */ }
+        const parsed = parseJsonFile(await storage.getFileDownload(BUCKET_ID, "live-count"));
+        // Tolerate a bare number in case a legacy body ever landed.
+        prevCount = (typeof parsed === "number" ? parsed : parsed?.count) || 0;
+      } catch { /* first run, or legacy non-JSON body */ }
 
       if (newLiveCount !== prevCount) {
         log(`Live match count changed: ${prevCount} → ${newLiveCount}`);
@@ -72,7 +139,7 @@ export default async ({ req, res, log, error }) => {
 
         await storage.deleteFile(BUCKET_ID, "live-count").catch(() => {});
         await storage.createFile(BUCKET_ID, "live-count",
-          InputFile.fromBuffer(Buffer.from(String(newLiveCount)), "live-count.txt"),
+          InputFile.fromBuffer(Buffer.from(JSON.stringify({ count: newLiveCount }), "utf8"), "live-count.json"),
           ["read(\"any\")"]
         );
       }

@@ -17,6 +17,22 @@ object CacheConfig {
     // write cadence, so the Live tab's 6s poll stops re-downloading bytes it already has.
     const val MATCHES_RESPONSE_TTL_LIVE_MS = 30_000L
     const val MATCHES_RESPONSE_TTL_STATIC_MS = 600_000L // upcoming/recent change a few times a day
+
+    /**
+     * How old a downloaded `{type}-matches` file may be before the device ignores it and falls back
+     * to the Vercel API.
+     *
+     * Per-type because `bouncer-poll-live-matches` only rewrites a file when its content actually
+     * changed or its refresh floor elapsed — fixtures legitimately sit unchanged for hours. A single
+     * 150s bound (the old [MATCH_CACHE_TTL_MS]) would reject every unchanged upcoming/recent file
+     * and push all devices onto Vercel. Each value sits above the server's floor for that type so a
+     * file written exactly at the floor is still accepted.
+     */
+    fun matchStorageMaxAgeMs(type: String): Long =
+        if (type.lowercase() == "live") LIVE_STORAGE_MAX_AGE_MS else STATIC_STORAGE_MAX_AGE_MS
+
+    const val LIVE_STORAGE_MAX_AGE_MS = 180_000L // server floor 120s + headroom
+    const val STATIC_STORAGE_MAX_AGE_MS = 900_000L // server floor 600s + headroom
     // Appwrite Realtime reconnect backoff (exponential + jittered, reset on successful subscribe).
     const val REALTIME_RECONNECT_MIN_MS = 2_000L
     const val REALTIME_RECONNECT_MAX_MS = 60_000L

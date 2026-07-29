@@ -3,6 +3,21 @@ import { Client, Databases } from "node-appwrite";
 // Appwrite auto-injects APPWRITE_FUNCTION_API_ENDPOINT and APPWRITE_FUNCTION_PROJECT_ID.
 // APPWRITE_API_KEY must be set manually in the function's env vars.
 
+// Hard ceiling on writes per run. The loop below previously iterated whatever the Highlightly API
+// returned, unbounded — a large response meant a write burst with nothing to stop it.
+const MAX_WRITES_PER_RUN = 50;
+
+// Ids already written, kept in module scope so it survives warm invocations of the */15 cron.
+// Highlightly re-returns the same clips every run, so without this every run rewrote all of them.
+// Bounded so a long-lived container cannot grow it without limit.
+const MAX_SEEN = 2000;
+const seenIds = new Set();
+
+function rememberSeen(id) {
+  if (seenIds.size >= MAX_SEEN) seenIds.clear(); // cheap bound; a reset only costs one re-write pass
+  seenIds.add(id);
+}
+
 export default async ({ req, res, log, error }) => {
   const RAPIDAPI_KEY = process.env.RAPIDAPI_KEY ?? "";
   const HIGHLIGHTLY_API_KEY = process.env.HIGHLIGHTLY_API_KEY ?? "";
@@ -41,18 +56,47 @@ export default async ({ req, res, log, error }) => {
   // ── Upsert each highlight into Appwrite DB ──────────────────────────────
   const now = Date.now();
   let upserted = 0;
+  let skipped = 0;
   const failed = [];
-  for (const h of highlights) {
+
+  // Newest first, so if the cap truncates the run it sheds the oldest clips rather than the ones
+  // users are most likely to want. startDate is an ISO string, so parse it — Number() yields NaN
+  // and an NaN comparator leaves the order undefined.
+  const startedAt = (h) => Date.parse(h.match?.startDate ?? "") || 0;
+  // Skipping already-written ids means a later metadata change to an existing clip (say an
+  // embed_url appearing) is not repushed until the container recycles. Accepted: Highlightly
+  // clip metadata is effectively immutable once published, and the alternative was rewriting
+  // every clip every 15 minutes forever.
+  const pending = highlights
+    .filter((h) => !seenIds.has(h.id))
+    .sort((a, b) => startedAt(b) - startedAt(a));
+  skipped = highlights.length - pending.length;
+
+  const batch = pending.slice(0, MAX_WRITES_PER_RUN);
+  if (pending.length > batch.length) {
+    // Never let a cap truncate silently — a shorter list would otherwise read as "all synced".
+    log(`Write cap hit: ${pending.length} new highlights, writing newest ${batch.length}`);
+  }
+
+  for (const h of batch) {
     const docId = `hl-${h.id}`;
     const payload = buildPayload(h, now);
     try {
-      // Try update first (cheaper on conflict); fall back to create
-      await db.updateDocument(HIGHLIGHTS_DB_ID, HIGHLIGHTS_COL_ID, docId, payload);
+      // Create first: most rows in a run are new, so this is one write instead of a guaranteed
+      // failed update followed by a create.
+      await db.createDocument(HIGHLIGHTS_DB_ID, HIGHLIGHTS_COL_ID, docId, payload, ["read(\"any\")"]);
       upserted++;
-    } catch (_) {
+      rememberSeen(h.id);
+    } catch (e) {
+      if (e?.code !== 409) {
+        failed.push({ id: h.id, message: e?.message });
+        error(`Failed to create highlight ${h.id}: ${e?.message}`);
+        continue;
+      }
       try {
-        await db.createDocument(HIGHLIGHTS_DB_ID, HIGHLIGHTS_COL_ID, docId, payload, ["read(\"any\")"]);
+        await db.updateDocument(HIGHLIGHTS_DB_ID, HIGHLIGHTS_COL_ID, docId, payload);
         upserted++;
+        rememberSeen(h.id);
       } catch (e2) {
         failed.push({ id: h.id, message: e2?.message });
         error(`Failed to upsert highlight ${h.id}: ${e2?.message}`);
@@ -74,8 +118,8 @@ export default async ({ req, res, log, error }) => {
     }
   }
 
-  log(`Upserted ${upserted} highlights for ${today}; ${failed.length} failures`);
-  return res.json({ upserted, failed: failed.length, date: today });
+  log(`Upserted ${upserted} highlights for ${today}; ${skipped} already known, ${failed.length} failures`);
+  return res.json({ upserted, skipped, failed: failed.length, date: today });
 };
 
 /**
