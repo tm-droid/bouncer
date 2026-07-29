@@ -211,9 +211,10 @@ class AppwriteReadGuardTest {
     fun `storage 402 latches storage but leaves database reads working`() {
         // The whole point of per-quota breakers: a storage/bandwidth 402 must not switch off DB
         // reads. Previously any 402 opened the single shared breaker for six hours.
-        AppwriteReadGuard.reportIfBudget402(
+        AppwriteReadGuard.recordFailure(
             "storage.downloadFile",
             AppwriteException("Storage limit for your organization has exceeded", 402, null),
+            AppwriteReadGuard.Quota.STORAGE,
         )
         assertEquals(1, reports.size)
         assertEquals("breaker_open_402", reports[0].second["reason"])
@@ -226,9 +227,14 @@ class AppwriteReadGuardTest {
     }
 
     @Test
-    fun `reportIfBudget402 ignores non-402 errors`() {
-        AppwriteReadGuard.reportIfBudget402("storage.downloadFile", IOException("network down"))
+    fun `a plain network error is not budget evidence and reports nothing`() {
+        AppwriteReadGuard.recordFailure(
+            "storage.downloadFile",
+            IOException("network down"),
+            AppwriteReadGuard.Quota.STORAGE,
+        )
         assertTrue(reports.isEmpty())
+        assertNull(AppwriteReadGuard.checkAndCount("dl", AppwriteReadGuard.Quota.STORAGE))
     }
 
     @Test

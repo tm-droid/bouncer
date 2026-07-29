@@ -310,15 +310,6 @@ object AppwriteReadGuard {
         }
     }
 
-    /**
-     * Storage-read entry point, kept for call sites that have no guarded funnel yet. Routes to the
-     * same per-quota logic so a storage 402 latches storage — and leaves database reads alone.
-     */
-    fun reportIfBudget402(source: String, e: Throwable) {
-        if (!Appwrite402Classifier.isBudget402(e)) return
-        recordFailure(source, e, Quota.STORAGE)
-    }
-
     // Must be called while holding [lock].
     private fun openBreaker(quota: Quota, source: String, probeIntervalMs: Long, message: String) {
         val b = breakers.getValue(quota)
