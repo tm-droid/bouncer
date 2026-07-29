@@ -2,9 +2,9 @@ package com.tanush.bouncer.data.remote
 
 import com.tanush.bouncer.ApiKeys
 import io.appwrite.Query
-import kotlinx.coroutines.channels.BufferOverflow
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -17,12 +17,6 @@ data class CommentaryEvent(val matchId: String, val commentary: String, val sort
 object AppwriteMatchCommentaryClient : AppwriteTableClient("AppwriteMatchCommentary") {
     private const val TABLE_ID = "match-commentary"
     private const val FEED_LIMIT = 60
-
-    private val _events = MutableSharedFlow<CommentaryEvent>(
-        extraBufferCapacity = 64,
-        onBufferOverflow = BufferOverflow.DROP_OLDEST
-    )
-    val events: SharedFlow<CommentaryEvent> = _events
 
     fun initialize() {
         initTable(ApiKeys.appwriteAiCacheDbId, TABLE_ID)
@@ -59,20 +53,31 @@ object AppwriteMatchCommentaryClient : AppwriteTableClient("AppwriteMatchComment
         return sorted.mapNotNull { (it.data["commentary"] as? String)?.takeIf { c -> c.isNotBlank() } }
     }
 
-    // App-lifetime subscription; emits every newly-created commentary row into [events].
-    fun startRealtime() {
-        if (!isReady) return
-        if (!subscriptionStarted.compareAndSet(false, true)) return
-        startSubscriptionLoop { response ->
-            val isWrite = response.events.any { it.contains(".create") || it.contains(".update") }
-            if (!isWrite) return@startSubscriptionLoop
-            @Suppress("UNCHECKED_CAST")
-            val payload = response.payload as? Map<String, Any> ?: return@startSubscriptionLoop
-            val matchId = payload["match_id"] as? String ?: return@startSubscriptionLoop
-            val commentary = (payload["commentary"] as? String)?.takeIf { it.isNotBlank() }
-                ?: return@startSubscriptionLoop
-            val sortKey = (payload["sort_key"] as? Number)?.toDouble() ?: 0.0
-            _events.tryEmit(CommentaryEvent(matchId, commentary, sortKey))
+    /**
+     * New commentary lines for one match, for as long as the flow is collected.
+     *
+     * Row ids here are `sha256("$matchId:$timestamp")`, unknowable client-side, and Appwrite has no
+     * query-filtered channels — so unlike the detail client this must use the table channel and
+     * filter locally. The lever is therefore DURATION, not selectivity: the socket is held only
+     * while a match-detail screen is alive instead of for the whole process. Concurrent collectors
+     * share one socket via the base class refcount.
+     */
+    fun observeCommentary(matchId: String): Flow<CommentaryEvent> = callbackFlow {
+        if (!isReady) {
+            close()
+            return@callbackFlow
         }
+        val handle = acquireChannel(tableChannel()) { response ->
+            val isWrite = response.events.any { it.contains(".create") || it.contains(".update") }
+            if (!isWrite) return@acquireChannel
+            @Suppress("UNCHECKED_CAST")
+            val payload = response.payload as? Map<String, Any> ?: return@acquireChannel
+            if (payload["match_id"] as? String != matchId) return@acquireChannel
+            val commentary = (payload["commentary"] as? String)?.takeIf { it.isNotBlank() }
+                ?: return@acquireChannel
+            val sortKey = (payload["sort_key"] as? Number)?.toDouble() ?: 0.0
+            trySend(CommentaryEvent(matchId, commentary, sortKey))
+        }
+        awaitClose { handle.close() }
     }
 }

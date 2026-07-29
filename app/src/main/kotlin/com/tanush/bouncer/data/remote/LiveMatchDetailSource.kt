@@ -22,11 +22,15 @@ interface LiveMatchDetailSource {
     /** Newest-first commentary lines for a match. */
     suspend fun getCommentaryForMatch(matchId: String): List<String>
 
-    /** Realtime stream of live-detail snapshots (all matches; callers filter). */
-    val detailEvents: Flow<DetailEvent>
+    /**
+     * Realtime live-detail snapshots for ONE match, subscribed for as long as the flow is
+     * collected. Previously a process-wide stream of every match that callers filtered — which
+     * meant every device received every watched match's payload whether or not it was on screen.
+     */
+    fun observeDetail(matchId: String): Flow<MatchLiveDetailPayload>
 
-    /** Realtime stream of new commentary lines (all matches; callers filter). */
-    val commentaryEvents: Flow<CommentaryEvent>
+    /** Realtime new commentary lines for ONE match, subscribed while collected. */
+    fun observeCommentary(matchId: String): Flow<CommentaryEvent>
 
     /** Win-probability history points for the swing chart. */
     suspend fun getProbabilityHistory(matchId: String): AppResult<List<WinProbabilityPoint>>
@@ -41,11 +45,11 @@ object ProductionLiveDetailSource : LiveMatchDetailSource {
     override suspend fun getCommentaryForMatch(matchId: String): List<String> =
         AppwriteMatchCommentaryClient.getForMatch(matchId)
 
-    override val detailEvents: Flow<DetailEvent>
-        get() = AppwriteMatchDetailClient.events
+    override fun observeDetail(matchId: String): Flow<MatchLiveDetailPayload> =
+        AppwriteMatchDetailClient.observeMatch(matchId)
 
-    override val commentaryEvents: Flow<CommentaryEvent>
-        get() = AppwriteMatchCommentaryClient.events
+    override fun observeCommentary(matchId: String): Flow<CommentaryEvent> =
+        AppwriteMatchCommentaryClient.observeCommentary(matchId)
 
     override suspend fun getProbabilityHistory(matchId: String): AppResult<List<WinProbabilityPoint>> =
         CricketRepository.getProbabilityHistory(matchId)

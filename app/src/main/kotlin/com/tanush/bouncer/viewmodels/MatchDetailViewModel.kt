@@ -105,15 +105,15 @@ class MatchDetailViewModel(
 
     init {
         viewModelScope.launch(bouncerExceptionHandler) { loadInitial() }
+        // Per-match subscriptions: collection IS the subscription lifetime, and viewModelScope's
+        // cancellation in onCleared() is the release boundary — so leaving the screen drops the
+        // Realtime claim without any Compose-side plumbing. No client-side filter any more; the
+        // detail stream is scoped to this match's row server-side.
         viewModelScope.launch(bouncerExceptionHandler) {
-            liveSource.detailEvents
-                .filter { it.matchId == match.id }
-                .collect { applyDetail(it.payload) }
+            liveSource.observeDetail(match.id).collect { applyDetail(it) }
         }
         viewModelScope.launch(bouncerExceptionHandler) {
-            liveSource.commentaryEvents
-                .filter { it.matchId == match.id }
-                .collect { onNewCommentaryEvent(it) }
+            liveSource.observeCommentary(match.id).collect { onNewCommentaryEvent(it) }
         }
         // Presence heartbeat: while this Live match is open, tell the backend a viewer is
         // watching so bouncer-match-sync generates commentary for it. Stops when the ViewModel

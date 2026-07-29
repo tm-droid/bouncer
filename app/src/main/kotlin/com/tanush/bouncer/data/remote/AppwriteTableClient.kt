@@ -10,12 +10,14 @@ import io.sentry.Sentry
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
+import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import java.io.Closeable
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
@@ -43,12 +45,12 @@ abstract class AppwriteTableClient(private val tag: String) {
     protected val tablesDB: TablesDB?
         get() = AppwriteClient.client?.let { TablesDB(it) }
 
-    @Volatile private var realtimeSubscription: Any? = null  // RealtimeSubscription handle
-    /** Written from the Realtime callback thread, read from the heartbeat coroutine. */
-    @Volatile private var lastEventAt = 0L
-    private var realtimeFailureCount = 0
     protected val subscriptionStarted = AtomicBoolean(false)
     private val reconnectScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    /** Live subscriptions by channel. Guarded by [channelLock]. */
+    private val channels = mutableMapOf<String, ChannelSubscription>()
+    private val channelLock = Any()
 
     protected fun initTable(dbIdValue: String, tableIdValue: String) {
         dbId = dbIdValue
@@ -58,73 +60,176 @@ abstract class AppwriteTableClient(private val tag: String) {
         }
     }
 
-    // NOTE: Realtime is intentionally NOT paused by AppwriteReadGuard — websocket events
-    // are not billed DB reads; any follow-up fetches they trigger go through guardedRead.
-    protected fun startSubscriptionLoop(onEvent: (io.appwrite.models.RealtimeResponseEvent<Map<String, Any>>) -> Unit) {
-        reconnectScope.launch {
-            while (isActive) {
-                try {
-                    val client = AppwriteClient.client ?: break
-                    val realtime = Realtime(client)
-                    // TablesDB tables are backed by Appwrite collections internally, so the standard
-                    // databases.{db}.collections.{table}.documents channel format is correct.
-                    val channel = "databases.$dbId.collections.$tableId.documents"
-                    (realtimeSubscription as? java.io.Closeable)?.close()
-                    realtimeSubscription = null
-                    // Armed before subscribing so a subscription that never delivers anything is
-                    // still measured from a real instant.
-                    lastEventAt = SystemClock.elapsedRealtime()
-                    @Suppress("UNCHECKED_CAST")
-                    realtimeSubscription = realtime.subscribe(channel) { response ->
+    /**
+     * Every row in the table. TablesDB tables are backed by Appwrite collections internally, so the
+     * standard `databases.{db}.collections.{table}.documents` format is correct.
+     */
+    protected fun tableChannel(): String = "databases.$dbId.collections.$tableId.documents"
+
+    /**
+     * A single row. Appwrite has no query-filtered channels, so this is the only way to receive one
+     * match's updates instead of every match anyone is watching.
+     */
+    protected fun rowChannel(rowId: String): String = "databases.$dbId.tables.$tableId.rows.$rowId"
+
+    /** One channel's socket, reconnect state and listeners. */
+    private inner class ChannelSubscription(val channel: String) {
+        @Volatile var handle: Any? = null // RealtimeSubscription
+        /** Written from the Realtime callback thread, read from the heartbeat coroutine. */
+        @Volatile var lastEventAt = 0L
+        var failureCount = 0
+        var job: Job? = null
+        var lingerJob: Job? = null
+
+        /**
+         * All callers currently subscribed to this channel. A list rather than a single callback
+         * because several screens can share one channel — with a single callback, only the caller
+         * that happened to open the socket would ever receive an event.
+         *
+         * Copy-on-write: mutated under [channelLock] but iterated on the Realtime callback thread.
+         */
+        val listeners = java.util.concurrent.CopyOnWriteArrayList<
+            (io.appwrite.models.RealtimeResponseEvent<Map<String, Any>>) -> Unit
+            >()
+
+        fun start(onEvent: (io.appwrite.models.RealtimeResponseEvent<Map<String, Any>>) -> Unit) {
+            job = reconnectScope.launch {
+                while (isActive) {
+                    try {
+                        val client = AppwriteClient.client ?: break
+                        val realtime = Realtime(client)
+                        (handle as? java.io.Closeable)?.close()
+                        handle = null
+                        // Armed before subscribing so a subscription that never delivers anything
+                        // is still measured from a real instant.
                         lastEventAt = SystemClock.elapsedRealtime()
                         @Suppress("UNCHECKED_CAST")
-                        onEvent(response as io.appwrite.models.RealtimeResponseEvent<Map<String, Any>>)
+                        handle = realtime.subscribe(channel) { response ->
+                            lastEventAt = SystemClock.elapsedRealtime()
+                            @Suppress("UNCHECKED_CAST")
+                            val typed = response as io.appwrite.models.RealtimeResponseEvent<Map<String, Any>>
+                            // One listener throwing must not starve the others.
+                            listeners.forEach { listener ->
+                                runCatching { listener(typed) }.onFailure {
+                                    Log.w(tag, "Realtime listener failed on $channel: ${it.message}")
+                                }
+                            }
+                        }
+                        failureCount = 0
+                        awaitEventsOrStaleness()
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        handle = null
+                        failureCount++
+                        val backoffMs = backoffDelayMs(
+                            failureCount,
+                            CacheConfig.REALTIME_RECONNECT_MIN_MS,
+                            CacheConfig.REALTIME_RECONNECT_MAX_MS,
+                        )
+                        Log.w(tag, "Realtime $channel lost (#$failureCount), reconnecting in ${backoffMs}ms: ${e.message}")
+                        if (failureCount % 3 == 0) Sentry.captureException(e)
+                        delay(backoffMs)
                     }
-                    realtimeFailureCount = 0
-                    awaitEventsOrStaleness()
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    realtimeSubscription = null
-                    realtimeFailureCount++
-                    val backoffMs = backoffDelayMs(
-                        realtimeFailureCount,
-                        CacheConfig.REALTIME_RECONNECT_MIN_MS,
-                        CacheConfig.REALTIME_RECONNECT_MAX_MS,
-                    )
-                    Log.w(tag, "Realtime subscription lost (#$realtimeFailureCount), reconnecting in ${backoffMs}ms: ${e.message}")
-                    if (realtimeFailureCount % 3 == 0) Sentry.captureException(e)
-                    delay(backoffMs)
+                }
+            }
+        }
+
+        fun close() {
+            job?.cancel()
+            job = null
+            (handle as? java.io.Closeable)?.close()
+            handle = null
+            listeners.clear()
+        }
+
+        /**
+         * Hold the subscription open, waking periodically to check it is still alive.
+         *
+         * This replaces `delay(Long.MAX_VALUE)`. That parked forever on the assumption — asserted in
+         * a comment and validated by nothing — that the Appwrite SDK always reconnects internally.
+         * If the socket died *inside* the SDK without throwing out of `subscribe()`, the catch above
+         * never fired and this client believed it was subscribed for the rest of the process's life,
+         * silently receiving nothing. Returning normally here drops back into the loop, which
+         * resubscribes.
+         *
+         * Silence is genuinely ambiguous — a channel with no live match is quiet for good reasons —
+         * so the timeout is deliberately generous and a false positive costs only a handshake.
+         */
+        private suspend fun awaitEventsOrStaleness() {
+            while (currentCoroutineContext().isActive) {
+                delay(CacheConfig.REALTIME_HEARTBEAT_MS)
+                val stale = isSubscriptionStale(
+                    lastEventAt,
+                    SystemClock.elapsedRealtime(),
+                    CacheConfig.REALTIME_STALE_TIMEOUT_MS,
+                )
+                if (stale) {
+                    Log.w(tag, "Realtime $channel silent for ${CacheConfig.REALTIME_STALE_TIMEOUT_MS}ms — resubscribing")
+                    (handle as? java.io.Closeable)?.close()
+                    handle = null
+                    return
                 }
             }
         }
     }
 
+    // NOTE: Realtime is intentionally NOT paused by AppwriteReadGuard — websocket events
+    // are not billed DB reads; any follow-up fetches they trigger go through guardedRead.
+    protected fun startSubscriptionLoop(
+        channel: String = tableChannel(),
+        onEvent: (io.appwrite.models.RealtimeResponseEvent<Map<String, Any>>) -> Unit,
+    ) {
+        acquireChannel(channel, onEvent)
+    }
+
     /**
-     * Hold the subscription open, waking periodically to check it is still alive.
+     * Subscribe to [channel], sharing one socket between all callers, and return a handle that
+     * releases this caller's claim.
      *
-     * This replaces `delay(Long.MAX_VALUE)`. That parked forever on the assumption — asserted in a
-     * comment and validated by nothing — that the Appwrite SDK always reconnects internally. If the
-     * socket died *inside* the SDK without throwing out of `subscribe()`, the catch below never fired
-     * and this client believed it was subscribed for the rest of the process's life, silently
-     * receiving nothing. Returning normally here drops back into the loop, which resubscribes.
-     *
-     * Silence is genuinely ambiguous — a channel with no live match is quiet for good reasons — so
-     * the timeout is deliberately generous and a false positive costs only a websocket handshake.
+     * Release is deferred by [CacheConfig.REALTIME_LINGER_MS] rather than closing immediately:
+     * without it a screen rotation or tab switch tears the websocket down and re-handshakes it on
+     * every ViewModel recreation.
      */
-    private suspend fun awaitEventsOrStaleness() {
-        while (currentCoroutineContext().isActive) {
-            delay(CacheConfig.REALTIME_HEARTBEAT_MS)
-            val stale = isSubscriptionStale(
-                lastEventAt,
-                SystemClock.elapsedRealtime(),
-                CacheConfig.REALTIME_STALE_TIMEOUT_MS,
-            )
-            if (stale) {
-                Log.w(tag, "Realtime subscription silent for ${CacheConfig.REALTIME_STALE_TIMEOUT_MS}ms — resubscribing")
-                (realtimeSubscription as? java.io.Closeable)?.close()
-                realtimeSubscription = null
-                return
+    protected fun acquireChannel(
+        channel: String,
+        onEvent: (io.appwrite.models.RealtimeResponseEvent<Map<String, Any>>) -> Unit,
+    ): Closeable {
+        synchronized(channelLock) {
+            val existing = channels[channel]
+            if (existing != null) {
+                existing.listeners.add(onEvent)
+                existing.lingerJob?.cancel()
+                existing.lingerJob = null
+            } else {
+                val created = ChannelSubscription(channel)
+                created.listeners.add(onEvent)
+                channels[channel] = created
+                created.start(onEvent)
+            }
+        }
+        val released = AtomicBoolean(false)
+        return Closeable {
+            // Guard against a caller closing twice, which would drop someone else's claim.
+            if (released.compareAndSet(false, true)) release(channel, onEvent)
+        }
+    }
+
+    private fun release(
+        channel: String,
+        onEvent: (io.appwrite.models.RealtimeResponseEvent<Map<String, Any>>) -> Unit,
+    ) = synchronized(channelLock) {
+        val sub = channels[channel] ?: return
+        sub.listeners.remove(onEvent)
+        if (sub.listeners.isNotEmpty()) return
+        sub.lingerJob = reconnectScope.launch {
+            delay(CacheConfig.REALTIME_LINGER_MS)
+            synchronized(channelLock) {
+                // Re-check: someone may have re-acquired during the linger.
+                if (sub.listeners.isEmpty()) {
+                    sub.close()
+                    channels.remove(channel)
+                }
             }
         }
     }
@@ -169,9 +274,17 @@ abstract class AppwriteTableClient(private val tag: String) {
         }
     }
 
-    fun stop() {
-        reconnectScope.cancel()
-        (realtimeSubscription as? java.io.Closeable)?.close()
-        realtimeSubscription = null
+    /**
+     * Close every channel and reset the start latch so the client can be restarted.
+     *
+     * Cancels the scope's CHILDREN, not the scope. `reconnectScope.cancel()` put the scope into a
+     * permanently cancelled state, so nothing could ever be relaunched on it — the first
+     * background/foreground cycle would have killed realtime for the rest of the process.
+     */
+    fun stop() = synchronized(channelLock) {
+        reconnectScope.coroutineContext.cancelChildren()
+        channels.values.forEach { it.close() }
+        channels.clear()
+        subscriptionStarted.set(false)
     }
 }

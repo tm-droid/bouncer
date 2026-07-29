@@ -5,11 +5,11 @@ import com.tanush.bouncer.ApiKeys
 import com.tanush.bouncer.models.Scorecard
 import com.tanush.bouncer.models.ScrapedBatsman
 import com.tanush.bouncer.models.ScrapedBowler
-import io.appwrite.Query
-import kotlinx.coroutines.channels.BufferOverflow
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.SharedFlow
+import io.appwrite.exceptions.AppwriteException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.withContext
 
 // Server-built live match snapshot (batsmen/bowler/score/scorecard), written by
@@ -35,17 +35,9 @@ data class MatchLiveDetailPayload(
     val winProbabilityConfidence: Double? = null,
 )
 
-data class DetailEvent(val matchId: String, val payload: MatchLiveDetailPayload)
-
 object AppwriteMatchDetailClient : AppwriteTableClient("AppwriteMatchDetail") {
     private const val TABLE_ID = "match-live-detail"
     private val gson = Gson()
-
-    private val _events = MutableSharedFlow<DetailEvent>(
-        extraBufferCapacity = 16,
-        onBufferOverflow = BufferOverflow.DROP_OLDEST
-    )
-    val events: SharedFlow<DetailEvent> = _events
 
     fun initialize() {
         initTable(ApiKeys.appwriteAiCacheDbId, TABLE_ID)
@@ -55,14 +47,18 @@ object AppwriteMatchDetailClient : AppwriteTableClient("AppwriteMatchDetail") {
         if (!isReady) return null
         return withContext(Dispatchers.IO) {
             runCatching {
-                val result = guardedRead("matchDetail.fetch") {
-                    it.listRows(
-                        databaseId = dbId,
-                        tableId = tableId,
-                        queries = listOf(Query.equal("match_id", matchId), Query.limit(1))
-                    )
-                } ?: return@runCatching null
-                val raw = result.rows.firstOrNull()?.data?.get("payload") as? String ?: return@runCatching null
+                // getRow on the deterministic row id rather than a filtered list: same single
+                // billed read, no dependency on idx_match_id, and it exercises sanitizeMatchId on
+                // the same path as the subscription below so a mismatch surfaces as a logged 404.
+                val row = try {
+                    guardedRead("matchDetail.fetch") {
+                        it.getRow(databaseId = dbId, tableId = tableId, rowId = sanitizeMatchId(matchId))
+                    } ?: return@runCatching null
+                } catch (e: AppwriteException) {
+                    if (e.code == 404) return@runCatching null
+                    throw e
+                }
+                val raw = row.data["payload"] as? String ?: return@runCatching null
                 parsePayload(raw)
             }.onFailure { e ->
                 logSilentFailure("Live detail fetch failed", e)
@@ -70,20 +66,39 @@ object AppwriteMatchDetailClient : AppwriteTableClient("AppwriteMatchDetail") {
         }
     }
 
-    // App-lifetime subscription; emits every created/updated snapshot into [events].
-    fun startRealtime() {
-        if (!isReady) return
-        if (!subscriptionStarted.compareAndSet(false, true)) return
-        startSubscriptionLoop { response ->
-            val isWrite = response.events.any { it.contains(".create") || it.contains(".update") }
-            if (!isWrite) return@startSubscriptionLoop
-            @Suppress("UNCHECKED_CAST")
-            val payload = response.payload as? Map<String, Any> ?: return@startSubscriptionLoop
-            val matchId = payload["match_id"] as? String ?: return@startSubscriptionLoop
-            val raw = payload["payload"] as? String ?: return@startSubscriptionLoop
-            val parsed = parsePayload(raw) ?: return@startSubscriptionLoop
-            _events.tryEmit(DetailEvent(matchId, parsed))
+    /**
+     * Live snapshots for one match, for as long as the flow is collected.
+     *
+     * Subscribes to that match's ROW rather than the whole table. The table channel delivered every
+     * row anyone was watching to every device — a 15-30 KB payload per match per minute (up to
+     * ~80 KB for a Test), so a device paid bandwidth proportional to what the entire user base had
+     * open. Collection is the lifetime: `awaitClose` releases the refcount, and the base class
+     * lingers briefly so a rotation does not re-handshake.
+     */
+    fun observeMatch(matchId: String): Flow<MatchLiveDetailPayload> = callbackFlow {
+        if (!isReady) {
+            close()
+            return@callbackFlow
         }
+        val handle = acquireChannel(rowChannel(sanitizeMatchId(matchId))) { response ->
+            detailFrom(response, matchId)?.let { trySend(it) }
+        }
+        awaitClose { handle.close() }
+    }
+
+    /** The snapshot carried by a Realtime event, or null if it is not one we should apply. */
+    private fun detailFrom(
+        response: io.appwrite.models.RealtimeResponseEvent<Map<String, Any>>,
+        matchId: String,
+    ): MatchLiveDetailPayload? {
+        if (response.events.none { it.contains(".create") || it.contains(".update") }) return null
+        @Suppress("UNCHECKED_CAST")
+        val payload = response.payload as? Map<String, Any> ?: return null
+        // Defensive: if sanitizeMatchId ever drifted from the server's, this turns "someone else's
+        // match" into "no events" rather than showing the wrong score.
+        if (payload["match_id"] as? String != matchId) return null
+        val raw = payload["payload"] as? String ?: return null
+        return parsePayload(raw)
     }
 
     private fun parsePayload(raw: String): MatchLiveDetailPayload? =

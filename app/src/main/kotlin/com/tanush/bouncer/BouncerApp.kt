@@ -15,6 +15,7 @@ import com.tanush.bouncer.data.local.BouncerDatabase
 import com.tanush.bouncer.data.remote.AppwriteAICache
 import com.tanush.bouncer.data.remote.AppwriteClient
 import com.tanush.bouncer.data.remote.AppwriteHighlightsClient
+import com.tanush.bouncer.data.remote.RealtimeLifecycleController
 import com.tanush.bouncer.data.remote.AppwriteMatchCommentaryClient
 import com.tanush.bouncer.data.remote.AppwriteMatchDetailClient
 import com.tanush.bouncer.data.remote.AppwritePlayerProfilesClient
@@ -158,30 +159,51 @@ class BouncerApp : Application() {
         initializeSafely("AppwriteRealtime") {
             val database = BouncerDatabase.getInstance(this)
             val highlightsRepo = HighlightsRepository(database.highlightDao(), database.matchDao())
-            AppwriteHighlightsClient.startRealtimeSubscription(
-                scope = applicationScope,
-                onNewHighlight = { row ->
-                    // Fuzzy-match + enrich before persisting so the row gets a matchedBouncerMatchId
-                    // and actually appears on its match's Highlights tab.
-                    applicationScope.launch(Dispatchers.IO) {
-                        runCatching { highlightsRepo.ingestRows(listOf(row)) }
-                            .onFailure { Sentry.captureException(it) }
+            val startHighlights = {
+                AppwriteHighlightsClient.startRealtimeSubscription(
+                    scope = applicationScope,
+                    onNewHighlight = { row ->
+                        // Fuzzy-match + enrich before persisting so the row gets a
+                        // matchedBouncerMatchId and actually appears on its match's Highlights tab.
+                        applicationScope.launch(Dispatchers.IO) {
+                            runCatching { highlightsRepo.ingestRows(listOf(row)) }
+                                .onFailure { Sentry.captureException(it) }
+                        }
                     }
-                }
-            )
-            AppwriteAICache.startRealtimeSubscription(
-                scope = applicationScope,
-                onNewEntry = { key, commentary ->
-                    // Dispatchers.IO required — ingestFromRealtime acquires a mutex and writes to
-                    // Room. Running on Main risks jank if the mutex is contested or Room suspends.
-                    applicationScope.launch(Dispatchers.IO) {
-                        AICacheService.ingestFromRealtime(key, commentary)
+                )
+            }
+            val startAiCache = {
+                AppwriteAICache.startRealtimeSubscription(
+                    scope = applicationScope,
+                    onNewEntry = { key, commentary ->
+                        // Dispatchers.IO required — ingestFromRealtime acquires a mutex and writes
+                        // to Room. Running on Main risks jank if the mutex is contested or Room
+                        // suspends.
+                        applicationScope.launch(Dispatchers.IO) {
+                            AICacheService.ingestFromRealtime(key, commentary)
+                        }
                     }
-                }
+                )
+            }
+            startHighlights()
+            startAiCache()
+
+            // These two stay app-lifetime while foregrounded (the AI-cache stream is what warms the
+            // local commentary cache from other devices' work), but are dropped once the app has
+            // been backgrounded a while — they cannot be shown, and Realtime bandwidth is billed
+            // from the same pool as API and Storage.
+            RealtimeLifecycleController.register(
+                "highlights", startHighlights, AppwriteHighlightsClient::stop
             )
-            // Table-wide subscriptions; MatchDetailViewModel filters the shared flows by matchId.
-            AppwriteMatchCommentaryClient.startRealtime()
-            AppwriteMatchDetailClient.startRealtime()
+            RealtimeLifecycleController.register(
+                "aiCache", startAiCache, AppwriteAICache::stop
+            )
+            RealtimeLifecycleController.attach(this, applicationScope)
+
+            // Match detail and commentary are deliberately NOT subscribed here. They are
+            // demand-scoped: MatchDetailViewModel subscribes while a match screen is open and
+            // releases on onCleared(), so a device no longer receives every match that anyone,
+            // anywhere, currently has open.
         }
 
         // ── Configure Coil ImageLoader ───────────────────────────────────

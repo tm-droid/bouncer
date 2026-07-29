@@ -38,6 +38,15 @@ object CacheConfig {
     const val REALTIME_RECONNECT_MAX_MS = 60_000L
     // How often a subscribed client wakes to check that its socket is still delivering events.
     const val REALTIME_HEARTBEAT_MS = 300_000L // 5 minutes
+
+    // Grace period before a channel with no remaining subscribers is actually closed. Without it a
+    // screen rotation or tab switch tears the websocket down and re-handshakes it every time a
+    // ViewModel is recreated.
+    const val REALTIME_LINGER_MS = 30_000L
+
+    // How long the app must stay backgrounded before the always-on subscriptions are dropped.
+    // Long enough that switching out to reply to a message does not churn the sockets.
+    const val REALTIME_BACKGROUND_GRACE_MS = 60_000L
     // Silence beyond this is treated as a dead socket and forces a resubscribe. Generous, because
     // silence is ambiguous: a channel with no live match is quiet for legitimate reasons, and a
     // resubscribe costs a websocket handshake but no billed reads.

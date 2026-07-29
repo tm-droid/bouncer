@@ -2,7 +2,6 @@ package com.tanush.bouncer.demo
 
 import com.tanush.bouncer.data.AppResult
 import com.tanush.bouncer.data.remote.CommentaryEvent
-import com.tanush.bouncer.data.remote.DetailEvent
 import com.tanush.bouncer.data.remote.LiveMatchDetailSource
 import com.tanush.bouncer.data.remote.MatchLiveDetailPayload
 import com.tanush.bouncer.models.WinProbabilityPoint
@@ -23,14 +22,14 @@ internal class FakeLiveDetailSource(private val elapsed: () -> Long) : LiveMatch
     override suspend fun getCommentaryForMatch(matchId: String): List<String> =
         ShowcaseScript.commentaryLines()
 
-    override val detailEvents: Flow<DetailEvent> = flow {
+    override fun observeDetail(matchId: String): Flow<MatchLiveDetailPayload> = flow {
         while (true) {
             delay(DETAIL_TICK_MS)
-            emit(DetailEvent(ShowcaseScript.MATCH_ID, ShowcaseScript.detailPayloadAt(elapsed())))
+            emit(ShowcaseScript.detailPayloadAt(elapsed()))
         }
     }
 
-    override val commentaryEvents: Flow<CommentaryEvent> = flow {
+    override fun observeCommentary(matchId: String): Flow<CommentaryEvent> = flow {
         ShowcaseScript.streamingCommentary().forEachIndexed { index, line ->
             delay(COMMENTARY_TICK_MS)
             emit(CommentaryEvent(ShowcaseScript.MATCH_ID, line, index.toDouble()))
