@@ -144,6 +144,12 @@ buildConfigField("String", "APPWRITE_AI_CACHE_DB_ID", "\"${localProperties.getPr
         }
     }
 
+    // MigrationTestHelper loads the exported Room schemas from the instrumentation APK's assets.
+    // Without this the schemas sit in $projectDir/schemas, unreachable at runtime, and every test in
+    // MigrationTest fails with "Cannot find the schema file in the assets folder" — which reads as a
+    // broken migration but is only a missing asset path.
+    sourceSets.getByName("androidTest").assets.srcDir("$projectDir/schemas")
+
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
