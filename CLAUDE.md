@@ -79,7 +79,10 @@ app/src/main/kotlin/com/tanush/bouncer/
 │                       # AppwriteAICache, AppwriteHighlightsClient, AppwritePlayerProfilesClient,
 │                       # AppwriteFavouritesSync, H2HRepository,
 │                       # AppwriteMatchCommentaryClient (match-commentary table),
-│                       # AppwriteMatchDetailClient (match-live-detail table)
+│                       # AppwriteMatchDetailClient (match-live-detail table),
+│                       # AppwriteMatchScorecardClient (match-scorecard table, never subscribed)
+│                       # AppwriteReadGuard (per-quota breaker), AppwriteUsageTracker (Sentry gauges),
+│                       # RealtimeLifecycleController (background pause) — see appwrite-patterns.md
 ├── models/             # Data models and entities (proguard-kept for Gson — never delete on grep evidence)
 ├── analysis/           # Cricket analysis + ML models (score prediction, win probability)
 ├── auto/               # Android Auto (BouncerCarAppService)
@@ -111,21 +114,23 @@ Endpoint/projectId are auto-injected by the runtime — only `APPWRITE_API_KEY` 
 
 **Player profile cache (global):** `PlayerCacheWorker` checks `AppwritePlayerProfilesClient` before scraping Cricbuzz. First device that scrapes a player pushes to Appwrite (`player-profiles` table, `bouncer-db`); all subsequent devices get a cache hit. Row ID = `entity.playerId` (Room format: `virat_kohli`).
 
-**Appwrite project:** single database `bouncer-db`. Known tables: `ai-commentary-cache`, `highlights`, `highlights-meta`, `user-favourites`, `player-profiles`, `match-commentary`, `match-live-detail`.
+**Appwrite project:** single database `bouncer-db`. Known tables: `ai-commentary-cache`, `highlights`, `highlights-meta`, `user-favourites`, `player-profiles`, `match-commentary`, `match-live-detail`, `match-scorecard`.
 
 **`match-commentary` table:** written by `bouncer-match-sync` (every minute). Columns: `match_id`, `innings`, `ball`, `sort_key` (timestamp, used for ordering), `commentary` (AI-rewritten line), `created_at`. Read by `AppwriteMatchCommentaryClient` — newest-first 60 rows ordered by `sort_key` desc; Realtime subscription emits `CommentaryEvent` on create.
 
 **`match-live-detail` table:** written by `bouncer-match-sync` (every minute). One row per match, upserted. Columns: `match_id`, `payload` (JSON `MatchLiveDetailPayload`), `updated_at`. Row ID = sanitized `matchId`. Read by `AppwriteMatchDetailClient`; Realtime emits `DetailEvent` on create/update. Both clients use `appwriteAiCacheDbId` as their DB ID.
 
+**`match-scorecard` table:** written by `bouncer-match-sync` alongside the detail row. One row per match, row ID = sanitized `matchId`, columns `match_id`, `scorecard` (JSON `Scorecard`), `updated_at`. Read on demand by `AppwriteMatchScorecardClient.getForMatch` — **no index, never subscribed**. Exists so a ~60 KB scorecard stops riding the per-minute realtime detail payload of every subscriber.
+
 **`bouncer-match-sync` Appwrite function:** scheduled `* * * * *`. Reads `live-matches.json` from `cricket-stats` bucket (written by `bouncer-poll-live-matches`); if file absent, returns 200 `{skipped:true}` (not an error). For each live match: fetches Cricbuzz live HTML + scorecard → upserts `match-live-detail` → generates AI commentary lines → writes to `match-commentary`. Up to 10 new rows/match/run, 12 matches max. Env vars: `APPWRITE_AI_CACHE_DB_ID`, `MATCH_COMMENTARY_COL_ID`, `MATCH_LIVE_DETAIL_COL_ID`, `MATCH_CACHE_BUCKET_ID`, `APPWRITE_API_KEY`, `GROQ_API_KEY` (+ fallbacks).
 
 **Appwrite Storage bucket `cricket-stats`:** read-only from Android via `AppwriteClient.downloadFile(bucketId, fileId)`. Three files: `team-stats` (win-rate model written by `train-win-probability`), `h2h-stats` (H2H stats for 650+ team pairs, written by same function), `active-series` (series list, read by `SeriesSyncWorker`). Bucket is written only by Appwrite cloud functions.
 
-**Room DB:** currently at schema version 9. New migrations: add `MIGRATION_N_(N+1)` in `BouncerDatabase.kt` + bump `version` in `@Database`.
+**Room DB:** currently at schema version 11. New migrations: add `MIGRATION_N_(N+1)` in `BouncerDatabase.kt` + bump `version` in `@Database`.
 
 **Appwrite MCP workflow:** `appwrite_search_tools` → `appwrite_call_tool` → `ReadMcpResourceTool` (server: `plugin:appwrite:appwrite-api`, URI from truncated result) for full output. Column creation returns `status: "processing"` — call `tables_db_list_columns` to confirm `"available"` before using. Table-level permissions at creation: `["read(\"any\")", "create(\"any\")", "update(\"any\")"]`.
 
-**New Appwrite client pattern:** `object` singleton extending `AppwriteTableClient(tag)`. The base provides `initTable()`, `tablesDB`, `isReady`, the Realtime `startSubscriptionLoop()` + reconnect backoff, `stop()`, and `logSilentFailure()` — don't reimplement these. Subclass adds `initialize()` (calls `initTable(dbId, tableId)`) and its table ops as `runCatching` + `logSilentFailure` on failure. Register in `BouncerApp.kt` via `initializeSafely("Name") { Client.initialize() }`. Exception: `AppwriteFavouritesSync` is in `data/remote/` but is **not** registered in `BouncerApp` via `initializeSafely` — do not assume it follows the standard init pattern.
+**New Appwrite client pattern:** `object` singleton extending `AppwriteTableClient(tag)`. The base provides `initTable()`, `isReady`, the billed-operation funnels `guardedRead()`/`guardedWrite()`, the refcounted Realtime `acquireChannel(channel) { … }` + reconnect backoff, `stop()`/`stopAll()`, and `logSilentFailure()` — don't reimplement these, and never construct a raw `TablesDB(client)`. Subclass adds `initialize()` (calls `initTable(dbId, tableId)`) and its table ops as `runCatching` + `logSilentFailure` on failure. Register in `BouncerApp.kt` via `initializeSafely("Name") { Client.initialize() }`. Exception: `AppwriteFavouritesSync` is in `data/remote/` but is **not** registered in `BouncerApp` via `initializeSafely` — do not assume it follows the standard init pattern.
 
 **API keys:** Always access via `ApiKeys` object (`ApiKeys.kt`), never `BuildConfig` directly. Add new keys to `ApiKeys.kt` + `build.gradle.kts` + `local.properties.template`.
 
@@ -176,6 +181,7 @@ Detailed configuration documented in `.claude/rules/`:
 - **[api-keys-and-setup.md](./.claude/rules/api-keys-and-setup.md)** — Key loading mechanism, setup options
 - **[testing-patterns.md](./.claude/rules/testing-patterns.md)** — Test commands, organization by category
 - **[initialization-and-patterns.md](./.claude/rules/initialization-and-patterns.md)** — Startup sequence, core patterns, failure isolation
+- **[appwrite-patterns.md](./.claude/rules/appwrite-patterns.md)** — **Read before adding any Appwrite call.** Guard funnels, 402-vs-429, per-document read billing, subscription lifecycles, single-flight caching
 
 ## Context-Mode Tools
 
