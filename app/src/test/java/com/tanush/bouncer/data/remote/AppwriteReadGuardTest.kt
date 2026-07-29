@@ -208,11 +208,21 @@ class AppwriteReadGuardTest {
     }
 
     @Test
-    fun `reportIfBudget402 reports for 402 without opening breaker`() {
-        AppwriteReadGuard.reportIfBudget402("storage.downloadFile", budget402ByCode())
+    fun `storage 402 latches storage but leaves database reads working`() {
+        // The whole point of per-quota breakers: a storage/bandwidth 402 must not switch off DB
+        // reads. Previously any 402 opened the single shared breaker for six hours.
+        AppwriteReadGuard.reportIfBudget402(
+            "storage.downloadFile",
+            AppwriteException("Storage limit for your organization has exceeded", 402, null),
+        )
         assertEquals(1, reports.size)
-        assertEquals("storage_budget_402", reports[0].second["reason"])
-        assertNull(AppwriteReadGuard.checkAndCount("test"))
+        assertEquals("breaker_open_402", reports[0].second["reason"])
+        assertEquals("STORAGE", reports[0].second["quota"])
+        assertEquals(
+            AppwriteReadGuard.BlockReason.BREAKER_OPEN,
+            AppwriteReadGuard.checkAndCount("dl", AppwriteReadGuard.Quota.STORAGE),
+        )
+        assertNull(AppwriteReadGuard.checkAndCount("test", AppwriteReadGuard.Quota.DB_READ))
     }
 
     @Test
@@ -239,21 +249,29 @@ class AppwriteReadGuardTest {
         assertNull(AppwriteReadGuard.checkAndCount("one"))
     }
 
+    /** In-memory [AppwriteReadGuard.BreakerStore] standing in for SharedPreferences. */
+    private class FakeStore(
+        private val saved: MutableMap<AppwriteReadGuard.Quota, AppwriteReadGuard.BreakerState> = mutableMapOf(),
+        var legacy: AppwriteReadGuard.BreakerState? = null,
+    ) : AppwriteReadGuard.BreakerStore {
+        override fun save(quota: AppwriteReadGuard.Quota, state: AppwriteReadGuard.BreakerState?) {
+            if (state == null) saved.remove(quota) else saved[quota] = state
+        }
+
+        override fun loadAll(): Map<AppwriteReadGuard.Quota, AppwriteReadGuard.BreakerState> = saved.toMap()
+
+        override fun consumeLegacy(): AppwriteReadGuard.BreakerState? = legacy.also { legacy = null }
+
+        fun isOpen(quota: AppwriteReadGuard.Quota) = saved.containsKey(quota)
+    }
+
     @Test
     fun `persisted breaker latch is restored on init`() {
-        val saved = mutableMapOf<String, Any>()
-        val store = object : AppwriteReadGuard.BreakerStore {
-            override fun save(open: Boolean, openedAtMs: Long) {
-                saved["open"] = open; saved["at"] = openedAtMs
-            }
-            override fun load(): AppwriteReadGuard.BreakerState? =
-                (saved["open"] as? Boolean)?.takeIf { it }
-                    ?.let { AppwriteReadGuard.BreakerState(true, saved["at"] as Long) }
-        }
+        val store = FakeStore()
         // First "process": a 402 latches and persists the breaker.
         AppwriteReadGuard.initPersistence(store)
         AppwriteReadGuard.recordFailure("test", budget402ByCode())
-        assertEquals(true, saved["open"])
+        assertTrue(store.isOpen(AppwriteReadGuard.Quota.DB_READ))
 
         // Second "process": in-memory reset, but init restores the latch from the store.
         AppwriteReadGuard.reset()
@@ -263,10 +281,128 @@ class AppwriteReadGuardTest {
     }
 
     @Test
+    fun `legacy prefs latch migrates onto the DB_READ breaker`() {
+        // Pre-per-quota installs persisted a single unlabelled latch. Dropping it on upgrade would
+        // let a relaunch re-hit a budget that is still exhausted.
+        val store = FakeStore(legacy = AppwriteReadGuard.BreakerState(0L, CacheConfig.READ_GUARD_PROBE_INTERVAL_MS))
+        AppwriteReadGuard.initPersistence(store)
+
+        assertEquals(AppwriteReadGuard.BlockReason.BREAKER_OPEN, AppwriteReadGuard.checkAndCount("test"))
+        // Writes were never covered by the legacy latch, so they must stay open.
+        assertNull(AppwriteReadGuard.checkAndCount("write", AppwriteReadGuard.Quota.DB_WRITE))
+        // Consumed exactly once, and re-persisted under the new per-quota key.
+        assertTrue(store.isOpen(AppwriteReadGuard.Quota.DB_READ))
+        assertNull(store.legacy)
+    }
+
+    @Test
+    fun `bandwidth 402 does not open the DB_READ breaker`() {
+        AppwriteReadGuard.recordFailure(
+            "matchDetail.fetch",
+            AppwriteException("Bandwidth limit for your organization has exceeded", 402, null),
+        )
+        assertNull(AppwriteReadGuard.checkAndCount("matchDetail.fetch"))
+        assertEquals(
+            AppwriteReadGuard.BlockReason.BREAKER_OPEN,
+            AppwriteReadGuard.checkAndCount("download", AppwriteReadGuard.Quota.BANDWIDTH),
+        )
+    }
+
+    @Test
+    fun `unattributed 402 opens only the calling funnel plus bandwidth with a shorter probe`() {
+        // An unclassifiable message must not freeze every quota — that is far more damage than the
+        // guess is worth. It scopes to the funnel that saw it, plus the shared bandwidth pool.
+        AppwriteReadGuard.recordFailure(
+            "executeFunction",
+            AppwriteException("usage limit exceeded", 402, null),
+            AppwriteReadGuard.Quota.EXECUTIONS,
+        )
+        assertEquals(
+            AppwriteReadGuard.BlockReason.BREAKER_OPEN,
+            AppwriteReadGuard.checkAndCount("fn", AppwriteReadGuard.Quota.EXECUTIONS),
+        )
+        assertEquals(
+            AppwriteReadGuard.BlockReason.BREAKER_OPEN,
+            AppwriteReadGuard.checkAndCount("dl", AppwriteReadGuard.Quota.BANDWIDTH),
+        )
+        // Untouched classes keep working — this assertion is the whole point of funnel scoping.
+        assertNull(AppwriteReadGuard.checkAndCount("read", AppwriteReadGuard.Quota.DB_READ))
+        assertNull(AppwriteReadGuard.checkAndCount("write", AppwriteReadGuard.Quota.DB_WRITE))
+        assertNull(AppwriteReadGuard.checkAndCount("store", AppwriteReadGuard.Quota.STORAGE))
+
+        // Shorter probe interval, because the attribution was inference rather than a stated quota.
+        now += CacheConfig.READ_GUARD_UNKNOWN_402_PROBE_INTERVAL_MS
+        assertNull(AppwriteReadGuard.checkAndCount("fn", AppwriteReadGuard.Quota.EXECUTIONS))
+    }
+
+    @Test
+    fun `429 pauses without latching a breaker`() {
+        AppwriteReadGuard.recordFailure("test", AppwriteException("Rate limit exceeded", 429, "general_rate_limit_exceeded"))
+        assertEquals(AppwriteReadGuard.BlockReason.RATE_CAPPED, AppwriteReadGuard.checkAndCount("test"))
+        // Self-clears like any rate cap — no probe interval, no persisted latch.
+        now += CacheConfig.READ_GUARD_RATE_CAP_PAUSE_MS
+        assertNull(AppwriteReadGuard.checkAndCount("test"))
+    }
+
+    @Test
+    fun `write breaker is independent of the read breaker`() {
+        AppwriteReadGuard.recordFailure(
+            "write",
+            AppwriteException("writes exceeded", 402, "limit_databases_writes_exceeded"),
+            AppwriteReadGuard.Quota.DB_WRITE,
+        )
+        assertEquals(
+            AppwriteReadGuard.BlockReason.BREAKER_OPEN,
+            AppwriteReadGuard.checkAndCount("write", AppwriteReadGuard.Quota.DB_WRITE),
+        )
+        assertNull(AppwriteReadGuard.checkAndCount("read"))
+    }
+
+    @Test
+    fun `write rate cap uses the write window not the read one`() {
+        repeat(CacheConfig.WRITE_GUARD_MAX_WRITES_PER_MINUTE) {
+            assertNull(AppwriteReadGuard.checkAndCount("w", AppwriteReadGuard.Quota.DB_WRITE))
+        }
+        assertEquals(
+            AppwriteReadGuard.BlockReason.RATE_CAPPED,
+            AppwriteReadGuard.checkAndCount("w", AppwriteReadGuard.Quota.DB_WRITE),
+        )
+        // Reads are counted separately and are nowhere near their own cap.
+        assertNull(AppwriteReadGuard.checkAndCount("r"))
+    }
+
+    @Test
+    fun `quotas without a local unit are breaker-only and never rate cap`() {
+        // Bandwidth/storage/execution cost is server-side accounting; there is nothing meaningful
+        // to count locally, so these react to a 402 but must not pre-emptively pause.
+        repeat(CacheConfig.READ_GUARD_MAX_READS_PER_MINUTE * 2) {
+            assertNull(AppwriteReadGuard.checkAndCount("dl", AppwriteReadGuard.Quota.BANDWIDTH))
+        }
+    }
+
+    @Test
+    fun `classify maps type strings and falls back to the message`() {
+        assertEquals(
+            AppwriteReadGuard.Quota.DB_READ,
+            Appwrite402Classifier.classify(AppwriteException("x", 402, "limit_databases_reads_exceeded")),
+        )
+        assertEquals(
+            AppwriteReadGuard.Quota.BANDWIDTH,
+            Appwrite402Classifier.classify(AppwriteException("Bandwidth limit exceeded", 402, null)),
+        )
+        assertEquals(
+            AppwriteReadGuard.Quota.EXECUTIONS,
+            Appwrite402Classifier.classify(AppwriteException("x", 402, "limit_executions_exceeded")),
+        )
+        // Unattributable — must return null rather than guessing a quota.
+        assertNull(Appwrite402Classifier.classify(AppwriteException("usage limit exceeded", 402, null)))
+    }
+
+    @Test
     fun `isBudget402 detects code and type`() {
-        assertTrue(AppwriteReadGuard.isBudget402(budget402ByCode()))
-        assertTrue(AppwriteReadGuard.isBudget402(budget402ByType()))
-        assertEquals(false, AppwriteReadGuard.isBudget402(AppwriteException("nope", 500, "general_unknown")))
-        assertEquals(false, AppwriteReadGuard.isBudget402(IOException("nope")))
+        assertTrue(Appwrite402Classifier.isBudget402(budget402ByCode()))
+        assertTrue(Appwrite402Classifier.isBudget402(budget402ByType()))
+        assertEquals(false, Appwrite402Classifier.isBudget402(AppwriteException("nope", 500, "general_unknown")))
+        assertEquals(false, Appwrite402Classifier.isBudget402(IOException("nope")))
     }
 }

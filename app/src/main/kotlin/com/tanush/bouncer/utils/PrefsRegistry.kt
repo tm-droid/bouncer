@@ -26,12 +26,24 @@ object PrefsRegistry {
         // Device-global timestamp of the last full highlights-table scan (throttles the
         // table-wide Appwrite read that would otherwise fire on every match-tab open).
         const val LAST_FULL_SYNC_AT = "highlights_last_full_sync_at"
+
+        // Highest server-side `fetched_at` already pulled, so each sync asks only for rows added
+        // since. Zero means "never synced" and triggers a page-capped backfill.
+        const val LAST_ROW_FETCHED_AT = "highlights_last_row_fetched_at"
     }
 
     object ReadGuard {
         // Persisted 402 breaker latch (survives process restart so a relaunch after a
         // budget-exhausted 402 keeps short-circuiting reads until the probe interval elapses).
-        const val BREAKER_OPEN = "appwrite_read_breaker_open"
-        const val BREAKER_OPENED_AT = "appwrite_read_breaker_opened_at"
+        // Per-quota since the guard learned to tell a bandwidth 402 from a reads 402: the suffix
+        // is the Quota enum name.
+        const val BREAKER_OPEN_PREFIX = "appwrite_breaker_open_"
+        const val BREAKER_OPENED_AT_PREFIX = "appwrite_breaker_opened_at_"
+        const val BREAKER_PROBE_INTERVAL_PREFIX = "appwrite_breaker_probe_interval_"
+
+        // Pre-per-quota keys. Read once at startup and folded into the DB_READ breaker, then
+        // cleared — without that an in-flight 402 latch would silently reset on upgrade.
+        const val LEGACY_BREAKER_OPEN = "appwrite_read_breaker_open"
+        const val LEGACY_BREAKER_OPENED_AT = "appwrite_read_breaker_opened_at"
     }
 }

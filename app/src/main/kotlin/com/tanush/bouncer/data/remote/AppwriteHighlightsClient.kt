@@ -14,39 +14,88 @@ object AppwriteHighlightsClient : AppwriteTableClient("AppwriteHighlightsClient"
         initTable(ApiKeys.appwriteHighlightsDbId, ApiKeys.appwriteHighlightsColId)
     }
 
-    suspend fun getAllHighlights(): List<HighlightRow>? {
+    /**
+     * One bounded page-run of highlights newer than [sinceFetchedAt].
+     *
+     * [hasMore] is true when the run stopped on the page cap rather than on running out of rows,
+     * which lets the caller keep draining instead of waiting out its freshness throttle.
+     */
+    data class HighlightsPage(
+        val rows: List<HighlightRow>,
+        val maxFetchedAt: Long,
+        val hasMore: Boolean,
+    )
+
+    /**
+     * Incremental fetch, ordered oldest-first so the watermark can only move forward.
+     *
+     * This used to be an unbounded rescan of the entire table on every call, and Appwrite bills one
+     * read per row returned — so a device with a few hundred highlight rows spent tens of thousands
+     * of org reads a day re-fetching rows it already had. Steady state here is a single query that
+     * returns nothing.
+     */
+    suspend fun getHighlightsSince(sinceFetchedAt: Long): HighlightsPage? {
         if (!isReady) return null
         return withContext(Dispatchers.IO) {
             runCatching {
                 if (tablesDB == null) return@runCatching null
-                fetchAllRows()
+                fetchSince(sinceFetchedAt)
             }.onFailure { e ->
                 logSilentFailure("Fetch highlights failed", e)
             }.getOrNull()
         }
     }
 
-    // Cursor-based pagination — static limit(100) silently truncates as the table grows
-    // (Appwrite default is 25; even 100 misses rows once the table exceeds that cap).
-    private suspend fun fetchAllRows(): List<HighlightRow> {
-        val allRows = mutableListOf<HighlightRow>()
+    private suspend fun fetchSince(sinceFetchedAt: Long): HighlightsPage {
+        val rows = mutableListOf<HighlightRow>()
         var lastId: String? = null
-        var pageCount = 0
-        while (pageCount++ < 50) {
-            val queries = buildList {
-                add(Query.limit(100))
-                if (lastId != null) add(Query.cursorAfter(lastId))
-            }
-            val page = guardedRead("highlights.page") {
-                it.listRows(databaseId = dbId, tableId = tableId, queries = queries)
+        var hasMore = false
+        for (page in 1..MAX_PAGES_PER_RUN) {
+            val result = guardedRead("highlights.page") {
+                it.listRows(
+                    databaseId = dbId,
+                    tableId = tableId,
+                    queries = pageQueries(sinceFetchedAt, lastId),
+                )
             } ?: break
             @Suppress("UNCHECKED_CAST")
-            allRows.addAll(page.rows.map { HighlightRow.fromMap(it.data as? Map<String, Any?> ?: emptyMap()) })
-            if (page.rows.size < 100) break
-            lastId = page.rows.last().id
+            rows.addAll(result.rows.map { HighlightRow.fromMap(it.data as? Map<String, Any?> ?: emptyMap()) })
+            if (result.rows.size < PAGE_SIZE) break
+            lastId = result.rows.last().id
+            // A full last page means we stopped on the cap, not on exhaustion.
+            hasMore = page == MAX_PAGES_PER_RUN
         }
-        return allRows
+        // Rows arrive ordered by fetched_at, but take the max explicitly rather than trusting the
+        // ordering — a watermark that moved too far would skip rows permanently.
+        val highest = rows.maxOfOrNull { it.fetchedAt } ?: sinceFetchedAt
+        return HighlightsPage(rows, maxOf(highest, sinceFetchedAt), hasMore)
     }
+
+    private fun pageQueries(sinceFetchedAt: Long, cursorId: String?) = buildList {
+        add(Query.greaterThan(FIELD_FETCHED_AT, sinceFetchedAt))
+        add(Query.orderAsc(FIELD_FETCHED_AT))
+        add(Query.select(SELECTED_COLUMNS))
+        add(Query.limit(PAGE_SIZE))
+        if (cursorId != null) add(Query.cursorAfter(cursorId))
+    }
+
+    private const val PAGE_SIZE = 100
+
+    // Bounds one call. A first-run backfill drains across consecutive calls via hasMore rather
+    // than fetching an unbounded table in one go.
+    private const val MAX_PAGES_PER_RUN = 3
+
+    private const val FIELD_FETCHED_AT = "fetched_at"
+
+    // Only what HighlightRow.toEntity() and the watermark actually consume. The omitted columns
+    // (url, raw_match_id, both abbreviations, league season, end date) have no reader anywhere —
+    // url alone is a varchar(2048). Absent columns fall back to defaults in HighlightRow.fromMap,
+    // and the Realtime path is unaffected since it parses the full row from the event payload.
+    private val SELECTED_COLUMNS = listOf(
+        "highlight_id", "type", "img_url", "title", "embed_url", "channel", "source",
+        "match_home_team", "match_away_team", "match_league_name", "match_start_date",
+        FIELD_FETCHED_AT,
+    )
 
     fun startRealtimeSubscription(scope: CoroutineScope, onNewHighlight: (HighlightRow) -> Unit) {
         if (!isReady) return

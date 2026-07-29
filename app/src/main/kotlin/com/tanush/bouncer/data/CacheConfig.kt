@@ -11,6 +11,12 @@ object CacheConfig {
     // 2.5 min: Appwrite poll-live-matches runs every 1 min; 150s gives a half-cycle buffer
     // so a slow or skipped run doesn't immediately fall through to direct Vercel polling.
     const val MATCH_CACHE_TTL_MS = 150_000L
+
+    // In-memory TTLs for the raw match-list response (MatchesResponseCache), checked BEFORE the
+    // Appwrite Storage download rather than after it. Both sit above the backend cron's 1-minute
+    // write cadence, so the Live tab's 6s poll stops re-downloading bytes it already has.
+    const val MATCHES_RESPONSE_TTL_LIVE_MS = 30_000L
+    const val MATCHES_RESPONSE_TTL_STATIC_MS = 600_000L // upcoming/recent change a few times a day
     // Appwrite Realtime reconnect backoff (exponential + jittered, reset on successful subscribe).
     const val REALTIME_RECONNECT_MIN_MS = 2_000L
     const val REALTIME_RECONNECT_MAX_MS = 60_000L
@@ -53,4 +59,16 @@ object CacheConfig {
     // the server telling us the month's budget is gone. Conflating them turned a transient
     // over-count into a 6-hour app-wide read outage that survived process restarts.
     const val READ_GUARD_RATE_CAP_PAUSE_MS = 300_000L // 5 minutes
+
+    // A 402 whose quota we could not identify is attributed by the funnel that threw it (that
+    // funnel's own class, plus BANDWIDTH — the shared API+Storage+Realtime pool any path can
+    // breach). Because that attribution is partly inference, such a breaker re-probes sooner than
+    // one opened by an explicitly identified quota.
+    const val READ_GUARD_UNKNOWN_402_PROBE_INTERVAL_MS = 3_600_000L // 1 hour
+
+    // Write-side rate caps, counted the same sliding way as the read windows above. Sized for the
+    // real write profile — a few AI-cache rows per ball, rare favourite toggles, rare profile
+    // pushes — so an accidental write loop trips long before it can burn the org write budget.
+    const val WRITE_GUARD_MAX_WRITES_PER_MINUTE = 100
+    const val WRITE_GUARD_MAX_WRITES_PER_HOUR = 750
 }

@@ -178,18 +178,6 @@
     ],
     "buckets": [
         {
-            "$id": "ml-models",
-            "name": "ML Models",
-            "enabled": true,
-            "fileSecurity": false,
-            "maximumFileSize": 10485760,
-            "allowedFileExtensions": ["json"],
-            "compression": "none",
-            "encryption": true,
-            "antivirus": false,
-            "$permissions": ["create(\"any\")", "read(\"any\")", "update(\"any\")", "delete(\"any\")"]
-        },
-        {
             "$id": "cricket-stats",
             "name": "Cricket Stats",
             "enabled": true,

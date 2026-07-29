@@ -17,7 +17,6 @@ import com.tanush.bouncer.data.remote.AppwriteClient
 import com.tanush.bouncer.data.remote.AppwriteHighlightsClient
 import com.tanush.bouncer.data.remote.AppwriteMatchCommentaryClient
 import com.tanush.bouncer.data.remote.AppwriteMatchDetailClient
-import com.tanush.bouncer.data.remote.AppwritePlayerFormsClient
 import com.tanush.bouncer.data.remote.AppwritePlayerProfilesClient
 import com.tanush.bouncer.data.remote.AppwriteReadGuard
 import com.tanush.bouncer.data.repository.HighlightsRepository
@@ -141,7 +140,6 @@ class BouncerApp : Application() {
             }
             AppHealth.setAppwriteReachable(reachable)
         }
-        initializeSafely("AppwritePlayerFormsClient") { AppwritePlayerFormsClient.initialize() }
         initializeSafely("AppwriteAICache") { AppwriteAICache.initialize() }
         initializeSafely("AppwriteHighlightsClient") { AppwriteHighlightsClient.initialize() }
         initializeSafely("AppwritePlayerProfilesClient") { AppwritePlayerProfilesClient.initialize() }

@@ -39,6 +39,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import com.tanush.bouncer.data.MatchesResponseCache
 import com.tanush.bouncer.services.MatchCacheService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -283,6 +284,9 @@ fun SettingsScreenV2(
                             coroutineScope.launch {
                                 withContext(Dispatchers.IO) { context.cacheDir.deleteRecursively() }
                                 MatchCacheService.clearCache()
+                                // Also drop the raw match-list response cache, or "Clear cache"
+                                // would leave stale fixtures on screen for up to its TTL.
+                                MatchesResponseCache.shared.clear()
                                 cacheCleared = true
                             }
                         }

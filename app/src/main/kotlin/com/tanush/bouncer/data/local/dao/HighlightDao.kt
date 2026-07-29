@@ -18,6 +18,12 @@ interface HighlightDao {
     @Query("SELECT * FROM highlights WHERE matchedBouncerMatchId = :bouncerMatchId AND fetchedAt >= :freshnessCutoff ORDER BY type DESC, fetchedAt DESC LIMIT 50")
     suspend fun queryCachedByMatchId(bouncerMatchId: String, freshnessCutoff: Long): List<HighlightEntity>
 
+    // Cutoff-free sibling of the above. Since highlights sync incrementally, a row is fetched once
+    // and never refreshed, so its age says nothing about whether it is still the right answer —
+    // only about when it first arrived.
+    @Query("SELECT * FROM highlights WHERE matchedBouncerMatchId = :bouncerMatchId ORDER BY type DESC, fetchedAt DESC LIMIT 50")
+    suspend fun queryAllByMatchId(bouncerMatchId: String): List<HighlightEntity>
+
     @Query("SELECT * FROM highlights ORDER BY fetchedAt DESC LIMIT 1000")
     suspend fun queryAllRecent(): List<HighlightEntity>
 

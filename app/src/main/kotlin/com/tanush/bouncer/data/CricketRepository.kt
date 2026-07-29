@@ -21,12 +21,35 @@ import com.tanush.bouncer.utils.sentryBreadcrumb
 object CricketRepository {
     private const val TAG = "CricketRepository"
 
+    private val matchesCache = MatchesResponseCache.shared
+    private val matchesSingleFlight = SingleFlight<String, AppResult<SanwebMatchesListResponse>>()
+
+    /**
+     * Cache-first, then single-flight, then network.
+     *
+     * The memory check has to come before the download: the Appwrite Storage path used to fetch the
+     * whole payload and only then test its embedded `fetchedAt` stamp, so a stale file still cost
+     * full bandwidth. Every caller (live poll loop, Android Auto, ScorePollingWorker) already funnels
+     * through here, so fixing it here fixes all of them without touching a call site.
+     */
     suspend fun getMatches(type: String): AppResult<SanwebMatchesListResponse> {
+        matchesCache.get(type)?.let { return AppResult.Success(it) }
+        return matchesSingleFlight.run(type) { fetchMatches(type) }
+    }
+
+    private suspend fun fetchMatches(type: String): AppResult<SanwebMatchesListResponse> {
+        // Re-check under the single-flight: a concurrent caller may have populated the cache while
+        // this call was queued behind the lock.
+        matchesCache.get(type)?.let { return AppResult.Success(it) }
         sentryBreadcrumb("network.api", "Fetching matches", data = mapOf("type" to type))
         // Try Appwrite Storage first (updated by backend function every minute)
         val cached = tryReadMatchesFromStorage(type)
-        if (cached != null) return AppResult.Success(cached)
-        // Fall back to direct Vercel API
+        if (cached != null) {
+            matchesCache.put(type, cached)
+            return AppResult.Success(cached)
+        }
+        // Fall back to direct Vercel API. Cached too — otherwise a Storage outage would send every
+        // 6s poll straight to Vercel.
         return AppResult.runCatchingSuspend {
             val resp = RetrofitClient.vercelApi.getMatches(type)
             Log.d(TAG, "Successfully fetched matches for type: $type")
@@ -34,6 +57,7 @@ object CricketRepository {
             Sentry.metrics().count("repository.getMatches.success", 1.0)
             Sentry.logger().log(SentryLogLevel.INFO, "Repository getMatches success for %s", type)
             sentryBreadcrumb("network.api", "Successfully fetched matches", data = mapOf("type" to type))
+            matchesCache.put(type, resp)
             resp
         }.also {
             if (it is AppResult.Error) {

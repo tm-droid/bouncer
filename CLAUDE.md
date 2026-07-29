@@ -35,8 +35,6 @@ Cricket live-scoring, match analytics, and team management app built in Kotlin/C
 ```bash
 cp local.properties.template local.properties  # Fill in secret keys (RAPIDAPI_KEY, GROQ_API_KEY, etc.)
 # Most non-secret Appwrite IDs are pre-filled — only secret API keys need manual entry.
-# APPWRITE_PLAYER_FORMS_COL_ID is intentionally blank: Appwrite collection not yet created.
-# AppwritePlayerFormsClient IS initialized in BouncerApp — it will silently no-op until the collection exists.
 ```
 
 **Build & run:**
@@ -79,7 +77,7 @@ app/src/main/kotlin/com/tanush/bouncer/
 │   ├── CacheConfig.kt  # All cache TTLs + realtime reconnect backoff + permanent-cache sentinel — no magic numbers
 │   └── remote/         # AppwriteClient (singleton) + table clients extending AppwriteTableClient
 │                       # AppwriteAICache, AppwriteHighlightsClient, AppwritePlayerProfilesClient,
-│                       # AppwritePlayerFormsClient, AppwriteFavouritesSync, H2HRepository,
+│                       # AppwriteFavouritesSync, H2HRepository,
 │                       # AppwriteMatchCommentaryClient (match-commentary table),
 │                       # AppwriteMatchDetailClient (match-live-detail table)
 ├── models/             # Data models and entities (proguard-kept for Gson — never delete on grep evidence)

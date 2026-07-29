@@ -18,8 +18,9 @@ object ApiKeys {
     val appwriteFavouritesColId = BuildConfig.APPWRITE_FAVOURITES_COL_ID
     val appwriteHighlightsDbId  = BuildConfig.APPWRITE_HIGHLIGHTS_DB_ID
     val appwriteHighlightsColId = BuildConfig.APPWRITE_HIGHLIGHTS_COL_ID
+    // Historical name: this is the shared bouncer-db id, used by AppwritePlayerProfilesClient.
+    // The player-forms table itself was never created and its client has been removed.
     val appwritePlayerFormsDbId     = BuildConfig.APPWRITE_PLAYER_FORMS_DB_ID
-    val appwritePlayerFormsColId    = BuildConfig.APPWRITE_PLAYER_FORMS_COL_ID
     val appwritePlayerProfilesColId = BuildConfig.APPWRITE_PLAYER_PROFILES_COL_ID
     val bouncerFunctionSecret        = BuildConfig.BOUNCER_FUNCTION_SECRET
 }

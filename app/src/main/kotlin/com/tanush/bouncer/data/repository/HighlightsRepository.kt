@@ -25,6 +25,13 @@ import kotlinx.coroutines.withContext
 interface HighlightsSyncMarker {
     fun lastFullSyncAtMs(): Long
     fun recordFullSync(nowMs: Long)
+
+    /**
+     * Highest `fetched_at` already pulled from Appwrite. This is a *server-supplied* row value, not
+     * a local clock reading — using local time here would let clock skew skip rows permanently.
+     */
+    fun lastRowFetchedAt(): Long
+    fun recordRowFetchedAt(value: Long)
 }
 
 /** SharedPreferences-backed [HighlightsSyncMarker] — survives process death. */
@@ -37,6 +44,13 @@ class PrefsHighlightsSyncMarker(context: Context) : HighlightsSyncMarker {
 
     override fun recordFullSync(nowMs: Long) {
         prefs.edit().putLong(PrefsRegistry.Highlights.LAST_FULL_SYNC_AT, nowMs).apply()
+    }
+
+    override fun lastRowFetchedAt(): Long =
+        prefs.getLong(PrefsRegistry.Highlights.LAST_ROW_FETCHED_AT, 0L)
+
+    override fun recordRowFetchedAt(value: Long) {
+        prefs.edit().putLong(PrefsRegistry.Highlights.LAST_ROW_FETCHED_AT, value).apply()
     }
 }
 
@@ -58,29 +72,45 @@ class HighlightsRepository(
                     return@withContext cached
                 }
 
-                // Global full-sync throttle: the Appwrite scan is table-wide and Realtime keeps
-                // Room warm between scans, so gate it on a device-global timestamp rather than
-                // this match's per-match cache. Without this, opening a zero-highlight match (the
-                // common case) never writes a row for its id, so its cache stays empty forever and
-                // every open re-scans the whole table — billing an org read per row returned.
+                // Global sync throttle: one sync populates Room for ALL matches and Realtime keeps
+                // it warm in between, so gate it on a device-global timestamp rather than this
+                // match's per-match cache. Without this, opening a zero-highlight match (the common
+                // case) never writes a row for its id, so its cache stays empty forever and every
+                // open re-syncs — billing an org read per row returned.
                 val marker = syncMarker
                 if (marker != null && now - marker.lastFullSyncAtMs() < FRESHNESS_MS) {
-                    Log.d(TAG, "Highlights full-sync throttled; UI served from Room for $bouncerMatchId")
+                    Log.d(TAG, "Highlights sync throttled; UI served from Room for $bouncerMatchId")
                     return@withContext emptyList()
                 }
 
-                Log.d(TAG, "Fetching fresh highlights from Appwrite for match $bouncerMatchId")
-                val allHighlights = AppwriteHighlightsClient.getAllHighlights()
-                // Mark only when the scan actually ran (non-null) — even a genuinely-empty result
-                // counts, so zero-highlight matches stop re-scanning. A null (guard-blocked / not
-                // ready / failed) leaves the marker stale so the next open retries.
-                if (allHighlights != null) marker?.recordFullSync(System.currentTimeMillis())
-                if (allHighlights.isNullOrEmpty()) {
-                    Log.d(TAG, "No highlights from Appwrite")
+                val since = marker?.lastRowFetchedAt() ?: 0L
+                Log.d(TAG, "Syncing highlights newer than $since for match $bouncerMatchId")
+                val page = AppwriteHighlightsClient.getHighlightsSince(since)
+                    ?: run {
+                        // Guard-blocked / not ready / failed: leave both markers stale so the next
+                        // open retries rather than silently skipping a window of rows.
+                        Log.d(TAG, "Highlights sync unavailable")
+                        return@withContext emptyList()
+                    }
+
+                // Advance the watermark whenever the query ran, even for an empty result — that is
+                // the steady state and it must not re-ask for the same window next time.
+                marker?.recordRowFetchedAt(page.maxFetchedAt)
+                // Only start the freshness throttle once the backlog is drained. A run that stopped
+                // on the page cap still has rows waiting, and making it wait an hour per batch
+                // would leave a fresh install missing highlights for days.
+                if (!page.hasMore) marker?.recordFullSync(System.currentTimeMillis())
+
+                if (page.rows.isEmpty()) {
+                    Log.d(TAG, "No new highlights from Appwrite")
                     return@withContext emptyList()
                 }
 
-                ingestRows(allHighlights).filter { it.matchedBouncerMatchId == bouncerMatchId }
+                ingestRows(page.rows)
+                // The ingested batch only covers this sync window, so answer from Room — this
+                // match's highlights may have arrived in an earlier window and would otherwise
+                // vanish from the result.
+                highlightDao.queryAllByMatchId(bouncerMatchId)
             }
         }
     }

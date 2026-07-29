@@ -77,7 +77,6 @@ buildConfigField("String", "APPWRITE_AI_CACHE_DB_ID", "\"${localProperties.getPr
         buildConfigField("String", "APPWRITE_HIGHLIGHTS_DB_ID", "\"${localProperties.getProperty("APPWRITE_HIGHLIGHTS_DB_ID") ?: System.getenv("APPWRITE_HIGHLIGHTS_DB_ID") ?: ""}\"")
         buildConfigField("String", "APPWRITE_HIGHLIGHTS_COL_ID", "\"${localProperties.getProperty("APPWRITE_HIGHLIGHTS_COL_ID") ?: System.getenv("APPWRITE_HIGHLIGHTS_COL_ID") ?: ""}\"")
         buildConfigField("String", "APPWRITE_PLAYER_FORMS_DB_ID", "\"${localProperties.getProperty("APPWRITE_PLAYER_FORMS_DB_ID") ?: System.getenv("APPWRITE_PLAYER_FORMS_DB_ID") ?: ""}\"")
-        buildConfigField("String", "APPWRITE_PLAYER_FORMS_COL_ID", "\"${localProperties.getProperty("APPWRITE_PLAYER_FORMS_COL_ID") ?: System.getenv("APPWRITE_PLAYER_FORMS_COL_ID") ?: ""}\"")
         buildConfigField("String", "APPWRITE_PLAYER_PROFILES_COL_ID", "\"${localProperties.getProperty("APPWRITE_PLAYER_PROFILES_COL_ID") ?: System.getenv("APPWRITE_PLAYER_PROFILES_COL_ID") ?: ""}\"")
         buildConfigField("String", "BOUNCER_FUNCTION_SECRET", "\"${localProperties.getProperty("BOUNCER_FUNCTION_SECRET") ?: System.getenv("BOUNCER_FUNCTION_SECRET") ?: ""}\"")
         manifestPlaceholders["sentryDsn"] = localProperties.getProperty("SENTRY_DSN")
