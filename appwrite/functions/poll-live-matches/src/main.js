@@ -2,6 +2,7 @@ import { Client, Storage } from "node-appwrite";
 import { InputFile } from "node-appwrite/file";
 import { createSign } from "crypto";
 import { seriesCategory, isWomensSeries } from "./series.js";
+import { parseJsonFile, fileText } from "./storageJson.js";
 
 const VERCEL_BASE = process.env.VERCEL_API_BASE ?? "https://api-iota-jade.vercel.app";
 const BUCKET_ID = process.env.MATCH_CACHE_BUCKET_ID ?? "cricket-stats";
@@ -52,8 +53,7 @@ export default async ({ req, res, log, error }) => {
 
       let prevCount = 0;
       try {
-        const prevBytes = await storage.getFileDownload(BUCKET_ID, "live-count");
-        prevCount = parseInt(Buffer.from(prevBytes).toString("utf8")) || 0;
+        prevCount = parseInt(fileText(await storage.getFileDownload(BUCKET_ID, "live-count"))) || 0;
       } catch { /* first run */ }
 
       if (newLiveCount !== prevCount) {
@@ -85,8 +85,7 @@ export default async ({ req, res, log, error }) => {
   try {
     let seriesFresh = false;
     try {
-      const prevBytes = await storage.getFileDownload(BUCKET_ID, "active-series");
-      const prevJson = JSON.parse(Buffer.from(prevBytes).toString("utf8"));
+      const prevJson = parseJsonFile(await storage.getFileDownload(BUCKET_ID, "active-series"));
       seriesFresh = (Date.now() - (prevJson.fetchedAt ?? 0)) < 24 * 3600 * 1000;
     } catch { /* missing or parse error — treat as stale */ }
 

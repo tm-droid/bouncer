@@ -1,5 +1,6 @@
 import { Client, Storage } from "node-appwrite";
 import { InputFile } from "node-appwrite/file";
+import { parseJsonFile } from "./storageJson.js";
 
 const CACHE_TTL_MS = 4 * 60 * 60 * 1000; // 4 hours — caps RapidAPI at 6 calls/day
 const NEWS_CACHE_FILE_ID = "news-cache";
@@ -21,8 +22,7 @@ export default async ({ req, res, log, error }) => {
 
   // ── Try cached response ──────────────────────────────────────────────────
   try {
-    const fileBuffer = await storage.getFileDownload(STATS_BUCKET_ID, NEWS_CACHE_FILE_ID);
-    const cached = JSON.parse(Buffer.from(fileBuffer).toString("utf8"));
+    const cached = parseJsonFile(await storage.getFileDownload(STATS_BUCKET_ID, NEWS_CACHE_FILE_ID));
     const age = Date.now() - new Date(cached.fetchedAt).getTime();
     if (age < CACHE_TTL_MS) {
       log(`Returning cached news (age: ${Math.round(age / 60000)}m)`);

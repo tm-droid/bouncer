@@ -1,6 +1,7 @@
 import { Client, Storage, Databases, Query } from "node-appwrite";
 import { InputFile } from "node-appwrite/file";
 import { createHash } from "crypto";
+import { parseJsonFile } from "./storageJson.js";
 import {
   liveScoresUrl,
   scorecardUrl,
@@ -87,10 +88,7 @@ export default async ({ req, res, log, error }) => {
   // node-appwrite auto-parses JSON files (returns the object); older/plain files return bytes.
   let matches = [];
   try {
-    const raw = await storage.getFileDownload(BUCKET_ID, LIVE_FILE);
-    const parsed = Buffer.isBuffer(raw) || raw instanceof ArrayBuffer
-      ? JSON.parse(Buffer.from(raw).toString("utf8"))
-      : raw;
+    const parsed = parseJsonFile(await storage.getFileDownload(BUCKET_ID, LIVE_FILE));
     matches = parsed?.data?.matches ?? [];
   } catch (e) {
     log(`No live-matches file — nothing to sync`);
@@ -191,10 +189,7 @@ async function writeWinProbFile({ storage, winProb, log, error }) {
 async function loadModel({ storage, log, error }) {
   if (cachedModel || modelLoadFailed) return cachedModel;
   try {
-    const raw = await storage.getFileDownload(BUCKET_ID, TEAM_STATS_FILE);
-    const parsed = Buffer.isBuffer(raw) || raw instanceof ArrayBuffer
-      ? JSON.parse(Buffer.from(raw).toString("utf8"))
-      : raw;
+    const parsed = parseJsonFile(await storage.getFileDownload(BUCKET_ID, TEAM_STATS_FILE));
     cachedModel = parsed;
     log(`Loaded win-probability model v${parsed?.version ?? "?"} (${Object.keys(parsed?.teamStats ?? {}).length} teams)`);
   } catch (e) {
@@ -243,8 +238,7 @@ function winProbFor(detail, title, model) {
 async function activeViewerIds({ storage, log, error }) {
   const now = Date.now();
   try {
-    const raw = await storage.getFileDownload(BUCKET_ID, PRESENCE_FILE);
-    const map = JSON.parse(Buffer.from(raw).toString("utf8"));
+    const map = parseJsonFile(await storage.getFileDownload(BUCKET_ID, PRESENCE_FILE));
     if (!map || typeof map !== "object" || Array.isArray(map)) return new Set();
     const fresh = Object.entries(map)
       .filter(([, ts]) => typeof ts === "number" && now - ts <= VIEWER_TTL_MS)

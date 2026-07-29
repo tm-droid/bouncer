@@ -1,5 +1,6 @@
 import { Client, Storage } from "node-appwrite";
 import { evaluate, formatFromText, MODEL_VERSION } from "./winprob.js";
+import { parseJsonFile } from "./storageJson.js";
 
 const STATS_BUCKET_ID = process.env.STATS_BUCKET_ID ?? "cricket-stats";
 const TEAM_STATS_FILE_ID = "team-stats";
@@ -33,9 +34,7 @@ export default async ({ req, res, log, error }) => {
   if (!cachedModel) {
     try {
       const storage = new Storage(client);
-      const fileBuffer = await storage.getFileDownload(STATS_BUCKET_ID, TEAM_STATS_FILE_ID);
-      const text = Buffer.from(fileBuffer).toString("utf8");
-      cachedModel = JSON.parse(text);
+      cachedModel = parseJsonFile(await storage.getFileDownload(STATS_BUCKET_ID, TEAM_STATS_FILE_ID));
       if (cachedModel.version === MODEL_VERSION) {
         log(`Loaded v${MODEL_VERSION} model (${Object.keys(cachedModel.teamStats ?? {}).length} teams, ${cachedModel.trainingRows ?? "?"} training rows)`);
       } else {

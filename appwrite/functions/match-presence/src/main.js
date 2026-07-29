@@ -1,5 +1,6 @@
 import { Client, Storage } from "node-appwrite";
 import { InputFile } from "node-appwrite/file";
+import { parseJsonFile } from "./storageJson.js";
 
 // Records a "viewer is watching match X" ping so bouncer-match-sync can gate LLM
 // generation to matches someone actually has open (see match-sync/src/main.js).
@@ -41,8 +42,7 @@ export default async ({ req, res, log, error }) => {
   // dropping another match's fresh timestamp) — accepted; the next ~90s heartbeat heals it.
   let map = {};
   try {
-    const raw = await storage.getFileDownload(BUCKET_ID, PRESENCE_FILE);
-    map = JSON.parse(Buffer.from(raw).toString("utf8"));
+    map = parseJsonFile(await storage.getFileDownload(BUCKET_ID, PRESENCE_FILE));
     if (!map || typeof map !== "object" || Array.isArray(map)) map = {};
   } catch {
     map = {}; // first ping ever, or file missing/unparseable
