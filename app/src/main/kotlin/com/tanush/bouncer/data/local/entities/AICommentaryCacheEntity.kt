@@ -22,4 +22,12 @@ data class AICommentaryCacheEntity(
     val timestamp: Long,
     @ColumnInfo(defaultValue = "0")
     val lastAccessedAt: Long = 0L,
+    /**
+     * When this row was mirrored to the Appwrite tier, or null if it never was.
+     *
+     * The remote write is fire-and-forget and can be dropped (write breaker latched, network gone),
+     * which used to lose the cross-device share silently. Null marks a row for replay; the flag is
+     * cleared only after Appwrite confirms the write, so an interrupted replay resumes.
+     */
+    val syncedAt: Long? = null,
 )

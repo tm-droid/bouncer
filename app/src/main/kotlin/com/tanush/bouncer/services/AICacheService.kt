@@ -6,6 +6,7 @@ import com.tanush.bouncer.data.cache.MemoryLruCache
 import com.tanush.bouncer.data.local.dao.AICacheDao
 import com.tanush.bouncer.data.local.entities.AICommentaryCacheEntity
 import com.tanush.bouncer.data.remote.AppwriteAICache
+import com.tanush.bouncer.data.remote.AppwriteReadGuard
 import io.sentry.Breadcrumb
 import io.sentry.Sentry
 import io.sentry.SentryLevel
@@ -16,6 +17,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -54,6 +56,56 @@ object AICacheService {
                 Log.w(TAG, "Failed to prune expired AI cache entries", e)
                 Sentry.captureException(e)
             }
+            // Anything dropped by the last session's outage is still marked unsynced.
+            replayUnsyncedPermanent()
+        }
+        // The write breaker closing is the other moment a backlog can drain: the budget that
+        // rejected those writes is demonstrably serving again.
+        AppwriteReadGuard.onBreakerClosed = { quota ->
+            if (quota == AppwriteReadGuard.Quota.DB_WRITE) {
+                scope.launch { replayUnsyncedPermanent() }
+            }
+        }
+    }
+
+    /**
+     * Push permanent rows whose Appwrite mirror was never confirmed, oldest backlog first.
+     *
+     * Bounded to [CacheConfig.AI_CACHE_REPLAY_BATCH] per pass and spaced by
+     * [CacheConfig.AI_CACHE_REPLAY_SPACING_MS], because one trigger is a breaker closing and an
+     * unbounded drain would spike the window that was just unblocked. Not draining the backlog is
+     * fine: rows keep `syncedAt = null`, so the next close or app start resumes. The remote write
+     * is idempotent (deterministic rowId, 409 handled), so a replayed row cannot duplicate.
+     *
+     * Local caches are untouched — the completed-match permanent TTL in memory and Room was already
+     * written before the sync was attempted and does not depend on this succeeding.
+     */
+    private suspend fun replayUnsyncedPermanent() {
+        val dao = this.dao ?: return
+        runCatching {
+            val pending = dao.unsyncedPermanent(
+                CacheConfig.AI_CACHE_PERMANENT_TIMESTAMP,
+                CacheConfig.AI_CACHE_REPLAY_BATCH,
+            )
+            if (pending.isEmpty()) return
+            Log.d(TAG, "Replaying ${pending.size} unsynced permanent AI cache rows")
+            var synced = 0
+            for (entity in pending) {
+                if (AppwriteAICache.set(entity.cacheKey, entity.commentary, permanent = true)) {
+                    dao.markSynced(entity.cacheKey, System.currentTimeMillis())
+                    synced++
+                } else {
+                    // The guard is blocking again (or the network is gone). Continuing would just
+                    // burn the rest of the batch against a closed door.
+                    break
+                }
+                delay(CacheConfig.AI_CACHE_REPLAY_SPACING_MS)
+            }
+            Sentry.addBreadcrumb("AI cache replay: $synced/${pending.size} rows synced")
+        }.onFailure { e ->
+            if (e is CancellationException) throw e
+            Log.w(TAG, "AI cache replay failed", e)
+            Sentry.captureException(e)
         }
     }
 
@@ -109,8 +161,10 @@ object AICacheService {
                     mutex.withLock {
                         cache.put(key, remoteResult, permanent = isPermanent)
                         val dbTimestamp = if (isPermanent) CacheConfig.AI_CACHE_PERMANENT_TIMESTAMP else Date().time
+                        // Came FROM Appwrite, so it is by definition already mirrored — never queue
+                        // it for replay.
                         dao?.insert(
-                            AICommentaryCacheEntity(key, remoteResult, dbTimestamp, Date().time)
+                            AICommentaryCacheEntity(key, remoteResult, dbTimestamp, Date().time, Date().time)
                         )
                     }
                     remoteResult
@@ -159,10 +213,14 @@ object AICacheService {
     }
 
     // Fire-and-forget mirror to the Appwrite tier; local caches are already written by the caller.
+    // The row is inserted with syncedAt = null, so anything that does not land here is picked up by
+    // replayUnsyncedPermanent rather than lost.
     private fun syncToAppwrite(key: String, commentary: String, permanent: Boolean) {
         scope.launch {
             try {
-                AppwriteAICache.set(key, commentary, permanent)
+                if (AppwriteAICache.set(key, commentary, permanent)) {
+                    dao?.markSynced(key, System.currentTimeMillis())
+                }
             } catch (e: Exception) {
                 Log.w(TAG, "Appwrite AI cache sync failed for key=$key", e)
                 Sentry.captureException(e)
@@ -210,7 +268,8 @@ object AICacheService {
             if (dao?.getCommentary(key, cutoffMs) != null) return@withLock
             val now = Date()
             cache.put(key, commentary)
-            dao?.insert(AICommentaryCacheEntity(key, commentary, now.time, now.time))
+            // Arrived over Realtime from the Appwrite table, so it is already mirrored.
+            dao?.insert(AICommentaryCacheEntity(key, commentary, now.time, now.time, now.time))
             Log.d(TAG, "Realtime: warmed cache for key $key")
         } catch (e: Exception) {
             if (e is CancellationException) throw e

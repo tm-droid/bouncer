@@ -64,6 +64,14 @@ object CacheConfig {
     // Remote permanent-row eviction costs two billed list reads, so it is amortised rather than
     // run on every permanent write (a completed match writes one row per ball).
     const val AI_CACHE_EVICTION_CHECK_EVERY_N_WRITES = 25
+    // Replay of permanent rows whose Appwrite mirror was dropped (write breaker open, network
+    // failure). Bounded per pass and spaced out: the trigger is a breaker CLOSING, so an unbounded
+    // drain would spike the very write window that was just unblocked. 50 writes spread over ~10s
+    // sits at half of WRITE_GUARD_MAX_WRITES_PER_MINUTE, leaving the rest for live traffic. A pass
+    // that does not drain the backlog is not a loss — rows keep syncedAt = null and the next
+    // breaker-close or app start resumes.
+    const val AI_CACHE_REPLAY_BATCH = 50
+    const val AI_CACHE_REPLAY_SPACING_MS = 200L
     // Appwrite read-budget guard (402 limit_databases_reads_exceeded protection).
     // Breaker is a latch: once open, a single probe read is allowed only every 6h —
     // the org read budget resets monthly, so fast retries are pointless and billed.

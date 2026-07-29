@@ -88,7 +88,6 @@ object AppwritePlayerProfilesClient : AppwriteTableClient("AppwritePlayerProfile
         val updatedAt = DateTimeFormatter.ISO_INSTANT.format(Instant.now())
         withContext(Dispatchers.IO) {
             runCatching {
-                val db = tablesDB ?: return@runCatching
                 val data = mapOf(
                     "name" to entity.name,
                     "country" to entity.country,
@@ -98,31 +97,35 @@ object AppwritePlayerProfilesClient : AppwriteTableClient("AppwritePlayerProfile
                     "updated_at" to updatedAt
                 )
                 runCatching {
-                    db.updateRow(
-                        databaseId = dbId,
-                        tableId = tableId,
-                        rowId = rowId,
-                        data = data
-                    )
-                }.onFailure { e ->
-                    if (e is AppwriteException && e.code == 404) {
-                        db.createRow(
+                    guardedWrite("playerProfiles.update") {
+                        it.updateRow(
                             databaseId = dbId,
                             tableId = tableId,
                             rowId = rowId,
-                            data = data,
-                            // Row-level permissions: public read (profiles are public cricket data);
-                            // update but NOT create at role-any level (row is player-scoped).
-                            // INTENTIONAL: Any authenticated device may contribute a profile
-                            // (global cache, first-scraper-wins). Scraped data is non-sensitive.
-                            // SECURITY NOTE: Existing tables in Appwrite console may have
-                            // create("any") at table level — update via console to match.
-                            // This code controls NEW row permissions only, not the table schema.
-                            permissions = listOf(
-                                Permission.read(Role.any()),
-                                Permission.update(Role.any())
-                            )
+                            data = data
                         )
+                    }
+                }.onFailure { e ->
+                    if (e is AppwriteException && e.code == 404) {
+                        guardedWrite("playerProfiles.create") {
+                            it.createRow(
+                                databaseId = dbId,
+                                tableId = tableId,
+                                rowId = rowId,
+                                data = data,
+                                // Row-level permissions: public read (profiles are public cricket data);
+                                // update but NOT create at role-any level (row is player-scoped).
+                                // INTENTIONAL: Any authenticated device may contribute a profile
+                                // (global cache, first-scraper-wins). Scraped data is non-sensitive.
+                                // SECURITY NOTE: Existing tables in Appwrite console may have
+                                // create("any") at table level — update via console to match.
+                                // This code controls NEW row permissions only, not the table schema.
+                                permissions = listOf(
+                                    Permission.read(Role.any()),
+                                    Permission.update(Role.any())
+                                )
+                            )
+                        }
                     } else {
                         throw e
                     }

@@ -103,6 +103,16 @@ private class InMemoryAICacheDao : AICacheDao {
         entries[key]?.let { entries[key] = it.copy(lastAccessedAt = atMs) }
     }
 
+    override suspend fun markSynced(key: String, atMs: Long) {
+        entries[key]?.let { entries[key] = it.copy(syncedAt = atMs) }
+    }
+
+    override suspend fun unsyncedPermanent(permanentTimestamp: Long, limit: Int): List<AICommentaryCacheEntity> =
+        entries.values
+            .filter { it.syncedAt == null && it.timestamp == permanentTimestamp }
+            .sortedByDescending { it.lastAccessedAt }
+            .take(limit)
+
     override suspend fun countAll(): Int = entries.size
 
     override suspend fun enforceRowCeiling(keepRows: Int) {

@@ -26,6 +26,25 @@ interface AICacheDao {
     @Query("UPDATE ai_commentary_cache SET lastAccessedAt = :atMs WHERE cacheKey = :key")
     suspend fun touch(key: String, atMs: Long)
 
+    @Query("UPDATE ai_commentary_cache SET syncedAt = :atMs WHERE cacheKey = :key")
+    suspend fun markSynced(key: String, atMs: Long)
+
+    /**
+     * Permanent rows whose Appwrite mirror was never confirmed, newest-accessed first.
+     *
+     * Restricted to permanent (completed-match) rows on purpose: a TTL row that failed to sync
+     * expires shortly anyway, so replaying it would spend writes on something about to be dropped.
+     */
+    @Query(
+        """
+        SELECT * FROM ai_commentary_cache
+        WHERE syncedAt IS NULL AND timestamp = :permanentTimestamp
+        ORDER BY lastAccessedAt DESC
+        LIMIT :limit
+        """
+    )
+    suspend fun unsyncedPermanent(permanentTimestamp: Long, limit: Int): List<AICommentaryCacheEntity>
+
     @Query("SELECT COUNT(*) FROM ai_commentary_cache")
     suspend fun countAll(): Int
 

@@ -8,7 +8,6 @@ import io.appwrite.ID
 import io.appwrite.Permission
 import io.appwrite.Role
 import io.appwrite.exceptions.AppwriteException
-import io.appwrite.services.TablesDB
 import com.tanush.bouncer.services.RetryPolicy
 import com.tanush.bouncer.services.withRetry
 import kotlinx.coroutines.CoroutineScope
@@ -31,8 +30,14 @@ object AppwriteAICache : AppwriteTableClient("AppwriteAICache") {
     }
 
     private val remoteRetry = RetryPolicy(maxAttempts = 3, baseDelayMs = 500L)
+    // 429 is a short-term per-endpoint rate limit, not a plan-level cap — retrying with the
+    // existing backoff is the correct response, and it is the only transient Appwrite status
+    // below 500. A 402 stays non-retryable: the breaker handles it and retrying cannot help.
     private fun isTransient(e: Throwable) =
-        e is java.io.IOException || (e is AppwriteException && (e.code ?: 0) >= 500)
+        e is java.io.IOException ||
+            (e is AppwriteException && ((e.code ?: 0) >= 500 || e.code == HTTP_TOO_MANY_REQUESTS))
+
+    private const val HTTP_TOO_MANY_REQUESTS = 429
 
     // Returns (commentary, isPermanent). isPermanent=true when expires_at is >1 year away —
     // used by AICacheService to decide whether to warm local caches permanently.
@@ -85,13 +90,20 @@ object AppwriteAICache : AppwriteTableClient("AppwriteAICache") {
         return digest.take(18).joinToString("") { "%02x".format(it) }
     }
 
-    suspend fun set(key: String, commentary: String, permanent: Boolean = false) {
+    /**
+     * Mirror one entry to the shared table.
+     *
+     * @return true only when Appwrite confirmed the write. False covers every reason the mirror did
+     *   not land — the write breaker being latched, a network failure, the client not configured —
+     *   so the caller can mark the row for replay instead of dropping the cross-device share
+     *   silently, which is what used to happen.
+     */
+    suspend fun set(key: String, commentary: String, permanent: Boolean = false): Boolean {
         // Never cache an empty/blank result: a provider returning "" is a failure, not a value.
         // Caching it would pollute the shared table and squat the deterministic docId (below).
-        if (!isReady || commentary.isBlank()) return
-        withContext(Dispatchers.IO) {
+        if (!isReady || commentary.isBlank()) return false
+        return withContext(Dispatchers.IO) {
             runCatching {
-                val db = tablesDB ?: return@runCatching
                 val expiresAt = if (permanent) {
                     CacheConfig.AI_CACHE_PERMANENT_EXPIRY_ISO
                 } else {
@@ -104,43 +116,46 @@ object AppwriteAICache : AppwriteTableClient("AppwriteAICache") {
                     "commentary" to commentary,
                     "expires_at" to expiresAt
                 )
-                remoteRetry.withRetry(isRetryable = ::isTransient) {
-                    createRowIdempotent(db, key, data)
+                val written = remoteRetry.withRetry(isRetryable = ::isTransient) {
+                    createRowIdempotent(key, data)
                 }
-                if (permanent) maybeEvictOldestPermanent()
+                if (written && permanent) maybeEvictOldestPermanent()
+                written
             }.onFailure { e ->
                 logSilentFailure("Remote cache set failed", e)
-            }
+            }.getOrDefault(false)
         }
     }
 
     // Uses a deterministic document ID derived from the cache key so concurrent
     // set() calls for the same key conflict on ID (409) rather than creating
     // duplicate rows. Catches 409 and treats it as success — the row already exists.
-    private suspend fun createRowIdempotent(db: TablesDB, key: String, data: Map<String, String>) {
+    // Returns false when guardedWrite short-circuits (breaker open / rate capped).
+    private suspend fun createRowIdempotent(key: String, data: Map<String, String>): Boolean {
         val rowId = cacheKeyToDocId(key)
         try {
-            db.createRow(
-                databaseId = dbId,
-                tableId = tableId,
-                rowId = rowId,
-                data = data,
-                permissions = listOf(Permission.read(Role.any()))
-            )
+            return guardedWrite("aiCache.create") {
+                it.createRow(
+                    databaseId = dbId,
+                    tableId = tableId,
+                    rowId = rowId,
+                    data = data,
+                    permissions = listOf(Permission.read(Role.any()))
+                )
+            } != null
         } catch (e: AppwriteException) {
-            if (e.code == 409) {
-                // Row exists (concurrent writer, or a stale/expired entry squatting this
-                // deterministic docId). Overwrite so a fresh value replaces stale data instead
-                // of being silently dropped — otherwise the old row blocks this key forever.
-                db.updateRow(
+            if (e.code != 409) throw e
+            // Row exists (concurrent writer, or a stale/expired entry squatting this
+            // deterministic docId). Overwrite so a fresh value replaces stale data instead
+            // of being silently dropped — otherwise the old row blocks this key forever.
+            return guardedWrite("aiCache.update") {
+                it.updateRow(
                     databaseId = dbId,
                     tableId = tableId,
                     rowId = rowId,
                     data = data
                 )
-            } else {
-                throw e
-            }
+            } != null
         }
     }
 
@@ -196,14 +211,15 @@ object AppwriteAICache : AppwriteTableClient("AppwriteAICache") {
                 }
             } ?: return@runCatching
 
-            val db = tablesDB ?: return@runCatching
             for (row in toDelete.rows) {
                 remoteRetry.withRetry(isRetryable = ::isTransient) {
-                    db.deleteRow(
-                        databaseId = dbId,
-                        tableId = tableId,
-                        rowId = row.id
-                    )
+                    guardedWrite("aiCache.evictDelete") {
+                        it.deleteRow(
+                            databaseId = dbId,
+                            tableId = tableId,
+                            rowId = row.id
+                        )
+                    }
                 }
             }
         }.onFailure { e ->
@@ -214,18 +230,18 @@ object AppwriteAICache : AppwriteTableClient("AppwriteAICache") {
     fun startRealtimeSubscription(scope: CoroutineScope, onNewEntry: (key: String, commentary: String) -> Unit) {
         if (!isReady) return
         if (!subscriptionStarted.compareAndSet(false, true)) return
-        startSubscriptionLoop { response ->
+        acquireChannel(tableChannel()) { response ->
             val isCreate = response.events.any { it.contains(".create") }
-            if (!isCreate) return@startSubscriptionLoop
+            if (!isCreate) return@acquireChannel
             @Suppress("UNCHECKED_CAST")
-            val payload = response.payload as? Map<String, Any> ?: return@startSubscriptionLoop
+            val payload = response.payload as? Map<String, Any> ?: return@acquireChannel
             val key = payload["cache_key"] as? String
                 ?: (payload["data"] as? Map<*, *>)?.get("cache_key") as? String
             val commentary = payload["commentary"] as? String
                 ?: (payload["data"] as? Map<*, *>)?.get("commentary") as? String
             if (key == null || commentary == null) {
                 Log.d(TAG, "Realtime AI cache payload unparseable: $payload")
-                return@startSubscriptionLoop
+                return@acquireChannel
             }
             scope.launch { onNewEntry(key, commentary) }
         }

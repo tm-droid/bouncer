@@ -32,6 +32,22 @@ import java.util.concurrent.atomic.AtomicBoolean
 internal fun isSubscriptionStale(lastEventAt: Long, now: Long, timeoutMs: Long): Boolean =
     lastEventAt > 0L && now - lastEventAt >= timeoutMs
 
+/**
+ * Rough byte size of a Realtime payload, for the bandwidth counter only.
+ *
+ * The SDK hands the callback an already-parsed object, so the wire size is gone by the time we see
+ * it. Summing the string values captures the part that actually matters — a `match-live-detail`
+ * event is one 15-80 KB JSON string plus a handful of short fields — and costs one pass over a
+ * small map, which is affordable on the callback thread. Never treat it as ground truth.
+ */
+private fun approxSizeOf(payload: Any?): Int = when (payload) {
+    is Map<*, *> -> payload.values.sumOf { (it as? String)?.length ?: APPROX_NON_STRING_FIELD_BYTES }
+    is String -> payload.length
+    else -> 0
+}
+
+private const val APPROX_NON_STRING_FIELD_BYTES = 8
+
 abstract class AppwriteTableClient(private val tag: String) {
 
     protected var dbId = ""
@@ -108,6 +124,7 @@ abstract class AppwriteTableClient(private val tag: String) {
                             lastEventAt = SystemClock.elapsedRealtime()
                             @Suppress("UNCHECKED_CAST")
                             val typed = response as io.appwrite.models.RealtimeResponseEvent<Map<String, Any>>
+                            AppwriteUsageTracker.recordRealtimeMessage(approxSizeOf(typed.payload))
                             // One listener throwing must not starve the others.
                             listeners.forEach { listener ->
                                 runCatching { listener(typed) }.onFailure {
@@ -174,22 +191,16 @@ abstract class AppwriteTableClient(private val tag: String) {
         }
     }
 
-    // NOTE: Realtime is intentionally NOT paused by AppwriteReadGuard — websocket events
-    // are not billed DB reads; any follow-up fetches they trigger go through guardedRead.
-    protected fun startSubscriptionLoop(
-        channel: String = tableChannel(),
-        onEvent: (io.appwrite.models.RealtimeResponseEvent<Map<String, Any>>) -> Unit,
-    ) {
-        acquireChannel(channel, onEvent)
-    }
-
     /**
      * Subscribe to [channel], sharing one socket between all callers, and return a handle that
-     * releases this caller's claim.
+     * releases this caller's claim. The always-on clients ignore the handle and release via [stop].
      *
      * Release is deferred by [CacheConfig.REALTIME_LINGER_MS] rather than closing immediately:
      * without it a screen rotation or tab switch tears the websocket down and re-handshakes it on
      * every ViewModel recreation.
+     *
+     * NOTE: Realtime is intentionally NOT paused by AppwriteReadGuard — websocket events are not
+     * billed DB reads; any follow-up fetches they trigger go through [guardedRead].
      */
     protected fun acquireChannel(
         channel: String,
@@ -218,7 +229,7 @@ abstract class AppwriteTableClient(private val tag: String) {
     private fun release(
         channel: String,
         onEvent: (io.appwrite.models.RealtimeResponseEvent<Map<String, Any>>) -> Unit,
-    ) = synchronized(channelLock) {
+    ): Unit = synchronized(channelLock) {
         val sub = channels[channel] ?: return
         sub.listeners.remove(onEvent)
         if (sub.listeners.isNotEmpty()) return
@@ -251,9 +262,39 @@ abstract class AppwriteTableClient(private val tag: String) {
         result.fold(
             // Appwrite bills one read per document returned; pass the row count so the rate
             // windows reflect true billed volume, not just the single call.
-            onSuccess = { value -> AppwriteReadGuard.recordSuccess(rowCountOf(value)) },
+            onSuccess = { value ->
+                val rows = rowCountOf(value)
+                AppwriteReadGuard.recordSuccess(rows)
+                AppwriteUsageTracker.recordRead(rows)
+            },
             onFailure = { e ->
                 if (e !is CancellationException) AppwriteReadGuard.recordFailure(name, e)
+            }
+        )
+        return result.getOrThrow()
+    }
+
+    /**
+     * Funnel for billed TablesDB writes, mirroring [guardedRead] but on the DB_WRITE quota.
+     *
+     * Writes were entirely ungated: only reads had a breaker, so a write loop or an exhausted write
+     * budget had nothing standing in front of it. Returns null when the table is not configured or
+     * the guard is blocking; failures are recorded (a 402 latches the write breaker) and rethrown so
+     * each caller's existing handling is unchanged.
+     */
+    protected suspend fun <T> guardedWrite(name: String, block: suspend (TablesDB) -> T): T? {
+        val db = tablesDB ?: return null
+        if (AppwriteReadGuard.checkAndCount(name, AppwriteReadGuard.Quota.DB_WRITE) != null) {
+            Log.w(tag, "Appwrite write '$name' blocked by AppwriteReadGuard")
+            return null
+        }
+        val result = runCatching { block(db) }
+        result.fold(
+            onSuccess = { AppwriteUsageTracker.recordWrite() },
+            onFailure = { e ->
+                if (e !is CancellationException) {
+                    AppwriteReadGuard.recordFailure(name, e, AppwriteReadGuard.Quota.DB_WRITE)
+                }
             }
         )
         return result.getOrThrow()

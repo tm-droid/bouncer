@@ -15,6 +15,7 @@ import com.tanush.bouncer.data.local.BouncerDatabase
 import com.tanush.bouncer.data.remote.AppwriteAICache
 import com.tanush.bouncer.data.remote.AppwriteClient
 import com.tanush.bouncer.data.remote.AppwriteHighlightsClient
+import com.tanush.bouncer.data.remote.AppwriteUsageTracker
 import com.tanush.bouncer.data.remote.RealtimeLifecycleController
 import com.tanush.bouncer.data.remote.AppwriteMatchCommentaryClient
 import com.tanush.bouncer.data.remote.AppwriteMatchDetailClient
@@ -204,6 +205,12 @@ class BouncerApp : Application() {
             // demand-scoped: MatchDetailViewModel subscribes while a match screen is open and
             // releases on onCleared(), so a device no longer receives every match that anyone,
             // anywhere, currently has open.
+        }
+
+        // Publishes what this device actually consumes from Appwrite, by quota, every 5 minutes.
+        // The point is to see a plan cap coming instead of learning about it from a 402.
+        initializeSafely("AppwriteUsageTracker") {
+            AppwriteUsageTracker.startPeriodicFlush(applicationScope)
         }
 
         // ── Configure Coil ImageLoader ───────────────────────────────────

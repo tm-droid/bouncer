@@ -222,23 +222,41 @@ object AppwriteReadGuard {
      * [checkAndCount] only counted the call as 1 — pass the row count so a limit(N) read is billed
      * as N, keeping the caps aligned with true consumption.
      */
-    fun recordSuccess(units: Int = 1, quota: Quota = Quota.DB_READ) = synchronized(lock) {
-        val b = breakers.getValue(quota)
-        if (b.open && b.probeInFlight) {
-            b.open = false
-            b.openedAtMs = 0L
-            b.probeIntervalMs = CacheConfig.READ_GUARD_PROBE_INTERVAL_MS
-            persist(b)
-            sentryBreadcrumb("appwrite.read_guard", "probe succeeded — ${quota.name} breaker closed")
+    fun recordSuccess(units: Int = 1, quota: Quota = Quota.DB_READ) {
+        val closed = synchronized(lock) {
+            val b = breakers.getValue(quota)
+            val didClose = b.open && b.probeInFlight
+            if (didClose) {
+                b.open = false
+                b.openedAtMs = 0L
+                b.probeIntervalMs = CacheConfig.READ_GUARD_PROBE_INTERVAL_MS
+                persist(b)
+                sentryBreadcrumb("appwrite.read_guard", "probe succeeded — ${quota.name} breaker closed")
+            }
+            b.probeInFlight = false
+            if (units > 1 && b.rateLimits != null) {
+                val extra = units - 1
+                val now = nowMs()
+                b.minuteWindow.add(now, extra)
+                b.hourWindow.add(now, extra)
+            }
+            didClose
         }
-        b.probeInFlight = false
-        if (units > 1 && b.rateLimits != null) {
-            val extra = units - 1
-            val now = nowMs()
-            b.minuteWindow.add(now, extra)
-            b.hourWindow.add(now, extra)
-        }
+        // Outside the lock: the listener issues Appwrite calls, which re-enter this object.
+        if (closed) onBreakerClosed?.invoke(quota)
     }
+
+    /**
+     * Notified when a quota's breaker closes after a successful probe — the budget that was
+     * rejecting operations is demonstrably serving again.
+     *
+     * A property rather than a listener list because there is exactly one consumer
+     * ([com.tanush.bouncer.services.AICacheService], replaying writes that were dropped while the
+     * write budget was latched) and a registry would outlive its usefulness. Always invoked off the
+     * guard's lock.
+     */
+    @Volatile
+    var onBreakerClosed: ((Quota) -> Unit)? = null
 
     /**
      * Call when a guarded operation throws. [quota] is the *calling funnel's* class, used only to
@@ -260,6 +278,7 @@ object AppwriteReadGuard {
         if (Appwrite402Classifier.isRateLimited(e)) {
             val b = breakers.getValue(quota)
             b.rateCapUntilMs = nowMs() + CacheConfig.READ_GUARD_RATE_CAP_PAUSE_MS
+            AppwriteUsageTracker.record429(name)
             reportOncePerInterval(
                 REASON_RATE_LIMITED_429,
                 name,
@@ -281,6 +300,7 @@ object AppwriteReadGuard {
         }
         val detail = classified?.name ?: "unattributed (scoped to ${quota.name}+BANDWIDTH)"
         targets.forEach { target ->
+            AppwriteUsageTracker.record402(target, name)
             openBreaker(
                 target,
                 name,
@@ -404,6 +424,7 @@ object AppwriteReadGuard {
         breakers.values.forEach { it.reset() }
         lastReportAtMs.clear()
         store = null
+        onBreakerClosed = null
         nowMs = System::currentTimeMillis
         reporter = ::reportToSentry
     }

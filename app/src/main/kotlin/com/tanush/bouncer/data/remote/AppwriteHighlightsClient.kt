@@ -100,12 +100,12 @@ object AppwriteHighlightsClient : AppwriteTableClient("AppwriteHighlightsClient"
     fun startRealtimeSubscription(scope: CoroutineScope, onNewHighlight: (HighlightRow) -> Unit) {
         if (!isReady) return
         if (!subscriptionStarted.compareAndSet(false, true)) return
-        startSubscriptionLoop { response ->
+        acquireChannel(tableChannel()) { response ->
             val isCreate = response.events.any { it.contains(".create") }
-            if (!isCreate) return@startSubscriptionLoop
+            if (!isCreate) return@acquireChannel
             runCatching {
                 @Suppress("UNCHECKED_CAST")
-                val row = HighlightRow.fromMap(response.payload as? Map<String, Any?> ?: return@startSubscriptionLoop)
+                val row = HighlightRow.fromMap(response.payload as? Map<String, Any?> ?: return@acquireChannel)
                 scope.launch { onNewHighlight(row) }
             }.onFailure {
                 logSilentFailure("Realtime highlight payload parse failed", it)

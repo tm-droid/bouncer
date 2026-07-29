@@ -3,11 +3,9 @@ package com.tanush.bouncer.data.remote
 import android.content.SharedPreferences
 import android.util.Log
 import com.tanush.bouncer.ApiKeys
-import io.appwrite.ID
 import io.appwrite.Permission
 import io.appwrite.Role
 import io.appwrite.exceptions.AppwriteException
-import io.appwrite.services.TablesDB
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.util.UUID
@@ -36,15 +34,15 @@ object AppwriteFavouritesSync : AppwriteTableClient("AppwriteFavouritesSync") {
 
     suspend fun pull(): List<String>? {
         if (!isReady) return null
-        val client = AppwriteClient.client ?: return null
         return withContext(Dispatchers.IO) {
             runCatching {
-                val tablesDB = TablesDB(client)
-                val row = tablesDB.getRow(
-                    databaseId = dbId,
-                    tableId = tableId,
-                    rowId = deviceId
-                )
+                val row = guardedRead("favourites.getRow") {
+                    it.getRow(
+                        databaseId = dbId,
+                        tableId = tableId,
+                        rowId = deviceId
+                    )
+                } ?: return@runCatching null
                 @Suppress("UNCHECKED_CAST")
                 row.data["teams"] as? List<String>
             }.onFailure { e ->
@@ -59,35 +57,37 @@ object AppwriteFavouritesSync : AppwriteTableClient("AppwriteFavouritesSync") {
 
     suspend fun push(teams: List<String>) {
         if (!isReady) return
-        val client = AppwriteClient.client ?: return
         withContext(Dispatchers.IO) {
             runCatching {
-                val tablesDB = TablesDB(client)
                 runCatching {
-                    tablesDB.updateRow(
-                        databaseId = dbId,
-                        tableId = tableId,
-                        rowId = deviceId,
-                        data = mapOf("teams" to teams)
-                    )
-                }.onFailure { e ->
-                    if (e is AppwriteException && e.code == 404) {
-                        // Row doesn't exist yet — create it
-                        tablesDB.createRow(
+                    guardedWrite("favourites.update") {
+                        it.updateRow(
                             databaseId = dbId,
                             tableId = tableId,
                             rowId = deviceId,
-                            data = mapOf("teams" to teams),
-                            // Row-level permissions: public read for cross-device sync;
-                            // update but NOT create at role-any level (row is device-scoped).
-                            // SECURITY NOTE: Existing tables in Appwrite console may have
-                            // create("any") at table level — update via console to match.
-                            // This code controls NEW row permissions only, not the table schema.
-                            permissions = listOf(
-                                Permission.read(Role.any()),
-                                Permission.update(Role.any())
-                            )
+                            data = mapOf("teams" to teams)
                         )
+                    }
+                }.onFailure { e ->
+                    if (e is AppwriteException && e.code == 404) {
+                        // Row doesn't exist yet — create it
+                        guardedWrite("favourites.create") {
+                            it.createRow(
+                                databaseId = dbId,
+                                tableId = tableId,
+                                rowId = deviceId,
+                                data = mapOf("teams" to teams),
+                                // Row-level permissions: public read for cross-device sync;
+                                // update but NOT create at role-any level (row is device-scoped).
+                                // SECURITY NOTE: Existing tables in Appwrite console may have
+                                // create("any") at table level — update via console to match.
+                                // This code controls NEW row permissions only, not the table schema.
+                                permissions = listOf(
+                                    Permission.read(Role.any()),
+                                    Permission.update(Role.any())
+                                )
+                            )
+                        }
                     } else {
                         throw e
                     }

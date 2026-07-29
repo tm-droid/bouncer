@@ -1,5 +1,6 @@
 package com.tanush.bouncer.services
 
+import com.tanush.bouncer.data.CacheConfig
 import com.tanush.bouncer.data.local.dao.AICacheDao
 import com.tanush.bouncer.data.local.entities.AICommentaryCacheEntity
 import kotlinx.coroutines.test.runTest
@@ -121,6 +122,34 @@ class AICacheServiceTest {
         assertTrue(fakeDao.entries.containsKey("fresh"))
         assertFalse(fakeDao.entries.containsKey("stale"))
     }
+
+    /**
+     * A locally-written row must be queued for replay until Appwrite confirms it. Appwrite is not
+     * configured in unit tests, so the mirror cannot land — which is exactly the dropped-write case
+     * that used to be lost silently.
+     */
+    @Test
+    fun `setCommentary marks the row unsynced so a dropped mirror can be replayed`() = runTest {
+        AICacheService.setCommentary("Bumrah yorks him", "replay1", permanent = true)
+
+        val row = fakeDao.entries["replay1"]
+        assertNotNull(row)
+        assertNull("A row whose remote mirror never landed must stay replayable", row?.syncedAt)
+        assertEquals(CacheConfig.AI_CACHE_PERMANENT_TIMESTAMP, row?.timestamp)
+    }
+
+    /** Only permanent rows are replay candidates — a TTL row would expire before it mattered. */
+    @Test
+    fun `unsynced TTL rows are not replay candidates`() = runTest {
+        AICacheService.setCommentary("edged to slip", "ttlRow", permanent = false)
+
+        val pending = fakeDao.unsyncedPermanent(
+            CacheConfig.AI_CACHE_PERMANENT_TIMESTAMP,
+            CacheConfig.AI_CACHE_REPLAY_BATCH,
+        )
+        assertNull(fakeDao.entries["ttlRow"]?.syncedAt)
+        assertTrue(pending.none { it.cacheKey == "ttlRow" })
+    }
 }
 
 private class FakeAICacheDao : AICacheDao {
@@ -140,6 +169,16 @@ private class FakeAICacheDao : AICacheDao {
     override suspend fun touch(key: String, atMs: Long) {
         entries[key]?.let { entries[key] = it.copy(lastAccessedAt = atMs) }
     }
+
+    override suspend fun markSynced(key: String, atMs: Long) {
+        entries[key]?.let { entries[key] = it.copy(syncedAt = atMs) }
+    }
+
+    override suspend fun unsyncedPermanent(permanentTimestamp: Long, limit: Int): List<AICommentaryCacheEntity> =
+        entries.values
+            .filter { it.syncedAt == null && it.timestamp == permanentTimestamp }
+            .sortedByDescending { it.lastAccessedAt }
+            .take(limit)
 
     override suspend fun countAll(): Int = entries.size
 

@@ -37,7 +37,7 @@ import com.tanush.bouncer.data.local.entities.SeriesFtsEntity
         AICommentaryCacheEntity::class,
         HighlightEntity::class
     ],
-    version = 10,
+    version = 11,
     exportSchema = true
 )
 abstract class BouncerDatabase : RoomDatabase() {
@@ -150,8 +150,20 @@ abstract class BouncerDatabase : RoomDatabase() {
             }
         }
 
+        // ai_commentary_cache.syncedAt: marks rows whose Appwrite mirror is unconfirmed so they can
+        // be replayed. Existing rows are backfilled to 0 rather than left NULL: their true sync
+        // state is unknowable, and treating a whole install's permanent-row history as unsynced
+        // would push a large batch of redundant writes on first launch after the upgrade. Only
+        // drops that happen from here on are recoverable, which is the point of the column.
+        internal val MIGRATION_10_11 = object : Migration(10, 11) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE ai_commentary_cache ADD COLUMN syncedAt INTEGER DEFAULT NULL")
+                db.execSQL("UPDATE ai_commentary_cache SET syncedAt = 0")
+            }
+        }
+
         // Add new migrations here; Room will apply them in order on upgrade.
-        private val MIGRATIONS = arrayOf<Migration>(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10)
+        private val MIGRATIONS = arrayOf<Migration>(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11)
 
         fun getInstance(context: Context): BouncerDatabase {
             return INSTANCE ?: synchronized(this) {
