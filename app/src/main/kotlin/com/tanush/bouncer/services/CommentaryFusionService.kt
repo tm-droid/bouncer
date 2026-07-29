@@ -5,6 +5,7 @@ import com.tanush.bouncer.ApiKeys
 import com.tanush.bouncer.analysis.CricketConstants
 import com.tanush.bouncer.data.remote.AppwriteClient
 import com.tanush.bouncer.network.HttpClientProvider
+import com.tanush.bouncer.utils.BoundedLruCache
 import com.tanush.bouncer.utils.CommentaryFormatter
 import com.tanush.bouncer.utils.ballDigitOf
 import com.tanush.bouncer.utils.contentFingerprint
@@ -123,9 +124,16 @@ class CommentaryFusionService(
      */
     private fun isTimeout(e: Throwable): Boolean = e is InterruptedIOException
 
-    // Concurrent access from per-ball coroutines — use ConcurrentHashMap + per-match mutex
-    // so reads and writes never see a torn list.
-    private val previousBallsBuffer = ConcurrentHashMap<String, MutableList<String>>()
+    // Concurrent access from per-ball coroutines — all access is under bufferMutex so reads and
+    // writes never see a torn list.
+    //
+    // The inner list has always been trimmed to maxBufferSize, but the outer map only ever gained
+    // keys: one per match id, for the life of the process. Browsing through a day of fixtures left
+    // a buffer behind for every match visited. Bounded by LRU rather than removed on completion,
+    // because there is no completion event to hang the removal on — a completed match still has
+    // commentary generated for it during backfill, and each of those balls wants the previous ones
+    // for context.
+    private val previousBallsBuffer = BoundedLruCache<String, MutableList<String>>(MAX_TRACKED_MATCHES)
     // Temp=0.0 verify calls are fully deterministic: same inputs → same PASS/FAIL every time.
     // Cache by content hash to avoid redundant AI calls on retry paths.
     // LinkedHashMap in insertion order — FIFO eviction. All access guarded by verifyCacheMutex.
@@ -181,6 +189,9 @@ class CommentaryFusionService(
 
         private const val HTTP_TOO_MANY_REQUESTS = 429
         private const val HTTP_SERVER_ERROR = 500
+
+        /** Matches whose previous-ball context is kept. Well above the number watchable at once. */
+        private const val MAX_TRACKED_MATCHES = 8
 
         // Sent as role:"system" in all ball-by-ball LLM calls.
         // Kept byte-identical to SYSTEM_INSTRUCTION in appwrite/functions/match-sync/src/llm.js —

@@ -235,6 +235,18 @@ class CommentaryFusionServiceTest {
     }
 
     @Test
+    fun `previous-ball buffer does not grow with every match watched`() = runTest {
+        val service = serviceWith(fakeClient { _, _ -> 200 to successBody("unused") })
+
+        // The inner per-match list was always trimmed, but the outer map only ever gained keys — one
+        // per match id, for the life of the process.
+        repeat(12) { service.addBallToBuffer("match_$it", "18.$it ball text") }
+
+        assertTrue("the most recent match must still be buffered", service.getPreviousBalls("match_11").isNotEmpty())
+        assertTrue("the oldest match must have been evicted", service.getPreviousBalls("match_0").isEmpty())
+    }
+
+    @Test
     fun `fuse all providers fail - returns static fallback string`() = runTest {
         val service = serviceWith(fakeClient { _, _ -> 500 to errorBody() })
 

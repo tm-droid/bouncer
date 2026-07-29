@@ -4,6 +4,7 @@ import android.appwidget.AppWidgetManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import android.os.Build
 import android.util.Log
 import androidx.core.app.NotificationCompat
@@ -167,18 +168,34 @@ class ScorePollingWorker(
         return Pair(team1, team2)
     }
 
+    /**
+     * Drop `last_status_*` entries for matches the user is no longer subscribed to.
+     *
+     * One key was written per subscribed match and none was ever removed, so the prefs file grew a
+     * permanent entry for every match ever followed — including matches that finished months ago.
+     * Subscriptions are the authority: once a match leaves that set its status key is dead weight.
+     */
+    private fun pruneStaleStatusKeys(prefs: SharedPreferences, subscribed: Set<String>) {
+        val stale = prefs.all.keys.filter {
+            it.startsWith(LAST_STATUS_PREFIX) && it.removePrefix(LAST_STATUS_PREFIX) !in subscribed
+        }
+        if (stale.isEmpty()) return
+        prefs.edit().apply { stale.forEach { remove(it) } }.apply()
+    }
+
     private fun notifySubscribedMatches(matches: List<SanwebMatchSummary>) {
         val subscribed = MatchSubscriptionManager.subscriptions.value
         if (subscribed.isEmpty()) return
 
         val notifPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val notifManager = NotificationManagerCompat.from(context)
+        pruneStaleStatusKeys(notifPrefs, subscribed)
 
         matches.filter { it.id in subscribed }.forEach { match ->
-            val lastStatus = notifPrefs.getString("last_status_${match.id}", null)
+            val lastStatus = notifPrefs.getString("$LAST_STATUS_PREFIX${match.id}", null)
             if (lastStatus == match.status) return@forEach
 
-            notifPrefs.edit().putString("last_status_${match.id}", match.status).apply()
+            notifPrefs.edit().putString("$LAST_STATUS_PREFIX${match.id}", match.status).apply()
 
             val channelId = if (match.status.contains("won", ignoreCase = true) ||
                 match.status.contains("result", ignoreCase = true))
@@ -210,6 +227,7 @@ class ScorePollingWorker(
         private const val UNIQUE_WORK_NAME = "score_polling_periodic"
         private const val ONE_TIME_WORK_TAG = "score_polling_once"
         private val PREFS_NAME = PrefsRegistry.PREFS_SCORE_POLLING
+        private const val LAST_STATUS_PREFIX = "last_status_"
         private const val MAX_LIVE_FOLLOWUPS = 12 // 12 × 5 min = 1 hour cap
         private val KEY_FOLLOWUP_COUNT = PrefsRegistry.ScorePolling.FOLLOWUP_COUNT
 

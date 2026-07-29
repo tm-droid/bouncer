@@ -8,6 +8,7 @@ import com.tanush.bouncer.models.ImpactSubEvent
 import com.tanush.bouncer.models.MatchFlowData
 import com.tanush.bouncer.models.PowerplayEvent
 import com.tanush.bouncer.models.PreMatchData
+import com.tanush.bouncer.utils.BoundedLruCache
 import io.sentry.Breadcrumb
 import io.sentry.Sentry
 import io.sentry.SentryLevel
@@ -28,11 +29,19 @@ class CricInfoScraper {
         // Circuit breaker thresholds
         private const val CIRCUIT_BREAKER_FAILURE_THRESHOLD = 3
         private const val CIRCUIT_BREAKER_RESET_MS = 120_000L // 2 minutes cool-down
+
+        /** Match ids kept in the id and availability caches. Well above the number ever in flight. */
+        private const val MAX_TRACKED_MATCHES = 16
     }
 
-    private val matchIdMap = mutableMapOf<String, String>() // cricbuzzId -> cricinfoId
+    // cricbuzzId -> cricinfoId. Was a plain mutableMapOf written from Dispatchers.IO coroutines: not
+    // only unbounded but unsynchronized, so concurrent writes could corrupt the bucket table.
+    private val matchIdMap = BoundedLruCache<String, String>(MAX_TRACKED_MATCHES)
     // Cached availability with timestamp so we re-check periodically (commentary can come live mid-match).
-    private val commentaryAvailabilityCache = java.util.concurrent.ConcurrentHashMap<String, Pair<Boolean, Long>>()
+    // The TTL was only ever consulted on read, so an expired entry was never removed — the map grew
+    // one entry per match id seen and nothing ever shrank it.
+    private val commentaryAvailabilityCache =
+        BoundedLruCache<String, Pair<Boolean, Long>>(MAX_TRACKED_MATCHES)
     private val commentaryCacheTtlMs = 5 * 60_000L // 5 min
 
     // ── Circuit breaker state ────────────────────────────────────────────
@@ -155,7 +164,11 @@ class CricInfoScraper {
             recordSuccess()
 
             val commentaryExists = detectCommentaryPresence(doc)
-            commentaryAvailabilityCache[matchId] = commentaryExists to System.currentTimeMillis()
+            val now = System.currentTimeMillis()
+            // Evict on write, not only on read. A stale entry that is never looked up again was
+            // otherwise retained forever.
+            commentaryAvailabilityCache.removeIf { (_, entry) -> now - entry.second >= commentaryCacheTtlMs }
+            commentaryAvailabilityCache[matchId] = commentaryExists to now
 
             addBreadcrumb(
                 category = "network.cricinfo",
