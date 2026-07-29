@@ -1,5 +1,6 @@
 package com.tanush.bouncer.utils
 
+import com.tanush.bouncer.analysis.CricketConstants
 import com.tanush.bouncer.models.TimelineEvent
 import com.tanush.bouncer.models.TimelineEventType
 
@@ -62,15 +63,26 @@ object TimelineEventExtractor {
 
     private val aiFusedPrefix = Regex("^\\[AI Fused\\]\\s*")
 
+    // Hoisted out of deduplicateByBall. `whitespaceRun` was rebuilt once per line and the two
+    // leading-token patterns once per INNER-loop iteration of an O(n²) pass — roughly 1500 Regex
+    // compilations for a 40-line commentary block, on every render.
+    private val whitespaceRun = Regex("[\\s\\p{Zs}]+")
+    private val leadingBallTokens = Regex("^[\\d.\\s]+")
+    private val leadingNumber = Regex("^\\d+\\s+")
+
     private fun normalize(raw: String): String =
         raw.replace(aiFusedPrefix, "").trim().trimEnd('/')
+
+    /** Form used for near-duplicate comparison: lowercased, with any leading ball number stripped. */
+    private fun comparisonForm(line: String): String =
+        line.lowercase().replace(leadingBallTokens, "").replace(leadingNumber, "")
 
     /** Deduplicate commentary by ball number — keeps the longest entry per delivery.
      *  CricBuzz sends progressive updates for the same ball; this keeps only the most complete.
      *  Internal so OverviewTabV2 and CommentaryTabV2 can reuse it. */
     internal fun deduplicateByBall(lines: List<String>): List<String> {
         val normalized = lines.map {
-            normalize(it).replace(' ', ' ').replace(Regex("[\\s\\p{Zs}]+"), " ").trim()
+            normalize(it).replace(' ', ' ').replace(whitespaceRun, " ").trim()
         }.filter { it.isNotBlank() }
         // Pass 1: group by ball number, keep longest (most complete progressive update)
         val bestByBall = mutableMapOf<String, String>()
@@ -92,17 +104,23 @@ object TimelineEventExtractor {
             }
         }
         // Pass 2: prefix dedup — keep only the longer of near-duplicate pairs
+        // Comparison forms built ONCE per line. They were previously rebuilt inside the inner loop,
+        // making the string work O(n²) on top of the comparison itself.
+        val compare = pass1.map(::comparisonForm)
         val toRemove = mutableSetOf<Int>()
         for (i in pass1.indices) {
             if (i in toRemove) continue
-            val ai = pass1[i].lowercase().replace(Regex("^[\\d.\\s]+"), "").replace(Regex("^\\d+\\s+"), "")
+            val ai = compare[i]
             for (j in i + 1 until pass1.size) {
                 if (j in toRemove) continue
-                val bj = pass1[j].lowercase().replace(Regex("^[\\d.\\s]+"), "").replace(Regex("^\\d+\\s+"), "")
+                val bj = compare[j]
                 val shorter = if (ai.length <= bj.length) ai else bj
                 val longer = if (ai.length <= bj.length) bj else ai
-                val prefixLen = (shorter.length * 0.4).toInt().coerceAtLeast(15)
-                if (shorter.length >= 15 && longer.startsWith(shorter.take(prefixLen))) {
+                val prefixLen = (shorter.length * CricketConstants.DEDUP_PREFIX_RATIO).toInt()
+                    .coerceAtLeast(CricketConstants.DEDUP_MIN_LENGTH)
+                if (shorter.length >= CricketConstants.DEDUP_MIN_LENGTH &&
+                    longer.startsWith(shorter.take(prefixLen))
+                ) {
                     toRemove.add(if (ai.length <= bj.length) i else j)
                 }
             }

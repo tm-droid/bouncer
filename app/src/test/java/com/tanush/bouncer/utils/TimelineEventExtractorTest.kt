@@ -242,4 +242,95 @@ class TimelineEventExtractorTest {
         val events = TimelineEventExtractor.extract(commentary)
         assertTrue("Should NOT have a WICKET event", events.none { it.type == TimelineEventType.WICKET })
     }
+
+    // ── deduplicateByBall (G22: perf only, output must not move) ─────────────
+
+    /** Progressive updates for the same ball, plus a near-duplicate pair and a non-ball line. */
+    private val dedupFixture = listOf(
+        "18.1 Bumrah to Maxwell, no run",
+        "18.1 Bumrah to Maxwell, no run, beaten outside off stump",
+        "18.2 Bumrah to Maxwell, FOUR, driven through the covers",
+        "[AI Fused] 18.3 Bumrah to Maxwell, SIX over long on",
+        "18.4  Bumrah   to   Maxwell,  1 run   ",
+        "Drinks break on the field",
+        "18.5 Bumrah to Green, WICKET! caught behind",
+        "104.3 Ashwin to Root, defended solidly back down the ground",
+    )
+
+    @Test
+    fun `deduplicateByBall keeps the longest progressive update per ball`() {
+        val result = TimelineEventExtractor.deduplicateByBall(dedupFixture)
+        // 18.3 and 18.4 are absent on purpose. Their comparison forms — "bumrah to maxwell, six over
+        // long on" and "bumrah to maxwell, 1 run" — share a 15-character prefix with 18.2's, and pass
+        // 2 treats a shared prefix as a near-duplicate regardless of ball number. That is
+        // DEDUP_MIN_LENGTH = 15 being short enough to collide on "<bowler> to <batter>, ", which is
+        // pre-existing behaviour this perf change must not alter, not something introduced here.
+        assertEquals(
+            listOf(
+                "18.1 Bumrah to Maxwell, no run, beaten outside off stump",
+                "18.2 Bumrah to Maxwell, FOUR, driven through the covers",
+                "Drinks break on the field",
+                "18.5 Bumrah to Green, WICKET! caught behind",
+                "104.3 Ashwin to Root, defended solidly back down the ground",
+            ),
+            result,
+        )
+    }
+
+    @Test
+    fun `deduplicateByBall handles degenerate blocks`() {
+        assertEquals(emptyList<String>(), TimelineEventExtractor.deduplicateByBall(emptyList()))
+        assertEquals(emptyList<String>(), TimelineEventExtractor.deduplicateByBall(listOf("", "   ")))
+        assertEquals(
+            listOf("Drinks break on the field"),
+            TimelineEventExtractor.deduplicateByBall(
+                listOf("Drinks break on the field", "Drinks break on the field"),
+            ),
+        )
+        // Under DEDUP_MIN_LENGTH, so pass 2 cannot touch them; the identical pair still collapses in
+        // pass 1 on the shared ball number.
+        assertEquals(
+            listOf("18.1 short", "104.3 Ashwin to Root"),
+            TimelineEventExtractor.deduplicateByBall(
+                listOf("18.1 short", "18.1 short", "  ", "104.3 Ashwin to Root"),
+            ),
+        )
+    }
+
+    @Test
+    fun `deduplicateByBall is idempotent`() {
+        val once = TimelineEventExtractor.deduplicateByBall(dedupFixture)
+        assertEquals(once, TimelineEventExtractor.deduplicateByBall(once))
+    }
+
+    @Test
+    fun `deduplicateByBall drops a near-duplicate prefix pair`() {
+        val lines = listOf(
+            "1.1 Starc to Rohit, defended back down the ground with soft hands",
+            "2.1 Starc to Rohit, defended back down the ground",
+        )
+        // Same delivery text under different ball numbers — the shorter is a truncated duplicate.
+        assertEquals(1, TimelineEventExtractor.deduplicateByBall(lines).size)
+    }
+
+    @Test
+    fun `deduplicateByBall collapses whitespace and strips the AI Fused prefix`() {
+        val result = TimelineEventExtractor.deduplicateByBall(
+            listOf("[AI Fused] 18.4  Bumrah   to   Maxwell,  1 run   "),
+        )
+        assertEquals(listOf("18.4 Bumrah to Maxwell, 1 run"), result)
+    }
+
+    @Test
+    fun `deduplicateByBall handles a full commentary block`() {
+        // 40 lines is roughly one render, and the size at which the old inner-loop Regex
+        // construction cost ~1500 compilations. Every line shares the "Bowler to Batter, " opening,
+        // so pass 2 removes each entry as soon as it meets an equal-or-longer follower and only the
+        // last survives. Aggressive, but pre-existing — this group must not move it.
+        val many = (1..40).map { "${it / 6}.${it % 6 + 1} Bowler to Batter, delivery number $it" }
+        assertEquals(
+            listOf("6.5 Bowler to Batter, delivery number 40"),
+            TimelineEventExtractor.deduplicateByBall(many),
+        )
+    }
 }
