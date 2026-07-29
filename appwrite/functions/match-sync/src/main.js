@@ -16,6 +16,7 @@ import { evaluate, formatFromText, ballsRemainingFor } from "./winprob.js";
 const DB_ID = process.env.APPWRITE_AI_CACHE_DB_ID ?? "bouncer-db";
 const COMMENTARY_COL = process.env.MATCH_COMMENTARY_COL_ID ?? "match-commentary";
 const DETAIL_COL = process.env.MATCH_LIVE_DETAIL_COL_ID ?? "match-live-detail";
+const SCORECARD_COL = process.env.MATCH_SCORECARD_COL_ID ?? "match-scorecard";
 const BUCKET_ID = process.env.MATCH_CACHE_BUCKET_ID ?? "cricket-stats";
 const LIVE_FILE = "live-matches";
 // Aggregate win probabilities for every live match, keyed by matchId. The device reads this one
@@ -298,6 +299,13 @@ async function syncMatch({ db, matchId, title, withCommentary, model, log, error
     (detail.scorecard?.innings?.length || 0) > 0;
   if (detailHasContent) {
     await upsertDetail({ db, matchId, detail, error });
+    // Stage 1 of the scorecard split: written to BOTH places. The scorecard is ~60 KB and rides
+    // every realtime update of the detail row even though only the Scorecard tab renders it, so it
+    // is moving to a row nobody subscribes to. Until app builds that read match-scorecard are the
+    // norm, dropping it from `payload` would push older builds onto the on-device Cricbuzz scrape.
+    if ((detail.scorecard?.innings?.length || 0) > 0) {
+      await upsertScorecard({ db, matchId, scorecard: detail.scorecard, error });
+    }
   } else {
     log(`Match ${matchId}: hollow live-detail, skipping upsert`);
   }
@@ -417,6 +425,31 @@ async function upsertDetail({ db, matchId, detail, error }) {
       }
     } else {
       error(`Detail update failed (${matchId}): ${e?.message}`);
+    }
+  }
+}
+
+// Same deterministic rowId as the detail row, in a table with no index and no realtime subscriber.
+// Costs one extra write per viewed match per minute and saves ~60 KB on every realtime message
+// that match sends to every device watching it.
+async function upsertScorecard({ db, matchId, scorecard, error }) {
+  const rowId = sanitizeMatchId(matchId);
+  const data = {
+    match_id: matchId,
+    scorecard: JSON.stringify(scorecard),
+    updated_at: new Date().toISOString(),
+  };
+  try {
+    await db.updateDocument(DB_ID, SCORECARD_COL, rowId, data);
+  } catch (e) {
+    if (e?.code === 404) {
+      try {
+        await db.createDocument(DB_ID, SCORECARD_COL, rowId, data, READ_ANY);
+      } catch (e2) {
+        if (e2?.code !== 409) error(`Scorecard create failed (${matchId}): ${e2?.message}`);
+      }
+    } else {
+      error(`Scorecard update failed (${matchId}): ${e?.message}`);
     }
   }
 }

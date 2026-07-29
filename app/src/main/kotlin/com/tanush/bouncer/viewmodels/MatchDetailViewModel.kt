@@ -135,8 +135,16 @@ class MatchDetailViewModel(
             val detail = withTimeoutOrNull(10_000L) { liveSource.getForMatch(match.id) }
             if (detail == null) breadcrumb("scorecard", "Appwrite live-detail fetch timed out or returned null")
             applyDetail(detail)
-            // Fallback: if Appwrite has no scorecard (function not synced or scorecard parse failed
-            // server-side), fetch directly from CricBuzz. Same CSS selectors as the server parser.
+            // Scorecard: the payload still carries it while match-sync dual-writes, so this costs
+            // nothing today. Once the server drops it from `payload` -- the point of the split, so
+            // that ~60 KB stops riding every realtime message to every subscriber -- this fetch from
+            // the unsubscribed `match-scorecard` table takes over, and the on-device CricBuzz scrape
+            // stays as the last resort for matches match-sync has not written.
+            if (_uiState.value.scorecard == null) {
+                liveSource.getScorecardForMatch(match.id)
+                    ?.takeIf { it.innings.isNotEmpty() }
+                    ?.let { sc -> _uiState.update { it.copy(scorecard = sc) } }
+            }
             if (_uiState.value.scorecard == null) {
                 runCatching { matchRepository.fetchScorecard(match.id) }
                     .onSuccess { sc -> _uiState.update { it.copy(scorecard = sc) } }

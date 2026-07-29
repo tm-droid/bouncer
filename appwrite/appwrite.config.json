@@ -154,7 +154,8 @@
                 { "key": "MATCH_CACHE_BUCKET_ID",     "value": "cricket-stats" },
                 { "key": "APPWRITE_AI_CACHE_DB_ID",   "value": "bouncer-db" },
                 { "key": "MATCH_COMMENTARY_COL_ID",   "value": "match-commentary" },
-                { "key": "MATCH_LIVE_DETAIL_COL_ID",  "value": "match-live-detail" }
+                { "key": "MATCH_LIVE_DETAIL_COL_ID",  "value": "match-live-detail" },
+                { "key": "MATCH_SCORECARD_COL_ID",    "value": "match-scorecard" }
             ]
         },
         {
@@ -354,6 +355,20 @@
                     "orders": ["ASC"]
                 }
             ]
+        },
+        {
+            "$id": "match-scorecard",
+            "$permissions": ["create(\"any\")", "read(\"any\")", "update(\"any\")"],
+            "databaseId": "bouncer-db",
+            "name": "Match Scorecard",
+            "enabled": true,
+            "rowSecurity": false,
+            "columns": [
+                { "key": "match_id",   "type": "varchar", "required": true,  "size": 32, "array": false },
+                { "key": "scorecard",  "type": "text",    "required": true,              "array": false },
+                { "key": "updated_at", "type": "varchar", "required": false, "size": 40, "default": "", "array": false }
+            ],
+            "indexes": []
         }
     ]
 }

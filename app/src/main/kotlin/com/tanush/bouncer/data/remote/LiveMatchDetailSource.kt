@@ -23,6 +23,13 @@ interface LiveMatchDetailSource {
     suspend fun getCommentaryForMatch(matchId: String): List<String>
 
     /**
+     * The full scorecard, fetched on demand from its own table. Separate from [getForMatch] because
+     * it is ~60 KB that only the Scorecard tab renders — carrying it in the realtime detail payload
+     * billed every subscriber for it once a minute.
+     */
+    suspend fun getScorecardForMatch(matchId: String): com.tanush.bouncer.models.Scorecard?
+
+    /**
      * Realtime live-detail snapshots for ONE match, subscribed for as long as the flow is
      * collected. Previously a process-wide stream of every match that callers filtered — which
      * meant every device received every watched match's payload whether or not it was on screen.
@@ -44,6 +51,9 @@ object ProductionLiveDetailSource : LiveMatchDetailSource {
 
     override suspend fun getCommentaryForMatch(matchId: String): List<String> =
         AppwriteMatchCommentaryClient.getForMatch(matchId)
+
+    override suspend fun getScorecardForMatch(matchId: String): com.tanush.bouncer.models.Scorecard? =
+        AppwriteMatchScorecardClient.getForMatch(matchId)
 
     override fun observeDetail(matchId: String): Flow<MatchLiveDetailPayload> =
         AppwriteMatchDetailClient.observeMatch(matchId)

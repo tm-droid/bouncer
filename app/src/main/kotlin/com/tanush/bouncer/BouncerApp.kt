@@ -19,6 +19,7 @@ import com.tanush.bouncer.data.remote.AppwriteUsageTracker
 import com.tanush.bouncer.data.remote.RealtimeLifecycleController
 import com.tanush.bouncer.data.remote.AppwriteMatchCommentaryClient
 import com.tanush.bouncer.data.remote.AppwriteMatchDetailClient
+import com.tanush.bouncer.data.remote.AppwriteMatchScorecardClient
 import com.tanush.bouncer.data.remote.AppwritePlayerProfilesClient
 import com.tanush.bouncer.data.remote.AppwriteReadGuard
 import com.tanush.bouncer.data.repository.HighlightsRepository
@@ -147,6 +148,7 @@ class BouncerApp : Application() {
         initializeSafely("AppwritePlayerProfilesClient") { AppwritePlayerProfilesClient.initialize() }
         initializeSafely("AppwriteMatchCommentaryClient") { AppwriteMatchCommentaryClient.initialize() }
         initializeSafely("AppwriteMatchDetailClient") { AppwriteMatchDetailClient.initialize() }
+        initializeSafely("AppwriteMatchScorecardClient") { AppwriteMatchScorecardClient.initialize() }
         initializeSafely("NotificationInboxManager") { NotificationInboxManager.initialize(this, applicationScope) }
         initializeSafely("AICacheService") {
             AICacheService.initialize(BouncerDatabase.getInstance(this).aiCacheDao())
