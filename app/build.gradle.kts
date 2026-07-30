@@ -1,4 +1,5 @@
 import java.util.Properties
+import org.gradle.api.tasks.PathSensitivity
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
@@ -141,6 +142,18 @@ buildConfigField("String", "APPWRITE_AI_CACHE_DB_ID", "\"${localProperties.getPr
         unitTests {
             isReturnDefaultValues = true
         }
+    }
+
+    // CommentaryConstantParityTest reads appwrite/functions/match-sync/src/llm.js from the repo and
+    // asserts its SYSTEM_INSTRUCTION / META / LEADING_BALL_LABEL still match the Kotlin copies.
+    // Gradle cannot see that dependency on its own: the file is outside the module, so editing it
+    // leaves testDebugUnitTest UP-TO-DATE and the parity check never runs. Declaring it as an input
+    // is what makes a one-sided edit fail the build — without this the test passes even with llm.js
+    // deleted, which is exactly the vacuous-green it exists to prevent.
+    tasks.withType<Test>().configureEach {
+        inputs.files(rootProject.file("appwrite/functions/match-sync/src/llm.js"))
+            .withPropertyName("commentaryConstantParitySource")
+            .withPathSensitivity(PathSensitivity.RELATIVE)
     }
 
     // MigrationTestHelper loads the exported Room schemas from the instrumentation APK's assets.

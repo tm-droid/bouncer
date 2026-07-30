@@ -16,7 +16,15 @@ object CommentaryFormatter {
         RegexOption.IGNORE_CASE
     )
 
-    private val LEADING_BALL_LABEL = Regex("((?:\\d{1,3}\\.\\d|Ball\\s+\\d{1,3}):?\\s.*)$")
+    /**
+     * Both ball-label forms: `48.6` (over-based) and `Ball 72` (The Hundred).
+     *
+     * Internal rather than private so `CommentaryConstantParityTest` can assert it still matches
+     * the `LEADING_BALL_LABEL` in appwrite/functions/match-sync/src/llm.js. An over-based-only
+     * pattern silently leaves the preamble attached to every Hundred line, which is what the
+     * server copy did until 2026-07-30.
+     */
+    internal val LEADING_BALL_LABEL = Regex("((?:\\d{1,3}\\.\\d|Ball\\s+\\d{1,3}):?\\s.*)$")
 
     fun sanitize(text: String): String =
         text.replace(AI_FUSED_PREFIX, "")
