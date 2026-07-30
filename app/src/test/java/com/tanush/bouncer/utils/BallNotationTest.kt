@@ -8,6 +8,52 @@ import org.junit.Test
 
 class BallNotationTest {
 
+    // --- ballMetric parsing --------------------------------------------------
+
+    @Test
+    fun `over-based ballMetric parses to OverBall`() {
+        assertEquals(BallMetric.OverBall(48, 6), ballMetricOf("48.6"))
+        assertEquals(BallMetric.OverBall(49, 3), ballMetricOf("49.3"))
+        assertEquals(BallMetric.OverBall(0, 1), ballMetricOf("0.1"))
+        // Test innings past over 99 — same reason BALL_PREFIX uses {1,3}.
+        assertEquals(BallMetric.OverBall(104, 3), ballMetricOf("104.3"))
+    }
+
+    @Test
+    fun `a bare counter parses to BallCount for The Hundred`() {
+        // The Hundred sends 1-100 with no over structure. Coercing this into over.ball would
+        // invent an over; treating it as absent would put us back on the fabricated "18.5".
+        assertEquals(BallMetric.BallCount(72), ballMetricOf("72"))
+        assertEquals(BallMetric.BallCount(100), ballMetricOf("100"))
+        assertEquals(BallMetric.BallCount(1), ballMetricOf("1"))
+    }
+
+    @Test
+    fun `the undefined sentinel and junk parse to null`() {
+        assertNull(ballMetricOf(BALL_METRIC_UNDEFINED))
+        assertNull(ballMetricOf("\$undefined"))
+        assertNull(ballMetricOf(null))
+        assertNull(ballMetricOf(""))
+        assertNull(ballMetricOf("   "))
+        assertNull(ballMetricOf("not a number"))
+        assertNull(ballMetricOf("18.5.2"))
+        assertNull(ballMetricOf("-1.2"))
+    }
+
+    @Test
+    fun `labels distinguish an over from a ball count`() {
+        assertEquals("48.6", BallMetric.OverBall(48, 6).label)
+        assertEquals("Ball 72", BallMetric.BallCount(72).label)
+    }
+
+    @Test
+    fun `an OverBall label round-trips through ballNumberOf but a BallCount label does not`() {
+        // Downstream reads the ball number off the head of the line. An over-based label must be
+        // recoverable; a Hundred label must NOT masquerade as over.ball notation.
+        assertEquals("48.6", ballNumberOf("${BallMetric.OverBall(48, 6).label}: Douthwaite to Rhodes"))
+        assertNull(ballNumberOf("${BallMetric.BallCount(72).label}: Jansen to Banton"))
+    }
+
     // --- over 99 ------------------------------------------------------------
 
     @Test

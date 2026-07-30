@@ -23,6 +23,62 @@ package com.tanush.bouncer.utils
 /** Matches a leading ball number, tolerating leading whitespace. Group 1 is the number. */
 val BALL_PREFIX = """^\s*(\d{1,3}\.\d)""".toRegex()
 
+/**
+ * Cricbuzz's `ballMetric`, which does not mean the same thing in every format.
+ *
+ * Captured from live RSC payloads on 2026-07-30: over-based formats (Test, ODI, T20, List A) send
+ * `over.ball` — `48.6`, `40.2`, `19.5`. **The Hundred sends a flat 1–100 ball counter** — `72`,
+ * `89`, `100` — because it has no overs at all. [BALL_PREFIX] matches the first and rejects the
+ * second, so the two cannot share a representation: coercing a Hundred counter into `over.ball`
+ * invents an over that does not exist, and letting it fall through to "" is what put a fabricated
+ * ball number on 33% of the commentary cache.
+ *
+ * Non-ball items (session notes, bowler changes, result lines) carry the literal string
+ * `"$undefined"` where the number would sit — see [BALL_METRIC_UNDEFINED].
+ */
+sealed interface BallMetric {
+    /** How this metric is written at the head of a commentary line. */
+    val label: String
+
+    /** Over-based formats: `48.6` is over 48, ball 6. */
+    data class OverBall(val over: Int, val ball: Int) : BallMetric {
+        override val label: String get() = "$over.$ball"
+    }
+
+    /** The Hundred: ball [ball] of 100, with no over structure. */
+    data class BallCount(val ball: Int) : BallMetric {
+        override val label: String get() = "Ball $ball"
+    }
+}
+
+/** The RSC sentinel Cricbuzz puts in `ballMetric` on items that are not deliveries. */
+const val BALL_METRIC_UNDEFINED = "\$undefined"
+
+private val OVER_BALL_METRIC = """^(\d{1,3})\.(\d)$""".toRegex()
+private val BALL_COUNT_METRIC = """^(\d{1,3})$""".toRegex()
+
+/**
+ * Parses a raw `ballMetric` value, or null when the item is not a delivery.
+ *
+ * Null covers [BALL_METRIC_UNDEFINED], blanks, and anything non-numeric. Null means "no ball
+ * number" and must stay that way — the caller routes those to the event path rather than
+ * substituting a neighbouring ball's number.
+ */
+fun ballMetricOf(raw: String?): BallMetric? {
+    val value = raw?.trim().orEmpty()
+    if (value.isEmpty() || value == BALL_METRIC_UNDEFINED) return null
+    OVER_BALL_METRIC.find(value)?.let { match ->
+        val over = match.groupValues[1].toIntOrNull() ?: return null
+        val ball = match.groupValues[2].toIntOrNull() ?: return null
+        return BallMetric.OverBall(over, ball)
+    }
+    BALL_COUNT_METRIC.find(value)?.let { match ->
+        val ball = match.groupValues[1].toIntOrNull() ?: return null
+        return BallMetric.BallCount(ball)
+    }
+    return null
+}
+
 /** Ball number at the start of [line], or null when the line does not begin with one. */
 fun ballNumberOf(line: String): String? = BALL_PREFIX.find(line)?.groupValues?.get(1)
 

@@ -187,7 +187,6 @@ internal object ShowcaseScript {
         val t = tickAt(elapsedMs)
         return CricBuzzScraper.ScrapedMatchDetails(
             recentBalls = t.recentBalls,
-            overNumbers = listOf("17", "17", "17", "18", "18", "18"),
             batsmen = listOf(t.striker, t.nonStriker),
             bowler = t.bowler,
             recentBallsSummary = t.recentBalls.joinToString(" "),

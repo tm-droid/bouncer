@@ -26,8 +26,70 @@ import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
 import com.tanush.bouncer.managers.TeamLogoManager
 import com.tanush.bouncer.managers.TeamAcronymManager
+import com.tanush.bouncer.utils.BallMetric
+import com.tanush.bouncer.utils.ballMetricOf
+import com.tanush.bouncer.utils.startsWithBallNumber
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
+
+/**
+ * One Cricbuzz commentary entry, with the ball number the parser used to discard.
+ *
+ * [ballMetric] is null for anything that is not a delivery — session notes, bowler changes, result
+ * lines — which Cricbuzz marks with `"$undefined"`. Null is load-bearing: it routes the item to the
+ * event path instead of borrowing a neighbouring ball's number.
+ */
+internal data class ScrapedCommentaryItem(
+    val timestamp: Long,
+    val text: String,
+    val ballMetric: BallMetric?
+)
+
+/**
+ * The commentary line as it is handed downstream, prefixed with its ball number.
+ *
+ * Everything past the scraper finds the ball number by reading the head of the line
+ * ([ballNumberOf]), so the prefix is what makes a real ball number reach the AI prompt.
+ */
+internal fun ScrapedCommentaryItem.prefixedText(): String {
+    val metric = ballMetric ?: return text
+    return if (startsWithBallNumber(text)) text else "${metric.label}: $text"
+}
+
+/**
+ * RSC back-references — `"$27"`, `"$2a"` — appear where React hoisted the string elsewhere in the
+ * flight stream. They are not prose and were previously excluded only by an incidental length
+ * filter downstream.
+ */
+private val RSC_BACK_REFERENCE = """^\$[0-9a-f]+$""".toRegex()
+
+/** Reads a primitive field as its source literal, or null when absent or not a primitive. */
+private fun JsonObject.primitiveStringOrNull(key: String): String? {
+    val element = get(key) ?: return null
+    if (!element.isJsonPrimitive) return null
+    return try { element.asString } catch (_: Exception) { null }
+}
+
+/**
+ * The commentary entry this node represents, or null when it is not one.
+ *
+ * `ballMetric` is read as its source literal rather than through [Double] — Gson keeps the original
+ * text on a lazily parsed number, so "48.6" survives exactly.
+ */
+private fun commentaryItemOf(obj: JsonObject): ScrapedCommentaryItem? {
+    if (!obj.has("commText") || !obj.has("timestamp")) return null
+    return try {
+        val text = obj.get("commText").asString
+        if (text.isBlank() || RSC_BACK_REFERENCE.matches(text)) return null
+        ScrapedCommentaryItem(
+            timestamp = obj.get("timestamp").asLong,
+            text = text,
+            ballMetric = ballMetricOf(obj.primitiveStringOrNull("ballMetric"))
+        )
+    } catch (_: Exception) {
+        null
+    }
+}
 
 internal fun normalizeNextFlightPayload(rawPayload: String): String? {
     var normalized = rawPayload.trim()
@@ -429,9 +491,14 @@ class CricBuzzScraper {
         return keywords.any { combined.contains(it) }
     }
 
+    // `overNumbers: List<String>` was removed here. It was never populated (always emptyList()),
+    // yet sat first in the ball-number fallback chain in LiveCommentaryManager, so that branch was
+    // dead code. Its intended contents were *over* numbers, one per recent ball — the debug fixture
+    // filled it with listOf("17","17","18","18") — so had it ever been populated, `lastOrNull()`
+    // would have labelled a delivery "18" with no ball digit. The per-line `ballMetric` is now the
+    // single source; see ScrapedCommentaryItem.
     data class ScrapedMatchDetails(
         val recentBalls: List<String>,
-        val overNumbers: List<String>,
         val batsmen: List<ScrapedBatsman>,
         val bowler: ScrapedBowler?,
         val recentBallsSummary: String?,
@@ -484,7 +551,7 @@ class CricBuzzScraper {
         emptyMatchDetails()
     }
 
-    private fun emptyMatchDetails() = ScrapedMatchDetails(emptyList(), emptyList(), emptyList(), null, null, null)
+    private fun emptyMatchDetails() = ScrapedMatchDetails(emptyList(), emptyList(), null, null, null)
 
     private fun buildMatchDetails(doc: Document): ScrapedMatchDetails {
         val batsmen = parseBatsmenFromDoc(doc)
@@ -500,7 +567,6 @@ class CricBuzzScraper {
 
         return ScrapedMatchDetails(
             recentBalls = recentBalls,
-            overNumbers = emptyList(),
             batsmen = batsmen,
             bowler = bowler,
             recentBallsSummary = null,
@@ -547,10 +613,38 @@ class CricBuzzScraper {
         }
     }
 
-    private fun parseCommentaryFromNextJs(html: String): List<String> {
-        val results = mutableListOf<Pair<Long, String>>()
-        forEachNextFlightPayload(html) { data -> collectKeyedPairs(data, "commText", "timestamp", results) { it.asLong } }
-        return results.sortedByDescending { it.first }.map { it.second }
+    private fun parseCommentaryFromNextJs(html: String): List<String> =
+        parseCommentaryItemsFromNextJs(html).map { it.prefixedText() }
+
+    /**
+     * Commentary items with their ball numbers still attached.
+     *
+     * [collectKeyedPairs] keeps only the value and order keys, which threw `ballMetric` away on
+     * every delivery — the whole reason no commentary line has ever carried a real ball number.
+     * Newest-first, deduplicated by timestamp (unique per delivery, including across the two
+     * entries a no-ball produces at the same `ballMetric`).
+     */
+    internal fun parseCommentaryItemsFromNextJs(html: String): List<ScrapedCommentaryItem> {
+        val results = mutableListOf<ScrapedCommentaryItem>()
+        forEachNextFlightPayload(html) { data -> collectCommentaryItems(data, results) }
+        return results.distinctBy { it.timestamp }.sortedByDescending { it.timestamp }
+    }
+
+    /**
+     * Walks the flight payload for commentary nodes, keeping `ballMetric` alongside the text.
+     *
+     * Kept separate from [collectKeyedPairs] rather than generalising it: that one is a generic
+     * two-key collector still used for `overSummary`/`overNumber`, and widening it would push an
+     * unused third key onto that call site.
+     */
+    internal fun collectCommentaryItems(element: JsonElement, results: MutableList<ScrapedCommentaryItem>) {
+        if (element.isJsonObject) {
+            val obj = element.asJsonObject
+            commentaryItemOf(obj)?.let(results::add)
+            obj.keySet().forEach { collectCommentaryItems(obj.get(it), results) }
+        } else if (element.isJsonArray) {
+            element.asJsonArray.forEach { collectCommentaryItems(it, results) }
+        }
     }
 
     private fun parseRecentBallsFromNextJs(html: String): List<String> {

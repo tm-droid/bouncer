@@ -221,13 +221,17 @@ class LiveCommentaryManager(
         val buzzLine = findBestBallSnippet(buzzSnippets, keyNames)
         val infoLine = findBestBallSnippet(infoSnippets, keyNames)
 
-        val ballNumber = details?.overNumbers?.lastOrNull()
-            ?: extractBallNumber(buzzLine.trimStart())
+        val ballNumber = extractBallNumber(buzzLine.trimStart())
             ?: extractBallNumber(infoLine.trimStart())
-            ?: ""
 
-        val hasBallContent = scorer.isBallByBallCommentary(buzzLine) || scorer.isBallByBallCommentary(infoLine)
-        if (!hasBallContent) {
+        // A line with no ball number is not a delivery. Cricbuzz says so explicitly — non-deliveries
+        // carry "$undefined" in ballMetric (see ballMetricOf) — and that beats the text heuristic,
+        // which reads a Playing XI as ball-by-ball because it contains a ball-indicator keyword.
+        // Before this, a pre-match squad list reached the ball prompt, the model was told to narrate
+        // it as a delivery, and the hallucination check then failed it into the cache as a raw line.
+        val looksLikeBall = hasBallContent(buzzLine, infoLine)
+        if (ballNumber == null || !looksLikeBall) {
+            if (ballNumber == null && looksLikeBall) reportScorerDisagreement(matchId, buzzLine)
             val sourceLine = buzzLine.ifEmpty { infoLine }
             if (sourceLine.isEmpty()) return "Waiting for ball-by-ball commentary..."
             return fusion.rewriteEventCommentary(matchId, sourceLine, isMatchComplete)
@@ -359,9 +363,15 @@ class LiveCommentaryManager(
             cricbuzz.fetchBallByBallAndBatsmen(matchId)
         }
 
-        val singleBallNumber = details?.overNumbers?.lastOrNull()
-            ?: extractBallNumber(buzzLine.trimStart())
-            ?: ""
+        // Same rule as getBestCommentary: no ball number means it is not a delivery, so it must not
+        // reach the ball prompt. Cricbuzz is the only source on this path, so its "$undefined" is
+        // decisive.
+        val singleBallNumber = extractBallNumber(buzzLine.trimStart())
+        if (singleBallNumber == null) {
+            if (scorer.isBallByBallCommentary(buzzLine)) reportScorerDisagreement(matchId, buzzLine)
+            if (buzzLine.isEmpty()) return "Waiting for ball-by-ball commentary..."
+            return fusion.rewriteEventCommentary(matchId, buzzLine, isMatchComplete)
+        }
         val singleOver = singleBallNumber.substringBefore(".").toIntOrNull() ?: 0
         val singleBowler = details?.bowler?.name ?: ""
         val singleBatsman = details?.batsmen?.firstOrNull()?.name ?: ""
@@ -486,6 +496,33 @@ class LiveCommentaryManager(
     }
 
     private fun extractBallNumber(text: String): String? = ballNumberOf(text)
+
+    /**
+     * Whether either source line reads as an actual delivery.
+     *
+     * Only consulted once a ball number exists — the ball number is the authoritative signal and
+     * this is the secondary text check.
+     */
+    private fun hasBallContent(buzzLine: String, infoLine: String): Boolean =
+        scorer.isBallByBallCommentary(buzzLine) || scorer.isBallByBallCommentary(infoLine)
+
+    /**
+     * Records that [CommentaryScorer.isBallByBallCommentary] called a line a delivery while
+     * Cricbuzz marked it `"$undefined"`.
+     *
+     * This is a scorer-accuracy signal, **not** an extraction-failure alarm, and a small non-zero
+     * count is expected. The keyword heuristic reads bowler changes ("Ashton Agar [1.0-0-23-0] is
+     * back into the attack") and arrival notices ("Shimron Hetmyer, left handed bat, comes to the
+     * crease") as ball-by-ball; the ball number is authoritative and overrides it, so these are
+     * correctly routed to the event path. Worth watching because a sharp rise on lines that really
+     * are deliveries would mean `ballMetric` extraction regressed.
+     */
+    private fun reportScorerDisagreement(matchId: String, line: String) {
+        addBreadcrumb(
+            "Scorer called a non-delivery ball-by-ball — ball number overrides",
+            mapOf("matchId" to matchId, "linePrefix" to line.take(40))
+        )
+    }
 
     private fun triggerAiInsight(commentary: String, matchId: String) {
         if (!aiInsightsEnabled) return

@@ -116,10 +116,46 @@ function collectKeyedPairs(node, valueKey, orderKey, results) {
   }
 }
 
-// Returns newest-first, de-duplicated by timestamp: [{ timestamp, commText }]
+// RSC back-references ("$27", "$2a") sit where React hoisted the string elsewhere in the stream.
+const RSC_BACK_REFERENCE = /^\$[0-9a-f]+$/;
+
+// Mirrors CricBuzzScraper.collectCommentaryItems. collectKeyedPairs keeps only the value and order
+// keys, which discarded `ballMetric` on every delivery — see BallNotation.kt for why that field is
+// format-dependent and why "$undefined" must stay null rather than borrowing a neighbour's number.
+function collectCommentaryItems(node, results) {
+  if (node && typeof node === "object" && !Array.isArray(node)) {
+    if ("commText" in node && "timestamp" in node) {
+      const text = node.commText;
+      const order = Number(node.timestamp);
+      if (typeof text === "string" && text.trim() && !RSC_BACK_REFERENCE.test(text) && Number.isFinite(order)) {
+        results.push({ order, text, ballMetric: ballMetricOf(node.ballMetric) });
+      }
+    }
+    for (const k of Object.keys(node)) collectCommentaryItems(node[k], results);
+  } else if (Array.isArray(node)) {
+    for (const item of node) collectCommentaryItems(item, results);
+  }
+}
+
+// Port of BallNotation.ballMetricOf. Returns { label, over, ball } or null for non-deliveries.
+export function ballMetricOf(raw) {
+  if (raw === null || raw === undefined) return null;
+  const value = String(raw).trim();
+  if (!value || value === "$undefined") return null;
+  const overBall = value.match(/^(\d{1,3})\.(\d)$/);
+  if (overBall) {
+    return { label: value, over: Number(overBall[1]), ball: Number(overBall[2]) };
+  }
+  // The Hundred: a flat 1-100 ball counter, no over structure.
+  const counter = value.match(/^(\d{1,3})$/);
+  if (counter) return { label: `Ball ${value}`, over: null, ball: Number(counter[1]) };
+  return null;
+}
+
+// Returns newest-first, de-duplicated by timestamp: [{ timestamp, commText, ballMetric }]
 export function parseCommentary(html) {
   const results = [];
-  forEachNextFlightPayload(html, (d) => collectKeyedPairs(d, "commText", "timestamp", results));
+  forEachNextFlightPayload(html, (d) => collectCommentaryItems(d, results));
   const seen = new Set();
   return results
     .sort((a, b) => b.order - a.order)
@@ -128,7 +164,7 @@ export function parseCommentary(html) {
       seen.add(r.order);
       return true;
     })
-    .map((r) => ({ timestamp: r.order, commText: r.value }))
+    .map((r) => ({ timestamp: r.order, commText: r.text, ballMetric: r.ballMetric }))
     .filter((r) => r.commText.length > 5);
 }
 
