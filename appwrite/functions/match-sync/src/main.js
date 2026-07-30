@@ -40,11 +40,6 @@ const SCAN_NEWEST = 30; // how many newest commentary items to look at
 const MAX_NEW_PER_MATCH = 10; // max LLM-backed rows to write per match per run
 const MAX_MATCHES = 12; // cap live matches processed per run
 
-// ANCHORED. Unanchored, this read "45.2 runs per over" as ball 45.2 and wrote a bogus row keyed on
-// a ball that had not been bowled. Every consumer of this pattern means "the line STARTS WITH a
-// ball number". Mirrors BALL_PREFIX in
-// app/src/main/kotlin/com/tanush/bouncer/utils/BallNotation.kt.
-const BALL_RE = /^\s*(\d{1,3}\.\d)/;
 // Bare section headers Cricbuzz emits as commentary items with no body — render as
 // pointless one-word lines (e.g. "Teams:", "Squads:"). "Drinks!" is a real break marker, kept.
 const JUNK_COMMENTARY_RE = /^(teams|squads|playing xi)\s*:?\s*$/i;
@@ -72,6 +67,34 @@ const isBudget402 = (e) => e?.code === 402 || e?.type === "limit_databases_reads
 const docId = (s) => createHash("sha256").update(s).digest("hex").slice(0, 36);
 const sanitizeMatchId = (id) => String(id).replace(/[^a-zA-Z0-9._-]/g, "").slice(0, 36);
 
+/**
+ * The cleaned text and ball number for a commentary item, or null when it must be skipped.
+ *
+ * Pure and exported so SMOKE_PROBE can exercise it without a database. `ffe9656` deleted the
+ * `const clean = sanitize(item.commText)` binding from the middle of the write loop and left all
+ * four of its uses, so every run threw `ReferenceError: clean is not defined` on the first fresh
+ * item of every match. Nothing failed loudly — the per-match catch logged and moved on — and no
+ * commentary row was written for a month.
+ *
+ * The ball number comes from Cricbuzz's own `ballMetric` field. Matching a ball-prefix regex
+ * against `commText` (which is what this did) finds nothing, because the number is a sibling field
+ * on the same node and never appears in the text. That alone would have kept this path dead even
+ * with `clean` restored.
+ */
+export function classifyCommentaryItem(item) {
+  const clean = sanitize(item.commText);
+  if (!clean) return null;
+  if (JUNK_COMMENTARY_RE.test(clean)) return null;
+  const ball = item.ballMetric?.label ?? "";
+  if (!ball) return null;
+  return { clean, ball };
+}
+
+// Exercised on every invocation. An unbound identifier inside classifyCommentaryItem only throws
+// once a live match has a fresh item, so it can hide for weeks; this makes it a hard failure on
+// the very next run instead.
+const SMOKE_PROBE = { commText: "Bumrah to Root, no run", ballMetric: { label: "18.5" } };
+
 export default async ({ req, res, log, error }) => {
   if (!process.env.APPWRITE_API_KEY) {
     return res.json({ error: "Missing APPWRITE_API_KEY" }, 500);
@@ -80,6 +103,16 @@ export default async ({ req, res, log, error }) => {
     error(`[READ-BUDGET-402] skipping run — read budget exhausted, cooldown until ${new Date(budget402UntilMs).toISOString()}`);
     return res.json({ error: "read_budget_exceeded" }, 402);
   }
+  try {
+    const probe = classifyCommentaryItem(SMOKE_PROBE);
+    if (probe?.ball !== "18.5" || !probe.clean) {
+      throw new Error(`unexpected result ${JSON.stringify(probe)}`);
+    }
+  } catch (e) {
+    error(`[SMOKE] commentary classifier is broken: ${e.message}`);
+    return res.json({ error: "commentary_classifier_broken", detail: e.message }, 500);
+  }
+
   readsThisRun = 0;
   const client = new Client()
     .setEndpoint(process.env.APPWRITE_FUNCTION_API_ENDPOINT)
@@ -344,12 +377,9 @@ async function syncMatch({ db, matchId, title, withCommentary, model, log, error
     const itemTs = Number(item.timestamp);
 
     // Skipped items are still "processed" — advance past them or they are re-examined forever.
-    if (JUNK_COMMENTARY_RE.test(clean)) { newWatermark = itemTs; continue; }
-    const ballMatch = clean.match(BALL_RE);
-    const ball = ballMatch ? ballMatch[1] : "";
-    // Only persist ball-by-ball lines. Items with no ball number are session/meta chatter
-    // (breaks, notes) that previously landed as malformed, ball-less rows — skip them.
-    if (!ball) { newWatermark = itemTs; continue; }
+    const classified = classifyCommentaryItem(item);
+    if (!classified) { newWatermark = itemTs; continue; }
+    const { clean, ball } = classified;
 
     let line = clean;
     {
@@ -363,7 +393,7 @@ async function syncMatch({ db, matchId, title, withCommentary, model, log, error
         score && `Score: ${score}`,
       ].filter(Boolean).join(" | ");
       const prompt =
-        `Ball ${ball}: ${clean}\n` +
+        `${ball}: ${clean}\n` +
         (contextLine ? `${contextLine}\n` : "") +
         `Write one vivid broadcast commentary line. Start with ${ball}: at the beginning.`;
       const generated = await generateLine(prompt, { maxTokens: 100, temperature: 0.7, log, error });
