@@ -125,4 +125,41 @@ class MigrationTest {
         fresh.close()
         db.close()
     }
+
+    @Test
+    fun migrate11to12_clearsEveryAiCommentaryRowIncludingPermanentOnes() {
+        val v11 = helper.createDatabase("test-db-11", 11)
+        // A completed-match row: timestamp is the permanent sentinel, so it would never expire on
+        // its own. That is the whole reason this migration exists.
+        v11.execSQL(
+            "INSERT INTO ai_commentary_cache (cacheKey, commentary, timestamp, lastAccessedAt, syncedAt) " +
+                "VALUES ('k1', '18.5: fabricated', ${Long.MAX_VALUE}, 5, 0)"
+        )
+        v11.execSQL(
+            "INSERT INTO ai_commentary_cache (cacheKey, commentary, timestamp, lastAccessedAt, syncedAt) " +
+                "VALUES ('k2', 'Bumrah to Root, no run', 123, 6, NULL)"
+        )
+        v11.close()
+
+        val db = helper.runMigrationsAndValidate(
+            "test-db-11", 12, true,
+            BouncerDatabase.MIGRATION_11_12
+        )
+
+        val count = db.query("SELECT COUNT(*) FROM ai_commentary_cache")
+        count.moveToFirst()
+        assertEquals("every pre-fix row must be gone, permanent ones included", 0, count.getInt(0))
+        count.close()
+
+        // The table itself must survive — a drop would take the schema with it.
+        db.execSQL(
+            "INSERT INTO ai_commentary_cache (cacheKey, commentary, timestamp, lastAccessedAt, syncedAt) " +
+                "VALUES ('k3', '4.1: written after the purge', 200, 7, NULL)"
+        )
+        val after = db.query("SELECT commentary FROM ai_commentary_cache WHERE cacheKey = 'k3'")
+        after.moveToFirst()
+        assertEquals("4.1: written after the purge", after.getString(0))
+        after.close()
+        db.close()
+    }
 }

@@ -37,7 +37,7 @@ import com.tanush.bouncer.data.local.entities.SeriesFtsEntity
         AICommentaryCacheEntity::class,
         HighlightEntity::class
     ],
-    version = 11,
+    version = 12,
     exportSchema = true
 )
 abstract class BouncerDatabase : RoomDatabase() {
@@ -162,8 +162,29 @@ abstract class BouncerDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * One-shot purge of every AI commentary row written before the pipeline fixes.
+         *
+         * Everything in this table predates them, so there is nothing worth keeping and no
+         * predicate that could separate good rows from bad: the ball number on a cached line was
+         * copied from the system prompt's own example rather than parsed, so `18.5` sat on a third
+         * of all rows across unrelated matches. Rows for completed matches carry
+         * `timestamp = Long.MAX_VALUE` and would otherwise never expire.
+         *
+         * A `DELETE` rather than a schema change, so no column definition drifts from
+         * [AICommentaryCacheEntity] — but it must still be a version bump, because a clear that
+         * runs on every launch would wipe the cache the fixes exist to make useful. The Appwrite
+         * mirror was emptied at the same time; a device that repopulates from it would otherwise
+         * undo this on the next read.
+         */
+        internal val MIGRATION_11_12 = object : Migration(11, 12) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("DELETE FROM ai_commentary_cache")
+            }
+        }
+
         // Add new migrations here; Room will apply them in order on upgrade.
-        private val MIGRATIONS = arrayOf<Migration>(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11)
+        private val MIGRATIONS = arrayOf<Migration>(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12)
 
         fun getInstance(context: Context): BouncerDatabase {
             return INSTANCE ?: synchronized(this) {
