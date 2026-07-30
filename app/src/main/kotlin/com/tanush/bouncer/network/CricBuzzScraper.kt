@@ -28,7 +28,7 @@ import com.tanush.bouncer.managers.TeamLogoManager
 import com.tanush.bouncer.managers.TeamAcronymManager
 import com.tanush.bouncer.utils.BallMetric
 import com.tanush.bouncer.utils.ballMetricOf
-import com.tanush.bouncer.utils.startsWithBallNumber
+import com.tanush.bouncer.utils.startsWithBallLabel
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
 
@@ -53,7 +53,7 @@ internal data class ScrapedCommentaryItem(
  */
 internal fun ScrapedCommentaryItem.prefixedText(): String {
     val metric = ballMetric ?: return text
-    return if (startsWithBallNumber(text)) text else "${metric.label}: $text"
+    return if (startsWithBallLabel(text)) text else "${metric.label}: $text"
 }
 
 /**

@@ -1,6 +1,9 @@
 package com.tanush.bouncer.services
 
+import com.tanush.bouncer.utils.BallMetric
+import com.tanush.bouncer.utils.ballMetricOfLine
 import com.tanush.bouncer.utils.ballNumberOf
+import com.tanush.bouncer.utils.startsWithBallLabel
 import com.tanush.bouncer.utils.startsWithBallNumber
 import android.util.Log
 import com.tanush.bouncer.models.TimelineEventType
@@ -102,7 +105,7 @@ class LiveCommentaryManager(
     }
 
     private fun prefixBallNumber(ballNumber: String, text: String): String {
-        return if (ballNumber.isNotEmpty() && !startsWithBallNumber(text)) {
+        return if (ballNumber.isNotEmpty() && !startsWithBallLabel(text)) {
             "$ballNumber $text"
         } else text
     }
@@ -221,8 +224,10 @@ class LiveCommentaryManager(
         val buzzLine = findBestBallSnippet(buzzSnippets, keyNames)
         val infoLine = findBestBallSnippet(infoSnippets, keyNames)
 
-        val ballNumber = extractBallNumber(buzzLine.trimStart())
-            ?: extractBallNumber(infoLine.trimStart())
+        // Read the metric, not the raw string: ballNumberOf only knows `over.ball`, so routing on it
+        // would send every Hundred delivery ("Ball 72: ...") to the event path.
+        val ballMetric = ballMetricOfLine(buzzLine.trimStart())
+            ?: ballMetricOfLine(infoLine.trimStart())
 
         // A line with no ball number is not a delivery. Cricbuzz says so explicitly — non-deliveries
         // carry "$undefined" in ballMetric (see ballMetricOf) — and that beats the text heuristic,
@@ -230,14 +235,16 @@ class LiveCommentaryManager(
         // Before this, a pre-match squad list reached the ball prompt, the model was told to narrate
         // it as a delivery, and the hallucination check then failed it into the cache as a raw line.
         val looksLikeBall = hasBallContent(buzzLine, infoLine)
-        if (ballNumber == null || !looksLikeBall) {
-            if (ballNumber == null && looksLikeBall) reportScorerDisagreement(matchId, buzzLine)
+        if (ballMetric == null || !looksLikeBall) {
+            if (ballMetric == null && looksLikeBall) reportScorerDisagreement(matchId, buzzLine)
             val sourceLine = buzzLine.ifEmpty { infoLine }
             if (sourceLine.isEmpty()) return "Waiting for ball-by-ball commentary..."
             return fusion.rewriteEventCommentary(matchId, sourceLine, isMatchComplete)
         }
 
-        val over = ballNumber.substringBefore(".").toIntOrNull() ?: 0
+        val ballNumber = ballMetric.label
+        // The Hundred has no overs; 0 is the honest answer, not over zero.
+        val over = (ballMetric as? BallMetric.OverBall)?.over ?: 0
         val oversSummary = computeOversSummary(matchId, over, buzzLine, isMatchComplete)
 
         launchStreamingJob(
@@ -319,7 +326,7 @@ class LiveCommentaryManager(
                 batsman = lastFetchedBatsman,
                 scoreContext = lastFetchedScore,
             )
-            if (!startsWithBallNumber(raw)) "$ballNum $raw" else raw
+            if (!startsWithBallLabel(raw)) "$ballNum $raw" else raw
         } catch (e: Exception) {
             Sentry.captureException(e)
             "$ballNum ${CommentaryFusionService.FALLBACK_BALL_COMMENTARY}"
@@ -366,13 +373,14 @@ class LiveCommentaryManager(
         // Same rule as getBestCommentary: no ball number means it is not a delivery, so it must not
         // reach the ball prompt. Cricbuzz is the only source on this path, so its "$undefined" is
         // decisive.
-        val singleBallNumber = extractBallNumber(buzzLine.trimStart())
-        if (singleBallNumber == null) {
+        val singleMetric = ballMetricOfLine(buzzLine.trimStart())
+        if (singleMetric == null) {
             if (scorer.isBallByBallCommentary(buzzLine)) reportScorerDisagreement(matchId, buzzLine)
             if (buzzLine.isEmpty()) return "Waiting for ball-by-ball commentary..."
             return fusion.rewriteEventCommentary(matchId, buzzLine, isMatchComplete)
         }
-        val singleOver = singleBallNumber.substringBefore(".").toIntOrNull() ?: 0
+        val singleBallNumber = singleMetric.label
+        val singleOver = (singleMetric as? BallMetric.OverBall)?.over ?: 0
         val singleBowler = details?.bowler?.name ?: ""
         val singleBatsman = details?.batsmen?.firstOrNull()?.name ?: ""
         val singleScore = details?.score ?: ""
@@ -495,7 +503,14 @@ class LiveCommentaryManager(
         }
     }
 
-    private fun extractBallNumber(text: String): String? = ballNumberOf(text)
+    /**
+     * The ball label at the head of [text] — `"48.6"` or `"Ball 72"` — or null when there is none.
+     *
+     * Goes through [ballMetricOfLine] rather than [ballNumberOf] so history dedup, notification
+     * dedup and the AI entry all work for The Hundred instead of treating every Hundred delivery
+     * as unnumbered.
+     */
+    private fun extractBallNumber(text: String): String? = ballMetricOfLine(text)?.label
 
     /**
      * Whether either source line reads as an actual delivery.
@@ -531,7 +546,7 @@ class LiveCommentaryManager(
         if (now - last < aiInsightCooldownMs) return
 
         lastInsightAt[matchId] = now
-        val insightOver = extractBallNumber(commentary)?.substringBefore(".")?.toIntOrNull() ?: 0
+        val insightOver = (ballMetricOfLine(commentary) as? BallMetric.OverBall)?.over ?: 0
         scope.launch {
             try {
                 // Snapshot history under mutex before the suspension point in summarizer.

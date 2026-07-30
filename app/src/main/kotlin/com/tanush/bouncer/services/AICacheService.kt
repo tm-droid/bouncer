@@ -7,6 +7,7 @@ import com.tanush.bouncer.data.local.dao.AICacheDao
 import com.tanush.bouncer.data.local.entities.AICommentaryCacheEntity
 import com.tanush.bouncer.data.remote.AppwriteAICache
 import com.tanush.bouncer.data.remote.AppwriteReadGuard
+import com.tanush.bouncer.utils.CommentaryFormatter
 import io.sentry.Breadcrumb
 import io.sentry.Sentry
 import io.sentry.SentryLevel
@@ -182,8 +183,13 @@ object AICacheService {
 
     // A failed generation must never be persisted: caching the placeholder (or blank) poisons all
     // three tiers and, when permanent, is served forever without ever regenerating.
+    // Meta/refusal text is uncacheable for the same reason: "Since there is no specific ball
+    // number..." is a failed generation wearing the costume of a successful one, and 76 such rows
+    // are sitting permanently in the shared Appwrite cache because nothing rejected them here.
     private fun isUncacheable(commentary: String) =
-        commentary.isBlank() || commentary == UNAVAILABLE_PLACEHOLDER
+        commentary.isBlank() ||
+            commentary == UNAVAILABLE_PLACEHOLDER ||
+            CommentaryFormatter.isMetaResponse(commentary)
 
     suspend fun setCommentary(commentary: String, key: String, permanent: Boolean = false) = mutex.withLock {
         if (isUncacheable(commentary)) {

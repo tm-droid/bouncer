@@ -6,8 +6,9 @@ import com.tanush.bouncer.analysis.CricketConstants
 import com.tanush.bouncer.data.remote.AppwriteClient
 import com.tanush.bouncer.network.HttpClientProvider
 import com.tanush.bouncer.utils.BoundedLruCache
+import com.tanush.bouncer.utils.BallMetric
 import com.tanush.bouncer.utils.CommentaryFormatter
-import com.tanush.bouncer.utils.ballDigitOf
+import com.tanush.bouncer.utils.ballMetricOfLine
 import com.tanush.bouncer.utils.contentFingerprint
 import com.tanush.bouncer.utils.sentryBreadcrumb
 import io.sentry.Breadcrumb
@@ -156,28 +157,39 @@ class CommentaryFusionService(
     // 7b: Phase-adaptive prompt selection
     private enum class PromptPhase { POWERPLAY, MIDDLE, DEATH, LAST_BALL }
 
-    private fun selectPhase(ballNumber: Double, totalOvers: Int): PromptPhase {
-        val completedOvers = ballNumber.toInt()
-        // Shared with the rest of the ball-notation handling. Rounds rather than truncates, which
-        // only matters for a ballNumber that reaches here with arithmetic drift rather than parsed
-        // straight from "18.5" — see ballDigitOf, which records that the IEEE-754 defect this was
-        // originally filed against does not actually exist.
-        val ballsInCurrentOver = ballDigitOf(ballNumber)
-        val ballsBowled = completedOvers * CricketConstants.BALLS_PER_OVER + ballsInCurrentOver
-        val totalBalls = totalOvers * CricketConstants.BALLS_PER_OVER
+    /**
+     * Phase for a delivery, or null when the ball is unknown.
+     *
+     * Takes a [BallMetric] rather than a [Double] for two reasons. A Hundred counter (`72`) read as
+     * `over.ball` becomes over 72 of a 20-over innings — past the end of the match, so every ball
+     * scored as LAST_BALL. And the previous `ballNumber.toDoubleOrNull() ?: over.toDouble()`
+     * defaulted a missing ball to `0.0`, which is why "With field restrictions in place" — the
+     * POWERPLAY instruction — appears on death-over commentary throughout the cache.
+     */
+    private fun selectPhase(metric: BallMetric?, totalOvers: Int): PromptPhase? {
+        if (metric == null) return null
+        val ballsBowled = metric.ballsBowled
+        val totalBalls = inningsBallsFor(metric, totalOvers)
         val ballsRemaining = totalBalls - ballsBowled
         val format = CricketConstants.formatFromInningsBalls(totalBalls)
-        val powerplayEnd = CricketConstants.powerplayEndBall(format)
-        val deathBalls = when (format) {
-            CricketConstants.MatchFormat.ODI -> CricketConstants.ODI_DEATH_OVERS * CricketConstants.BALLS_PER_OVER
-            else -> CricketConstants.T20_DEATH_OVERS * CricketConstants.BALLS_PER_OVER
-        }
         return when {
-            ballsBowled < powerplayEnd -> PromptPhase.POWERPLAY
+            ballsBowled < CricketConstants.powerplayEndBall(format) -> PromptPhase.POWERPLAY
             ballsRemaining <= 1 -> PromptPhase.LAST_BALL
-            ballsRemaining <= deathBalls -> PromptPhase.DEATH
+            ballsRemaining <= deathBallsFor(format) -> PromptPhase.DEATH
             else -> PromptPhase.MIDDLE
         }
+    }
+
+    /** The Hundred is a fixed 100 balls and has no over count to scale from. */
+    private fun inningsBallsFor(metric: BallMetric, totalOvers: Int): Int = when (metric) {
+        is BallMetric.BallCount -> CricketConstants.HUNDRED_INNINGS_BALLS
+        is BallMetric.OverBall -> totalOvers * CricketConstants.BALLS_PER_OVER
+    }
+
+    private fun deathBallsFor(format: CricketConstants.MatchFormat): Int = when (format) {
+        CricketConstants.MatchFormat.ODI ->
+            CricketConstants.ODI_DEATH_OVERS * CricketConstants.BALLS_PER_OVER
+        else -> CricketConstants.T20_DEATH_OVERS * CricketConstants.BALLS_PER_OVER
     }
 
     companion object {
@@ -196,12 +208,17 @@ class CommentaryFusionService(
         // Sent as role:"system" in all ball-by-ball LLM calls.
         // Kept byte-identical to SYSTEM_INSTRUCTION in appwrite/functions/match-sync/src/llm.js —
         // the same ball can be narrated by either, so a drift between them shows up as two different
-        // house styles in one match. The last line was added server-side and had not been carried
-        // back here; without it the model prefixes answers with "Since there is..." framing.
+        // house styles in one match.
         // (generate-commentary takes the instruction from the request body, so there is no third copy.)
+        //
+        // There is deliberately NO example ball number here. The previous wording ended
+        // "(e.g., 18.5: ...)", and when the ball number was missing from the user prompt the model
+        // did the only thing a STRICT FORMAT rule with one example allows: it emitted the example.
+        // That single token became 33% of the commentary cache, spread across a year of unrelated
+        // matches. An example of a field the model must fill is an invitation to hallucinate it.
         const val SYSTEM_INSTRUCTION =
             "You are a professional cricket broadcast commentator. Write exactly one vivid, natural commentary line.\n" +
-            "STRICT FORMAT: Begin with the ball number (e.g., 18.5: ...). One sentence only. No ellipsis at the end.\n" +
+            "STRICT FORMAT: Begin with the ball number exactly as given in the input, followed by a colon. Never invent, guess or alter it; if the input has no ball number, begin with the action instead. One sentence only. No ellipsis at the end.\n" +
             "HALLUCINATION RULES: Use ONLY player names and match facts present in the input. Never invent runs, wickets, boundaries, or events not stated in the input. The atmosphere is yours — the facts are not.\n" +
             "STYLE: Cinematic, broadcast-quality. Sharp active verbs. Specific detail from the input. No clichés.\n" +
             "Output ONLY the commentary line itself — no preamble, no explanation, no 'Since there is...' framing."
@@ -218,7 +235,7 @@ class CommentaryFusionService(
             Commentary from source 1: {snippet1}
             Commentary from source 2: {snippet2}
 
-            Ball: {ball_number} | Bowler: {bowler} | Batsman: {batsman}
+            {ball_field}Bowler: {bowler} | Batsman: {batsman}
             Score: {score_context}
             {context_extras}
             Recent context (last 3 overs):
@@ -231,7 +248,7 @@ class CommentaryFusionService(
         val SINGLE_SOURCE_USER_TEMPLATE = """
             Ball commentary: {snippet}
 
-            Ball: {ball_number} | Bowler: {bowler} | Batsman: {batsman}
+            {ball_field}Bowler: {bowler} | Batsman: {batsman}
             Score: {score_context}
             {context_extras}
             {previous_balls_context}
@@ -244,7 +261,7 @@ class CommentaryFusionService(
             Source 1: {snippet1}
             Source 2: {snippet2}
             AI output: {ai_output}
-            Ball: {ball_number} | Bowler: {bowler} | Batsman: {batsman}
+            {ball_field}Bowler: {bowler} | Batsman: {batsman}
 
             Answer ONLY "PASS" if accurate and uses only correct names from the sources, or "FAIL" if it contains hallucinated names, invented details, or unsupported information.
             One word: PASS or FAIL.""".trimIndent()
@@ -255,17 +272,20 @@ class CommentaryFusionService(
     }
 
     // 7b: Select the right prompt template based on phase
-    private fun phaseInstructionFor(phase: PromptPhase): String = when (phase) {
+    // No phase means no phase instruction. Previously an unknown ball scored as POWERPLAY and the
+    // model was told "Field restrictions apply" regardless of where the innings actually was.
+    private fun phaseInstructionFor(phase: PromptPhase?): String = when (phase) {
+        null -> ""
         PromptPhase.POWERPLAY -> "Field restrictions apply. Focus on aggressive intent, early wicket stakes, and powerplay context."
         PromptPhase.MIDDLE    -> "Focus on partnership momentum, dot ball pressure, and any turning-point significance."
         PromptPhase.DEATH     -> "Death overs: capture yorker/slog sweep tension and required rate urgency."
         PromptPhase.LAST_BALL -> "Last ball: use maximum tension language — match outcome on the line."
     }
 
-    private fun fusionPromptForPhase(phase: PromptPhase): String =
+    private fun fusionPromptForPhase(phase: PromptPhase?): String =
         FUSION_USER_TEMPLATE.replace("{phase_instruction}", phaseInstructionFor(phase))
 
-    private fun singleSourcePromptForPhase(phase: PromptPhase): String =
+    private fun singleSourcePromptForPhase(phase: PromptPhase?): String =
         SINGLE_SOURCE_USER_TEMPLATE.replace("{phase_instruction}", phaseInstructionFor(phase))
 
     suspend fun addBallToBuffer(matchId: String, ball: String) {
@@ -320,11 +340,16 @@ class CommentaryFusionService(
             batsman.takeIf { it.isNotEmpty() }?.let { "Batsman: $it" },
             scoreContext.takeIf { it.isNotEmpty() }?.let { "Score: $it" },
         ).joinToString(" | ")
+        // An absent ball number omits the field and the instruction rather than interpolating "".
+        // "Start with : at the beginning." is what taught the model to reach for the prompt's own
+        // example; a field the model cannot see is one it cannot be pressured into inventing.
         return buildString {
-            append("Ball $ballNumber: $cleanSnippet")
+            if (ballNumber.isNotEmpty()) append("Ball $ballNumber: ")
+            append(cleanSnippet)
             if (contextLine.isNotEmpty()) append("\n$contextLine")
             if (recentContext.isNotEmpty()) append(recentContext)
-            append("\nWrite one vivid broadcast commentary line. Start with $ballNumber: at the beginning.")
+            append("\nWrite one vivid broadcast commentary line.")
+            if (ballNumber.isNotEmpty()) append(" Start with $ballNumber: at the beginning.")
         }
     }
 
@@ -428,9 +453,9 @@ class CommentaryFusionService(
         val previousContext = if (previousBalls.isEmpty()) ""
             else "\nPrevious balls: ${previousBalls.joinToString(", ")}"
 
-        // 7b: Select phase-adaptive template
-        val ballNum = ballNumber.toDoubleOrNull() ?: over.toDouble()
-        val phase = selectPhase(ballNum, totalOvers)
+        // 7b: Select phase-adaptive template. Parsed from the label, so "Ball 72" stays a Hundred
+        // counter instead of being read as over 72.
+        val phase = selectPhase(ballMetricOfLine(ballNumber), totalOvers)
 
         val contextExtras = buildString {
             if (partnershipContext.isNotEmpty()) appendLine("Partnership: $partnershipContext")
@@ -439,10 +464,14 @@ class CommentaryFusionService(
             if (requiredRunRate != null) appendLine("RRR: ${"%.2f".format(requiredRunRate)}")
         }.trimEnd()
 
+        // Omitted entirely when unknown, rather than rendering "Ball:  | Bowler: ...". An empty
+        // labelled field is what the model filled from the prompt's own example.
+        val ballField = if (ballNumber.isNotEmpty()) "Ball: $ballNumber | " else ""
+
         val prompt = if (snippet1.isEmpty() || snippet2.isEmpty()) {
             singleSourcePromptForPhase(phase)
                 .replace("{snippet}", snippet1.ifEmpty { snippet2 })
-                .replace("{ball_number}", ballNumber)
+                .replace("{ball_field}", ballField)
                 .replace("{bowler}", bowler)
                 .replace("{batsman}", batsman)
                 .replace("{score_context}", scoreContext)
@@ -452,7 +481,7 @@ class CommentaryFusionService(
             fusionPromptForPhase(phase)
                 .replace("{snippet1}", snippet1)
                 .replace("{snippet2}", snippet2)
-                .replace("{ball_number}", ballNumber)
+                .replace("{ball_field}", ballField)
                 .replace("{bowler}", bowler)
                 .replace("{batsman}", batsman)
                 .replace("{score_context}", scoreContext)
@@ -505,8 +534,7 @@ class CommentaryFusionService(
         val previousContext = if (previousBalls.isEmpty()) ""
             else "\nPrevious balls: ${previousBalls.joinToString(", ")}"
 
-        val ballNum = matchContext.ballNumber.toDoubleOrNull() ?: matchContext.over.toDouble()
-        val phase = selectPhase(ballNum, matchContext.totalOvers)
+        val phase = selectPhase(ballMetricOfLine(matchContext.ballNumber), matchContext.totalOvers)
 
         val streamContextExtras = buildString {
             if (matchContext.partnershipContext.isNotEmpty()) appendLine("Partnership: ${matchContext.partnershipContext}")
@@ -515,10 +543,13 @@ class CommentaryFusionService(
             if (matchContext.requiredRunRate != null) appendLine("RRR: ${"%.2f".format(matchContext.requiredRunRate)}")
         }.trimEnd()
 
+        val streamBallField =
+            if (matchContext.ballNumber.isNotEmpty()) "Ball: ${matchContext.ballNumber} | " else ""
+
         val prompt = if (matchContext.snippet1.isEmpty() || matchContext.snippet2.isEmpty()) {
             singleSourcePromptForPhase(phase)
                 .replace("{snippet}", matchContext.snippet1.ifEmpty { matchContext.snippet2 })
-                .replace("{ball_number}", matchContext.ballNumber)
+                .replace("{ball_field}", streamBallField)
                 .replace("{bowler}", matchContext.bowler)
                 .replace("{batsman}", matchContext.batsman)
                 .replace("{score_context}", matchContext.scoreContext)
@@ -528,7 +559,7 @@ class CommentaryFusionService(
             fusionPromptForPhase(phase)
                 .replace("{snippet1}", matchContext.snippet1)
                 .replace("{snippet2}", matchContext.snippet2)
-                .replace("{ball_number}", matchContext.ballNumber)
+                .replace("{ball_field}", streamBallField)
                 .replace("{bowler}", matchContext.bowler)
                 .replace("{batsman}", matchContext.batsman)
                 .replace("{score_context}", matchContext.scoreContext)
@@ -878,6 +909,29 @@ class CommentaryFusionService(
         null
     }
 
+    /**
+     * The completion text from a provider response, or a throw when it is not usable.
+     *
+     * [CommentaryFormatter.stripPreamble] runs on the raw multi-line completion, before anything
+     * collapses newlines. The server path has always done this (`llm.js stripPreamble`); this path
+     * had no equivalent, which is how 76 rows of "Since there is no specific ball number..."
+     * reached the shared Appwrite cache. A response that is *only* meta is rejected outright — a
+     * refusal is a failed generation, and treating it as success caches it.
+     */
+    private fun usableContentOf(bodyText: String, providerName: String): String {
+        val raw = JSONObject(bodyText)
+            .getJSONArray("choices")
+            .getJSONObject(0)
+            .getJSONObject("message")
+            .getString("content")
+        val content = CommentaryFormatter.stripPreamble(raw).trim()
+        if (content.isEmpty()) throw IOException("Empty content from $providerName")
+        if (CommentaryFormatter.isMetaResponse(content)) {
+            throw IOException("Meta/refusal response from $providerName")
+        }
+        return content
+    }
+
     private fun callProvider(
         provider: Provider,
         prompt: String,
@@ -929,16 +983,10 @@ class CommentaryFusionService(
                     span?.finish(SpanStatus.INTERNAL_ERROR)
                     throw IOException("HTTP ${response.code}")
                 }
-                val content = JSONObject(response.body?.string() ?: throw IOException("Null body from ${provider.name}"))
-                    .getJSONArray("choices")
-                    .getJSONObject(0)
-                    .getJSONObject("message")
-                    .getString("content")
-                    .trim()
-                if (content.isEmpty()) {
-                    span?.finish(SpanStatus.INTERNAL_ERROR)
-                    throw IOException("Empty content from ${provider.name}")
-                }
+                val bodyText = response.body?.string() ?: throw IOException("Null body from ${provider.name}")
+                // The enclosing catch finishes the span as INTERNAL_ERROR on any throw, so these
+                // failures need no span handling of their own.
+                val content = usableContentOf(bodyText, provider.name)
                 val elapsedMs = System.currentTimeMillis() - startMs
                 span?.setData("gen_ai.usage.output_tokens", content.length / 4)
                 span?.finish(SpanStatus.OK)

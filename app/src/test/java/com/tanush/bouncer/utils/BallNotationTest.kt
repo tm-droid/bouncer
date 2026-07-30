@@ -54,6 +54,41 @@ class BallNotationTest {
         assertNull(ballNumberOf("${BallMetric.BallCount(72).label}: Jansen to Banton"))
     }
 
+    @Test
+    fun `ballMetricOfLine recovers both label forms from a prefixed line`() {
+        // ballNumberOf alone would return null for The Hundred, which routed every Hundred
+        // delivery to the event path.
+        assertEquals(BallMetric.OverBall(48, 6), ballMetricOfLine("48.6: Douthwaite to Rhodes"))
+        assertEquals(BallMetric.BallCount(72), ballMetricOfLine("Ball 72: Jansen to Banton"))
+        assertEquals(BallMetric.OverBall(104, 3), ballMetricOfLine("104.3 Bumrah to Root"))
+    }
+
+    @Test
+    fun `ballMetricOfLine round-trips every label`() {
+        for (metric in listOf(BallMetric.OverBall(0, 1), BallMetric.OverBall(48, 6), BallMetric.BallCount(1), BallMetric.BallCount(100))) {
+            assertEquals(metric, ballMetricOfLine("${metric.label}: some commentary"))
+            assertEquals(metric, ballMetricOfLine(metric.label))
+        }
+    }
+
+    @Test
+    fun `ballMetricOfLine rejects non-deliveries`() {
+        assertNull(ballMetricOfLine("Mosaddek Hossain to Ben Curran, no run"))
+        assertNull(ballMetricOfLine("<b>Teams:</b>"))
+        assertNull(ballMetricOfLine("Ashton Agar is back into the attack"))
+        assertFalse(startsWithBallLabel("<b>Switzerland Women</b> (Playing XI): ..."))
+    }
+
+    @Test
+    fun `ballsBowled counts deliveries for both formats`() {
+        assertEquals(1, BallMetric.OverBall(0, 1).ballsBowled)
+        assertEquals(119, BallMetric.OverBall(19, 5).ballsBowled)
+        assertEquals(292, BallMetric.OverBall(48, 4).ballsBowled)
+        // The Hundred counter is already a delivery count.
+        assertEquals(72, BallMetric.BallCount(72).ballsBowled)
+        assertEquals(100, BallMetric.BallCount(100).ballsBowled)
+    }
+
     // --- over 99 ------------------------------------------------------------
 
     @Test

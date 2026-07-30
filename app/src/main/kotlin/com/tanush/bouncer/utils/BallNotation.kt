@@ -40,16 +40,46 @@ sealed interface BallMetric {
     /** How this metric is written at the head of a commentary line. */
     val label: String
 
+    /** Deliveries completed in the innings once this ball is bowled. */
+    val ballsBowled: Int
+
     /** Over-based formats: `48.6` is over 48, ball 6. */
     data class OverBall(val over: Int, val ball: Int) : BallMetric {
         override val label: String get() = "$over.$ball"
+        override val ballsBowled: Int get() = over * BALLS_PER_OVER + ball
     }
 
     /** The Hundred: ball [ball] of 100, with no over structure. */
     data class BallCount(val ball: Int) : BallMetric {
         override val label: String get() = "Ball $ball"
+        override val ballsBowled: Int get() = ball
     }
 }
+
+/** Deliberately local: [BallMetric] must not depend on the analysis package. */
+private const val BALLS_PER_OVER = 6
+
+/** Matches the `Ball 72: ` head of a Hundred commentary line. Group 1 is the counter. */
+val BALL_COUNT_PREFIX = """^\s*Ball\s+(\d{1,3})\b""".toRegex()
+
+/**
+ * The [BallMetric] a commentary line (or a bare label) begins with, or null when it begins with
+ * neither form.
+ *
+ * The inverse of [BallMetric.label], and the reason The Hundred still reaches the ball path:
+ * [ballNumberOf] only knows `over.ball`, so routing on it alone would send every Hundred delivery
+ * to the event path.
+ */
+fun ballMetricOfLine(line: String): BallMetric? {
+    ballNumberOf(line)?.let { return ballMetricOf(it) }
+    BALL_COUNT_PREFIX.find(line)?.let { match ->
+        return match.groupValues[1].toIntOrNull()?.let { BallMetric.BallCount(it) }
+    }
+    return null
+}
+
+/** Whether [line] already begins with either ball-label form. */
+fun startsWithBallLabel(line: String): Boolean = ballMetricOfLine(line) != null
 
 /** The RSC sentinel Cricbuzz puts in `ballMetric` on items that are not deliveries. */
 const val BALL_METRIC_UNDEFINED = "\$undefined"
