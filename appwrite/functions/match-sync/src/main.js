@@ -93,7 +93,35 @@ export function classifyCommentaryItem(item) {
 // Exercised on every invocation. An unbound identifier inside classifyCommentaryItem only throws
 // once a live match has a fresh item, so it can hide for weeks; this makes it a hard failure on
 // the very next run instead.
-const SMOKE_PROBE = { commText: "Bumrah to Root, no run", ballMetric: { label: "18.5" } };
+//
+// Both ball-label forms are probed. Every defect this pipeline has had was format-specific and
+// invisible to an over-based-only check: the Hundred label reached `stripPreamble` with an
+// over-based-only regex and kept its refusal preamble, and the Kotlin side rendered it
+// "Ball Ball 72:". An over-based probe passes cleanly through both.
+const SMOKE_PROBES = [
+  { item: { commText: "Bumrah to Root, no run", ballMetric: { label: "18.5" } }, ball: "18.5" },
+  { item: { commText: "Jansen to Banton, FOUR", ballMetric: { label: "Ball 72" } }, ball: "Ball 72" },
+];
+
+// The preamble stripper is the other half of the same format sensitivity, and it fails silently:
+// a missed cut writes the model's refusal to `match-commentary` as if it were commentary.
+const SMOKE_PREAMBLE = [
+  ["Since there is no ball number provided, Ball 72: Banton clears the ropes.", "Ball 72: Banton clears the ropes."],
+  ["Since there is no ball number provided, 18.5: Kohli drives through covers.", "18.5: Kohli drives through covers."],
+];
+
+function runSmokeProbes() {
+  for (const { item, ball } of SMOKE_PROBES) {
+    const probe = classifyCommentaryItem(item);
+    if (probe?.ball !== ball || !probe.clean) {
+      throw new Error(`classifier: ${ball} → ${JSON.stringify(probe)}`);
+    }
+  }
+  for (const [input, want] of SMOKE_PREAMBLE) {
+    const got = stripPreamble(input);
+    if (got !== want) throw new Error(`stripPreamble: got ${JSON.stringify(got)}, want ${JSON.stringify(want)}`);
+  }
+}
 
 export default async ({ req, res, log, error }) => {
   if (!process.env.APPWRITE_API_KEY) {
@@ -104,10 +132,7 @@ export default async ({ req, res, log, error }) => {
     return res.json({ error: "read_budget_exceeded" }, 402);
   }
   try {
-    const probe = classifyCommentaryItem(SMOKE_PROBE);
-    if (probe?.ball !== "18.5" || !probe.clean) {
-      throw new Error(`unexpected result ${JSON.stringify(probe)}`);
-    }
+    runSmokeProbes();
   } catch (e) {
     error(`[SMOKE] commentary classifier is broken: ${e.message}`);
     return res.json({ error: "commentary_classifier_broken", detail: e.message }, 500);

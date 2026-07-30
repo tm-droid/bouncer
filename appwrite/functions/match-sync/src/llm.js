@@ -37,7 +37,13 @@ export function sanitize(text) {
     .trim();
 }
 
-const META = /^(since there|i('| wi)ll |here('| i)s|given (the|that|there)|note:|as an ai|based on the|to create)/i;
+// Kept in sync with CommentaryFormatter.META_PREAMBLE.
+const META = /^(since there|i('| wi)ll |here('| i)s|given (the|that|there)|note:|as an ai|based on the|to create|it seems|there is no|there's no|unfortunately)/i;
+
+// Both ball-label forms: `48.6` (over-based) and `Ball 72` (The Hundred). An over-based-only
+// pattern here silently leaves the preamble attached to every Hundred line, because the label it
+// is looking for never appears in that format. Mirrors CommentaryFormatter.LEADING_BALL_LABEL.
+const LEADING_BALL_LABEL = /((?:\d{1,3}\.\d|Ball\s+\d{1,3}):?\s.*)$/;
 
 // Strip the meta/preamble the models sometimes emit (the current cache pollution:
 // "Since there is no specific ball number...", "I'll create a commentary line...").
@@ -49,9 +55,9 @@ export function stripPreamble(text) {
     .filter(Boolean);
   const kept = lines.filter((l) => !META.test(l));
   let out = (kept.length ? kept : lines).join(" ").trim();
-  // Same-line preamble ("Since there is no ... 18.5: ...") → cut to the first ball number.
+  // Same-line preamble ("Since there is no ... 18.5: ...") → cut to the ball label.
   if (META.test(out)) {
-    const m = out.match(/(\d{1,3}\.\d:?\s.*)$/);
+    const m = out.match(LEADING_BALL_LABEL);
     if (m) out = m[1].trim();
   }
   return out;
