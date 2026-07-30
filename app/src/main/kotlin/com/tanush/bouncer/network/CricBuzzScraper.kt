@@ -42,7 +42,8 @@ import java.net.UnknownHostException
 internal data class ScrapedCommentaryItem(
     val timestamp: Long,
     val text: String,
-    val ballMetric: BallMetric?
+    val ballMetric: BallMetric?,
+    val inningsId: Int = 0
 )
 
 /**
@@ -84,7 +85,8 @@ private fun commentaryItemOf(obj: JsonObject): ScrapedCommentaryItem? {
         ScrapedCommentaryItem(
             timestamp = obj.get("timestamp").asLong,
             text = text,
-            ballMetric = ballMetricOf(obj.primitiveStringOrNull("ballMetric"))
+            ballMetric = ballMetricOf(obj.primitiveStringOrNull("ballMetric")),
+            inningsId = obj.primitiveStringOrNull("inningsId")?.toIntOrNull() ?: 0
         )
     } catch (_: Exception) {
         null
@@ -580,41 +582,53 @@ class CricBuzzScraper {
         )
     }
 
-    suspend fun fetchLiveCommentary(matchUrl: String): List<String> = withContext(Dispatchers.IO) {
-        crumb("Fetching live commentary", data = mapOf("url" to matchUrl))
+    suspend fun fetchLiveCommentary(matchUrl: String): List<String> =
+        fetchLiveCommentaryItems(matchUrl).map { it.prefixedText() }
 
-        try {
-            val doc = Jsoup.connect(matchUrl).userAgent(randomUserAgent()).timeout(COMMENTARY_TIMEOUT_MS).get()
-            val html = doc.html()
+    /**
+     * Commentary with each line's delivery identity — timestamp and innings — still attached.
+     *
+     * The string form throws both away, which is what forced the fuse cache key to be built from a
+     * fingerprint of the snippets plus an LLM-generated recap. That recap is regenerated on every
+     * poll, so the key changed every poll and the cache never hit once in 602 rows. `timestamp` is
+     * the only value unique per delivery: `ballMetric` repeats across a no-ball and its re-bowl.
+     *
+     * Legacy CSS lines carry `timestamp = 0` because that path has no per-item metadata; callers
+     * must treat a zero timestamp as "no identity" rather than as a shared one.
+     */
+    internal suspend fun fetchLiveCommentaryItems(matchUrl: String): List<ScrapedCommentaryItem> =
+        withContext(Dispatchers.IO) {
+            crumb("Fetching live commentary", data = mapOf("url" to matchUrl))
 
-            val nextJsLines = parseCommentaryFromNextJs(html)
-            if (nextJsLines.isNotEmpty()) {
-                Log.d(TAG, "Fetched ${nextJsLines.size} commentary lines from Next.js RSC data")
-                crumb("Successfully fetched commentary from Next.js RSC",
-                    data = mapOf("linesCount" to nextJsLines.size))
-                return@withContext nextJsLines.filter { it.length > 5 }
+            try {
+                val doc = Jsoup.connect(matchUrl).userAgent(randomUserAgent()).timeout(COMMENTARY_TIMEOUT_MS).get()
+                val html = doc.html()
+
+                val items = parseCommentaryItemsFromNextJs(html)
+                if (items.isNotEmpty()) {
+                    Log.d(TAG, "Fetched ${items.size} commentary lines from Next.js RSC data")
+                    crumb("Successfully fetched commentary from Next.js RSC",
+                        data = mapOf("linesCount" to items.size))
+                    return@withContext items.filter { it.prefixedText().length > 5 }
+                }
+
+                val lines = parseCommentaryLegacyCss(doc)
+
+                Log.d(TAG, "Fetched ${lines.size} commentary lines from legacy CSS selectors")
+                crumb("Successfully fetched commentary", data = mapOf("linesCount" to lines.size))
+                lines.map { ScrapedCommentaryItem(timestamp = 0L, text = it, ballMetric = null) }
+            } catch (e: UnknownHostException) {
+                Log.w(TAG, "No internet fetching commentary: $matchUrl")
+                crumb("No internet fetching commentary", SentryLevel.WARNING, mapOf("url" to matchUrl))
+                emptyList()
+            } catch (e: Exception) {
+                Log.e(TAG, "Error fetching Cricbuzz commentary", e)
+                crumb("Error fetching commentary", SentryLevel.ERROR,
+                    mapOf("url" to matchUrl, "error" to (e.message ?: "Unknown error")))
+                Sentry.captureException(e)
+                emptyList()
             }
-
-            val lines = parseCommentaryLegacyCss(doc)
-
-            Log.d(TAG, "Fetched ${lines.size} commentary lines from legacy CSS selectors")
-            crumb("Successfully fetched commentary", data = mapOf("linesCount" to lines.size))
-            lines
-        } catch (e: UnknownHostException) {
-            Log.w(TAG, "No internet fetching commentary: $matchUrl")
-            crumb("No internet fetching commentary", SentryLevel.WARNING, mapOf("url" to matchUrl))
-            emptyList()
-        } catch (e: Exception) {
-            Log.e(TAG, "Error fetching Cricbuzz commentary", e)
-            crumb("Error fetching commentary", SentryLevel.ERROR,
-                mapOf("url" to matchUrl, "error" to (e.message ?: "Unknown error")))
-            Sentry.captureException(e)
-            emptyList()
         }
-    }
-
-    private fun parseCommentaryFromNextJs(html: String): List<String> =
-        parseCommentaryItemsFromNextJs(html).map { it.prefixedText() }
 
     /**
      * Commentary items with their ball numbers still attached.

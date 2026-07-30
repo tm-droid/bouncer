@@ -344,7 +344,10 @@ class CommentaryFusionService(
         // "Start with : at the beginning." is what taught the model to reach for the prompt's own
         // example; a field the model cannot see is one it cannot be pressured into inventing.
         return buildString {
-            if (ballNumber.isNotEmpty()) append("Ball $ballNumber: ")
+            // The label, verbatim — not "Ball $ballNumber". A Hundred label is already "Ball 72",
+            // so prefixing produced "Ball Ball 72: " and asked the model to open with a string that
+            // does not match the "Start with ..." instruction three lines later.
+            if (ballNumber.isNotEmpty()) append("$ballNumber: ")
             append(cleanSnippet)
             if (contextLine.isNotEmpty()) append("\n$contextLine")
             if (recentContext.isNotEmpty()) append(recentContext)
@@ -371,6 +374,70 @@ class CommentaryFusionService(
         result
     }
 
+    /**
+     * The cache key identifying one delivery.
+     *
+     * The key this replaces was `matchId:over:ballNumber:contentFingerprint(snippet1, snippet2,
+     * oversSummary)`. `oversSummary` is itself an LLM paragraph regenerated at temperature 0.4 on
+     * every poll, so the fingerprint — and therefore the key — changed every poll. Measured: one
+     * delivery drew 54 distinct keys in four minutes, and across 602 cached rows not a single one
+     * had `$updatedAt != $createdAt`, i.e. the cache never hit once. Never hash a generated value
+     * into a key meant to identify an input.
+     *
+     * [deliveryTimestamp] is the identity because a ball number is not unique — a no-ball and its
+     * re-bowl both arrive as `ballMetric=72`, so keying on the ball would serve the first
+     * delivery's commentary for the second. Innings is in the key because Cricbuzz restarts the
+     * ball count each innings.
+     *
+     * A zero timestamp means the source had no per-item metadata (legacy CSS scrape). That falls
+     * back to a fingerprint of the snippets alone — still stable across polls, unlike the old key,
+     * because nothing generated goes into it.
+     */
+    private fun deliveryCacheKey(
+        prefix: String,
+        matchId: String,
+        inningsId: Int,
+        deliveryTimestamp: Long,
+        snippet1: String,
+        snippet2: String
+    ): String = if (deliveryTimestamp > 0L) {
+        "$prefix:$matchId:$inningsId:$deliveryTimestamp"
+    } else {
+        "$prefix:$matchId:$inningsId:${contentFingerprint(snippet1, snippet2)}"
+    }
+
+    /**
+     * The `Ball: ...` prompt field for [ballNumber], or empty when there is no ball number.
+     *
+     * Omitted entirely when unknown rather than rendered as `"Ball:  | Bowler: ..."` — an empty
+     * labelled field is what the model used to fill from the prompt's own example.
+     *
+     * A Hundred label is already `"Ball 72"`, so the field name is dropped for it instead of
+     * producing `"Ball: Ball 72"`.
+     */
+    private fun ballFieldOf(ballNumber: String): String = when {
+        ballNumber.isEmpty() -> ""
+        ballNumber.startsWith("Ball ") -> "$ballNumber | "
+        else -> "Ball: $ballNumber | "
+    }
+
+    /**
+     * Records whether a fusion was served from cache, joined an in-flight call, or had to generate.
+     *
+     * The hit rate was structurally zero and nothing said so — the symptom only surfaced in an
+     * Appwrite CSV export months later. One crumb per fusion is affordable; per-read crumbs are not
+     * (see the note in `.claude/rules/appwrite-patterns.md` about the ~100-entry ring buffer).
+     */
+    private fun reportCacheOutcome(outcome: String, cacheKey: String) {
+        Sentry.addBreadcrumb(Breadcrumb().apply {
+            category = "service.commentary"
+            message = "Fuse cache $outcome"
+            level = SentryLevel.INFO
+            setData("outcome", outcome)
+            setData("cacheKey", cacheKey)
+        })
+    }
+
     suspend fun fuse(
         snippet1: String,
         snippet2: String,
@@ -386,7 +453,9 @@ class CommentaryFusionService(
         matchupContext: String = "",
         isMatchComplete: Boolean = false,
         currentRunRate: Double? = null,
-        requiredRunRate: Double? = null
+        requiredRunRate: Double? = null,
+        inningsId: Int = 0,
+        deliveryTimestamp: Long = 0L
     ): String {
         Sentry.addBreadcrumb(Breadcrumb().apply {
             category = "service.commentary"
@@ -397,17 +466,21 @@ class CommentaryFusionService(
             setData("ballNumber", ballNumber)
         })
 
-        val contextHash = contentFingerprint(snippet1, snippet2, oversSummary)
-        // ballNumber included in key: two dot-balls in the same over with identical snippets
-        // must not collide and serve the wrong commentary for ball B.
-        val cacheKey = "ai_commentary:$matchId:$over:$ballNumber:$contextHash"
-        AICacheService.getCommentary(cacheKey)?.let { return it }
+        val cacheKey = deliveryCacheKey(
+            "ai_commentary", matchId, inningsId, deliveryTimestamp, snippet1, snippet2
+        )
+        AICacheService.getCommentary(cacheKey)?.let {
+            reportCacheOutcome("hit", cacheKey)
+            return it
+        }
 
         // In-flight dedup: if another coroutine is already computing this key, await its result
         // instead of firing a duplicate LLM call. serviceScope.async() parents the Deferred to
         // the class-level scope so cancellation of any individual caller does not cancel the
         // shared work — each awaiter observes cancellation independently on await().
         val deferred: Deferred<String> = inFlightMutex.withLock {
+            val joined = inFlightFuse[cacheKey]
+            reportCacheOutcome(if (joined != null) "in-flight-join" else "miss", cacheKey)
             inFlightFuse.getOrPut(cacheKey) {
                 serviceScope.async {
                     try {
@@ -464,9 +537,7 @@ class CommentaryFusionService(
             if (requiredRunRate != null) appendLine("RRR: ${"%.2f".format(requiredRunRate)}")
         }.trimEnd()
 
-        // Omitted entirely when unknown, rather than rendering "Ball:  | Bowler: ...". An empty
-        // labelled field is what the model filled from the prompt's own example.
-        val ballField = if (ballNumber.isNotEmpty()) "Ball: $ballNumber | " else ""
+        val ballField = ballFieldOf(ballNumber)
 
         val prompt = if (snippet1.isEmpty() || snippet2.isEmpty()) {
             singleSourcePromptForPhase(phase)
@@ -523,7 +594,16 @@ class CommentaryFusionService(
 
     // 7a: Public cold Flow that streams commentary, trying providers in rotation
     fun streamCommentary(matchContext: MatchContext): Flow<String> = flow {
-        val cacheKey = "ai_commentary_stream:${matchContext.matchId}:${matchContext.over}:${matchContext.ballNumber}"
+        // Same identity as the fuse key: keying the stream on over+ballNumber served the first
+        // delivery of a no-ball pair back for the second.
+        val cacheKey = deliveryCacheKey(
+            "ai_commentary_stream",
+            matchContext.matchId,
+            matchContext.inningsId,
+            matchContext.deliveryTimestamp,
+            matchContext.snippet1,
+            matchContext.snippet2
+        )
         val cached = AICacheService.getCommentary(cacheKey)
         if (cached != null) {
             emit(cached)
@@ -543,8 +623,7 @@ class CommentaryFusionService(
             if (matchContext.requiredRunRate != null) appendLine("RRR: ${"%.2f".format(matchContext.requiredRunRate)}")
         }.trimEnd()
 
-        val streamBallField =
-            if (matchContext.ballNumber.isNotEmpty()) "Ball: ${matchContext.ballNumber} | " else ""
+        val streamBallField = ballFieldOf(matchContext.ballNumber)
 
         val prompt = if (matchContext.snippet1.isEmpty() || matchContext.snippet2.isEmpty()) {
             singleSourcePromptForPhase(phase)
@@ -706,11 +785,43 @@ class CommentaryFusionService(
         }
     }
 
+    /** 7d: 24-line context window, with wicket/six lines repeated to weight them in the prompt. */
+    private fun amplifiedLinesOf(commentaryLines: List<String>): List<String> =
+        commentaryLines.take(24).flatMap { line ->
+            if (line.contains("wicket", ignoreCase = true) || line.contains("six", ignoreCase = true)) {
+                listOf(line, line)
+            } else {
+                listOf(line)
+            }
+        }
+
+    private fun summaryCacheKey(
+        matchId: String,
+        over: Int,
+        recapKey: String,
+        lines: List<String>
+    ): String = if (recapKey.isNotEmpty()) {
+        "ai_summary:$matchId:$recapKey"
+    } else {
+        "ai_summary:$matchId:$over:${contentFingerprint(lines.joinToString(" "))}"
+    }
+
+    /**
+     * A recap of the recent overs.
+     *
+     * [recapKey] identifies the passage of play being summarized — innings and balls-bowled — and
+     * when supplied it replaces the content fingerprint in the cache key. The fingerprint was taken
+     * over a rolling `takeLast(18)` window that shifted by one entry per poll, so consecutive calls
+     * overlapped by 17 of 18 lines and still missed the cache every time, producing a fresh
+     * paragraph describing almost exactly the same deliveries. Callers that have no ball position
+     * (the strategic-insight path) leave it empty and keep the fingerprint.
+     */
     suspend fun summarizeOversWithAI(
         commentaryLines: List<String>,
         matchId: String,
         over: Int,
-        isMatchComplete: Boolean = false
+        isMatchComplete: Boolean = false,
+        recapKey: String = ""
     ): String {
         if (commentaryLines.isEmpty()) return "No recent commentary available."
 
@@ -723,20 +834,8 @@ class CommentaryFusionService(
             setData("lineCount", commentaryLines.size)
         })
 
-        // 7d: Expand context window from 18 → 24 lines; amplify wicket/six events
-        val rawLines = commentaryLines.take(24)
-        val amplifiedLines = mutableListOf<String>()
-        for (line in rawLines) {
-            amplifiedLines.add(line)
-            // Intentional: wicket/six events appear twice to amplify their signal weight in the LLM context
-            if (line.contains("wicket", ignoreCase = true) || line.contains("six", ignoreCase = true)) {
-                amplifiedLines.add(line)
-            }
-        }
-        val lines = amplifiedLines
-
-        val contextHash = contentFingerprint(lines.joinToString(" "))
-        val cacheKey = "ai_summary:$matchId:$over:$contextHash"
+        val lines = amplifiedLinesOf(commentaryLines)
+        val cacheKey = summaryCacheKey(matchId, over, recapKey, lines)
         AICacheService.getCommentary(cacheKey)?.let { return it }
 
         val numbered = lines.mapIndexed { idx, line -> "${idx + 1}. $line" }.joinToString("\n")
@@ -1022,6 +1121,8 @@ class CommentaryFusionService(
         val matchupContext: String = "",
         val isMatchComplete: Boolean = false,
         val currentRunRate: Double? = null,
-        val requiredRunRate: Double? = null
+        val requiredRunRate: Double? = null,
+        val inningsId: Int = 0,
+        val deliveryTimestamp: Long = 0L
     )
 }

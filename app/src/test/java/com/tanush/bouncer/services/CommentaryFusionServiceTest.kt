@@ -89,12 +89,26 @@ class CommentaryFusionServiceTest {
     private val scoreContext = "India 280/4 in 45.5 overs"
     private val oversSummary = "Last 3 overs: 24 runs, 1 wicket"
 
-    private fun fuseCacheKey(): String {
-        val hash = contentFingerprint(snippet1, snippet2, oversSummary)
-        return "ai_commentary:$matchId:$over:$ballNumber:$hash"
-    }
+    private val inningsId = 2
+    private val deliveryTimestamp = 1_785_344_368_208L
 
-    private suspend fun defaultFuse(service: CommentaryFusionService) = service.fuse(
+    /**
+     * The delivery's identity, and nothing derived from a model.
+     *
+     * The key this replaced hashed `oversSummary` — an LLM paragraph regenerated every poll — so it
+     * changed on every call and the cache never hit.
+     */
+    private fun fuseCacheKey(): String = "ai_commentary:$matchId:$inningsId:$deliveryTimestamp"
+
+    /** Used when the source has no per-item metadata (legacy CSS scrape). */
+    private fun fuseCacheKeyWithoutTimestamp(): String =
+        "ai_commentary:$matchId:$inningsId:${contentFingerprint(snippet1, snippet2)}"
+
+    private suspend fun defaultFuse(
+        service: CommentaryFusionService,
+        oversSummary: String = this.oversSummary,
+        deliveryTimestamp: Long = this.deliveryTimestamp
+    ) = service.fuse(
         snippet1 = snippet1,
         snippet2 = snippet2,
         oversSummary = oversSummary,
@@ -103,7 +117,9 @@ class CommentaryFusionServiceTest {
         ballNumber = ballNumber,
         bowler = bowler,
         batsman = batsman,
-        scoreContext = scoreContext
+        scoreContext = scoreContext,
+        inningsId = inningsId,
+        deliveryTimestamp = deliveryTimestamp
     )
 
     // ── fuse() tests ─────────────────────────────────────────────────────────
@@ -152,6 +168,48 @@ class CommentaryFusionServiceTest {
         })
 
         val result = defaultFuse(service)
+
+        assertEquals("Cached commentary", result)
+        assertEquals(0, httpCalls)
+    }
+
+    @Test
+    fun `fuse cache hits even though the recap changed`() = runTest {
+        // The regression this guards. The recap is regenerated at temperature 0.4 on every poll, so
+        // hashing it into the key meant a delivery was re-fused every time it was polled: one ball
+        // drew 54 distinct keys in four minutes, and across 602 cached rows not one was ever
+        // updated. The key must depend on the delivery, not on anything a model produced.
+        AICacheService.setCommentary("Cached commentary", fuseCacheKey())
+
+        var httpCalls = 0
+        val service = serviceWith(fakeClient { _, _ ->
+            httpCalls++
+            200 to successBody("Should not be called")
+        })
+
+        val result = defaultFuse(service, oversSummary = "A completely different recap paragraph")
+
+        assertEquals("Cached commentary", result)
+        assertEquals(0, httpCalls)
+    }
+
+    @Test
+    fun `fuse without a delivery timestamp keys on the snippets alone`() = runTest {
+        // Legacy CSS scrape: no per-item metadata. Still stable across polls, because the fallback
+        // fingerprints only the source snippets — never the recap.
+        AICacheService.setCommentary("Cached commentary", fuseCacheKeyWithoutTimestamp())
+
+        var httpCalls = 0
+        val service = serviceWith(fakeClient { _, _ ->
+            httpCalls++
+            200 to successBody("Should not be called")
+        })
+
+        val result = defaultFuse(
+            service,
+            oversSummary = "Another different recap",
+            deliveryTimestamp = 0L
+        )
 
         assertEquals("Cached commentary", result)
         assertEquals(0, httpCalls)
