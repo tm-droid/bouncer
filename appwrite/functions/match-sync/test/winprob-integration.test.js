@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { evaluate, formatFromText, ballsRemainingFor } from "../src/winprob.js";
+import { evaluate, formatFromText, ballsRemainingFor, inningsBalls } from "../src/winprob.js";
 
 const here = (p) => fileURLToPath(new URL(p, import.meta.url));
 
@@ -146,4 +146,33 @@ test("a trained v3 model overrides the heuristic", () => {
   const heuristic = orient(chaseSituation);
   assert.ok(Math.abs(withModel - 0.5) < 1e-9, `model path not taken: ${withModel}`);
   assert.notEqual(withModel, heuristic);
+});
+
+test("Cricbuzz's own format codes resolve, not just prose", () => {
+  // Captured from the live page of the 2026-07-30 Hundred games: Cricbuzz reports the format as
+  // `matchFormat: "HUN"`, and the title ("Southern Brave vs Birmingham Phoenix, 13th Match")
+  // names no format. Before FORMAT_CODES this resolved to UNKNOWN, which carries no ball budget,
+  // so evaluate() returned undetermined for every ball of every Hundred match ever played.
+  assert.equal(formatFromText("HUN", "Southern Brave vs Birmingham Phoenix, 13th Match"), "HUNDRED");
+  assert.equal(inningsBalls(formatFromText("HUN")), 100);
+  assert.equal(
+    ballsRemainingFor({ oversRemaining: null, ballsBowled: 60, format: formatFromText("HUN") }),
+    40,
+    "a Hundred chase must count down from 100",
+  );
+  // LIST_A has an underscore where the loose `\blist\s*a\b` rule wants a space.
+  assert.equal(formatFromText("LIST_A"), "ODI");
+  assert.equal(formatFromText("FC"), "TEST");
+  assert.equal(formatFromText("ODI"), "ODI");
+  assert.equal(formatFromText("T20I"), "T20");
+});
+
+test("a format code is matched exactly, never as a substring of the haystack", () => {
+  // HUN is also Hungary's team code, and the loose rules test HUNDRED before T20 — so folding the
+  // codes into the joined haystack would score a Hungary T20 on a 100-ball budget.
+  assert.equal(formatFromText("T20", "Hungary vs Malta, 3rd Match"), "T20");
+  assert.equal(formatFromText("T20", "HUN vs MLT, 3rd Match"), "T20");
+  assert.equal(formatFromText("", "HUN vs MLT, 3rd Match"), "UNKNOWN");
+  assert.equal(formatFromText("The Hundred", "Southern Brave vs Birmingham Phoenix"), "HUNDRED");
+  assert.equal(formatFromText(null, undefined), "UNKNOWN");
 });

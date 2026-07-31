@@ -1,5 +1,6 @@
 package com.tanush.bouncer.network
 
+import com.tanush.bouncer.analysis.CricketConstants
 import com.tanush.bouncer.data.AppException
 import org.jsoup.HttpStatusException
 import org.jsoup.Jsoup
@@ -412,5 +413,40 @@ class CricBuzzScraperTest {
     @Test
     fun `unwrapNextFlightPayload handles non-string second element`() {
         assertNull(unwrapNextFlightPayload("""[1, 42]"""))
+    }
+
+    // ── Cricbuzz format codes ───────────────────────────────────────────────
+
+    @Test
+    fun `the hundred's format code resolves to a 100-ball budget`() {
+        // Cricbuzz reports `matchFormat: "HUN"` on The Hundred's live pages (verified against
+        // matches 144783 and 145154, 2026-07-30). It used to map to "", and a Hundred title names
+        // no format either, so the format resolved to UNKNOWN — no ball budget, and therefore no
+        // win probability for the entire match.
+        val matchType = CricBuzzScraper().mapMatchFormat("HUN")
+        assertEquals("The Hundred", matchType)
+        val format = CricketConstants.formatFromMatchType(
+            matchType,
+            "Southern Brave vs Birmingham Phoenix, 13th Match"
+        )
+        assertEquals(CricketConstants.MatchFormat.HUNDRED, format)
+        assertEquals(100, CricketConstants.inningsBalls(format))
+    }
+
+    @Test
+    fun `known format codes keep resolving and unknown ones stay blank`() {
+        val scraper = CricBuzzScraper()
+        assertEquals("Test", scraper.mapMatchFormat("TEST"))
+        assertEquals("ODI", scraper.mapMatchFormat("odi"))
+        assertEquals("T20", scraper.mapMatchFormat("T20I"))
+        assertEquals("T10", scraper.mapMatchFormat("T10"))
+        assertEquals("List A", scraper.mapMatchFormat("LIST_A"))
+        // Blank rather than a guess: an unrecognised code must not be scored on someone else's
+        // ball budget.
+        assertEquals("", scraper.mapMatchFormat("SOMETHING_NEW"))
+        assertEquals(
+            CricketConstants.MatchFormat.UNKNOWN,
+            CricketConstants.formatFromMatchType(scraper.mapMatchFormat("SOMETHING_NEW"), "")
+        )
     }
 }

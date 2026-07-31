@@ -40,13 +40,41 @@ const FORMAT_PATTERNS = [
 ];
 
 /**
+ * Cricbuzz's own `matchFormat` field carries a short code, not prose: a Hundred game reports
+ * `"HUN"`, a domestic 50-over game `"LIST_A"`. None of those reach [FORMAT_PATTERNS] — `HUN` is
+ * not the word "hundred" and `LIST_A` has an underscore where `\blist\s*a\b` wants a space — so
+ * every Hundred match resolved to UNKNOWN, which gives no ball budget, which makes `evaluate`
+ * return UNDETERMINED for every ball of the match. Measured on the 2026-07-30 Hundred games: no
+ * win probability was ever produced.
+ *
+ * Matched EXACTLY, against one whole field value, and before the loose patterns. Folding these
+ * into the joined haystack instead would be a regression: `HUN` is also Hungary's team code, and
+ * the loose rules test HUNDRED before T20, so a Hungary T20 would be scored on 100 balls.
+ */
+const FORMAT_CODES = {
+  TEST: "TEST",
+  FC: "TEST",
+  ODI: "ODI",
+  LIST_A: "ODI",
+  T20: "T20",
+  T20I: "T20",
+  T10: "T10",
+  HUN: "HUNDRED",
+};
+
+/**
  * Resolve a format from free text, returning "UNKNOWN" rather than guessing.
  *
  * Guessing is the bug this replaces: `contains("ODI") -> 300; contains("T20") -> 120; else -> 120`
  * gave a Test, a Hundred game and a rain-shortened match the same 120-ball budget.
  */
 export function formatFromText(...texts) {
-  const haystack = texts.filter((t) => typeof t === "string" && t).join(" ");
+  const values = texts.filter((t) => typeof t === "string" && t);
+  for (const value of values) {
+    const code = FORMAT_CODES[value.trim().toUpperCase()];
+    if (code) return code;
+  }
+  const haystack = values.join(" ");
   if (!haystack.trim()) return "UNKNOWN";
   for (const [pattern, format] of FORMAT_PATTERNS) {
     if (pattern.test(haystack)) return format;

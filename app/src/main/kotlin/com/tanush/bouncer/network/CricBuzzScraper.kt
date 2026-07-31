@@ -453,10 +453,22 @@ class CricBuzzScraper {
         )
     }
 
-    private fun mapMatchFormat(format: String): String = when (format.uppercase()) {
+    /**
+     * Cricbuzz's `matchFormat` code → the prose
+     * [com.tanush.bouncer.analysis.CricketConstants.formatFromMatchType] can resolve.
+     *
+     * `"HUN"` is The Hundred, and its absence here was silent: the blank fell through to a title
+     * ("Southern Brave vs Birmingham Phoenix, 13th Match") that names no format either, so the
+     * format resolved to UNKNOWN, which carries no ball budget, so every Hundred match was scored
+     * as undetermined and showed no win probability at all. Mirrors `FORMAT_CODES` in
+     * `appwrite/functions/match-sync/src/winprob.js`, which had the same hole on the server side.
+     */
+    internal fun mapMatchFormat(format: String): String = when (format.uppercase()) {
         "TEST" -> "Test"
         "ODI" -> "ODI"
         "T20", "T20I" -> "T20"
+        "T10" -> "T10"
+        "HUN" -> "The Hundred"
         "FC" -> "First Class"
         "LIST_A" -> "List A"
         else -> ""
