@@ -87,6 +87,62 @@ class CricBuzzCommentaryMetricTest {
         assertNull(com.tanush.bouncer.utils.ballNumberOf(prefixed))
     }
 
+    /**
+     * The tail of a completed Hundred innings, captured 2026-07-31 from the live page of match
+     * 145154 (Southern Brave Women v Birmingham Phoenix Women, 2026-07-30) — the game that
+     * prompted this verification.
+     *
+     * Wider than [cricbuzz_commentary_hundred.html]: a contiguous run ending on the last ball of
+     * the innings, so it pins the counter's upper bound and its monotonicity, not just its shape.
+     * Cricbuzz serves only the newest window of commentary — there is no paginated or archive
+     * source — so this is the most of a Hundred innings that can be captured at all.
+     */
+    private val hundredInningsEnd get() = itemsOf("cricbuzz_commentary_hundred_innings_end.html")
+
+    @Test
+    fun `a completed hundred innings counts up to 100 and never past it`() {
+        val counts = hundredInningsEnd.mapNotNull { it.ballMetric as? BallMetric.BallCount }
+        assertTrue("expected ball counts, got ${hundredInningsEnd.size} items", counts.size > 5)
+        assertTrue("no counter may exceed the 100-ball innings", counts.all { it.ball in 1..100 })
+        assertEquals("the captured tail must reach the final ball", 100, counts.maxOf { it.ball })
+        assertTrue(
+            "ballsBowled must equal the counter — The Hundred's number IS the delivery count",
+            counts.all { it.ballsBowled == it.ball }
+        )
+    }
+
+    @Test
+    fun `hundred ball numbers are strictly increasing oldest-first, with no repeats`() {
+        val ascending = hundredInningsEnd
+            .filter { it.ballMetric is BallMetric.BallCount }
+            .sortedBy { it.timestamp }
+            .map { (it.ballMetric as BallMetric.BallCount).ball }
+        // A stuck or rewinding counter is the production defect class this whole file guards.
+        assertEquals("duplicate ball numbers in $ascending", ascending.size, ascending.toSet().size)
+        assertTrue(
+            "ball numbers must ascend with time, got $ascending",
+            ascending.zipWithNext().all { (a, b) -> b > a }
+        )
+    }
+
+    @Test
+    fun `every hundred line is labelled once and round-trips through ballMetricOfLine`() {
+        for (item in hundredInningsEnd.filter { it.ballMetric != null }) {
+            val expected = item.ballMetric!!.label
+            val prefixed = item.prefixedText()
+            assertTrue("'${prefixed.take(40)}' should start with '$expected: '", prefixed.startsWith("$expected: "))
+            assertEquals(
+                "the label must appear once — 'Ball Ball 72:' is the defect this replaces",
+                1,
+                Regex(Regex.escape(expected)).findAll(prefixed).count()
+            )
+            assertEquals(expected, com.tanush.bouncer.utils.ballMetricOfLine(prefixed)?.label)
+            // Over notation must not match a Hundred label, or an over that does not exist is born.
+            assertNull(com.tanush.bouncer.utils.ballNumberOf(prefixed))
+            assertTrue(com.tanush.bouncer.utils.startsWithBallLabel(prefixed))
+        }
+    }
+
     // ── non-deliveries and dedup ────────────────────────────────────────────
 
     @Test
