@@ -56,7 +56,7 @@ class CommentaryFusionService(
         Provider(name, "http://test-$name", key, model)
     } ?: listOf(
         Provider("Groq",      "https://api.groq.com/openai/v1/chat/completions",    ApiKeys.groq,      "llama-3.3-70b-versatile"),
-        Provider("Cerebras",  "https://api.cerebras.ai/v1/chat/completions",         ApiKeys.cerebras,  "llama-3.3-70b"),
+        Provider("Cerebras",  "https://api.cerebras.ai/v1/chat/completions",         ApiKeys.cerebras,  "gemma-4-31b"),
         Provider("SambaNova", "https://api.sambanova.ai/v1/chat/completions",        ApiKeys.sambaNova, "Meta-Llama-3.3-70B-Instruct"),
     )
     private val providerCooldowns = ConcurrentHashMap<String, Long>()

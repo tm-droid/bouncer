@@ -14,7 +14,7 @@ const isBudget402 = (e) => e?.code === 402 || e?.type === "limit_databases_reads
 // a model bump is a three-place edit — change all three together.
 const PROVIDERS = [
   { name: "groq",      url: "https://api.groq.com/openai/v1/chat/completions",      model: "llama-3.3-70b-versatile",         keyEnv: "GROQ_API_KEY" },
-  { name: "cerebras",  url: "https://api.cerebras.ai/v1/chat/completions",           model: "llama-3.3-70b",                   keyEnv: "CEREBRAS_API_KEY" },
+  { name: "cerebras",  url: "https://api.cerebras.ai/v1/chat/completions",           model: "gemma-4-31b",                     keyEnv: "CEREBRAS_API_KEY" },
   { name: "sambanova", url: "https://api.sambanova.ai/v1/chat/completions",          model: "Meta-Llama-3.3-70B-Instruct",     keyEnv: "SAMBANOVA_API_KEY" },
 ];
 
