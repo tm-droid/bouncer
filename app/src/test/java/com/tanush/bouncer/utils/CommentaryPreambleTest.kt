@@ -28,6 +28,24 @@ class CommentaryPreambleTest {
     }
 
     @Test
+    fun `outright refusals are meta, not just self-explanations`() {
+        // The list handled the model explaining itself ("Since there is no ball number…") but not
+        // the model declining outright — the same failure with a different first word. None of
+        // these reached the 750-row production cache export; this closes the hole rather than
+        // fixing an outage.
+        val refusals = listOf(
+            "I cannot provide commentary for this delivery.",
+            "I can't write commentary without the ball number.",
+            "I'm unable to generate a commentary line here.",
+            "I am sorry, but I need more information about the match.",
+            "I apologise, I do not have enough detail to narrate this ball.",
+        )
+        for (line in refusals) {
+            assertTrue("should be meta: $line", CommentaryFormatter.isMetaResponse(line))
+        }
+    }
+
+    @Test
     fun `real commentary is not meta`() {
         val real = listOf(
             "48.6: Douthwaite to Rhodes, worked away to deep midwicket for a single.",

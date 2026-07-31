@@ -9,9 +9,16 @@ object CommentaryFormatter {
      * Openers the models use when they refuse or narrate their own reasoning.
      *
      * Kept in sync with `META` in appwrite/functions/match-sync/src/llm.js.
+     *
+     * The outright-refusal openers ("I cannot", "I'm sorry", "I apologise") cover a gap the
+     * 2026-07-31 Hundred replay found: the list handled the models *explaining* themselves
+     * ("Since there is no ball number…", 54 rows of the 750-row production cache export) but not
+     * the models *declining*, which is the same failure with a different first word. No refusal of
+     * that shape has reached production, so this closes the hole rather than fixing an outage.
      */
     val META_PREAMBLE = Regex(
-        "^(since there|i('| wi)ll |here('| i)s|given (the|that|there)|note:|as an ai|" +
+        "^(since there|i('| wi)ll |i cannot|i can'?t|i'm (unable|sorry)|i am (unable|sorry)|" +
+            "i apologi[sz]e|here('| i)s|given (the|that|there)|note:|as an ai|" +
             "based on the|to create|it seems|there is no|there's no|unfortunately)",
         RegexOption.IGNORE_CASE
     )

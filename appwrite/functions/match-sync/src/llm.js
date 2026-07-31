@@ -38,7 +38,10 @@ export function sanitize(text) {
 }
 
 // Kept in sync with CommentaryFormatter.META_PREAMBLE.
-const META = /^(since there|i('| wi)ll |here('| i)s|given (the|that|there)|note:|as an ai|based on the|to create|it seems|there is no|there's no|unfortunately)/i;
+//
+// The refusal openers ("I cannot", "I'm sorry", "I apologise") close a gap the 2026-07-31 Hundred
+// replay found: the list covered the models explaining themselves but not the models declining.
+const META = /^(since there|i('| wi)ll |i cannot|i can'?t|i'm (unable|sorry)|i am (unable|sorry)|i apologi[sz]e|here('| i)s|given (the|that|there)|note:|as an ai|based on the|to create|it seems|there is no|there's no|unfortunately)/i;
 
 // Both ball-label forms: `48.6` (over-based) and `Ball 72` (The Hundred). An over-based-only
 // pattern here silently leaves the preamble attached to every Hundred line, because the label it
