@@ -29,7 +29,7 @@ Each step wrapped in `initializeSafely()` block (try-catch + Sentry breadcrumb).
 
 **CommentaryFusionService:** Processes live commentary text → streams to OpenRouter API → returns LLM verdict on key moments
 
-**Deep linking:** Match details accessible via `bouncer://match/{matchId}` intent URLs
+**Deep linking:** Match details accessible via `app://bouncer/match/{matchId}` intent URLs (scheme `app`, host `bouncer`)
 
 **MCP integration:** Model Context Protocol handlers in `/mcp` folder for external tool integration
 
