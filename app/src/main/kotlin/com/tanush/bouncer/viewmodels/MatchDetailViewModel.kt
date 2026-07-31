@@ -21,6 +21,7 @@ import com.tanush.bouncer.data.remote.MatchLiveDetailPayload
 import com.tanush.bouncer.data.remote.ProductionLiveDetailSource
 import com.tanush.bouncer.data.remote.H2HPair
 import com.tanush.bouncer.data.remote.H2HRepository
+import com.tanush.bouncer.network.CricBuzzUrls
 import com.tanush.bouncer.services.MatchPresenceReporter
 import com.tanush.bouncer.ui.components.BatsmanMilestoneInfo
 import com.tanush.bouncer.ui.components.MilestoneType
@@ -203,6 +204,13 @@ class MatchDetailViewModel(
                 }
             }
         }
+        if (_uiState.value.commentary.isEmpty()) {
+            val scraped = scrapeCommentary(matchRepository, match.id)
+            if (scraped.isNotEmpty()) {
+                breadcrumb("commentary_fallback", "Scraped ${scraped.size} commentary lines on-device")
+                _uiState.update { it.copy(commentary = scraped, commentaryError = null) }
+            }
+        }
     }
 
     // CricInfo one-shots: match flow (DRS/powerplay/impact subs) + pre-match (pitch + team news).
@@ -368,3 +376,41 @@ private fun noLiveDataError(st: MatchDetailViewModel.UiState): String? =
     } else {
         null
     }
+
+/**
+ * Commentary scraped on-device, for matches Appwrite has none for. Empty on any failure.
+ *
+ * `bouncer-match-sync` writes commentary only for a live match with a viewer heartbeat, and a
+ * finished match leaves the live list for good — so a match nobody had open while it was played
+ * has no rows, ever, and no scheduled path can backfill it afterwards. Both Hundred games of
+ * 2026-07-30 are in exactly that state. Raw Cricbuzz text beats a blank tab.
+ *
+ * Two bounds, both measured on 2026-07-31 rather than assumed:
+ *  - **Depth, not age.** Cricbuzz still served commentary for a match 36 days old, so this does
+ *    not expire in any practical window. But its page carries only the newest slice — 6 to 20
+ *    items — and no paginated or archive source exists (`/cricket-full-commentary/{id}` 404s), so
+ *    this shows the tail of an innings, never all of it.
+ *  - **No AI rewrite, no write-back.** The lines are Cricbuzz's own and they stay on the device;
+ *    reaching for the LLM here would spend a provider call per delivery on a finished match.
+ *
+ * Returning empty is not an error. `CommentaryTabV2` already renders "No more commentary
+ * available" for a completed match, which is the honest message — `commentaryError` would claim a
+ * connectivity problem that does not exist.
+ */
+private suspend fun scrapeCommentary(repository: MatchRepository, matchId: String): List<String> =
+    runCatching {
+        withTimeoutOrNull(COMMENTARY_FETCH_TIMEOUT_MS) {
+            repository.fetchLiveCommentary(CricBuzzUrls.liveScoresUrl(matchId))
+        }
+    }.onFailure { e ->
+        Sentry.addBreadcrumb(
+            Breadcrumb().apply {
+                category = "commentary_fallback"
+                message = "On-device commentary fetch failed: ${e.message}"
+                level = SentryLevel.WARNING
+            }
+        )
+        Sentry.captureException(e)
+    }.getOrNull().orEmpty()
+
+private const val COMMENTARY_FETCH_TIMEOUT_MS = 10_000L
