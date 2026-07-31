@@ -265,21 +265,38 @@ class ScorePollingWorker(
          * Fire a one-time immediate refresh (e.g. pull-to-refresh or app foreground).
          */
         fun enqueueOneTimeWork(context: Context, jitterMs: Long = 0L) {
-            val request = OneTimeWorkRequestBuilder<ScorePollingWorker>()
+            WorkManager.getInstance(context).enqueue(oneTimeRequest(jitterMs))
+
+            WorkerLogger.enqueued("score_polling", "One-time work enqueued (jitter=${jitterMs}ms)")
+        }
+
+        /**
+         * Split out from [enqueueOneTimeWork] so the request can be built — and therefore
+         * validated — without a WorkManager instance.
+         *
+         * Delay and expedited are mutually exclusive: expedited means "run now", so WorkManager
+         * throws `IllegalArgumentException: Expedited jobs cannot be delayed` from `build()` if
+         * both are set. That threw on FirebaseMessagingService's thread, where nothing catches it,
+         * so every MATCH_STARTED/MATCH_ENDED topic push killed the process — and because those
+         * pushes arrive in bursts, Android then hit "crashed too many times, killing".
+         *
+         * A jittered poll is a deliberately deferred one, so it takes the delay and gives up the
+         * expedited slot. A user-triggered poll passes no jitter and stays expedited.
+         */
+        internal fun oneTimeRequest(jitterMs: Long): OneTimeWorkRequest =
+            OneTimeWorkRequestBuilder<ScorePollingWorker>()
                 .setConstraints(networkConstraints)
                 .addTag(ONE_TIME_WORK_TAG)
                 .apply {
                     // A push-triggered poll must not fire on every device at once; a user-triggered
                     // one (pull-to-refresh, foreground) passes no jitter and stays immediate.
-                    if (jitterMs > 0L) setInitialDelay(jitterMs, TimeUnit.MILLISECONDS)
+                    if (jitterMs > 0L) {
+                        setInitialDelay(jitterMs, TimeUnit.MILLISECONDS)
+                    } else {
+                        setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
+                    }
                 }
-                .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
                 .build()
-
-            WorkManager.getInstance(context).enqueue(request)
-
-            WorkerLogger.enqueued("score_polling", "One-time work enqueued (jitter=${jitterMs}ms)")
-        }
 
         /**
          * Schedule a 5-minute one-time follow-up poll while a live match is active.
