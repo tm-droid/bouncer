@@ -40,6 +40,41 @@ const SCAN_NEWEST = 30; // how many newest commentary items to look at
 const MAX_NEW_PER_MATCH = 10; // max LLM-backed rows to write per match per run
 const MAX_MATCHES = 12; // cap live matches processed per run
 
+// ── Slow tier ──────────────────────────────────────────────────────────────
+//
+// The viewer gate above is the FAST tier and is unchanged: a match someone has open gets a full
+// pass every minute. The problem it leaves is that a match nobody watched while it was live gets
+// nothing AT ALL, permanently — it drops out of live-matches the moment it ends, and no scheduled
+// path ever revisits a finished match. Both Hundred games of 2026-07-30 ended that way: no detail
+// row, no scorecard row, not one commentary line.
+//
+// So a live match with no viewer still gets covered, just far more cheaply: its own 45-minute
+// clock, one row a pass instead of 10, and only whatever read budget the fast tier has not
+// reserved. Its clock cannot live in module scope — a warm container does not survive a 45-minute
+// gap reliably — so the last pass per match is persisted in Storage, which bills on a different
+// meter from the DB reads the 402 breaker protects.
+//
+// The binding constraint on these two numbers is NOT the Appwrite read budget — it is Groq's
+// 1000 requests/day, because every slow-tier row costs one LLM call and the fast tier draws from
+// the same daily pool. Measured 2026-07-30: the fast tier alone spent 267 calls in a single hour.
+// At 8 concurrent unwatched matches, one row a pass:
+//
+//   15 min → 32 calls/hour → 768/day. One 07-30-style hour on top = 1035. Over cap.
+//   30 min → 16 calls/hour → 384/day. Leaves 616 — barely two such hours.
+//   45 min → 11 calls/hour → 256/day. Leaves 744 — about three such hours. Chosen.
+//
+// 07-30 is not known to be a ceiling, so the margin has to cover several of those hours, not one.
+const SLOW_TIER_INTERVAL_MS = 45 * 60 * 1000;
+const SLOW_MAX_NEW_PER_MATCH = 1;
+const SLOW_MAX_MATCHES_PER_RUN = 3;
+const SLOW_STATE_FILE = "slow-sync-state";
+// Reads out of READ_BUDGET_PER_RUN kept for the fast tier. The slow tier is admitted only if this
+// much would still be free after the fast tier's worst case, so a busy night full of viewers
+// starves the slow tier rather than the other way round.
+const READ_HEADROOM_RESERVE = 5;
+// Worst-case billed reads a single match costs: one watermark seed, on a cold container.
+const READ_COST_PER_MATCH = 1;
+
 // Bare section headers Cricbuzz emits as commentary items with no body — render as
 // pointless one-word lines (e.g. "Teams:", "Squads:"). "Drinks!" is a real break marker, kept.
 const JUNK_COMMENTARY_RE = /^(teams|squads|playing xi)\s*:?\s*$/i;
@@ -81,6 +116,50 @@ const sanitizeMatchId = (id) => String(id).replace(/[^a-zA-Z0-9._-]/g, "").slice
  * on the same node and never appears in the text. That alone would have kept this path dead even
  * with `clean` restored.
  */
+/**
+ * Which live matches the slow tier takes this run, as a pure function of the run's inputs.
+ *
+ * Pure, and exported, because every rule here is a state that is invisible in production until it
+ * is wrong: "no entry yet" must mean due NOW (a match that just went live would otherwise wait a
+ * quarter of an hour for its first line), the interval must actually hold matches back, and the
+ * headroom gate must shut the tier off rather than quietly eating the fast tier's budget.
+ *
+ * The fast tier's cost is *reserved* up front rather than measured after it runs. Measuring would
+ * mean a second pass over the same matches — the live page fetched twice for every slow match —
+ * to learn something the viewer count already tells us: its worst case is one seed read each.
+ *
+ * @param live      live matches, already capped at MAX_MATCHES
+ * @param viewed    matchIds with a fresh viewer (the fast tier's claim)
+ * @param state     { [matchId]: lastSlowPassEpochMs } from SLOW_STATE_FILE; missing entry = due
+ * @param now       epoch ms
+ * @param cooldownUntil  budget402UntilMs — a latched read-budget 402 stops the tier entirely
+ * @returns matchIds for the slow tier, in due order
+ */
+export function selectSlowTier({ live, viewed, state, now, cooldownUntil = 0 }) {
+  if (now < cooldownUntil) return [];
+  const fastReserve = viewed.size * READ_COST_PER_MATCH;
+  const headroom = READ_BUDGET_PER_RUN - READ_HEADROOM_RESERVE - fastReserve;
+  if (headroom < READ_COST_PER_MATCH) return [];
+
+  const due = live
+    .map((m) => String(m.id))
+    .filter((id) => !viewed.has(id))
+    // `?? 0` is load-bearing: a match with no entry has never had a slow pass, so it is due now.
+    .filter((id) => now - (Number(state?.[id]) || 0) >= SLOW_TIER_INTERVAL_MS);
+
+  return due.slice(0, Math.min(SLOW_MAX_MATCHES_PER_RUN, Math.floor(headroom / READ_COST_PER_MATCH)));
+}
+
+/** The slow-tier clock, stamped for the matches that just ran and pruned to those still live. */
+export function nextSlowState({ state, processed, liveIds, now }) {
+  const next = {};
+  for (const [id, ts] of Object.entries(state ?? {})) {
+    if (liveIds.has(id) && typeof ts === "number") next[id] = ts;
+  }
+  for (const id of processed) next[id] = now;
+  return next;
+}
+
 export function classifyCommentaryItem(item) {
   const clean = sanitize(item.commText);
   if (!clean) return null;
@@ -171,15 +250,32 @@ export default async ({ req, res, log, error }) => {
     log(`No live matches — nothing to sync`);
     return res.json({ skipped: true, reason: "no_live_matches" }, 200);
   }
-  log(`${allLive.length} live, ${live.length} with viewers`);
   // Prune the warm dedupe cache to matches still live so ended matches don't retain memory.
-  const liveIds = new Set(live.map((m) => String(m.id)));
+  //
+  // Against ALL live matches, not just viewed ones: pruning to the viewed set discarded the
+  // watermark of every unviewed match on every run, so the slow tier below would have paid a fresh
+  // seed read on each of its passes for a value it already had.
+  const liveIds = new Set(allLive.map((m) => String(m.id)));
   for (const id of watermarkByMatch.keys()) {
     if (!liveIds.has(id)) watermarkByMatch.delete(id);
   }
   const summary = {};
   const winProb = {};
   const viewed = new Set(live.map((m) => String(m.id)));
+
+  // 1c. Slow tier: live, unviewed, and due. Chosen before any match runs, so the fast tier's
+  // worst-case read cost is reserved rather than raced for.
+  const slowState = await readSlowState({ storage, error });
+  const slowTier = new Set(
+    selectSlowTier({
+      live: allLive,
+      viewed,
+      state: slowState,
+      now: Date.now(),
+      cooldownUntil: budget402UntilMs,
+    })
+  );
+  log(`${allLive.length} live, ${live.length} with viewers, ${slowTier.size} on the slow tier`);
   const model = await loadModel({ storage, log, error });
 
   // Process matches in parallel so per-ball LLM latency doesn't serialize across matches.
@@ -191,7 +287,7 @@ export default async ({ req, res, log, error }) => {
           db,
           matchId,
           title: m.title ?? "",
-          withCommentary: viewed.has(matchId),
+          commentaryCap: commentaryCapFor(matchId, viewed, slowTier),
           model,
           log,
           error,
@@ -206,6 +302,13 @@ export default async ({ req, res, log, error }) => {
   );
 
   await writeWinProbFile({ storage, winProb, log, error });
+  await writeSlowState({
+    storage,
+    state: nextSlowState({ state: slowState, processed: slowTier, liveIds, now: Date.now() }),
+    previous: slowState,
+    log,
+    error,
+  });
 
   if (Date.now() < budget402UntilMs) {
     // A 402 surfaced mid-run: mark the whole execution failed so it's visible in the console.
@@ -214,10 +317,53 @@ export default async ({ req, res, log, error }) => {
   return res.json({
     live: allLive.length,
     processed: live.length,
+    slowTier: slowTier.size,
     winProbabilities: Object.keys(winProb).length,
     summary,
   });
 };
+
+/** Rows this match may write this run: full for a viewer, a trickle for the slow tier, none else. */
+export function commentaryCapFor(matchId, viewed, slowTier) {
+  if (viewed.has(matchId)) return MAX_NEW_PER_MATCH;
+  if (slowTier.has(matchId)) return SLOW_MAX_NEW_PER_MATCH;
+  return 0;
+}
+
+/**
+ * The slow tier's clock. A missing or unreadable file reads as `{}` — every live match is then
+ * due, which is the safe direction: the tier is capped per run anyway, and the alternative
+ * (treating unreadable as "nothing is due") would silently disable it exactly like the
+ * already-parsed-JSON bug disabled the viewer gate.
+ */
+async function readSlowState({ storage, error }) {
+  try {
+    const parsed = parseJsonFile(await storage.getFileDownload(BUCKET_ID, SLOW_STATE_FILE));
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+  } catch (e) {
+    if (e?.code !== 404) error(`Could not read ${SLOW_STATE_FILE} (${e?.message}) — treating every match as due`);
+    return {};
+  }
+}
+
+/** Write the clock only when it changed — an unchanged rewrite is bandwidth for nothing. */
+async function writeSlowState({ storage, state, previous, log, error }) {
+  const payload = JSON.stringify(state);
+  if (payload === JSON.stringify(previous ?? {})) return;
+  try {
+    await storage.deleteFile(BUCKET_ID, SLOW_STATE_FILE).catch(() => {});
+    await storage.createFile(
+      BUCKET_ID,
+      SLOW_STATE_FILE,
+      InputFile.fromBuffer(Buffer.from(payload, "utf8"), "slow-sync-state.json"),
+      READ_ANY
+    );
+    log(`Wrote ${SLOW_STATE_FILE} (${Object.keys(state).length} matches)`);
+  } catch (e) {
+    // Non-fatal: losing the clock costs one extra slow pass, never a wrong one.
+    error(`Failed to write ${SLOW_STATE_FILE}: ${e?.message}`);
+  }
+}
 
 /**
  * Publish the aggregate win-probability file the match list reads.
@@ -312,12 +458,17 @@ async function activeViewerIds({ storage, log, error }) {
   }
 }
 
-async function syncMatch({ db, matchId, title, withCommentary, model, log, error }) {
+async function syncMatch({ db, matchId, title, commentaryCap, model, log, error }) {
   // 2. Fetch live page, plus the scorecard only when we are going to use it. A match with no
   // viewer needs the live page alone to produce a win probability.
+  //
+  // `commentaryCap` is how many rows this match may write this run: 0 for a live match nobody is
+  // watching and that is not due a slow pass, SLOW_MAX_NEW_PER_MATCH for the slow tier,
+  // MAX_NEW_PER_MATCH when someone has it open. It replaces a `withCommentary` boolean — the tier
+  // and the cap are the same decision, and splitting them into two arguments is how they drift.
   const [liveHtml, scoreHtml] = await Promise.all([
     fetchHtml(liveScoresUrl(matchId)),
-    withCommentary
+    commentaryCap > 0
       ? fetchHtml(scorecardUrl(matchId)).catch((e) => { error(`Scorecard fetch failed for ${matchId}: ${e?.message}`); return null; })
       : Promise.resolve(null),
   ]);
@@ -334,8 +485,9 @@ async function syncMatch({ db, matchId, title, withCommentary, model, log, error
     detail.winProbabilityConfidence = winProb.confidence;
   }
 
-  if (!withCommentary) {
-    // No viewer: the probability is the only product. No scorecard, no LLM, no DB write.
+  if (commentaryCap <= 0) {
+    // No viewer and not due a slow pass: the probability is the only product. No scorecard, no
+    // LLM, no DB write.
     return { status: winProb ? "winprob_only" : "winprob_undetermined", winProb };
   }
 
@@ -388,7 +540,7 @@ async function syncMatch({ db, matchId, title, withCommentary, model, log, error
 
   // Oldest-first among items past the watermark. Order matters: the watermark can only advance
   // contiguously from the bottom, so processing newest-first would strand every older unwritten
-  // item behind it permanently once MAX_NEW_PER_MATCH truncated the run.
+  // item behind it permanently once `commentaryCap` truncated the run.
   const fresh = commentary
     .filter((i) => Number(i.timestamp) > watermark)
     .sort((a, b) => Number(a.timestamp) - Number(b.timestamp));
@@ -397,7 +549,7 @@ async function syncMatch({ db, matchId, title, withCommentary, model, log, error
   let newWatermark = watermark;
   for (const item of fresh) {
     // Checked before any work so the watermark stops at the last FULLY processed item.
-    if (written >= MAX_NEW_PER_MATCH) break;
+    if (written >= commentaryCap) break;
     const rowId = docId(`${matchId}:${item.timestamp}`);
     const itemTs = Number(item.timestamp);
 
