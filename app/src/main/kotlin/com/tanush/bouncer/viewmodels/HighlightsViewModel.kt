@@ -49,6 +49,15 @@ class HighlightsViewModel(
     }
 
     companion object {
+        /**
+         * `ViewModelStore` keys are a flat namespace shared by every type in the store, and
+         * `ViewModelProvider` treats a key holding the wrong type as a miss: it constructs a
+         * replacement and `ViewModelStore.put` **clears** whatever it evicted. A bare `matchId`
+         * here collided with [MatchDetailViewModel]'s key on the same screen, so the two rebuilt
+         * and cleared each other on every recomposition. Prefix per type; never share.
+         */
+        fun storeKey(matchId: String): String = "highlights_$matchId"
+
         fun factory(context: Context, matchId: String): ViewModelProvider.Factory =
             object : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")

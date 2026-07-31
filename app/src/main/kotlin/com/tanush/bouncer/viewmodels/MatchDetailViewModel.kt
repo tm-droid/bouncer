@@ -334,6 +334,9 @@ class MatchDetailViewModel(
         // Re-ping well within match-sync's 4-min VIEWER_TTL_MS so ~2 dropped pings still count.
         private const val PRESENCE_HEARTBEAT_MS = 90_000L
 
+        /** Per-type store key — see [HighlightsViewModel.storeKey] for why sharing one collides. */
+        fun storeKey(matchId: String): String = "match_detail_$matchId"
+
         fun factory(
             context: Context,
             match: CricketMatch,

@@ -108,14 +108,14 @@ fun MatchDetailViewV2(
 
     val context = LocalContext.current
     val vm: MatchDetailViewModel = viewModel(
-        key = match.id,
+        key = MatchDetailViewModel.storeKey(match.id),
         factory = MatchDetailViewModel.factory(context, match),
     )
     val uiState by vm.uiState.collectAsStateWithLifecycle()
     val streamingCommentary by vm.streamingCommentary.collectAsStateWithLifecycle()
 
     val highlightsViewModel: HighlightsViewModel = viewModel(
-        key = match.id,
+        key = HighlightsViewModel.storeKey(match.id),
         factory = HighlightsViewModel.factory(context, match.id),
     )
     val highlights by highlightsViewModel.highlights.collectAsStateWithLifecycle()
