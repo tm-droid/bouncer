@@ -9,6 +9,7 @@ import {
   parseCommentary,
   parseLiveDetail,
   parseScorecard,
+  BLOCK_BACKOFF_MS,
 } from "./cricbuzz.js";
 import { generateVerifiedLine, sanitize, stripPreamble } from "./llm.js";
 import {
@@ -321,8 +322,15 @@ export default async ({ req, res, log, error }) => {
         if (result.winProb) winProb[matchId] = result.winProb;
       } catch (e) {
         error(`Match ${matchId} failed: ${e?.message}`);
-        reportError(e, { matchId, operation: "sync_match" });
-        summary[matchId] = "error";
+        // A block is the host telling us to stand down, not a defect on our side — it is reported
+        // once per run with its own fingerprint instead of one exception per match, so a throttled
+        // minute does not read as twelve independent failures.
+        if (e?.blocked) {
+          summary[matchId] = "blocked";
+        } else {
+          reportError(e, { matchId, operation: "sync_match" });
+          summary[matchId] = "error";
+        }
       }
     })
   );
@@ -336,6 +344,18 @@ export default async ({ req, res, log, error }) => {
     report("match-sync produced nothing for a match with an active viewer", {
       matchIds: viewedWithoutRows.join(","),
       viewers: viewed.size,
+    });
+  }
+
+  // One event per throttled run, carrying what the host actually said — the body snippet is the
+  // thing that was missing when ANDROID-35 had to be diagnosed from status codes alone.
+  const blockedIds = Object.keys(summary).filter((id) => summary[id] === "blocked");
+  if (blockedIds.length > 0) {
+    error(`[CRICBUZZ-BLOCKED] ${blockedIds.length} match(es) skipped this run`);
+    report("Cricbuzz is throttling this container — matches skipped", {
+      matches: blockedIds.length,
+      matchIds: blockedIds.join(","),
+      backoffMs: BLOCK_BACKOFF_MS,
     });
   }
 
