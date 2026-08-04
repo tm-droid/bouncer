@@ -11,6 +11,13 @@ import {
   parseScorecard,
 } from "./cricbuzz.js";
 import { generateLine, sanitize, stripPreamble } from "./llm.js";
+import {
+  initObservability,
+  report,
+  reportError,
+  flushObservability,
+  probeSources,
+} from "./observability.js";
 import { evaluate, formatFromText, ballsRemainingFor } from "./winprob.js";
 
 const DB_ID = process.env.APPWRITE_AI_CACHE_DB_ID ?? "bouncer-db";
@@ -203,17 +210,35 @@ function runSmokeProbes() {
 }
 
 export default async ({ req, res, log, error }) => {
+  initObservability({ log });
   if (!process.env.APPWRITE_API_KEY) {
     return res.json({ error: "Missing APPWRITE_API_KEY" }, 500);
   }
+
+  // Source reachability probe. Off unless PROBE_SOURCES is set, so the per-minute schedule never
+  // pays for it. Answers "can this container reach Cricinfo, and is its markup still what
+  // CricInfoScraper expects" — the question that decides whether Cricinfo can be restored as a
+  // server-side second commentary source, which no amount of testing from a laptop can settle.
+  if (process.env.PROBE_SOURCES) {
+    const probe = await probeSources({ log, error });
+    await flushObservability();
+    return res.json({ probe }, 200);
+  }
+
   if (Date.now() < budget402UntilMs) {
     error(`[READ-BUDGET-402] skipping run — read budget exhausted, cooldown until ${new Date(budget402UntilMs).toISOString()}`);
+    report("match-sync skipped a run — read budget 402 latched", {
+      cooldownUntil: new Date(budget402UntilMs).toISOString(),
+    }, "error");
+    await flushObservability();
     return res.json({ error: "read_budget_exceeded" }, 402);
   }
   try {
     runSmokeProbes();
   } catch (e) {
     error(`[SMOKE] commentary classifier is broken: ${e.message}`);
+    reportError(e, { operation: "smoke_probe" });
+    await flushObservability();
     return res.json({ error: "commentary_classifier_broken", detail: e.message }, 500);
   }
 
@@ -296,10 +321,23 @@ export default async ({ req, res, log, error }) => {
         if (result.winProb) winProb[matchId] = result.winProb;
       } catch (e) {
         error(`Match ${matchId} failed: ${e?.message}`);
+        reportError(e, { matchId, operation: "sync_match" });
         summary[matchId] = "error";
       }
     })
   );
+
+  // A viewed match that produced nothing is the failure mode this whole change exists to expose:
+  // someone has the screen open, the fast tier ran, and the device still has no rows to render, so
+  // it falls back to raw Cricbuzz text. Reported per run rather than per match — the count is the
+  // signal, and the per-match reason has already been captured above.
+  const viewedWithoutRows = [...viewed].filter((id) => !summary[id] || summary[id] === "error");
+  if (viewedWithoutRows.length > 0) {
+    report("match-sync produced nothing for a match with an active viewer", {
+      matchIds: viewedWithoutRows.join(","),
+      viewers: viewed.size,
+    });
+  }
 
   await writeWinProbFile({ storage, winProb, log, error });
   await writeSlowState({
@@ -312,8 +350,12 @@ export default async ({ req, res, log, error }) => {
 
   if (Date.now() < budget402UntilMs) {
     // A 402 surfaced mid-run: mark the whole execution failed so it's visible in the console.
+    report("match-sync hit a read-budget 402 mid-run", { summary: JSON.stringify(summary) }, "error");
+    await flushObservability();
     return res.json({ error: "read_budget_exceeded", summary }, 402);
   }
+  // The container is frozen the moment this returns, so anything still queued is lost.
+  await flushObservability();
   return res.json({
     live: allLive.length,
     processed: live.length,
@@ -454,6 +496,15 @@ async function activeViewerIds({ storage, log, error }) {
     return new Set(fresh);
   } catch (e) {
     log(`No active-viewers file (${e?.message ?? "missing"}) — treating as no viewers`);
+    // 404 is the ordinary state before any client has ever pinged, and is not worth an event.
+    // Anything else means the gate is failing closed for a reason we cannot see from the log —
+    // and a permanently-closed gate is exactly the "0 with viewers on every run" symptom.
+    if (e?.code !== 404) {
+      report("match-sync could not read the active-viewers file — viewer gate is failing closed", {
+        reason: e?.message ?? "unknown",
+        code: e?.code ?? "none",
+      });
+    }
     return new Set();
   }
 }
@@ -559,6 +610,11 @@ async function syncMatch({ db, matchId, title, commentaryCap, model, log, error 
     const { clean, ball } = classified;
 
     let line = clean;
+    // False when the AI chain produced nothing and the row below carries the scraper's own words.
+    // The row is still written — a raw line beats an empty commentary tab — but "we wrote raw
+    // Cricbuzz text" and "we wrote generated commentary" were previously the same event, in the
+    // data and in the logs, so a dead provider chain was indistinguishable from a working one.
+    let aiGenerated = true;
     {
       // Ball-by-ball line → cinematic AI rewrite (mirror generateBallCommentary).
       const bowler = detail.bowler?.name ?? "";
@@ -573,10 +629,19 @@ async function syncMatch({ db, matchId, title, commentaryCap, model, log, error 
         `${ball}: ${clean}\n` +
         (contextLine ? `${contextLine}\n` : "") +
         `Write one vivid broadcast commentary line. Start with ${ball}: at the beginning.`;
-      const generated = await generateLine(prompt, { maxTokens: 100, temperature: 0.7, log, error });
+      const attempts = [];
+      const generated = await generateLine(prompt, { maxTokens: 100, temperature: 0.7, log, error, attempts });
       if (generated) {
         line = sanitize(stripPreamble(generated));
         if (line && !line.startsWith(ball)) line = `${ball}: ${line}`;
+      } else {
+        aiGenerated = false;
+        error(`[PASSTHROUGH] ${matchId}/${ball}: writing raw Cricbuzz text — ${attempts.join("; ")}`);
+        report("match-sync wrote raw Cricbuzz text — AI provider chain produced nothing", {
+          matchId,
+          ball,
+          attempts: attempts.join("; "),
+        });
       }
     }
     if (!line) { newWatermark = itemTs; continue; }
@@ -592,6 +657,7 @@ async function syncMatch({ db, matchId, title, commentaryCap, model, log, error 
           ball,
           sort_key: item.timestamp,
           commentary: line,
+          ai_generated: aiGenerated,
           created_at: new Date().toISOString(),
         },
         READ_ANY
@@ -601,7 +667,10 @@ async function syncMatch({ db, matchId, title, commentaryCap, model, log, error 
     } catch (e) {
       // 409 = row already exists (race / watermark behind): it is durably written, so advance.
       if (e?.code === 409) newWatermark = itemTs;
-      else error(`Commentary write failed (${matchId}/${ball}): ${e?.message}`);
+      else {
+        error(`Commentary write failed (${matchId}/${ball}): ${e?.message}`);
+        reportError(e, { matchId, ball, operation: "commentary_write" });
+      }
     }
   }
 

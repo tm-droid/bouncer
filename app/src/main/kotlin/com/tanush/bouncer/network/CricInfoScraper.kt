@@ -9,6 +9,7 @@ import com.tanush.bouncer.models.MatchFlowData
 import com.tanush.bouncer.models.PowerplayEvent
 import com.tanush.bouncer.models.PreMatchData
 import com.tanush.bouncer.utils.BoundedLruCache
+import com.tanush.bouncer.utils.sentryCaptureThrottled
 import io.sentry.Breadcrumb
 import io.sentry.Sentry
 import io.sentry.SentryLevel
@@ -32,6 +33,9 @@ class CricInfoScraper {
 
         /** Match ids kept in the id and availability caches. Well above the number ever in flight. */
         private const val MAX_TRACKED_MATCHES = 16
+
+        private const val HTTP_FORBIDDEN = 403
+        private const val HTTP_UNAVAILABLE_LEGAL = 451
     }
 
     // cricbuzzId -> cricinfoId. Was a plain mutableMapOf written from Dispatchers.IO coroutines: not
@@ -74,6 +78,43 @@ class CricInfoScraper {
     private fun recordSuccess() {
         consecutiveFailures.set(0)
         circuitOpenUntil.set(0)
+    }
+
+    /**
+     * Report an edge block (403/451) as its own signal, separate from the breaker.
+     *
+     * The breaker treats "Cricinfo is refusing this client outright" and "one request timed out"
+     * identically: three failures, then a 2-minute pause and at most one Sentry event per window.
+     * That is right for flakiness and wrong for a block, which will not heal on its own and which
+     * silently costs the fusion path its second source on every single ball. Confirmed at
+     * investigation time: `curl` to espncricinfo.com returns `403 Access Denied` where Cricbuzz
+     * returns 200, and nothing in the app said so.
+     */
+    private fun reportIfBlocked(e: Exception, url: String): Boolean {
+        val status = (e as? org.jsoup.HttpStatusException)?.statusCode ?: return false
+        if (status != HTTP_FORBIDDEN && status != HTTP_UNAVAILABLE_LEGAL) return false
+        sentryCaptureThrottled(
+            key = "cricinfo.blocked",
+            message = "Cricinfo is blocking this client (HTTP $status) — fusion is running single-source",
+            data = mapOf("status" to status, "url" to url)
+        )
+        return true
+    }
+
+    /**
+     * Report a 200 that parsed to nothing — the markup-drift signature.
+     *
+     * `__NEXT_DATA__` absent *and* every selector empty means the page loaded fine and our
+     * understanding of it is stale. The old code returned `emptyList()` here with an INFO
+     * breadcrumb reading "Successfully fetched commentary, linesCount: 0", which is the most
+     * misleading thing in the file.
+     */
+    private fun reportEmptyParse(url: String) {
+        sentryCaptureThrottled(
+            key = "cricinfo.empty-parse",
+            message = "Cricinfo returned 200 but no commentary parsed — markup has probably drifted",
+            data = mapOf("url" to url)
+        )
     }
 
     /**
@@ -179,6 +220,7 @@ class CricInfoScraper {
             commentaryExists
         } catch (e: Exception) {
             Log.e(TAG, "Error checking commentary availability for matchId=$matchId: ${e.message}")
+            reportIfBlocked(e, url)
             // recordFailure captures to Sentry at the circuit-breaker threshold (throttled).
             // Do NOT call captureException again here — that causes double-reporting and
             // bypasses the per-window throttle, producing bursts of identical events.
@@ -244,6 +286,8 @@ class CricInfoScraper {
 
             val fromSelectors = parseCommentaryFromSelectors(doc)
             Log.d(TAG, "Fetched ${fromSelectors.size} commentary lines from Cricinfo")
+            // A 200 that yields nothing is not a success — neither JSON nor any selector matched.
+            if (fromSelectors.isEmpty()) reportEmptyParse(commentaryUrl)
             addBreadcrumb(
                 category = "network.cricinfo",
                 message = "Successfully fetched commentary",
@@ -253,6 +297,9 @@ class CricInfoScraper {
             fromSelectors
         } catch (e: Exception) {
             Log.e(TAG, "Error fetching Cricinfo commentary from URL: $matchUrl: ${e.message}")
+            // A block is reported immediately and on its own key — it is a standing condition, not
+            // the transient failure the breaker exists for.
+            reportIfBlocked(e, commentaryUrl)
             // recordFailure captures to Sentry at the circuit-breaker threshold (throttled).
             // Do NOT call captureException again here — that causes double-reporting and
             // bypasses the per-window throttle, producing bursts of identical events.
@@ -390,6 +437,7 @@ class CricInfoScraper {
         } catch (e: Exception) {
             Log.e(TAG, "Error finding match: ${e.message}")
             if (e is CancellationException) throw e
+            reportIfBlocked(e, liveUrl)
             // recordFailure captures to Sentry at the circuit-breaker threshold (throttled).
             // Do NOT call captureException again here — that causes double-reporting and
             // bypasses the per-window throttle, producing bursts of identical events.

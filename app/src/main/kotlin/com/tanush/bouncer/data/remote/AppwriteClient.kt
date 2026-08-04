@@ -5,6 +5,7 @@ import android.util.Log
 import com.tanush.bouncer.ApiKeys
 import com.tanush.bouncer.network.HttpClientProvider
 import com.tanush.bouncer.utils.sentryBreadcrumb
+import com.tanush.bouncer.utils.sentryCaptureThrottled
 import io.appwrite.Client
 import io.appwrite.exceptions.AppwriteException
 import io.appwrite.services.Functions
@@ -39,11 +40,30 @@ object AppwriteClient {
     private val functionsService: Functions? get() = client?.let { Functions(it) }
 
     suspend fun executeFunction(functionId: String, body: String): String? {
-        val functions = functionsService ?: return null
+        val functions = functionsService
+        if (functions == null) {
+            // Not a quota problem — the SDK client never initialized, so every function call on
+            // this process is dead. Silently returning null here is how a dead presence heartbeat
+            // could look identical to an idle one.
+            sentryCaptureThrottled(
+                key = "appwrite.fn.uninitialized",
+                message = "Appwrite function $functionId skipped — SDK client not initialized",
+                data = mapOf("functionId" to functionId)
+            )
+            return null
+        }
         // Executions are their own plan quota and previously had no guard and no 402/429 handling
         // at all. Callers already treat null as "unavailable".
         if (AppwriteReadGuard.checkAndCount("fn.$functionId", AppwriteReadGuard.Quota.EXECUTIONS) != null) {
             Log.w(TAG, "Function $functionId blocked by AppwriteReadGuard")
+            // A latched EXECUTIONS quota switches off every server-side feature that runs through
+            // a function — commentary generation and the viewer gate included — for as long as the
+            // latch holds. Breadcrumb-only made that indistinguishable from "nothing to do".
+            sentryCaptureThrottled(
+                key = "appwrite.fn.guard-blocked.$functionId",
+                message = "Appwrite function $functionId blocked by AppwriteReadGuard (EXECUTIONS quota)",
+                data = mapOf("functionId" to functionId)
+            )
             return null
         }
         return try {
@@ -58,6 +78,16 @@ object AppwriteClient {
             AppwriteUsageTracker.recordFunctionExecution()
             if (execution.status == io.appwrite.enums.ExecutionStatus.FAILED) {
                 Log.e(TAG, "Function $functionId failed: ${execution.errors}")
+                // The call reached Appwrite and the function itself failed — a server-side defect,
+                // which nothing on the device would otherwise report.
+                sentryCaptureThrottled(
+                    key = "appwrite.fn.failed.$functionId",
+                    message = "Appwrite function $functionId returned FAILED",
+                    data = mapOf(
+                        "functionId" to functionId,
+                        "errors" to execution.errors.take(500)
+                    )
+                )
                 null
             } else {
                 execution.responseBody

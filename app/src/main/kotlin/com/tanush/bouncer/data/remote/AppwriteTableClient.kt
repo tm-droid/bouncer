@@ -4,6 +4,7 @@ import android.os.SystemClock
 import android.util.Log
 import com.tanush.bouncer.data.CacheConfig
 import com.tanush.bouncer.services.backoffDelayMs
+import com.tanush.bouncer.utils.sentryCaptureThrottled
 import io.appwrite.services.Realtime
 import io.appwrite.services.TablesDB
 import io.sentry.Sentry
@@ -306,13 +307,35 @@ abstract class AppwriteTableClient(private val tag: String) {
         else -> 1 // single-row read (getRow) or non-list result
     }
 
-    /** Standard silent-failure log used by all remote-tier operations. */
+    /**
+     * Standard degraded-operation log used by all remote-tier operations.
+     *
+     * "Silent" used to be literal: `Log.d` and nothing else, on every table client in the app. A
+     * commentary feed that failed every fetch looked exactly like a match with no commentary, which
+     * is how the detail screen could serve raw Cricbuzz text for weeks with an empty Sentry.
+     *
+     * The capture is throttled per client+operation rather than per call: these sit on Realtime
+     * reconnect and per-poll paths, so one event every five minutes says "this is broken" just as
+     * well as three hundred, without evicting the breadcrumb ring that crash triage needs. Every
+     * suppressed call still leaves its breadcrumb.
+     */
     protected fun logSilentFailure(prefix: String, e: Throwable) {
-        if (e is io.appwrite.exceptions.AppwriteException) {
-            Log.d(tag, "$prefix (silent): ${e.message} [${e.code}]")
+        val code = (e as? io.appwrite.exceptions.AppwriteException)?.code
+        if (code != null) {
+            Log.d(tag, "$prefix (silent): ${e.message} [$code]")
         } else {
             Log.d(tag, "$prefix (silent): ${e.message}")
         }
+        if (e is CancellationException) return
+        sentryCaptureThrottled(
+            key = "appwrite.table.$tag.$prefix",
+            message = "$tag: $prefix — ${e.message}",
+            data = buildMap {
+                put("client", tag)
+                put("operation", prefix)
+                code?.let { put("appwriteCode", it) }
+            }
+        )
     }
 
     /**

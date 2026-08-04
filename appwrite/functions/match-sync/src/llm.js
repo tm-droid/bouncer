@@ -66,11 +66,22 @@ export function stripPreamble(text) {
   return out;
 }
 
-// Try each provider in order; return the first non-empty completion, or null.
-export async function generateLine(prompt, { maxTokens = 100, temperature = 0.7, log, error } = {}) {
+/**
+ * Try each provider in order; return the first non-empty completion, or null.
+ *
+ * `attempts` carries why each provider declined. Without it the caller only knew "null", and a
+ * chain that was down for a bad model id looked identical to one that was rate-limited or one
+ * where no key was configured at all — while raw Cricbuzz text went on being written to
+ * `match-commentary` as if it were generated.
+ */
+export async function generateLine(prompt, { maxTokens = 100, temperature = 0.7, log, error, attempts } = {}) {
+  const note = (provider, reason) => attempts?.push(`${provider}: ${reason}`);
   for (const provider of PROVIDERS) {
     const apiKey = process.env[provider.keyEnv];
-    if (!apiKey) continue;
+    if (!apiKey) {
+      note(provider.name, `no ${provider.keyEnv}`);
+      continue;
+    }
     try {
       const resp = await fetch(provider.url, {
         method: "POST",
@@ -88,6 +99,7 @@ export async function generateLine(prompt, { maxTokens = 100, temperature = 0.7,
       });
       if (!resp.ok) {
         error?.(`${provider.name} HTTP ${resp.status}`);
+        note(provider.name, `HTTP ${resp.status}`);
         continue;
       }
       const data = await resp.json();
@@ -96,8 +108,10 @@ export async function generateLine(prompt, { maxTokens = 100, temperature = 0.7,
         log?.(`Generated via ${provider.name}`);
         return content;
       }
+      note(provider.name, "empty completion");
     } catch (e) {
       error?.(`${provider.name} error: ${e?.message}`);
+      note(provider.name, e?.message ?? "threw");
     }
   }
   return null;

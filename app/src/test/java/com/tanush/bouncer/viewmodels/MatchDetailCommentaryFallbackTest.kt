@@ -56,7 +56,8 @@ class MatchDetailCommentaryFallbackTest {
             AppResult.Success(emptyList())
     }
 
-    // A completed Hundred match: `isLive = false`, so no presence heartbeat starts.
+    // A completed Hundred match: terminal, so no presence heartbeat starts (see
+    // MatchDetailPresenceHeartbeatTest — the gate is "not over", not "isLive").
     private val hundredMatch = CricketMatch(
         id = "144783",
         seriesId = "0",

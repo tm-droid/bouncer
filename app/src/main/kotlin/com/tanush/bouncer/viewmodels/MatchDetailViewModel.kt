@@ -7,7 +7,9 @@ import androidx.lifecycle.viewModelScope
 import com.tanush.bouncer.models.AchievementKind
 import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.models.MatchFlowData
+import com.tanush.bouncer.models.MatchStatusClassifier
 import com.tanush.bouncer.models.PreMatchData
+import com.tanush.bouncer.models.StatusSignal
 import com.tanush.bouncer.models.Scorecard
 import com.tanush.bouncer.models.ScrapedBatsman
 import com.tanush.bouncer.models.ScrapedBowler
@@ -26,6 +28,7 @@ import com.tanush.bouncer.services.MatchPresenceReporter
 import com.tanush.bouncer.ui.components.BatsmanMilestoneInfo
 import com.tanush.bouncer.ui.components.MilestoneType
 import com.tanush.bouncer.utils.bouncerExceptionHandler
+import com.tanush.bouncer.utils.sentryCaptureThrottled
 import io.sentry.Breadcrumb
 import io.sentry.Sentry
 import io.sentry.SentryLevel
@@ -125,12 +128,20 @@ class MatchDetailViewModel(
                 if (sc.innings.isNotEmpty()) _uiState.update { it.copy(scorecard = sc) }
             }
         }
-        // Presence heartbeat: while this Live match is open, tell the backend a viewer is
+        // Presence heartbeat: while this match is open and not over, tell the backend a viewer is
         // watching so bouncer-match-sync generates commentary for it. Stops when the ViewModel
         // is cleared (screen left) — viewModelScope cancels the loop and the server-side TTL lapses.
         // Inlined (not its own method) to keep the class under detekt's TooManyFunctions threshold.
-        if (match.isLive) viewModelScope.launch(bouncerExceptionHandler) {
-            while (isActive) {
+        //
+        // The gate is deliberately NOT `match.isLive`. That is a frozen snapshot taken from the
+        // matches list at construction (the same staleness 5b86664 fixed for the polling loop): a
+        // match opened just before the first ball, or opened from a list refreshed while it was
+        // still upcoming, reads false forever and never pings — so match-sync logs "0 with viewers",
+        // only the 45-minute slow tier writes, and the screen falls back to raw Cricbuzz text.
+        // Same rule as the polling loop instead: completed is definitive, anything else pings, and
+        // the server's own status line ends it the moment the match is actually over.
+        viewModelScope.launch(bouncerExceptionHandler) {
+            while (isActive && !isMatchOver(match, _uiState.value.liveStatus)) {
                 MatchPresenceReporter.ping(match.id)
                 delay(PRESENCE_HEARTBEAT_MS)
             }
@@ -207,11 +218,25 @@ class MatchDetailViewModel(
         if (_uiState.value.commentary.isEmpty()) {
             val scraped = scrapeCommentary(matchRepository, match.id)
             if (scraped.isNotEmpty()) {
-                breadcrumb("commentary_fallback", "Scraped ${scraped.size} commentary lines on-device")
+                // This is the raw-Cricbuzz path: unrewritten scraper output rendered verbatim,
+                // visually indistinguishable from AI commentary. It is a legitimate last resort
+                // (a match nobody watched has no server rows and no way to gain any) but it means
+                // the server pipeline produced nothing for a match a user is looking at right now,
+                // so it is reported as degradation rather than logged as routine.
+                sentryCaptureThrottled(
+                    key = "commentary.raw-fallback",
+                    message = "Commentary tab served raw Cricbuzz text — no AI-generated rows for this match",
+                    data = mapOf(
+                        "matchId" to match.id,
+                        "appwriteLines" to 0,
+                        "scrapedLines" to scraped.size
+                    )
+                )
                 _uiState.update { it.copy(commentary = scraped, commentaryError = null) }
             }
         }
     }
+
 
     // CricInfo one-shots: match flow (DRS/powerplay/impact subs) + pre-match (pitch + team news).
     private suspend fun loadCricinfoData() {
@@ -397,6 +422,20 @@ private fun noLiveDataError(st: MatchDetailViewModel.UiState): String? =
  * available" for a completed match, which is the honest message — `commentaryError` would claim a
  * connectivity problem that does not exist.
  */
+/**
+ * Whether the match is definitively over, so the presence heartbeat should stop.
+ *
+ * [liveStatus] is the server's own status line, which arrives via Realtime and is authoritative;
+ * `match.isCompleted` only covers what the matches list already knew at construction. Anything
+ * unclassifiable counts as not-over on purpose — over-pinging costs one function execution per
+ * 90 seconds, under-pinging costs the match its entire generated commentary feed.
+ *
+ * Top-level rather than a method so the ViewModel stays under detekt's TooManyFunctions
+ * threshold, which is also why the heartbeat loop itself is inlined in `init`.
+ */
+private fun isMatchOver(match: CricketMatch, liveStatus: String?): Boolean =
+    match.isCompleted || MatchStatusClassifier.classify(liveStatus) == StatusSignal.TERMINAL
+
 private suspend fun scrapeCommentary(repository: MatchRepository, matchId: String): List<String> =
     runCatching {
         withTimeoutOrNull(COMMENTARY_FETCH_TIMEOUT_MS) {

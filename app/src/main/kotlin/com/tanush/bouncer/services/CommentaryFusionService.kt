@@ -11,6 +11,7 @@ import com.tanush.bouncer.utils.CommentaryFormatter
 import com.tanush.bouncer.utils.ballMetricOfLine
 import com.tanush.bouncer.utils.contentFingerprint
 import com.tanush.bouncer.utils.sentryBreadcrumb
+import com.tanush.bouncer.utils.sentryCaptureThrottled
 import io.sentry.Breadcrumb
 import io.sentry.Sentry
 import io.sentry.SentryLevel
@@ -317,7 +318,16 @@ class CommentaryFusionService(
 
             val result = callGenerateCommentaryFunction(cacheKey, prompt, isMatchComplete, maxTokens = 100, temperature = 0.7, systemInstruction = SYSTEM_INSTRUCTION)
                 ?: callProviders(prompt, maxTokens = 100, temperature = 0.7, systemInstruction = SYSTEM_INSTRUCTION)
-                ?: return@withContext FALLBACK_BALL_COMMENTARY
+                ?: run {
+                    // "Ball delivered. Play continues." is the most visible degradation in the app
+                    // and reported nothing. It means the function AND all three providers declined.
+                    sentryCaptureThrottled(
+                        key = "commentary.ball.placeholder",
+                        message = "Ball commentary fell back to the fixed placeholder — no provider produced a line",
+                        data = mapOf("matchId" to matchId, "ballNumber" to ballNumber)
+                    )
+                    return@withContext FALLBACK_BALL_COMMENTARY
+                }
             AICacheService.setCommentary(result, cacheKey, permanent = isMatchComplete)
             addBallToBuffer(matchId, result)
             result
@@ -369,7 +379,16 @@ class CommentaryFusionService(
         val prompt = "Match event: $cleaned\nRewrite as one broadcast commentary sentence."
         val result = callGenerateCommentaryFunction(cacheKey, prompt, isMatchComplete, maxTokens = 80, temperature = 0.6, systemInstruction = EVENT_SYSTEM_INSTRUCTION)
             ?: callProviders(prompt, maxTokens = 80, temperature = 0.6, systemInstruction = EVENT_SYSTEM_INSTRUCTION)
-            ?: return@withContext cleaned
+            ?: run {
+                // Returning the scraper's own sentence — same class of silent passthrough as the
+                // fusion path, and the reason non-delivery lines can read as raw site text.
+                sentryCaptureThrottled(
+                    key = "commentary.event.raw-fallback",
+                    message = "Event rewrite fell back to the raw source line — no provider produced a line",
+                    data = mapOf("matchId" to matchId)
+                )
+                return@withContext cleaned
+            }
         AICacheService.setCommentary(result, cacheKey, permanent = isMatchComplete)
         result
     }
@@ -419,6 +438,42 @@ class CommentaryFusionService(
         ballNumber.isEmpty() -> ""
         ballNumber.startsWith("Ball ") -> "$ballNumber | "
         else -> "Ball: $ballNumber | "
+    }
+
+    /**
+     * The raw source line, returned when generation could not produce a usable one.
+     *
+     * Two things this deliberately does that its two former inline copies did not:
+     *
+     * 1. **Reports.** Falling back to the scraper's own words is a degradation, not a result. Both
+     *    call sites used to `Log.w` and return, so a dead provider chain or a verifier that could
+     *    not run rendered raw Cricbuzz text into the UI with nothing anywhere to say so.
+     * 2. **Does not cache.** The verification-failure path wrote this string into the AI cache under
+     *    the delivery's key with `permanent = isMatchComplete`, so one failed generation for a
+     *    finished match pinned raw text in the shared Appwrite cache with a 2099 expiry and served
+     *    it to every device forever. An unverified line is a failed generation; the retry on the
+     *    next poll is worth more than a cached surrender. Mirrors the reasoning already applied to
+     *    [summarizeOversWithAI]'s placeholder.
+     */
+    private fun rawFallback(
+        reason: String,
+        matchId: String,
+        ballNumber: String,
+        snippet1: String,
+        snippet2: String
+    ): String {
+        val fallback = CommentaryFormatter.sanitize(snippet1.ifEmpty { snippet2 })
+        Log.w("CommentaryFusionService", "Raw snippet fallback ($reason) — not cached")
+        sentryCaptureThrottled(
+            key = "commentary.fusion.raw-fallback",
+            message = "Commentary fusion fell back to the raw source line: $reason",
+            data = mapOf(
+                "matchId" to matchId,
+                "ballNumber" to ballNumber,
+                "reason" to reason
+            )
+        )
+        return fallback
     }
 
     /**
@@ -504,6 +559,56 @@ class CommentaryFusionService(
         return deferred.await()
     }
 
+    /**
+     * The filled prompt for one delivery — single-source when either snippet is missing, fusion
+     * otherwise.
+     *
+     * Extracted because [computeFuse] and [streamCommentary] built this the same way in two places,
+     * differing only in where the fields came from. Two copies of a template fill is how the two
+     * paths drift into narrating the same ball differently.
+     */
+    private suspend fun buildDeliveryPrompt(context: MatchContext): String {
+        val previousBalls = getPreviousBalls(context.matchId)
+        val previousContext = if (previousBalls.isEmpty()) ""
+            else "\nPrevious balls: ${previousBalls.joinToString(", ")}"
+
+        // 7b: Select phase-adaptive template. Parsed from the label, so "Ball 72" stays a Hundred
+        // counter instead of being read as over 72.
+        val phase = selectPhase(ballMetricOfLine(context.ballNumber), context.totalOvers)
+
+        val contextExtras = buildString {
+            if (context.partnershipContext.isNotEmpty()) appendLine("Partnership: ${context.partnershipContext}")
+            if (context.matchupContext.isNotEmpty()) appendLine("H2H: ${context.matchupContext}")
+            if (context.currentRunRate != null) appendLine("CRR: ${"%.2f".format(context.currentRunRate)}")
+            if (context.requiredRunRate != null) appendLine("RRR: ${"%.2f".format(context.requiredRunRate)}")
+        }.trimEnd()
+
+        val ballField = ballFieldOf(context.ballNumber)
+
+        return if (context.snippet1.isEmpty() || context.snippet2.isEmpty()) {
+            singleSourcePromptForPhase(phase)
+                .replace("{snippet}", context.snippet1.ifEmpty { context.snippet2 })
+                .replace("{ball_field}", ballField)
+                .replace("{bowler}", context.bowler)
+                .replace("{batsman}", context.batsman)
+                .replace("{score_context}", context.scoreContext)
+                .replace("{context_extras}", contextExtras)
+                .replace("{previous_balls_context}", previousContext)
+        } else {
+            fusionPromptForPhase(phase)
+                .replace("{snippet1}", context.snippet1)
+                .replace("{snippet2}", context.snippet2)
+                .replace("{ball_field}", ballField)
+                .replace("{bowler}", context.bowler)
+                .replace("{batsman}", context.batsman)
+                .replace("{score_context}", context.scoreContext)
+                .replace("{context_extras}", contextExtras)
+                .replace("{overs_summary}", context.oversSummary)
+                .replace("{previous_balls_context}", previousContext)
+        }
+    }
+
+    @Suppress("LongParameterList")
     private suspend fun computeFuse(
         snippet1: String,
         snippet2: String,
@@ -522,51 +627,38 @@ class CommentaryFusionService(
         currentRunRate: Double? = null,
         requiredRunRate: Double? = null
     ): String {
-        val previousBalls = getPreviousBalls(matchId)
-        val previousContext = if (previousBalls.isEmpty()) ""
-            else "\nPrevious balls: ${previousBalls.joinToString(", ")}"
-
-        // 7b: Select phase-adaptive template. Parsed from the label, so "Ball 72" stays a Hundred
-        // counter instead of being read as over 72.
-        val phase = selectPhase(ballMetricOfLine(ballNumber), totalOvers)
-
-        val contextExtras = buildString {
-            if (partnershipContext.isNotEmpty()) appendLine("Partnership: $partnershipContext")
-            if (matchupContext.isNotEmpty()) appendLine("H2H: $matchupContext")
-            if (currentRunRate != null) appendLine("CRR: ${"%.2f".format(currentRunRate)}")
-            if (requiredRunRate != null) appendLine("RRR: ${"%.2f".format(requiredRunRate)}")
-        }.trimEnd()
-
-        val ballField = ballFieldOf(ballNumber)
-
-        val prompt = if (snippet1.isEmpty() || snippet2.isEmpty()) {
-            singleSourcePromptForPhase(phase)
-                .replace("{snippet}", snippet1.ifEmpty { snippet2 })
-                .replace("{ball_field}", ballField)
-                .replace("{bowler}", bowler)
-                .replace("{batsman}", batsman)
-                .replace("{score_context}", scoreContext)
-                .replace("{context_extras}", contextExtras)
-                .replace("{previous_balls_context}", previousContext)
-        } else {
-            fusionPromptForPhase(phase)
-                .replace("{snippet1}", snippet1)
-                .replace("{snippet2}", snippet2)
-                .replace("{ball_field}", ballField)
-                .replace("{bowler}", bowler)
-                .replace("{batsman}", batsman)
-                .replace("{score_context}", scoreContext)
-                .replace("{context_extras}", contextExtras)
-                .replace("{overs_summary}", oversSummary)
-                .replace("{previous_balls_context}", previousContext)
-        }
+        val prompt = buildDeliveryPrompt(
+            MatchContext(
+                matchId = matchId,
+                over = over,
+                ballNumber = ballNumber,
+                snippet1 = snippet1,
+                snippet2 = snippet2,
+                oversSummary = oversSummary,
+                bowler = bowler,
+                batsman = batsman,
+                scoreContext = scoreContext,
+                totalOvers = totalOvers,
+                partnershipContext = partnershipContext,
+                matchupContext = matchupContext,
+                isMatchComplete = isMatchComplete,
+                currentRunRate = currentRunRate,
+                requiredRunRate = requiredRunRate,
+            )
+        )
 
         val functionResult = callGenerateCommentaryFunction(cacheKey, prompt, isMatchComplete, maxTokens = 256, temperature = 0.6, systemInstruction = SYSTEM_INSTRUCTION)
         val (result, usedProviderName) = if (functionResult != null) {
             Pair(functionResult, "appwrite-function")
         } else {
             callProvidersTracked(prompt, maxTokens = 256, temperature = 0.6, systemInstruction = SYSTEM_INSTRUCTION)
-                ?: return CommentaryFormatter.sanitize(snippet1.ifEmpty { snippet2 })
+                ?: return rawFallback(
+                    reason = "all providers exhausted",
+                    matchId = matchId,
+                    ballNumber = ballNumber,
+                    snippet1 = snippet1,
+                    snippet2 = snippet2
+                )
         }
 
         val verified = verifyCommentary(result, snippet1, snippet2, ballNumber, bowler, batsman)
@@ -582,10 +674,13 @@ class CommentaryFusionService(
                 }
                 // retried also unverified — fall through to raw snippet fallback
             }
-            val fallback = CommentaryFormatter.sanitize(snippet1.ifEmpty { snippet2 })
-            Log.w("CommentaryFusionService", "All providers exhausted — using raw snippet fallback")
-            AICacheService.setCommentary(fallback, cacheKey, permanent = isMatchComplete)
-            return fallback
+            return rawFallback(
+                reason = "verification failed after retry",
+                matchId = matchId,
+                ballNumber = ballNumber,
+                snippet1 = snippet1,
+                snippet2 = snippet2
+            )
         }
 
         AICacheService.setCommentary(result, cacheKey, permanent = isMatchComplete)
@@ -610,42 +705,7 @@ class CommentaryFusionService(
             return@flow
         }
 
-        val previousBalls = getPreviousBalls(matchContext.matchId)
-        val previousContext = if (previousBalls.isEmpty()) ""
-            else "\nPrevious balls: ${previousBalls.joinToString(", ")}"
-
-        val phase = selectPhase(ballMetricOfLine(matchContext.ballNumber), matchContext.totalOvers)
-
-        val streamContextExtras = buildString {
-            if (matchContext.partnershipContext.isNotEmpty()) appendLine("Partnership: ${matchContext.partnershipContext}")
-            if (matchContext.matchupContext.isNotEmpty()) appendLine("H2H: ${matchContext.matchupContext}")
-            if (matchContext.currentRunRate != null) appendLine("CRR: ${"%.2f".format(matchContext.currentRunRate)}")
-            if (matchContext.requiredRunRate != null) appendLine("RRR: ${"%.2f".format(matchContext.requiredRunRate)}")
-        }.trimEnd()
-
-        val streamBallField = ballFieldOf(matchContext.ballNumber)
-
-        val prompt = if (matchContext.snippet1.isEmpty() || matchContext.snippet2.isEmpty()) {
-            singleSourcePromptForPhase(phase)
-                .replace("{snippet}", matchContext.snippet1.ifEmpty { matchContext.snippet2 })
-                .replace("{ball_field}", streamBallField)
-                .replace("{bowler}", matchContext.bowler)
-                .replace("{batsman}", matchContext.batsman)
-                .replace("{score_context}", matchContext.scoreContext)
-                .replace("{context_extras}", streamContextExtras)
-                .replace("{previous_balls_context}", previousContext)
-        } else {
-            fusionPromptForPhase(phase)
-                .replace("{snippet1}", matchContext.snippet1)
-                .replace("{snippet2}", matchContext.snippet2)
-                .replace("{ball_field}", streamBallField)
-                .replace("{bowler}", matchContext.bowler)
-                .replace("{batsman}", matchContext.batsman)
-                .replace("{score_context}", matchContext.scoreContext)
-                .replace("{context_extras}", streamContextExtras)
-                .replace("{overs_summary}", matchContext.oversSummary)
-                .replace("{previous_balls_context}", previousContext)
-        }
+        val prompt = buildDeliveryPrompt(matchContext)
 
         val now = System.currentTimeMillis()
         val fullBuilder = StringBuilder()
@@ -847,7 +907,14 @@ class CommentaryFusionService(
             ?: callProviders(prompt, maxTokens = 512, temperature = 0.4)
             // Generation failed (e.g. read-budget 402 + all providers down). Return the placeholder
             // WITHOUT caching, so this over is re-attempted next time instead of being poisoned.
-            ?: return AICacheService.UNAVAILABLE_PLACEHOLDER
+            ?: run {
+                sentryCaptureThrottled(
+                    key = "commentary.recap.unavailable",
+                    message = "Over recap unavailable — no provider produced a summary",
+                    data = mapOf("matchId" to matchId, "over" to over)
+                )
+                return AICacheService.UNAVAILABLE_PLACEHOLDER
+            }
         AICacheService.setCommentary(result, cacheKey, permanent = isMatchComplete)
         return result
     }
