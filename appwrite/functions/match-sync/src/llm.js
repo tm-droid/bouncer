@@ -74,9 +74,37 @@ export function stripPreamble(text) {
  * where no key was configured at all — while raw Cricbuzz text went on being written to
  * `match-commentary` as if it were generated.
  */
-export async function generateLine(prompt, { maxTokens = 100, temperature = 0.7, log, error, attempts } = {}) {
+export async function generateLine(
+  prompt,
+  {
+    maxTokens = 100,
+    temperature = 0.7,
+    log,
+    error,
+    attempts,
+    // Providers already tried for this line — the hallucination retry must not re-ask the model
+    // that just failed the fact-check.
+    exclude = [],
+    // Mutated with { provider } so the caller knows who answered without changing the return type.
+    used,
+    // Verification is not commentary: sending the broadcast-style system prompt with a
+    // PASS/FAIL question is how a fact-checker starts narrating.
+    systemInstruction = SYSTEM_INSTRUCTION,
+  } = {}
+) {
   const note = (provider, reason) => attempts?.push(`${provider}: ${reason}`);
+
+  // Test hook, mirrored on PROBE_SOURCES: exercise the exhausted-chain path — raw passthrough,
+  // ai_generated:false, Sentry event — without touching a single provider key. Unset in normal
+  // operation, so this is dead code on every real run.
+  if (process.env.FORCE_LLM_FAILURE) {
+    note("all", "forced failure (FORCE_LLM_FAILURE)");
+    error?.("[FORCE_LLM_FAILURE] skipping every provider — generation will fall through to raw text");
+    return null;
+  }
+
   for (const provider of PROVIDERS) {
+    if (exclude.includes(provider.name)) continue;
     const apiKey = process.env[provider.keyEnv];
     if (!apiKey) {
       note(provider.name, `no ${provider.keyEnv}`);
@@ -89,7 +117,7 @@ export async function generateLine(prompt, { maxTokens = 100, temperature = 0.7,
         body: JSON.stringify({
           model: provider.model,
           messages: [
-            { role: "system", content: SYSTEM_INSTRUCTION },
+            { role: "system", content: systemInstruction },
             { role: "user", content: prompt },
           ],
           max_tokens: maxTokens,
@@ -106,6 +134,7 @@ export async function generateLine(prompt, { maxTokens = 100, temperature = 0.7,
       const content = data.choices?.[0]?.message?.content?.trim();
       if (content) {
         log?.(`Generated via ${provider.name}`);
+        if (used) used.provider = provider.name;
         return content;
       }
       note(provider.name, "empty completion");
@@ -115,4 +144,93 @@ export async function generateLine(prompt, { maxTokens = 100, temperature = 0.7,
     }
   }
   return null;
+}
+
+// Kept byte-identical in intent to CommentaryFusionService.VERIFICATION_PROMPT_TEMPLATE, which this
+// replaces. The check moved server-side when the device stopped holding provider keys — the guard
+// against invented names and events is worth the same two LLM calls it always cost, it just cannot
+// run anywhere the keys are public.
+export const VERIFICATION_PROMPT_TEMPLATE = `You are a cricket commentary fact-checker. Verify that the AI-generated commentary does not hallucinate.
+
+Source 1: {snippet1}
+Source 2: {snippet2}
+AI output: {ai_output}
+{ball_field}Bowler: {bowler} | Batsman: {batsman}
+
+Answer ONLY "PASS" if accurate and uses only correct names from the sources, or "FAIL" if it contains hallucinated names, invented details, or unsupported information.
+One word: PASS or FAIL.`;
+
+// A fact-checker must not be told to write cinematic prose.
+const VERIFY_SYSTEM_INSTRUCTION =
+  "You are a precise fact-checker. Answer with exactly one word: PASS or FAIL.";
+
+/**
+ * Whether [line] is supported by the source snippets.
+ *
+ * Fails **closed**: no provider available means no verdict, and caching unverified content is worse
+ * than discarding it (the same P0-5 reasoning the Kotlin implementation carried). Temperature 0 so
+ * the same inputs always produce the same verdict.
+ */
+export async function verifyLine(
+  { line, snippet1 = "", snippet2 = "", ball = "", bowler = "", batsman = "" },
+  { log, error, attempts } = {}
+) {
+  const prompt = VERIFICATION_PROMPT_TEMPLATE
+    .replace("{snippet1}", snippet1)
+    .replace("{snippet2}", snippet2)
+    .replace("{ai_output}", line)
+    .replace("{ball_field}", ball ? `Ball: ${ball} | ` : "")
+    .replace("{bowler}", bowler)
+    .replace("{batsman}", batsman);
+
+  const verdict = await generateLine(prompt, {
+    maxTokens: 16,
+    temperature: 0,
+    systemInstruction: VERIFY_SYSTEM_INSTRUCTION,
+    log,
+    error,
+    attempts,
+  });
+  if (!verdict) {
+    error?.("Verification unavailable — failing closed (FAIL)");
+    return false;
+  }
+  return verdict.trim().toUpperCase().startsWith("PASS");
+}
+
+/**
+ * Generate a line and, when [verify] is set, fact-check it — retrying once with a *different*
+ * provider before giving up.
+ *
+ * Returns `{ line, provider, verified, reason }`. A null `line` is the caller's signal to write the
+ * raw source text and mark the row `ai_generated: false`; `reason` distinguishes "nobody answered"
+ * from "the answer was rejected", which are the same symptom and very different causes.
+ */
+export async function generateVerifiedLine(prompt, options = {}) {
+  const { verify = false, context = {}, attempts, log, error, ...genOptions } = options;
+  const pass = { attempts, log, error };
+
+  const used = {};
+  const first = await generateLine(prompt, { ...genOptions, ...pass, used });
+  if (!first) return { line: null, provider: null, verified: false, reason: "providers_exhausted" };
+  if (!verify) return { line: first, provider: used.provider, verified: null, reason: null };
+
+  if (await verifyLine({ line: first, ...context }, pass)) {
+    return { line: first, provider: used.provider, verified: true, reason: null };
+  }
+
+  attempts?.push(`${used.provider ?? "unknown"}: verification FAIL`);
+  const retryUsed = {};
+  const second = await generateLine(prompt, {
+    ...genOptions,
+    ...pass,
+    exclude: used.provider ? [used.provider] : [],
+    used: retryUsed,
+  });
+  if (second && (await verifyLine({ line: second, ...context }, pass))) {
+    log?.(`Hallucination retry succeeded with ${retryUsed.provider}`);
+    return { line: second, provider: retryUsed.provider, verified: true, reason: null };
+  }
+
+  return { line: null, provider: null, verified: false, reason: "verification_failed" };
 }

@@ -10,7 +10,7 @@ import {
   parseLiveDetail,
   parseScorecard,
 } from "./cricbuzz.js";
-import { generateLine, sanitize, stripPreamble } from "./llm.js";
+import { generateVerifiedLine, sanitize, stripPreamble } from "./llm.js";
 import {
   initObservability,
   report,
@@ -630,16 +630,28 @@ async function syncMatch({ db, matchId, title, commentaryCap, model, log, error 
         (contextLine ? `${contextLine}\n` : "") +
         `Write one vivid broadcast commentary line. Start with ${ball}: at the beginning.`;
       const attempts = [];
-      const generated = await generateLine(prompt, { maxTokens: 100, temperature: 0.7, log, error, attempts });
-      if (generated) {
-        line = sanitize(stripPreamble(generated));
+      // Verified generation: the hallucination check that used to run on the device, where the
+      // provider keys no longer live. A rejected line is a failed generation, not a usable one —
+      // it falls through to raw text and is marked, rather than being written as if it were AI.
+      const generated = await generateVerifiedLine(prompt, {
+        maxTokens: 100,
+        temperature: 0.7,
+        verify: true,
+        context: { snippet1: clean, ball, bowler, batsman },
+        log,
+        error,
+        attempts,
+      });
+      if (generated.line) {
+        line = sanitize(stripPreamble(generated.line));
         if (line && !line.startsWith(ball)) line = `${ball}: ${line}`;
       } else {
         aiGenerated = false;
-        error(`[PASSTHROUGH] ${matchId}/${ball}: writing raw Cricbuzz text — ${attempts.join("; ")}`);
-        report("match-sync wrote raw Cricbuzz text — AI provider chain produced nothing", {
+        error(`[PASSTHROUGH] ${matchId}/${ball} (${generated.reason}): writing raw Cricbuzz text — ${attempts.join("; ")}`);
+        report("match-sync wrote raw Cricbuzz text — AI generation produced nothing usable", {
           matchId,
           ball,
+          reason: generated.reason,
           attempts: attempts.join("; "),
         });
       }
