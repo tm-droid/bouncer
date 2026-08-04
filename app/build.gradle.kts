@@ -65,21 +65,22 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        buildConfigField("String", "RAPIDAPI_KEY", "\"${localProperties.getProperty("RAPIDAPI_KEY") ?: System.getenv("RAPIDAPI_KEY") ?: ""}\"")
-        buildConfigField("String", "GROQ_API_KEY",      "\"${localProperties.getProperty("GROQ_API_KEY")      ?: System.getenv("GROQ_API_KEY")      ?: ""}\"")
-        buildConfigField("String", "CEREBRAS_API_KEY",  "\"${localProperties.getProperty("CEREBRAS_API_KEY")  ?: System.getenv("CEREBRAS_API_KEY")  ?: ""}\"")
-        buildConfigField("String", "SAMBANOVA_API_KEY", "\"${localProperties.getProperty("SAMBANOVA_API_KEY") ?: System.getenv("SAMBANOVA_API_KEY") ?: ""}\"")
+        // No secret is compiled into this app. Provider keys (Groq/Cerebras/SambaNova), the
+        // RapidAPI and Highlightly keys, and the old BOUNCER_FUNCTION_SECRET all used to live here
+        // as BuildConfig string constants — which put them, in clear text, in every shipped APK:
+        //   unzip -oq app.apk 'classes*.dex' && strings classes*.dex | grep gsk_
+        // R8 does not obfuscate string literals, so minification never hid them. Commentary
+        // generation now runs entirely in bouncer-generate-commentary, which holds the keys
+        // server-side. The ids below are not secrets: they name public, read("any") resources.
         buildConfigField("String", "APPWRITE_ENDPOINT", "\"${localProperties.getProperty("APPWRITE_ENDPOINT") ?: System.getenv("APPWRITE_ENDPOINT") ?: ""}\"")
         buildConfigField("String", "APPWRITE_PROJECT_ID", "\"${localProperties.getProperty("APPWRITE_PROJECT_ID") ?: System.getenv("APPWRITE_PROJECT_ID") ?: ""}\"")
 buildConfigField("String", "APPWRITE_AI_CACHE_DB_ID", "\"${localProperties.getProperty("APPWRITE_AI_CACHE_DB_ID") ?: System.getenv("APPWRITE_AI_CACHE_DB_ID") ?: ""}\"")
         buildConfigField("String", "APPWRITE_AI_CACHE_COL_ID", "\"${localProperties.getProperty("APPWRITE_AI_CACHE_COL_ID") ?: System.getenv("APPWRITE_AI_CACHE_COL_ID") ?: ""}\"")
         buildConfigField("String", "APPWRITE_FAVOURITES_COL_ID", "\"${localProperties.getProperty("APPWRITE_FAVOURITES_COL_ID") ?: System.getenv("APPWRITE_FAVOURITES_COL_ID") ?: ""}\"")
-        buildConfigField("String", "HIGHLIGHTLY_API_KEY", "\"${localProperties.getProperty("HIGHLIGHTLY_API_KEY") ?: System.getenv("HIGHLIGHTLY_API_KEY") ?: ""}\"")
         buildConfigField("String", "APPWRITE_HIGHLIGHTS_DB_ID", "\"${localProperties.getProperty("APPWRITE_HIGHLIGHTS_DB_ID") ?: System.getenv("APPWRITE_HIGHLIGHTS_DB_ID") ?: ""}\"")
         buildConfigField("String", "APPWRITE_HIGHLIGHTS_COL_ID", "\"${localProperties.getProperty("APPWRITE_HIGHLIGHTS_COL_ID") ?: System.getenv("APPWRITE_HIGHLIGHTS_COL_ID") ?: ""}\"")
         buildConfigField("String", "APPWRITE_PLAYER_FORMS_DB_ID", "\"${localProperties.getProperty("APPWRITE_PLAYER_FORMS_DB_ID") ?: System.getenv("APPWRITE_PLAYER_FORMS_DB_ID") ?: ""}\"")
         buildConfigField("String", "APPWRITE_PLAYER_PROFILES_COL_ID", "\"${localProperties.getProperty("APPWRITE_PLAYER_PROFILES_COL_ID") ?: System.getenv("APPWRITE_PLAYER_PROFILES_COL_ID") ?: ""}\"")
-        buildConfigField("String", "BOUNCER_FUNCTION_SECRET", "\"${localProperties.getProperty("BOUNCER_FUNCTION_SECRET") ?: System.getenv("BOUNCER_FUNCTION_SECRET") ?: ""}\"")
         manifestPlaceholders["sentryDsn"] = localProperties.getProperty("SENTRY_DSN")
             ?: System.getenv("SENTRY_DSN")
             ?: ""

@@ -1,13 +1,27 @@
 sdk.dir=/Users/YOUR_USERNAME/Library/Android/sdk
 
-# API Keys - DO NOT COMMIT local.properties TO VERSION CONTROL
-# Required for TeamDirectory (cricket-api-free-data) and NewsViewModel (cricbuzz-cricket) API calls.
-# Without this key, those features are silently skipped. Get your key from rapidapi.com.
-RAPIDAPI_KEY=
+# ─────────────────────────────────────────────────────────────────────────────
+# NO API KEYS BELONG IN THIS FILE ANY MORE.
+#
+# Anything wired through `buildConfigField` becomes a BuildConfig string constant, which lands in
+# clear text in every APK — `unzip -oq app.apk 'classes*.dex' && strings classes*.dex` reads it back
+# out, and R8 does not obfuscate string literals. The Groq, Cerebras, SambaNova, RapidAPI and
+# Highlightly keys were distributed to every user that way until 2026-08-04.
+#
+# Provider keys now live only in the Appwrite function environments
+# (bouncer-generate-commentary, bouncer-match-sync, bouncer-highlights-sync, bouncer-news-sync).
+# Set them in the Appwrite console, not here. The app calls the functions; it holds no credentials.
+#
+# The only secrets left below are build-machine ones (Sentry CLI upload token, release signing).
+# They are used by Gradle at build time and never reach a BuildConfig field.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Sentry CLI auth for release source-context/ProGuard uploads (build-time only).
 SENTRY_USER_AUTH_TOKEN=
+# Ingest endpoint. Public by design — a DSN can submit events, not read them.
 SENTRY_DSN=
 
-# Appwrite
+# Appwrite resource ids. Not secrets: these name public read("any") resources.
 APPWRITE_ENDPOINT=https://sgp.cloud.appwrite.io/v1
 APPWRITE_PROJECT_ID=6a02f7f3000e6e100b19
 APPWRITE_AI_CACHE_DB_ID=bouncer-db
@@ -17,13 +31,6 @@ APPWRITE_HIGHLIGHTS_DB_ID=bouncer-db
 APPWRITE_HIGHLIGHTS_COL_ID=highlights
 APPWRITE_PLAYER_FORMS_DB_ID=bouncer-db
 APPWRITE_PLAYER_PROFILES_COL_ID=player-profiles
-HIGHLIGHTLY_API_KEY=
-
-# Ball AI Commentary — provider rotation (Groq → Cerebras → SambaNova)
-GROQ_API_KEY=
-CEREBRAS_API_KEY=
-SAMBANOVA_API_KEY=
-BOUNCER_FUNCTION_SECRET=
 
 # Release signing — generated via keytool; never commit actual values
 KEYSTORE_PASSWORD=your_keystore_password_here

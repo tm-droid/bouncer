@@ -67,12 +67,16 @@ object AppwriteClient {
             return null
         }
         return try {
-            val secret = com.tanush.bouncer.ApiKeys.bouncerFunctionSecret
+            // The device identifies itself so the server can rate-limit per device. This replaced
+            // `x-bouncer-secret`, a shared secret compiled into BuildConfig and therefore readable
+            // out of the APK — it gated nothing while implying it did. A device id is not a
+            // credential and is not treated as one: it is a bucket key, and a request without it
+            // simply falls into the server's IP bucket instead.
             val execution = functions.createExecution(
                 functionId = functionId,
                 body = body,
                 async = false,
-                headers = if (secret.isNotBlank()) mapOf("x-bouncer-secret" to secret) else null,
+                headers = mapOf("x-bouncer-device" to DeviceIdentity.id),
             )
             AppwriteReadGuard.recordSuccess(quota = AppwriteReadGuard.Quota.EXECUTIONS)
             AppwriteUsageTracker.recordFunctionExecution()

@@ -10,7 +10,6 @@ import com.tanush.bouncer.managers.MatchSubscriptionManager
 import com.tanush.bouncer.managers.NotificationInboxManager
 import com.tanush.bouncer.managers.TeamLogoManager
 import com.tanush.bouncer.managers.TeamAcronymManager
-import com.tanush.bouncer.data.TeamDirectory
 import com.tanush.bouncer.data.local.BouncerDatabase
 import com.tanush.bouncer.data.remote.AppwriteAICache
 import com.tanush.bouncer.data.remote.AppwriteClient
@@ -153,11 +152,6 @@ class BouncerApp : Application() {
         initializeSafely("AICacheService") {
             AICacheService.initialize(BouncerDatabase.getInstance(this).aiCacheDao())
         }
-        // Warm team directory so first screen access doesn't block / silently fail.
-        applicationScope.launch(Dispatchers.IO) {
-            try { TeamDirectory.fetchTeams() } catch (e: Exception) { Sentry.captureException(e) }
-        }
-
         // Start Appwrite Realtime subscriptions (app-lifetime)
         initializeSafely("AppwriteRealtime") {
             val database = BouncerDatabase.getInstance(this)

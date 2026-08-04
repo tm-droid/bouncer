@@ -8,6 +8,7 @@ import android.util.Log
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.tanush.bouncer.data.remote.AppwriteFavouritesSync
+import com.tanush.bouncer.data.remote.DeviceIdentity
 import io.sentry.Sentry
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -46,6 +47,10 @@ object FavouriteTeamsManager {
             prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
             _favourites.value = load()
             Log.d(TAG, "Initialized with ${_favourites.value.size} favourites")
+            // Same prefs, same id: DeviceIdentity reuses the UUID this client has persisted since
+            // favourites sync shipped, and is initialized here so it is ready before the first
+            // function call rather than depending on this client's own lifecycle.
+            DeviceIdentity.initialize(prefs)
             AppwriteFavouritesSync.initialize(prefs)
             // Pull remote favourites; adopt if local is empty (e.g. fresh install)
             scope.launch {
