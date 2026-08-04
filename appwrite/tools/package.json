@@ -1,0 +1,9 @@
+{
+  "name": "bouncer-appwrite-tools",
+  "private": true,
+  "type": "module",
+  "description": "Local operator tools for the Bouncer Appwrite functions. Not deployed — appwrite.config.json maps each function to its own directory and none of them is this one.",
+  "dependencies": {
+    "node-appwrite": "^15.0.0"
+  }
+}
