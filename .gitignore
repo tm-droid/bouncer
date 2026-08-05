@@ -72,3 +72,11 @@ vercel-api/
 
 # Sentry wizard binary
 sentry-wizard
+
+# Appwrite function dependencies. NEVER track these: a PARTIAL node_modules is worse than
+# none. Only the text files (LICENSE, README, package.json) of each package were ever
+# committed, so a VCS build checked out a @sentry/node with a valid package.json and no
+# build/ directory, npm install treated it as already present, and bouncer-match-sync died
+# on "Cannot find module @sentry/node/build/esm/index.js" every minute until the previous
+# deployment was reactivated by hand (2026-08-05 01:53-02:15 UTC).
+appwrite/functions/*/node_modules/

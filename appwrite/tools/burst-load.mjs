@@ -57,7 +57,10 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(HERE, "..", "..");
 
 const FUNCTION_ID = "bouncer-generate-commentary";
-const RAMP_LEVELS = [4, 8, 12]; // match-sync MAX_MATCHES = 12
+// match-sync MAX_MATCHES = 12, so 12 is the ceiling of the realistic shape. `--levels` narrows it:
+// the 2026-08-04 run stopped at the first level, which measured "somewhere at or below 4" and no
+// more. Re-measuring after a fix wants the rungs below 4 that were never climbed.
+const DEFAULT_RAMP_LEVELS = [4, 8, 12];
 const ROWS_PER_CHAIN = 10; // match-sync MAX_NEW_PER_MATCH = 10
 
 // generate-commentary/src/rateLimit.js allows 40 calls / 5min per x-bouncer-device. A breach costs
@@ -433,6 +436,18 @@ function dryRun(runId) {
 const args = process.argv.slice(2);
 const mode =
   args.find((a) => ["--dry-run", "--preflight", "--run", "--cleanup-only"].includes(a)) ?? "--dry-run";
+
+// `--levels 1,2,4`. Ascending and de-duplicated: the whole point of a ramp is that the first level
+// to fail is the ceiling, which is only true if every level below it already passed.
+const levelsArg = args[args.indexOf("--levels") + 1];
+const RAMP_LEVELS =
+  args.includes("--levels") && levelsArg && !levelsArg.startsWith("--")
+    ? [...new Set(levelsArg.split(",").map((n) => Number(n.trim())))].filter((n) => n > 0).sort((a, b) => a - b)
+    : DEFAULT_RAMP_LEVELS;
+if (!RAMP_LEVELS.length) {
+  console.error("--levels needs at least one positive integer, e.g. --levels 1,2,4");
+  process.exit(1);
+}
 const runId = args[args.indexOf("--cleanup-only") + 1] && mode === "--cleanup-only"
   ? args[args.indexOf("--cleanup-only") + 1]
   : `lt${Date.now().toString(36)}`;
