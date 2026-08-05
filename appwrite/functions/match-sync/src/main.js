@@ -1,3 +1,22 @@
+// DEPLOYING THIS FUNCTION
+//
+//   node appwrite/tools/deploy-function.mjs bouncer-match-sync --with-node-modules
+//
+// That is the only path. Pushing to main does NOT deploy this function any more — the GitHub link
+// was removed on 2026-08-05 (installationId 6a40a4cb5b3834b385d6, repository 1168989305, branch
+// main, root appwrite/functions/match-sync, if it ever needs restoring from the console).
+//
+// It was removed because it caused a 22-minute production outage and then raced the fix. A push
+// auto-built this function from the repo, and the repo had a PARTIAL node_modules committed, so the
+// build produced an @sentry/node with a valid package.json and no build/ directory; npm install
+// treated it as satisfied, the deployment reported `ready` at 4.8MB instead of 18MB, and every
+// scheduled run died at module load with "Cannot find module @sentry/node/build/esm/index.js" —
+// before any handler code, so nothing in observability.js could report it. Later, the trigger
+// proved non-deterministic as well: three consecutive pushes touching this directory fired, did
+// not fire, and fired again, twice superseding a manual deployment seconds after it went live.
+//
+// The `--with-node-modules` flag is not optional here: this function has repeatedly failed to build
+// from a source-only archive (an Appwrite sidecar bug), which the VCS path could not do anyway.
 import { Client, Storage, Databases } from "node-appwrite";
 import { InputFile } from "node-appwrite/file";
 import { createHash } from "crypto";
