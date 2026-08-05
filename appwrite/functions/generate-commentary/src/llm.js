@@ -28,6 +28,52 @@ const PROVIDERS = [
   { name: "sambanova", url: "https://api.sambanova.ai/v1/chat/completions",     model: "DeepSeek-V3.1",               keyEnv: "SAMBANOVA_API_KEY" },
 ];
 
+// How many times a provider must have been asked before "it 429s every time" is evidence of
+// anything. Below this it is indistinguishable from bad luck during a burst.
+const DEAD_PROVIDER_MIN_CALLS = 5;
+
+// Per-container tally of how each provider actually answered.
+//
+// `attempts` already records every failure, but only per line, and only reaches Sentry on a 503 —
+// so a provider that is permanently dead and one that is briefly busy write the identical
+// `sambanova: HTTP 429` string and nothing aggregates them. That is exactly how SambaNova sat at
+// zero for an unknown period behind a model id whose quota had been withdrawn (2026-08-05): the
+// symptom was visible on every single call and invisible in every alert.
+//
+// Module scope is deliberate and is the opposite choice from `unavailable` above. That set must not
+// outlive one line, because a rate-limited provider recovers. This must outlive one line, because
+// one line cannot tell the difference between dead and busy — only the ratio across many can.
+// An Appwrite container is recycled often enough that a recovered provider clears on its own.
+const health = new Map();
+
+function noteHealth(name, outcome) {
+  const h = health.get(name) ?? { calls: 0, rateLimited: 0, reported: false };
+  h.calls += 1;
+  if (outcome === "rate_limited") h.rateLimited += 1;
+  health.set(name, h);
+}
+
+/**
+ * Providers that have been asked enough times to judge and answered 429 to every single one.
+ *
+ * Each is returned at most once per container (`reported`), because the caller reports on a
+ * per-run basis and a dead provider stays dead — the signal is worth one event, not one a minute.
+ */
+export function deadProviders(minCalls = DEAD_PROVIDER_MIN_CALLS) {
+  const dead = [];
+  for (const [name, h] of health) {
+    if (h.reported || h.calls < minCalls || h.rateLimited !== h.calls) continue;
+    h.reported = true;
+    dead.push({ provider: name, calls: h.calls, rateLimited: h.rateLimited });
+  }
+  return dead;
+}
+
+/** Test seam — the tally is module state and would otherwise leak between cases. */
+export function resetProviderHealth() {
+  health.clear();
+}
+
 // Kept byte-identical to CommentaryFusionService.SYSTEM_INSTRUCTION. The same ball can be narrated
 // by either, so a drift between them shows up as two different house styles in one match.
 //
@@ -156,9 +202,14 @@ export async function generateLine(
       if (!resp.ok) {
         error?.(`${provider.name} HTTP ${resp.status}`);
         note(provider.name, `HTTP ${resp.status}`);
+        noteHealth(provider.name, resp.status === 429 ? "rate_limited" : "error");
         unavailable?.add(provider.name);
         continue;
       }
+      // A 200 is a 200 whether or not the completion was usable — an empty completion is a prompt
+      // problem, not a provider that is refusing to serve us, and folding it into the tally would
+      // let a bad prompt look like a dead account.
+      noteHealth(provider.name, "ok");
       const data = await resp.json();
       const content = data.choices?.[0]?.message?.content?.trim();
       if (content) {
@@ -170,6 +221,7 @@ export async function generateLine(
     } catch (e) {
       error?.(`${provider.name} error: ${e?.message}`);
       note(provider.name, e?.message ?? "threw");
+      noteHealth(provider.name, "error");
       unavailable?.add(provider.name);
     }
   }
@@ -189,6 +241,40 @@ AI output: {ai_output}
 
 Answer ONLY "PASS" if accurate and uses only correct names from the sources, or "FAIL" if it contains hallucinated names, invented details, or unsupported information.
 One word: PASS or FAIL.`;
+
+// Cricbuzz capitalises the event itself and lowercases the prose around it, so these are
+// deliberately CASE-SENSITIVE: `\bSIX\b` does not match "sixth", `\bFOUR\b` does not match "fourth",
+// and `\bOUT\b` does not match the "outside off" / "drove it out to deep cover" that appear on
+// almost every delivery. A case-insensitive version of this regex matches most of the innings.
+const UPPER_EVENT_RE = /\b(?:FOUR|SIX|OUT|WICKET)\b/;
+
+// The other dismissal shape Cricbuzz writes, where "out" is lowercase and the method follows:
+// "Ashwin to Smith, out Caught by Kohli". Case-insensitive is safe HERE because the method word
+// is what carries the meaning — "out" alone is not enough to match.
+const DISMISSAL_RE = /\bout\s+(?:caught|bowled|lbw|stumped|run\s+out|hit\s+wicket|retired)\b/i;
+
+/**
+ * Whether this delivery is worth fact-checking.
+ *
+ * Verification doubles the provider cost of a line — generate, then verify, then on a FAIL another
+ * generate and another verify. Measured 2026-08-05, the combined chain sustains ~48 requests/minute
+ * (groq 30 + sambanova ~13 + cerebras 5) against a groq budget of 1000/day, so at two calls a line
+ * the whole app can produce roughly 1,700 verified lines a day. Most deliveries are a dot or a
+ * single, where the model has almost nothing to invent and the check reliably returns PASS.
+ *
+ * Wickets and boundaries are the opposite: they carry a fielder, a dismissal method, a shot and a
+ * region, they are the lines a reader actually remembers, and they are where an invented detail
+ * does real damage. So the check is spent there.
+ *
+ * Biased toward saying yes. A false positive costs one extra provider call; a false negative ships
+ * an unverified wicket. Deliberately NOT covered: milestones (a fifty, a hundred) — they are
+ * hallucination-prone too, but they are not reliably marked in `commText` and guessing at them
+ * would drag most of the innings back into verification.
+ */
+export function isHighStakesBall(text) {
+  const t = String(text || "");
+  return UPPER_EVENT_RE.test(t) || DISMISSAL_RE.test(t);
+}
 
 // A fact-checker must not be told to write cinematic prose.
 const VERIFY_SYSTEM_INSTRUCTION =

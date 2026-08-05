@@ -11,7 +11,7 @@ import {
   parseScorecard,
   BLOCK_BACKOFF_MS,
 } from "./cricbuzz.js";
-import { generateVerifiedLine, sanitize, stripPreamble } from "./llm.js";
+import { deadProviders, generateVerifiedLine, isHighStakesBall, sanitize, stripPreamble } from "./llm.js";
 import {
   initObservability,
   report,
@@ -368,6 +368,8 @@ export default async ({ req, res, log, error }) => {
     error,
   });
 
+  reportDeadProviders(error);
+
   if (Date.now() < budget402UntilMs) {
     // A 402 surfaced mid-run: mark the whole execution failed so it's visible in the console.
     report("match-sync hit a read-budget 402 mid-run", { summary: JSON.stringify(summary) }, "error");
@@ -656,7 +658,11 @@ async function syncMatch({ db, matchId, title, commentaryCap, model, log, error 
       const generated = await generateVerifiedLine(prompt, {
         maxTokens: 100,
         temperature: 0.7,
-        verify: true,
+        // Narrowed from unconditional `true` on 2026-08-05. See isHighStakesBall: verification is
+        // the difference between one provider call a line and two, and the chain sustains ~48
+        // requests/minute in total. Spending that on a dot ball is spending it on the deliveries
+        // with nothing to invent.
+        verify: isHighStakesBall(clean),
         context: { snippet1: clean, ball, bowler, batsman },
         log,
         error,
@@ -762,6 +768,29 @@ async function upsertScorecard({ db, matchId, scorecard, error }) {
     } else {
       error(`Scorecard update failed (${matchId}): ${e?.message}`);
     }
+  }
+}
+
+/**
+ * Report any provider that answered 429 to every request we made of it.
+ *
+ * `attempts` already carries each individual 429, but per line and only on a 503, so a provider
+ * that is permanently dead reads exactly like one that is briefly busy. That is not hypothetical:
+ * SambaNova's model id had its quota withdrawn and answered 429 to literally every call, at zero
+ * concurrency, and the only thing that ever said so was a load test. A 100% rate-limited ratio over
+ * a meaningful number of calls is the one signal that separates the two.
+ *
+ * Warning, not error: the chain is designed to survive a provider being gone, so this is a
+ * degradation to investigate, not an outage. `deadProviders` self-throttles per container.
+ */
+function reportDeadProviders(error) {
+  for (const d of deadProviders()) {
+    error(`[PROVIDER-DEAD] ${d.provider} rate-limited on ${d.rateLimited}/${d.calls} calls — not load, check the model id and account`);
+    report("A commentary provider is answering 429 to every request — likely dead, not busy", {
+      provider: d.provider,
+      calls: d.calls,
+      rateLimited: d.rateLimited,
+    });
   }
 }
 

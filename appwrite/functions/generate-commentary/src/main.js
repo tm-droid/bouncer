@@ -2,7 +2,7 @@ import { Client, Databases, Storage } from "node-appwrite";
 import { InputFile } from "node-appwrite/file";
 import { createHash } from "crypto";
 
-import { generateVerifiedLine, sanitize, stripPreamble } from "./llm.js";
+import { deadProviders, generateVerifiedLine, isHighStakesBall, sanitize, stripPreamble } from "./llm.js";
 import {
   identify,
   checkRateLimit,
@@ -80,6 +80,17 @@ export default async (context) => {
     reportError(e, { stage: "unhandled" });
     throw e;
   } finally {
+    // Same tally match-sync reports, checked here too because this function talks to the same three
+    // accounts and, on a quiet day with no live match, is the ONLY thing talking to them. A
+    // provider that has gone dead would otherwise wait for the next live match to be noticed.
+    for (const d of deadProviders()) {
+      context.error?.(`[PROVIDER-DEAD] ${d.provider} rate-limited on ${d.rateLimited}/${d.calls} calls`);
+      report("A commentary provider is answering 429 to every request — likely dead, not busy", {
+        provider: d.provider,
+        calls: d.calls,
+        rateLimited: d.rateLimited,
+      });
+    }
     await flushObservability();
   }
 };
@@ -186,11 +197,19 @@ async function handle({ req, res, log, error }) {
   }
 
   const attempts = [];
+  // The device asking for verification is necessary but not sufficient. Narrowed on 2026-08-05:
+  // verification doubles the provider cost of a line and the whole chain sustains ~48 requests a
+  // minute, so it is spent on wickets and boundaries — the deliveries with facts worth inventing —
+  // and not on the dot balls that make up most of an innings. See isHighStakesBall.
+  //
+  // Judged from the source snippets, never from the caller's flag alone: the device cannot be the
+  // authority on this, and `ball` is a label like "39.6" that says nothing about what happened.
+  const shouldVerify = verify && isHighStakesBall(`${snippet1} ${snippet2}`);
   const generated = await generateVerifiedLine(prompt, {
     maxTokens,
     temperature,
     systemInstruction: systemInstruction || undefined,
-    verify,
+    verify: shouldVerify,
     context: { snippet1, snippet2, ball, bowler, batsman },
     log,
     error,
@@ -209,7 +228,10 @@ async function handle({ req, res, log, error }) {
       reason: generated.reason,
       attempts: attempts.join("; "),
       ball,
-      verify,
+      // What actually ran, not what was asked for — a verification_failed on a line that was never
+      // meant to be verified would be an unreadable event.
+      verify: shouldVerify,
+      verifyRequested: verify,
     });
     return res.json({ error: generated.reason, attempts }, 503);
   }

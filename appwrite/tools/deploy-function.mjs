@@ -62,6 +62,17 @@ const tarball = path.join(toolsDir, `.deploy-${functionId}.tar.gz`);
 
 console.log(`${functionId}  ${fn.path}  entrypoint=${fn.entrypoint}  commands=${fn.commands ?? "(none)"}`);
 
+// Captured before anything is uploaded: it is both the "did activate take?" baseline and the
+// rollback target printed if the new deployment turns out not to serve.
+const activeBefore = (
+  await (
+    await fetch(`${endpoint}/functions/${functionId}`, {
+      headers: { "X-Appwrite-Project": projectId, "X-Appwrite-Key": apiKey },
+    })
+  ).json()
+).deploymentId;
+console.log(`  currently serving ${activeBefore ?? "(none)"}`);
+
 const excludes = ["--exclude=.appwrite", "--exclude=test"];
 if (!withNodeModules) excludes.push("--exclude=node_modules");
 execFileSync("tar", [...excludes, "-czf", tarball, "-C", srcDir, "."], { stdio: "inherit" });
@@ -111,6 +122,81 @@ try {
   // Set the code rather than calling process.exit here — process.exit skips the finally below and
   // leaves a 12MB tarball in the working tree.
   process.exitCode = status === "ready" ? 0 : 1;
+
+  if (status === "ready") {
+    // `activate=true` is a request, not a guarantee, and "built" is not "serving". Both halves have
+    // already failed in production: a VCS deployment superseded a manual one 97 seconds after it
+    // went live, and a deployment that reported `ready` then failed every execution for 22 minutes
+    // on a module it could not load. Neither was caught by the deploy step that produced it.
+    process.exitCode = (await verifyLive(body.$id, activeBefore)) ? 0 : 1;
+  }
 } finally {
   fs.rmSync(tarball, { force: true });
+}
+
+/**
+ * Assert the new deployment is the one actually serving, then that it can actually serve.
+ *
+ * Two checks, because they fail independently:
+ *  1. The active `deploymentId` moved off whatever was there before and onto this build. Catches a
+ *     silently-ignored `activate`, and catches a concurrent VCS build winning the race.
+ *  2. The first real execution on it did not fail. A build can be `ready` and still be dead — a
+ *     missing module throws before any handler code runs, so nothing in the function's own
+ *     observability can report it. This is the only place that check can live.
+ *
+ * Returns false rather than throwing so the caller's `finally` still deletes the tarball.
+ */
+async function verifyLive(deploymentId, before) {
+  const get = async (p) =>
+    (await fetch(`${endpoint}${p}`, { headers: { "X-Appwrite-Project": projectId, "X-Appwrite-Key": apiKey } })).json();
+
+  const fnNow = await get(`/functions/${functionId}`);
+  if (fnNow.deploymentId !== deploymentId) {
+    console.error(
+      `\n  FAILED: ${functionId} is serving ${fnNow.deploymentId}, not the deployment just built (${deploymentId}).` +
+        (fnNow.deploymentId === before
+          ? "\n  The active deployment never moved — `activate` did not take."
+          : "\n  Something else activated in between — most likely a VCS build from a push.")
+    );
+    return false;
+  }
+  console.log(`  active deployment moved ${before ?? "(none)"} -> ${deploymentId}`);
+
+  // Scheduled functions produce their own traffic; on-demand ones need a nudge, and a real
+  // invocation is the point — a synthetic one that skips the handler would prove nothing.
+  const scheduled = Boolean(fn.schedule);
+  if (!scheduled) {
+    await fetch(`${endpoint}/functions/${functionId}/executions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Appwrite-Project": projectId, "X-Appwrite-Key": apiKey },
+      body: JSON.stringify({ body: "{}", async: false, method: "POST" }),
+    }).catch(() => {});
+  }
+
+  const waitMs = scheduled ? 150_000 : 20_000;
+  const until = Date.now() + waitMs;
+  console.log(`  waiting up to ${waitMs / 1000}s for an execution on it${scheduled ? " (scheduled every minute)" : ""}…`);
+  while (Date.now() < until) {
+    const q = [{ method: "limit", values: [10] }, { method: "orderDesc", values: ["$createdAt"] }]
+      .map((o) => "queries[]=" + encodeURIComponent(JSON.stringify(o)))
+      .join("&");
+    const { executions = [] } = await get(`/functions/${functionId}/executions?${q}`);
+    const mine = executions.filter((e) => e.deploymentId === deploymentId);
+    if (mine.length) {
+      const e = mine[0];
+      // A 4xx is the function answering — a bad body, a rate limit. Only a 5xx or a FAILED status
+      // means the deployment itself cannot serve, which is what this check is for.
+      const broken = e.status === "failed" || e.responseStatusCode >= 500;
+      console.log(`  first execution: http=${e.responseStatusCode} status=${e.status} dur=${Number(e.duration).toFixed(1)}s`);
+      if (broken) {
+        console.error(`  FAILED: the new deployment is built but not serving.\n  stderr: ${String(e.errors || "(empty)").slice(0, 500)}`);
+        console.error(`  Roll back with: PATCH /functions/${functionId}/deployments/${before}`);
+        return false;
+      }
+      return true;
+    }
+    await new Promise((r) => setTimeout(r, 5000));
+  }
+  console.error(`  FAILED: no execution ran on ${deploymentId} within ${waitMs / 1000}s — cannot confirm it serves.`);
+  return false;
 }
