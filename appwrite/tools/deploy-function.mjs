@@ -25,9 +25,14 @@ import { fileURLToPath } from "node:url";
 
 const argv = process.argv.slice(2);
 const withNodeModules = argv.includes("--with-node-modules");
+// Deploying is not the only moment the active deployment can change. A `git push` may or may not
+// trigger a VCS build — observed firing for one commit, not firing for the next, and firing again
+// for the one after — and when it does fire it supersedes whatever was deployed manually. So the
+// health check has to be runnable on its own, after a push, against whatever is serving right now.
+const verifyOnly = argv.includes("--verify-only");
 const functionId = argv.find((a) => !a.startsWith("--"));
 if (!functionId) {
-  console.error("usage: node deploy-function.mjs <functionId> [--with-node-modules]");
+  console.error("usage: node deploy-function.mjs <functionId> [--with-node-modules] [--verify-only]");
   process.exit(1);
 }
 
@@ -72,6 +77,17 @@ const activeBefore = (
   ).json()
 ).deploymentId;
 console.log(`  currently serving ${activeBefore ?? "(none)"}`);
+
+if (verifyOnly) {
+  // Same execution-health check the deploy path runs, pointed at whatever is live. Passing
+  // activeBefore as both arguments makes the "did activation move?" half a no-op, which is correct
+  // here — nothing was just built, so there is nothing for it to have moved to.
+  process.exitCode = (await verifyLive(activeBefore, activeBefore)) ? 0 : 1;
+} else {
+  await deploy();
+}
+
+async function deploy() {
 
 const excludes = ["--exclude=.appwrite", "--exclude=test"];
 if (!withNodeModules) excludes.push("--exclude=node_modules");
@@ -133,6 +149,7 @@ try {
 } finally {
   fs.rmSync(tarball, { force: true });
 }
+}
 
 /**
  * Assert the new deployment is the one actually serving, then that it can actually serve.
@@ -160,7 +177,8 @@ async function verifyLive(deploymentId, before) {
     );
     return false;
   }
-  console.log(`  active deployment moved ${before ?? "(none)"} -> ${deploymentId}`);
+  // In --verify-only these are the same id by construction; only a real deploy "moved" anything.
+  if (deploymentId !== before) console.log(`  active deployment moved ${before ?? "(none)"} -> ${deploymentId}`);
 
   // Scheduled functions produce their own traffic; on-demand ones need a nudge, and a real
   // invocation is the point — a synthetic one that skips the handler would prove nothing.
