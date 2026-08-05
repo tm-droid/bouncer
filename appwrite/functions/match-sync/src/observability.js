@@ -67,6 +67,54 @@ export async function flushObservability() {
   }
 }
 
+// ── Cron monitor (dead-man's switch) ─────────────────────────────────────────
+//
+// Everything else in this file reports a failure by RUNNING code. That is precisely what a whole
+// class of outage denies us: on 2026-08-05 a deployment built fine and then died at module load
+// ("Cannot find module @sentry/node/build/esm/index.js"), so `Sentry.init` never executed and 22
+// minutes of one-minute cron failures produced not one event. The only detectable signal there is
+// the ABSENCE of a heartbeat, which by definition has to be judged somewhere else.
+//
+// Sentry Crons is that somewhere else, and is preferred over a separate uptime vendor for one
+// reason worth writing down: a missed check-in arrives as an ordinary issue tagged
+// `monitor.slug`, in the same stream as the passthrough and dead-provider events, so the timeline
+// correlates instead of living in a second inbox nobody opens.
+const MONITOR_SLUG = "bouncer-match-sync";
+
+// Upserted with every check-in, so the monitor cannot drift from the schedule it is monitoring and
+// there is no console step to forget.
+//
+// checkinMargin 2 rather than 1: this runs every minute, and a single late tick is noise. Sentry's
+// consecutive-failure threshold (set on the monitor, not here) is what decides how many misses in a
+// row constitute an outage. maxRuntime 3 sits above the observed worst case of ~9s but well under
+// the function's 120s timeout, so a hung run is caught rather than quietly retried next minute.
+const MONITOR_CONFIG = {
+  schedule: { type: "crontab", value: "* * * * *" },
+  checkinMargin: 2,
+  maxRuntime: 3,
+  timezone: "UTC",
+};
+
+/** Open a check-in. Returns null when Sentry is disabled, which every caller treats as "skip". */
+export function startCheckIn() {
+  if (!isEnabled()) return null;
+  return Sentry.captureCheckIn({ monitorSlug: MONITOR_SLUG, status: "in_progress" }, MONITOR_CONFIG);
+}
+
+/**
+ * Close a check-in as "ok" or "error".
+ *
+ * Never throws: a monitoring call that can fail a sync run has inverted its own purpose.
+ */
+export function finishCheckIn(checkInId, status) {
+  if (!isEnabled() || !checkInId) return;
+  try {
+    Sentry.captureCheckIn({ checkInId, monitorSlug: MONITOR_SLUG, status }, MONITOR_CONFIG);
+  } catch {
+    // Nothing to do — the missed check-in is itself the alert.
+  }
+}
+
 // ── Upstream-source probe ────────────────────────────────────────────────────
 
 const PROBE_TARGETS = [

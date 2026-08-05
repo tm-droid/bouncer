@@ -37,6 +37,8 @@ import {
   reportError,
   flushObservability,
   probeSources,
+  startCheckIn,
+  finishCheckIn,
 } from "./observability.js";
 import { evaluate, formatFromText, ballsRemainingFor } from "./winprob.js";
 
@@ -229,8 +231,39 @@ function runSmokeProbes() {
   }
 }
 
-export default async ({ req, res, log, error }) => {
-  initObservability({ log });
+/**
+ * The run's outcome for the cron monitor, module-scope for the same reason `readsThisRun` is: an
+ * Appwrite container serves one execution at a time.
+ *
+ * Defaults to "error" and is upgraded to "ok" only by a return path that reached a healthy end. An
+ * unhandled throw therefore reports "error" by omission rather than needing to be caught, which is
+ * the correct default for a check-in — the failure modes here are exactly the ones that skip code.
+ */
+let runStatus = "error";
+
+/**
+ * Wrapper that owns the check-in and the flush, so neither can be forgotten by a `return` added
+ * later. `handleRun` is the function that used to be the default export.
+ */
+export default async (context) => {
+  initObservability({ log: context.log });
+  runStatus = "error";
+  // Opened AFTER init so the DSN is loaded, and deliberately not for a PROBE_SOURCES run — that is
+  // a manual diagnostic which returns before doing any of the scheduled work, and letting it report
+  // "ok" would tell the monitor a sync happened when none did.
+  const checkIn = process.env.PROBE_SOURCES ? null : startCheckIn();
+  try {
+    return await handleRun(context);
+  } catch (e) {
+    reportError(e, { operation: "unhandled" });
+    throw e;
+  } finally {
+    finishCheckIn(checkIn, runStatus);
+    await flushObservability();
+  }
+};
+
+async function handleRun({ req, res, log, error }) {
   if (!process.env.APPWRITE_API_KEY) {
     return res.json({ error: "Missing APPWRITE_API_KEY" }, 500);
   }
@@ -278,6 +311,9 @@ export default async ({ req, res, log, error }) => {
     matches = parsed?.data?.matches ?? [];
   } catch (e) {
     log(`No live-matches file — nothing to sync`);
+    // A healthy run. poll-live-matches simply has nothing for us, which is the normal state
+    // overnight — reporting it as a failed check-in would page every night.
+    runStatus = "ok";
     return res.json({ skipped: true, reason: "no_live_matches" }, 200);
   }
 
@@ -293,6 +329,7 @@ export default async ({ req, res, log, error }) => {
   const live = allLive.filter((m) => activeViewers.has(String(m.id)));
   if (allLive.length === 0) {
     log(`No live matches — nothing to sync`);
+    runStatus = "ok";
     return res.json({ skipped: true, reason: "no_live_matches" }, 200);
   }
   // Prune the warm dedupe cache to matches still live so ended matches don't retain memory.
@@ -395,8 +432,7 @@ export default async ({ req, res, log, error }) => {
     await flushObservability();
     return res.json({ error: "read_budget_exceeded", summary }, 402);
   }
-  // The container is frozen the moment this returns, so anything still queued is lost.
-  await flushObservability();
+  runStatus = "ok";
   return res.json({
     live: allLive.length,
     processed: live.length,
@@ -404,7 +440,7 @@ export default async ({ req, res, log, error }) => {
     winProbabilities: Object.keys(winProb).length,
     summary,
   });
-};
+}
 
 /** Rows this match may write this run: full for a viewer, a trickle for the slow tier, none else. */
 export function commentaryCapFor(matchId, viewed, slowTier) {
