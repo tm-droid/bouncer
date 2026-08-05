@@ -13,7 +13,7 @@ A live cricket Android app with AI-powered ball commentary, machine learning win
 - Toss result, umpire details, batting partnerships
 
 **AI Ball Commentary**
-- Per-ball AI commentary via Llama 3.3 70B with automatic failover across Groq → Cerebras → SambaNova
+- Per-ball AI commentary with automatic failover across Groq → Cerebras → SambaNova (one model each, not one model everywhere)
 - Two-source commentary fusion with a hallucination verification pass (temp=0.0)
 - Commentary shared across all users via Appwrite cache (near-zero latency after first user)
 
@@ -123,9 +123,9 @@ Fill in all values — see the table below.
 | Key | Description | Where to get it |
 |-----|-------------|----------------|
 | `RAPIDAPI_KEY` | Cricket data API (TeamDirectory, news) | RapidAPI → cricket-api-free-data |
-| `GROQ_API_KEY` | Llama 3.3 inference (primary AI provider) | console.groq.com |
-| `CEREBRAS_API_KEY` | Llama 3.3 inference (failover #1) | cloud.cerebras.ai |
-| `SAMBANOVA_API_KEY` | Llama 3.3 inference (failover #2) | cloud.sambanova.ai |
+| `GROQ_API_KEY` | `llama-3.3-70b-versatile` (primary AI provider) | console.groq.com |
+| `CEREBRAS_API_KEY` | `gemma-4-31b` (failover #1) | cloud.cerebras.ai |
+| `SAMBANOVA_API_KEY` | `DeepSeek-V3.1` (failover #2) | cloud.sambanova.ai |
 | `APPWRITE_ENDPOINT` | Appwrite server base URL | Appwrite Console → Project settings |
 | `APPWRITE_PROJECT_ID` | Appwrite project ID | Appwrite Console → Project settings |
 | `APPWRITE_AI_CACHE_DB_ID` | Database for AI commentary cache | Appwrite Console → Databases |

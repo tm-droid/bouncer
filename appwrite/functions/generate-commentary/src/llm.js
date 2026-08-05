@@ -10,13 +10,22 @@
 // To sync: cp appwrite/functions/match-sync/src/llm.js appwrite/functions/generate-commentary/src/llm.js
 // (then restore this header). A test in both functions pins the shared behaviour.
 
-// Duplicated in generate-commentary/src/main.js and the Kotlin CommentaryFusionService.providers.
-// No shared config channel exists across Kotlin + two Node functions without codegen or a fetched
-// manifest, so a model bump is a three-place edit — change all three together.
+// The model ids live ONLY here and in the generate-commentary mirror of this file — the Kotlin side
+// stopped holding a provider list when the keys moved server-side in 26ce990, so a model bump is a
+// two-file edit, both of them this one.
+//
+// A model id can go to zero quota without the key or the account being wrong, and the chain cannot
+// tell that apart from load. Measured 2026-08-05: `Meta-Llama-3.3-70B-Instruct` answered EVERY
+// request with 429 "Rate limit exceeded" — at zero concurrency, on a cold key, three attempts ten
+// seconds apart — while `DeepSeek-V3.1` and `DeepSeek-V3.2` returned 200 on the same key in the
+// same second, and `/v1/models` listed all of them. So SambaNova had been contributing nothing to
+// the chain for an unknown period while looking, in `attempts`, exactly like a provider that was
+// merely busy. Swapped to DeepSeek-V3.1: 3/3 on the ball-prefix format contract and 3/3 self-verify
+// PASS on the fixture balls, ~13 RPM before its own 429, versus 0.
 const PROVIDERS = [
   { name: "groq",      url: "https://api.groq.com/openai/v1/chat/completions",  model: "llama-3.3-70b-versatile",     keyEnv: "GROQ_API_KEY" },
   { name: "cerebras",  url: "https://api.cerebras.ai/v1/chat/completions",      model: "gemma-4-31b",                 keyEnv: "CEREBRAS_API_KEY" },
-  { name: "sambanova", url: "https://api.sambanova.ai/v1/chat/completions",     model: "Meta-Llama-3.3-70B-Instruct", keyEnv: "SAMBANOVA_API_KEY" },
+  { name: "sambanova", url: "https://api.sambanova.ai/v1/chat/completions",     model: "DeepSeek-V3.1",               keyEnv: "SAMBANOVA_API_KEY" },
 ];
 
 // Kept byte-identical to CommentaryFusionService.SYSTEM_INSTRUCTION. The same ball can be narrated
