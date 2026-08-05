@@ -379,7 +379,18 @@ async function ramp({ functions, runId }) {
   const written = [];
   let stoppedAt = null;
 
+  let firstLevel = true;
   for (const level of RAMP_LEVELS) {
+    // Every provider limit that binds here is per MINUTE (groq 30 RPM, sambanova ~13, cerebras 5),
+    // so back-to-back levels share one window and the ramp measures the wrong thing: on 2026-08-05
+    // level 1 spent 20 of groq's 30 requests and level 2 started seconds later with 10 left, then
+    // 429'd. That read as "the ceiling is 1 concurrent chain" when it was "the minute was already
+    // two-thirds gone". Each level must start against a fresh window or the number is meaningless.
+    if (!firstLevel && COOLDOWN_S > 0) {
+      console.log(`\ncooling down ${COOLDOWN_S}s so the per-minute provider windows reset`);
+      await new Promise((r) => setTimeout(r, COOLDOWN_S * 1000));
+    }
+    firstLevel = false;
     console.log(`\nfiring level ${level}: ${level} chains x ${ROWS_PER_CHAIN} rows = ${level * ROWS_PER_CHAIN} invocations`);
     const chains = Array.from({ length: level }, (_, chain) =>
       runChain({ functions, runId, level, chain, deviceId: allocator.take(chain, ROWS_PER_CHAIN) })
@@ -448,6 +459,12 @@ if (!RAMP_LEVELS.length) {
   console.error("--levels needs at least one positive integer, e.g. --levels 1,2,4");
   process.exit(1);
 }
+
+// 75s clears every per-minute provider window with margin. `--cooldown 0` reproduces the old
+// back-to-back behaviour, which is only useful for deliberately measuring a sustained burst.
+const cooldownArg = args[args.indexOf("--cooldown") + 1];
+const COOLDOWN_S =
+  args.includes("--cooldown") && cooldownArg && !cooldownArg.startsWith("--") ? Number(cooldownArg) : 75;
 const runId = args[args.indexOf("--cleanup-only") + 1] && mode === "--cleanup-only"
   ? args[args.indexOf("--cleanup-only") + 1]
   : `lt${Date.now().toString(36)}`;
