@@ -93,6 +93,16 @@ export async function generateLine(
     // Providers already tried for this line — the hallucination retry must not re-ask the model
     // that just failed the fact-check.
     exclude = [],
+    // Set of providers that already failed at the transport level for THIS line, mutated as they
+    // fail. `generateVerifiedLine` threads one Set through the generate, the verify, the retry and
+    // the retry's verify, so a provider that is down is asked once per line instead of four times:
+    // a key that answers 403 does not answer 200 two hundred milliseconds later, and a provider
+    // that times out costs 15s of the function's 30s budget every time it is re-asked. Measured on
+    // 2026-08-04 with a revoked Groq key, this was 129 pointless round trips across 40 rows.
+    //
+    // Deliberately NOT populated by "empty completion" — that is a property of one prompt, and the
+    // verify prompt is a different one.
+    unavailable,
     // Mutated with { provider } so the caller knows who answered without changing the return type.
     used,
     // Verification is not commentary: sending the broadcast-style system prompt with a
@@ -112,10 +122,11 @@ export async function generateLine(
   }
 
   for (const provider of PROVIDERS) {
-    if (exclude.includes(provider.name)) continue;
+    if (exclude.includes(provider.name) || unavailable?.has(provider.name)) continue;
     const apiKey = process.env[provider.keyEnv];
     if (!apiKey) {
       note(provider.name, `no ${provider.keyEnv}`);
+      unavailable?.add(provider.name);
       continue;
     }
     try {
@@ -136,6 +147,7 @@ export async function generateLine(
       if (!resp.ok) {
         error?.(`${provider.name} HTTP ${resp.status}`);
         note(provider.name, `HTTP ${resp.status}`);
+        unavailable?.add(provider.name);
         continue;
       }
       const data = await resp.json();
@@ -149,6 +161,7 @@ export async function generateLine(
     } catch (e) {
       error?.(`${provider.name} error: ${e?.message}`);
       note(provider.name, e?.message ?? "threw");
+      unavailable?.add(provider.name);
     }
   }
   return null;
@@ -181,7 +194,7 @@ const VERIFY_SYSTEM_INSTRUCTION =
  */
 export async function verifyLine(
   { line, snippet1 = "", snippet2 = "", ball = "", bowler = "", batsman = "" },
-  { log, error, attempts } = {}
+  { log, error, attempts, unavailable } = {}
 ) {
   const prompt = VERIFICATION_PROMPT_TEMPLATE
     .replace("{snippet1}", snippet1)
@@ -198,6 +211,7 @@ export async function verifyLine(
     log,
     error,
     attempts,
+    unavailable,
   });
   if (!verdict) {
     error?.("Verification unavailable — failing closed (FAIL)");
@@ -216,7 +230,11 @@ export async function verifyLine(
  */
 export async function generateVerifiedLine(prompt, options = {}) {
   const { verify = false, context = {}, attempts, log, error, ...genOptions } = options;
-  const pass = { attempts, log, error };
+  // One Set for the whole line. Scoped per call, never module-level: a provider that is rate-limited
+  // for this ball may well answer the next one, and an Appwrite container is reused across
+  // executions, so a longer-lived Set would blacklist a recovered provider for the container's life.
+  const unavailable = new Set();
+  const pass = { attempts, log, error, unavailable };
 
   const used = {};
   const first = await generateLine(prompt, { ...genOptions, ...pass, used });
