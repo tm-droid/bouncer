@@ -43,12 +43,49 @@ The app builds and runs with no secrets at all. Commentary comes from the server
 ## Adding a new key
 
 1. Put it in the relevant Appwrite function's environment (console, or MCP `functions_create_variable`).
-   **A function env-var change needs a deployment rebuild to take effect** — see
-   `appwrite-patterns.md`.
+   **Then rebuild the deployment** — see "Env vars are snapshotted per container" below.
 2. Call the function from the app via `AppwriteClient.executeFunction`. The device sends
    `x-bouncer-device` (see `DeviceIdentity`) so the function can rate-limit per device.
 3. Do **not** add a `buildConfigField`, and do not add it to `ApiKeys.kt` — that object is now
    documented as non-secret build configuration only.
+
+## Env vars are snapshotted per container
+
+An Appwrite function reads its environment **once, when a container boots**. A container is then
+reused across executions. So a variable written or deleted through the console, the MCP or the REST
+API applies to containers started *after* the change and to no others — which means a change lands
+on an unpredictable subset of executions, indefinitely. This is not "it takes a moment to
+propagate": there is no moment at which it becomes consistent on its own.
+
+Measured on `bouncer-generate-commentary`, 2026-08-05, in both directions:
+
+| Action | Next execution | Outcome |
+|---|---|---|
+| create `FORCE_LLM_FAILURE=1` | cold start, 4.39s | flag **live** — looks like the change "just worked" |
+| delete `FORCE_LLM_FAILURE` | warm reuse, 0.14s | flag **still live** — the delete changed nothing |
+
+The second row is the dangerous one. The variable was gone from `functions_list_variables`, the API
+returned 204, and production kept returning `503 providers_exhausted` on a test flag that no longer
+existed in the configuration. Nothing in the console shows this; the only symptom is behaviour that
+disagrees with the variable list.
+
+The only deterministic eviction:
+
+```
+appwrite_call_tool functions_create_duplicate_deployment {function_id, deployment_id}
+```
+
+Rebuilds the active deployment in place, `activate: true` by default, ~15s on a build-cache hit.
+(The `deployment_id` is the function's current `deploymentId`.)
+
+Two rules that follow:
+
+- **Budget a rebuild in both directions.** Setting a flag for an experiment and removing it
+  afterwards is two rebuilds, not one. Skipping the second leaves the flag live for the container's
+  remaining life.
+- **Never conclude "the code ignored the variable" without rebuilding first.** Equally, never
+  conclude "I have cleaned up" — verify by calling the function and reading the response, not by
+  reading the variable list.
 
 ## Verifying
 
