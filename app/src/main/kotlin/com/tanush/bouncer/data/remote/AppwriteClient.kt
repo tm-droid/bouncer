@@ -18,6 +18,27 @@ import okhttp3.Request
 object AppwriteClient {
     private const val TAG = "AppwriteClient"
 
+    private const val HTTP_ERROR_FLOOR = 400
+    private const val HTTP_SERVER_ERROR_FLOOR = 500
+    private const val SENTRY_FIELD_LIMIT = 500
+
+    /**
+     * The `error` field a Bouncer function puts in its error body, or a short excerpt.
+     *
+     * Every function in this project answers a failure with `{"error": "<reason>"}` —
+     * `providers_exhausted`, `verification_failed`, `rate_limited`, `read_budget_exceeded`. Those
+     * are four unrelated faults that all reach the user as "no commentary", so the reason is the
+     * only part of the body worth carrying into Sentry. A body that is not JSON (an Appwrite
+     * gateway page, an HTML 502) still says something, so it is excerpted rather than dropped.
+     */
+    private fun serverErrorOf(body: String): String {
+        if (body.isBlank()) return "(empty body)"
+        return runCatching { org.json.JSONObject(body).optString("error") }
+            .getOrNull()
+            ?.takeIf { it.isNotBlank() }
+            ?: body.take(200)
+    }
+
     @Volatile
     private var _client: Client? = null
 
@@ -38,6 +59,55 @@ object AppwriteClient {
     }
 
     private val functionsService: Functions? get() = client?.let { Functions(it) }
+
+    /**
+     * The execution's response body, or null after reporting why there isn't one.
+     *
+     * Appwrite marks an execution FAILED only on a 5xx. Every in-band 4xx a Bouncer function
+     * returns — `429 rate_limited`, `402 read_budget_exceeded`, a 400 from a body an old build
+     * sends wrong — arrives as `completed`, and a caller that reads one field out of the body
+     * (`optString("commentary")`) gets a blank string and turns it into the same null it uses for
+     * "nothing to do". Production was rate-limiting commentary generation on 2026-08-04 with no
+     * device-side signal at all; that is the gap this closes, for every function caller rather than
+     * just the commentary one.
+     */
+    private fun responseOrReport(functionId: String, execution: io.appwrite.models.Execution): String? {
+        val statusCode = execution.responseStatusCode
+        if (statusCode >= HTTP_ERROR_FLOOR) {
+            Log.w(TAG, "Function $functionId returned HTTP $statusCode: ${execution.responseBody.take(200)}")
+            // The status is in the throttle key so a 429 storm cannot hide a 402 behind it.
+            sentryCaptureThrottled(
+                key = "appwrite.fn.http.$functionId.$statusCode",
+                message = "Appwrite function $functionId returned HTTP $statusCode",
+                level = if (statusCode >= HTTP_SERVER_ERROR_FLOOR) SentryLevel.ERROR else SentryLevel.WARNING,
+                data = mapOf(
+                    "functionId" to functionId,
+                    "statusCode" to statusCode,
+                    "serverError" to serverErrorOf(execution.responseBody),
+                    "errors" to execution.errors.take(SENTRY_FIELD_LIMIT),
+                )
+            )
+            // Null is already every caller's not-ready path, and an error body is not a result.
+            return null
+        }
+        if (execution.status == io.appwrite.enums.ExecutionStatus.FAILED) {
+            Log.e(TAG, "Function $functionId failed: ${execution.errors}")
+            // No status code at all — a timeout, or a crash before any handler code ran. Everything
+            // that did return a status, including a 5xx a handler returned deliberately, is handled
+            // above, so what lands here has no response body to explain itself.
+            sentryCaptureThrottled(
+                key = "appwrite.fn.failed.$functionId",
+                message = "Appwrite function $functionId returned FAILED",
+                level = SentryLevel.ERROR,
+                data = mapOf(
+                    "functionId" to functionId,
+                    "errors" to execution.errors.take(SENTRY_FIELD_LIMIT)
+                )
+            )
+            return null
+        }
+        return execution.responseBody
+    }
 
     suspend fun executeFunction(functionId: String, body: String): String? {
         val functions = functionsService
@@ -80,22 +150,7 @@ object AppwriteClient {
             )
             AppwriteReadGuard.recordSuccess(quota = AppwriteReadGuard.Quota.EXECUTIONS)
             AppwriteUsageTracker.recordFunctionExecution()
-            if (execution.status == io.appwrite.enums.ExecutionStatus.FAILED) {
-                Log.e(TAG, "Function $functionId failed: ${execution.errors}")
-                // The call reached Appwrite and the function itself failed — a server-side defect,
-                // which nothing on the device would otherwise report.
-                sentryCaptureThrottled(
-                    key = "appwrite.fn.failed.$functionId",
-                    message = "Appwrite function $functionId returned FAILED",
-                    data = mapOf(
-                        "functionId" to functionId,
-                        "errors" to execution.errors.take(500)
-                    )
-                )
-                null
-            } else {
-                execution.responseBody
-            }
+            responseOrReport(functionId, execution)
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (e: Exception) {

@@ -16,6 +16,11 @@
 //
 // USAGE
 //   node sync-provider-keys.mjs --function bouncer-generate-commentary [--dry-run]
+//   node sync-provider-keys.mjs --function bouncer-generate-commentary --keys SENTRY_DSN
+//
+// `--keys` defaults to the three provider keys. Any name is accepted as long as `local.properties`
+// carries it, which is what makes this reusable for SENTRY_DSN — not a credential (a DSN can submit
+// events, not read them), but the same copy-from-local-properties problem.
 //
 // A variable change does NOT take effect until the function is redeployed.
 
@@ -23,15 +28,21 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-const KEYS = ["GROQ_API_KEY", "CEREBRAS_API_KEY", "SAMBANOVA_API_KEY"];
+const DEFAULT_KEYS = ["GROQ_API_KEY", "CEREBRAS_API_KEY", "SAMBANOVA_API_KEY"];
 
 const argv = process.argv.slice(2);
 const dryRun = argv.includes("--dry-run");
-const functionId = argv[argv.indexOf("--function") + 1];
-if (!argv.includes("--function") || !functionId || functionId.startsWith("--")) {
-  console.error("usage: node sync-provider-keys.mjs --function <functionId> [--dry-run]");
+const flag = (name) => {
+  const i = argv.indexOf(name);
+  const v = i === -1 ? undefined : argv[i + 1];
+  return v && !v.startsWith("--") ? v : undefined;
+};
+const functionId = flag("--function");
+if (!functionId) {
+  console.error("usage: node sync-provider-keys.mjs --function <functionId> [--keys A,B] [--dry-run]");
   process.exit(1);
 }
+const KEYS = (flag("--keys") ?? DEFAULT_KEYS.join(",")).split(",").map((k) => k.trim()).filter(Boolean);
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const props = Object.fromEntries(
@@ -86,12 +97,18 @@ for (const key of KEYS) {
   if (!current) {
     console.log(`${label}  ABSENT on ${functionId} — creating`);
     if (dryRun) continue;
+    // Appwrite 1.9 requires an explicit variableId on create, and variable ids are unique
+    // PROJECT-wide, not per function — `sentry-dsn` was already taken by bouncer-match-sync. So the
+    // id carries the function too, which also keeps it readable in the console.
+    const slug = (s) => s.toLowerCase().replace(/^bouncer-/, "").replace(/[^a-z0-9]+/g, "-");
+    const variableId = `${slug(functionId)}-${slug(key)}`.slice(0, 36).replace(/-$/, "");
     const created = await api(`/functions/${functionId}/variables`, {
       method: "POST",
-      body: JSON.stringify({ key, value, secret: true }),
+      body: JSON.stringify({ variableId, key, value, secret: true }),
     });
     console.log(`${" ".repeat(label.length)}  create HTTP ${created.status}`);
     if (created.ok) changed += 1;
+    else console.error(`${" ".repeat(label.length)}  ${(await created.text()).slice(0, 300)}`);
     continue;
   }
 

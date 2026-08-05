@@ -10,6 +10,12 @@ import {
   seedOffenders,
   activeOffenders,
 } from "./rateLimit.js";
+import {
+  initObservability,
+  report,
+  reportError,
+  flushObservability,
+} from "./observability.js";
 
 const DB_ID = process.env.APPWRITE_AI_CACHE_DB_ID ?? "bouncer-db";
 const COL_ID = process.env.APPWRITE_AI_CACHE_COL_ID ?? "ai-commentary-cache";
@@ -57,8 +63,32 @@ async function persistOffenders({ storage, error }) {
   }
 }
 
-export default async ({ req, res, log, error }) => {
+/**
+ * Every return path flushes, and a new one cannot forget to.
+ *
+ * `report()` queues; an Appwrite container stops executing the instant the handler settles, so a
+ * queued-but-unflushed event is lost. Putting the flush in a `finally` around the whole handler is
+ * the only arrangement where adding a `return res.json(...)` later cannot silently reintroduce the
+ * problem. The catch is not swallowing anything — it re-throws after reporting, so Appwrite still
+ * marks the execution FAILED and the device still sees it.
+ */
+export default async (context) => {
+  initObservability({ log: context.log });
+  try {
+    return await handle(context);
+  } catch (e) {
+    reportError(e, { stage: "unhandled" });
+    throw e;
+  } finally {
+    await flushObservability();
+  }
+};
+
+async function handle({ req, res, log, error }) {
   if (!process.env.APPWRITE_API_KEY) {
+    // The function cannot read its cache or write one. Nothing on the device can tell this apart
+    // from a provider outage, and it is a deployment defect, not a runtime one.
+    report("generate-commentary is missing APPWRITE_API_KEY — every request will 500", {}, "error");
     return res.json({ error: "Missing APPWRITE_API_KEY" }, 500);
   }
 
@@ -82,6 +112,15 @@ export default async ({ req, res, log, error }) => {
       `[RATE-LIMIT] ${caller.kind} ${caller.id} blocked on the ${verdict.window} window ` +
         `(${verdict.count ?? "?"} calls) until ${new Date(until).toISOString()}`
     );
+    // A blocked device gets no commentary for an hour. Worth an event whether the cause is a
+    // runaway client or a limit set too low for a real match — the two are not distinguishable
+    // from the block itself, and neither is visible anywhere else.
+    report("generate-commentary blocked a caller on the rate limiter", {
+      callerKind: caller.kind,
+      window: verdict.window,
+      calls: verdict.count ?? -1,
+      blockedUntil: new Date(until).toISOString(),
+    });
     return res.json(
       { error: "rate_limited", window: verdict.window, retryAfterMs: verdict.retryAfterMs },
       429
@@ -134,6 +173,12 @@ export default async ({ req, res, log, error }) => {
     if (isBudget402(e)) {
       // Abort before spending LLM tokens: cache reads AND the follow-up write are both dead.
       error(`[READ-BUDGET-402] limit_databases_reads_exceeded — aborting generation`);
+      // Org-wide and plan-level: every device is getting this, and no retry helps until the budget
+      // resets. `AppwriteReadGuard` latches on the device side but only for quotas it observes
+      // itself — a 402 raised inside a function is invisible to it.
+      report("generate-commentary aborted — org read budget exhausted (402)", {
+        appwriteType: e?.type ?? "unknown",
+      }, "error");
       return res.json({ error: "read_budget_exceeded" }, 402);
     }
     if (e?.code !== 404) error(`Cache read error: ${e?.message}`);
@@ -156,6 +201,16 @@ export default async ({ req, res, log, error }) => {
     // 503 with the reason, so the device can tell "nobody answered" from "the answer was rejected"
     // — and so the caller's own reporting says which, instead of a bare null.
     error(`Generation failed (${generated.reason}): ${attempts.join("; ")}`);
+    // The device's visible degradation — "Ball delivered. Play continues." on the ball path, the
+    // raw scraper sentence on the event path. `attempts` is the whole diagnosis: it separates a
+    // revoked key from a rate limit from a model id that no longer exists, which a bare
+    // `providers_exhausted` does not.
+    report("generate-commentary produced no line — the device falls back to placeholder text", {
+      reason: generated.reason,
+      attempts: attempts.join("; "),
+      ball,
+      verify,
+    });
     return res.json({ error: generated.reason, attempts }, 503);
   }
 
@@ -165,6 +220,14 @@ export default async ({ req, res, log, error }) => {
   const commentary = sanitize(stripPreamble(generated.line));
   if (!commentary) {
     error("Generation produced only preamble");
+    // A provider answered and the answer was entirely meta ("Since there is no specific ball
+    // number..."). Distinct from an exhausted chain: the chain is healthy and the prompt or the
+    // model is not. Silently it looks the same to the device.
+    report("generate-commentary discarded a line that was nothing but preamble", {
+      reason: "empty_after_strip",
+      provider: generated.provider ?? "unknown",
+      ball,
+    });
     return res.json({ error: "empty_after_strip", attempts }, 503);
   }
 
@@ -176,8 +239,17 @@ export default async ({ req, res, log, error }) => {
       READ_ANY
     );
   } catch (e) {
-    if (e?.code !== 409) error(`Cache write error: ${e?.message}`);
+    if (e?.code !== 409) {
+      error(`Cache write error: ${e?.message}`);
+      // 409 is the deterministic row id doing its job. Anything else means a line that has already
+      // been paid for never reaches the shared cache, so every other device regenerates it — the
+      // provider spend this whole three-tier cache exists to avoid.
+      report("generate-commentary could not cache a generated line — other devices will regenerate it", {
+        appwriteCode: e?.code ?? -1,
+        appwriteType: e?.type ?? "unknown",
+      });
+    }
   }
 
   return res.json({ commentary, source: "generated", provider: generated.provider, verified: generated.verified });
-};
+}
