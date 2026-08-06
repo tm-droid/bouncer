@@ -92,6 +92,21 @@ export const FIRST_INNINGS_FEATURE_NAMES = [
   "isHundred",
 ];
 
+/**
+ * Pre-match features — everything knowable before a ball is bowled, which is not much.
+ *
+ * Deliberately only team strength and the format. There is no toss yet (so no batting order), no
+ * position, and no in-match state; anything else would be invented. The point of this model is not
+ * to be sharp — it cannot be — but to replace "nothing at all" with a stated, calibrated prior for
+ * the fixtures where both sides are in the corpus.
+ */
+export const PREMATCH_FEATURE_NAMES = [
+  "teamStrengthDiff",
+  "isOdi",
+  "isHundred",
+  "isLongFormat",
+];
+
 export const LONG_FEATURE_NAMES = [
   "leadPerHundred",
   "wicketsInHand",
@@ -178,6 +193,24 @@ export function firstInningsFeatures(s) {
     wf * wf,
     s.format === "ODI" ? 1 : 0,
     s.format === "HUNDRED" ? 1 : 0,
+  ];
+}
+
+/**
+ * Pre-match features, oriented to the FIRST NAMED side.
+ *
+ * "First named" means the first side in the fixture title, which is the same order the app lists
+ * teams in, so the caller needs no second mapping. The strength difference is antisymmetric, so the
+ * model is symmetric by construction: swapping the sides gives exactly one minus the answer.
+ */
+export function prematchFeatures(s) {
+  return [
+    s.teamStrengthDiff,
+    s.format === "ODI" ? 1 : 0,
+    s.format === "HUNDRED" ? 1 : 0,
+    // Written out rather than routed through isLongFormat so the reader's copy can be
+    // textually identical; a helper that exists on only one side is how the two drift.
+    s.format === "TEST" || s.format === "MDM" ? 1 : 0,
   ];
 }
 
@@ -542,6 +575,27 @@ export function firstInningsRows(match, winRateFor) {
     });
   }
   return rows;
+}
+
+/**
+ * One row per completed match — not per delivery — for the pre-match model.
+ *
+ * Per match because that is the unit the question is asked at. Emitting a row per ball would give
+ * the optimiser 120 identical copies of one observation and a holdout that mostly measures how many
+ * balls a match lasted.
+ *
+ * @param {(team: string) => number} winRateFor win rate lookup, TRAINING WINDOW ONLY
+ */
+export function prematchRows(match, winRateFor) {
+  if (!match.winner || match.teams.length !== 2) return [];
+  const [first, second] = match.teams;
+  return [{
+    features: prematchFeatures({
+      teamStrengthDiff: winRateFor(first) - winRateFor(second),
+      format: match.formatClass,
+    }),
+    label: match.winner === first ? 1 : 0,
+  }];
 }
 
 /**

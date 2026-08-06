@@ -697,7 +697,18 @@ class LiveActivityViewModel(
         val matchesWithProbability = distinctMatches.map { match ->
             when {
                 match.isCompleted -> match.copy(winProbability = match.resolvedWinProbability())
-                match.isLive -> match.copy(winProbability = WinProbabilityStore.forMatch(match.id))
+                // Upcoming fixtures were `else -> match` — no number, no bar, which is the half of
+                // the original report that stayed broken longest. The server now publishes a
+                // pre-match prior for the fixtures where both sides are known, and the flag rides
+                // with it so the renderer can label it as a prior rather than a reading.
+                match.isLive || match.isUpcoming -> {
+                    val probability = WinProbabilityStore.probabilityFor(match.id)
+                    match.copy(
+                        winProbability = probability?.team1Percent,
+                        winProbabilityDraw = probability?.drawPercent,
+                        winProbabilityIsPrematch = probability?.isPrematch == true,
+                    )
+                }
                 else -> match
             }
         }

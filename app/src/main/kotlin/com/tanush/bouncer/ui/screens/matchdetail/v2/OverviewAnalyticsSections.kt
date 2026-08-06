@@ -42,6 +42,7 @@ import com.tanush.bouncer.ui.components.premium.PowerPlayAnalysisCard
 import com.tanush.bouncer.ui.components.premium.PowerPlayPhase
 import com.tanush.bouncer.ui.components.premium.PremiumWinProbabilityHero
 import com.tanush.bouncer.ui.components.premium.WinProbabilityState
+import com.tanush.bouncer.ui.components.premium.winProbabilityStateFor
 import com.tanush.bouncer.ui.components.premium.WinProbabilityChartCard
 import com.tanush.bouncer.ui.components.v2.BouncerCard
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
@@ -67,11 +68,11 @@ internal fun LazyListScope.overviewWinProbability(
                 // gave the losing side a five per cent chance of a result that had happened.
                 team1Probability = (winProb / 100.0).toFloat(),
                 drawProbability = match.winProbabilityDraw?.let { (it / 100.0).toFloat() },
-                state = when {
-                    match.isCompleted -> WinProbabilityState.FINAL
-                    match.isUpcoming -> WinProbabilityState.PRE_MATCH
-                    else -> WinProbabilityState.LIVE
-                },
+                state = winProbabilityStateFor(
+                    isCompleted = match.isCompleted,
+                    isPrematch = match.winProbabilityIsPrematch,
+                    isUpcoming = match.isUpcoming,
+                ),
                 detail = runRateDetail(currentRunRate, requiredRunRate),
                 delta = probabilitySwing(probabilityHistory),
             )

@@ -256,6 +256,15 @@ export function firstInningsFeatures(s) {
   ];
 }
 
+export function prematchFeatures(s) {
+  return [
+    s.teamStrengthDiff,
+    s.format === "ODI" ? 1 : 0,
+    s.format === "HUNDRED" ? 1 : 0,
+    s.format === "TEST" || s.format === "MDM" ? 1 : 0,
+  ];
+}
+
 export function longFeatures(s) {
   const ballsLeft = Math.max(s.ballsRemaining, 1);
   const wf = s.wicketsInHand / 10;
@@ -472,6 +481,39 @@ export function evaluate({
     : firstInningsLogit({ currentRunRate, wicketsInHand, parRate: par });
 
   return finalize(sigmoid(base + teamStrengthDiff * 0.8));
+}
+
+/**
+ * Win probability for the FIRST NAMED side of a fixture that has not started.
+ *
+ * Team strength and format, and nothing else — there is no toss yet, so no batting order, and no
+ * position to read. It is a prior, not a reading, and the caller must label it as one: presented in
+ * the same clothes as a live number it would claim far more than it knows.
+ *
+ * Returns UNDETERMINED unless BOTH sides resolved to corpus teams. A fixture where neither side is
+ * known would otherwise score exactly even off a zero strength difference, which looks like a
+ * considered 50/50 rather than the absence of any information at all.
+ *
+ * @returns the same shape as [evaluate], with `prematch: true`.
+ */
+export function evaluatePrematch({
+  firstTeam = "",
+  secondTeam = "",
+  gender = "male",
+  format = "UNKNOWN",
+  resolved = false,
+  model = null,
+} = {}) {
+  const learned = learnedOf(model);
+  if (!resolved || !usable(learned?.prematch, 4)) return UNDETERMINED;
+
+  const teamStats = learned.teamStats ?? {};
+  const probability = scoreBinary(learned.prematch, prematchFeatures({
+    teamStrengthDiff:
+      winRateOf(teamStats, firstTeam, gender, format) - winRateOf(teamStats, secondTeam, gender, format),
+    format,
+  }));
+  return { ...finalize(probability), prematch: true };
 }
 
 /**

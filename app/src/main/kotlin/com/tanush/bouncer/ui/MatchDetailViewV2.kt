@@ -143,11 +143,13 @@ fun MatchDetailViewV2(
     // wins when present. A completed match resolves its own from the result string.
     val liveWinProbability = uiState.liveWinProbability ?: match.winProbability
     val liveDrawProbability = uiState.liveDrawProbability ?: match.winProbabilityDraw
+    val prematch = uiState.liveWinProbabilityIsPrematch || match.winProbabilityIsPrematch
     val liveMatch = if (match.teams.size >= 2) {
         match.copy(
             currentStatus = liveStatus,
             winProbability = liveWinProbability,
             winProbabilityDraw = liveDrawProbability,
+            winProbabilityIsPrematch = prematch,
             teams = match.teams.mapIndexed { i, team ->
                 when (i) {
                     0 -> team.copy(score = score1.ifBlank { team.score }, overs = overs1.ifBlank { team.overs })
@@ -160,7 +162,11 @@ fun MatchDetailViewV2(
             // prediction it belonged to, or a completed Test would keep showing a chance of a draw
             // that has already not happened.
             if (it.isCompleted) {
-                it.copy(winProbability = it.resolvedWinProbability(), winProbabilityDraw = null)
+                it.copy(
+                    winProbability = it.resolvedWinProbability(),
+                    winProbabilityDraw = null,
+                    winProbabilityIsPrematch = false,
+                )
             } else {
                 it
             }
@@ -170,6 +176,7 @@ fun MatchDetailViewV2(
             currentStatus = liveStatus,
             winProbability = liveWinProbability,
             winProbabilityDraw = liveDrawProbability,
+            winProbabilityIsPrematch = prematch,
         )
     }
 

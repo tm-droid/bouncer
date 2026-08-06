@@ -6,6 +6,7 @@ import {
   PAR_RUN_RATE,
   CHASE_FEATURE_NAMES,
   FIRST_INNINGS_FEATURE_NAMES,
+  PREMATCH_FEATURE_NAMES,
   LONG_FEATURE_NAMES,
   PRIOR_SETTLE_PROGRESS,
   RowSink,
@@ -13,6 +14,7 @@ import {
   inningsTotals,
   chaseRows,
   firstInningsRows,
+  prematchRows,
   longRows,
   teamKey,
   isLimitedOvers,
@@ -131,6 +133,7 @@ export default async ({ req, res, log, error }) => {
     holdoutCutoff: modelObj.windows.holdoutCutoff,
     chase: modelObj.chase?.holdout ?? null,
     firstInnings: modelObj.firstInnings?.holdout ?? null,
+    prematch: modelObj.prematch?.holdout ?? null,
     long: modelObj.long?.holdout ?? null,
     peakRssMb: Number(mb(process.memoryUsage().rss)),
   });
@@ -280,6 +283,20 @@ export function buildModel({ zipBuffer, log, error }) {
     log,
   });
 
+  // Everything knowable before the toss. Cheap — one row per match rather than per ball — and the
+  // only model that can say anything at all about a fixture that has not started, which until now
+  // rendered as no bar at all.
+  const prematch = fitBinaryModel({
+    label: "pre-match",
+    matches,
+    windowOf,
+    winRateLookup,
+    accepts: () => true,
+    rowsFor: prematchRows,
+    featureNames: PREMATCH_FEATURE_NAMES,
+    log,
+  });
+
   const long = fitLongModel({ matches, windowOf, winRateLookup, log });
 
   log(`RSS after training: ${mb(process.memoryUsage().rss)} MB`);
@@ -294,6 +311,7 @@ export function buildModel({ zipBuffer, log, error }) {
       parRunRate: PAR_RUN_RATE,
       chase,
       firstInnings,
+      prematch,
       long,
       teamStats,
       windows: { validCutoff, holdoutCutoff, matches: matches.length },

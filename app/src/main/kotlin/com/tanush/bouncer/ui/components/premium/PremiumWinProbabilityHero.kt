@@ -48,6 +48,23 @@ import kotlin.math.roundToInt
 /** What the number is a statement about, which changes both the label and whether it can move. */
 enum class WinProbabilityState { LIVE, PRE_MATCH, FINAL }
 
+/**
+ * What the number is a statement about.
+ *
+ * The server's own pre-match flag outranks the match status: a fixture can still read Upcoming from
+ * a stale list snapshot while the server is already scoring it live, and the label has to describe
+ * where the number came from rather than what the list believed.
+ */
+fun winProbabilityStateFor(
+    isCompleted: Boolean,
+    isPrematch: Boolean,
+    isUpcoming: Boolean,
+): WinProbabilityState = when {
+    isCompleted -> WinProbabilityState.FINAL
+    isPrematch || isUpcoming -> WinProbabilityState.PRE_MATCH
+    else -> WinProbabilityState.LIVE
+}
+
 private const val MIN_VISIBLE_SHARE = 0.06f
 private const val DELTA_WORTH_SHOWING = 0.02f
 

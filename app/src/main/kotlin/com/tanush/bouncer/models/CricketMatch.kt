@@ -79,6 +79,13 @@ data class CricketMatch(
      * branch on null to choose between a two- and a three-segment bar.
      */
     val winProbabilityDraw: Double? = null,
+    /**
+     * True when [winProbability] is a pre-match prior rather than a reading of a live position.
+     *
+     * The two are different claims and must not be rendered identically: a live number comes from
+     * runs, balls and wickets, a pre-match one from team strength alone and nothing else.
+     */
+    val winProbabilityIsPrematch: Boolean = false,
     // Toss and officials — populated when available from live match page
     val tossWinner: String? = null,
     val tossDecision: String? = null,

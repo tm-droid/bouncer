@@ -40,8 +40,10 @@ import {
   startCheckIn,
   finishCheckIn,
 } from "./observability.js";
-import { evaluate, evaluateLong, formatFromText, ballsRemainingFor } from "./winprob.js";
-import { resolveMatchTeams, teamStatsOf, genderFromTitle } from "./teamnames.js";
+import { evaluate, evaluateLong, evaluatePrematch, formatFromText, ballsRemainingFor } from "./winprob.js";
+import {
+  resolveMatchTeams, teamStatsOf, genderFromTitle, teamsFromTitle, stripWomenSuffix, teamKey,
+} from "./teamnames.js";
 
 const DB_ID = process.env.APPWRITE_AI_CACHE_DB_ID ?? "bouncer-db";
 const COMMENTARY_COL = process.env.MATCH_COMMENTARY_COL_ID ?? "match-commentary";
@@ -49,6 +51,7 @@ const DETAIL_COL = process.env.MATCH_LIVE_DETAIL_COL_ID ?? "match-live-detail";
 const SCORECARD_COL = process.env.MATCH_SCORECARD_COL_ID ?? "match-scorecard";
 const BUCKET_ID = process.env.MATCH_CACHE_BUCKET_ID ?? "cricket-stats";
 const LIVE_FILE = "live-matches";
+const UPCOMING_FILE = "upcoming-matches";
 // Aggregate win probabilities for every live match, keyed by matchId. The device reads this one
 // file for its match-list cards: live-matches.json carries only { id, title, status } with no
 // scores, so nothing upstream of here can compute a probability, and reading one detail row per
@@ -69,6 +72,9 @@ const VIEWER_TTL_MS = 4 * 60 * 1000;
 const SCAN_NEWEST = 30; // how many newest commentary items to look at
 const MAX_NEW_PER_MATCH = 10; // max LLM-backed rows to write per match per run
 const MAX_MATCHES = 12; // cap live matches processed per run
+// Pre-match costs no network call per fixture — the model is already in memory — so this is a cap
+// on the written file rather than on work. Today's list is 20; a long tour week is not much more.
+const MAX_PREMATCH = 60;
 
 // ── Slow tier ──────────────────────────────────────────────────────────────
 //
@@ -306,16 +312,24 @@ async function handleRun({ req, res, log, error }) {
 
   // 1. Read the live-matches list written by poll-live-matches.
   // node-appwrite auto-parses JSON files (returns the object); older/plain files return bytes.
+  // The model is loaded before anything is gated on, because the pre-match pass below needs it even
+  // on a run with nothing live — which is most of the night, and exactly when the app is showing
+  // only upcoming fixtures.
+  const prematch = await prematchEntries({ storage, model, log, error });
+
   let matches = [];
   try {
     const parsed = parseJsonFile(await storage.getFileDownload(BUCKET_ID, LIVE_FILE));
     matches = parsed?.data?.matches ?? [];
   } catch (e) {
-    log(`No live-matches file — nothing to sync`);
+    log(`No live-matches file — writing ${Object.keys(prematch).length} pre-match entries only`);
     // A healthy run. poll-live-matches simply has nothing for us, which is the normal state
-    // overnight — reporting it as a failed check-in would page every night.
+    // overnight — reporting it as a failed check-in would page every night. The file is still
+    // written: an upcoming fixture has a probability whether or not anything is in play, and
+    // returning early used to leave yesterday's live numbers as the newest thing on the device.
+    await writeWinProbFile({ storage, winProb: prematch, log, error });
     runStatus = "ok";
-    return res.json({ skipped: true, reason: "no_live_matches" }, 200);
+    return res.json({ skipped: true, reason: "no_live_matches", prematch: Object.keys(prematch).length }, 200);
   }
 
   // 1b. Viewer presence gates the EXPENSIVE work only.
@@ -329,9 +343,10 @@ async function handleRun({ req, res, log, error }) {
   const allLive = matches.filter((m) => m && m.id).slice(0, MAX_MATCHES);
   const live = allLive.filter((m) => activeViewers.has(String(m.id)));
   if (allLive.length === 0) {
-    log(`No live matches — nothing to sync`);
+    log(`No live matches — writing ${Object.keys(prematch).length} pre-match entries only`);
+    await writeWinProbFile({ storage, winProb: prematch, log, error });
     runStatus = "ok";
-    return res.json({ skipped: true, reason: "no_live_matches" }, 200);
+    return res.json({ skipped: true, reason: "no_live_matches", prematch: Object.keys(prematch).length }, 200);
   }
   // Prune the warm dedupe cache to matches still live so ended matches don't retain memory.
   //
@@ -343,7 +358,10 @@ async function handleRun({ req, res, log, error }) {
     if (!liveIds.has(id)) watermarkByMatch.delete(id);
   }
   const summary = {};
-  const winProb = {};
+  // Seeded with the pre-match entries so a fixture that has not started still has a number.
+  // A live entry for the same id overwrites it, which is the right precedence: a position beats a
+  // prior the moment there is one.
+  const winProb = { ...prematch };
   const viewed = new Set(live.map((m) => String(m.id)));
 
   // 1c. Slow tier: live, unviewed, and due. Chosen before any match runs, so the fast tier's
@@ -525,6 +543,82 @@ async function loadModel({ storage, log, error }) {
     error(`Could not load ${TEAM_STATS_FILE} (${e?.message}) — falling back to the heuristic`);
   }
   return cachedModel;
+}
+
+/**
+ * Pre-match probabilities for the fixtures that have not started.
+ *
+ * Reads the same `upcoming-matches` file the app's Upcoming tab renders from, so the set is exactly
+ * what a user can see. Only fixtures where BOTH sides resolve to corpus teams get an entry — the
+ * rest are omitted rather than published as an even 50/50, which would be indistinguishable from a
+ * considered call on a match we know nothing about.
+ *
+ * Non-fatal throughout: this runs before the live sync and must never be the reason a live match
+ * goes unscored.
+ */
+async function prematchEntries({ storage, model, log, error }) {
+  const entries = {};
+  if (!model) return entries;
+  let fixtures = [];
+  try {
+    const parsed = parseJsonFile(await storage.getFileDownload(BUCKET_ID, UPCOMING_FILE));
+    fixtures = parsed?.data?.matches ?? [];
+  } catch (e) {
+    if (e?.code !== 404) error(`Could not read ${UPCOMING_FILE} (${e?.message}) — no pre-match this run`);
+    return entries;
+  }
+
+  const teamStats = teamStatsOf(model);
+  let resolved = 0;
+  for (const fixture of fixtures.slice(0, MAX_PREMATCH)) {
+    if (!fixture?.id || !fixture.title) continue;
+    const title = String(fixture.title);
+    const format = formatFromText(title);
+    const gender = genderFromTitle(title);
+    const sides = teamsFromTitle(title);
+    if (!sides) continue;
+
+    // Unlike a live match there is no miniscore and so no short code to attribute a batting side
+    // from — but none is needed, because the answer is oriented to the first named side. What is
+    // needed is that both sides are corpus teams in this slice, which is what a null here means.
+    // The format comes from the title alone, so a fixture whose title names none is unscoreable;
+    // that is most domestic cricket and it is why this is checked across the plausible slices.
+    const candidates = format === "UNKNOWN" ? ["T20", "ODI", "HUNDRED", "TEST"] : [format];
+    const slice = candidates.find((f) => resolveMatchTeams({
+      title, battingTeamName: sides[0], teamStats, format: f, gender,
+    }) || bothSidesKnown({ sides, teamStats, format: f, gender }));
+    if (!slice) continue;
+
+    const result = evaluatePrematch({
+      firstTeam: stripWomenSuffix(sides[0]),
+      secondTeam: stripWomenSuffix(sides[1]),
+      gender,
+      format: slice,
+      resolved: true,
+      model,
+    });
+    if (result.undetermined) continue;
+    resolved++;
+    entries[String(fixture.id)] = {
+      team1WinProbability: result.battingTeamWinProbability,
+      drawProbability: null,
+      confidence: result.confidence,
+      // The device renders this differently and labels it "PRE-MATCH". A prior shown as a live
+      // reading claims far more than team strength alone can support.
+      prematch: true,
+      format: slice,
+    };
+  }
+  log(`Pre-match: ${resolved} of ${fixtures.length} upcoming fixtures scored`);
+  return entries;
+}
+
+/** Both named sides have a record in this (gender, format) slice, regardless of who bats first. */
+function bothSidesKnown({ sides, teamStats, format, gender }) {
+  return sides.every((side) => {
+    const key = teamKey(stripWomenSuffix(side), gender, format);
+    return Object.prototype.hasOwnProperty.call(teamStats, key);
+  });
 }
 
 function winProbFor(detail, title, model) {

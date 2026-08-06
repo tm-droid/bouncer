@@ -37,13 +37,22 @@ object WinProbabilityStore {
         // not re-orient it.
         val drawProbability: Double? = null,
         val confidence: Double? = null,
+        // True when the fixture has not started and the number is a prior from team strength alone.
+        val prematch: Boolean? = null,
         val battingTeamName: String? = null,
         val battingTeamIsTeam1: Boolean? = null,
         val format: String? = null,
     )
 
-    /** What the server says about one match: a percentage for teams[0], and a draw share if any. */
-    data class Probability(val team1Percent: Double, val drawPercent: Double?)
+    /**
+     * What the server says about one match: a percentage for teams[0], a draw share if the format
+     * has one, and whether this is a pre-match prior rather than a reading of a live position.
+     */
+    data class Probability(
+        val team1Percent: Double,
+        val drawPercent: Double?,
+        val isPrematch: Boolean = false,
+    )
 
     private data class Payload(
         val version: Int = 0,
@@ -92,6 +101,7 @@ object WinProbabilityStore {
                     id to Probability(
                         team1Percent = (team1 * 100.0).coerceIn(0.0, 100.0),
                         drawPercent = entry.drawProbability?.let { (it * 100.0).coerceIn(0.0, 100.0) },
+                        isPrematch = entry.prematch == true,
                     )
                 }
             }.toMap()

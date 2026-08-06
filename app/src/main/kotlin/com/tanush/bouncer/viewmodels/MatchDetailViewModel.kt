@@ -86,6 +86,8 @@ class MatchDetailViewModel(
          * choose between a two- and a three-segment bar.
          */
         val liveDrawProbability: Double? = null,
+        /** True when [liveWinProbability] is a pre-match prior rather than a live reading. */
+        val liveWinProbabilityIsPrematch: Boolean = false,
         val matchFlow: MatchFlowData? = null,
         val preMatchData: PreMatchData? = null,
         val probabilityHistory: List<WinProbabilityPoint> = emptyList(),
@@ -178,6 +180,7 @@ class MatchDetailViewModel(
                         it.copy(
                             liveWinProbability = probability.team1Percent,
                             liveDrawProbability = probability.drawPercent ?: it.liveDrawProbability,
+                            liveWinProbabilityIsPrematch = probability.isPrematch,
                         )
                     }
                 }
@@ -344,6 +347,10 @@ class MatchDetailViewModel(
                 // for itself.
                 liveWinProbability = pick(p.winProbabilityTeam1?.times(PERCENT), st.liveWinProbability),
                 liveDrawProbability = pick(p.winProbabilityDraw?.times(PERCENT), st.liveDrawProbability),
+                // A detail payload exists only for a match that is being synced live, so its
+                // arrival is itself the evidence that any earlier pre-match prior is superseded.
+                liveWinProbabilityIsPrematch =
+                    if (p.winProbabilityTeam1 != null) false else st.liveWinProbabilityIsPrematch,
             )
         }
         p.batsmen.forEach { handleBatsmanMilestone(it) }
