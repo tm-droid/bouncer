@@ -315,6 +315,7 @@ async function handleRun({ req, res, log, error }) {
   // The model is loaded before anything is gated on, because the pre-match pass below needs it even
   // on a run with nothing live — which is most of the night, and exactly when the app is showing
   // only upcoming fixtures.
+  const model = await loadModel({ storage, log, error });
   const prematch = await prematchEntries({ storage, model, log, error });
 
   let matches = [];
@@ -377,7 +378,6 @@ async function handleRun({ req, res, log, error }) {
     })
   );
   log(`${allLive.length} live, ${live.length} with viewers, ${slowTier.size} on the slow tier`);
-  const model = await loadModel({ storage, log, error });
 
   // Process matches in parallel so per-ball LLM latency doesn't serialize across matches.
   await Promise.allSettled(
