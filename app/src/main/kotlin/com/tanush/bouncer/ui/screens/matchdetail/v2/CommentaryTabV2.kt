@@ -46,6 +46,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.Immutable
+import com.tanush.bouncer.data.remote.CommentaryEntry
 import com.tanush.bouncer.models.TimelineEventType
 import com.tanush.bouncer.ui.components.v2.EmptyStateV2
 import com.tanush.bouncer.ui.components.v2.FilterChipRowV2
@@ -72,7 +73,7 @@ private fun CommentaryEmptyState(matchStatus: String) {
 
 @Composable
 fun CommentaryTabV2(
-    commentary: List<String>,
+    commentary: List<CommentaryEntry>,
     recentBalls: List<String>,
     matchStatus: String = "",
     isLoading: Boolean = false,

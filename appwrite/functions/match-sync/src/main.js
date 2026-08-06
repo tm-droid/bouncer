@@ -30,7 +30,7 @@ import {
   parseScorecard,
   BLOCK_BACKOFF_MS,
 } from "./cricbuzz.js";
-import { deadProviders, generateVerifiedLine, isHighStakesBall, sanitize, stripPreamble } from "./llm.js";
+import { classifyEvent, deadProviders, generateVerifiedLine, isHighStakesBall, sanitize, stripPreamble } from "./llm.js";
 import {
   initObservability,
   report,
@@ -739,6 +739,13 @@ async function syncMatch({ db, matchId, title, commentaryCap, model, log, error 
     }
     if (!line) { newWatermark = itemTs; continue; }
 
+    // Classified from `clean` — the RAW Cricbuzz text — NOT from `line`. By this point `line` is
+    // broadcast prose in which a four reads "races away to the rope", so the event is no longer
+    // recoverable from it; that is precisely why the commentary tab's Boundaries filter could only
+    // ever match the passthrough rows. Always written, "NONE" included: an absent column means
+    // "no verdict" to the device and sends it back to guessing from the prose.
+    const event = classifyEvent(clean);
+
     try {
       await db.createDocument(
         DB_ID,
@@ -752,6 +759,7 @@ async function syncMatch({ db, matchId, title, commentaryCap, model, log, error 
           commentary: line,
           ai_generated: aiGenerated,
           created_at: new Date().toISOString(),
+          event,
         },
         READ_ANY
       );

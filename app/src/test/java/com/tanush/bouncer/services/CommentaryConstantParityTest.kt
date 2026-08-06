@@ -1,7 +1,11 @@
 package com.tanush.bouncer.services
 
+import com.tanush.bouncer.data.remote.parseCommentaryEvent
+import com.tanush.bouncer.models.TimelineEventType
 import com.tanush.bouncer.utils.CommentaryFormatter
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -87,5 +91,60 @@ class CommentaryConstantParityTest {
         val pattern = CommentaryFormatter.LEADING_BALL_LABEL
         assertTrue("over-based label", pattern.containsMatchIn("preamble text 18.5: Kohli drives."))
         assertTrue("Hundred label", pattern.containsMatchIn("preamble text Ball 72: Banton lofts."))
+    }
+
+    // ── classifyEvent: the `event` column's vocabulary ────────────────────────
+    //
+    // This one is not a text constant but a wire contract. `classifyEvent` decides the string
+    // written to `match-commentary.event`, and `parseCommentaryEvent` is the only thing that reads
+    // it. A value added on the JS side and not taught to Kotlin does not throw — it parses to null,
+    // which the commentary tab reads as "the server had no opinion" and answers by classifying the
+    // AI's own prose. That is precisely the failure this column was added to remove, returning
+    // silently and only for the new event type.
+
+    @Test
+    fun `every event classifyEvent can write is understood by the Kotlin parser`() {
+        val written = LlmJsSource.returnedStringLiterals("classifyEvent")
+
+        // Guards the guard: an empty list would make the loop below vacuous.
+        assertTrue(
+            "no return literals found in classifyEvent — did it stop returning string literals?",
+            written.size >= 2
+        )
+        written.forEach { value ->
+            assertNotNull(
+                "match-sync writes event=\"$value\" and parseCommentaryEvent does not know it, so " +
+                    "the tab falls back to classifying broadcast prose. Add it to the when.",
+                parseCommentaryEvent(value)
+            )
+        }
+    }
+
+    @Test
+    fun `an ordinary delivery is written as a verdict, not as an absence`() {
+        val written = LlmJsSource.returnedStringLiterals("classifyEvent")
+
+        assertTrue(
+            "classifyEvent must be total — a dot ball with no `event` sends the device back to " +
+                "reading the prose, where \"needs six from four\" is a boundary.",
+            "NONE" in written
+        )
+        assertEquals(
+            "NONE must parse to a non-boundary verdict that is distinct from null (= no verdict).",
+            TimelineEventType.OTHER,
+            parseCommentaryEvent("NONE")
+        )
+    }
+
+    @Test
+    fun `the event regexes stay case-sensitive`() {
+        // Cricbuzz capitalises the event and lowercases the prose around it. An `i` flag here makes
+        // "sixth", "fourth" and "outside off" into events, which is most of an innings.
+        listOf("UPPER_SIX_RE", "UPPER_FOUR_RE", "UPPER_WICKET_RE").forEach { name ->
+            assertFalse(
+                "$name must not take the i flag — see the comment above it in llm.js",
+                'i' in LlmJsSource.regexConstant(name).flags
+            )
+        }
     }
 }

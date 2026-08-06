@@ -237,13 +237,52 @@ One word: PASS or FAIL.`;
 // Cricbuzz capitalises the event itself and lowercases the prose around it, so these are
 // deliberately CASE-SENSITIVE: `\bSIX\b` does not match "sixth", `\bFOUR\b` does not match "fourth",
 // and `\bOUT\b` does not match the "outside off" / "drove it out to deep cover" that appear on
-// almost every delivery. A case-insensitive version of this regex matches most of the innings.
+// almost every delivery. A case-insensitive version of these matches most of the innings.
+const UPPER_SIX_RE = /\bSIX\b/;
+const UPPER_FOUR_RE = /\bFOUR\b/;
+const UPPER_WICKET_RE = /\b(?:OUT|WICKET)\b/;
 const UPPER_EVENT_RE = /\b(?:FOUR|SIX|OUT|WICKET)\b/;
 
 // The other dismissal shape Cricbuzz writes, where "out" is lowercase and the method follows:
 // "Ashwin to Smith, out Caught by Kohli". Case-insensitive is safe HERE because the method word
 // is what carries the meaning — "out" alone is not enough to match.
 const DISMISSAL_RE = /\bout\s+(?:caught|bowled|lbw|stumped|run\s+out|hit\s+wicket|retired)\b/i;
+
+// Mirrors TimelineEventExtractor.wicketVetoPattern: a dropped catch, or a dismissal off a no-ball
+// or a free hit, is not a wicket.
+const WICKET_VETO_RE = /\b(?:dropped|drops\s+(?:it|him|her)|no\s*[- ]?ball|free\s*hit)\b/i;
+
+/**
+ * What actually happened on this delivery, read from the RAW Cricbuzz text.
+ *
+ * This exists because the answer is unrecoverable downstream. Every line is rewritten into
+ * broadcast prose before it is stored, and SYSTEM_INSTRUCTION asks for "sharp active verbs" and
+ * "no clichés" — so a four becomes "races away to the rope" and the token `FOUR` is gone. The
+ * commentary tab's Boundaries and Wickets filters were classifying the stored text with the same
+ * `\bFOUR\b` / `\bSIX\b` regexes Cricbuzz's own wording satisfies, which meant they matched only
+ * the rows where generation FAILED and the raw text was written through. Storing the verdict here,
+ * upstream of the rewrite, is the only place the information still exists.
+ *
+ * Returns "WICKET" | "SIX" | "FOUR" | "NONE". Wicket outranks a boundary mentioned on the same
+ * line, matching TimelineEventExtractor.detectBallType, which stays on the device as the fallback
+ * for scraped lines and for rows written before this column existed.
+ *
+ * **Total on purpose — an ordinary delivery is "NONE", never absent.** The device treats a missing
+ * column as "the server had no opinion" and classifies the line itself, so if a dot ball were
+ * written with no `event` the AI's own prose would be searched for the word "six" — and "he needs
+ * six off four" is a sentence a commentator writes. Saying NONE is what makes the absence of a
+ * boundary a fact rather than a gap.
+ *
+ * Deliberately no MILESTONE: see isHighStakesBall — milestones are not reliably marked in
+ * `commText`, and guessing at them here would put a guess in the database.
+ */
+export function classifyEvent(text) {
+  const t = String(text || "");
+  if (!WICKET_VETO_RE.test(t) && (UPPER_WICKET_RE.test(t) || DISMISSAL_RE.test(t))) return "WICKET";
+  if (UPPER_SIX_RE.test(t)) return "SIX";
+  if (UPPER_FOUR_RE.test(t)) return "FOUR";
+  return "NONE";
+}
 
 /**
  * Whether this delivery is worth fact-checking.
@@ -262,6 +301,11 @@ const DISMISSAL_RE = /\bout\s+(?:caught|bowled|lbw|stumped|run\s+out|hit\s+wicke
  * an unverified wicket. Deliberately NOT covered: milestones (a fifty, a hundred) — they are
  * hallucination-prone too, but they are not reliably marked in `commText` and guessing at them
  * would drag most of the innings back into verification.
+ *
+ * Shares its vocabulary with [classifyEvent] but is deliberately NOT
+ * `classifyEvent(t) !== "NONE"`: that function applies WICKET_VETO_RE, and a dropped catch or a
+ * dismissal off a no-ball is exactly the kind of line a model invents a fielder for. Vetoing here
+ * would narrow the gate in the direction this doc says not to go.
  */
 export function isHighStakesBall(text) {
   const t = String(text || "");

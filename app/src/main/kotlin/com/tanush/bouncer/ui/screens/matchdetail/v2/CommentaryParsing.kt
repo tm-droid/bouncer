@@ -6,6 +6,7 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
+import com.tanush.bouncer.data.remote.CommentaryEntry
 import com.tanush.bouncer.models.TimelineEventType
 import com.tanush.bouncer.utils.TimelineEventExtractor
 
@@ -23,17 +24,45 @@ internal data class ParsedBall(
     val isNoBall: Boolean,
 )
 
-private val OVER_REGEX = Regex("^(\\d+\\.\\d+)\\s+(.*)", setOf(RegexOption.DOT_MATCHES_ALL))
+/**
+ * The stored ball label, in both shapes `match-sync` writes: `"40.4 …"` and `"40.4: …"`.
+ *
+ * The colon is the form that actually reaches the device — the prompt asks the model to "begin
+ * with the ball number followed by a colon" — and an earlier `^(\d+\.\d+)\s+` required whitespace
+ * there, so every server line parsed to `overNumber = 0f`. That is what suppressed the 4/6/W
+ * ResultPill (gated on `overNumber > 0f`) and pushed every delivery into the un-grouped NonBallLine
+ * bucket. Digit shape aligned with BallNotation.BALL_PREFIX, the canonical one.
+ */
+private val OVER_REGEX = Regex("^(\\d{1,3}\\.\\d)\\s*:?\\s+(.*)", setOf(RegexOption.DOT_MATCHES_ALL))
 private val RUNS_REGEX = Regex("\\b(\\d+) runs?\\b")
+private val AI_FUSED_PREFIX = Regex("^\\[AI Fused\\]\\s*")
+private val BOUNDARY_EVENTS = setOf(TimelineEventType.SIX, TimelineEventType.FOUR)
 
-internal fun String.parseBall(): ParsedBall {
-    val clean = replace(Regex("^\\[AI Fused\\]\\s*"), "").trimEnd('/').trim()
+/**
+ * What happened on this delivery: the server's verdict if it gave one, else read from the text.
+ *
+ * The order is the whole fix. `event` is classified by `bouncer-match-sync` from the RAW Cricbuzz
+ * text before the line is rewritten into broadcast prose, so it survives a rewrite that turns
+ * "FOUR" into "races away to the rope". [TimelineEventExtractor.detectBallType] stays as the
+ * fallback for the two cases with no server verdict — an on-device scraped line, which still holds
+ * Cricbuzz's own uppercase tokens, and a row written before the `event` column existed.
+ *
+ * An ordinary delivery arrives as [TimelineEventType.OTHER], not null, and so does NOT fall
+ * through to the text. That is deliberate: the fallback exists for lines nobody classified, not
+ * for lines classified as nothing, and running it on a dot ball's AI prose is what would let
+ * "India need six from four" back into the Boundaries tab.
+ */
+internal fun CommentaryEntry.eventType(): TimelineEventType? =
+    event ?: TimelineEventExtractor.detectBallType(text)
+
+internal fun CommentaryEntry.parseBall(): ParsedBall {
+    val clean = text.replace(AI_FUSED_PREFIX, "").trimEnd('/').trim()
     val m = OVER_REGEX.find(clean)
     val overNumber = m?.groupValues?.get(1)?.toFloatOrNull() ?: 0f
-    val text = m?.groupValues?.get(2) ?: clean
-    val lower = text.lowercase()
+    val ballText = m?.groupValues?.get(2) ?: clean
+    val lower = ballText.lowercase()
 
-    val ballType = TimelineEventExtractor.detectBallType(clean)
+    val ballType = eventType()
     val isWicket = ballType == TimelineEventType.WICKET
     val isSix = ballType == TimelineEventType.SIX
     val isFour = ballType == TimelineEventType.FOUR
@@ -42,7 +71,7 @@ internal fun String.parseBall(): ParsedBall {
 
     val runs = runsFor(lower, isSix = isSix, isFour = isFour, isWicket = isWicket)
 
-    return ParsedBall(overNumber, text, runs, isWicket, isFour, isSix, isWide, isNoBall)
+    return ParsedBall(overNumber, ballText, runs, isWicket, isFour, isSix, isWide, isNoBall)
 }
 
 private fun runsFor(lower: String, isSix: Boolean, isFour: Boolean, isWicket: Boolean): Int = when {
@@ -63,20 +92,28 @@ internal fun ParsedBall.toBallString(): String = when {
     else -> runs.toString()
 }
 
-internal fun filterCommentary(commentary: List<String>, selectedFilter: String): List<String> {
+internal fun filterCommentary(
+    commentary: List<CommentaryEntry>,
+    selectedFilter: String,
+): List<CommentaryEntry> {
+    // The generic overload carries `event` through a pass that rewrites the text; the per-line
+    // cleanup that used to run here first is exactly what deduplicateByBall's own normalize does.
     val cleaned = TimelineEventExtractor.deduplicateByBall(
-        commentary
-            .map { it.replace(Regex("^\\[AI Fused\\]\\s*"), "").trimEnd('/').trim() }
-            .filter { it.isNotBlank() }
+        commentary,
+        textOf = { it.text },
+        withText = { entry, text -> entry.copy(text = text) },
     )
     if (selectedFilter == "All") return cleaned
-    return cleaned.filter { line ->
+    return cleaned.filter { entry ->
         when (selectedFilter) {
-            "Wickets" -> TimelineEventExtractor.detectBallType(line) == TimelineEventType.WICKET
-            "Boundaries" -> TimelineEventExtractor.detectBallType(line).let {
-                it == TimelineEventType.SIX || it == TimelineEventType.FOUR
-            }
-            "Milestones" -> TimelineEventExtractor.detectBallType(line) == TimelineEventType.MILESTONE
+            "Wickets" -> entry.eventType() == TimelineEventType.WICKET
+            "Boundaries" -> entry.eventType() in BOUNDARY_EVENTS
+            // Read from the text, never from `event`: match-sync deliberately does not classify
+            // milestones (they are not reliably marked in Cricbuzz's commText), so consulting a
+            // verdict that is FOUR or WICKET here could only ever hide a fifty, never find one.
+            // The words themselves survive the rewrite — a century is a fact, not a phrasing.
+            "Milestones" ->
+                TimelineEventExtractor.detectBallType(entry.text) == TimelineEventType.MILESTONE
             else -> true
         }
     }

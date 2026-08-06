@@ -67,65 +67,36 @@ object TimelineEventExtractor {
     // leading-token patterns once per INNER-loop iteration of an O(n²) pass — roughly 1500 Regex
     // compilations for a 40-line commentary block, on every render.
     private val whitespaceRun = Regex("[\\s\\p{Zs}]+")
-    private val leadingBallTokens = Regex("^[\\d.\\s]+")
-    private val leadingNumber = Regex("^\\d+\\s+")
 
     private fun normalize(raw: String): String =
         raw.replace(aiFusedPrefix, "").trim().trimEnd('/')
 
-    /** Form used for near-duplicate comparison: lowercased, with any leading ball number stripped. */
-    private fun comparisonForm(line: String): String =
-        line.lowercase().replace(leadingBallTokens, "").replace(leadingNumber, "")
-
     /** Deduplicate commentary by ball number — keeps the longest entry per delivery.
      *  CricBuzz sends progressive updates for the same ball; this keeps only the most complete.
      *  Internal so OverviewTabV2 and CommentaryTabV2 can reuse it. */
-    internal fun deduplicateByBall(lines: List<String>): List<String> {
-        val normalized = lines.map {
-            normalize(it).replace(' ', ' ').replace(whitespaceRun, " ").trim()
-        }.filter { it.isNotBlank() }
-        // Pass 1: group by ball number, keep longest (most complete progressive update)
-        val bestByBall = mutableMapOf<String, String>()
-        for (line in normalized) {
-            val ball = ballNumberOf(line)
-            if (ball != null) {
-                val existing = bestByBall[ball]
-                if (existing == null || line.length > existing.length) bestByBall[ball] = line
-            }
+    internal fun deduplicateByBall(lines: List<String>): List<String> =
+        deduplicateByBall(lines, textOf = { it }, withText = { _, text -> text })
+
+    /**
+     * As above, over items that carry a commentary line plus metadata that must survive the pass.
+     *
+     * The generic form exists because this function *rewrites* the text it dedupes — it strips the
+     * `[AI Fused]` prefix, collapses whitespace and trims a trailing slash — so its output strings
+     * are not its input strings and cannot be matched back to their source item afterwards. The
+     * commentary tab needs the server's event verdict to survive alongside the line, and the only
+     * alternatives were to re-implement [normalize] at the call site or to key a lookup on text
+     * this function is in the middle of changing. Both are a drift waiting to happen.
+     */
+    internal fun <T> deduplicateByBall(
+        items: List<T>,
+        textOf: (T) -> String,
+        withText: (T, String) -> T,
+    ): List<T> {
+        val normalized = items.mapNotNull { item ->
+            val text = normalize(textOf(item)).replace(' ', ' ').replace(whitespaceRun, " ").trim()
+            if (text.isBlank()) null else withText(item, text)
         }
-        val seen = mutableSetOf<String>()
-        val pass1 = normalized.mapNotNull { line ->
-            val ball = ballNumberOf(line)
-            if (ball != null) {
-                if (ball !in seen) { seen.add(ball); bestByBall[ball] } else null
-            } else {
-                val key = line.lowercase()
-                if (key !in seen) { seen.add(key); line } else null
-            }
-        }
-        // Pass 2: prefix dedup — keep only the longer of near-duplicate pairs
-        // Comparison forms built ONCE per line. They were previously rebuilt inside the inner loop,
-        // making the string work O(n²) on top of the comparison itself.
-        val compare = pass1.map(::comparisonForm)
-        val toRemove = mutableSetOf<Int>()
-        for (i in pass1.indices) {
-            if (i in toRemove) continue
-            val ai = compare[i]
-            for (j in i + 1 until pass1.size) {
-                if (j in toRemove) continue
-                val bj = compare[j]
-                val shorter = if (ai.length <= bj.length) ai else bj
-                val longer = if (ai.length <= bj.length) bj else ai
-                val prefixLen = (shorter.length * CricketConstants.DEDUP_PREFIX_RATIO).toInt()
-                    .coerceAtLeast(CricketConstants.DEDUP_MIN_LENGTH)
-                if (shorter.length >= CricketConstants.DEDUP_MIN_LENGTH &&
-                    longer.startsWith(shorter.take(prefixLen))
-                ) {
-                    toRemove.add(if (ai.length <= bj.length) i else j)
-                }
-            }
-        }
-        return pass1.filterIndexed { idx, _ -> idx !in toRemove }
+        return dropNearDuplicates(keepLongestPerBall(normalized, textOf), textOf)
     }
 
     /** True when [line] announces a dismissal and nothing vetoes it. */
@@ -191,4 +162,77 @@ object TimelineEventExtractor {
 
         return uniqueEvents.sortedByDescending { it.over }
     }
+}
+
+// ── deduplicateByBall's two passes ───────────────────────────────────────────
+//
+// Top-level rather than members so the object stays under detekt's TooManyFunctions threshold —
+// the same reason MatchDetailViewModel keeps isMatchOver and scrapeCommentary outside the class.
+// They are file-private, so this is a layout choice and not a widening of the API.
+
+// Hoisted out of the dedup pass: these were rebuilt once per INNER-loop iteration of an O(n²)
+// pass — roughly 1500 Regex compilations for a 40-line commentary block, on every render.
+private val leadingBallTokens = Regex("^[\\d.\\s]+")
+private val leadingNumber = Regex("^\\d+\\s+")
+
+/** Form used for near-duplicate comparison: lowercased, with any leading ball number stripped. */
+private fun comparisonForm(line: String): String =
+    line.lowercase().replace(leadingBallTokens, "").replace(leadingNumber, "")
+
+/** Pass 1: group by ball number, keep longest (most complete progressive update). */
+private fun <T> keepLongestPerBall(normalized: List<T>, textOf: (T) -> String): List<T> {
+    val bestByBall = longestPerBall(normalized, textOf)
+    val seen = mutableSetOf<String>()
+    return normalized.mapNotNull { item ->
+        val ball = ballNumberOf(textOf(item))
+        // A line with no ball number dedupes against its own text instead.
+        val key = ball ?: textOf(item).lowercase()
+        when {
+            !seen.add(key) -> null
+            ball != null -> bestByBall.getValue(ball)
+            else -> item
+        }
+    }
+}
+
+/** The most complete update seen for each ball number. */
+private fun <T> longestPerBall(items: List<T>, textOf: (T) -> String): Map<String, T> {
+    val best = mutableMapOf<String, T>()
+    for (item in items) {
+        val ball = ballNumberOf(textOf(item)) ?: continue
+        val existing = best[ball]
+        if (existing == null || textOf(item).length > textOf(existing).length) best[ball] = item
+    }
+    return best
+}
+
+/** Pass 2: prefix dedup — keep only the longer of near-duplicate pairs. */
+private fun <T> dropNearDuplicates(items: List<T>, textOf: (T) -> String): List<T> {
+    // Comparison forms built ONCE per line, not once per comparison.
+    val compare = items.map { comparisonForm(textOf(it)) }
+    val toRemove = mutableSetOf<Int>()
+    for (i in compare.indices) {
+        if (i !in toRemove) markDuplicatesOf(i, compare, toRemove)
+    }
+    return items.filterIndexed { idx, _ -> idx !in toRemove }
+}
+
+/** Compare [i] against every later survivor, dropping whichever of the pair is shorter. */
+private fun markDuplicatesOf(i: Int, compare: List<String>, toRemove: MutableSet<Int>) {
+    for (j in i + 1 until compare.size) {
+        if (j in toRemove) continue
+        if (isNearDuplicate(compare[i], compare[j])) {
+            toRemove.add(if (compare[i].length <= compare[j].length) i else j)
+        }
+    }
+}
+
+/** True when the shorter of the two is a long-enough prefix of the longer. */
+private fun isNearDuplicate(a: String, b: String): Boolean {
+    val shorter = if (a.length <= b.length) a else b
+    val longer = if (a.length <= b.length) b else a
+    if (shorter.length < CricketConstants.DEDUP_MIN_LENGTH) return false
+    val prefixLen = (shorter.length * CricketConstants.DEDUP_PREFIX_RATIO).toInt()
+        .coerceAtLeast(CricketConstants.DEDUP_MIN_LENGTH)
+    return longer.startsWith(shorter.take(prefixLen))
 }

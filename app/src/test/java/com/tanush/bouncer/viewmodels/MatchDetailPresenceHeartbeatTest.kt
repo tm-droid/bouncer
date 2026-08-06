@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.lifecycle.ViewModelStore
 import com.tanush.bouncer.data.AppResult
 import com.tanush.bouncer.data.MatchRepository
+import com.tanush.bouncer.data.remote.CommentaryEntry
 import com.tanush.bouncer.data.remote.CommentaryEvent
 import com.tanush.bouncer.data.remote.LiveMatchDetailSource
 import com.tanush.bouncer.data.remote.MatchLiveDetailPayload
@@ -63,7 +64,7 @@ class MatchDetailPresenceHeartbeatTest {
 
     private class SilentLiveSource : LiveMatchDetailSource {
         override suspend fun getForMatch(matchId: String): MatchLiveDetailPayload? = null
-        override suspend fun getCommentaryForMatch(matchId: String): List<String> = emptyList()
+        override suspend fun getCommentaryForMatch(matchId: String): List<CommentaryEntry> = emptyList()
         override suspend fun getScorecardForMatch(matchId: String): Scorecard? = null
         override fun observeDetail(matchId: String): Flow<MatchLiveDetailPayload> = emptyFlow()
         override fun observeCommentary(matchId: String): Flow<CommentaryEvent> = emptyFlow()

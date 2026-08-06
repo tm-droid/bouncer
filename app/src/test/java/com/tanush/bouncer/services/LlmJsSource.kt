@@ -81,6 +81,34 @@ internal object LlmJsSource {
 
     data class JsRegex(val source: String, val flags: String)
 
+    /**
+     * The body of `export function NAME(…) { … }`, by brace matching.
+     *
+     * Only sound for bodies whose braces are all real syntax — a brace inside a string, regex or
+     * comment would fool it. That holds for the functions this is used on, and a violation fails
+     * loudly (unbalanced) rather than returning something plausible.
+     */
+    fun functionBody(name: String): String {
+        val declaration = Regex("""(?:export\s+)?function\s+${Regex.escape(name)}\s*\(""")
+            .find(text) ?: error("no declaration of function $name in $RELATIVE_PATH")
+        val open = text.indexOf('{', declaration.range.last)
+        check(open >= 0) { "no body for function $name in $RELATIVE_PATH" }
+        var depth = 0
+        for (i in open until text.length) {
+            when (text[i]) {
+                '{' -> depth++
+                '}' -> if (--depth == 0) return text.substring(open + 1, i)
+            }
+        }
+        error("unterminated body for function $name in $RELATIVE_PATH")
+    }
+
+    /** Every `return "LITERAL"` in [functionName], in source order. */
+    fun returnedStringLiterals(functionName: String): List<String> =
+        RETURNED_LITERAL.findAll(functionBody(functionName)).map { it.groupValues[1] }.toList()
+
+    private val RETURNED_LITERAL = Regex("""return\s+"([^"]*)"""")
+
     /** Index just past the `=` of `const NAME =`. */
     private fun declarationEnd(name: String): Int {
         val declaration = Regex("""(?:export\s+)?const\s+${Regex.escape(name)}\s*=""")

@@ -17,6 +17,7 @@ import com.tanush.bouncer.models.WinProbabilityPoint
 import com.tanush.bouncer.data.AppResult
 import com.tanush.bouncer.data.CricBuzzMatchRepository
 import com.tanush.bouncer.data.MatchRepository
+import com.tanush.bouncer.data.remote.CommentaryEntry
 import com.tanush.bouncer.data.remote.CommentaryEvent
 import com.tanush.bouncer.data.remote.LiveMatchDetailSource
 import com.tanush.bouncer.data.remote.MatchLiveDetailPayload
@@ -56,7 +57,7 @@ class MatchDetailViewModel(
         val recentBalls: List<String> = emptyList(),
         val scorecard: Scorecard? = null,
         val scorecardLoading: Boolean = true,
-        val commentary: List<String> = emptyList(),
+        val commentary: List<CommentaryEntry> = emptyList(),
         val commentaryLoading: Boolean = true,
         val liveTeam1Score: String = "",
         val liveTeam2Score: String = "",
@@ -232,7 +233,14 @@ class MatchDetailViewModel(
                         "scrapedLines" to scraped.size
                     )
                 )
-                _uiState.update { it.copy(commentary = scraped, commentaryError = null) }
+                // No server verdict on this path — the scraper's own words are what the device
+                // classifies from, and they still carry Cricbuzz's uppercase FOUR/SIX/OUT.
+                _uiState.update { st ->
+                    st.copy(
+                        commentary = scraped.map { CommentaryEntry(it, event = null) },
+                        commentaryError = null,
+                    )
+                }
             }
         }
     }
@@ -304,10 +312,11 @@ class MatchDetailViewModel(
     private fun onNewCommentaryEvent(ev: CommentaryEvent) {
         var isNew = false
         _uiState.update { st ->
-            if (st.commentary.contains(ev.commentary)) st
+            if (st.commentary.any { it.text == ev.commentary }) st
             else {
                 isNew = true
-                st.copy(commentary = listOf(ev.commentary) + st.commentary, commentaryError = null)
+                val entry = CommentaryEntry(ev.commentary, ev.event)
+                st.copy(commentary = listOf(entry) + st.commentary, commentaryError = null)
             }
         }
         if (!isNew) return

@@ -3,6 +3,7 @@ package com.tanush.bouncer.viewmodels
 import android.content.Context
 import com.tanush.bouncer.data.AppResult
 import com.tanush.bouncer.data.MatchRepository
+import com.tanush.bouncer.data.remote.CommentaryEntry
 import com.tanush.bouncer.data.remote.CommentaryEvent
 import com.tanush.bouncer.data.remote.LiveMatchDetailSource
 import com.tanush.bouncer.data.remote.MatchLiveDetailPayload
@@ -47,7 +48,8 @@ class MatchDetailCommentaryFallbackTest {
     /** Appwrite side with nothing in it — the state every unwatched match ends up in. */
     private class EmptyLiveSource(private val lines: List<String> = emptyList()) : LiveMatchDetailSource {
         override suspend fun getForMatch(matchId: String): MatchLiveDetailPayload? = null
-        override suspend fun getCommentaryForMatch(matchId: String): List<String> = lines
+        override suspend fun getCommentaryForMatch(matchId: String): List<CommentaryEntry> =
+            lines.map { CommentaryEntry(it, event = null) }
         override suspend fun getScorecardForMatch(matchId: String): Scorecard? = null
         override fun observeDetail(matchId: String): Flow<MatchLiveDetailPayload> = emptyFlow()
         override fun observeCommentary(matchId: String): Flow<CommentaryEvent> = emptyFlow()
@@ -97,10 +99,12 @@ class MatchDetailCommentaryFallbackTest {
         val vm = viewModel(EmptyLiveSource(), repository(scrapedLines))
         advanceUntilIdle()
 
-        assertEquals(scrapedLines, vm.uiState.value.commentary)
+        assertEquals(scrapedLines, vm.uiState.value.commentary.map { it.text })
         assertNull("a successful fallback is not an error", vm.uiState.value.commentaryError)
         // The Hundred's label must survive the fallback intact — this is the whole point of it.
-        assertTrue(vm.uiState.value.commentary.first().startsWith("Ball 100: "))
+        assertTrue(vm.uiState.value.commentary.first().text.startsWith("Ball 100: "))
+        // A scraped line has no server verdict; the tab classifies it from Cricbuzz's own wording.
+        assertNull(vm.uiState.value.commentary.first().event)
     }
 
     @Test
@@ -110,7 +114,7 @@ class MatchDetailCommentaryFallbackTest {
         val vm = viewModel(EmptyLiveSource(fromServer), repo)
         advanceUntilIdle()
 
-        assertEquals(fromServer, vm.uiState.value.commentary)
+        assertEquals(fromServer, vm.uiState.value.commentary.map { it.text })
     }
 
     @Test

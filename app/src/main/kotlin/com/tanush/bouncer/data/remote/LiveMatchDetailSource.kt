@@ -19,8 +19,8 @@ interface LiveMatchDetailSource {
     /** Latest server-built live snapshot for a match, or null when unavailable. */
     suspend fun getForMatch(matchId: String): MatchLiveDetailPayload?
 
-    /** Newest-first commentary lines for a match. */
-    suspend fun getCommentaryForMatch(matchId: String): List<String>
+    /** Newest-first commentary lines for a match, each with the server's event verdict. */
+    suspend fun getCommentaryForMatch(matchId: String): List<CommentaryEntry>
 
     /**
      * The full scorecard, from its own table. Separate from [getForMatch] because it was 85-93% of
@@ -52,7 +52,7 @@ object ProductionLiveDetailSource : LiveMatchDetailSource {
     override suspend fun getForMatch(matchId: String): MatchLiveDetailPayload? =
         AppwriteMatchDetailClient.getForMatch(matchId)
 
-    override suspend fun getCommentaryForMatch(matchId: String): List<String> =
+    override suspend fun getCommentaryForMatch(matchId: String): List<CommentaryEntry> =
         AppwriteMatchCommentaryClient.getForMatch(matchId)
 
     override suspend fun getScorecardForMatch(matchId: String): com.tanush.bouncer.models.Scorecard? =

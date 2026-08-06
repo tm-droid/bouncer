@@ -1,6 +1,7 @@
 package com.tanush.bouncer.demo
 
 import com.tanush.bouncer.data.AppResult
+import com.tanush.bouncer.data.remote.CommentaryEntry
 import com.tanush.bouncer.data.remote.CommentaryEvent
 import com.tanush.bouncer.data.remote.LiveMatchDetailSource
 import com.tanush.bouncer.data.remote.MatchLiveDetailPayload
@@ -19,8 +20,10 @@ internal class FakeLiveDetailSource(private val elapsed: () -> Long) : LiveMatch
     override suspend fun getForMatch(matchId: String): MatchLiveDetailPayload =
         ShowcaseScript.detailPayloadAt(elapsed())
 
-    override suspend fun getCommentaryForMatch(matchId: String): List<String> =
-        ShowcaseScript.commentaryLines()
+    // No server verdict on purpose: the scripted lines carry Cricbuzz's own "FOUR!"/"SIX!", so the
+    // showcase exercises the same text-classification fallback a scraped line takes.
+    override suspend fun getCommentaryForMatch(matchId: String): List<CommentaryEntry> =
+        ShowcaseScript.commentaryLines().map { CommentaryEntry(it, event = null) }
 
     // The scripted payload already carries the scorecard, so the split table adds nothing here.
     override suspend fun getScorecardForMatch(matchId: String): com.tanush.bouncer.models.Scorecard? =
@@ -43,7 +46,7 @@ internal class FakeLiveDetailSource(private val elapsed: () -> Long) : LiveMatch
     override fun observeCommentary(matchId: String): Flow<CommentaryEvent> = flow {
         ShowcaseScript.streamingCommentary().forEachIndexed { index, line ->
             delay(COMMENTARY_TICK_MS)
-            emit(CommentaryEvent(ShowcaseScript.MATCH_ID, line, index.toDouble()))
+            emit(CommentaryEvent(ShowcaseScript.MATCH_ID, line, index.toDouble(), event = null))
         }
     }
 

@@ -297,13 +297,16 @@ fun MatchDetailViewV2(
                     .bouncerScreenBackground(),
             ) { page ->
                 val tabTitle = tabTitles.getOrNull(page) ?: return@HorizontalPager
+                // Overview only narrates the lines; the per-ball event verdict is the commentary
+                // tab's filter input, so it is not threaded through the whole overview tree.
+                val commentaryText = remember(uiState.commentary) { uiState.commentary.map { it.text } }
                 when (tabTitle) {
                     "Overview" -> OverviewTabV2(
                         match = liveMatch,
                         batsmen = uiState.batsmen,
                         bowler = uiState.bowler,
                         recentBalls = uiState.recentBalls,
-                        commentary = uiState.commentary,
+                        commentary = commentaryText,
                         currentRunRate = uiState.liveCurrentRunRate,
                         requiredRunRate = uiState.liveRequiredRunRate,
                         scorecard = uiState.scorecard,
