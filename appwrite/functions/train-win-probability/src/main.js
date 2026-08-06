@@ -5,18 +5,34 @@ import {
   MODEL_VERSION,
   NUM_FEATURES,
   FEATURE_NAMES,
+  NUM_LONG_FEATURES,
+  LONG_FEATURE_NAMES,
+  PRIOR_SETTLE_PROGRESS,
   chaseRows,
+  longRows,
   matchDate,
-  isSupportedMatch,
+  formatClassOf,
+  teamKey,
+  isStatsCountable,
+  isChaseTrainable,
+  isLongTrainable,
   holdoutCutoffDate,
   inningsTotals,
   fitStandardizer,
   applyStandardizer,
   evaluateModel,
   baseRate,
+  trainMulticlass,
+  evaluateMulticlass,
+  classBaseRates,
 } from "./training.js";
 
-const CRICSHEET_URL = "https://cricsheet.org/downloads/t20s_json.zip";
+// Every match Cricsheet publishes, each exactly once. The archive this replaced — t20s_json.zip —
+// held 5,602 matches and 109 teams, all of them national sides, so every franchise fixture the app
+// shows resolved to no team strength at all. This is 22,524 matches across 392 teams and 1,093
+// competitions. Assembling the same coverage from per-competition archives would double-count:
+// a match appears in both its league archive and its format archive, and a team's own archive too.
+const CRICSHEET_URL = "https://cricsheet.org/downloads/all_json.zip";
 const STATS_BUCKET_ID = process.env.STATS_BUCKET_ID ?? "cricket-stats";
 const TEAM_STATS_FILE_ID = "team-stats";
 const H2H_FILE_ID = "h2h-stats";
@@ -74,12 +90,19 @@ export default async ({ req, res, log, error }) => {
   );
 
   // ---------------------------------------------------------------------------
-  // Pass 1: read `info` only — collect match dates so the temporal split can be chosen, and
-  // accumulate H2H (descriptive, so it legitimately spans the whole corpus).
+  // Pass 1: parse every match once, keeping a small record per match rather than the match itself.
+  //
+  // Two passes over the archive, not three. The temporal split has to be chosen before win rates
+  // can be accumulated, and win rates have to exist before feature rows can be built — three
+  // dependent stages. Retaining a ~100-byte record per match instead of re-reading the ZIP for the
+  // middle stage collapses that to two: 22,524 records is a few MB, where retaining the parsed
+  // matches measured 353 MB and would risk the function's memory ceiling.
   // ---------------------------------------------------------------------------
   log("Pass 1: reading match info and choosing the temporal split...");
   const h2hAccumulator = {};
   const dates = [];
+  const records = [];
+  const teamStats = {};
   let parsed = 0;
   let skipped = 0;
 
@@ -90,16 +113,27 @@ export default async ({ req, res, log, error }) => {
       const match = readEntry(entry);
       processH2H(match, h2hAccumulator);
       parsed++;
-      if (isSupportedMatch(match?.info)) {
-        const d = matchDate(match.info);
-        if (d) dates.push(d);
-      }
+      const info = match?.info;
+      if (!isStatsCountable(info)) continue;
+      const date = matchDate(info);
+      if (date) dates.push(date);
+      records.push({
+        teams: info.teams,
+        gender: info.gender,
+        formatClass: formatClassOf(info),
+        date,
+        winner: info.outcome?.winner ?? null,
+        firstInnings: isChaseTrainable(info) ? inningsTotals(match.innings?.[0]) : null,
+      });
+      // Descriptive aggregates do not depend on the holdout split, so they are accumulated here
+      // while the innings are in hand rather than costing a record field per team.
+      accumulateAggregates(match, teamStats);
     } catch (e) {
       if (skipped < 5) error(`Skipped ${entry.entryName}: ${e?.message}`);
       skipped++;
     }
   }
-  log(`Parsed ${parsed} matches, skipped ${skipped}, ${dates.length} datable T20s`);
+  log(`Parsed ${parsed} matches, skipped ${skipped}, ${records.length} usable, ${dates.length} datable`);
 
   const cutoff = holdoutCutoffDate(dates, HOLDOUT_FRACTION);
   if (cutoff) {
@@ -110,38 +144,35 @@ export default async ({ req, res, log, error }) => {
   const inTrainWindow = (d) => cutoff == null || d == null || d < cutoff;
 
   // ---------------------------------------------------------------------------
-  // Pass 2: team win rates from the TRAINING WINDOW ONLY.
+  // Team win rates from the TRAINING WINDOW ONLY, keyed by (team, gender, format).
   //
-  // This is the leakage fix. Win rates used to be finalised over the entire corpus and then
+  // The window is the leakage fix: win rates used to be finalised over the entire corpus and then
   // back-filled into every row's features[4], so a 2014 row carried the outcome of matches played
   // in 2023 — the model could read the future through a feature that looked static.
+  //
+  // The key is the v4 fix. A bare team name pooled Australia's men's and women's sides and their
+  // Tests, ODIs and T20s into one number: 0.642, against a men's-T20 0.545, a women's-ODI 0.842
+  // and a women's-multi-day 0.286. Harmless only while match-sync's lookup never hit; the moment
+  // it did, that blend went straight into the logit.
   // ---------------------------------------------------------------------------
-  log("Pass 2: accumulating team stats from the training window...");
-  const teamStats = {};
+  log("Accumulating win rates from the training window...");
   let firstInningsTotalRuns = 0;
   let firstInningsTotalBalls = 0;
 
-  for (const entry of jsonEntries) {
-    let match;
-    try {
-      match = readEntry(entry);
-    } catch {
-      continue;
+  for (const rec of records) {
+    const training = inTrainWindow(rec.date);
+    if (!training) continue;
+    for (const team of rec.teams) {
+      const key = teamKey(team, rec.gender, rec.formatClass);
+      if (teamStats[key]) teamStats[key].trainMatches++;
     }
-    const info = match?.info;
-    if (!isSupportedMatch(info)) continue;
-
-    const training = inTrainWindow(matchDate(info));
-    // Descriptive per-team aggregates are published to clients for every match, but the winRate
-    // that feeds the model must not see the holdout.
-    accumulateTeamStats(match, teamStats, training);
-
-    if (training) {
-      const first = inningsTotals(match.innings?.[0]);
-      if (first.balls > 0) {
-        firstInningsTotalRuns += first.runs;
-        firstInningsTotalBalls += first.balls;
-      }
+    if (rec.winner) {
+      const key = teamKey(rec.winner, rec.gender, rec.formatClass);
+      if (teamStats[key]) teamStats[key].trainWins++;
+    }
+    if (rec.firstInnings?.balls > 0) {
+      firstInningsTotalRuns += rec.firstInnings.runs;
+      firstInningsTotalBalls += rec.firstInnings.balls;
     }
   }
 
@@ -150,6 +181,7 @@ export default async ({ req, res, log, error }) => {
     delete team.trainWins;
     delete team.trainMatches;
   }
+  log(`Team stat keys: ${Object.keys(teamStats).length}`);
 
   const breakevenRR = firstInningsTotalBalls > 0
     ? (firstInningsTotalRuns / firstInningsTotalBalls) * 6
@@ -159,10 +191,11 @@ export default async ({ req, res, log, error }) => {
   // ---------------------------------------------------------------------------
   // Pass 3: build feature rows, split by match date.
   // ---------------------------------------------------------------------------
-  log("Pass 3: building feature rows...");
-  const winRateFor = (team) => teamStats[team]?.winRate ?? 0.5;
+  log("Pass 2: building feature rows...");
   const trainingRows = [];
   const holdoutRows = [];
+  const longTrainingRows = [];
+  const longHoldoutRows = [];
 
   for (const entry of jsonEntries) {
     let match;
@@ -171,15 +204,30 @@ export default async ({ req, res, log, error }) => {
     } catch {
       continue;
     }
-    if (!isSupportedMatch(match?.info)) continue;
-    const rows = chaseRows(match, winRateFor);
-    if (rows.length === 0) continue;
+    const info = match?.info;
+    if (!isStatsCountable(info)) continue;
 
-    const sink = inTrainWindow(matchDate(match.info)) ? trainingRows : holdoutRows;
-    for (const row of rows) {
-      // Reservoir sampling keeps the row count bounded. Sampling is per-sink so the holdout is
-      // never starved by a large training set.
-      reservoirPush(sink, row, sink === trainingRows ? MAX_ROWS : MAX_HOLDOUT_ROWS);
+    // The strength lookup is scoped to this match's own gender and format, so a Test row reads
+    // Test win rates and a women's T20 row reads women's T20 win rates.
+    const formatClass = formatClassOf(info);
+    const winRateFor = (team) => teamStats[teamKey(team, info.gender, formatClass)]?.winRate ?? 0.5;
+    const training = inTrainWindow(matchDate(info));
+
+    // A Test is not a long T20: pooling the two collapsed holdout accuracy from 0.619 to 0.506,
+    // so long-format matches train a separate three-outcome model and never enter the chase rows,
+    // whose features all assume a fixed innings budget.
+    if (isChaseTrainable(info)) {
+      const sink = training ? trainingRows : holdoutRows;
+      for (const row of chaseRows(match, winRateFor)) {
+        // Reservoir sampling keeps the row count bounded. Sampling is per-sink so the holdout is
+        // never starved by a large training set.
+        reservoirPush(sink, row, training ? MAX_ROWS : MAX_HOLDOUT_ROWS);
+      }
+    } else if (isLongTrainable(info)) {
+      const sink = training ? longTrainingRows : longHoldoutRows;
+      for (const row of longRows(match, winRateFor)) {
+        reservoirPush(sink, row, training ? MAX_ROWS : MAX_HOLDOUT_ROWS);
+      }
     }
   }
 
@@ -218,12 +266,58 @@ export default async ({ req, res, log, error }) => {
     log(`Holdout base rate (chasing side wins): ${fmt(holdoutBaseRate)} — accuracy must beat this`);
   }
 
+  // ---------------------------------------------------------------------------
+  // Long-format model: three outcomes, because a Test can be drawn and a two-class model has no
+  // way to say so. Roughly a quarter of all Test positions end in a draw.
+  // ---------------------------------------------------------------------------
+  let longModel = null;
+  if (longTrainingRows.length > 0) {
+    const longStandardizer = fitStandardizer(longTrainingRows, NUM_LONG_FEATURES);
+    applyStandardizer(longTrainingRows, longStandardizer);
+    applyStandardizer(longHoldoutRows, longStandardizer);
+    const priors = classBaseRates(longTrainingRows);
+    const fitted = trainMulticlass(longTrainingRows, {
+      epochs: EPOCHS,
+      batchSize: BATCH_SIZE,
+      learningRate: LEARNING_RATE,
+      l2: L2_LAMBDA,
+      numFeatures: NUM_LONG_FEATURES,
+    });
+    const longHoldoutMetrics = evaluateMulticlass(longHoldoutRows, fitted);
+    log(
+      `Long-format holdout — log-loss ${fmt(longHoldoutMetrics.logLoss)}, accuracy ` +
+      `${fmt(longHoldoutMetrics.accuracy)} (${longHoldoutMetrics.rows} rows), ` +
+      `priors ${priors.map(fmt).join("/")}`
+    );
+    longModel = {
+      weights: fitted.weights,
+      biases: fitted.biases,
+      featureMeans: longStandardizer.means,
+      featureStds: longStandardizer.stds,
+      featureNames: LONG_FEATURE_NAMES,
+      // Consumed at inference: a linear model extrapolates with unearned confidence at the edge of
+      // its training data, and the start of a Test is exactly that edge. Without this it returned
+      // 73% before a ball had been bowled, against a 39% base rate.
+      classPriors: priors,
+      priorSettleProgress: PRIOR_SETTLE_PROGRESS,
+      trainingRows: longTrainingRows.length,
+      holdout: {
+        rows: longHoldoutMetrics.rows,
+        logLoss: longHoldoutMetrics.logLoss,
+        accuracy: longHoldoutMetrics.accuracy,
+      },
+    };
+  } else {
+    log("No long-format training rows — the Test model is omitted from this build");
+  }
+
   // Upload model to Appwrite Storage
   const storage = new Storage(client);
   const modelObj = {
-    // v3: ballsRemainingFraction is now relative to the match's own innings budget rather than a
-    // hardcoded 120, and features[4] is computed from training-window win rates only. A v2 reader
-    // would misinterpret both, so win-probability refuses anything but v3 on its learned path.
+    // v4: `teamStats` is keyed "team|gender|format" rather than by bare team name, so a v3 reader
+    // would miss every lookup and silently fall back to 0.5 — the exact defect v4 exists to fix.
+    // It also carries a second model for long-format matches. winprob.js refuses any version but
+    // its own on the learned path and degrades to the heuristic, which is the safe reading here.
     version: MODEL_VERSION,
     weights,
     bias,
@@ -232,6 +326,7 @@ export default async ({ req, res, log, error }) => {
     featureNames: FEATURE_NAMES,
     breakevenRR,
     teamStats,
+    longModel,
     trainingRows: n,
     epochs: EPOCHS,
     holdout: {
@@ -306,34 +401,30 @@ export default async ({ req, res, log, error }) => {
  * back-filling it into every row (as this function's predecessor did) let a 2014 row carry the
  * outcome of a 2023 match.
  */
-function accumulateTeamStats(raw, teamStats, countTowardWinRate) {
+function accumulateAggregates(raw, teamStats) {
   const info = raw?.info;
   const teams = info?.teams ?? [];
+  const gender = info?.gender;
+  const formatClass = formatClassOf(info);
+  const keyOf = (team) => teamKey(team, gender, formatClass);
 
   for (const team of teams) {
-    if (!teamStats[team]) {
-      teamStats[team] = {
-        matchesPlayed: 0,
-        totalRunsScored: 0,
-        totalRunsConceded: 0,
-        totalWicketsLost: 0,
-        winRate: 0.5,
-        trainWins: 0,
-        trainMatches: 0,
-      };
-    }
-    teamStats[team].matchesPlayed++;
-    if (countTowardWinRate) teamStats[team].trainMatches++;
-  }
-
-  const winner = info?.outcome?.winner;
-  if (countTowardWinRate && winner && teamStats[winner]) {
-    teamStats[winner].trainWins++;
+    const key = keyOf(team);
+    teamStats[key] ??= {
+      matchesPlayed: 0,
+      totalRunsScored: 0,
+      totalRunsConceded: 0,
+      totalWicketsLost: 0,
+      winRate: 0.5,
+      trainWins: 0,
+      trainMatches: 0,
+    };
+    teamStats[key].matchesPlayed++;
   }
 
   for (const inning of raw?.innings ?? []) {
-    const battingTeam = inning.team;
-    if (!teamStats[battingTeam]) continue;
+    const battingKey = keyOf(inning.team);
+    if (!teamStats[battingKey]) continue;
     const { runs } = inningsTotals(inning);
     let wickets = 0;
     for (const over of inning.overs ?? []) {
@@ -341,11 +432,11 @@ function accumulateTeamStats(raw, teamStats, countTowardWinRate) {
         if (ball.wickets?.length) wickets += ball.wickets.length;
       }
     }
-    teamStats[battingTeam].totalRunsScored += runs;
-    teamStats[battingTeam].totalWicketsLost += wickets;
-    const bowlingTeam = teams.find((t) => t !== battingTeam);
-    if (bowlingTeam && teamStats[bowlingTeam]) {
-      teamStats[bowlingTeam].totalRunsConceded += runs;
+    teamStats[battingKey].totalRunsScored += runs;
+    teamStats[battingKey].totalWicketsLost += wickets;
+    const bowlingTeam = teams.find((t) => t !== inning.team);
+    if (bowlingTeam && teamStats[keyOf(bowlingTeam)]) {
+      teamStats[keyOf(bowlingTeam)].totalRunsConceded += runs;
     }
   }
 }

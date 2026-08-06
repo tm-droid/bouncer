@@ -2,17 +2,31 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   chaseRows,
+  longRows,
   inningsBudgetBalls,
+  longMatchBalls,
   matchDate,
-  isSupportedMatch,
+  formatClassOf,
+  teamKey,
+  isStatsCountable,
+  isChaseTrainable,
+  isLongTrainable,
+  isLongFormat,
+  longOutcomeFor,
   holdoutCutoffDate,
   inningsTotals,
   fitStandardizer,
   applyStandardizer,
   evaluateModel,
   baseRate,
+  shrinkToPrior,
+  softmax,
+  classBaseRates,
+  OUTCOME,
   MODEL_VERSION,
   NUM_FEATURES,
+  NUM_LONG_FEATURES,
+  PRIOR_SETTLE_PROGRESS,
 } from "../src/training.js";
 
 /** Build a Cricsheet-shaped innings of [balls] deliveries scoring [runsPerBall] each. */
@@ -113,13 +127,147 @@ test("required run rate uses post-ball balls remaining", () => {
 
 // --- filtering ----------------------------------------------------------
 
-test("only T20 and IT20 matches enter the pipeline", () => {
-  assert.equal(isSupportedMatch({ match_type: "T20", teams: ["A", "B"] }), true);
-  assert.equal(isSupportedMatch({ match_type: "IT20", teams: ["A", "B"] }), true);
-  assert.equal(isSupportedMatch({ match_type: "ODI", teams: ["A", "B"] }), false);
-  assert.equal(isSupportedMatch({ match_type: "Test", teams: ["A", "B"] }), false);
-  assert.equal(isSupportedMatch({ match_type: "T20", teams: ["A"] }), false);
-  assert.equal(chaseRows(match({ matchType: "ODI" }), noStrength).length, 0);
+test("the chase model takes limited-overs matches and refuses long formats", () => {
+  const two = (t, extra = {}) => ({ match_type: t, teams: ["A", "B"], ...extra });
+  assert.equal(isChaseTrainable(two("T20")), true);
+  assert.equal(isChaseTrainable(two("IT20")), true);
+  assert.equal(isChaseTrainable(two("ODI")), true, "ODI is a chase, v3 excluded it for no reason");
+  assert.equal(isChaseTrainable(two("ODM")), true);
+  assert.equal(isChaseTrainable(two("T20", { balls_per_over: 5 })), true, "The Hundred");
+  // The features are ratios against a fixed innings budget, which a multi-day match has none of.
+  assert.equal(isChaseTrainable(two("Test")), false);
+  assert.equal(isChaseTrainable(two("MDM")), false);
+  assert.equal(isChaseTrainable({ match_type: "T20", teams: ["A"] }), false);
+});
+
+test("only Tests train the long-format model, but every format feeds team stats", () => {
+  const two = (t) => ({ match_type: t, teams: ["A", "B"] });
+  // Test and MDM pooled scored 0.506 holdout accuracy against 0.394 baseline; Tests alone 0.619.
+  assert.equal(isLongTrainable(two("Test")), true);
+  assert.equal(isLongTrainable(two("MDM")), false, "domestic first-class must not train the model");
+  // ...but MDM is still counted, under its own key.
+  assert.equal(isStatsCountable(two("MDM")), true);
+  assert.equal(isStatsCountable(two("Test")), true);
+  assert.equal(isStatsCountable(two("T20")), true);
+  assert.equal(isStatsCountable({ match_type: "Hockey", teams: ["A", "B"] }), false);
+});
+
+test("The Hundred is a 100-ball innings, not a 120-ball one", () => {
+  // Cricsheet records it as match_type T20 with balls_per_over 5. Multiplying overs by a hardcoded
+  // 6 gave every Hundred row a budget 20 balls too long.
+  assert.equal(formatClassOf({ match_type: "T20", balls_per_over: 5 }), "HUNDRED");
+  assert.equal(formatClassOf({ match_type: "T20", balls_per_over: 6 }), "T20");
+  assert.equal(inningsBudgetBalls({ overs: 20, balls_per_over: 5 }), 100);
+  assert.equal(inningsBudgetBalls({ overs: 20, balls_per_over: 6 }), 120);
+  assert.equal(inningsBudgetBalls({ overs: 50 }), 300, "missing balls_per_over defaults to six");
+});
+
+test("Test and MDM are separate format classes", () => {
+  assert.equal(formatClassOf({ match_type: "Test" }), "TEST");
+  assert.equal(formatClassOf({ match_type: "MDM" }), "MDM");
+  assert.equal(formatClassOf({ match_type: "ODM" }), "ODI");
+  assert.ok(isLongFormat("TEST") && isLongFormat("MDM"));
+  assert.ok(!isLongFormat("T20") && !isLongFormat("ODI"));
+});
+
+test("team stats are keyed by team, gender and format", () => {
+  // The v3 key was the bare name, which pooled Australia's men's T20 (0.545) with their women's
+  // ODI (0.842) and women's multi-day (0.286) into a single 0.642.
+  assert.notEqual(teamKey("Australia", "male", "T20"), teamKey("Australia", "female", "T20"));
+  assert.notEqual(teamKey("Australia", "male", "T20"), teamKey("Australia", "male", "TEST"));
+  assert.equal(teamKey("Australia", "male", "T20"), teamKey(" Australia ", "male", "T20"));
+});
+
+test("a long-format outcome is win, loss or draw — and abandoned is none of them", () => {
+  const of = (outcome) => longOutcomeFor({ outcome }, "A");
+  assert.equal(of({ winner: "A", by: { runs: 100 } }), OUTCOME.WIN);
+  assert.equal(of({ winner: "B", by: { runs: 100 } }), OUTCOME.LOSS);
+  assert.equal(of({ result: "draw" }), OUTCOME.DRAW);
+  assert.equal(of({ result: "tie" }), OUTCOME.DRAW);
+  // A rained-off match says nothing about the position it was abandoned from, and calling it a
+  // draw would teach the model that weather is a cricketing outcome.
+  assert.equal(of({ result: "no result" }), null);
+  assert.equal(of({}), null);
+});
+
+// --- long format --------------------------------------------------------
+
+/** A four-innings Test where each side bats [balls] deliveries per innings. */
+function testMatch({ balls = 120, outcome = { winner: "A", by: { runs: 10 } }, order = ["A", "B", "A", "B"] } = {}) {
+  return {
+    info: {
+      match_type: "Test",
+      gender: "male",
+      teams: ["A", "B"],
+      dates: ["2024-01-01", "2024-01-02", "2024-01-03", "2024-01-04", "2024-01-05"],
+      outcome,
+    },
+    innings: order.map((team) => innings(team, balls, 1)),
+  };
+}
+
+test("a long-format lead is corrected for innings used", () => {
+  // The defect replay caught: in innings one the batting side always shows a growing positive
+  // lead because the opposition has not batted, and in innings two always a large deficit. The
+  // model read that as position and gave 73% to a side level after ten overs of day one, against
+  // a 39% base rate. inningsUsedDiff makes a lead mean the same thing at every point.
+  const rows = longRows(testMatch(), () => 0.5);
+  assert.ok(rows.length > 0);
+  const usedDiff = (r) => r.features[8];
+  const inningsOf = (r) => Math.round(r.features[2] * 4);
+  assert.equal(usedDiff(rows.find((r) => inningsOf(r) === 1)), 1, "innings 1: one innings ahead");
+  assert.equal(usedDiff(rows.find((r) => inningsOf(r) === 2)), 0, "innings 2: level");
+  assert.equal(usedDiff(rows.find((r) => inningsOf(r) === 3)), 1);
+  assert.equal(usedDiff(rows.find((r) => inningsOf(r) === 4)), 0);
+});
+
+test("a follow-on is read from the innings order", () => {
+  const normal = longRows(testMatch({ order: ["A", "B", "A", "B"] }), () => 0.5);
+  const followOn = longRows(testMatch({ order: ["A", "B", "B", "A"] }), () => 0.5);
+  assert.equal(normal[0].features[7], 0);
+  assert.equal(followOn[0].features[7], 1);
+});
+
+test("chase pressure only exists in the fourth innings", () => {
+  const rows = longRows(testMatch(), () => 0.5);
+  const inningsOf = (r) => Math.round(r.features[2] * 4);
+  for (const r of rows) {
+    if (inningsOf(r) === 4) continue;
+    assert.equal(r.features[6], 0, "a side batting before the fourth innings is not chasing");
+    assert.equal(r.features[5], 0);
+  }
+  assert.ok(rows.some((r) => inningsOf(r) === 4 && r.features[5] === 1));
+});
+
+test("an abandoned long-format match yields no rows at all", () => {
+  assert.equal(longRows(testMatch({ outcome: { result: "no result" } }), () => 0.5).length, 0);
+});
+
+test("long rows are emitted per over, not per delivery", () => {
+  // A Test runs to ~2,700 balls against a T20's 120. Per-delivery rows would let 911 Tests
+  // outweigh 13,992 T20s in the sampler while carrying no more information.
+  const rows = longRows(testMatch({ balls: 120 }), () => 0.5);
+  assert.ok(rows.length <= 4 * 20 + 4, `expected ~one row per over, got ${rows.length}`);
+});
+
+test("shrinkage returns the prior at the start and the model once settled", () => {
+  const priors = [0.367, 0.239, 0.394];
+  const model = [0.9, 0.05, 0.05];
+  assert.deepEqual(shrinkToPrior(model, priors, 0, 0.25), priors);
+  assert.deepEqual(shrinkToPrior(model, priors, 0.25, 0.25), model);
+  assert.deepEqual(shrinkToPrior(model, priors, 1, 0.25), model, "past settle stays unshrunk");
+  const half = shrinkToPrior(model, priors, 0.125, 0.25);
+  half.forEach((p, i) => assert.ok(Math.abs(p - (model[i] + priors[i]) / 2) < 1e-9));
+  // Whatever the blend, it stays a distribution.
+  assert.ok(Math.abs(half.reduce((a, b) => a + b, 0) - 1) < 1e-9);
+});
+
+test("softmax survives a logit large enough to overflow", () => {
+  // A long-format lead of several hundred runs drives a logit where Math.exp is Infinity, and
+  // Infinity/Infinity is NaN — which would poison every weight on the next gradient step.
+  const p = softmax([1000, 0, -1000]);
+  assert.ok(p.every(Number.isFinite), `not finite: ${p}`);
+  assert.ok(Math.abs(p.reduce((a, b) => a + b, 0) - 1) < 1e-9);
 });
 
 test("rows stop once the chase is won or the side is all out", () => {
@@ -231,6 +379,13 @@ test("inningsTotals sums runs and counts balls", () => {
   assert.deepEqual(inningsTotals(null), { runs: 0, balls: 0 });
 });
 
-test("model version is 3", () => {
-  assert.equal(MODEL_VERSION, 3);
+test("model version is 4", () => {
+  // Bumped from 3 because `teamStats` changed key shape from a bare team name to
+  // "team|gender|format". A v3 reader would miss every lookup and fall back to 0.5 — silently,
+  // and on exactly the feature v4 exists to repair. winprob.js refuses a version it does not know
+  // on the learned path, so the mismatch degrades to the heuristic instead of going unnoticed.
+  assert.equal(MODEL_VERSION, 4);
+  assert.equal(NUM_FEATURES, 5, "the chase model's shape is unchanged");
+  assert.equal(NUM_LONG_FEATURES, 9);
+  assert.equal(PRIOR_SETTLE_PROGRESS, 0.25);
 });
