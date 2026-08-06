@@ -215,13 +215,15 @@ private fun SegmentedBar(
             .height(14.dp)
             .clip(RoundedCornerShape(7.dp)),
     ) {
-        Box(
-            Modifier
-                .weight(team1 / total)
-                .fillMaxWidth()
-                .height(14.dp)
-                .background(Brush.horizontalGradient(listOf(team1Color.copy(alpha = 0.75f), team1Color))),
-        )
+        if (team1 > 0f) {
+            Box(
+                Modifier
+                    .weight(team1 / total)
+                    .fillMaxWidth()
+                    .height(14.dp)
+                    .background(Brush.horizontalGradient(listOf(team1Color.copy(alpha = 0.75f), team1Color))),
+            )
+        }
         if (draw > 0f) {
             Box(
                 Modifier
@@ -231,13 +233,15 @@ private fun SegmentedBar(
                     .background(TextMuted.copy(alpha = 0.55f)),
             )
         }
-        Box(
-            Modifier
-                .weight(team2 / total)
-                .fillMaxWidth()
-                .height(14.dp)
-                .background(Brush.horizontalGradient(listOf(team2Color, team2Color.copy(alpha = 0.75f)))),
-        )
+        if (team2 > 0f) {
+            Box(
+                Modifier
+                    .weight(team2 / total)
+                    .fillMaxWidth()
+                    .height(14.dp)
+                    .background(Brush.horizontalGradient(listOf(team2Color, team2Color.copy(alpha = 0.75f)))),
+            )
+        }
     }
 }
 
