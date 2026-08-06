@@ -24,6 +24,7 @@ import com.tanush.bouncer.data.remote.MatchLiveDetailPayload
 import com.tanush.bouncer.data.remote.ProductionLiveDetailSource
 import com.tanush.bouncer.data.remote.H2HPair
 import com.tanush.bouncer.data.remote.H2HRepository
+import com.tanush.bouncer.data.remote.WinProbabilityStore
 import com.tanush.bouncer.network.CricBuzzUrls
 import com.tanush.bouncer.services.MatchPresenceReporter
 import com.tanush.bouncer.ui.components.BatsmanMilestoneInfo
@@ -68,8 +69,13 @@ class MatchDetailViewModel(
         /** Latest server status line ("... won by ...", innings break, etc.); drives the header. */
         val liveStatus: String? = null,
         /**
-         * Win probability for teams[0] as a percentage, computed by bouncer-match-sync and carried
-         * in the detail payload. Null when the server did not score this match.
+         * Win probability for teams[0] as a percentage, computed by bouncer-match-sync. Null when
+         * the server did not score this match.
+         *
+         * Two sources, both from the same run: the detail payload, and the aggregate `live-winprob`
+         * file via [WinProbabilityStore]. The payload wins when it carries a value; the file covers
+         * the window before this match earns a fast-tier detail row, which is up to 45 minutes on a
+         * screen reached by deep link or a cold start.
          */
         val liveWinProbability: Double? = null,
         val matchFlow: MatchFlowData? = null,
@@ -141,9 +147,27 @@ class MatchDetailViewModel(
         // only the 45-minute slow tier writes, and the screen falls back to raw Cricbuzz text.
         // Same rule as the polling loop instead: completed is definitive, anything else pings, and
         // the server's own status line ends it the moment the match is actually over.
+        //
+        // The win probability is pulled on the same tick, and from the aggregate file rather than
+        // the detail payload, because that file is the fresher of the two sources. match-sync
+        // writes a detail row only for a match someone is already viewing, or on its 45-minute slow
+        // tier — so a screen reached by deep link, search or a cold start can sit on a value up to
+        // 45 minutes old while the ping above is still earning this match a place in the fast tier.
+        // The aggregate file is rewritten every run for every live match and is a Storage read: at
+        // most 60s stale, and no billed DB reads (the quota a 402 takes out app-wide).
+        //
+        // Riding this loop rather than owning a timer keeps the cadence at 90s, and the store's own
+        // 60s TTL no-ops the surplus calls. A payload that carries a probability still wins, since
+        // applyDetail overwrites it — and the two cannot disagree, both come from the same run. A
+        // null leaves state alone, so an absent number never blanks a bar applyDetail already
+        // filled. Inlined for the same reason as the loop itself: detekt's TooManyFunctions.
         viewModelScope.launch(bouncerExceptionHandler) {
             while (isActive && !isMatchOver(match, _uiState.value.liveStatus)) {
                 MatchPresenceReporter.ping(match.id)
+                WinProbabilityStore.refresh()
+                WinProbabilityStore.forMatch(match.id)?.let { probability ->
+                    _uiState.update { it.copy(liveWinProbability = probability) }
+                }
                 delay(PRESENCE_HEARTBEAT_MS)
             }
         }
