@@ -41,6 +41,7 @@ import {
   finishCheckIn,
 } from "./observability.js";
 import { evaluate, formatFromText, ballsRemainingFor } from "./winprob.js";
+import { resolveMatchTeams, teamStatsOf } from "./teamnames.js";
 
 const DB_ID = process.env.APPWRITE_AI_CACHE_DB_ID ?? "bouncer-db";
 const COMMENTARY_COL = process.env.MATCH_COMMENTARY_COL_ID ?? "match-commentary";
@@ -536,14 +537,23 @@ function winProbFor(detail, title, model) {
     ballsBowled: s.ballsBowled,
     format,
   });
+  // The miniscore names teams by short code ("SA", "SUR"), the model keys them by Cricsheet full
+  // name, so passing the raw code missed every lookup and left teamStrengthDiff at zero. Resolution
+  // is off the title and returns null for anything outside the corpus, which is most domestic
+  // cricket — those keep the neutral 0.5 they already had.
+  const resolved = resolveMatchTeams({
+    title,
+    battingTeamName: s.battingTeamName,
+    teamStats: teamStatsOf(model),
+  });
   const result = evaluate({
     runsNeeded: s.runsNeeded ?? 0,
     ballsRemaining: ballsRemaining ?? 0,
     wicketsLost: s.wicketsLost ?? 0,
     currentRunRate: s.currentRunRate ?? 0,
     requiredRunRate: s.requiredRunRate ?? 0,
-    battingTeam: s.battingTeamName ?? "",
-    bowlingTeam: s.bowlingTeamName ?? "",
+    battingTeam: resolved?.battingTeam ?? s.battingTeamName ?? "",
+    bowlingTeam: resolved?.bowlingTeam ?? s.bowlingTeamName ?? "",
     format,
     model,
   });

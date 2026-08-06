@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { evaluate, formatFromText, ballsRemainingFor, inningsBalls } from "../src/winprob.js";
+import { resolveMatchTeams } from "../src/teamnames.js";
 
 const here = (p) => fileURLToPath(new URL(p, import.meta.url));
 
@@ -146,6 +147,52 @@ test("a trained v3 model overrides the heuristic", () => {
   const heuristic = orient(chaseSituation);
   assert.ok(Math.abs(withModel - 0.5) < 1e-9, `model path not taken: ${withModel}`);
   assert.notEqual(withModel, heuristic);
+});
+
+test("resolved team names make the strength term contribute", () => {
+  // The defect this guards: the miniscore names sides by short code and the model keys them by
+  // Cricsheet full name, so `teamStats["IND"]` missed, both sides fell back to 0.5, and
+  // teamStrengthDiff was exactly zero on every match ever scored.
+  const teamStats = { India: { winRate: 0.9 }, Zimbabwe: { winRate: 0.1 } };
+  const title = "India vs Zimbabwe, 1st T20I";
+  // A tight chase on purpose. chaseSituation is lopsided enough to sit on PROB_CEILING, where the
+  // clamp swallows any strength term and the test would pass whether or not the lookup worked.
+  const situation = {
+    ...chaseSituation,
+    battingTeamName: "IND",
+    bowlingTeamName: "ZIM",
+    wicketsLost: 4,
+    ballsBowled: 60,
+    oversRemaining: 10,
+    runsNeeded: 85,
+    currentRunRate: 7.5,
+    requiredRunRate: 8.5,
+  };
+
+  const rawCodes = orient(situation, { model: teamStats });
+  assert.ok(rawCodes > 0.04 && rawCodes < 0.96, `fixture is on a clamp (${rawCodes}); strength cannot show`);
+
+  const resolved = resolveMatchTeams({ title, battingTeamName: "IND", teamStats });
+  assert.deepEqual(resolved, { battingTeam: "India", bowlingTeam: "Zimbabwe" });
+
+  const withNames = orient(
+    { ...situation, battingTeamName: resolved.battingTeam, bowlingTeamName: resolved.bowlingTeam },
+    { model: teamStats },
+  );
+  // A 0.9-vs-0.1 gap has to move the number. Equality here means the lookup missed again.
+  assert.notEqual(withNames, rawCodes, "strength difference did not reach the logit");
+  // The strong side is batting, so resolving must favour it. Orientation is team2 via
+  // battingTeamIsTeam1: false, so team1's share must FALL.
+  assert.ok(withNames < rawCodes, `expected the strong batting side to gain, got ${withNames} vs ${rawCodes}`);
+});
+
+test("a fixture outside the corpus scores exactly as it did before resolution", () => {
+  // Surrey vs Kent — the collision case. Resolution declines, so the number must be bit-identical
+  // to the pre-change behaviour rather than picking up Suriname's and Kenya's win rates.
+  const teamStats = { Suriname: { winRate: 0.25 }, Kenya: { winRate: 0.53 } };
+  const situation = { ...chaseSituation, battingTeamName: "SUR", bowlingTeamName: "KEN" };
+  assert.equal(resolveMatchTeams({ title: "Surrey vs Kent, Group A", battingTeamName: "SUR", teamStats }), null);
+  assert.equal(orient(situation, { model: teamStats }), orient(situation, { model: {} }));
 });
 
 test("Cricbuzz's own format codes resolve, not just prose", () => {
