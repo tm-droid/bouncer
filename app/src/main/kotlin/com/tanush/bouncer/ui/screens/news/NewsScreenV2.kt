@@ -46,6 +46,7 @@ fun NewsScreenV2(
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
     val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
     val error by viewModel.error.collectAsStateWithLifecycle()
+    val staleHeadlines by viewModel.staleHeadlines.collectAsStateWithLifecycle()
 
     val colors = BouncerThemeV2.colors
     val typography = BouncerThemeV2.typography
@@ -69,7 +70,7 @@ fun NewsScreenV2(
     ) { innerPadding ->
         PullRefreshWrapperV2(
             isRefreshing = isRefreshing,
-            onRefresh = { viewModel.refresh() },
+            onRefresh = { viewModel.refreshNews() },
             modifier = Modifier.padding(innerPadding),
         ) {
             LazyColumn(
@@ -87,31 +88,34 @@ fun NewsScreenV2(
                     return@LazyColumn
                 }
 
-                // Empty or error state
+                // Empty or error state.
+                //
+                // The message comes straight from the ViewModel, which builds it from the HTTP
+                // status. This used to re-derive it by substring-matching the message for "403"
+                // and "429" — codes the repository had already collapsed into one fixed string,
+                // so every failure rendered as "Something went wrong". Retry is offered in BOTH
+                // branches: an empty tab with no way out was this bug's most visible symptom.
                 if (articles.isEmpty() && !isLoading) {
                     item(key = "empty") {
                         val error = error // capture delegated property to enable smart cast
-                        if (error != null) {
-                            val friendlyError = when {
-                                error.contains("403") -> "News source temporarily unavailable"
-                                error.contains("429") -> "Too many requests — try again in a moment"
-                                error.contains("timeout", ignoreCase = true) || error.contains("connect", ignoreCase = true) ->
-                                    "Network connection issue"
-                                else -> "Something went wrong"
-                            }
-                            EmptyStateV2(
-                                title = friendlyError,
-                                subtitle = "Pull down to refresh and try again",
-                                onRetry = { viewModel.refresh() },
-                            )
-                        } else {
-                            EmptyStateV2(
-                                title = "No news yet",
-                                subtitle = "Pull to refresh for the latest cricket headlines",
-                            )
-                        }
+                        EmptyStateV2(
+                            title = error ?: "No news yet",
+                            subtitle = "Pull down to refresh and try again",
+                            onRetry = { viewModel.refreshNews() },
+                        )
                     }
                     return@LazyColumn
+                }
+
+                // Headlines are the server's cache because the live source was unreachable. Say
+                // how old they are — presenting them as current is the failure this replaces.
+                staleHeadlines?.let { stale ->
+                    item(key = "stale_banner") {
+                        StaleHeadlinesBanner(
+                            ageMs = stale.ageMs,
+                            modifier = Modifier.padding(horizontal = spacing.lg),
+                        )
+                    }
                 }
 
                 // Featured article (hero card)
@@ -145,6 +149,57 @@ fun NewsScreenV2(
         }
     }
 }
+
+/**
+ * States plainly that the headlines below are the server's cache, and how old it is.
+ *
+ * [ageMs] is null when the server served a cache it could not date. That case still gets a banner —
+ * "stale, age unknown" is honest; silently rendering it as current is what left five-day-old
+ * headlines looking live.
+ */
+@Composable
+private fun StaleHeadlinesBanner(
+    ageMs: Long?,
+    modifier: Modifier = Modifier,
+) {
+    val colors = BouncerThemeV2.colors
+    val typography = BouncerThemeV2.typography
+    val spacing = BouncerThemeV2.spacing
+
+    BouncerCard(modifier = modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(spacing.lg)) {
+            Text(
+                text = ageMs?.let { "Headlines from ${describeAge(it)}" } ?: "Showing saved headlines",
+                style = typography.bodyMedium,
+                color = colors.onSurface,
+            )
+            Spacer(Modifier.height(spacing.xs))
+            Text(
+                text = "The live news source is unavailable. Pull down to try again.",
+                style = typography.bodySmall,
+                color = colors.textSecondary,
+            )
+        }
+    }
+}
+
+private const val MINUTE_MS = 60_000L
+private const val HOUR_MS = 60 * MINUTE_MS
+private const val DAY_MS = 24 * HOUR_MS
+
+private fun describeAge(ageMs: Long): String {
+    val minutes = ageMs / MINUTE_MS
+    val hours = ageMs / HOUR_MS
+    val days = ageMs / DAY_MS
+    return when {
+        minutes < 1 -> "moments ago"
+        minutes < 60 -> "$minutes ${plural(minutes, "minute")} ago"
+        hours < 24 -> "$hours ${plural(hours, "hour")} ago"
+        else -> "$days ${plural(days, "day")} ago"
+    }
+}
+
+private fun plural(count: Long, unit: String) = if (count == 1L) unit else "${unit}s"
 
 /**
  * Featured/hero news card — large image top, headline below.

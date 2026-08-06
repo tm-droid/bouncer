@@ -1,18 +1,18 @@
 import { Client, Storage } from "node-appwrite";
 import { InputFile } from "node-appwrite/file";
 import { parseJsonFile } from "./storageJson.js";
+import { CACHE_TTL_MS, cacheAgeMs, isFresh, staleFallback } from "./newsResult.js";
 
-const CACHE_TTL_MS = 4 * 60 * 60 * 1000; // 4 hours — caps RapidAPI at 6 calls/day
 const NEWS_CACHE_FILE_ID = "news-cache";
+
+// Enough of the upstream body to identify the failure, short enough not to flood the log.
+const UPSTREAM_ERROR_LOG_CHARS = 200;
+
+const ageLabel = (ageMs) => (ageMs === null ? "age unknown" : `${Math.round(ageMs / 60000)}m`);
 
 export default async ({ req, res, log, error }) => {
   const RAPIDAPI_KEY = process.env.RAPIDAPI_KEY ?? "";
   const STATS_BUCKET_ID = process.env.STATS_BUCKET_ID ?? "cricket-stats";
-
-  if (!RAPIDAPI_KEY) {
-    error("RAPIDAPI_KEY not set");
-    return res.json({ error: "News service not configured" }, 503);
-  }
 
   const client = new Client()
     .setEndpoint(process.env.APPWRITE_FUNCTION_API_ENDPOINT)
@@ -20,40 +20,69 @@ export default async ({ req, res, log, error }) => {
     .setKey(process.env.APPWRITE_API_KEY ?? "");
   const storage = new Storage(client);
 
-  // ── Try cached response ──────────────────────────────────────────────────
+  // ── Read the cache once ──────────────────────────────────────────────────
+  // It has two jobs: a fresh hit returns immediately, and a stale one is the fallback for every
+  // failure below. It is read before the key check for that second reason — a function that is
+  // misconfigured can still serve what it already has.
+  let cached = null;
   try {
-    const cached = parseJsonFile(await storage.getFileDownload(STATS_BUCKET_ID, NEWS_CACHE_FILE_ID));
-    const age = Date.now() - new Date(cached.fetchedAt).getTime();
-    if (age < CACHE_TTL_MS) {
-      log(`Returning cached news (age: ${Math.round(age / 60000)}m)`);
-      return res.json(cached.response);
-    }
-    log(`Cache stale (${Math.round(age / 60000)}m old) — fetching fresh`);
+    cached = parseJsonFile(await storage.getFileDownload(STATS_BUCKET_ID, NEWS_CACHE_FILE_ID));
   } catch (_) {
     log("No cache found — fetching fresh");
   }
 
+  const now = Date.now();
+  if (isFresh(cached, now)) {
+    log(`Returning cached news (age: ${ageLabel(cacheAgeMs(cached, now))})`);
+    return res.json(cached.response);
+  }
+  if (cached) {
+    log(`Cache stale (${ageLabel(cacheAgeMs(cached, now))} old, TTL ${CACHE_TTL_MS / 60000}m) — fetching fresh`);
+  }
+
   // ── Fetch from RapidAPI ──────────────────────────────────────────────────
-  let newsJson;
-  try {
-    const response = await fetch(
-      "https://cricbuzz-cricket.p.rapidapi.com/news/v1/index",
-      {
-        headers: {
-          "x-rapidapi-key": RAPIDAPI_KEY,
-          "x-rapidapi-host": "cricbuzz-cricket.p.rapidapi.com",
-        },
-        signal: AbortSignal.timeout(15_000),
+  let newsJson = null;
+  let failure = null; // { body, status } — what to return if there is nothing cached to serve
+
+  if (!RAPIDAPI_KEY) {
+    error("RAPIDAPI_KEY not set");
+    failure = { body: { error: "News service not configured" }, status: 503 };
+  } else {
+    try {
+      const response = await fetch(
+        "https://cricbuzz-cricket.p.rapidapi.com/news/v1/index",
+        {
+          headers: {
+            "x-rapidapi-key": RAPIDAPI_KEY,
+            "x-rapidapi-host": "cricbuzz-cricket.p.rapidapi.com",
+          },
+          signal: AbortSignal.timeout(15_000),
+        }
+      );
+      if (!response.ok) {
+        // The status alone does not say whether the plan is exhausted, throttled, or cancelled —
+        // RapidAPI answers 429 to more than one of those and puts the distinction in the body.
+        // Logging only the status is what left a five-day outage unattributable.
+        const detail = await response.text().catch(() => "");
+        error(`RapidAPI returned HTTP ${response.status}: ${detail.slice(0, UPSTREAM_ERROR_LOG_CHARS)}`);
+        failure = { body: { error: `Upstream error: ${response.status}` }, status: response.status };
+      } else {
+        newsJson = await response.json();
       }
-    );
-    if (!response.ok) {
-      error(`RapidAPI returned HTTP ${response.status}`);
-      return res.json({ error: `Upstream error: ${response.status}` }, response.status);
+    } catch (e) {
+      error(`RapidAPI fetch failed: ${e?.message}`);
+      failure = { body: { error: "Failed to fetch news" }, status: 503 };
     }
-    newsJson = await response.json();
-  } catch (e) {
-    error(`RapidAPI fetch failed: ${e?.message}`);
-    return res.json({ error: "Failed to fetch news" }, 503);
+  }
+
+  // ── Upstream gave us nothing: serve the stale cache rather than a blank tab ───────────────
+  if (failure) {
+    const fallback = staleFallback(cached, now);
+    if (fallback) {
+      log(`Upstream failed (${failure.status}) — serving stale cache (${ageLabel(cacheAgeMs(cached, now))} old)`);
+      return res.json(fallback);
+    }
+    return res.json(failure.body, failure.status);
   }
 
   // ── Write cache to Storage (non-fatal if it fails) ───────────────────────

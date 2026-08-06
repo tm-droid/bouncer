@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.tanush.bouncer.data.remote.AppwriteClient
 import com.tanush.bouncer.data.repository.CricbuzzNewsRepository
 import com.tanush.bouncer.data.repository.NewsRepository
+import com.tanush.bouncer.data.repository.NewsUnavailableException
 import com.tanush.bouncer.models.NewsArticleData
 import com.tanush.bouncer.utils.bouncerExceptionHandler
 import io.sentry.Breadcrumb
@@ -19,6 +20,14 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+
+/**
+ * On-screen headlines came from the server's cache, not the live source.
+ *
+ * [ageMs] is null when the server served a cache it could not date. That is still stale and must
+ * still be announced — the wording just loses the "from N days ago" part.
+ */
+data class StaleHeadlines(val ageMs: Long?)
 
 /**
  * ViewModel for Cricbuzz News.
@@ -38,6 +47,17 @@ class NewsViewModel(
             in 500..599 -> "News service is unavailable. Please try again later."
             else -> "Failed to load news."
         }
+
+        /**
+         * The message the screen shows. It is built here, where the status code exists, rather
+         * than reconstructed downstream: NewsScreenV2 used to recover the code by substring-
+         * matching this very string, so a 429 rendered as "Something went wrong".
+         */
+        private fun messageFor(e: Throwable): String = when {
+            e is NewsUnavailableException && e.statusCode != null -> newsFetchMessageFor(e.statusCode)
+            e is NewsUnavailableException -> e.message ?: "Failed to load news"
+            else -> e.localizedMessage ?: "Failed to load news"
+        }
     }
 
     private val _articles = MutableStateFlow<List<NewsArticleData>>(emptyList())
@@ -51,6 +71,15 @@ class NewsViewModel(
 
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
+
+    /**
+     * Non-null when the headlines on screen came from the server's cache because the live source
+     * was unreachable. The value is the cache's age in ms, or null inside [StaleHeadlines] when
+     * the server could not date it — stale-with-unknown-age is still stale, and the UI must say so
+     * rather than present week-old headlines as current.
+     */
+    private val _staleHeadlines = MutableStateFlow<StaleHeadlines?>(null)
+    val staleHeadlines: StateFlow<StaleHeadlines?> = _staleHeadlines.asStateFlow()
 
     private val _selectedArticle = MutableStateFlow<NewsArticleData?>(null)
     val selectedArticle: StateFlow<NewsArticleData?> = _selectedArticle.asStateFlow()
@@ -110,13 +139,19 @@ class NewsViewModel(
                     return@launch
                 }
 
-                val stories = repository.fetchHeadlines()
-                _articles.value = stories
+                val headlines = repository.fetchHeadlines()
+                _articles.value = headlines.articles
+                _staleHeadlines.value = if (headlines.isStale) StaleHeadlines(headlines.staleAgeMs) else null
                 lastFetchTime = System.currentTimeMillis()
-                Sentry.metrics().gauge("news.articles.count", stories.size.toDouble())
+                Sentry.metrics().gauge("news.articles.count", headlines.articles.size.toDouble())
                 Sentry.metrics().count("news.fetch.success", 1.0)
-                Sentry.logger().log(SentryLogLevel.INFO, "News fetch success: %s articles", stories.size.toString())
-                Log.d(TAG, "Fetched ${stories.size} news articles")
+                if (headlines.isStale) Sentry.metrics().count("news.fetch.stale", 1.0)
+                Sentry.logger().log(
+                    SentryLogLevel.INFO,
+                    "News fetch success: %s articles",
+                    headlines.articles.size.toString(),
+                )
+                Log.d(TAG, "Fetched ${headlines.articles.size} news articles (stale=${headlines.isStale})")
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -125,11 +160,14 @@ class NewsViewModel(
                     category = "news.error",
                     message = "Failed to fetch news articles",
                     level = SentryLevel.ERROR,
-                    data = mapOf("error_type" to e.javaClass.simpleName),
+                    data = mapOf(
+                        "error_type" to e.javaClass.simpleName,
+                        "status_code" to (e as? NewsUnavailableException)?.statusCode,
+                    ),
                 )
                 Sentry.captureException(e)
                 Sentry.metrics().count("news.fetch.error", 1.0)
-                _error.value = e.localizedMessage ?: "Failed to load news"
+                _error.value = messageFor(e)
             } finally {
                 _isLoading.value = false
                 _isRefreshing.value = false
@@ -137,23 +175,20 @@ class NewsViewModel(
         }
     }
 
+    /**
+     * The one refresh entry point, for both pull-to-refresh and the error-state Retry button.
+     *
+     * There used to be a second one, `refresh()`, which set `_isRefreshing = true` before calling
+     * [fetchNews] — whose first line returns early when `_isRefreshing` is already true. So it
+     * never fetched anything, and because it also cleared `_error` first, tapping Retry dropped
+     * the screen into the "No news yet" empty state, which had no Retry button. The tab was dead
+     * until the app restarted. [fetchNews] owns the `_isRefreshing` lifecycle; nothing else may
+     * set it.
+     */
     fun refreshNews() {
         breadcrumb("user.action", "Manual news refresh triggered")
         lastFetchTime = 0L
         fetchNews()
-    }
-
-    fun refresh() {
-        viewModelScope.launch(bouncerExceptionHandler) {
-            _isRefreshing.value = true
-            _error.value = null
-            try {
-                lastFetchTime = 0L
-                fetchNews()
-            } finally {
-                _isRefreshing.value = false
-            }
-        }
     }
 
     private fun startAutoRefresh() {
