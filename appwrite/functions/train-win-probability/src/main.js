@@ -163,7 +163,15 @@ export function buildModel({ zipBuffer, log, error }) {
   let parsed = 0;
   let skipped = 0;
 
-  for (const entry of entries) {
+  // Indexed, and the slot is cleared as we go. `adm-zip` caches each entry's decompressed bytes on
+  // the entry object the moment `getData()` is called and never releases them, so holding the array
+  // holds a second, inflated copy of the whole archive — on top of the compressed buffer it already
+  // keeps a reference to, and the skeleton being built here. That is what killed the first
+  // production run: 512 MB, no logs, a bare 500 at 43 seconds. Dropping each reference lets the
+  // decompressed copy be collected as soon as its match has been reduced to bytes.
+  for (let i = 0; i < entries.length; i++) {
+    const entry = entries[i];
+    entries[i] = null;
     try {
       const raw = JSON.parse(entry.getData().toString("utf8"));
       parsed++;
@@ -177,6 +185,7 @@ export function buildModel({ zipBuffer, log, error }) {
       skipped++;
     }
   }
+  entries.length = 0;
   log(`Parsed ${parsed}, skipped ${skipped}, ${matches.length} modelled, RSS ${mb(process.memoryUsage().rss)} MB`);
 
   dates.sort();

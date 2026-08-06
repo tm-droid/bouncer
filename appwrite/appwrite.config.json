@@ -15,18 +15,38 @@
             "version": "v3",
             "path": "functions/highlights-sync",
             "vars": [
-                { "key": "APPWRITE_API_KEY",                "value": "" },
-                { "key": "APPWRITE_HIGHLIGHTS_DB_ID",       "value": "bouncer-db" },
-                { "key": "APPWRITE_HIGHLIGHTS_COL_ID",      "value": "highlights" },
-                { "key": "APPWRITE_HIGHLIGHTS_META_COL_ID", "value": "highlights-meta" },
-                { "key": "RAPIDAPI_KEY",                    "value": "" },
-                { "key": "HIGHLIGHTLY_API_KEY",             "value": "" }
+                {
+                    "key": "APPWRITE_API_KEY",
+                    "value": ""
+                },
+                {
+                    "key": "APPWRITE_HIGHLIGHTS_DB_ID",
+                    "value": "bouncer-db"
+                },
+                {
+                    "key": "APPWRITE_HIGHLIGHTS_COL_ID",
+                    "value": "highlights"
+                },
+                {
+                    "key": "APPWRITE_HIGHLIGHTS_META_COL_ID",
+                    "value": "highlights-meta"
+                },
+                {
+                    "key": "RAPIDAPI_KEY",
+                    "value": ""
+                },
+                {
+                    "key": "HIGHLIGHTLY_API_KEY",
+                    "value": ""
+                }
             ]
         },
         {
             "$id": "bouncer-win-probability",
             "name": "bouncer-win-probability",
-            "$permissions": ["execute(\"any\")"],
+            "$permissions": [
+                "execute(\"any\")"
+            ],
             "enabled": true,
             "logging": true,
             "runtime": "node-22",
@@ -36,8 +56,14 @@
             "version": "v3",
             "path": "functions/win-probability",
             "vars": [
-                { "key": "APPWRITE_API_KEY", "value": "" },
-                { "key": "STATS_BUCKET_ID",  "value": "cricket-stats" }
+                {
+                    "key": "APPWRITE_API_KEY",
+                    "value": ""
+                },
+                {
+                    "key": "STATS_BUCKET_ID",
+                    "value": "cricket-stats"
+                }
             ]
         },
         {
@@ -53,14 +79,23 @@
             "version": "v3",
             "path": "functions/train-win-probability",
             "vars": [
-                { "key": "APPWRITE_API_KEY", "value": "" },
-                { "key": "STATS_BUCKET_ID",  "value": "cricket-stats" }
-            ]
+                {
+                    "key": "APPWRITE_API_KEY",
+                    "value": ""
+                },
+                {
+                    "key": "STATS_BUCKET_ID",
+                    "value": "cricket-stats"
+                }
+            ],
+            "runtimeSpecification": "s-1vcpu-1gb"
         },
         {
             "$id": "bouncer-generate-commentary",
             "name": "bouncer-generate-commentary",
-            "$permissions": ["execute(\"any\")"],
+            "$permissions": [
+                "execute(\"any\")"
+            ],
             "enabled": true,
             "logging": true,
             "runtime": "node-22",
@@ -70,19 +105,42 @@
             "version": "v3",
             "path": "functions/generate-commentary",
             "vars": [
-                { "key": "APPWRITE_API_KEY",         "value": "" },
-                { "key": "APPWRITE_AI_CACHE_DB_ID",  "value": "bouncer-db" },
-                { "key": "APPWRITE_AI_CACHE_COL_ID", "value": "ai-commentary-cache" },
-                { "key": "GROQ_API_KEY",             "value": "" },
-                { "key": "CEREBRAS_API_KEY",         "value": "" },
-                { "key": "SAMBANOVA_API_KEY",        "value": "" },
-                { "key": "BOUNCER_FUNCTION_SECRET",  "value": "" }
+                {
+                    "key": "APPWRITE_API_KEY",
+                    "value": ""
+                },
+                {
+                    "key": "APPWRITE_AI_CACHE_DB_ID",
+                    "value": "bouncer-db"
+                },
+                {
+                    "key": "APPWRITE_AI_CACHE_COL_ID",
+                    "value": "ai-commentary-cache"
+                },
+                {
+                    "key": "GROQ_API_KEY",
+                    "value": ""
+                },
+                {
+                    "key": "CEREBRAS_API_KEY",
+                    "value": ""
+                },
+                {
+                    "key": "SAMBANOVA_API_KEY",
+                    "value": ""
+                },
+                {
+                    "key": "BOUNCER_FUNCTION_SECRET",
+                    "value": ""
+                }
             ]
         },
         {
             "$id": "bouncer-match-presence",
             "name": "bouncer-match-presence",
-            "$permissions": ["execute(\"any\")"],
+            "$permissions": [
+                "execute(\"any\")"
+            ],
             "enabled": true,
             "logging": true,
             "runtime": "node-22",
@@ -92,8 +150,14 @@
             "version": "v3",
             "path": "functions/match-presence",
             "vars": [
-                { "key": "APPWRITE_API_KEY",      "value": "" },
-                { "key": "MATCH_CACHE_BUCKET_ID", "value": "cricket-stats" }
+                {
+                    "key": "APPWRITE_API_KEY",
+                    "value": ""
+                },
+                {
+                    "key": "MATCH_CACHE_BUCKET_ID",
+                    "value": "cricket-stats"
+                }
             ]
         },
         {
@@ -109,17 +173,34 @@
             "version": "v3",
             "path": "functions/poll-live-matches",
             "vars": [
-                { "key": "APPWRITE_API_KEY",      "value": "" },
-                { "key": "VERCEL_API_BASE",        "value": "https://api-iota-jade.vercel.app" },
-                { "key": "MATCH_CACHE_BUCKET_ID",  "value": "cricket-stats" },
-                { "key": "FIREBASE_SERVICE_ACCOUNT_JSON", "value": "" },
-                { "key": "FIREBASE_PROJECT_ID",           "value": "" }
+                {
+                    "key": "APPWRITE_API_KEY",
+                    "value": ""
+                },
+                {
+                    "key": "VERCEL_API_BASE",
+                    "value": "https://api-iota-jade.vercel.app"
+                },
+                {
+                    "key": "MATCH_CACHE_BUCKET_ID",
+                    "value": "cricket-stats"
+                },
+                {
+                    "key": "FIREBASE_SERVICE_ACCOUNT_JSON",
+                    "value": ""
+                },
+                {
+                    "key": "FIREBASE_PROJECT_ID",
+                    "value": ""
+                }
             ]
         },
         {
             "$id": "bouncer-news-sync",
             "name": "bouncer-news-sync",
-            "$permissions": ["execute(\"any\")"],
+            "$permissions": [
+                "execute(\"any\")"
+            ],
             "enabled": true,
             "logging": true,
             "runtime": "node-22",
@@ -129,9 +210,18 @@
             "version": "v3",
             "path": "functions/news-sync",
             "vars": [
-                { "key": "APPWRITE_API_KEY", "value": "" },
-                { "key": "RAPIDAPI_KEY",     "value": "" },
-                { "key": "STATS_BUCKET_ID",  "value": "cricket-stats" }
+                {
+                    "key": "APPWRITE_API_KEY",
+                    "value": ""
+                },
+                {
+                    "key": "RAPIDAPI_KEY",
+                    "value": ""
+                },
+                {
+                    "key": "STATS_BUCKET_ID",
+                    "value": "cricket-stats"
+                }
             ]
         },
         {
@@ -147,15 +237,42 @@
             "version": "v3",
             "path": "functions/match-sync",
             "vars": [
-                { "key": "APPWRITE_API_KEY",          "value": "" },
-                { "key": "GROQ_API_KEY",              "value": "" },
-                { "key": "CEREBRAS_API_KEY",          "value": "" },
-                { "key": "SAMBANOVA_API_KEY",         "value": "" },
-                { "key": "MATCH_CACHE_BUCKET_ID",     "value": "cricket-stats" },
-                { "key": "APPWRITE_AI_CACHE_DB_ID",   "value": "bouncer-db" },
-                { "key": "MATCH_COMMENTARY_COL_ID",   "value": "match-commentary" },
-                { "key": "MATCH_LIVE_DETAIL_COL_ID",  "value": "match-live-detail" },
-                { "key": "MATCH_SCORECARD_COL_ID",    "value": "match-scorecard" }
+                {
+                    "key": "APPWRITE_API_KEY",
+                    "value": ""
+                },
+                {
+                    "key": "GROQ_API_KEY",
+                    "value": ""
+                },
+                {
+                    "key": "CEREBRAS_API_KEY",
+                    "value": ""
+                },
+                {
+                    "key": "SAMBANOVA_API_KEY",
+                    "value": ""
+                },
+                {
+                    "key": "MATCH_CACHE_BUCKET_ID",
+                    "value": "cricket-stats"
+                },
+                {
+                    "key": "APPWRITE_AI_CACHE_DB_ID",
+                    "value": "bouncer-db"
+                },
+                {
+                    "key": "MATCH_COMMENTARY_COL_ID",
+                    "value": "match-commentary"
+                },
+                {
+                    "key": "MATCH_LIVE_DETAIL_COL_ID",
+                    "value": "match-live-detail"
+                },
+                {
+                    "key": "MATCH_SCORECARD_COL_ID",
+                    "value": "match-scorecard"
+                }
             ]
         },
         {
@@ -171,9 +288,18 @@
             "version": "v1",
             "path": "functions/match-commentary-prune",
             "vars": [
-                { "key": "APPWRITE_API_KEY",        "value": "" },
-                { "key": "APPWRITE_AI_CACHE_DB_ID", "value": "bouncer-db" },
-                { "key": "MATCH_COMMENTARY_COL_ID", "value": "match-commentary" }
+                {
+                    "key": "APPWRITE_API_KEY",
+                    "value": ""
+                },
+                {
+                    "key": "APPWRITE_AI_CACHE_DB_ID",
+                    "value": "bouncer-db"
+                },
+                {
+                    "key": "MATCH_COMMENTARY_COL_ID",
+                    "value": "match-commentary"
+                }
             ]
         }
     ],
@@ -184,11 +310,18 @@
             "enabled": true,
             "fileSecurity": false,
             "maximumFileSize": 10485760,
-            "allowedFileExtensions": ["json"],
+            "allowedFileExtensions": [
+                "json"
+            ],
             "compression": "gzip",
             "encryption": false,
             "antivirus": false,
-            "$permissions": ["read(\"any\")", "create(\"any\")", "update(\"any\")", "delete(\"any\")"]
+            "$permissions": [
+                "read(\"any\")",
+                "create(\"any\")",
+                "update(\"any\")",
+                "delete(\"any\")"
+            ]
         }
     ],
     "tablesDB": [
@@ -201,172 +334,469 @@
     "tables": [
         {
             "$id": "ai-commentary-cache",
-            "$permissions": ["create(\"any\")", "read(\"any\")"],
+            "$permissions": [
+                "create(\"any\")",
+                "read(\"any\")"
+            ],
             "databaseId": "bouncer-db",
             "name": "AI Commentary Cache",
             "enabled": true,
             "rowSecurity": false,
             "columns": [
-                { "key": "cache_key",  "type": "varchar", "required": true,  "size": 512, "array": false },
-                { "key": "commentary", "type": "text",    "required": false,              "array": false },
-                { "key": "expires_at", "type": "varchar", "required": false, "size": 50,  "array": false }
+                {
+                    "key": "cache_key",
+                    "type": "varchar",
+                    "required": true,
+                    "size": 512,
+                    "array": false
+                },
+                {
+                    "key": "commentary",
+                    "type": "text",
+                    "required": false,
+                    "array": false
+                },
+                {
+                    "key": "expires_at",
+                    "type": "varchar",
+                    "required": false,
+                    "size": 50,
+                    "array": false
+                }
             ],
             "indexes": [
                 {
                     "key": "idx_cache_key",
                     "type": "key",
-                    "attributes": ["cache_key"],
-                    "orders": ["ASC"]
+                    "attributes": [
+                        "cache_key"
+                    ],
+                    "orders": [
+                        "ASC"
+                    ]
                 }
             ]
         },
         {
             "$id": "user-favourites",
-            "$permissions": ["create(\"any\")", "read(\"any\")", "update(\"any\")"],
+            "$permissions": [
+                "create(\"any\")",
+                "read(\"any\")",
+                "update(\"any\")"
+            ],
             "databaseId": "bouncer-db",
             "name": "User Favourites",
             "enabled": true,
             "rowSecurity": false,
             "columns": [
-                { "key": "teams", "type": "text", "required": false, "array": false }
+                {
+                    "key": "teams",
+                    "type": "text",
+                    "required": false,
+                    "array": false
+                }
             ],
             "indexes": []
         },
         {
             "$id": "highlights",
-            "$permissions": ["read(\"any\")"],
+            "$permissions": [
+                "read(\"any\")"
+            ],
             "databaseId": "bouncer-db",
             "name": "Highlights",
             "enabled": true,
             "rowSecurity": false,
             "columns": [
-                { "key": "highlight_id",        "type": "varchar", "required": true,  "size": 64,   "array": false },
-                { "key": "type",                "type": "varchar", "required": true,  "size": 16,   "array": false },
-                { "key": "img_url",             "type": "varchar", "required": false, "size": 2048, "array": false },
-                { "key": "title",               "type": "varchar", "required": false, "size": 512,  "array": false },
-                { "key": "url",                 "type": "varchar", "required": false, "size": 2048, "array": false },
-                { "key": "embed_url",           "type": "varchar", "required": false, "size": 2048, "array": false },
-                { "key": "channel",             "type": "varchar", "required": false, "size": 255,  "array": false },
-                { "key": "source",              "type": "varchar", "required": false, "size": 255,  "array": false },
-                { "key": "match_home_team",     "type": "varchar", "required": false, "size": 255,  "array": false },
-                { "key": "match_away_team",     "type": "varchar", "required": false, "size": 255,  "array": false },
-                { "key": "match_home_abbr",     "type": "varchar", "required": false, "size": 16,   "array": false },
-                { "key": "match_away_abbr",     "type": "varchar", "required": false, "size": 16,   "array": false },
-                { "key": "match_league_name",   "type": "varchar", "required": false, "size": 255,  "array": false },
-                { "key": "match_league_season", "type": "integer", "required": false,               "array": false },
-                { "key": "match_start_date",    "type": "varchar", "required": false, "size": 50,   "array": false },
-                { "key": "match_end_date",      "type": "varchar", "required": false, "size": 50,   "array": false },
-                { "key": "raw_match_id",        "type": "varchar", "required": false, "size": 128,  "array": false },
-                { "key": "fetched_at",          "type": "integer", "required": false,               "array": false }
+                {
+                    "key": "highlight_id",
+                    "type": "varchar",
+                    "required": true,
+                    "size": 64,
+                    "array": false
+                },
+                {
+                    "key": "type",
+                    "type": "varchar",
+                    "required": true,
+                    "size": 16,
+                    "array": false
+                },
+                {
+                    "key": "img_url",
+                    "type": "varchar",
+                    "required": false,
+                    "size": 2048,
+                    "array": false
+                },
+                {
+                    "key": "title",
+                    "type": "varchar",
+                    "required": false,
+                    "size": 512,
+                    "array": false
+                },
+                {
+                    "key": "url",
+                    "type": "varchar",
+                    "required": false,
+                    "size": 2048,
+                    "array": false
+                },
+                {
+                    "key": "embed_url",
+                    "type": "varchar",
+                    "required": false,
+                    "size": 2048,
+                    "array": false
+                },
+                {
+                    "key": "channel",
+                    "type": "varchar",
+                    "required": false,
+                    "size": 255,
+                    "array": false
+                },
+                {
+                    "key": "source",
+                    "type": "varchar",
+                    "required": false,
+                    "size": 255,
+                    "array": false
+                },
+                {
+                    "key": "match_home_team",
+                    "type": "varchar",
+                    "required": false,
+                    "size": 255,
+                    "array": false
+                },
+                {
+                    "key": "match_away_team",
+                    "type": "varchar",
+                    "required": false,
+                    "size": 255,
+                    "array": false
+                },
+                {
+                    "key": "match_home_abbr",
+                    "type": "varchar",
+                    "required": false,
+                    "size": 16,
+                    "array": false
+                },
+                {
+                    "key": "match_away_abbr",
+                    "type": "varchar",
+                    "required": false,
+                    "size": 16,
+                    "array": false
+                },
+                {
+                    "key": "match_league_name",
+                    "type": "varchar",
+                    "required": false,
+                    "size": 255,
+                    "array": false
+                },
+                {
+                    "key": "match_league_season",
+                    "type": "integer",
+                    "required": false,
+                    "array": false
+                },
+                {
+                    "key": "match_start_date",
+                    "type": "varchar",
+                    "required": false,
+                    "size": 50,
+                    "array": false
+                },
+                {
+                    "key": "match_end_date",
+                    "type": "varchar",
+                    "required": false,
+                    "size": 50,
+                    "array": false
+                },
+                {
+                    "key": "raw_match_id",
+                    "type": "varchar",
+                    "required": false,
+                    "size": 128,
+                    "array": false
+                },
+                {
+                    "key": "fetched_at",
+                    "type": "integer",
+                    "required": false,
+                    "array": false
+                }
             ],
             "indexes": [
                 {
                     "key": "idx_type",
                     "type": "key",
-                    "attributes": ["type"],
-                    "orders": ["ASC"]
+                    "attributes": [
+                        "type"
+                    ],
+                    "orders": [
+                        "ASC"
+                    ]
                 },
                 {
                     "key": "idx_fetched_at",
                     "type": "key",
-                    "attributes": ["fetched_at"],
-                    "orders": ["DESC"]
+                    "attributes": [
+                        "fetched_at"
+                    ],
+                    "orders": [
+                        "DESC"
+                    ]
                 }
             ]
         },
         {
             "$id": "player-forms",
-            "$permissions": ["create(\"any\")", "read(\"any\")", "update(\"any\")"],
+            "$permissions": [
+                "create(\"any\")",
+                "read(\"any\")",
+                "update(\"any\")"
+            ],
             "databaseId": "bouncer-db",
             "name": "Player Forms",
             "enabled": true,
             "rowSecurity": false,
             "columns": [
-                { "key": "player_name",     "type": "varchar", "required": true,  "size": 255, "array": false },
-                { "key": "recent_sr",       "type": "double",  "required": false,              "array": false },
-                { "key": "recent_economy",  "type": "double",  "required": false,              "array": false },
-                { "key": "match_count",     "type": "integer", "required": false,              "array": false },
-                { "key": "updated_at",      "type": "varchar", "required": false, "size": 50,  "array": false }
+                {
+                    "key": "player_name",
+                    "type": "varchar",
+                    "required": true,
+                    "size": 255,
+                    "array": false
+                },
+                {
+                    "key": "recent_sr",
+                    "type": "double",
+                    "required": false,
+                    "array": false
+                },
+                {
+                    "key": "recent_economy",
+                    "type": "double",
+                    "required": false,
+                    "array": false
+                },
+                {
+                    "key": "match_count",
+                    "type": "integer",
+                    "required": false,
+                    "array": false
+                },
+                {
+                    "key": "updated_at",
+                    "type": "varchar",
+                    "required": false,
+                    "size": 50,
+                    "array": false
+                }
             ],
             "indexes": [
                 {
                     "key": "idx_player_name",
                     "type": "key",
-                    "attributes": ["player_name"],
-                    "orders": ["ASC"]
+                    "attributes": [
+                        "player_name"
+                    ],
+                    "orders": [
+                        "ASC"
+                    ]
                 }
             ]
         },
         {
             "$id": "highlights-meta",
-            "$permissions": ["read(\"any\")"],
+            "$permissions": [
+                "read(\"any\")"
+            ],
             "databaseId": "bouncer-db",
             "name": "Highlights Meta",
             "enabled": true,
             "rowSecurity": false,
             "columns": [
-                { "key": "fetch_date",    "type": "varchar", "required": false, "size": 16, "array": false },
-                { "key": "last_fetch_at", "type": "integer", "required": false,             "array": false }
+                {
+                    "key": "fetch_date",
+                    "type": "varchar",
+                    "required": false,
+                    "size": 16,
+                    "array": false
+                },
+                {
+                    "key": "last_fetch_at",
+                    "type": "integer",
+                    "required": false,
+                    "array": false
+                }
             ],
             "indexes": []
         },
         {
             "$id": "match-commentary",
-            "$permissions": ["create(\"any\")", "read(\"any\")", "update(\"any\")"],
+            "$permissions": [
+                "create(\"any\")",
+                "read(\"any\")",
+                "update(\"any\")"
+            ],
             "databaseId": "bouncer-db",
             "name": "Match Commentary",
             "enabled": true,
             "rowSecurity": false,
             "columns": [
-                { "key": "match_id",   "type": "varchar", "required": true,  "size": 32, "array": false },
-                { "key": "innings",    "type": "integer", "required": false, "default": 1, "array": false },
-                { "key": "ball",       "type": "varchar", "required": false, "size": 16, "default": "", "array": false },
-                { "key": "sort_key",   "type": "double",  "required": true,              "array": false },
-                { "key": "commentary", "type": "text",    "required": true,              "array": false },
-                { "key": "created_at", "type": "varchar", "required": false, "size": 40, "default": "", "array": false }
+                {
+                    "key": "match_id",
+                    "type": "varchar",
+                    "required": true,
+                    "size": 32,
+                    "array": false
+                },
+                {
+                    "key": "innings",
+                    "type": "integer",
+                    "required": false,
+                    "default": 1,
+                    "array": false
+                },
+                {
+                    "key": "ball",
+                    "type": "varchar",
+                    "required": false,
+                    "size": 16,
+                    "default": "",
+                    "array": false
+                },
+                {
+                    "key": "sort_key",
+                    "type": "double",
+                    "required": true,
+                    "array": false
+                },
+                {
+                    "key": "commentary",
+                    "type": "text",
+                    "required": true,
+                    "array": false
+                },
+                {
+                    "key": "created_at",
+                    "type": "varchar",
+                    "required": false,
+                    "size": 40,
+                    "default": "",
+                    "array": false
+                }
             ],
             "indexes": [
                 {
                     "key": "idx_match_sort",
                     "type": "key",
-                    "attributes": ["match_id", "sort_key"],
-                    "orders": ["ASC", "DESC"]
+                    "attributes": [
+                        "match_id",
+                        "sort_key"
+                    ],
+                    "orders": [
+                        "ASC",
+                        "DESC"
+                    ]
                 }
             ]
         },
         {
             "$id": "match-live-detail",
-            "$permissions": ["create(\"any\")", "read(\"any\")", "update(\"any\")"],
+            "$permissions": [
+                "create(\"any\")",
+                "read(\"any\")",
+                "update(\"any\")"
+            ],
             "databaseId": "bouncer-db",
             "name": "Match Live Detail",
             "enabled": true,
             "rowSecurity": false,
             "columns": [
-                { "key": "match_id",   "type": "varchar", "required": true,  "size": 32, "array": false },
-                { "key": "payload",    "type": "text",    "required": true,              "array": false },
-                { "key": "updated_at", "type": "varchar", "required": false, "size": 40, "default": "", "array": false },
-                { "key": "last_commentary_sort_key", "type": "double", "required": false, "default": 0, "array": false }
+                {
+                    "key": "match_id",
+                    "type": "varchar",
+                    "required": true,
+                    "size": 32,
+                    "array": false
+                },
+                {
+                    "key": "payload",
+                    "type": "text",
+                    "required": true,
+                    "array": false
+                },
+                {
+                    "key": "updated_at",
+                    "type": "varchar",
+                    "required": false,
+                    "size": 40,
+                    "default": "",
+                    "array": false
+                },
+                {
+                    "key": "last_commentary_sort_key",
+                    "type": "double",
+                    "required": false,
+                    "default": 0,
+                    "array": false
+                }
             ],
             "indexes": [
                 {
                     "key": "idx_match_id",
                     "type": "unique",
-                    "attributes": ["match_id"],
-                    "orders": ["ASC"]
+                    "attributes": [
+                        "match_id"
+                    ],
+                    "orders": [
+                        "ASC"
+                    ]
                 }
             ]
         },
         {
             "$id": "match-scorecard",
-            "$permissions": ["create(\"any\")", "read(\"any\")", "update(\"any\")"],
+            "$permissions": [
+                "create(\"any\")",
+                "read(\"any\")",
+                "update(\"any\")"
+            ],
             "databaseId": "bouncer-db",
             "name": "Match Scorecard",
             "enabled": true,
             "rowSecurity": false,
             "columns": [
-                { "key": "match_id",   "type": "varchar", "required": true,  "size": 32, "array": false },
-                { "key": "scorecard",  "type": "text",    "required": true,              "array": false },
-                { "key": "updated_at", "type": "varchar", "required": false, "size": 40, "default": "", "array": false }
+                {
+                    "key": "match_id",
+                    "type": "varchar",
+                    "required": true,
+                    "size": 32,
+                    "array": false
+                },
+                {
+                    "key": "scorecard",
+                    "type": "text",
+                    "required": true,
+                    "array": false
+                },
+                {
+                    "key": "updated_at",
+                    "type": "varchar",
+                    "required": false,
+                    "size": 40,
+                    "default": "",
+                    "array": false
+                }
             ],
             "indexes": []
         }
