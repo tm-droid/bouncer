@@ -1,391 +1,467 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  MODEL_VERSION,
+  OUTCOME,
+  PRIOR_SETTLE_PROGRESS,
+  CHASE_FEATURE_NAMES,
+  FIRST_INNINGS_FEATURE_NAMES,
+  LONG_FEATURE_NAMES,
+  chaseFeatures,
+  firstInningsFeatures,
+  longFeatures,
+  packDelivery,
+  unpackDelivery,
+  skeletonOf,
+  inningsTotals,
   chaseRows,
+  firstInningsRows,
   longRows,
+  formatClassOf,
+  teamKey,
+  parRunRateFor,
   inningsBudgetBalls,
   longMatchBalls,
   matchDate,
-  formatClassOf,
-  teamKey,
   isStatsCountable,
-  isChaseTrainable,
-  isLongTrainable,
+  isLimitedOvers,
   isLongFormat,
+  isLongTrainable,
   longOutcomeFor,
   holdoutCutoffDate,
-  inningsTotals,
-  fitStandardizer,
-  applyStandardizer,
-  evaluateModel,
-  baseRate,
-  shrinkToPrior,
+  shrunkWinRate,
+  RowSink,
+  sigmoid,
   softmax,
+  trainBinary,
+  trainMulticlass,
+  fitTemperature,
+  binaryMetrics,
+  multiclassMetrics,
+  expectedCalibrationError,
+  baseRate,
   classBaseRates,
-  OUTCOME,
-  MODEL_VERSION,
-  NUM_FEATURES,
-  NUM_LONG_FEATURES,
-  PRIOR_SETTLE_PROGRESS,
+  predictClasses,
+  shrinkToPrior,
 } from "../src/training.js";
 
-/** Build a Cricsheet-shaped innings of [balls] deliveries scoring [runsPerBall] each. */
-function innings(team, balls, runsPerBall = 1, wicketAt = []) {
-  const overs = [];
-  for (let b = 0; b < balls; b++) {
-    const overIdx = Math.floor(b / 6);
-    if (!overs[overIdx]) overs[overIdx] = { over: overIdx, deliveries: [] };
-    const delivery = { runs: { total: runsPerBall } };
-    if (wicketAt.includes(b + 1)) delivery.wickets = [{ player_out: "x" }];
-    overs[overIdx].deliveries.push(delivery);
-  }
-  return { team, overs };
-}
+// ── corpus classification ────────────────────────────────────────────────────
 
-function match({
-  overs = 20,
-  date = "2024-06-01",
-  winner = "B",
-  firstBalls = 120,
-  firstRunsPerBall = 1,
-  secondBalls = 120,
-  secondRunsPerBall = 1,
-  wicketAt = [],
-  matchType = "T20",
-} = {}) {
-  return {
-    info: {
-      match_type: matchType,
-      teams: ["A", "B"],
-      dates: [date],
-      overs,
-      outcome: { winner },
-    },
-    innings: [
-      innings("A", firstBalls, firstRunsPerBall),
-      innings("B", secondBalls, secondRunsPerBall, wicketAt),
-    ],
-  };
-}
-
-const noStrength = () => 0.5;
-
-// --- innings budget -----------------------------------------------------
-
-test("innings budget comes from the match, not a hardcoded 120", () => {
-  assert.equal(inningsBudgetBalls({ overs: 20 }), 120);
-  assert.equal(inningsBudgetBalls({ overs: 15 }), 90, "a rain-shortened game has a shorter budget");
-  assert.equal(inningsBudgetBalls({ overs: 5 }), 30);
-  assert.equal(inningsBudgetBalls({}), 120, "absent overs falls back to a full T20");
-});
-
-test("a 15-over match scores its final ball against 90, not 120", () => {
-  const rows = chaseRows(
-    match({ overs: 15, firstBalls: 90, secondBalls: 89, winner: "A" }),
-    noStrength,
-  );
-  // Last emitted row is the 88th ball (89th has ballsLeft 1... check the tail explicitly).
-  const last = rows[rows.length - 1];
-  const ballsRemainingFraction = last.features[2];
-  // With a 120 budget the same delivery would report (120-88)/120 = 0.267; against 90 it is
-  // (90-88)/90 = 0.022.
-  assert.ok(
-    ballsRemainingFraction < 0.05,
-    `expected a nearly-exhausted innings, got fraction ${ballsRemainingFraction}`,
-  );
-});
-
-// --- off-by-one ---------------------------------------------------------
-
-test("balls faced and balls remaining sum to the budget, not budget plus one", () => {
-  // The old code computed ballsLeft before incrementing ballsFaced, so every row satisfied
-  // ballsFaced + ballsLeft === 121 for a 120-ball innings.
-  const budget = 120;
-  const rows = chaseRows(match({ secondBalls: 119, winner: "A" }), noStrength);
-  assert.ok(rows.length > 0);
-  rows.forEach((row, i) => {
-    const ballsFaced = i + 1;
-    const ballsLeft = row.features[2] * budget;
-    assert.equal(
-      Math.round(ballsFaced + ballsLeft),
-      budget,
-      `row ${i}: ballsFaced ${ballsFaced} + ballsLeft ${ballsLeft} !== ${budget}`,
-    );
-  });
-});
-
-test("required run rate uses post-ball balls remaining", () => {
-  const rows = chaseRows(match({ secondBalls: 3, winner: "A", firstBalls: 120 }), noStrength);
-  const first = rows[0];
-  // After ball 1 of a 120-ball chase: 119 balls left, target 121, 1 run scored => 120 needed.
-  const runsNeededPerBall = first.features[3];
-  assert.ok(
-    Math.abs(runsNeededPerBall - 120 / 119) < 1e-9,
-    `expected 120/119, got ${runsNeededPerBall}`,
-  );
-});
-
-// --- filtering ----------------------------------------------------------
-
-test("the chase model takes limited-overs matches and refuses long formats", () => {
-  const two = (t, extra = {}) => ({ match_type: t, teams: ["A", "B"], ...extra });
-  assert.equal(isChaseTrainable(two("T20")), true);
-  assert.equal(isChaseTrainable(two("IT20")), true);
-  assert.equal(isChaseTrainable(two("ODI")), true, "ODI is a chase, v3 excluded it for no reason");
-  assert.equal(isChaseTrainable(two("ODM")), true);
-  assert.equal(isChaseTrainable(two("T20", { balls_per_over: 5 })), true, "The Hundred");
-  // The features are ratios against a fixed innings budget, which a multi-day match has none of.
-  assert.equal(isChaseTrainable(two("Test")), false);
-  assert.equal(isChaseTrainable(two("MDM")), false);
-  assert.equal(isChaseTrainable({ match_type: "T20", teams: ["A"] }), false);
-});
-
-test("only Tests train the long-format model, but every format feeds team stats", () => {
-  const two = (t) => ({ match_type: t, teams: ["A", "B"] });
-  // Test and MDM pooled scored 0.506 holdout accuracy against 0.394 baseline; Tests alone 0.619.
-  assert.equal(isLongTrainable(two("Test")), true);
-  assert.equal(isLongTrainable(two("MDM")), false, "domestic first-class must not train the model");
-  // ...but MDM is still counted, under its own key.
-  assert.equal(isStatsCountable(two("MDM")), true);
-  assert.equal(isStatsCountable(two("Test")), true);
-  assert.equal(isStatsCountable(two("T20")), true);
-  assert.equal(isStatsCountable({ match_type: "Hockey", teams: ["A", "B"] }), false);
-});
-
-test("The Hundred is a 100-ball innings, not a 120-ball one", () => {
-  // Cricsheet records it as match_type T20 with balls_per_over 5. Multiplying overs by a hardcoded
-  // 6 gave every Hundred row a budget 20 balls too long.
-  assert.equal(formatClassOf({ match_type: "T20", balls_per_over: 5 }), "HUNDRED");
-  assert.equal(formatClassOf({ match_type: "T20", balls_per_over: 6 }), "T20");
-  assert.equal(inningsBudgetBalls({ overs: 20, balls_per_over: 5 }), 100);
-  assert.equal(inningsBudgetBalls({ overs: 20, balls_per_over: 6 }), 120);
-  assert.equal(inningsBudgetBalls({ overs: 50 }), 300, "missing balls_per_over defaults to six");
-});
-
-test("Test and MDM are separate format classes", () => {
+test("format classes separate the things that are scored differently", () => {
+  assert.equal(formatClassOf({ match_type: "T20" }), "T20");
+  assert.equal(formatClassOf({ match_type: "IT20" }), "T20");
+  assert.equal(formatClassOf({ match_type: "ODI" }), "ODI");
+  assert.equal(formatClassOf({ match_type: "ODM" }), "ODI");
   assert.equal(formatClassOf({ match_type: "Test" }), "TEST");
   assert.equal(formatClassOf({ match_type: "MDM" }), "MDM");
-  assert.equal(formatClassOf({ match_type: "ODM" }), "ODI");
-  assert.ok(isLongFormat("TEST") && isLongFormat("MDM"));
-  assert.ok(!isLongFormat("T20") && !isLongFormat("ODI"));
+  assert.equal(formatClassOf({ match_type: "The Hundred" }), null, "unmodelled types are not guessed");
+  // The Hundred is not its own match_type. Five balls per over is the only marker.
+  assert.equal(formatClassOf({ match_type: "T20", balls_per_over: 5 }), "HUNDRED");
+  assert.equal(formatClassOf({ match_type: "T20", balls_per_over: 6 }), "T20");
+});
+
+test("the innings budget multiplies by balls_per_over", () => {
+  // 359 Hundred matches are recorded as T20 with 20 overs of 5 balls. `overs * 6` gave them 120
+  // instead of 100, so every row was computed against a budget 20 balls too long.
+  assert.equal(inningsBudgetBalls({ overs: 20, balls_per_over: 5 }), 100);
+  assert.equal(inningsBudgetBalls({ overs: 20, balls_per_over: 6 }), 120);
+  assert.equal(inningsBudgetBalls({ overs: 50 }), 300);
+  assert.equal(inningsBudgetBalls({ overs: 12.5, balls_per_over: 6 }), 75, "rain-shortened rounds");
+  assert.equal(inningsBudgetBalls({}), 120, "no declared overs falls back to T20");
 });
 
 test("team stats are keyed by team, gender and format", () => {
-  // The v3 key was the bare name, which pooled Australia's men's T20 (0.545) with their women's
-  // ODI (0.842) and women's multi-day (0.286) into a single 0.642.
-  assert.notEqual(teamKey("Australia", "male", "T20"), teamKey("Australia", "female", "T20"));
-  assert.notEqual(teamKey("Australia", "male", "T20"), teamKey("Australia", "male", "TEST"));
-  assert.equal(teamKey("Australia", "male", "T20"), teamKey(" Australia ", "male", "T20"));
+  // A bare name pooled Australia's men's and women's sides and all formats into one win rate.
+  assert.equal(teamKey("Australia", "female", "ODI"), "Australia|female|ODI");
+  assert.equal(teamKey(" India ", "male", "TEST"), "India|male|TEST");
+  assert.equal(teamKey("India"), "India|male|T20", "the defaults must be stable, not undefined");
 });
 
-test("a long-format outcome is win, loss or draw — and abandoned is none of them", () => {
-  const of = (outcome) => longOutcomeFor({ outcome }, "A");
-  assert.equal(of({ winner: "A", by: { runs: 100 } }), OUTCOME.WIN);
-  assert.equal(of({ winner: "B", by: { runs: 100 } }), OUTCOME.LOSS);
-  assert.equal(of({ result: "draw" }), OUTCOME.DRAW);
-  assert.equal(of({ result: "tie" }), OUTCOME.DRAW);
-  // A rained-off match says nothing about the position it was abandoned from, and calling it a
-  // draw would teach the model that weather is a cricketing outcome.
-  assert.equal(of({ result: "no result" }), null);
-  assert.equal(of({}), null);
+test("long formats are recognised, but only Tests train the three-outcome model", () => {
+  assert.ok(isLongFormat("TEST"));
+  assert.ok(isLongFormat("MDM"));
+  assert.ok(!isLongFormat("ODI"));
+  // Test and MDM pooled scored 0.506 holdout accuracy against 0.619 for Tests alone. MDM still
+  // feeds team stats under its own key — excluded from the model, not from the corpus.
+  assert.ok(isLongTrainable("TEST"));
+  assert.ok(!isLongTrainable("MDM"));
+  assert.ok(isStatsCountable({ match_type: "MDM", teams: ["A", "B"] }));
+  assert.ok(!isStatsCountable({ match_type: "MDM", teams: ["A"] }));
+  assert.ok(isLimitedOvers("T20") && isLimitedOvers("ODI") && isLimitedOvers("HUNDRED"));
+  assert.ok(!isLimitedOvers("TEST"));
 });
 
-// --- long format --------------------------------------------------------
-
-/** A four-innings Test where each side bats [balls] deliveries per innings. */
-function testMatch({ balls = 120, outcome = { winner: "A", by: { runs: 10 } }, order = ["A", "B", "A", "B"] } = {}) {
-  return {
-    info: {
-      match_type: "Test",
-      gender: "male",
-      teams: ["A", "B"],
-      dates: ["2024-01-01", "2024-01-02", "2024-01-03", "2024-01-04", "2024-01-05"],
-      outcome,
-    },
-    innings: order.map((team) => innings(team, balls, 1)),
-  };
-}
-
-test("a long-format lead is corrected for innings used", () => {
-  // The defect replay caught: in innings one the batting side always shows a growing positive
-  // lead because the opposition has not batted, and in innings two always a large deficit. The
-  // model read that as position and gave 73% to a side level after ten overs of day one, against
-  // a 39% base rate. inningsUsedDiff makes a lead mean the same thing at every point.
-  const rows = longRows(testMatch(), () => 0.5);
-  assert.ok(rows.length > 0);
-  const usedDiff = (r) => r.features[8];
-  const inningsOf = (r) => Math.round(r.features[2] * 4);
-  assert.equal(usedDiff(rows.find((r) => inningsOf(r) === 1)), 1, "innings 1: one innings ahead");
-  assert.equal(usedDiff(rows.find((r) => inningsOf(r) === 2)), 0, "innings 2: level");
-  assert.equal(usedDiff(rows.find((r) => inningsOf(r) === 3)), 1);
-  assert.equal(usedDiff(rows.find((r) => inningsOf(r) === 4)), 0);
+test("only a decided or drawn long match is labelled", () => {
+  assert.equal(longOutcomeFor({ winner: "India" }, "India"), OUTCOME.WIN);
+  assert.equal(longOutcomeFor({ winner: "India" }, "Australia"), OUTCOME.LOSS);
+  assert.equal(longOutcomeFor({ result: "draw" }, "India"), OUTCOME.DRAW);
+  assert.equal(longOutcomeFor({ result: "tie" }, "India"), OUTCOME.DRAW);
+  // Abandoned tells us nothing about the position it was abandoned from; labelling it a draw would
+  // teach the model that rain is a cricketing outcome.
+  assert.equal(longOutcomeFor({ result: "no result" }, "India"), null);
+  assert.equal(longOutcomeFor({}, "India"), null);
 });
 
-test("a follow-on is read from the innings order", () => {
-  const normal = longRows(testMatch({ order: ["A", "B", "A", "B"] }), () => 0.5);
-  const followOn = longRows(testMatch({ order: ["A", "B", "B", "A"] }), () => 0.5);
-  assert.equal(normal[0].features[7], 0);
-  assert.equal(followOn[0].features[7], 1);
+test("a long match's scheduled balls come from the days allotted", () => {
+  assert.equal(longMatchBalls(5), 2700);
+  assert.equal(longMatchBalls(4), 2160);
+  assert.equal(longMatchBalls(undefined), 2700, "an unknown length is assumed to be a Test");
 });
 
-test("chase pressure only exists in the fourth innings", () => {
-  const rows = longRows(testMatch(), () => 0.5);
-  const inningsOf = (r) => Math.round(r.features[2] * 4);
-  for (const r of rows) {
-    if (inningsOf(r) === 4) continue;
-    assert.equal(r.features[6], 0, "a side batting before the fourth innings is not chasing");
-    assert.equal(r.features[5], 0);
-  }
-  assert.ok(rows.some((r) => inningsOf(r) === 4 && r.features[5] === 1));
+test("the split is temporal, and there is no split at all below ten matches", () => {
+  const dates = Array.from({ length: 100 }, (_, i) => `2024-01-${String((i % 28) + 1).padStart(2, "0")}`).sort();
+  assert.equal(holdoutCutoffDate(dates, 0.2), dates[80]);
+  assert.equal(holdoutCutoffDate(["2024-01-01"], 0.2), null);
 });
 
-test("an abandoned long-format match yields no rows at all", () => {
-  assert.equal(longRows(testMatch({ outcome: { result: "no result" } }), () => 0.5).length, 0);
+test("a win rate is shrunk toward even by a pseudo-count", () => {
+  // all_json has teams with one recorded match. A 1/1 record used to enter the logit as +0.5 — the
+  // largest value the strength feature can take, from a single result.
+  assert.ok(shrunkWinRate(1, 1) < 0.6, "one win from one match must not read as a strong side");
+  assert.ok(Math.abs(shrunkWinRate(60, 100) - 0.6) < 0.01, "an established record is barely moved");
+  assert.equal(shrunkWinRate(0, 0), 0.5);
 });
 
-test("long rows are emitted per over, not per delivery", () => {
-  // A Test runs to ~2,700 balls against a T20's 120. Per-delivery rows would let 911 Tests
-  // outweigh 13,992 T20s in the sampler while carrying no more information.
-  const rows = longRows(testMatch({ balls: 120 }), () => 0.5);
-  assert.ok(rows.length <= 4 * 20 + 4, `expected ~one row per over, got ${rows.length}`);
-});
-
-test("shrinkage returns the prior at the start and the model once settled", () => {
-  const priors = [0.367, 0.239, 0.394];
-  const model = [0.9, 0.05, 0.05];
-  assert.deepEqual(shrinkToPrior(model, priors, 0, 0.25), priors);
-  assert.deepEqual(shrinkToPrior(model, priors, 0.25, 0.25), model);
-  assert.deepEqual(shrinkToPrior(model, priors, 1, 0.25), model, "past settle stays unshrunk");
-  const half = shrinkToPrior(model, priors, 0.125, 0.25);
-  half.forEach((p, i) => assert.ok(Math.abs(p - (model[i] + priors[i]) / 2) < 1e-9));
-  // Whatever the blend, it stays a distribution.
-  assert.ok(Math.abs(half.reduce((a, b) => a + b, 0) - 1) < 1e-9);
-});
-
-test("softmax survives a logit large enough to overflow", () => {
-  // A long-format lead of several hundred runs drives a logit where Math.exp is Infinity, and
-  // Infinity/Infinity is NaN — which would poison every weight on the next gradient step.
-  const p = softmax([1000, 0, -1000]);
-  assert.ok(p.every(Number.isFinite), `not finite: ${p}`);
-  assert.ok(Math.abs(p.reduce((a, b) => a + b, 0) - 1) < 1e-9);
-});
-
-test("rows stop once the chase is won or the side is all out", () => {
-  const chased = chaseRows(
-    match({ firstBalls: 10, firstRunsPerBall: 1, secondBalls: 60, winner: "B" }),
-    noStrength,
-  );
-  // Target is 11; the chase passes it on ball 11, so no row may be emitted after that.
-  assert.ok(chased.length <= 11, `emitted ${chased.length} rows past the winning runs`);
-
-  const allOut = chaseRows(
-    match({ secondBalls: 60, wicketAt: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], winner: "A" }),
-    noStrength,
-  );
-  assert.ok(
-    allOut.every((r) => r.features[1] > 0),
-    "no row may report zero wickets in hand",
-  );
-});
-
-test("every row carries the match label and the right feature count", () => {
-  const rows = chaseRows(match({ secondBalls: 30, winner: "B", firstBalls: 120 }), noStrength);
-  assert.ok(rows.length > 0);
-  for (const row of rows) {
-    assert.equal(row.features.length, NUM_FEATURES);
-    assert.equal(row.label, 1, "team B chasing and winning must be labelled 1");
-    assert.ok(row.features.every(Number.isFinite), "features must all be finite");
-  }
-});
-
-// --- temporal split -----------------------------------------------------
-
-test("holdout cutoff splits chronologically", () => {
-  const dates = Array.from({ length: 100 }, (_, i) => `2024-01-${String((i % 28) + 1).padStart(2, "0")}`);
-  const cutoff = holdoutCutoffDate(dates, 0.2);
-  assert.ok(cutoff, "expected a cutoff");
-  const before = dates.filter((d) => d < cutoff).length;
-  assert.ok(before >= 70 && before <= 85, `training share looks wrong: ${before}/100`);
-});
-
-test("too little data yields no cutoff, so everything trains", () => {
-  assert.equal(holdoutCutoffDate(["2024-01-01", "2024-01-02"], 0.2), null);
-  assert.equal(holdoutCutoffDate([], 0.2), null);
-});
-
-test("team strength is whatever the caller supplies, so leakage is the caller's choice", () => {
-  // The old code back-filled corpus-wide win rates into features[4] after the fact, which is how
-  // a 2014 row came to carry 2023 results. chaseRows now takes the lookup as a parameter, so the
-  // training-window restriction is expressible and testable.
-  const rows = chaseRows(
-    match({ secondBalls: 12, winner: "B" }),
-    (team) => (team === "B" ? 0.9 : 0.3),
-  );
-  assert.ok(rows.length > 0);
-  for (const row of rows) {
-    assert.ok(Math.abs(row.features[4] - 0.6) < 1e-9, `expected 0.9 - 0.3, got ${row.features[4]}`);
-  }
-});
-
-test("matchDate reads the first Cricsheet date", () => {
+test("matchDate reads the first day of a multi-day match", () => {
   assert.equal(matchDate({ dates: ["2024-06-01", "2024-06-02"] }), "2024-06-01");
   assert.equal(matchDate({ dates: [] }), null);
   assert.equal(matchDate({}), null);
 });
 
-// --- standardizer and metrics ------------------------------------------
+// ── skeleton ─────────────────────────────────────────────────────────────────
 
-test("the standardizer is fit on training rows and applied to both sets", () => {
-  const train = [
-    { features: [0, 0, 0, 0, 0], label: 0 },
-    { features: [2, 2, 2, 2, 2], label: 1 },
+test("a delivery packs and unpacks losslessly", () => {
+  for (const runs of [0, 1, 4, 6, 7]) {
+    for (const wickets of [0, 1, 2]) {
+      for (const legal of [true, false]) {
+        assert.deepEqual(unpackDelivery(packDelivery(runs, wickets, legal)), { runs, wickets, legal });
+      }
+    }
+  }
+});
+
+/** Build a Cricsheet-shaped match from a compact per-innings spec. */
+function rawMatch({
+  type = "T20", overs = 20, ballsPerOver = 6, teams, gender = "male",
+  dates = ["2024-01-01"], outcome, innings,
+}) {
+  return {
+    info: { match_type: type, overs, balls_per_over: ballsPerOver, teams, gender, dates, outcome },
+    innings: innings.map(({ team, deliveries }) => ({ team, overs: [{ over: 0, deliveries }] })),
+  };
+}
+
+const ball = (runs = 1, wickets = 0, extras = null) => ({
+  runs: { total: runs },
+  ...(wickets ? { wickets: new Array(wickets).fill({ player_out: "x" }) } : {}),
+  ...(extras ? { extras } : {}),
+});
+
+test("a wide is not a ball", () => {
+  // `ballsFaced++` used to fire on every delivery. Every row then paired a true score with an
+  // overstated ball count, and by more in a scrappy innings than a tidy one. Worth 0.024 log-loss.
+  const skeleton = skeletonOf(rawMatch({
+    teams: ["A", "B"],
+    outcome: { winner: "A" },
+    innings: [{ team: "A", deliveries: [ball(1), ball(1, 0, { wides: 1 }), ball(4)] }],
+  }));
+  assert.deepEqual(inningsTotals(skeleton.innings[0]), { runs: 6, wickets: 0, legalBalls: 2 });
+});
+
+test("a no-ball is not a ball either, and its runs still count", () => {
+  const skeleton = skeletonOf(rawMatch({
+    teams: ["A", "B"],
+    outcome: { winner: "A" },
+    innings: [{ team: "A", deliveries: [ball(2, 0, { noballs: 1 })] }],
+  }));
+  assert.deepEqual(inningsTotals(skeleton.innings[0]), { runs: 2, wickets: 0, legalBalls: 0 });
+});
+
+test("an unmodelled format produces no skeleton at all", () => {
+  assert.equal(skeletonOf({ info: { match_type: "Hundred Ball", teams: ["A", "B"] }, innings: [] }), null);
+  assert.equal(skeletonOf({ info: { match_type: "T20", teams: ["A"] }, innings: [] }), null);
+});
+
+// ── rows ─────────────────────────────────────────────────────────────────────
+
+const winRateFlat = () => 0.5;
+
+function chaseFixture() {
+  return skeletonOf(rawMatch({
+    teams: ["A", "B"],
+    outcome: { winner: "B" },
+    innings: [
+      { team: "A", deliveries: Array.from({ length: 6 }, () => ball(2)) },
+      { team: "B", deliveries: Array.from({ length: 6 }, () => ball(1)) },
+    ],
+  }));
+}
+
+function testFixture(outcome = { result: "draw" }) {
+  return skeletonOf(rawMatch({
+    type: "Test",
+    dates: ["2024-01-01", "2024-01-02", "2024-01-03", "2024-01-04", "2024-01-05"],
+    teams: ["A", "B"],
+    outcome,
+    innings: [{ team: "A", deliveries: Array.from({ length: 12 }, () => ball(3)) }],
+  }));
+}
+
+test("chase rows describe the state after each delivery, oriented to the chasing side", () => {
+  const rows = chaseRows(chaseFixture(), winRateFlat);
+  // Target is 13. The chasing side scores 1 a ball, so it never gets there: six deliveries, six
+  // rows, all labelled a win because B won the match.
+  assert.equal(rows.length, 6);
+  assert.ok(rows.every((r) => r.label === 1), "B won, and rows are oriented to the chasing side");
+  assert.equal(rows[0].features.length, CHASE_FEATURE_NAMES.length);
+});
+
+test("a Test never becomes a chase row, and a limited-overs match never a long one", () => {
+  const match = testFixture();
+  assert.equal(chaseRows(match, winRateFlat).length, 0);
+  assert.equal(firstInningsRows(match, winRateFlat).length, 0);
+  assert.equal(longRows(chaseFixture(), winRateFlat).length, 0);
+  assert.ok(longRows(match, winRateFlat).length > 0);
+});
+
+test("first-innings rows exist at all — v4 scored this half of the match by hand", () => {
+  const rows = firstInningsRows(chaseFixture(), winRateFlat);
+  assert.equal(rows.length, 6);
+  assert.equal(rows[0].features.length, FIRST_INNINGS_FEATURE_NAMES.length);
+  assert.ok(rows.every((r) => r.label === 0), "A batted first and lost");
+});
+
+test("an abandoned long match contributes no rows, not draw-labelled ones", () => {
+  assert.equal(longRows(testFixture({ result: "no result" }), winRateFlat).length, 0);
+});
+
+// ── features ─────────────────────────────────────────────────────────────────
+
+const chaseState = {
+  currentRunRate: 7.5,
+  requiredRunRate: 8.5,
+  wicketsInHand: 6,
+  ballsRemaining: 60,
+  ballsBudget: 120,
+  runsNeeded: 85,
+  target: 160,
+  teamStrengthDiff: 0,
+  parRunRate: 8.3,
+  format: "T20",
+};
+
+const longState = {
+  lead: 40, wicketsInHand: 7, inningsIndex: 1, ballsRemaining: 1800, ballsTotal: 2700,
+  teamStrengthDiff: 0, isFourthInnings: false, runsNeeded: 0, followedOn: false,
+  inningsUsedDiff: 0, inningsRunRate: 3.1, wicketsToTake: 17, scheduledDays: 5,
+};
+
+test("every feature list matches the vector its builder produces", () => {
+  // A name list that has drifted from the builder is the failure mode that cannot be seen in the
+  // output: the model still trains, and every weight is attributed to the wrong feature in the log.
+  assert.equal(chaseFeatures(chaseState).length, CHASE_FEATURE_NAMES.length);
+  assert.equal(firstInningsFeatures({ ...chaseState, runsScored: 75 }).length, FIRST_INNINGS_FEATURE_NAMES.length);
+  assert.equal(longFeatures(longState).length, LONG_FEATURE_NAMES.length);
+});
+
+test("no feature is NaN or infinite at the boundaries a live match actually reaches", () => {
+  const edges = [
+    { ...chaseState, ballsRemaining: 1, runsNeeded: 1 },
+    { ...chaseState, wicketsInHand: 1, currentRunRate: 0, requiredRunRate: 36 },
+    { ...chaseState, ballsRemaining: 120, runsNeeded: 200, currentRunRate: 0 },
   ];
-  const holdout = [{ features: [4, 4, 4, 4, 4], label: 1 }];
-  const std = fitStandardizer(train);
-  assert.ok(Math.abs(std.means[0] - 1) < 1e-9);
-  applyStandardizer(train, std);
-  applyStandardizer(holdout, std);
-  // Holdout is scaled by the TRAINING statistics, so it is free to fall outside [-1, 1].
-  assert.ok(holdout[0].features[0] > 1, "holdout must not be re-centred on itself");
+  for (const state of edges) {
+    for (const v of chaseFeatures(state)) assert.ok(Number.isFinite(v), `${JSON.stringify(state)} -> ${v}`);
+    for (const v of firstInningsFeatures({ ...state, runsScored: 0 })) assert.ok(Number.isFinite(v));
+  }
+  for (const v of longFeatures({ ...longState, ballsRemaining: 1, wicketsInHand: 1 })) {
+    assert.ok(Number.isFinite(v));
+  }
 });
 
-test("evaluateModel reports loss and accuracy, and copes with an empty set", () => {
-  const rows = [
-    { features: [1, 0, 0, 0, 0], label: 1 },
-    { features: [-1, 0, 0, 0, 0], label: 0 },
-  ];
-  const good = evaluateModel(rows, [5, 0, 0, 0, 0], 0);
-  assert.equal(good.accuracy, 1);
-  assert.ok(good.logLoss < 0.1);
-
-  const backwards = evaluateModel(rows, [-5, 0, 0, 0, 0], 0);
-  assert.equal(backwards.accuracy, 0);
-  assert.ok(backwards.logLoss > good.logLoss);
-
-  const empty = evaluateModel([], [0, 0, 0, 0, 0], 0);
-  assert.equal(empty.logLoss, null);
-  assert.equal(empty.rows, 0);
+test("the fourth innings is the only long innings with chase pressure", () => {
+  const base = { ...longState, lead: -150, runsNeeded: 151, ballsRemaining: 400, wicketsToTake: 6 };
+  const fourth = longFeatures({ ...base, inningsIndex: 3, isFourthInnings: true });
+  const second = longFeatures({ ...base, inningsIndex: 1, isFourthInnings: false, runsNeeded: 0 });
+  assert.ok(fourth[LONG_FEATURE_NAMES.indexOf("chasePressure")] > 0);
+  assert.equal(second[LONG_FEATURE_NAMES.indexOf("chasePressure")], 0);
 });
 
-test("baseRate is the constant-predictor accuracy to beat", () => {
-  assert.equal(baseRate([{ label: 1 }, { label: 1 }, { label: 0 }, { label: 0 }]), 0.5);
-  assert.equal(baseRate([]), null);
+test("innings used, not the raw lead, is what makes a lead comparable", () => {
+  // Replaying finished Tests caught this: the side batting first always shows a growing lead
+  // because the opposition has not batted. The model read that as position and gave 78% to a side
+  // level after ten overs of day one, then 22% on the reply in the same match.
+  const idx = LONG_FEATURE_NAMES.indexOf("inningsUsedDiff");
+  assert.ok(idx >= 0);
+  assert.equal(longFeatures({ ...longState, inningsUsedDiff: 1 })[idx], 1);
+  assert.equal(longFeatures({ ...longState, inningsUsedDiff: 0 })[idx], 0);
 });
 
-test("inningsTotals sums runs and counts balls", () => {
-  const { runs, balls } = inningsTotals(innings("A", 12, 2));
-  assert.equal(balls, 12);
-  assert.equal(runs, 24);
-  assert.deepEqual(inningsTotals(null), { runs: 0, balls: 0 });
+test("par rates exist for every limited-overs class the corpus produces", () => {
+  for (const cls of ["T20", "ODI", "HUNDRED"]) assert.ok(parRunRateFor(cls) > 0);
+  assert.equal(parRunRateFor("NOT_A_FORMAT"), 8.0, "an unknown class falls back rather than dividing by zero");
 });
 
-test("model version is 4", () => {
-  // Bumped from 3 because `teamStats` changed key shape from a bare team name to
-  // "team|gender|format". A v3 reader would miss every lookup and fall back to 0.5 — silently,
-  // and on exactly the feature v4 exists to repair. winprob.js refuses a version it does not know
-  // on the learned path, so the mismatch degrades to the heuristic instead of going unnoticed.
-  assert.equal(MODEL_VERSION, 4);
-  assert.equal(NUM_FEATURES, 5, "the chase model's shape is unchanged");
-  assert.equal(NUM_LONG_FEATURES, 9);
-  assert.equal(PRIOR_SETTLE_PROGRESS, 0.25);
+// ── row storage ──────────────────────────────────────────────────────────────
+
+test("a row sink keeps everything under its cap and samples above it", () => {
+  const sink = new RowSink(4, 2);
+  for (let i = 0; i < 3; i++) sink.push([i, i], i % 2);
+  assert.equal(sink.length, 3);
+  assert.equal(sink.seen, 3);
+  for (let i = 0; i < 100; i++) sink.push([i, i], 1);
+  assert.equal(sink.length, 4, "the cap is never exceeded");
+  assert.equal(sink.seen, 103, "but everything seen is counted, so the sample stays uniform");
+});
+
+test("standardizing a sink centres it", () => {
+  const sink = new RowSink(10, 2);
+  for (const v of [1, 2, 3, 4, 5]) sink.push([v, 10], 1);
+  const std = sink.fitStandardizer();
+  assert.ok(Math.abs(std.means[0] - 3) < 1e-6);
+  assert.equal(std.stds[1], 1, "a constant feature must not divide by zero");
+  sink.applyStandardizer(std);
+  let sum = 0;
+  for (let i = 0; i < sink.length; i++) sum += sink.X[i * 2];
+  assert.ok(Math.abs(sum) < 1e-5);
+});
+
+// ── optimisation ─────────────────────────────────────────────────────────────
+
+/** A linearly separable problem the optimiser must solve, plus label noise so loss cannot hit 0. */
+function separable(n, seed = 1) {
+  let rng = seed >>> 0;
+  const rand = () => ((rng = (rng * 1664525 + 1013904223) >>> 0) / 4294967296);
+  const sink = new RowSink(n, 2);
+  for (let i = 0; i < n; i++) {
+    const x = rand() * 2 - 1;
+    const y = rand() * 2 - 1;
+    const label = x + y > 0 ? 1 : 0;
+    sink.push([x, y], rand() < 0.05 ? 1 - label : label);
+  }
+  return sink;
+}
+
+test("the optimiser learns a separable problem and stops when validation stops improving", () => {
+  const train = separable(4000, 1);
+  const valid = separable(1000, 2);
+  const fit = trainBinary(train, valid, { epochs: 60, patience: 5 });
+  const metrics = binaryMetrics(valid, fit.weights, fit.bias);
+  assert.ok(metrics.accuracy > 0.9, `expected the boundary to be learned, got ${metrics.accuracy}`);
+  assert.ok(fit.epoch >= 0 && fit.epoch < 60);
+  assert.ok(fit.weights[0] > 0 && fit.weights[1] > 0, "both features push the same way");
+});
+
+test("training on nothing returns zero weights rather than NaN", () => {
+  const empty = new RowSink(1, 3);
+  const fit = trainBinary(empty, empty, {});
+  assert.deepEqual(fit.weights, [0, 0, 0]);
+  assert.equal(fit.bias, 0);
+});
+
+/** Labels drawn from sigmoid(x), so a weight of exactly 1 with no bias is perfectly calibrated. */
+function calibratedSink(seed) {
+  const sink = new RowSink(2000, 1);
+  let rng = seed >>> 0;
+  const rand = () => ((rng = (rng * 1664525 + 1013904223) >>> 0) / 4294967296);
+  for (let i = 0; i < 2000; i++) {
+    const x = rand() * 6 - 3;
+    sink.push([x], rand() < sigmoid(x) ? 1 : 0);
+  }
+  return sink;
+}
+
+test("temperature scaling finds roughly 1 for an already-calibrated model", () => {
+  const T = fitTemperature(calibratedSink(9), [1], 0);
+  assert.ok(Math.abs(T - 1) < 0.25, `expected roughly 1, got ${T}`);
+});
+
+test("temperature scaling pulls an overconfident model back", () => {
+  // Weight 4 where the truth is 1: the logits are four times too sharp, so the fitted temperature
+  // has to be well above 1 to undo it.
+  const T = fitTemperature(calibratedSink(11), [4], 0);
+  assert.ok(T > 2, `expected the correction to be large, got ${T}`);
+});
+
+test("metrics report what they claim to", () => {
+  const sink = new RowSink(4, 1);
+  sink.push([0], 1);
+  sink.push([0], 1);
+  sink.push([0], 0);
+  sink.push([0], 0);
+  // A zero bias on a zero feature is exactly 0.5 for every row.
+  const m = binaryMetrics(sink, [0], 0);
+  assert.ok(Math.abs(m.logLoss - Math.log(2)) < 1e-5);
+  assert.ok(Math.abs(m.brier - 0.25) < 1e-9);
+  assert.equal(baseRate(sink), 0.5);
+  // Every prediction is 0.5 and half of them happen, so calibration is perfect despite the model
+  // being useless — which is the distinction ECE exists to draw.
+  assert.ok(expectedCalibrationError(sink, [0], 0) < 1e-9);
+});
+
+// ── multiclass ───────────────────────────────────────────────────────────────
+
+test("softmax survives a logit large enough to overflow exp", () => {
+  // A long-format lead of several hundred runs drives exactly this. Infinity/Infinity is NaN, which
+  // would poison every weight on the next gradient step.
+  const p = softmax([1000, 0, -1000]);
+  assert.ok(p.every(Number.isFinite));
+  assert.ok(Math.abs(p.reduce((a, b) => a + b, 0) - 1) < 1e-9);
+  assert.ok(p[0] > 0.99);
+});
+
+test("the multiclass optimiser separates three classes", () => {
+  const sink = new RowSink(3000, 1);
+  let rng = 3;
+  const rand = () => ((rng = (rng * 1664525 + 1013904223) >>> 0) / 4294967296);
+  for (let i = 0; i < 3000; i++) {
+    const x = rand() * 3 - 1.5;
+    sink.push([x], x < -0.5 ? OUTCOME.LOSS : x < 0.5 ? OUTCOME.DRAW : OUTCOME.WIN);
+  }
+  const fit = trainMulticlass(sink, sink, { epochs: 60, patience: 10, learningRate: 0.1 });
+  const m = multiclassMetrics(sink, fit);
+  assert.ok(m.accuracy > 0.8, `expected the three bands to be learned, got ${m.accuracy}`);
+  assert.ok(m.logLoss < Math.log(3));
+});
+
+test("class base rates and predictions are three-wide and sum to one", () => {
+  const sink = new RowSink(4, 1);
+  sink.push([0], OUTCOME.LOSS);
+  sink.push([0], OUTCOME.DRAW);
+  sink.push([0], OUTCOME.WIN);
+  sink.push([0], OUTCOME.WIN);
+  assert.deepEqual(classBaseRates(sink), [0.25, 0.25, 0.5]);
+  const p = predictClasses([1], { weights: [[1], [0], [-1]], biases: [0, 0, 0] });
+  assert.ok(Math.abs(p.reduce((a, b) => a + b, 0) - 1) < 1e-9);
+  assert.ok(p[0] > p[1] && p[1] > p[2]);
+});
+
+test("shrinkage returns the prior at the start and the model once settled", () => {
+  const priors = [0.37, 0.23, 0.40];
+  const model = [0.05, 0.05, 0.90];
+  assert.deepEqual(shrinkToPrior(model, priors, 0, 0.25), priors);
+  assert.deepEqual(shrinkToPrior(model, priors, 0.25, 0.25), model);
+  assert.deepEqual(shrinkToPrior(model, priors, 0.9, 0.25), model);
+  const half = shrinkToPrior(model, priors, 0.125, 0.25);
+  assert.ok(Math.abs(half[2] - (0.5 * 0.90 + 0.5 * 0.40)) < 1e-9);
+  // No priors is not a licence to trust the model early: uniform is the honest stand-in.
+  assert.deepEqual(
+    shrinkToPrior(model, null, 0, 0.25).map((v) => Number(v.toFixed(6))),
+    [0.333333, 0.333333, 0.333333],
+  );
+});
+
+test("the settle point is a measured optimum, not a default", () => {
+  // Swept on the holdout: log-loss falls to a minimum at 0.35-0.50 and rises again beyond it, and
+  // rows past halfway score identically for every setting up to 0.50. 0.25 is chosen inside that
+  // flat region so a genuine day-one collapse escapes the prior sooner.
+  assert.ok(PRIOR_SETTLE_PROGRESS > 0 && PRIOR_SETTLE_PROGRESS <= 0.5);
+});
+
+test("model version is 5", () => {
+  // Bumped from 4 because the artifact now carries three models with three differently shaped
+  // feature vectors. A v4 reader would score a sixteen-feature chase against five weights and
+  // return a number rather than an error, so the version is the only thing standing between a
+  // stale reader and a confident wrong answer.
+  assert.equal(MODEL_VERSION, 5);
 });

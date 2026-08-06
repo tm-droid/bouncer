@@ -1,5 +1,5 @@
 import { Client, Storage } from "node-appwrite";
-import { evaluate, formatFromText, MODEL_VERSION } from "./winprob.js";
+import { evaluate, evaluateLong, formatFromText, MODEL_VERSION } from "./winprob.js";
 import { parseJsonFile } from "./storageJson.js";
 
 const STATS_BUCKET_ID = process.env.STATS_BUCKET_ID ?? "cricket-stats";
@@ -52,18 +52,32 @@ export default async ({ req, res, log, error }) => {
   // `format` may be sent directly, or derived from whatever descriptive text the caller has.
   const format = body.format ?? formatFromText(body.matchType, body.matchTitle, body.series);
 
-  const result = evaluate({
-    runsNeeded: body.runsNeeded ?? 0,
-    ballsRemaining: body.ballsRemaining ?? 0,
-    wicketsLost: body.wicketsLost ?? 0,
-    currentRunRate: body.currentRunRate ?? 0,
-    requiredRunRate: body.requiredRunRate ?? 0,
-    battingTeam: body.battingTeam ?? "",
-    bowlingTeam: body.bowlingTeam ?? "",
-    format,
-    totalBalls: body.totalBalls ?? null,
-    model: cachedModel,
-  });
+  // A Test is a different question with a different answer shape — three outcomes, not two — so it
+  // routes to its own model rather than being squeezed through a binary one.
+  const result = body.long
+    ? evaluateLong({
+      ...body.long,
+      wicketsLost: body.wicketsLost ?? 0,
+      inningsRunRate: body.currentRunRate ?? 0,
+      battingTeam: body.battingTeam ?? "",
+      bowlingTeam: body.bowlingTeam ?? "",
+      gender: body.gender ?? "male",
+      model: cachedModel,
+    })
+    : evaluate({
+      runsNeeded: body.runsNeeded ?? 0,
+      runsScored: body.runsScored ?? 0,
+      ballsRemaining: body.ballsRemaining ?? 0,
+      wicketsLost: body.wicketsLost ?? 0,
+      currentRunRate: body.currentRunRate ?? 0,
+      requiredRunRate: body.requiredRunRate ?? 0,
+      battingTeam: body.battingTeam ?? "",
+      bowlingTeam: body.bowlingTeam ?? "",
+      gender: body.gender ?? "male",
+      format,
+      totalBalls: body.totalBalls ?? null,
+      model: cachedModel,
+    });
 
   // battingTeamIndex is echoed back so the caller never has to re-derive which side the number is
   // about. The old response called this field `team1WinProbability` while computing it from the

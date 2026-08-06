@@ -71,6 +71,14 @@ data class CricketMatch(
      * so a sentinel of 50 is indistinguishable from a real result.
      */
     val winProbability: Double? = null,
+    /**
+     * Draw probability, 0..100, for the one format that has one.
+     *
+     * Null for every limited-overs match, and a null must not be read as zero: a T20 cannot be
+     * drawn, whereas a Test sitting on an 8% draw is a real statement about the match. Renderers
+     * branch on null to choose between a two- and a three-segment bar.
+     */
+    val winProbabilityDraw: Double? = null,
     // Toss and officials — populated when available from live match page
     val tossWinner: String? = null,
     val tossDecision: String? = null,

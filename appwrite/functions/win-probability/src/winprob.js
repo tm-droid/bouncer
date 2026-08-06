@@ -6,12 +6,26 @@
  * deploys each function as an isolated archive with no shared package. If you edit this file, copy
  * it to the others — winprob.test.js asserts the copies agree.
  *
- * Model contract v3. A v2 artifact is deliberately NOT accepted on the learned path: v2 was trained
- * with a hardcoded 120-ball denominator, so its feature scaling is only valid for T20 and silently
- * wrong for every other format. Reading a v2 model falls back to the heuristic instead.
+ * ## Model contract v5
+ *
+ * The artifact carries three models rather than one:
+ *
+ *  - `chase` — the side batting second, in a limited-overs match.
+ *  - `firstInnings` — the side setting the target. v4 had no model here; this half of every match
+ *    was scored by the hand-tuned heuristic below, which is 0.069 log-loss worse on the same data.
+ *  - `long` — a Test, three outcomes, because a Test can be drawn and no two-class model can say so.
+ *
+ * Each carries its own feature list, standardizer and calibration temperature, and the feature
+ * builders here must produce the same vector as `training.js` did when fitting. That is not a style
+ * rule: a reordered or rescaled feature is silently wrong rather than broken, and it is pinned by
+ * `feature-parity.test.js` in train-win-probability.
+ *
+ * A v4 or older artifact is deliberately NOT accepted on the learned path. v4's five-feature chase
+ * vector would be read against v5's sixteen weights, which is worse than having no model at all —
+ * so an old artifact falls back to the heuristic, which is at least self-consistent.
  */
 
-export const MODEL_VERSION = 3;
+export const MODEL_VERSION = 5;
 
 /** Balls in one innings, by format. Test is absent on purpose — it has no fixed budget. */
 export const FORMAT_INNINGS_BALLS = {
@@ -21,13 +35,26 @@ export const FORMAT_INNINGS_BALLS = {
   HUNDRED: 100,
 };
 
-/** Par run rate per format — the rate a side sustains across a full innings with wickets intact. */
+/**
+ * Par run rate per format — the rate a side sustains across a full innings with wickets intact.
+ *
+ * Every learned rate feature is expressed relative to this, so one model spans T20, ODI and The
+ * Hundred without the 8.3-vs-5.6 difference swamping the position. Must equal `PAR_RUN_RATE` in
+ * train-win-probability's `training.js`; the artifact also ships its own copy as `parRunRate`, and
+ * that copy wins when present so a retrain can move these without a matching deploy here.
+ */
 export const FORMAT_PAR_RUN_RATE = {
   T20: 8.3,
   ODI: 5.6,
   T10: 10.5,
   HUNDRED: 8.6,
 };
+
+/** Par run rate for a Test. Only the long-format features use it. */
+const TEST_PAR_RUN_RATE = 3.2;
+
+/** Scheduled balls in a day of long-format cricket: 90 overs. */
+const BALLS_PER_LONG_DAY = 90 * 6;
 
 // Longest / most specific tokens first, so "T20I" does not fall through to a broader rule and
 // "The Hundred" is not read as a century. Mirrors CricketConstants.FORMAT_PATTERNS on device.
@@ -88,12 +115,25 @@ export function inningsBalls(format) {
 }
 
 /** Par run rate for a format, or null when there is none. */
-export function parRunRate(format) {
-  return FORMAT_PAR_RUN_RATE[format] ?? null;
+export function parRunRate(format, model = null) {
+  return model?.parRunRate?.[format] ?? FORMAT_PAR_RUN_RATE[format] ?? null;
 }
 
 export function sigmoid(x) {
   return 1 / (1 + Math.exp(-x));
+}
+
+/**
+ * Softmax over class logits, shifted by the max before exponentiating.
+ *
+ * The shift is not cosmetic: a long-format lead of several hundred runs drives a logit large enough
+ * that `Math.exp` overflows to Infinity, and Infinity/Infinity is NaN.
+ */
+export function softmax(logits) {
+  const max = Math.max(...logits);
+  const exps = logits.map((l) => Math.exp(l - max));
+  const sum = exps.reduce((a, b) => a + b, 0) || 1;
+  return exps.map((e) => e / sum);
 }
 
 /** Parse cricket over notation ("19.5", "19.5 Ov") into balls. The fraction is balls, not tenths. */
@@ -132,6 +172,7 @@ const PROB_CEILING = 0.97;
 export const UNDETERMINED = Object.freeze({
   undetermined: true,
   battingTeamWinProbability: null,
+  drawProbability: null,
   confidence: 0,
 });
 
@@ -140,9 +181,179 @@ function finalize(rawProb) {
   return {
     undetermined: false,
     battingTeamWinProbability: clamped,
+    drawProbability: null,
     confidence: Math.abs(clamped - 0.5) * 2,
   };
 }
+
+// ── team strength ────────────────────────────────────────────────────────────
+
+/**
+ * Team stats are keyed `"name|gender|format"`.
+ *
+ * A bare team name pooled Australia's men's and women's sides and their Tests, ODIs and T20s into
+ * one win rate — 0.642, against a men's-T20 0.545 and a women's-ODI 0.842. The key is only useful
+ * if the reader builds it exactly as the trainer did, which `feature-parity.test.js` pins.
+ */
+export function teamKey(team, gender, format) {
+  return `${String(team ?? "").trim()}|${gender ?? "male"}|${format ?? "T20"}`;
+}
+
+function winRateOf(teamStats, team, gender, format) {
+  return teamStats?.[teamKey(team, gender, format)]?.winRate ?? 0.5;
+}
+
+// ── feature builders (must mirror training.js exactly) ───────────────────────
+
+export function chaseFeatures(s) {
+  const budget = Math.max(s.ballsBudget, 1);
+  const ballsLeft = Math.max(s.ballsRemaining, 1);
+  const par = s.parRunRate;
+  const parTotal = (par * budget) / 6;
+  const bf = ballsLeft / budget;
+  const wf = s.wicketsInHand / 10;
+  const rateGap = (s.requiredRunRate - s.currentRunRate) / par;
+  return [
+    Math.log((s.currentRunRate + 0.5) / (s.requiredRunRate + 0.5)),
+    wf,
+    bf,
+    s.requiredRunRate / par,
+    s.currentRunRate / par,
+    s.teamStrengthDiff,
+    wf * bf,
+    s.runsNeeded / (ballsLeft * (0.3 + 0.7 * wf)),
+    s.target / parTotal,
+    (1 - wf) * (1 - bf),
+    rateGap,
+    rateGap / (0.2 + bf),
+    s.runsNeeded / parTotal,
+    wf * wf,
+    s.format === "ODI" ? 1 : 0,
+    s.format === "HUNDRED" ? 1 : 0,
+  ];
+}
+
+export function firstInningsFeatures(s) {
+  const budget = Math.max(s.ballsBudget, 1);
+  const ballsLeft = Math.max(s.ballsRemaining, 0);
+  const par = s.parRunRate;
+  const parTotal = (par * budget) / 6;
+  const bf = ballsLeft / budget;
+  const wf = s.wicketsInHand / 10;
+  const projected = s.runsScored + s.currentRunRate * (ballsLeft / 6) * (0.55 + 0.45 * wf);
+  return [
+    s.runsScored / parTotal,
+    s.currentRunRate / par,
+    wf,
+    bf,
+    wf * bf,
+    projected / parTotal,
+    s.teamStrengthDiff,
+    (1 - wf) * (1 - bf),
+    wf * wf,
+    s.format === "ODI" ? 1 : 0,
+    s.format === "HUNDRED" ? 1 : 0,
+  ];
+}
+
+export function longFeatures(s) {
+  const ballsLeft = Math.max(s.ballsRemaining, 1);
+  const wf = s.wicketsInHand / 10;
+  const bf = ballsLeft / Math.max(s.ballsTotal, 1);
+  const isFourth = s.isFourthInnings ? 1 : 0;
+  return [
+    s.lead / 100,
+    wf,
+    (s.inningsIndex + 1) / 4,
+    bf,
+    s.teamStrengthDiff,
+    isFourth,
+    isFourth ? s.runsNeeded / ballsLeft : 0,
+    s.followedOn ? 1 : 0,
+    s.inningsUsedDiff,
+    s.inningsRunRate / TEST_PAR_RUN_RATE,
+    (s.lead / 100) / (0.15 + bf),
+    s.wicketsToTake / Math.max(ballsLeft / 90, 0.05),
+    ballsLeft / 540,
+    wf * bf,
+    isFourth ? s.runsNeeded / Math.max(ballsLeft * (0.3 + 0.7 * wf), 1) : 0,
+    s.scheduledDays >= 5 ? 1 : 0,
+  ];
+}
+
+/**
+ * Blend model output toward the class base rates while a Test is too young to read.
+ *
+ * A logistic model is linear in its features, so at the edge of the training data it extrapolates
+ * with unearned confidence, and the first over of day one is exactly that edge — it returned 73%
+ * before anything had happened, against a 39% base rate. There is genuinely no information there,
+ * so the honest output is the prior.
+ */
+export function shrinkToPrior(probs, priors, progress, settle) {
+  const safeSettle = settle > 0 ? settle : 1;
+  const weight = Math.max(0, Math.min(1, (Number(progress) || 0) / safeSettle));
+  const fallback = 1 / probs.length;
+  return probs.map((p, i) => weight * p + (1 - weight) * (priors?.[i] ?? fallback));
+}
+
+// ── learned-model plumbing ───────────────────────────────────────────────────
+
+function usable(sub, expectedFeatures) {
+  return (
+    sub != null &&
+    Array.isArray(sub.weights) &&
+    sub.weights.length === expectedFeatures &&
+    Array.isArray(sub.featureMeans) &&
+    Array.isArray(sub.featureStds)
+  );
+}
+
+/**
+ * A multiclass sub-model has one weight ROW per class, so its outer length is the class count and
+ * the feature count lives one level down. Checking it the same way as a binary model would read
+ * `weights.length === 16` against a 3, and refuse every valid Test artifact.
+ */
+function usableClasses(sub, expectedFeatures, classes) {
+  return (
+    sub != null &&
+    Array.isArray(sub.weights) &&
+    sub.weights.length === classes &&
+    sub.weights.every((row) => Array.isArray(row) && row.length === expectedFeatures) &&
+    Array.isArray(sub.biases) &&
+    sub.biases.length === classes &&
+    Array.isArray(sub.featureMeans) &&
+    Array.isArray(sub.featureStds)
+  );
+}
+
+function scoreBinary(sub, features) {
+  let logit = sub.bias ?? 0;
+  for (let i = 0; i < sub.weights.length; i++) {
+    const scaled = (features[i] - (sub.featureMeans[i] ?? 0)) / (sub.featureStds[i] || 1);
+    logit += sub.weights[i] * scaled;
+  }
+  // Temperature is fitted on a validation window at training time; 1 means "no correction needed",
+  // which is also the right behaviour for an artifact that predates the field.
+  return sigmoid(logit / (sub.temperature > 0 ? sub.temperature : 1));
+}
+
+function scoreClasses(sub, features) {
+  const logits = sub.biases.map((bias, c) => {
+    let logit = bias;
+    for (let j = 0; j < features.length; j++) {
+      const scaled = (features[j] - (sub.featureMeans[j] ?? 0)) / (sub.featureStds[j] || 1);
+      logit += sub.weights[c][j] * scaled;
+    }
+    return logit;
+  });
+  return softmax(logits);
+}
+
+function learnedOf(model) {
+  return model != null && model.version === MODEL_VERSION ? model : null;
+}
+
+// ── heuristic ────────────────────────────────────────────────────────────────
 
 /**
  * Chase logit from the heuristic.
@@ -182,23 +393,27 @@ function firstInningsLogit({ currentRunRate, wicketsInHand, parRate }) {
   return (currentRunRate - breakeven) * 0.5 + (wicketsInHand / 10 - 0.5) * 1.5;
 }
 
+// ── entry points ─────────────────────────────────────────────────────────────
+
 /**
- * Win probability for the BATTING side.
+ * Win probability for the BATTING side of a limited-overs match.
  *
  * Always batting-team-oriented. The caller owns orientation and must carry battingTeamIndex — the
  * old response field was named `team1WinProbability` while being computed from the batting team,
  * so the number was inverted whenever team 2 was at the crease.
  *
- * @returns {{undetermined: boolean, battingTeamWinProbability: number|null, confidence: number}}
+ * @returns {{undetermined: boolean, battingTeamWinProbability: number|null, drawProbability: number|null, confidence: number}}
  */
 export function evaluate({
   runsNeeded = 0,
+  runsScored = 0,
   ballsRemaining = 0,
   wicketsLost = 0,
   currentRunRate = 0,
   requiredRunRate = 0,
   battingTeam = "",
   bowlingTeam = "",
+  gender = "male",
   format = "UNKNOWN",
   totalBalls = null,
   model = null,
@@ -207,46 +422,133 @@ export function evaluate({
 
   // A format with no ball budget cannot be scored by this model. Returning UNDETERMINED rather
   // than assuming 120 is the whole point: a Test past ball 120 previously computed
-  // ballsRemaining = 1 and carried a permanent late-innings penalty.
+  // ballsRemaining = 1 and carried a permanent late-innings penalty. Tests go through
+  // [evaluateLong] instead.
   const ballsBudget = Number.isFinite(totalBalls) && totalBalls > 0 ? totalBalls : inningsBalls(format);
   if (!ballsBudget) return UNDETERMINED;
 
   const wicketsInHand = Math.max(0, 10 - wicketsLost);
   if (wicketsInHand === 0) return finalize(PROB_FLOOR);
 
-  const parRate = parRunRate(format);
+  const learned = learnedOf(model);
+  const par = parRunRate(format, learned) ?? 8.0;
+  const teamStats = learned?.teamStats ?? (model?.teamStats ?? model ?? {});
+  const teamStrengthDiff =
+    winRateOf(teamStats, battingTeam, gender, format) - winRateOf(teamStats, bowlingTeam, gender, format);
   const isChase = requiredRunRate > 0;
-  const useLearned = model != null && model.version === MODEL_VERSION && Array.isArray(model.weights);
 
-  if (useLearned && isChase) {
-    const teamStats = model.teamStats ?? {};
-    const features = [
-      currentRunRate / Math.max(requiredRunRate, 0.1),
-      wicketsInHand / 10,
-      // Format-correct, not a hardcoded /120. An ODI with 180 balls left used to yield 1.5 here,
-      // far outside the range the model ever saw.
-      ballsRemaining / ballsBudget,
-      runsNeeded / Math.max(ballsRemaining, 1),
-      (teamStats[battingTeam]?.winRate ?? 0.5) - (teamStats[bowlingTeam]?.winRate ?? 0.5),
-    ];
-    const means = model.featureMeans ?? [];
-    const stds = model.featureStds ?? [];
-    let logit = model.bias ?? 0;
-    for (let i = 0; i < model.weights.length; i++) {
-      const scaled = (features[i] - (means[i] ?? 0)) / (stds[i] || 1);
-      logit += model.weights[i] * scaled;
+  if (learned) {
+    if (isChase && usable(learned.chase, 16)) {
+      return finalize(scoreBinary(learned.chase, chaseFeatures({
+        currentRunRate,
+        requiredRunRate,
+        wicketsInHand,
+        ballsRemaining,
+        ballsBudget,
+        runsNeeded,
+        target: runsScored + runsNeeded,
+        teamStrengthDiff,
+        parRunRate: par,
+        format,
+      })));
     }
-    return finalize(sigmoid(logit));
+    if (!isChase && usable(learned.firstInnings, 11)) {
+      return finalize(scoreBinary(learned.firstInnings, firstInningsFeatures({
+        runsScored,
+        currentRunRate,
+        wicketsInHand,
+        ballsRemaining,
+        ballsBudget,
+        teamStrengthDiff,
+        parRunRate: par,
+        format,
+      })));
+    }
   }
 
-  // Heuristic path — also taken when the model is missing, stale (v2), or this is a first innings.
-  const teamStats = useLearned ? (model.teamStats ?? {}) : (model ?? {});
-  const strengthDiff =
-    (teamStats[battingTeam]?.winRate ?? 0.5) - (teamStats[bowlingTeam]?.winRate ?? 0.5);
-
+  // Heuristic path — taken when the model is missing, stale, or malformed.
   const base = isChase
-    ? chaseLogit({ currentRunRate, requiredRunRate, wicketsInHand, ballsRemaining, ballsBudget, parRate })
-    : firstInningsLogit({ currentRunRate, wicketsInHand, parRate });
+    ? chaseLogit({ currentRunRate, requiredRunRate, wicketsInHand, ballsRemaining, ballsBudget, parRate: par })
+    : firstInningsLogit({ currentRunRate, wicketsInHand, parRate: par });
 
-  return finalize(sigmoid(base + strengthDiff * 0.8));
+  return finalize(sigmoid(base + teamStrengthDiff * 0.8));
+}
+
+/**
+ * Win, draw and loss probabilities for the BATTING side of a Test.
+ *
+ * Separate entry point rather than a branch inside [evaluate] because the answer has a different
+ * shape: a Test position is three outcomes, and squeezing it into one number would have to throw
+ * the draw away — which for roughly a quarter of Test positions is the most likely result.
+ *
+ * There is no heuristic fallback. Without the learned model there is nothing honest to say about a
+ * Test position, and a made-up three-way split would render as a confident-looking bar.
+ *
+ * @returns the same shape as [evaluate], with `drawProbability` populated.
+ */
+export function evaluateLong({
+  lead = 0,
+  wicketsLost = 0,
+  inningsIndex = 0,
+  ballsBowled = 0,
+  scheduledDays = 5,
+  inningsRunRate = 0,
+  ownInningsUsed = 1,
+  oppInningsUsed = 0,
+  followedOn = false,
+  battingTeam = "",
+  bowlingTeam = "",
+  gender = "male",
+  model = null,
+} = {}) {
+  const learned = learnedOf(model);
+  if (!usableClasses(learned?.long, 16, 3)) return UNDETERMINED;
+
+  const ballsTotal = Math.max(1, scheduledDays) * BALLS_PER_LONG_DAY;
+  const ballsRemaining = ballsTotal - ballsBowled;
+  if (!Number.isFinite(ballsRemaining) || ballsRemaining <= 0) return UNDETERMINED;
+
+  const wicketsInHand = Math.max(0, 10 - wicketsLost);
+  if (wicketsInHand === 0) return UNDETERMINED;
+
+  const isFourthInnings = inningsIndex === 3;
+  const teamStats = learned.teamStats ?? {};
+  const teamStrengthDiff =
+    winRateOf(teamStats, battingTeam, gender, "TEST") - winRateOf(teamStats, bowlingTeam, gender, "TEST");
+
+  const probs = scoreClasses(learned.long, longFeatures({
+    lead,
+    wicketsInHand,
+    inningsIndex,
+    ballsRemaining,
+    ballsTotal,
+    teamStrengthDiff,
+    isFourthInnings,
+    // In the fourth innings the target is the lead inverted: erase the deficit and go one past it.
+    runsNeeded: isFourthInnings ? Math.max(1 - lead, 0) : 0,
+    followedOn,
+    inningsUsedDiff: ownInningsUsed - oppInningsUsed,
+    inningsRunRate,
+    // What the bowling side must still do to win: take this innings out, and a whole further
+    // innings if the batting side has not yet used both of theirs.
+    wicketsToTake: wicketsInHand + (ownInningsUsed < 2 ? 10 : 0),
+    scheduledDays,
+  }));
+
+  const settled = shrinkToPrior(
+    probs,
+    learned.long.classPriors,
+    1 - ballsRemaining / ballsTotal,
+    learned.long.priorSettleProgress ?? 0.25
+  );
+
+  // OUTCOME order in training.js is LOSS, DRAW, WIN.
+  const win = settled[2];
+  const draw = settled[1];
+  return {
+    undetermined: false,
+    battingTeamWinProbability: win,
+    drawProbability: draw,
+    confidence: Math.max(win, draw, settled[0]),
+  };
 }

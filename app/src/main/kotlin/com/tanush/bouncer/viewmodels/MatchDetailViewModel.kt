@@ -78,6 +78,14 @@ class MatchDetailViewModel(
          * screen reached by deep link or a cold start.
          */
         val liveWinProbability: Double? = null,
+        /**
+         * Draw probability as a percentage, for the one format that has one.
+         *
+         * Null for every limited-overs match, and null is not zero: a T20 cannot be drawn, while a
+         * Test on 8% draw is a real and different statement. The renderer branches on null to
+         * choose between a two- and a three-segment bar.
+         */
+        val liveDrawProbability: Double? = null,
         val matchFlow: MatchFlowData? = null,
         val preMatchData: PreMatchData? = null,
         val probabilityHistory: List<WinProbabilityPoint> = emptyList(),
@@ -165,8 +173,13 @@ class MatchDetailViewModel(
             while (isActive && !isMatchOver(match, _uiState.value.liveStatus)) {
                 MatchPresenceReporter.ping(match.id)
                 WinProbabilityStore.refresh()
-                WinProbabilityStore.forMatch(match.id)?.let { probability ->
-                    _uiState.update { it.copy(liveWinProbability = probability) }
+                WinProbabilityStore.probabilityFor(match.id)?.let { probability ->
+                    _uiState.update {
+                        it.copy(
+                            liveWinProbability = probability.team1Percent,
+                            liveDrawProbability = probability.drawPercent ?: it.liveDrawProbability,
+                        )
+                    }
                 }
                 delay(PRESENCE_HEARTBEAT_MS)
             }
@@ -325,7 +338,12 @@ class MatchDetailViewModel(
                 liveStatus = pick(p.status?.takeIf { it.isNotBlank() }, st.liveStatus),
                 // Server sends 0..1; the UI works in percent. Keep the previous value when this
                 // update carries none, so the bar does not blink out on a payload that omits it.
-                liveWinProbability = p.winProbabilityTeam1?.let { it * 100.0 } ?: st.liveWinProbability,
+                // Routed through `pick` rather than its own elvis for the same reason every other
+                // field here is: two more branches in this function trips detekt's complexity cap,
+                // and the file is already at the TooManyFunctions threshold so a helper cannot pay
+                // for itself.
+                liveWinProbability = pick(p.winProbabilityTeam1?.times(PERCENT), st.liveWinProbability),
+                liveDrawProbability = pick(p.winProbabilityDraw?.times(PERCENT), st.liveDrawProbability),
             )
         }
         p.batsmen.forEach { handleBatsmanMilestone(it) }
@@ -399,6 +417,9 @@ class MatchDetailViewModel(
         private const val MILESTONE_BANNER_MS = 15_000L
         // Re-ping well within match-sync's 4-min VIEWER_TTL_MS so ~2 dropped pings still count.
         private const val PRESENCE_HEARTBEAT_MS = 90_000L
+
+        /** The server states probabilities as 0..1; every renderer here works in percent. */
+        private const val PERCENT = 100.0
 
         /** Per-type store key — see [HighlightsViewModel.storeKey] for why sharing one collides. */
         fun storeKey(matchId: String): String = "match_detail_$matchId"

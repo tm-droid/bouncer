@@ -142,10 +142,12 @@ fun MatchDetailViewV2(
     // The stored probability is whatever the match list had; the detail payload is fresher, so it
     // wins when present. A completed match resolves its own from the result string.
     val liveWinProbability = uiState.liveWinProbability ?: match.winProbability
+    val liveDrawProbability = uiState.liveDrawProbability ?: match.winProbabilityDraw
     val liveMatch = if (match.teams.size >= 2) {
         match.copy(
             currentStatus = liveStatus,
             winProbability = liveWinProbability,
+            winProbabilityDraw = liveDrawProbability,
             teams = match.teams.mapIndexed { i, team ->
                 when (i) {
                     0 -> team.copy(score = score1.ifBlank { team.score }, overs = overs1.ifBlank { team.overs })
@@ -153,9 +155,22 @@ fun MatchDetailViewV2(
                     else -> team
                 }
             },
-        ).let { if (it.isCompleted) it.copy(winProbability = it.resolvedWinProbability()) else it }
+        ).let {
+            // A finished match has a result, not a forecast: the draw segment goes with the
+            // prediction it belonged to, or a completed Test would keep showing a chance of a draw
+            // that has already not happened.
+            if (it.isCompleted) {
+                it.copy(winProbability = it.resolvedWinProbability(), winProbabilityDraw = null)
+            } else {
+                it
+            }
+        }
     } else {
-        match.copy(currentStatus = liveStatus, winProbability = liveWinProbability)
+        match.copy(
+            currentStatus = liveStatus,
+            winProbability = liveWinProbability,
+            winProbabilityDraw = liveDrawProbability,
+        )
     }
 
     val battingTeam = liveMatch.teams.firstOrNull { it.isBatting }

@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { evaluate, formatFromText, ballsRemainingFor, inningsBalls } from "../src/winprob.js";
+import { evaluate, evaluateLong, longFeatures, formatFromText, ballsRemainingFor, inningsBalls } from "../src/winprob.js";
 import { resolveMatchTeams } from "../src/teamnames.js";
 
 const here = (p) => fileURLToPath(new URL(p, import.meta.url));
@@ -51,12 +51,14 @@ function orient(situation, { model = null, title = "" } = {}) {
   });
   const r = evaluate({
     runsNeeded: situation.runsNeeded ?? 0,
+    runsScored: situation.runsScored ?? 0,
     ballsRemaining: ballsRemaining ?? 0,
     wicketsLost: situation.wicketsLost ?? 0,
     currentRunRate: situation.currentRunRate ?? 0,
     requiredRunRate: situation.requiredRunRate ?? 0,
     battingTeam: situation.battingTeamName ?? "",
     bowlingTeam: situation.bowlingTeamName ?? "",
+    gender: "male",
     format,
     model,
   });
@@ -64,6 +66,29 @@ function orient(situation, { model = null, title = "" } = {}) {
   return situation.battingTeamIsTeam1
     ? r.battingTeamWinProbability
     : 1 - r.battingTeamWinProbability;
+}
+
+/**
+ * A structurally valid v5 artifact whose every weight is zero.
+ *
+ * Zero weights make the learned path return exactly 0.5, which the heuristic never does for a real
+ * situation — so "did the learned path run?" is answerable without asserting on a trained number
+ * that a retrain would legitimately move.
+ */
+function flatModel({ version = 5 } = {}) {
+  const flat = (k) => ({
+    weights: new Array(k).fill(0),
+    bias: 0,
+    temperature: 1,
+    featureMeans: new Array(k).fill(0),
+    featureStds: new Array(k).fill(1),
+  });
+  return {
+    version,
+    chase: flat(16),
+    firstInnings: flat(11),
+    teamStats: {},
+  };
 }
 
 // Real shape captured from Cricbuzz match 153893 (San Francisco Unicorns v Desert Vipers).
@@ -113,7 +138,7 @@ test("orientation is symmetric — the two sides sum to one", () => {
   assert.ok(Math.abs(asTeam1 + asTeam2 - 1) < 1e-9);
 });
 
-test("a Test is omitted rather than scored", () => {
+test("a Test is not scored by the limited-overs path", () => {
   const testMatch = {
     inningsId: 3,
     matchFormat: "TEST",
@@ -132,28 +157,31 @@ test("a Test is omitted rather than scored", () => {
   assert.equal(orient(testMatch), null);
 });
 
-test("a trained v3 model overrides the heuristic", () => {
-  const model = {
-    version: 3,
-    weights: [0, 0, 0, 0, 0],
-    bias: 0,
-    featureMeans: [0, 0, 0, 0, 0],
-    featureStds: [1, 1, 1, 1, 1],
-    teamStats: {},
-  };
+test("a trained v5 model overrides the heuristic", () => {
+  const withModel = orient(chaseSituation, { model: flatModel() });
+  const heuristic = orient(chaseSituation);
   // All-zero weights and bias produce exactly 0.5 for the batting side, which the heuristic
   // would never return for this situation.
-  const withModel = orient(chaseSituation, { model });
-  const heuristic = orient(chaseSituation);
   assert.ok(Math.abs(withModel - 0.5) < 1e-9, `model path not taken: ${withModel}`);
   assert.notEqual(withModel, heuristic);
+});
+
+test("a v4 artifact is refused rather than read against v5 weights", () => {
+  // v4's chase vector was five features. Feeding it to a sixteen-weight reader would produce a
+  // number from whatever happened to line up, which is worse than having no model: it looks like a
+  // prediction. The safe reading is the heuristic, which is at least self-consistent.
+  const stale = { ...flatModel(), version: 4 };
+  assert.equal(orient(chaseSituation, { model: stale }), orient(chaseSituation));
 });
 
 test("resolved team names make the strength term contribute", () => {
   // The defect this guards: the miniscore names sides by short code and the model keys them by
   // Cricsheet full name, so `teamStats["IND"]` missed, both sides fell back to 0.5, and
   // teamStrengthDiff was exactly zero on every match ever scored.
-  const teamStats = { India: { winRate: 0.9 }, Zimbabwe: { winRate: 0.1 } };
+  const teamStats = {
+    "India|male|T20": { winRate: 0.9 },
+    "Zimbabwe|male|T20": { winRate: 0.1 },
+  };
   const title = "India vs Zimbabwe, 1st T20I";
   // A tight chase on purpose. chaseSituation is lopsided enough to sit on PROB_CEILING, where the
   // clamp swallows any strength term and the test would pass whether or not the lookup worked.
@@ -172,8 +200,8 @@ test("resolved team names make the strength term contribute", () => {
   const rawCodes = orient(situation, { model: teamStats });
   assert.ok(rawCodes > 0.04 && rawCodes < 0.96, `fixture is on a clamp (${rawCodes}); strength cannot show`);
 
-  const resolved = resolveMatchTeams({ title, battingTeamName: "IND", teamStats });
-  assert.deepEqual(resolved, { battingTeam: "India", bowlingTeam: "Zimbabwe" });
+  const resolved = resolveMatchTeams({ title, battingTeamName: "IND", teamStats, format: "T20" });
+  assert.deepEqual(resolved, { battingTeam: "India", bowlingTeam: "Zimbabwe", gender: "male" });
 
   const withNames = orient(
     { ...situation, battingTeamName: resolved.battingTeam, bowlingTeamName: resolved.bowlingTeam },
@@ -189,9 +217,15 @@ test("resolved team names make the strength term contribute", () => {
 test("a fixture outside the corpus scores exactly as it did before resolution", () => {
   // Surrey vs Kent — the collision case. Resolution declines, so the number must be bit-identical
   // to the pre-change behaviour rather than picking up Suriname's and Kenya's win rates.
-  const teamStats = { Suriname: { winRate: 0.25 }, Kenya: { winRate: 0.53 } };
+  const teamStats = {
+    "Suriname|male|T20": { winRate: 0.25 },
+    "Kenya|male|T20": { winRate: 0.53 },
+  };
   const situation = { ...chaseSituation, battingTeamName: "SUR", bowlingTeamName: "KEN" };
-  assert.equal(resolveMatchTeams({ title: "Surrey vs Kent, Group A", battingTeamName: "SUR", teamStats }), null);
+  assert.equal(
+    resolveMatchTeams({ title: "Surrey vs Kent, Group A", battingTeamName: "SUR", teamStats, format: "T20" }),
+    null,
+  );
   assert.equal(orient(situation, { model: teamStats }), orient(situation, { model: {} }));
 });
 
@@ -222,4 +256,81 @@ test("a format code is matched exactly, never as a substring of the haystack", (
   assert.equal(formatFromText("", "HUN vs MLT, 3rd Match"), "UNKNOWN");
   assert.equal(formatFromText("The Hundred", "Southern Brave vs Birmingham Phoenix"), "HUNDRED");
   assert.equal(formatFromText(null, undefined), "UNKNOWN");
+});
+
+// ── Test matches (the cricket format) ────────────────────────────────────────
+
+/** A v5 artifact carrying a long model that returns exactly the priors before shrinkage. */
+function longModel(priors = [0.37, 0.23, 0.40]) {
+  return {
+    version: 5,
+    teamStats: {},
+    long: {
+      weights: [new Array(16).fill(0), new Array(16).fill(0), new Array(16).fill(0)],
+      // Softmax of the log-priors is the priors themselves, so the model's own output equals the
+      // prior and any deviation below has to come from the code under test.
+      biases: priors.map((p) => Math.log(p)),
+      featureMeans: new Array(16).fill(0),
+      featureStds: new Array(16).fill(1),
+      classPriors: priors,
+      priorSettleProgress: 0.25,
+    },
+  };
+}
+
+const testSituation = {
+  lead: 84,
+  wicketsLost: 4,
+  inningsIndex: 2,
+  ballsBowled: 1400,
+  scheduledDays: 5,
+  inningsRunRate: 3.4,
+  ownInningsUsed: 2,
+  oppInningsUsed: 1,
+  followedOn: false,
+  battingTeam: "England",
+  bowlingTeam: "India",
+};
+
+test("a Test yields three outcomes, and they sum to one", () => {
+  const r = evaluateLong({ ...testSituation, model: longModel() });
+  assert.equal(r.undetermined, false);
+  const loss = 1 - r.battingTeamWinProbability - r.drawProbability;
+  assert.ok(Math.abs(r.battingTeamWinProbability + r.drawProbability + loss - 1) < 1e-9);
+  assert.ok(r.drawProbability > 0, "a Test must be able to say draw");
+});
+
+test("without a long model a Test is undetermined, never a made-up split", () => {
+  // There is no heuristic for a Test position. A three-way guess would render as a confident bar.
+  assert.equal(evaluateLong({ ...testSituation, model: null }).undetermined, true);
+  assert.equal(evaluateLong({ ...testSituation, model: { version: 4 } }).undetermined, true);
+  assert.equal(evaluateLong({ ...testSituation, model: longModel(), wicketsLost: 10 }).undetermined, true);
+});
+
+test("the opening over of a Test returns the priors, not a confident number", () => {
+  // The defect: a linear model at the edge of its training data extrapolated to 73% for the side
+  // batting first before anything had happened, against a 39% base rate.
+  const priors = [0.37, 0.23, 0.40];
+  const opening = evaluateLong({
+    ...testSituation,
+    inningsIndex: 0,
+    ballsBowled: 6,
+    ownInningsUsed: 1,
+    oppInningsUsed: 0,
+    model: longModel(priors),
+  });
+  assert.ok(Math.abs(opening.battingTeamWinProbability - priors[2]) < 0.01);
+  assert.ok(Math.abs(opening.drawProbability - priors[1]) < 0.01);
+});
+
+test("a fourth-innings Test chase carries a target rather than an empty one", () => {
+  // liveSituation used to hardcode `inningsId === 2` for a chase, so the one innings of a Test that
+  // IS a run chase never carried target or runsNeeded. The feature vector has to show it.
+  const chasing = longFeatures({
+    lead: -150, wicketsInHand: 6, inningsIndex: 3, ballsRemaining: 400, ballsTotal: 2700,
+    teamStrengthDiff: 0, isFourthInnings: true, runsNeeded: 151, followedOn: false,
+    inningsUsedDiff: 0, inningsRunRate: 3.1, wicketsToTake: 6, scheduledDays: 5,
+  });
+  assert.equal(chasing[5], 1, "isFourthInnings");
+  assert.ok(chasing[6] > 0, "chasePressure must be non-zero in the fourth innings");
 });

@@ -33,11 +33,17 @@ object WinProbabilityStore {
 
     private data class Entry(
         @SerializedName("team1WinProbability") val team1WinProbability: Double? = null,
+        // Tests only. A draw belongs to neither side, so unlike the win probability the server does
+        // not re-orient it.
+        val drawProbability: Double? = null,
         val confidence: Double? = null,
         val battingTeamName: String? = null,
         val battingTeamIsTeam1: Boolean? = null,
         val format: String? = null,
     )
+
+    /** What the server says about one match: a percentage for teams[0], and a draw share if any. */
+    data class Probability(val team1Percent: Double, val drawPercent: Double?)
 
     private data class Payload(
         val version: Int = 0,
@@ -49,7 +55,7 @@ object WinProbabilityStore {
     private val mutex = Mutex()
 
     @Volatile
-    private var cache: Map<String, Double> = emptyMap()
+    private var cache: Map<String, Probability> = emptyMap()
 
     @Volatile
     private var fetchedAtUptimeMs: Long = 0
@@ -63,7 +69,10 @@ object WinProbabilityStore {
      * Probability for `teams[0]` of [matchId] as a percentage (0..100), or null when the server has
      * no number for it. Reads the in-memory snapshot only — call [refresh] to update it.
      */
-    fun forMatch(matchId: String): Double? = cache[matchId]
+    fun forMatch(matchId: String): Double? = cache[matchId]?.team1Percent
+
+    /** As [forMatch], but carrying the draw share for the formats that have one. */
+    fun probabilityFor(matchId: String): Probability? = cache[matchId]
 
     /**
      * Download the aggregate file if the cached copy has expired.
@@ -79,7 +88,12 @@ object WinProbabilityStore {
             val bytes = AppwriteClient.downloadFile(BUCKET_ID, FILE_ID) ?: return
             val parsed = parse(bytes) ?: return
             cache = parsed.matches.mapNotNull { (id, entry) ->
-                entry.team1WinProbability?.let { id to (it * 100.0).coerceIn(0.0, 100.0) }
+                entry.team1WinProbability?.let { team1 ->
+                    id to Probability(
+                        team1Percent = (team1 * 100.0).coerceIn(0.0, 100.0),
+                        drawPercent = entry.drawProbability?.let { (it * 100.0).coerceIn(0.0, 100.0) },
+                    )
+                }
             }.toMap()
             fetchedAtUptimeMs = SystemClock.elapsedRealtime()
             hasData = true

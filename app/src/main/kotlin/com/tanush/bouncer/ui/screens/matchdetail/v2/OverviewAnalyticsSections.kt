@@ -41,6 +41,7 @@ import com.tanush.bouncer.ui.components.premium.LiveScoringGraphCard
 import com.tanush.bouncer.ui.components.premium.PowerPlayAnalysisCard
 import com.tanush.bouncer.ui.components.premium.PowerPlayPhase
 import com.tanush.bouncer.ui.components.premium.PremiumWinProbabilityHero
+import com.tanush.bouncer.ui.components.premium.WinProbabilityState
 import com.tanush.bouncer.ui.components.premium.WinProbabilityChartCard
 import com.tanush.bouncer.ui.components.v2.BouncerCard
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
@@ -60,7 +61,19 @@ internal fun LazyListScope.overviewWinProbability(
         item(key = "win_prob") {
             PremiumWinProbabilityHero(
                 team1Name = match.teams[0].acronym.ifBlank { match.teams[0].name.take(3).uppercase() },
-                team1Probability = (winProb.toFloat() / 100f).coerceIn(0.05f, 0.95f),
+                team2Name = match.teams[1].acronym.ifBlank { match.teams[1].name.take(3).uppercase() },
+                // Not clamped to 0.05..0.95 any more. The server already clamps to 0.03..0.97, and
+                // clamping a second time turned a finished match's 100/0 into 95/5 — a bar that
+                // gave the losing side a five per cent chance of a result that had happened.
+                team1Probability = (winProb / 100.0).toFloat(),
+                drawProbability = match.winProbabilityDraw?.let { (it / 100.0).toFloat() },
+                state = when {
+                    match.isCompleted -> WinProbabilityState.FINAL
+                    match.isUpcoming -> WinProbabilityState.PRE_MATCH
+                    else -> WinProbabilityState.LIVE
+                },
+                detail = runRateDetail(currentRunRate, requiredRunRate),
+                delta = probabilitySwing(probabilityHistory),
             )
         }
     }
@@ -79,6 +92,23 @@ internal fun LazyListScope.overviewWinProbability(
             )
         }
     }
+}
+
+/** The supporting numbers under the bar, or null when neither rate is known. */
+private fun runRateDetail(currentRunRate: String?, requiredRunRate: String?): String? = listOfNotNull(
+    currentRunRate?.takeIf { it.isNotBlank() }?.let { "CRR $it" },
+    requiredRunRate?.takeIf { it.isNotBlank() && it != "0" && it != "0.0" }?.let { "RRR $it" },
+).joinToString("  ·  ").ifBlank { null }
+
+/**
+ * How far the first team's probability has moved since the previous reading.
+ *
+ * Two points, not a window: the bar is answering "what just changed", and averaging over several
+ * overs would smear a wicket into the balls either side of it.
+ */
+private fun probabilitySwing(history: List<WinProbabilityPoint>): Float? {
+    if (history.size < 2) return null
+    return history.last().team1Probability - history[history.size - 2].team1Probability
 }
 
 internal fun LazyListScope.overviewPhaseCards(

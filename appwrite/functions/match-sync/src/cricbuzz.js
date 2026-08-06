@@ -581,12 +581,16 @@ function liveSituation(ms, isl) {
   if (!current) return null;
 
   const ballsBowled = num(current.ballNbr);
-  const isChase = ms.inningsId === 2 && num(ms.target) != null;
+  // A chase is the LAST innings of the match with a target, not innings 2. Hardcoding 2 meant a
+  // Test's fourth innings — the only innings of a Test that is a run chase — never carried a target
+  // or a runs-needed, so the one position a Test model most needs to read arrived empty.
+  const isChase = num(ms.target) != null && current.inningsId === lastInningsId(ms);
+  const battingTeamName = current.batTeamName ? String(current.batTeamName) : null;
 
   return {
     inningsId: num(ms.inningsId),
     matchFormat: ms.matchScoreDetails?.matchFormat ? String(ms.matchScoreDetails.matchFormat) : null,
-    battingTeamName: current.batTeamName ? String(current.batTeamName) : null,
+    battingTeamName,
     // Match on team name, not innings id: a Test has four innings entries, two of them belonging
     // to the side currently batting, so "some other innings" picks the wrong team.
     bowlingTeamName: isl.find((e) => e.batTeamName && e.batTeamName !== current.batTeamName)?.batTeamName ?? null,
@@ -602,5 +606,59 @@ function liveSituation(ms, isl) {
     oversRemaining: num(ms.oversRem),
     currentRunRate: num(ms.currentRunRate),
     requiredRunRate: num(ms.requiredRunRate),
+    long: longSituation(ms, isl, current, battingTeamName),
+  };
+}
+
+/** The innings the match will finish in, so a fourth-innings Test chase is recognised as one. */
+function lastInningsId(ms) {
+  const list = ms.matchScoreDetails?.inningsScoreList ?? [];
+  return list.reduce((max, e) => Math.max(max, Number(e.inningsId) || 0), 0);
+}
+
+/**
+ * Multi-day state for the three-outcome model, or null when this is not a multi-day match.
+ *
+ * Everything here comes from `inningsScoreList`, which a Test populates with up to four entries.
+ * The quantities the model wants are match-level rather than innings-level — total balls bowled by
+ * both sides, the running lead, how many innings each side has used — and none of them are in the
+ * miniscore as single fields; they only exist as a fold over that list.
+ */
+function longSituation(ms, isl, current, battingTeamName) {
+  const format = String(ms.matchScoreDetails?.matchFormat ?? "").toUpperCase();
+  if (format !== "TEST" && format !== "FC") return null;
+  if (!battingTeamName) return null;
+
+  let ballsBowled = 0;
+  let battingRuns = 0;
+  let bowlingRuns = 0;
+  let ownInningsUsed = 0;
+  let oppInningsUsed = 0;
+  for (const entry of isl) {
+    ballsBowled += Number(entry.ballNbr) || 0;
+    const runs = Number(entry.score) || 0;
+    if (entry.batTeamName === battingTeamName) {
+      battingRuns += runs;
+      ownInningsUsed++;
+    } else {
+      bowlingRuns += runs;
+      oppInningsUsed++;
+    }
+  }
+
+  return {
+    // Position within the match, zero-based, so innings four is index 3 — the value the model's
+    // isFourthInnings feature keys off.
+    inningsIndex: Math.max(0, (Number(current.inningsId) || 1) - 1),
+    lead: battingRuns - bowlingRuns,
+    ballsBowled,
+    ownInningsUsed,
+    oppInningsUsed,
+    // Cricbuzz flags the follow-on on the innings it applies to.
+    followedOn: isl.some((e) => e.isFollowOn === true),
+    declared: isl.some((e) => e.isDeclared === true),
+    // A Test is five days; a first-class match four. Cricbuzz publishes no scheduled-days field, and
+    // the format is the only thing that distinguishes them.
+    scheduledDays: format === "TEST" ? 5 : 4,
   };
 }

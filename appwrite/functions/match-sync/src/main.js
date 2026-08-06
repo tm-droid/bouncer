@@ -40,8 +40,8 @@ import {
   startCheckIn,
   finishCheckIn,
 } from "./observability.js";
-import { evaluate, formatFromText, ballsRemainingFor } from "./winprob.js";
-import { resolveMatchTeams, teamStatsOf } from "./teamnames.js";
+import { evaluate, evaluateLong, formatFromText, ballsRemainingFor } from "./winprob.js";
+import { resolveMatchTeams, teamStatsOf, genderFromTitle } from "./teamnames.js";
 
 const DB_ID = process.env.APPWRITE_AI_CACHE_DB_ID ?? "bouncer-db";
 const COMMENTARY_COL = process.env.MATCH_COMMENTARY_COL_ID ?? "match-commentary";
@@ -532,11 +532,6 @@ function winProbFor(detail, title, model) {
   if (!s) return null;
 
   const format = formatFromText(s.matchFormat, title);
-  const ballsRemaining = ballsRemainingFor({
-    oversRemaining: s.oversRemaining,
-    ballsBowled: s.ballsBowled,
-    format,
-  });
   // The miniscore names teams by short code ("SA", "SUR"), the model keys them by Cricsheet full
   // name, so passing the raw code missed every lookup and left teamStrengthDiff at zero. Resolution
   // is off the title and returns null for anything outside the corpus, which is most domestic
@@ -545,23 +540,53 @@ function winProbFor(detail, title, model) {
     title,
     battingTeamName: s.battingTeamName,
     teamStats: teamStatsOf(model),
-  });
-  const result = evaluate({
-    runsNeeded: s.runsNeeded ?? 0,
-    ballsRemaining: ballsRemaining ?? 0,
-    wicketsLost: s.wicketsLost ?? 0,
-    currentRunRate: s.currentRunRate ?? 0,
-    requiredRunRate: s.requiredRunRate ?? 0,
-    battingTeam: resolved?.battingTeam ?? s.battingTeamName ?? "",
-    bowlingTeam: resolved?.bowlingTeam ?? s.bowlingTeamName ?? "",
     format,
-    model,
+    gender: genderFromTitle(title),
   });
+  const battingTeam = resolved?.battingTeam ?? s.battingTeamName ?? "";
+  const bowlingTeam = resolved?.bowlingTeam ?? s.bowlingTeamName ?? "";
+  const gender = resolved?.gender ?? genderFromTitle(title);
+
+  const result = s.long
+    ? evaluateLong({
+      lead: s.long.lead ?? 0,
+      wicketsLost: s.wicketsLost ?? 0,
+      inningsIndex: s.long.inningsIndex ?? 0,
+      ballsBowled: s.long.ballsBowled ?? 0,
+      scheduledDays: s.long.scheduledDays ?? 5,
+      inningsRunRate: s.currentRunRate ?? 0,
+      ownInningsUsed: s.long.ownInningsUsed ?? 1,
+      oppInningsUsed: s.long.oppInningsUsed ?? 0,
+      followedOn: s.long.followedOn ?? false,
+      battingTeam,
+      bowlingTeam,
+      gender,
+      model,
+    })
+    : evaluate({
+      runsNeeded: s.runsNeeded ?? 0,
+      runsScored: s.runsScored ?? 0,
+      ballsRemaining: ballsRemainingFor({
+        oversRemaining: s.oversRemaining,
+        ballsBowled: s.ballsBowled,
+        format,
+      }) ?? 0,
+      wicketsLost: s.wicketsLost ?? 0,
+      currentRunRate: s.currentRunRate ?? 0,
+      requiredRunRate: s.requiredRunRate ?? 0,
+      battingTeam,
+      bowlingTeam,
+      gender,
+      format,
+      model,
+    });
   if (result.undetermined) return null;
 
   const batting = result.battingTeamWinProbability;
   return {
     team1WinProbability: s.battingTeamIsTeam1 ? batting : 1 - batting,
+    // A draw belongs to neither side, so unlike the win probability it is not re-oriented.
+    drawProbability: result.drawProbability,
     confidence: result.confidence,
     battingTeamName: s.battingTeamName,
     battingTeamIsTeam1: s.battingTeamIsTeam1,
@@ -621,6 +646,9 @@ async function syncMatch({ db, matchId, title, commentaryCap, model, log, error 
   if (winProb) {
     detail.winProbabilityTeam1 = winProb.team1WinProbability;
     detail.winProbabilityConfidence = winProb.confidence;
+    // Only a Test carries one. Null for every other format, and the device renders a two-segment
+    // bar unless it is present rather than inferring a draw from the arithmetic.
+    detail.winProbabilityDraw = winProb.drawProbability;
   }
 
   if (commentaryCap <= 0) {

@@ -86,7 +86,10 @@ test("all ten wickets down is a loss, not a mid-range number", () => {
 test("team strength stays inside [0,1] before clamping", () => {
   // The old code did `rawProb = rawProb + (battingWinRate - bowlingWinRate) * 0.1` AFTER the
   // sigmoid, giving a pre-clamp range of [-0.1, 1.1]. Composing in the logit cannot leave [0,1].
-  const model = { Strong: { winRate: 1.0 }, Weak: { winRate: 0.0 } };
+  const model = {
+    "Strong|male|T20": { winRate: 1.0 },
+    "Weak|male|T20": { winRate: 0.0 },
+  };
   const favoured = evaluate(chase({ battingTeam: "Strong", bowlingTeam: "Weak", model }));
   const against = evaluate(chase({ battingTeam: "Weak", bowlingTeam: "Strong", model }));
   for (const r of [favoured, against]) {
@@ -101,34 +104,44 @@ test("required rate is continuous — no step at exactly 9.00", () => {
   assert.ok(Math.abs(at - just) < 0.02, `discontinuity at 9.00: ${at} vs ${just}`);
 });
 
-test("a v2 model is refused on the learned path and falls back to the heuristic", () => {
-  // v2 was trained with a hardcoded /120 denominator, so its scaling is T20-only.
-  const v2 = {
-    version: 2,
-    weights: [50, 50, 50, 50, 50],
-    bias: -25,
-    featureMeans: [0, 0, 0, 0, 0],
-    featureStds: [1, 1, 1, 1, 1],
-    teamStats: {},
-  };
-  const withV2 = evaluate(chase({ model: v2 }));
-  const withNone = evaluate(chase({ model: null }));
-  assert.equal(
-    withV2.battingTeamWinProbability,
-    withNone.battingTeamWinProbability,
-    "a v2 model must be ignored for inference",
-  );
+test("an older model is refused on the learned path and falls back to the heuristic", () => {
+  // Each version changed what a feature MEANS, not just its value: v2 hardcoded a 120-ball
+  // denominator, v4 carried a five-feature chase vector against v5's sixteen. Read by the wrong
+  // reader, either produces a number rather than an error, which is the failure mode worth
+  // refusing.
+  for (const version of [2, 3, 4]) {
+    const stale = {
+      version,
+      chase: {
+        weights: new Array(16).fill(50),
+        bias: -25,
+        featureMeans: new Array(16).fill(0),
+        featureStds: new Array(16).fill(1),
+      },
+      teamStats: {},
+    };
+    assert.equal(
+      evaluate(chase({ model: stale })).battingTeamWinProbability,
+      evaluate(chase({ model: null })).battingTeamWinProbability,
+      `a v${version} model must be ignored for inference`,
+    );
+  }
 });
 
-test("a v3 model drives the learned path and uses a format-correct balls fraction", () => {
+test("a v5 model drives the learned path and uses a format-correct balls fraction", () => {
   // weights isolate feature[2] (ballsRemainingFraction). With /120 hardcoded, an ODI with 180
   // balls left produced 1.5; the correct value against a 300-ball budget is 0.6.
+  const weights = new Array(16).fill(0);
+  weights[2] = 1;
   const model = {
     version: MODEL_VERSION,
-    weights: [0, 0, 1, 0, 0],
-    bias: 0,
-    featureMeans: [0, 0, 0, 0, 0],
-    featureStds: [1, 1, 1, 1, 1],
+    chase: {
+      weights,
+      bias: 0,
+      temperature: 1,
+      featureMeans: new Array(16).fill(0),
+      featureStds: new Array(16).fill(1),
+    },
     teamStats: {},
   };
   const odi = evaluate({

@@ -3,27 +3,29 @@ import { InputFile } from "node-appwrite/file";
 import AdmZip from "adm-zip";
 import {
   MODEL_VERSION,
-  NUM_FEATURES,
-  FEATURE_NAMES,
-  NUM_LONG_FEATURES,
+  PAR_RUN_RATE,
+  CHASE_FEATURE_NAMES,
+  FIRST_INNINGS_FEATURE_NAMES,
   LONG_FEATURE_NAMES,
   PRIOR_SETTLE_PROGRESS,
-  chaseRows,
-  longRows,
-  matchDate,
-  formatClassOf,
-  teamKey,
-  isStatsCountable,
-  isChaseTrainable,
-  isLongTrainable,
-  holdoutCutoffDate,
+  RowSink,
+  skeletonOf,
   inningsTotals,
-  fitStandardizer,
-  applyStandardizer,
-  evaluateModel,
-  baseRate,
+  chaseRows,
+  firstInningsRows,
+  longRows,
+  teamKey,
+  isLimitedOvers,
+  isLongTrainable,
+  shrunkWinRate,
+  holdoutCutoffDate,
+  trainBinary,
   trainMulticlass,
-  evaluateMulticlass,
+  fitTemperature,
+  binaryMetrics,
+  multiclassMetrics,
+  expectedCalibrationError,
+  baseRate,
   classBaseRates,
 } from "./training.js";
 
@@ -37,27 +39,28 @@ const STATS_BUCKET_ID = process.env.STATS_BUCKET_ID ?? "cricket-stats";
 const TEAM_STATS_FILE_ID = "team-stats";
 const H2H_FILE_ID = "h2h-stats";
 
-// Logistic regression hyperparameters
-const EPOCHS = 30;
-const BATCH_SIZE = 256;
-const LEARNING_RATE = 0.1;
-const L2_LAMBDA = 0.001;
-const MAX_ROWS = 200_000;
-const MAX_HOLDOUT_ROWS = 50_000;
 const HOLDOUT_FRACTION = 0.2;
+// Carved out of the training window, never the holdout: early stopping needs a window the optimiser
+// can see, and the holdout has to stay untouched or its numbers mean nothing.
+const VALIDATION_FRACTION = 0.12;
+
+// Row caps. Sinks are built and trained one model at a time and released before the next, so peak
+// memory is one model's three sinks — roughly 60 MB at these sizes — not all nine.
+const CAP_TRAIN = 400_000;
+const CAP_VALID = 200_000;
+const CAP_HOLDOUT = 300_000;
+
+const BINARY_OPTIONS = { epochs: 100, batchSize: 512, learningRate: 0.05, l2: 1e-4, patience: 8 };
+// Tests are the small corpus here — ~900 matches, and rows within one are near-duplicates, so the
+// effective sample size is closer to the match count than the row count. It starts overfitting
+// after a couple of epochs, and the long patience exists so validation rather than the epoch budget
+// is what stops it. Holdout log-loss is monotone in the step size across the range swept —
+// 0.6078 at 0.02, 0.5965 at 0.03, 0.5888 at 0.05 — because a larger step reaches a usable region
+// before the memorisation sets in. L2 does not substitute: 0.001 through 0.1 all scored worse.
+const LONG_OPTIONS = { epochs: 200, batchSize: 512, learningRate: 0.05, l2: 1e-4, patience: 20 };
 
 const fmt = (v) => (v == null ? "n/a" : v.toFixed(4));
-
-/** Bounded-size sample of a stream, uniform over everything seen. */
-function reservoirPush(sink, row, cap) {
-  sink._seen = (sink._seen ?? 0) + 1;
-  if (sink.length < cap) {
-    sink.push(row);
-    return;
-  }
-  const idx = Math.floor(Math.random() * sink._seen);
-  if (idx < cap) sink[idx] = row;
-}
+const mb = (bytes) => (bytes / 1024 / 1024).toFixed(0);
 
 export default async ({ req, res, log, error }) => {
   if (!process.env.APPWRITE_API_KEY) {
@@ -70,276 +73,23 @@ export default async ({ req, res, log, error }) => {
     .setProject(process.env.APPWRITE_FUNCTION_PROJECT_ID)
     .setKey(process.env.APPWRITE_API_KEY);
 
-  log("Downloading cricsheet T20 ZIP...");
+  log("Downloading the Cricsheet archive...");
   let zipBuffer;
   try {
-    const resp = await fetch(CRICSHEET_URL, { signal: AbortSignal.timeout(120_000) });
+    const resp = await fetch(CRICSHEET_URL, { signal: AbortSignal.timeout(180_000) });
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     zipBuffer = Buffer.from(await resp.arrayBuffer());
-    log(`Downloaded ${(zipBuffer.length / 1024 / 1024).toFixed(1)} MB`);
+    log(`Downloaded ${mb(zipBuffer.length)} MB`);
   } catch (e) {
     error(`Failed to download cricsheet: ${e?.message}`);
     return res.json({ error: e?.message }, 500);
   }
 
-  const zip = new AdmZip(zipBuffer);
-  zipBuffer = null; // hint GC — large buffer no longer needed once ZIP is loaded
+  const { model: modelObj, h2hAccumulator, parsed, skipped } = buildModel({ zipBuffer, log, error });
+  zipBuffer = null;
 
-  const jsonEntries = zip.getEntries().filter(
-    (e) => !e.isDirectory && e.entryName.endsWith(".json")
-  );
-
-  // ---------------------------------------------------------------------------
-  // Pass 1: parse every match once, keeping a small record per match rather than the match itself.
-  //
-  // Two passes over the archive, not three. The temporal split has to be chosen before win rates
-  // can be accumulated, and win rates have to exist before feature rows can be built — three
-  // dependent stages. Retaining a ~100-byte record per match instead of re-reading the ZIP for the
-  // middle stage collapses that to two: 22,524 records is a few MB, where retaining the parsed
-  // matches measured 353 MB and would risk the function's memory ceiling.
-  // ---------------------------------------------------------------------------
-  log("Pass 1: reading match info and choosing the temporal split...");
-  const h2hAccumulator = {};
-  const dates = [];
-  const records = [];
-  const teamStats = {};
-  let parsed = 0;
-  let skipped = 0;
-
-  const readEntry = (entry) => JSON.parse(entry.getData().toString("utf8"));
-
-  for (const entry of jsonEntries) {
-    try {
-      const match = readEntry(entry);
-      processH2H(match, h2hAccumulator);
-      parsed++;
-      const info = match?.info;
-      if (!isStatsCountable(info)) continue;
-      const date = matchDate(info);
-      if (date) dates.push(date);
-      records.push({
-        teams: info.teams,
-        gender: info.gender,
-        formatClass: formatClassOf(info),
-        date,
-        winner: info.outcome?.winner ?? null,
-        firstInnings: isChaseTrainable(info) ? inningsTotals(match.innings?.[0]) : null,
-      });
-      // Descriptive aggregates do not depend on the holdout split, so they are accumulated here
-      // while the innings are in hand rather than costing a record field per team.
-      accumulateAggregates(match, teamStats);
-    } catch (e) {
-      if (skipped < 5) error(`Skipped ${entry.entryName}: ${e?.message}`);
-      skipped++;
-    }
-  }
-  log(`Parsed ${parsed} matches, skipped ${skipped}, ${records.length} usable, ${dates.length} datable`);
-
-  const cutoff = holdoutCutoffDate(dates, HOLDOUT_FRACTION);
-  if (cutoff) {
-    log(`Holdout window starts ${cutoff} (${Math.round(HOLDOUT_FRACTION * 100)}% of matches)`);
-  } else {
-    log("Too few datable matches for a holdout — training on everything, metrics are in-sample");
-  }
-  const inTrainWindow = (d) => cutoff == null || d == null || d < cutoff;
-
-  // ---------------------------------------------------------------------------
-  // Team win rates from the TRAINING WINDOW ONLY, keyed by (team, gender, format).
-  //
-  // The window is the leakage fix: win rates used to be finalised over the entire corpus and then
-  // back-filled into every row's features[4], so a 2014 row carried the outcome of matches played
-  // in 2023 — the model could read the future through a feature that looked static.
-  //
-  // The key is the v4 fix. A bare team name pooled Australia's men's and women's sides and their
-  // Tests, ODIs and T20s into one number: 0.642, against a men's-T20 0.545, a women's-ODI 0.842
-  // and a women's-multi-day 0.286. Harmless only while match-sync's lookup never hit; the moment
-  // it did, that blend went straight into the logit.
-  // ---------------------------------------------------------------------------
-  log("Accumulating win rates from the training window...");
-  let firstInningsTotalRuns = 0;
-  let firstInningsTotalBalls = 0;
-
-  for (const rec of records) {
-    const training = inTrainWindow(rec.date);
-    if (!training) continue;
-    for (const team of rec.teams) {
-      const key = teamKey(team, rec.gender, rec.formatClass);
-      if (teamStats[key]) teamStats[key].trainMatches++;
-    }
-    if (rec.winner) {
-      const key = teamKey(rec.winner, rec.gender, rec.formatClass);
-      if (teamStats[key]) teamStats[key].trainWins++;
-    }
-    if (rec.firstInnings?.balls > 0) {
-      firstInningsTotalRuns += rec.firstInnings.runs;
-      firstInningsTotalBalls += rec.firstInnings.balls;
-    }
-  }
-
-  for (const team of Object.values(teamStats)) {
-    team.winRate = team.trainMatches > 0 ? team.trainWins / team.trainMatches : 0.5;
-    delete team.trainWins;
-    delete team.trainMatches;
-  }
-  log(`Team stat keys: ${Object.keys(teamStats).length}`);
-
-  const breakevenRR = firstInningsTotalBalls > 0
-    ? (firstInningsTotalRuns / firstInningsTotalBalls) * 6
-    : 8.0;
-  log(`Breakeven RR from training window: ${breakevenRR.toFixed(3)}`);
-
-  // ---------------------------------------------------------------------------
-  // Pass 3: build feature rows, split by match date.
-  // ---------------------------------------------------------------------------
-  log("Pass 2: building feature rows...");
-  const trainingRows = [];
-  const holdoutRows = [];
-  const longTrainingRows = [];
-  const longHoldoutRows = [];
-
-  for (const entry of jsonEntries) {
-    let match;
-    try {
-      match = readEntry(entry);
-    } catch {
-      continue;
-    }
-    const info = match?.info;
-    if (!isStatsCountable(info)) continue;
-
-    // The strength lookup is scoped to this match's own gender and format, so a Test row reads
-    // Test win rates and a women's T20 row reads women's T20 win rates.
-    const formatClass = formatClassOf(info);
-    const winRateFor = (team) => teamStats[teamKey(team, info.gender, formatClass)]?.winRate ?? 0.5;
-    const training = inTrainWindow(matchDate(info));
-
-    // A Test is not a long T20: pooling the two collapsed holdout accuracy from 0.619 to 0.506,
-    // so long-format matches train a separate three-outcome model and never enter the chase rows,
-    // whose features all assume a fixed innings budget.
-    if (isChaseTrainable(info)) {
-      const sink = training ? trainingRows : holdoutRows;
-      for (const row of chaseRows(match, winRateFor)) {
-        // Reservoir sampling keeps the row count bounded. Sampling is per-sink so the holdout is
-        // never starved by a large training set.
-        reservoirPush(sink, row, training ? MAX_ROWS : MAX_HOLDOUT_ROWS);
-      }
-    } else if (isLongTrainable(info)) {
-      const sink = training ? longTrainingRows : longHoldoutRows;
-      for (const row of longRows(match, winRateFor)) {
-        reservoirPush(sink, row, training ? MAX_ROWS : MAX_HOLDOUT_ROWS);
-      }
-    }
-  }
-
-  log(`Rows: ${trainingRows.length} training, ${holdoutRows.length} holdout`);
-  if (holdoutRows.length === 0) {
-    log("WARNING: holdout is empty — reported metrics are in-sample only");
-  }
-
-  // Standardizer is fit on the training rows ONLY, then applied to both. Fitting it over all rows
-  // (as before) leaks the holdout's distribution into training.
-  const standardizer = fitStandardizer(trainingRows);
-  applyStandardizer(trainingRows, standardizer);
-  applyStandardizer(holdoutRows, standardizer);
-  const featureMeans = standardizer.means;
-  const featureStds = standardizer.stds;
-  const n = trainingRows.length;
-
-  log(`Feature means: ${featureMeans.map(v => v.toFixed(4)).join(", ")}`);
-  log(`Feature stds:  ${featureStds.map(v => v.toFixed(4)).join(", ")}`);
-
-  // Train logistic regression via mini-batch gradient descent
-  const { weights, bias } = trainLogisticRegression(trainingRows, log);
-
-  // Held-out metrics. The previous version reported training log-loss only, which cannot detect
-  // either overfitting or the leakage above.
-  const trainMetrics = evaluateModel(trainingRows, weights, bias);
-  const holdoutMetrics = evaluateModel(holdoutRows, weights, bias);
-  const holdoutBaseRate = baseRate(holdoutRows);
-  log(
-    `Train  — log-loss ${fmt(trainMetrics.logLoss)}, accuracy ${fmt(trainMetrics.accuracy)} (${trainMetrics.rows} rows)`
-  );
-  log(
-    `Holdout — log-loss ${fmt(holdoutMetrics.logLoss)}, accuracy ${fmt(holdoutMetrics.accuracy)} (${holdoutMetrics.rows} rows)`
-  );
-  if (holdoutBaseRate != null) {
-    log(`Holdout base rate (chasing side wins): ${fmt(holdoutBaseRate)} — accuracy must beat this`);
-  }
-
-  // ---------------------------------------------------------------------------
-  // Long-format model: three outcomes, because a Test can be drawn and a two-class model has no
-  // way to say so. Roughly a quarter of all Test positions end in a draw.
-  // ---------------------------------------------------------------------------
-  let longModel = null;
-  if (longTrainingRows.length > 0) {
-    const longStandardizer = fitStandardizer(longTrainingRows, NUM_LONG_FEATURES);
-    applyStandardizer(longTrainingRows, longStandardizer);
-    applyStandardizer(longHoldoutRows, longStandardizer);
-    const priors = classBaseRates(longTrainingRows);
-    const fitted = trainMulticlass(longTrainingRows, {
-      epochs: EPOCHS,
-      batchSize: BATCH_SIZE,
-      learningRate: LEARNING_RATE,
-      l2: L2_LAMBDA,
-      numFeatures: NUM_LONG_FEATURES,
-    });
-    const longHoldoutMetrics = evaluateMulticlass(longHoldoutRows, fitted);
-    log(
-      `Long-format holdout — log-loss ${fmt(longHoldoutMetrics.logLoss)}, accuracy ` +
-      `${fmt(longHoldoutMetrics.accuracy)} (${longHoldoutMetrics.rows} rows), ` +
-      `priors ${priors.map(fmt).join("/")}`
-    );
-    longModel = {
-      weights: fitted.weights,
-      biases: fitted.biases,
-      featureMeans: longStandardizer.means,
-      featureStds: longStandardizer.stds,
-      featureNames: LONG_FEATURE_NAMES,
-      // Consumed at inference: a linear model extrapolates with unearned confidence at the edge of
-      // its training data, and the start of a Test is exactly that edge. Without this it returned
-      // 73% before a ball had been bowled, against a 39% base rate.
-      classPriors: priors,
-      priorSettleProgress: PRIOR_SETTLE_PROGRESS,
-      trainingRows: longTrainingRows.length,
-      holdout: {
-        rows: longHoldoutMetrics.rows,
-        logLoss: longHoldoutMetrics.logLoss,
-        accuracy: longHoldoutMetrics.accuracy,
-      },
-    };
-  } else {
-    log("No long-format training rows — the Test model is omitted from this build");
-  }
-
-  // Upload model to Appwrite Storage
   const storage = new Storage(client);
-  const modelObj = {
-    // v4: `teamStats` is keyed "team|gender|format" rather than by bare team name, so a v3 reader
-    // would miss every lookup and silently fall back to 0.5 — the exact defect v4 exists to fix.
-    // It also carries a second model for long-format matches. winprob.js refuses any version but
-    // its own on the learned path and degrades to the heuristic, which is the safe reading here.
-    version: MODEL_VERSION,
-    weights,
-    bias,
-    featureMeans,
-    featureStds,
-    featureNames: FEATURE_NAMES,
-    breakevenRR,
-    teamStats,
-    longModel,
-    trainingRows: n,
-    epochs: EPOCHS,
-    holdout: {
-      cutoffDate: cutoff,
-      rows: holdoutMetrics.rows,
-      logLoss: holdoutMetrics.logLoss,
-      accuracy: holdoutMetrics.accuracy,
-      baseRate: holdoutBaseRate,
-    },
-    train: { logLoss: trainMetrics.logLoss, accuracy: trainMetrics.accuracy },
-  };
-  const modelJson = JSON.stringify(modelObj);
-  const buffer = Buffer.from(modelJson, "utf8");
+  const buffer = Buffer.from(JSON.stringify(modelObj), "utf8");
 
   try {
     await storage.deleteFile(STATS_BUCKET_ID, TEAM_STATS_FILE_ID).catch(() => {});
@@ -349,7 +99,7 @@ export default async ({ req, res, log, error }) => {
       InputFile.fromBuffer(buffer, "team-stats.json"),
       ["read(\"any\")"]
     );
-    log(`Uploaded model (${Object.keys(teamStats).length} teams, ${n} training rows, ${(buffer.length / 1024).toFixed(0)} KB)`);
+    log(`Uploaded model (${Object.keys(modelObj.teamStats).length} team keys, ${mb(buffer.length)} MB)`);
   } catch (e) {
     error(`Failed to upload model: ${e?.message}`);
     return res.json({ error: e?.message }, 500);
@@ -368,7 +118,7 @@ export default async ({ req, res, log, error }) => {
       InputFile.fromBuffer(h2hBuffer, "h2h-stats.json"),
       ["read(\"any\")"]
     );
-    log(`H2H stats written: ${h2hPairs} team pairs (${(h2hBuffer.length / 1024).toFixed(0)} KB)`);
+    log(`H2H stats written: ${h2hPairs} team pairs (${mb(h2hBuffer.length)} MB)`);
   } catch (e) {
     error(`Failed to upload H2H stats: ${e?.message}`);
   }
@@ -376,140 +126,269 @@ export default async ({ req, res, log, error }) => {
   return res.json({
     parsed,
     skipped,
-    teams: Object.keys(teamStats).length,
+    teamKeys: Object.keys(modelObj.teamStats).length,
     h2hPairs,
-    trainingRows: n,
-    holdoutRows: holdoutMetrics.rows,
-    holdoutCutoffDate: cutoff,
-    trainLogLoss: trainMetrics.logLoss,
-    trainAccuracy: trainMetrics.accuracy,
-    holdoutLogLoss: holdoutMetrics.logLoss,
-    holdoutAccuracy: holdoutMetrics.accuracy,
-    holdoutBaseRate,
-    breakevenRR,
-    weights,
-    bias,
+    holdoutCutoff: modelObj.windows.holdoutCutoff,
+    chase: modelObj.chase?.holdout ?? null,
+    firstInnings: modelObj.firstInnings?.holdout ?? null,
+    long: modelObj.long?.holdout ?? null,
+    peakRssMb: Number(mb(process.memoryUsage().rss)),
   });
 };
 
 /**
- * Accumulate descriptive per-team aggregates.
+ * Everything between the archive bytes and the artifact, with no Appwrite in it.
  *
- * [countTowardWinRate] gates only the win/played counters that feed the model's teamStrengthDiff
- * feature. Runs and wickets are descriptive and published to clients for every match, but the win
- * rate must come from the training window alone — computing it over the whole corpus and then
- * back-filling it into every row (as this function's predecessor did) let a 2014 row carry the
- * outcome of a 2023 match.
+ * Exported so a full run can be reproduced against a local copy of the archive — the holdout
+ * numbers in the comments above are only meaningful if they can be re-measured, and re-measuring
+ * them through a duplicate of this pipeline would verify the duplicate rather than the code that
+ * ships.
  */
-function accumulateAggregates(raw, teamStats) {
-  const info = raw?.info;
-  const teams = info?.teams ?? [];
-  const gender = info?.gender;
-  const formatClass = formatClassOf(info);
-  const keyOf = (team) => teamKey(team, gender, formatClass);
+export function buildModel({ zipBuffer, log, error }) {
+  // ---------------------------------------------------------------------------
+  // One pass over the archive, into a compact in-memory skeleton.
+  //
+  // The predecessor decompressed and re-parsed the whole archive a second time, because the
+  // temporal split has to be chosen before win rates can be accumulated and win rates have to exist
+  // before rows can be built. Keeping a byte per delivery instead removes that dependency: the
+  // corpus is ~14 MB once packed, so every later stage reads it from memory.
+  // ---------------------------------------------------------------------------
+  log("Reading the archive...");
+  const zip = new AdmZip(zipBuffer);
+  const entries = zip.getEntries().filter((e) => !e.isDirectory && e.entryName.endsWith(".json"));
 
-  for (const team of teams) {
-    const key = keyOf(team);
-    teamStats[key] ??= {
-      matchesPlayed: 0,
-      totalRunsScored: 0,
-      totalRunsConceded: 0,
-      totalWicketsLost: 0,
-      winRate: 0.5,
-      trainWins: 0,
-      trainMatches: 0,
-    };
-    teamStats[key].matchesPlayed++;
-  }
+  const matches = [];
+  const h2hAccumulator = {};
+  const dates = [];
+  let parsed = 0;
+  let skipped = 0;
 
-  for (const inning of raw?.innings ?? []) {
-    const battingKey = keyOf(inning.team);
-    if (!teamStats[battingKey]) continue;
-    const { runs } = inningsTotals(inning);
-    let wickets = 0;
-    for (const over of inning.overs ?? []) {
-      for (const ball of over.deliveries ?? []) {
-        if (ball.wickets?.length) wickets += ball.wickets.length;
-      }
-    }
-    teamStats[battingKey].totalRunsScored += runs;
-    teamStats[battingKey].totalWicketsLost += wickets;
-    const bowlingTeam = teams.find((t) => t !== inning.team);
-    if (bowlingTeam && teamStats[keyOf(bowlingTeam)]) {
-      teamStats[keyOf(bowlingTeam)].totalRunsConceded += runs;
+  for (const entry of entries) {
+    try {
+      const raw = JSON.parse(entry.getData().toString("utf8"));
+      parsed++;
+      processH2H(raw, h2hAccumulator);
+      const match = skeletonOf(raw);
+      if (!match) continue;
+      matches.push(match);
+      if (match.date) dates.push(match.date);
+    } catch (e) {
+      if (skipped < 5) error(`Skipped ${entry.entryName}: ${e?.message}`);
+      skipped++;
     }
   }
+  log(`Parsed ${parsed}, skipped ${skipped}, ${matches.length} modelled, RSS ${mb(process.memoryUsage().rss)} MB`);
+
+  dates.sort();
+  const holdoutCutoff = holdoutCutoffDate(dates, HOLDOUT_FRACTION);
+  const trainingDates = holdoutCutoff ? dates.filter((d) => d < holdoutCutoff) : dates;
+  const validCutoff = holdoutCutoffDate(trainingDates, VALIDATION_FRACTION);
+  log(`Windows — training < ${validCutoff}, validation < ${holdoutCutoff}, holdout >= ${holdoutCutoff}`);
+
+  const windowOf = (date) => {
+    if (holdoutCutoff && date && date >= holdoutCutoff) return "holdout";
+    if (validCutoff && date && date >= validCutoff) return "valid";
+    return "train";
+  };
+
+  // ---------------------------------------------------------------------------
+  // Team win rates from the TRAINING WINDOW ONLY, keyed by (team, gender, format).
+  //
+  // The window is the leakage fix: win rates used to be finalised over the whole corpus and then
+  // back-filled into every row's strength feature, so a 2014 row carried the outcome of matches
+  // played in 2023 — the model could read the future through a feature that looked static.
+  //
+  // The key stops a bare team name from pooling Australia's men's and women's sides and their
+  // Tests, ODIs and T20s into one number (0.642, against a men's-T20 0.545 and a women's-ODI
+  // 0.842). Harmless only while match-sync's lookup never hit; the moment it did, that blend went
+  // straight into the logit.
+  // ---------------------------------------------------------------------------
+  const counters = {};
+  for (const match of matches) {
+    if (windowOf(match.date) !== "train") continue;
+    for (const team of match.teams) {
+      const key = teamKey(team, match.gender, match.formatClass);
+      counters[key] ??= { wins: 0, matches: 0 };
+      counters[key].matches++;
+    }
+    if (match.winner) {
+      const key = teamKey(match.winner, match.gender, match.formatClass);
+      counters[key] ??= { wins: 0, matches: 0 };
+      counters[key].wins++;
+    }
+  }
+  const teamStats = {};
+  for (const [key, c] of Object.entries(counters)) {
+    teamStats[key] = { winRate: shrunkWinRate(c.wins, c.matches), matchesPlayed: c.matches };
+  }
+  log(`Team stat keys: ${Object.keys(teamStats).length}`);
+
+  const winRateLookup = (match) => (team) =>
+    teamStats[teamKey(team, match.gender, match.formatClass)]?.winRate ?? 0.5;
+
+  // ---------------------------------------------------------------------------
+  // Three models, trained and released one at a time.
+  // ---------------------------------------------------------------------------
+  const chase = fitBinaryModel({
+    label: "chase",
+    matches,
+    windowOf,
+    winRateLookup,
+    accepts: (m) => isLimitedOvers(m.formatClass),
+    rowsFor: chaseRows,
+    featureNames: CHASE_FEATURE_NAMES,
+    log,
+  });
+
+  const firstInnings = fitBinaryModel({
+    label: "first innings",
+    matches,
+    windowOf,
+    winRateLookup,
+    accepts: (m) => isLimitedOvers(m.formatClass),
+    rowsFor: firstInningsRows,
+    featureNames: FIRST_INNINGS_FEATURE_NAMES,
+    log,
+  });
+
+  const long = fitLongModel({ matches, windowOf, winRateLookup, log });
+
+  log(`RSS after training: ${mb(process.memoryUsage().rss)} MB`);
+
+  return {
+    model: {
+      // v5 carries three models rather than one and a differently shaped feature vector for each,
+      // so a v4 reader would produce numbers from the wrong weights rather than fail. winprob.js
+      // refuses any version but its own on the learned path and degrades to the heuristic, which is
+      // the safe reading here.
+      version: MODEL_VERSION,
+      parRunRate: PAR_RUN_RATE,
+      chase,
+      firstInnings,
+      long,
+      teamStats,
+      windows: { validCutoff, holdoutCutoff, matches: matches.length },
+    },
+    h2hAccumulator,
+    parsed,
+    skipped,
+  };
 }
 
 /**
- * Mini-batch gradient descent logistic regression with L2 regularization.
- * Returns { weights: number[], bias: number }.
+ * Build rows for one binary model, fit it, and return the artifact the reader consumes.
+ *
+ * The sinks are local so they are collectable as soon as this returns — the whole point of doing
+ * one model at a time rather than building nine sinks and then training three times.
  */
-function trainLogisticRegression(rows, log) {
-  const weights = new Array(NUM_FEATURES).fill(0);
-  let bias = 0;
-  const n = rows.length;
+function fitBinaryModel({ label, matches, windowOf, winRateLookup, accepts, rowsFor, featureNames, log }) {
+  const k = featureNames.length;
+  const sinks = {
+    train: new RowSink(CAP_TRAIN, k),
+    valid: new RowSink(CAP_VALID, k),
+    holdout: new RowSink(CAP_HOLDOUT, k),
+  };
 
-  if (n === 0) {
-    log("No training rows — returning zero weights");
-    return { weights, bias };
+  for (const match of matches) {
+    if (!accepts(match)) continue;
+    const sink = sinks[windowOf(match.date)];
+    for (const row of rowsFor(match, winRateLookup(match))) sink.push(row.features, row.label);
+  }
+  if (sinks.train.length === 0) {
+    log(`${label}: no training rows — model omitted`);
+    return null;
   }
 
-  for (let epoch = 0; epoch < EPOCHS; epoch++) {
-    // Shuffle rows (Fisher-Yates)
-    for (let i = n - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      const tmp = rows[i];
-      rows[i] = rows[j];
-      rows[j] = tmp;
-    }
+  const standardizer = sinks.train.fitStandardizer();
+  for (const sink of Object.values(sinks)) sink.applyStandardizer(standardizer);
 
-    // Mini-batch updates
-    for (let start = 0; start < n; start += BATCH_SIZE) {
-      const end = Math.min(start + BATCH_SIZE, n);
-      const batchSize = end - start;
+  const fit = trainBinary(sinks.train, sinks.valid, BINARY_OPTIONS);
+  const temperature = fitTemperature(sinks.valid, fit.weights, fit.bias);
+  const holdout = binaryMetrics(sinks.holdout, fit.weights, fit.bias, temperature);
+  const uncalibrated = binaryMetrics(sinks.holdout, fit.weights, fit.bias);
+  const rate = baseRate(sinks.holdout);
 
-      const dw = new Array(NUM_FEATURES).fill(0);
-      let db = 0;
+  log(
+    `${label}: ${sinks.train.length}/${sinks.train.seen} training rows, stopped at epoch ${fit.epoch} — ` +
+    `holdout log-loss ${fmt(uncalibrated.logLoss)} -> ${fmt(holdout.logLoss)} calibrated (T=${temperature.toFixed(3)}), ` +
+    `accuracy ${fmt(holdout.accuracy)}, Brier ${fmt(holdout.brier)}, ` +
+    `ECE ${fmt(expectedCalibrationError(sinks.holdout, fit.weights, fit.bias, temperature))}, ` +
+    `base rate ${fmt(rate)}`
+  );
 
-      for (let i = start; i < end; i++) {
-        const { features, label } = rows[i];
-        let logit = bias;
-        for (let j = 0; j < NUM_FEATURES; j++) logit += weights[j] * features[j];
-        const pred = sigmoid(logit);
-        const err = pred - label;
-        for (let j = 0; j < NUM_FEATURES; j++) dw[j] += err * features[j];
-        db += err;
-      }
-
-      // Apply gradients with L2 regularization on weights (not bias)
-      for (let j = 0; j < NUM_FEATURES; j++) {
-        weights[j] -= LEARNING_RATE * (dw[j] / batchSize + L2_LAMBDA * weights[j]);
-      }
-      bias -= LEARNING_RATE * (db / batchSize);
-    }
-
-    // Log loss every 5 epochs and on the final epoch
-    if ((epoch + 1) % 5 === 0 || epoch === EPOCHS - 1) {
-      let loss = 0;
-      for (const { features, label } of rows) {
-        let logit = bias;
-        for (let j = 0; j < NUM_FEATURES; j++) logit += weights[j] * features[j];
-        const pred = sigmoid(logit);
-        const eps = 1e-7;
-        loss += -(label * Math.log(pred + eps) + (1 - label) * Math.log(1 - pred + eps));
-      }
-      loss /= n;
-      log(`Epoch ${epoch + 1}/${EPOCHS} — log-loss: ${loss.toFixed(6)}`);
-    }
-  }
-
-  log(`Training complete. Weights: ${weights.map(w => w.toFixed(4)).join(", ")}, bias: ${bias.toFixed(4)}`);
-  return { weights, bias };
+  return {
+    weights: fit.weights,
+    bias: fit.bias,
+    temperature,
+    featureMeans: standardizer.means,
+    featureStds: standardizer.stds,
+    featureNames,
+    trainingRows: sinks.train.length,
+    holdout: {
+      rows: holdout.rows,
+      logLoss: holdout.logLoss,
+      accuracy: holdout.accuracy,
+      brier: holdout.brier,
+      baseRate: rate,
+    },
+  };
 }
 
-function sigmoid(x) {
-  return 1 / (1 + Math.exp(-x));
+/** Same, for the three-outcome Test model. */
+function fitLongModel({ matches, windowOf, winRateLookup, log }) {
+  const k = LONG_FEATURE_NAMES.length;
+  const sinks = {
+    train: new RowSink(CAP_TRAIN, k),
+    valid: new RowSink(CAP_VALID, k),
+    holdout: new RowSink(CAP_HOLDOUT, k),
+  };
+  for (const match of matches) {
+    if (!isLongTrainable(match.formatClass)) continue;
+    const sink = sinks[windowOf(match.date)];
+    for (const row of longRows(match, winRateLookup(match))) sink.push(row.features, row.label);
+  }
+  if (sinks.train.length === 0) {
+    log("Test model: no training rows — omitted from this build");
+    return null;
+  }
+
+  const standardizer = sinks.train.fitStandardizer();
+  for (const sink of Object.values(sinks)) sink.applyStandardizer(standardizer);
+
+  const priors = classBaseRates(sinks.train);
+  const fit = trainMulticlass(sinks.train, sinks.valid, LONG_OPTIONS);
+  const holdout = multiclassMetrics(sinks.holdout, fit);
+  const holdoutPriors = classBaseRates(sinks.holdout) ?? priors;
+  // What a model that only knew the class shares would score. Log-loss for three classes has no
+  // 0.693 landmark, so without this the number is unreadable.
+  const priorLogLoss = holdoutPriors.reduce((acc, share, c) => acc - share * Math.log(priors[c] + 1e-7), 0);
+
+  log(
+    `Test model: ${sinks.train.length} training rows, stopped at epoch ${fit.epoch} — ` +
+    `holdout log-loss ${fmt(holdout.logLoss)}, accuracy ${fmt(holdout.accuracy)} ` +
+    `(${holdout.rows} rows), priors ${priors.map(fmt).join("/")}, ` +
+    `priors-only log-loss ${fmt(priorLogLoss)}, uniform ${fmt(Math.log(3))}`
+  );
+
+  return {
+    weights: fit.weights,
+    biases: fit.biases,
+    featureMeans: standardizer.means,
+    featureStds: standardizer.stds,
+    featureNames: LONG_FEATURE_NAMES,
+    // Consumed at inference: a linear model extrapolates with unearned confidence at the edge of
+    // its training data, and the start of a Test is exactly that edge. Without this it returned 73%
+    // before a ball had been bowled, against a 39% base rate.
+    classPriors: priors,
+    priorSettleProgress: PRIOR_SETTLE_PROGRESS,
+    trainingRows: sinks.train.length,
+    holdout: {
+      rows: holdout.rows,
+      logLoss: holdout.logLoss,
+      accuracy: holdout.accuracy,
+      priorLogLoss,
+    },
+  };
 }
 
 // ── Head-to-head helpers ──────────────────────────────────────────────────────

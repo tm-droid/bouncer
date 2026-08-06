@@ -29,10 +29,14 @@ data class MatchLiveDetailPayload(
     val scorecard: Scorecard? = null,
     val status: String? = null,
     // Win probability for the FIRST-INNINGS batting side, 0..1, matching the team1Score/team2Score
-    // convention above. Null when the server declined to score the match (a Test, an unknown
-    // format, or a pre-toss page with no miniscore) — render nothing rather than 50%.
+    // convention above. Null when the server declined to score the match (an unknown format, or a
+    // pre-toss page with no miniscore) — render nothing rather than 50%.
     val winProbabilityTeam1: Double? = null,
     val winProbabilityConfidence: Double? = null,
+    // Only a Test carries one: it is the one format where the most likely result is often neither
+    // side. Null everywhere else, and a null must render a two-segment bar rather than a draw of
+    // zero — "no draw is possible" and "a draw is possible but unlikely" are different claims.
+    val winProbabilityDraw: Double? = null,
 )
 
 object AppwriteMatchDetailClient : AppwriteTableClient("AppwriteMatchDetail") {
