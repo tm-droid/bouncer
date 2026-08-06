@@ -96,26 +96,7 @@ const bytes = fs.statSync(tarball).size;
 console.log(`  archive ${bytes} bytes`);
 
 try {
-  const form = new FormData();
-  form.append("entrypoint", fn.entrypoint);
-  if (fn.commands) form.append("commands", fn.commands);
-  form.append("activate", "true");
-  form.append("code", new Blob([fs.readFileSync(tarball)]), path.basename(tarball));
-
-  const created = await fetch(`${endpoint}/functions/${functionId}/deployments`, {
-    method: "POST",
-    headers: {
-      "X-Appwrite-Project": projectId,
-      "X-Appwrite-Key": apiKey,
-      "X-Appwrite-Response-Format": "1.8.0",
-    },
-    body: form,
-  });
-  const body = await created.json();
-  if (!created.ok) {
-    // Thrown, not process.exit'd, so the finally below still removes the tarball.
-    throw new Error(`create deployment HTTP ${created.status}: ${JSON.stringify(body).slice(0, 400)}`);
-  }
+  const body = await upload(fs.readFileSync(tarball), path.basename(tarball));
   console.log(`  deployment ${body.$id} status=${body.status}`);
 
   // Poll to "ready". A deployment that fails to build leaves the previous one active, so a script
@@ -149,6 +130,56 @@ try {
 } finally {
   fs.rmSync(tarball, { force: true });
 }
+}
+
+/**
+ * Upload the archive, chunked when it is large enough that the edge will refuse it whole.
+ *
+ * A single-shot 13MB multipart POST is rejected by the CDN in front of Appwrite with
+ * `503 backend write error` (Varnish) in ~55ms — no bytes reach Appwrite, and retrying does
+ * nothing because it is a size limit, not congestion. `bouncer-highlights-sync` hit this the first
+ * time it shipped `node_modules`. Appwrite's own SDKs chunk at 5MB; this does the same.
+ *
+ * The deployment id has to be minted here rather than sent as `unique()`: Appwrite echoes back
+ * whatever `x-appwrite-id` it was given, so the literal string `unique()` comes back as the id and
+ * every chunk after the first is rejected for a malformed job id.
+ */
+async function upload(buf, filename) {
+  const CHUNK = 5 * 1024 * 1024;
+  const headers = {
+    "X-Appwrite-Project": projectId,
+    "X-Appwrite-Key": apiKey,
+    "X-Appwrite-Response-Format": "1.8.0",
+  };
+  const chunked = buf.length > CHUNK;
+  const deploymentId = chunked ? `${functionId.replace(/^bouncer-/, "")}-${Date.now().toString(36)}`.slice(0, 36) : null;
+
+  let body;
+  for (let start = 0; start < buf.length; start += CHUNK) {
+    const end = Math.min(start + CHUNK, buf.length) - 1;
+    const form = new FormData();
+    form.append("entrypoint", fn.entrypoint);
+    if (fn.commands) form.append("commands", fn.commands);
+    form.append("activate", "true");
+    form.append("code", new Blob([buf.subarray(start, end + 1)]), filename);
+
+    const res = await fetch(`${endpoint}/functions/${functionId}/deployments`, {
+      method: "POST",
+      headers: chunked
+        ? { ...headers, "content-range": `bytes ${start}-${end}/${buf.length}`, "x-appwrite-id": deploymentId }
+        : headers,
+      body: form,
+    });
+    const text = await res.text();
+    if (!res.ok) {
+      // Thrown, not process.exit'd, so the caller's finally still removes the tarball. The raw text
+      // is kept rather than JSON.parse'd: the interesting failures here answer HTML, not JSON.
+      throw new Error(`create deployment HTTP ${res.status}: ${text.slice(0, 300)}`);
+    }
+    body = JSON.parse(text);
+    if (chunked) console.log(`  chunk ${start}-${end}/${buf.length} ok`);
+  }
+  return body;
 }
 
 /**
@@ -191,9 +222,13 @@ async function verifyLive(deploymentId, before) {
     }).catch(() => {});
   }
 
-  const waitMs = scheduled ? 150_000 : 20_000;
+  // 150s was sized for `* * * * *`. `bouncer-highlights-sync` runs `*/15` and the check reported
+  // FAILED on a deployment that was in fact serving — a verifier that cries wolf gets ignored,
+  // which costs more than the wait. Derive the window from the schedule's minute field instead.
+  const everyN = Number(/^\*\/(\d+)/.exec(fn.schedule ?? "")?.[1]);
+  const waitMs = scheduled ? Math.min((Number.isFinite(everyN) ? everyN + 2 : 2) * 60_000, 17 * 60_000) : 20_000;
   const until = Date.now() + waitMs;
-  console.log(`  waiting up to ${waitMs / 1000}s for an execution on it${scheduled ? " (scheduled every minute)" : ""}…`);
+  console.log(`  waiting up to ${waitMs / 1000}s for an execution on it${scheduled ? ` (schedule ${fn.schedule})` : ""}…`);
   while (Date.now() < until) {
     const q = [{ method: "limit", values: [10] }, { method: "orderDesc", values: ["$createdAt"] }]
       .map((o) => "queries[]=" + encodeURIComponent(JSON.stringify(o)))

@@ -7,8 +7,12 @@
   "engines": {
     "node": "22"
   },
+  "scripts": {
+    "test": "node --test"
+  },
   "dependencies": {
     "node-appwrite": "^26.0.0",
-    "node-fetch": "^3.3.0"
+    "node-fetch": "^3.3.0",
+    "@sentry/node": "^8.0.0"
   }
 }
