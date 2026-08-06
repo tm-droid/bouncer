@@ -192,39 +192,59 @@ export function buildModel({ zipBuffer, log, error }) {
   };
 
   // ---------------------------------------------------------------------------
-  // Team win rates from the TRAINING WINDOW ONLY, keyed by (team, gender, format).
+  // Team win rates, keyed by (team, gender, format). TWO tables, for two different jobs.
   //
-  // The window is the leakage fix: win rates used to be finalised over the whole corpus and then
-  // back-filled into every row's strength feature, so a 2014 row carried the outcome of matches
-  // played in 2023 — the model could read the future through a feature that looked static.
+  // `trainingRates` covers the training window only. That is the leakage fix: win rates used to be
+  // finalised over the whole corpus and then back-filled into every row's strength feature, so a
+  // 2014 row carried the outcome of matches played in 2023 — the model could read the future
+  // through a feature that looked static.
+  //
+  // `teamStats` — the table that ships — covers everything. Using the training-window table at
+  // inference was a real defect: 53 of the corpus's 392 teams debuted after the 2023-12-02 cutoff
+  // and therefore had no entry at all, so a live match between two of them scored with both sides
+  // at the neutral 0.5. Every 2026 franchise rebrand landed in that hole — MI London, Sunrisers
+  // Leeds, Galle Gallants, Colombo Kaps were all in the archive and all unscoreable.
+  //
+  // This is not the leakage the split exists to prevent. Leakage is a training row learning its own
+  // future; a live match being scored today is not in the corpus at all, so no amount of corpus
+  // history can encode its result. The weights were fitted against the training-window estimate and
+  // are served the whole-corpus one, which is the same quantity measured on more matches.
   //
   // The key stops a bare team name from pooling Australia's men's and women's sides and their
   // Tests, ODIs and T20s into one number (0.642, against a men's-T20 0.545 and a women's-ODI
   // 0.842). Harmless only while match-sync's lookup never hit; the moment it did, that blend went
   // straight into the logit.
   // ---------------------------------------------------------------------------
-  const counters = {};
+  const trainingCounters = {};
+  const allCounters = {};
   for (const match of matches) {
-    if (windowOf(match.date) !== "train") continue;
+    const inTraining = windowOf(match.date) === "train";
     for (const team of match.teams) {
       const key = teamKey(team, match.gender, match.formatClass);
-      counters[key] ??= { wins: 0, matches: 0 };
-      counters[key].matches++;
+      bump(allCounters, key, "matches");
+      if (inTraining) bump(trainingCounters, key, "matches");
     }
     if (match.winner) {
       const key = teamKey(match.winner, match.gender, match.formatClass);
-      counters[key] ??= { wins: 0, matches: 0 };
-      counters[key].wins++;
+      bump(allCounters, key, "wins");
+      if (inTraining) bump(trainingCounters, key, "wins");
     }
   }
+  const trainingRates = {};
+  for (const [key, c] of Object.entries(trainingCounters)) {
+    trainingRates[key] = shrunkWinRate(c.wins, c.matches);
+  }
   const teamStats = {};
-  for (const [key, c] of Object.entries(counters)) {
+  for (const [key, c] of Object.entries(allCounters)) {
     teamStats[key] = { winRate: shrunkWinRate(c.wins, c.matches), matchesPlayed: c.matches };
   }
-  log(`Team stat keys: ${Object.keys(teamStats).length}`);
+  log(
+    `Team stat keys: ${Object.keys(teamStats).length} published, ` +
+    `${Object.keys(trainingRates).length} in the training window`
+  );
 
   const winRateLookup = (match) => (team) =>
-    teamStats[teamKey(team, match.gender, match.formatClass)]?.winRate ?? 0.5;
+    trainingRates[teamKey(team, match.gender, match.formatClass)] ?? 0.5;
 
   // ---------------------------------------------------------------------------
   // Three models, trained and released one at a time.
@@ -273,6 +293,11 @@ export function buildModel({ zipBuffer, log, error }) {
     parsed,
     skipped,
   };
+}
+
+function bump(counters, key, field) {
+  counters[key] ??= { wins: 0, matches: 0 };
+  counters[key][field]++;
 }
 
 /**

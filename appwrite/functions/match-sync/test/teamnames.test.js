@@ -133,3 +133,24 @@ test("a format with no corpus slice resolves to nothing rather than borrowing an
     "India",
   );
 });
+
+test("a code that is neither a prefix nor initials attributes nothing, rather than guessing", () => {
+  // The Hundred squeezes its codes to consonants: Cricbuzz serves LDNW for London Spirit and MILW
+  // for MI London, captured from match 145256 on 2026-08-07. Neither is a prefix of its full name
+  // nor its initials, so neither side claims the code and the fixture keeps the neutral 0.5.
+  // Failing closed is the designed behaviour — the alternative is a 50/50 chance of inverting the
+  // probability — but it means a Hundred fixture gets no strength signal, which is a coverage gap
+  // and not a bug.
+  const stats = {
+    "London Spirit|female|HUNDRED": { winRate: 0.32 },
+    "MI London|female|HUNDRED": { winRate: 0.48 },
+  };
+  const title = "MI London Women vs London Spirit Women, 23rd Match";
+  assert.equal(resolveMatchTeams({ title, battingTeamName: "MILW", teamStats: stats, format: "HUNDRED" }), null);
+  assert.equal(resolveMatchTeams({ title, battingTeamName: "LDNW", teamStats: stats, format: "HUNDRED" }), null);
+  // The gender marker alone is still stripped, so a code that DOES follow the rules still works.
+  assert.equal(
+    resolveMatchTeams({ title, battingTeamName: "MI London-W", teamStats: stats, format: "HUNDRED" })?.battingTeam,
+    "MI London",
+  );
+});
