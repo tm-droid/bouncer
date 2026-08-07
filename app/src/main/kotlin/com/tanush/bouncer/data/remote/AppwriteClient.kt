@@ -13,7 +13,9 @@ import io.sentry.Sentry
 import io.sentry.SentryLevel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import okhttp3.CacheControl
 import okhttp3.Request
+import java.util.concurrent.TimeUnit
 
 /**
  * The outcome of one function execution, with the status code intact.
@@ -195,22 +197,28 @@ object AppwriteClient {
     }
 
     /**
-     * Download a public bucket file.
+     * Download a public bucket file, accepting a cached copy up to [maxAgeSeconds] old.
      *
-     * Goes through the shared OkHttp client rather than `Storage.getFileDownload` for one reason:
-     * the SDK exposes no response headers, so every call re-downloaded the whole blob even when it
-     * had not changed. OkHttp's cache stores the validator and replays `If-None-Match`, so an
-     * unchanged file costs a 304 with an empty body instead of the full payload — and these files
-     * (the match lists, the win-probability model, the H2H table) are rewritten far less often than
-     * they are read. Requires the server-side write-skip in `bouncer-poll-live-matches`, without
-     * which the file is rewritten every minute and the validator never matches.
+     * Goes through the shared OkHttp client rather than `Storage.getFileDownload` because the SDK
+     * exposes no response headers, so every call re-downloaded the whole blob. **[maxAgeSeconds] is
+     * the only thing bounding that cache.** Appwrite Storage answers a download with
+     * `cache-control: private, max-age=3888000` — 45 days — and sends neither `ETag` nor
+     * `Last-Modified`, so there is no validator to revalidate with and no 304 to be had. Left to the
+     * server's own header, OkHttp serves the first body it ever saw for a month and a half without
+     * one further request: `live-winprob` was pinned to a near-empty snapshot, and every upcoming
+     * fixture's pre-match bar was missing because of it. A request-side `max-age` caps the effective
+     * freshness at min(server, request), which is what makes the cache follow the file's real write
+     * cadence.
+     *
+     * Pass the cadence of the file being read, not a guess: too long silently serves stale data with
+     * no error anywhere, and too short spends bandwidth on bytes that cannot have changed.
      *
      * Bandwidth is a shared API+Storage+Realtime pool, so this is guarded on [Quota.BANDWIDTH]. It
      * used to only REPORT a 402 and then download again on the very next call; now it stops.
      * Returning null is already the not-ready path and `CricketRepository` falls through to the
      * Vercel API.
      */
-    suspend fun downloadFile(bucketId: String, fileId: String): ByteArray? {
+    suspend fun downloadFile(bucketId: String, fileId: String, maxAgeSeconds: Int): ByteArray? {
         if (!isReady) return null
         val endpoint = ApiKeys.appwriteEndpoint.trimEnd('/')
         val projectId = ApiKeys.appwriteProjectId
@@ -221,7 +229,11 @@ object AppwriteClient {
         }
         return try {
             withContext(Dispatchers.IO) {
-                fetchFile("$endpoint/storage/buckets/$bucketId/files/$fileId/download", projectId)
+                fetchFile(
+                    "$endpoint/storage/buckets/$bucketId/files/$fileId/download",
+                    projectId,
+                    maxAgeSeconds,
+                )
             }
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
@@ -239,13 +251,17 @@ object AppwriteClient {
     }
 
     /**
-     * One conditional GET. A 304 is served from OkHttp's cache with no body over the wire, so it is
-     * counted as a storage request costing zero bytes — which is the whole point of the change.
+     * One GET, answered from OkHttp's cache while the copy is younger than [maxAgeSeconds].
+     *
+     * Not a conditional GET: Appwrite Storage sends no `ETag` or `Last-Modified` for a download, so
+     * OkHttp has nothing to revalidate with and a refetch is always a full body. A cache hit costs
+     * no bytes and is recorded as zero.
      */
-    private fun fetchFile(url: String, projectId: String): ByteArray {
+    private fun fetchFile(url: String, projectId: String, maxAgeSeconds: Int): ByteArray {
         val request = Request.Builder()
             .url(url)
             .header("X-Appwrite-Project", projectId)
+            .cacheControl(CacheControl.Builder().maxAge(maxAgeSeconds, TimeUnit.SECONDS).build())
             .build()
         HttpClientProvider.sharedClient.newCall(request).execute().use { response ->
             val body = response.body?.bytes() ?: ByteArray(0)
@@ -258,13 +274,12 @@ object AppwriteClient {
                     TYPE_PATTERN.find(String(body, Charsets.UTF_8))?.groupValues?.get(1),
                 )
             }
-            val notModified = response.networkResponse?.code == HTTP_NOT_MODIFIED
+            val servedFromCache = response.networkResponse == null
             AppwriteReadGuard.recordSuccess(quota = AppwriteReadGuard.Quota.BANDWIDTH)
-            AppwriteUsageTracker.recordStorageDownload(if (notModified) 0 else body.size)
+            AppwriteUsageTracker.recordStorageDownload(if (servedFromCache) 0 else body.size)
             return body
         }
     }
 
-    private const val HTTP_NOT_MODIFIED = 304
     private val TYPE_PATTERN = Regex("\"type\"\\s*:\\s*\"([^\"]+)\"")
 }

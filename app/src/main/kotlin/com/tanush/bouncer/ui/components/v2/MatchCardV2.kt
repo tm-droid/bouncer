@@ -1,5 +1,6 @@
 package com.tanush.bouncer.ui.components.v2
 
+import kotlin.math.roundToInt
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
@@ -41,6 +42,7 @@ import androidx.compose.ui.unit.dp
 import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.ui.theme.BouncerMotion
 import com.tanush.bouncer.ui.theme.MatchTeamPalette
+import com.tanush.bouncer.ui.theme.liftForContrast
 import com.tanush.bouncer.ui.theme.rememberMatchTeamPalette
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 import com.tanush.bouncer.utils.PreferencesManager
@@ -259,24 +261,35 @@ private fun MatchCardWinProbBar(match: CricketMatch, winProb: Double?, teamPalet
     // Null means the server produced no probability for this match; show nothing rather than an
     // even split. The old `== 50.0` guard also hid genuinely even matches.
     if (winProb == null || match.teams.size < 2) return
+    val colors = BouncerThemeV2.colors
     val typography = BouncerThemeV2.typography
     val spacing = BouncerThemeV2.spacing
     Spacer(Modifier.height(spacing.sm))
-    val fraction = (winProb / 100.0).toFloat().coerceIn(0.05f, 0.95f)
+    // A Test's draw share belongs to neither side. Taking the second team's number as the
+    // complement handed it to them: a match the model called 32 / 18 draw / 50 rendered here as
+    // "68% CAXI". The draw gets its own slice of the bar and the two labels simply do not add to
+    // 100, which is the truth.
+    val draw = ((match.winProbabilityDraw ?: 0.0) / 100.0).toFloat().coerceIn(0f, 1f)
+    val home = (winProb / 100.0).toFloat().coerceIn(0f, 1f - draw)
+    val away = (1f - draw - home).coerceAtLeast(0f)
+    // Team colours are guaranteed 3:1 against the app background, which a dark green clears while
+    // still reading as an empty bar on a lifted card. Lifted against the card's own fill instead.
+    val homeColor = teamPalette.home.primary.liftForContrast(colors.surface, SEGMENT_MIN_CONTRAST)
+    val awayColor = teamPalette.away.primary.liftForContrast(colors.surface, SEGMENT_MIN_CONTRAST)
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
-            text = "${match.teams[0].acronym} ${winProb.toInt()}%",
+            text = "${match.teams[0].acronym} ${(home * WIN_PROB_PERCENT).roundToInt()}%",
             style = typography.bodySmall,
-            color = teamPalette.home.primary,
+            color = homeColor,
         )
         Spacer(Modifier.weight(1f))
         Text(
-            text = "${(100 - winProb.toInt())}% ${match.teams[1].acronym}",
+            text = "${(away * WIN_PROB_PERCENT).roundToInt()}% ${match.teams[1].acronym}",
             style = typography.bodySmall,
-            color = teamPalette.away.primary,
+            color = awayColor,
         )
     }
     Spacer(Modifier.height(4.dp))
@@ -287,8 +300,10 @@ private fun MatchCardWinProbBar(match: CricketMatch, winProb: Double?, teamPalet
             .clip(RoundedCornerShape(2.dp))
             .background(
                 Brush.horizontalGradient(
-                    fraction to teamPalette.home.primary,
-                    fraction to teamPalette.away.primary.copy(alpha = 0.7f),
+                    home to homeColor,
+                    home to colors.textSecondary.copy(alpha = 0.5f),
+                    (home + draw) to colors.textSecondary.copy(alpha = 0.5f),
+                    (home + draw) to awayColor,
                 )
             )
     )
@@ -312,3 +327,12 @@ private fun matchCardDescription(match: CricketMatch): String = buildString {
         append(match.currentStatus)
     }
 }
+
+/** Probability shares are stored 0..1 and shown as whole percentages. */
+internal const val WIN_PROB_PERCENT = 100f
+
+/**
+ * Contrast floor for a filled probability segment against the card it sits on. Lower than a text
+ * floor on purpose — a solid block needs far less separation than a glyph.
+ */
+internal const val SEGMENT_MIN_CONTRAST = 2.2f

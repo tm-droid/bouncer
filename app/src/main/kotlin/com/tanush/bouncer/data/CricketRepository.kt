@@ -20,6 +20,7 @@ import com.tanush.bouncer.utils.sentryBreadcrumb
 
 object CricketRepository {
     private const val TAG = "CricketRepository"
+    private const val MILLIS_PER_SECOND = 1000L
 
     private val matchesCache = MatchesResponseCache.shared
     private val matchesSingleFlight = SingleFlight<String, AppResult<SanwebMatchesListResponse>>()
@@ -77,7 +78,11 @@ object CricketRepository {
     private suspend fun tryReadMatchesFromStorage(type: String): SanwebMatchesListResponse? {
         return try {
             val fileId = "$type-matches"
-            val bytes = AppwriteClient.downloadFile("cricket-stats", fileId) ?: return null
+            // The HTTP cache is bounded by the same age this method then enforces on `fetchedAt`.
+            // Any longer and a cached body would be served only to be rejected as stale below, which
+            // is a download's worth of latency followed by a Vercel call anyway.
+            val maxAgeSeconds = (CacheConfig.matchStorageMaxAgeMs(type) / MILLIS_PER_SECOND).toInt()
+            val bytes = AppwriteClient.downloadFile("cricket-stats", fileId, maxAgeSeconds) ?: return null
             val json = org.json.JSONObject(String(bytes))
             val fetchedAt = json.getLong("fetchedAt")
             if (System.currentTimeMillis() - fetchedAt > CacheConfig.matchStorageMaxAgeMs(type)) return null

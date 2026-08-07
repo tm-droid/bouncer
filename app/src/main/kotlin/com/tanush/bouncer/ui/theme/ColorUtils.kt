@@ -2,6 +2,7 @@ package com.tanush.bouncer.ui.theme
 
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.toArgb
 import kotlin.math.pow
 
 /**
@@ -131,6 +132,32 @@ fun Color.ensureContrast(
     return adjustedColor
 }
 
+
+/**
+ * Raise this colour until it separates from [background], keeping its hue.
+ *
+ * [ensureContrast] lifts by lerping toward white, which reaches the ratio but bleaches the colour —
+ * Bangladesh's #006A4E arrives as grey. Raising value in HSV holds hue and saturation, so a filled
+ * shape still reads as the team's colour. Only when full brightness is still too dark does this fall
+ * back to the bleaching path, which is the right trade at that point: an invisible segment is worse
+ * than an off-shade one.
+ *
+ * Meant for blocks of colour, not text. Glyphs need the higher ratios [ensureContrast] defaults to.
+ */
+fun Color.liftForContrast(background: Color, minimumRatio: Float): Color {
+    if (hasMinimumContrast(background, minimumRatio)) return this
+    val hsv = FloatArray(3)
+    android.graphics.Color.colorToHSV(this.toArgb(), hsv)
+    var value = hsv[2]
+    while (value < 1f) {
+        value = (value + HSV_VALUE_STEP).coerceAtMost(1f)
+        val lifted = Color.hsv(hsv[0], hsv[1], value)
+        if (lifted.hasMinimumContrast(background, minimumRatio)) return lifted
+    }
+    return ensureContrast(background, minimumRatio)
+}
+
+private const val HSV_VALUE_STEP = 0.04f
 
 /**
  * Ensure this color is readable as foreground text using WCAG contrast.

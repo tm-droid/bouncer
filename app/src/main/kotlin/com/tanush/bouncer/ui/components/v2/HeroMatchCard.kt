@@ -1,5 +1,7 @@
 package com.tanush.bouncer.ui.components.v2
 
+import kotlin.math.roundToInt
+import com.tanush.bouncer.ui.theme.liftForContrast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -168,21 +170,32 @@ fun HeroMatchCard(
                     Spacer(Modifier.height(spacing.md))
                     HorizontalDivider(color = colors.divider)
                     Spacer(Modifier.height(spacing.sm))
-                    val fraction = (winProb / 100.0).toFloat().coerceIn(0.05f, 0.95f)
+                    // A Test's draw share belongs to neither side; taking the away number as the
+                    // complement would hand it to them. It gets its own slice instead, so the two
+                    // labels deliberately do not add up to 100 on a match that can be drawn.
+                    val draw = ((match.winProbabilityDraw ?: 0.0) / 100.0).toFloat().coerceIn(0f, 1f)
+                    val home = (winProb / 100.0).toFloat().coerceIn(0f, 1f - draw)
+                    val away = (1f - draw - home).coerceAtLeast(0f)
+                    // Lifted against the card fill: a team colour that clears 3:1 on the app
+                    // background can still read as an empty bar here.
+                    val homeColor = teamPalette.home.primary
+                        .liftForContrast(colors.surface, SEGMENT_MIN_CONTRAST)
+                    val awayColor = teamPalette.away.primary
+                        .liftForContrast(colors.surface, SEGMENT_MIN_CONTRAST)
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(
-                            text = "${match.teams[0].acronym} ${winProb.toInt()}%",
+                            text = "${match.teams[0].acronym} ${(home * WIN_PROB_PERCENT).roundToInt()}%",
                             style = typography.bodySmall,
-                            color = teamPalette.home.primary,
+                            color = homeColor,
                         )
                         Spacer(Modifier.weight(1f))
                         Text(
-                            text = "${(100 - winProb.toInt())}% ${match.teams[1].acronym}",
+                            text = "${(away * WIN_PROB_PERCENT).roundToInt()}% ${match.teams[1].acronym}",
                             style = typography.bodySmall,
-                            color = teamPalette.away.primary,
+                            color = awayColor,
                         )
                     }
                     Spacer(Modifier.height(4.dp))
@@ -193,8 +206,10 @@ fun HeroMatchCard(
                             .clip(RoundedCornerShape(3.dp))
                             .background(
                                 Brush.horizontalGradient(
-                                    fraction to teamPalette.home.primary,
-                                    fraction to teamPalette.away.primary.copy(alpha = 0.7f),
+                                    home to homeColor,
+                                    home to colors.textSecondary.copy(alpha = 0.5f),
+                                    (home + draw) to colors.textSecondary.copy(alpha = 0.5f),
+                                    (home + draw) to awayColor,
                                 )
                             )
                     )

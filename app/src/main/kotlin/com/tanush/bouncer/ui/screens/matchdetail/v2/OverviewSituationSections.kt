@@ -49,11 +49,11 @@ internal fun LazyListScope.overviewHeaderSections(
     if (!match.isLive && match.currentStatus.isNotBlank() && !isUpcoming) {
         item(key = "match_situation") { MatchSituationCard(match, isCompleted) }
     }
-    val hasWinPct = winProb != null
-    if (currentRunRate != null || requiredRunRate != null || hasWinPct) {
-        item(key = "quick_stats") {
-            QuickStatsRow(match, currentRunRate, requiredRunRate, winProb ?: 0.0, hasWinPct)
-        }
+    // No WIN % tile here. The hero below states both sides, the draw and what kind of number it is;
+    // a one-sided tile above it showed the same probability rounded differently (49% against the
+    // hero's 50%) and read as a second, disagreeing model.
+    if (currentRunRate != null || requiredRunRate != null) {
+        item(key = "quick_stats") { QuickStatsRow(currentRunRate, requiredRunRate) }
     }
 }
 
@@ -159,11 +159,8 @@ internal fun MatchSituationCard(match: CricketMatch, isCompleted: Boolean) {
 
 @Composable
 internal fun QuickStatsRow(
-    match: CricketMatch,
     currentRunRate: String?,
     requiredRunRate: String?,
-    heuristicProb: Double,
-    hasWinPct: Boolean,
 ) {
     val spacing = BouncerThemeV2.spacing
     Row(
@@ -186,16 +183,6 @@ internal fun QuickStatsRow(
                 value = it,
                 subValue = "reqd rate",
                 icon = Icons.AutoMirrored.Filled.TrendingUp,
-            )
-        }
-        if (hasWinPct) {
-            InsightGridCard(
-                modifier = Modifier.weight(1f),
-                label = "WIN %",
-                value = "${heuristicProb.toInt()}%",
-                subValue = match.teams.firstOrNull()?.acronym?.take(3) ?: "--",
-                icon = Icons.Default.AutoAwesome,
-                isHighPriority = true,
             )
         }
     }

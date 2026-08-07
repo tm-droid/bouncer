@@ -30,6 +30,7 @@ object WinProbabilityStore {
      * change, which is exactly the bug that disabled the match memory cache.
      */
     private const val TTL_MS = 60_000L
+    private const val HTTP_MAX_AGE_SECONDS = 60
 
     private data class Entry(
         @SerializedName("team1WinProbability") val team1WinProbability: Double? = null,
@@ -94,7 +95,10 @@ object WinProbabilityStore {
         mutex.withLock {
             // Re-check inside the lock: concurrent pollers would otherwise each issue a download.
             if (isFresh(force)) return
-            val bytes = AppwriteClient.downloadFile(BUCKET_ID, FILE_ID) ?: return
+            // Same window as this store's own TTL: match-sync rewrites the file every minute, and
+            // an HTTP cache allowed to outlive the TTL would answer the refresh with the copy the
+            // TTL just decided was too old.
+            val bytes = AppwriteClient.downloadFile(BUCKET_ID, FILE_ID, HTTP_MAX_AGE_SECONDS) ?: return
             val parsed = parse(bytes) ?: return
             cache = parsed.matches.mapNotNull { (id, entry) ->
                 entry.team1WinProbability?.let { team1 ->

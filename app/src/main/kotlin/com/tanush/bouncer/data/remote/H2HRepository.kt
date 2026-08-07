@@ -19,6 +19,7 @@ object H2HRepository {
     private const val BUCKET_ID = "cricket-stats"
     private const val FILE_ID = "h2h-stats"
     private const val CACHE_TTL_MS = 60 * 60 * 1000L // 1 hour
+    private const val HTTP_MAX_AGE_SECONDS = 60 * 60
 
     @Volatile private var cachedH2H: JSONObject? = null
     @Volatile private var cacheExpiry = 0L
@@ -38,7 +39,10 @@ object H2HRepository {
     private suspend fun loadCached(): JSONObject? {
         val now = System.currentTimeMillis()
         if (cachedH2H != null && now < cacheExpiry) return cachedH2H
-        val bytes = AppwriteClient.downloadFile(BUCKET_ID, FILE_ID) ?: return null
+        // Mirrors the in-memory TTL above: the file is rewritten by the weekly trainer, so an hour
+        // is already generous, and letting the HTTP cache outlive the memory cache would make this
+        // TTL decorative.
+        val bytes = AppwriteClient.downloadFile(BUCKET_ID, FILE_ID, HTTP_MAX_AGE_SECONDS) ?: return null
         return runCatching {
             val root = JSONObject(String(bytes, Charsets.UTF_8))
             val h2h = root.optJSONObject("h2h") ?: return null

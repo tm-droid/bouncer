@@ -29,12 +29,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.tanush.bouncer.ui.theme.BlackBackground
 import com.tanush.bouncer.ui.theme.GlassSurface
 import com.tanush.bouncer.ui.theme.GoldHairline
 import com.tanush.bouncer.ui.theme.LiveRed
@@ -42,7 +44,10 @@ import com.tanush.bouncer.ui.theme.TeamColorRegistry
 import com.tanush.bouncer.ui.theme.TextMuted
 import com.tanush.bouncer.ui.theme.TextPrimary
 import com.tanush.bouncer.ui.theme.TextSecondary
+import com.tanush.bouncer.ui.theme.liftForContrast
+import com.tanush.bouncer.ui.theme.lighten
 import kotlin.math.abs
+import kotlin.math.floor
 import kotlin.math.roundToInt
 
 /** What the number is a statement about, which changes both the label and whether it can move. */
@@ -67,6 +72,23 @@ fun winProbabilityStateFor(
 
 private const val MIN_VISIBLE_SHARE = 0.06f
 private const val DELTA_WORTH_SHOWING = 0.02f
+
+/**
+ * Contrast floor for a team's colour against the card it is drawn on.
+ *
+ * `TeamColorRegistry` already guarantees 3:1 against the app background, which is the right target
+ * for text on the page but not for a filled segment inside a lifted glass card: Bangladesh's
+ * #006A4E clears that bar at 3.17:1 and still rendered as an unfilled-looking void next to a
+ * mid-tone card fill. This is measured against the card's own composited fill instead, and the
+ * floor is lower because a 14dp block of solid colour needs far less separation than a glyph.
+ */
+private const val SEGMENT_MIN_CONTRAST = 2.2f
+private const val SEGMENT_SHADE = 0.18f
+
+/** The card's fill as it actually reaches the eye — [GlassSurface] is translucent. */
+private val CardFill = GlassSurface.compositeOver(BlackBackground)
+
+private fun onCard(color: Color): Color = color.liftForContrast(CardFill, SEGMENT_MIN_CONTRAST)
 
 /**
  * Win probability as a divided bar rather than a single gauge.
@@ -102,8 +124,9 @@ fun PremiumWinProbabilityHero(
     val animatedTeam1 by animateFloatAsState(team1, tween(900, easing = FastOutSlowInEasing), label = "team1")
     val animatedDraw by animateFloatAsState(draw, tween(900, easing = FastOutSlowInEasing), label = "draw")
 
-    val team1Colors = TeamColorRegistry.forTeam(team1Name)
-    val team2Colors = TeamColorRegistry.forTeam(team2Name)
+    val team1Color = onCard(TeamColorRegistry.forTeam(team1Name).primary)
+    val team2Color = onCard(TeamColorRegistry.forTeam(team2Name).primary)
+    val percents = wholePercents(team1, draw, team2)
 
     Column(
         modifier = modifier
@@ -113,7 +136,7 @@ fun PremiumWinProbabilityHero(
             .border(0.5.dp, GoldHairline.copy(alpha = 0.4f), RoundedCornerShape(24.dp))
             .padding(20.dp)
             .semantics {
-                contentDescription = describe(team1Name, team1, team2Name, team2, drawProbability, state)
+                contentDescription = describe(team1Name, team2Name, percents, drawProbability != null, state)
             },
     ) {
         Row(
@@ -134,11 +157,11 @@ fun PremiumWinProbabilityHero(
         Spacer(Modifier.height(16.dp))
 
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom) {
-            SideLabel(team1Name, team1, team1Colors.primary, TextAlign.Start, Modifier.weight(1f))
+            SideLabel(team1Name, percents[0], team1Color, TextAlign.Start, Modifier.weight(1f))
             if (drawProbability != null) {
-                SideLabel("DRAW", draw, TextSecondary, TextAlign.Center, Modifier.weight(1f))
+                SideLabel("DRAW", percents[1], TextSecondary, TextAlign.Center, Modifier.weight(1f))
             }
-            SideLabel(team2Name, team2, team2Colors.primary, TextAlign.End, Modifier.weight(1f))
+            SideLabel(team2Name, percents[2], team2Color, TextAlign.End, Modifier.weight(1f))
         }
 
         Spacer(Modifier.height(10.dp))
@@ -146,8 +169,8 @@ fun PremiumWinProbabilityHero(
         SegmentedBar(
             team1Share = animatedTeam1,
             drawShare = animatedDraw,
-            team1Color = team1Colors.primary,
-            team2Color = team2Colors.primary,
+            team1Color = team1Color,
+            team2Color = team2Color,
             hasDraw = drawProbability != null,
         )
 
@@ -162,7 +185,7 @@ fun PremiumWinProbabilityHero(
 @Composable
 private fun SideLabel(
     name: String,
-    share: Float,
+    percent: Int,
     color: Color,
     align: TextAlign,
     modifier: Modifier = Modifier,
@@ -178,7 +201,7 @@ private fun SideLabel(
             modifier = Modifier.fillMaxWidth(),
         )
         Text(
-            text = "${(share * 100).roundToInt()}%",
+            text = "$percent%",
             color = TextPrimary,
             fontSize = 26.sp,
             fontWeight = FontWeight.Black,
@@ -220,7 +243,9 @@ private fun SegmentedBar(
                 .weight(team1 / total)
                 .fillMaxWidth()
                 .height(14.dp)
-                .background(Brush.horizontalGradient(listOf(team1Color.copy(alpha = 0.75f), team1Color))),
+                // Shaded by lightening, not by alpha: alpha over a dark card drags the segment back
+                // below the contrast floor onCard() just lifted it above.
+                .background(Brush.horizontalGradient(listOf(team1Color.lighten(SEGMENT_SHADE), team1Color))),
         )
         if (draw > 0f) {
             Box(
@@ -236,7 +261,7 @@ private fun SegmentedBar(
                 .weight(team2 / total)
                 .fillMaxWidth()
                 .height(14.dp)
-                .background(Brush.horizontalGradient(listOf(team2Color, team2Color.copy(alpha = 0.75f)))),
+                .background(Brush.horizontalGradient(listOf(team2Color, team2Color.lighten(SEGMENT_SHADE)))),
         )
     }
 }
@@ -287,10 +312,9 @@ private fun footerText(detail: String?, delta: Float?, team1Name: String, team2N
 
 private fun describe(
     team1Name: String,
-    team1: Float,
     team2Name: String,
-    team2: Float,
-    draw: Float?,
+    percents: List<Int>,
+    hasDraw: Boolean,
     state: WinProbabilityState,
 ): String {
     val prefix = when (state) {
@@ -298,7 +322,28 @@ private fun describe(
         WinProbabilityState.PRE_MATCH -> "Pre-match win probability"
         WinProbabilityState.FINAL -> "Final result"
     }
-    val drawPart = draw?.let { ", draw ${(it * 100).roundToInt()} percent" } ?: ""
-    return "$prefix: $team1Name ${(team1 * 100).roundToInt()} percent, " +
-        "$team2Name ${(team2 * 100).roundToInt()} percent$drawPart"
+    val drawPart = if (hasDraw) ", draw ${percents[1]} percent" else ""
+    return "$prefix: $team1Name ${percents[0]} percent, $team2Name ${percents[2]} percent$drawPart"
+}
+
+/**
+ * Whole percentages that sum to exactly 100.
+ *
+ * Rounding each share independently lands on 99 or 101 often enough to matter — 32 + 17 + 50 was on
+ * screen — and three numbers that visibly fail to add up read as a broken model rather than as a
+ * rounding artefact. Largest remainder: floor every share, then give the leftover points to the
+ * shares that lost the most in the flooring.
+ */
+internal fun wholePercents(vararg shares: Float): List<Int> {
+    val scaled = shares.map { (it * 100f).coerceAtLeast(0f) }
+    val whole = scaled.map { floor(it).toInt() }.toMutableList()
+    var leftover = 100 - whole.sum()
+    val byRemainder = scaled.indices.sortedByDescending { scaled[it] - whole[it] }
+    var next = 0
+    while (leftover > 0) {
+        whole[byRemainder[next % byRemainder.size]]++
+        leftover--
+        next++
+    }
+    return whole
 }

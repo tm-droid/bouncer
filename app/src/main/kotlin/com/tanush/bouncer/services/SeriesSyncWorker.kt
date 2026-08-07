@@ -82,7 +82,9 @@ class SeriesSyncWorker(
 
     private suspend fun tryReadSeriesFromStorage(): List<SeriesCacheEntity>? {
         return try {
-            val bytes = AppwriteClient.downloadFile("cricket-stats", "active-series") ?: return null
+            // Bounded by the same age the `fetchedAt` check below enforces.
+            val bytes = AppwriteClient.downloadFile("cricket-stats", "active-series", SERIES_HTTP_MAX_AGE_SECONDS)
+                ?: return null
             val json = org.json.JSONObject(String(bytes))
             val fetchedAt = json.getLong("fetchedAt")
             if (System.currentTimeMillis() - fetchedAt > SERIES_STORAGE_TTL_MS) return null
@@ -110,6 +112,7 @@ class SeriesSyncWorker(
         const val TAG = "SeriesSyncWorker"
         private const val UNIQUE_WORK_NAME = "series_sync_periodic"
         private const val SERIES_STORAGE_TTL_MS = 24 * 3_600_000L
+        private const val SERIES_HTTP_MAX_AGE_SECONDS = 24 * 60 * 60
 
         private val networkConstraints = Constraints.Builder()
             .setRequiredNetworkType(NetworkType.CONNECTED)
