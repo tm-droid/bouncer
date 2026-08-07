@@ -32,6 +32,14 @@ const REFRESH_FLOOR_MS = {
 
 const hashOf = (data) => createHash("sha256").update(JSON.stringify(data)).digest("hex");
 
+// Cricbuzz's own schedule page, which carries a `matchInfo` block per fixture including
+// `matchFormat`. One page answers every upcoming fixture at once.
+const CRICBUZZ_SCHEDULE_URL = "https://www.cricbuzz.com/cricket-match/live-scores/upcoming-matches";
+const BROWSER_UA =
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+// Bound the remembered formats so the state file cannot grow without limit.
+const MAX_REMEMBERED_FORMATS = 400;
+
 export default async ({ req, res, log, error }) => {
   if (!process.env.APPWRITE_API_KEY) {
     return res.json({ error: "Missing APPWRITE_API_KEY" }, 500);
@@ -51,13 +59,25 @@ export default async ({ req, res, log, error }) => {
   // Fetch all three types in parallel to minimize total write-time spread
   const types = ["live", "recent", "upcoming"];
   const now = Date.now();
+  const formatCache = { ...(prevState.formats ?? {}) };
   const settled = await Promise.allSettled(types.map(async (type) => {
     const resp = await fetch(`${VERCEL_BASE}/matches?type=${type}`, { signal: AbortSignal.timeout(10_000) });
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     const data = await resp.json();
 
+    // Upcoming fixtures carry their real format, so match-sync does not have to guess it.
+    //
+    // The upstream list is {id, title, status} and nothing else, and most titles name no format —
+    // "Scotland vs Canada, 124th Match" is an ODI, "Durham vs Middlesex, Group B" is a 50-over
+    // One-Day Cup game. match-sync used to probe T20/ODI/HUNDRED/TEST and take the first slice both
+    // teams appeared in, which answers "where do these teams have a record", not "what is this
+    // match". On 2026-08-07 that scored 9 of 13 fixtures on T20 form for ODI matches, and on
+    // Scotland vs Canada it reversed the favourite.
+    if (type === "upcoming") await attachFormats(data, formatCache, log, error);
+
     // Hash the DATA only. The stored payload embeds `fetchedAt`, so hashing it would differ on
-    // every run and this comparison would never skip anything.
+    // every run and this comparison would never skip anything. Hashed AFTER enrichment, so a
+    // newly-resolved format is a change and gets written rather than sitting in a skipped file.
     const hash = hashOf(data);
     const prev = prevState[type];
     const ageMs = prev?.writtenAt ? now - prev.writtenAt : Infinity;
@@ -76,7 +96,7 @@ export default async ({ req, res, log, error }) => {
   }));
 
   const results = {};
-  const nextState = { ...prevState };
+  const nextState = { ...prevState, formats: formatCache };
   for (let i = 0; i < types.length; i++) {
     const s = settled[i];
     if (s.status === "fulfilled") {
@@ -175,6 +195,72 @@ export default async ({ req, res, log, error }) => {
 
   return res.json(results);
 };
+
+/**
+ * Stamp each upcoming fixture with Cricbuzz's `matchFormat`, scraping only when something is new.
+ *
+ * A match's format never changes, so a fixture only needs looking up once ever — [cache] carries
+ * across runs in the state file and most runs therefore make no request at all. A failed or blocked
+ * scrape is not an error: fixtures already in the cache still get stamped, and anything unresolved
+ * simply arrives without the field, which is exactly the input match-sync's existing probe already
+ * handles. Never throws — this must not be able to fail the match list it is decorating.
+ */
+async function attachFormats(data, cache, log, error) {
+  const matches = data?.matches;
+  if (!Array.isArray(matches) || matches.length === 0) return;
+
+  const missing = matches.filter((m) => m?.id && !cache[String(m.id)]);
+  if (missing.length > 0) {
+    try {
+      const resp = await fetch(CRICBUZZ_SCHEDULE_URL, {
+        headers: { "User-Agent": BROWSER_UA },
+        signal: AbortSignal.timeout(10_000),
+      });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const found = parseFormats(await resp.text());
+      let added = 0;
+      for (const m of missing) {
+        const format = found[String(m.id)];
+        if (format) { cache[String(m.id)] = format; added++; }
+      }
+      log(`Formats: ${added} of ${missing.length} new fixtures resolved (${Object.keys(found).length} on page)`);
+    } catch (e) {
+      // Degrades to the downstream probe, which is what shipped before this existed.
+      error(`Format lookup failed (${e?.message}) — ${missing.length} fixtures keep their unknown format`);
+    }
+  }
+
+  for (const m of matches) {
+    const format = cache[String(m?.id)];
+    if (format) m.matchFormat = format;
+  }
+
+  // Keep only ids still on the list, oldest dropped first if it somehow still overflows.
+  const live = new Set(matches.map((m) => String(m?.id)));
+  for (const id of Object.keys(cache)) if (!live.has(id)) delete cache[id];
+  const keys = Object.keys(cache);
+  if (keys.length > MAX_REMEMBERED_FORMATS) {
+    for (const id of keys.slice(0, keys.length - MAX_REMEMBERED_FORMATS)) delete cache[id];
+  }
+}
+
+/**
+ * `{ matchId: matchFormat }` from a Cricbuzz schedule page.
+ *
+ * The page embeds its data as a Next.js flight payload with escaped quotes, so the JSON is
+ * unescaped before matching. Pairing is anchored inside one `matchInfo` object — `[^{}]` cannot
+ * cross an object boundary — so a fixture that omits `matchFormat` cannot pick up its neighbour's.
+ */
+export function parseFormats(html) {
+  const unescaped = String(html ?? "").replace(/\\"/g, '"');
+  const out = {};
+  const re = /"matchId":(\d+)[^{}]{0,4000}?"matchFormat":"([A-Z_0-9]+)"/g;
+  let m;
+  while ((m = re.exec(unescaped)) !== null) {
+    if (!out[m[1]]) out[m[1]] = m[2];
+  }
+  return out;
+}
 
 async function fetchActiveSeries() {
   const resp = await fetch("https://www.cricbuzz.com/cricket-schedule/series", {

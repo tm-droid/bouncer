@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { evaluate, evaluateLong, longFeatures, formatFromText, ballsRemainingFor, inningsBalls } from "../src/winprob.js";
+import { evaluate, evaluateLong, evaluatePrematch, longFeatures, formatFromText, ballsRemainingFor, inningsBalls } from "../src/winprob.js";
 import { resolveMatchTeams } from "../src/teamnames.js";
 
 const here = (p) => fileURLToPath(new URL(p, import.meta.url));
@@ -333,4 +333,77 @@ test("a fourth-innings Test chase carries a target rather than an empty one", ()
   });
   assert.equal(chasing[5], 1, "isFourthInnings");
   assert.ok(chasing[6] > 0, "chasePressure must be non-zero in the fourth innings");
+});
+
+// ── pre-match: corpus membership is the model's own precondition ──────────────
+
+/** A v5 artifact with a usable pre-match sub-model and a two-team corpus. */
+function prematchModel(teamStats) {
+  return {
+    version: 5,
+    prematch: {
+      weights: [4, 0, 0, 0],
+      bias: 0,
+      temperature: 1,
+      featureMeans: [0, 0, 0, 0],
+      featureStds: [1, 1, 1, 1],
+    },
+    teamStats,
+  };
+}
+
+const twoTeams = {
+  "Scotland|male|ODI": { winRate: 0.5, matchesPlayed: 126 },
+  "Canada|male|ODI": { winRate: 0.422, matchesPlayed: 103 },
+};
+
+test("a team the corpus has never seen makes the fixture undetermined", () => {
+  // Team strength is the only feature this model has, so an absent team used to default to a win
+  // rate of exactly 0.5 — turning "no record" into the claim "exactly average" and producing a
+  // confident-looking number. Peru, which Cricsheet has no record of, against a known Brazil
+  // returned 0.600 that way. The guard must live here and not in the caller.
+  const model = prematchModel({ "Brazil|male|T20": { winRate: 0.333, matchesPlayed: 21 } });
+  const result = evaluatePrematch({
+    firstTeam: "Peru", secondTeam: "Brazil", gender: "male", format: "T20", resolved: true, model,
+  });
+  assert.equal(result.undetermined, true);
+  assert.equal(result.battingTeamWinProbability, null);
+});
+
+test("both sides absent is undetermined, not a coin flip", () => {
+  const result = evaluatePrematch({
+    firstTeam: "East Delhi Riders", secondTeam: "West Delhi Lions",
+    gender: "male", format: "T20", resolved: true, model: prematchModel(twoTeams),
+  });
+  assert.equal(result.undetermined, true);
+});
+
+test("the right format slice is the one that decides the favourite", () => {
+  // Scotland vs Canada, 2026-08-07. Both teams have a T20 record and an ODI record, and the
+  // fixture is an ODI. Scored on T20 form the two are level and Canada edges it; on their actual
+  // ODI records Scotland is clearly ahead. Same teams, same model, opposite answer — which is why
+  // the format now comes from Cricbuzz rather than from a probe over slices.
+  const model = prematchModel({
+    ...twoTeams,
+    "Scotland|male|T20": { winRate: 0.5137614678899083, matchesPlayed: 103 },
+    "Canada|male|T20": { winRate: 0.5208333333333334, matchesPlayed: 90 },
+  });
+  const asT20 = evaluatePrematch({
+    firstTeam: "Scotland", secondTeam: "Canada", gender: "male", format: "T20", resolved: true, model,
+  });
+  const asOdi = evaluatePrematch({
+    firstTeam: "Scotland", secondTeam: "Canada", gender: "male", format: "ODI", resolved: true, model,
+  });
+  assert.ok(asT20.battingTeamWinProbability < 0.5, "T20 form makes Canada the favourite");
+  assert.ok(asOdi.battingTeamWinProbability > 0.5, "ODI form makes Scotland the favourite");
+});
+
+test("a fixture whose teams are both in the corpus is still scored", () => {
+  const result = evaluatePrematch({
+    firstTeam: "Scotland", secondTeam: "Canada", gender: "male", format: "ODI", resolved: true,
+    model: prematchModel(twoTeams),
+  });
+  assert.equal(result.undetermined, false);
+  assert.equal(result.prematch, true);
+  assert.ok(result.battingTeamWinProbability > 0 && result.battingTeamWinProbability < 1);
 });

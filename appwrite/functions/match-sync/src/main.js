@@ -573,7 +573,9 @@ async function prematchEntries({ storage, model, log, error }) {
   for (const fixture of fixtures.slice(0, MAX_PREMATCH)) {
     if (!fixture?.id || !fixture.title) continue;
     const title = String(fixture.title);
-    const format = formatFromText(title);
+    // `matchFormat` is Cricbuzz's own field, carried through by bouncer-poll-live-matches. The
+    // title is the fallback for a fixture Cricbuzz's schedule page did not list.
+    const format = formatFromText(fixture.matchFormat, title);
     const gender = genderFromTitle(title);
     const sides = teamsFromTitle(title);
     if (!sides) continue;
@@ -581,8 +583,13 @@ async function prematchEntries({ storage, model, log, error }) {
     // Unlike a live match there is no miniscore and so no short code to attribute a batting side
     // from — but none is needed, because the answer is oriented to the first named side. What is
     // needed is that both sides are corpus teams in this slice, which is what a null here means.
-    // The format comes from the title alone, so a fixture whose title names none is unscoreable;
-    // that is most domestic cricket and it is why this is checked across the plausible slices.
+    //
+    // The probe below runs only when the format is genuinely unknown, and it is a guess: it finds
+    // the first slice in which both teams have a record, which answers "where have these teams
+    // played" rather than "what is this match". On 2026-08-07 that scored eight One-Day Cup
+    // fixtures and an ODI World Cup League game on T20 form, and on Scotland vs Canada it named the
+    // wrong favourite (0.496 for Scotland on T20 form against 0.556 on their actual ODI record).
+    // With the real format present there is one candidate and no guessing.
     const candidates = format === "UNKNOWN" ? ["T20", "ODI", "HUNDRED", "TEST"] : [format];
     const slice = candidates.find((f) => resolveMatchTeams({
       title, battingTeamName: sides[0], teamStats, format: f, gender,

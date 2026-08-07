@@ -203,6 +203,19 @@ function winRateOf(teamStats, team, gender, format) {
   return teamStats?.[teamKey(team, gender, format)]?.winRate ?? 0.5;
 }
 
+/**
+ * A team's win rate in this slice, or null when the corpus has never seen it.
+ *
+ * [winRateOf]'s `?? 0.5` is right where strength is one signal among many — a live position carries
+ * fifteen other features and a neutral strength term simply contributes nothing. It is wrong where
+ * strength is the ONLY signal: "absent from the corpus" then becomes the claim "exactly average",
+ * and the model answers with a confident-looking number about two teams it has no record of.
+ */
+function knownWinRate(teamStats, team, gender, format) {
+  const rate = teamStats?.[teamKey(team, gender, format)]?.winRate;
+  return typeof rate === "number" && Number.isFinite(rate) ? rate : null;
+}
+
 // ── feature builders (must mirror training.js exactly) ───────────────────────
 
 export function chaseFeatures(s) {
@@ -507,10 +520,21 @@ export function evaluatePrematch({
   const learned = learnedOf(model);
   if (!resolved || !usable(learned?.prematch, 4)) return UNDETERMINED;
 
+  // Corpus membership is checked HERE, not left to the caller.
+  //
+  // The only feature this model has is the difference between two win rates, so a team the corpus
+  // has never seen has to make the whole answer undetermined — there is nothing else to reason
+  // from. Until this check existed the caller's `bothSidesKnown` gate was the only thing standing
+  // between an unknown fixture and a fabricated number: called directly, Peru (absent) against
+  // Brazil (0.333) returned a confident 0.600, because the missing side defaulted to exactly
+  // average. Safe by construction now, whatever the caller does.
   const teamStats = learned.teamStats ?? {};
+  const firstRate = knownWinRate(teamStats, firstTeam, gender, format);
+  const secondRate = knownWinRate(teamStats, secondTeam, gender, format);
+  if (firstRate === null || secondRate === null) return UNDETERMINED;
+
   const probability = scoreBinary(learned.prematch, prematchFeatures({
-    teamStrengthDiff:
-      winRateOf(teamStats, firstTeam, gender, format) - winRateOf(teamStats, secondTeam, gender, format),
+    teamStrengthDiff: firstRate - secondRate,
     format,
   }));
   return { ...finalize(probability), prematch: true };
