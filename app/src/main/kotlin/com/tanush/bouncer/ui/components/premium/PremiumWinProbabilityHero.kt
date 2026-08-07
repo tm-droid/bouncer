@@ -238,15 +238,23 @@ private fun SegmentedBar(
             .height(14.dp)
             .clip(RoundedCornerShape(7.dp)),
     ) {
-        Box(
-            Modifier
-                .weight(team1 / total)
-                .fillMaxWidth()
-                .height(14.dp)
-                // Shaded by lightening, not by alpha: alpha over a dark card drags the segment back
-                // below the contrast floor onCard() just lifted it above.
-                .background(Brush.horizontalGradient(listOf(team1Color.lighten(SEGMENT_SHADE), team1Color))),
-        )
+        // Every segment is guarded, not just the draw. `Modifier.weight(0f)` throws, and [visible]
+        // returns exactly zero for an impossible outcome — which is the normal state of a finished
+        // match, where the losing side is 0. That crashed the Overview tab on any completed match
+        // (ANDROID-3N); the draw was guarded and the two teams were not.
+        if (team1 > 0f) {
+            Box(
+                Modifier
+                    .weight(team1 / total)
+                    .fillMaxWidth()
+                    .height(14.dp)
+                    // Shaded by lightening, not by alpha: alpha over a dark card drags the segment
+                    // back below the contrast floor onCard() just lifted it above.
+                    .background(
+                        Brush.horizontalGradient(listOf(team1Color.lighten(SEGMENT_SHADE), team1Color)),
+                    ),
+            )
+        }
         if (draw > 0f) {
             Box(
                 Modifier
@@ -256,13 +264,17 @@ private fun SegmentedBar(
                     .background(TextMuted.copy(alpha = 0.55f)),
             )
         }
-        Box(
-            Modifier
-                .weight(team2 / total)
-                .fillMaxWidth()
-                .height(14.dp)
-                .background(Brush.horizontalGradient(listOf(team2Color, team2Color.lighten(SEGMENT_SHADE)))),
-        )
+        if (team2 > 0f) {
+            Box(
+                Modifier
+                    .weight(team2 / total)
+                    .fillMaxWidth()
+                    .height(14.dp)
+                    .background(
+                        Brush.horizontalGradient(listOf(team2Color, team2Color.lighten(SEGMENT_SHADE))),
+                    ),
+            )
+        }
     }
 }
 
