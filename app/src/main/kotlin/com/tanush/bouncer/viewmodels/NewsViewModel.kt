@@ -165,7 +165,11 @@ class NewsViewModel(
                         "status_code" to (e as? NewsUnavailableException)?.statusCode,
                     ),
                 )
-                Sentry.captureException(e)
+                val isExpectedUnavailability = e is NewsUnavailableException &&
+                    e.message == "News is temporarily unavailable."
+                if (!isExpectedUnavailability) {
+                    Sentry.captureException(e)
+                }
                 Sentry.metrics().count("news.fetch.error", 1.0)
                 _error.value = messageFor(e)
             } finally {
