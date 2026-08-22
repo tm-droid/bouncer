@@ -1,5 +1,6 @@
 package com.tanush.bouncer.data.repository
 
+import com.tanush.bouncer.network.ScrapeFetcher
 import com.tanush.bouncer.data.AppJson
 import kotlinx.serialization.SerializationException
 import com.tanush.bouncer.data.remote.AppwriteClient
@@ -73,10 +74,7 @@ class CricbuzzNewsRepository : NewsRepository {
     }
 
     override suspend fun fetchArticleBody(url: String): List<String> = withContext(Dispatchers.IO) {
-        val doc = Jsoup.connect(url)
-            .userAgent(randomUserAgent())
-            .timeout(ARTICLE_TIMEOUT_MS)
-            .get()
+        val doc = ScrapeFetcher.get(url, randomUserAgent(), ARTICLE_TIMEOUT_MS)
 
         val bodyContainer = doc.selectFirst("div.flex.flex-col.gap-6.text-base")
             ?: doc.selectFirst("div[class*=flex][class*=flex-col][class*=gap-6][class*=text-base]")

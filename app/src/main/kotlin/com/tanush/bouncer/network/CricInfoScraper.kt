@@ -156,18 +156,27 @@ class CricInfoScraper {
         })
     }
 
-    private fun connect(url: String) = Jsoup.connect(url)
-        .userAgent(randomUserAgent())
-        .header("Referer", "https://www.espncricinfo.com/")
-        .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7")
-        .header("Accept-Language", "en-US,en;q=0.9")
-        .header("Cache-Control", "max-age=0")
-        .header("Sec-Fetch-Dest", "document")
-        .header("Sec-Fetch-Mode", "navigate")
-        .header("Sec-Fetch-Site", "none")
-        .header("Sec-Fetch-User", "?1")
-        .header("Upgrade-Insecure-Requests", "1")
-        .timeout(15000)
+    // Header set that gets Cricinfo to serve the full document rather than a bot page. Sent
+    // through the shared OkHttp client (see ScrapeFetcher) rather than Jsoup's own HTTP stack.
+    private val cricinfoTimeoutMs = 15_000
+
+    private val cricinfoHeaders = mapOf(
+        "Referer" to "https://www.espncricinfo.com/",
+        "Accept" to (
+            "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp," +
+                "image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7"
+            ),
+        "Accept-Language" to "en-US,en;q=0.9",
+        "Cache-Control" to "max-age=0",
+        "Sec-Fetch-Dest" to "document",
+        "Sec-Fetch-Mode" to "navigate",
+        "Sec-Fetch-Site" to "none",
+        "Sec-Fetch-User" to "?1",
+        "Upgrade-Insecure-Requests" to "1",
+    )
+
+    private fun fetch(url: String) =
+        ScrapeFetcher.get(url, randomUserAgent(), cricinfoTimeoutMs, cricinfoHeaders)
 
     fun mapMatchIds(cricbuzzId: String, cricinfoId: String) {
         matchIdMap["cricbuzz_$cricbuzzId"] = "cricinfo_$cricinfoId"
@@ -201,7 +210,7 @@ class CricInfoScraper {
         cachedAvailability(matchId)?.let { return@withContext it }
 
         try {
-            val doc = connect(url).get()
+            val doc = fetch(url)
             recordSuccess()
 
             val commentaryExists = detectCommentaryPresence(doc)
@@ -270,7 +279,7 @@ class CricInfoScraper {
         val commentaryUrl = if (matchUrl.contains("/commentary")) matchUrl else "$matchUrl/commentary"
 
         try {
-            val doc = connect(commentaryUrl).get()
+            val doc = fetch(commentaryUrl)
             recordSuccess()
 
             val fromJson = parseCommentaryFromNextData(doc, commentaryUrl)
@@ -398,7 +407,7 @@ class CricInfoScraper {
         val liveUrl = "https://www.espncricinfo.com/live-cricket-score"
 
         try {
-            val doc = connect(liveUrl).get()
+            val doc = fetch(liveUrl)
             recordSuccess() // Reset circuit breaker on successful fetch
 
             val teamNames = extractTeamNames(matchName)
@@ -526,7 +535,7 @@ class CricInfoScraper {
         )
 
         try {
-            val doc = connect(scorecardUrl).get()
+            val doc = fetch(scorecardUrl)
             recordSuccess()
             val flow = parseMatchFlow(doc)
             addBreadcrumb(
@@ -660,7 +669,7 @@ class CricInfoScraper {
         )
 
         try {
-            val doc = connect(previewUrl).get()
+            val doc = fetch(previewUrl)
             recordSuccess()
             parsePreMatchData(doc)
         } catch (e: Exception) {

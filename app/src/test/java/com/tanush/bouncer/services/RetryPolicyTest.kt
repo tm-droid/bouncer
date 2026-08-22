@@ -41,7 +41,8 @@ class RetryPolicyTest {
 
         assertEquals(3, callCount)
         assertEquals(listOf(1, 2), retryAttempts)
-        assertEquals(listOf(1000L, 2000L), delays)
+        // Equal jitter: each delay sits in [d/2, d) of the unjittered 1000/2000 schedule.
+        assertInEqualJitterRange(listOf(1000L, 2000L), delays)
     }
 
     @Test
@@ -55,7 +56,7 @@ class RetryPolicyTest {
             ) { throw IOException("fail") }
         } catch (_: IOException) {}
 
-        assertEquals(listOf(1000L, 2000L, 4000L), delays)
+        assertInEqualJitterRange(listOf(1000L, 2000L, 4000L), delays)
     }
 
     @Test
@@ -131,7 +132,7 @@ class RetryPolicyTest {
             p.withRetry(onRetry = { _, delayMs, _ -> delays.add(delayMs) }) { throw IOException("fail") }
         } catch (_: IOException) {}
 
-        assertEquals(listOf(1000L, 2000L, 4000L, 5000L, 5000L, 5000L, 5000L), delays)
+        assertInEqualJitterRange(listOf(1000L, 2000L, 4000L, 5000L, 5000L, 5000L, 5000L), delays)
     }
 
     @Test
@@ -142,7 +143,7 @@ class RetryPolicyTest {
             p.withRetry(onRetry = { _, delayMs, _ -> delays.add(delayMs) }) { throw IOException("fail") }
         } catch (_: IOException) {}
 
-        assertEquals(listOf(5000L), delays)
+        assertInEqualJitterRange(listOf(5000L), delays)
     }
 
     // ── default isRetryable ─────────────────────────────────────────────────
@@ -177,30 +178,51 @@ class RetryPolicyTest {
     @Test
     fun `backoff doubles then stops at the ceiling`() {
         val base = 1000L
-        val expectedFloors = listOf(1000L, 2000L, 4000L, 8000L, 8000L, 8000L, 8000L, 8000L)
-        expectedFloors.forEachIndexed { i, floor ->
-            // Jitter adds [0, base), so the value sits in [floor, floor + base).
+        val unjittered = listOf(1000L, 2000L, 4000L, 8000L, 8000L, 8000L, 8000L, 8000L)
+        unjittered.forEachIndexed { i, d ->
+            // Equal jitter: the value sits in [d/2, d).
             val actual = backoffDelayMs(i + 1, baseMs = base, maxMs = 8000L)
             assertTrue(
-                "attempt ${i + 1} gave $actual, expected [$floor, ${floor + base})",
-                actual >= floor && actual < floor + base,
+                "attempt ${i + 1} gave $actual, expected [${d / 2}, $d)",
+                actual >= d / 2 && actual < d,
             )
         }
     }
 
     @Test
-    fun `backoff carries jitter within one base period`() {
+    fun `backoff spreads across half the delay, not one base period`() {
+        // This used to assert the opposite — that every sample landed within one *base* period of
+        // the delay. That is what made the jitter useless once the delay had grown: at a 30s
+        // delay with a 1s base it was a 3% spread, so a fleet that failed together still retried
+        // together. Equal jitter spreads over half the delay at every size.
         val base = 1000L
-        val samples = (1..200).map { backoffDelayMs(1, baseMs = base, maxMs = 30_000L) }
-        assertTrue("every sample is at least the capped delay", samples.all { it >= base })
-        assertTrue("no sample exceeds the delay plus one base period", samples.all { it < base * 2 })
-        // Unjittered backoff synchronises every device that failed at the same instant.
+        val delay = 16_000L
+        val samples = (1..400).map { backoffDelayMs(5, baseMs = base, maxMs = 30_000L) }
+
+        assertTrue("no sample is below half the delay", samples.all { it >= delay / 2 })
+        assertTrue("no sample reaches the unjittered delay", samples.all { it < delay })
         assertTrue("jitter must actually vary", samples.distinct().size > 1)
+        // The spread has to be a real fraction of the delay, not a rounding wobble.
+        assertTrue(
+            "spread was ${samples.max() - samples.min()}, expected most of ${delay / 2}",
+            samples.max() - samples.min() > delay / 4,
+        )
     }
 
     @Test
     fun `a first or zeroth attempt does not shift the exponent negative`() {
-        assertTrue(backoffDelayMs(0, baseMs = 1000L) in 1000L until 2000L)
-        assertTrue(backoffDelayMs(1, baseMs = 1000L) in 1000L until 2000L)
+        assertTrue(backoffDelayMs(0, baseMs = 1000L) in 500L until 1000L)
+        assertTrue(backoffDelayMs(1, baseMs = 1000L) in 500L until 1000L)
+    }
+
+    /** Asserts each observed delay is the equal-jitter window [d/2, d) of its unjittered value. */
+    private fun assertInEqualJitterRange(unjittered: List<Long>, observed: List<Long>) {
+        assertEquals("delay count", unjittered.size, observed.size)
+        unjittered.forEachIndexed { i, d ->
+            assertTrue(
+                "delay $i was ${observed[i]}, expected [${d / 2}, $d)",
+                observed[i] >= d / 2 && observed[i] < d,
+            )
+        }
     }
 }

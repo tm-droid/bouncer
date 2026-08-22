@@ -212,7 +212,7 @@ class CricBuzzScraper {
 
         for (attempt in 1..MAX_RETRIES) {
             try {
-                val doc = Jsoup.connect(url).userAgent(randomUserAgent()).timeout(LIST_TIMEOUT_MS).get()
+                val doc = ScrapeFetcher.get(url, randomUserAgent(), LIST_TIMEOUT_MS)
                 val matches = parseNextJsData(doc.html())
                 val filteredMatches = filterMatches(matches, matchState)
                 Log.d(TAG, "Found ${matches.size} total matches, filtered down to ${filteredMatches.size} for state: $matchState")
@@ -540,7 +540,7 @@ class CricBuzzScraper {
 
         for (attempt in 1..MAX_RETRIES) {
             try {
-                val doc = Jsoup.connect(url).userAgent(randomUserAgent()).timeout(DETAILS_TIMEOUT_MS).get()
+                val doc = ScrapeFetcher.get(url, randomUserAgent(), DETAILS_TIMEOUT_MS)
                 return@withContext buildMatchDetails(doc)
             } catch (e: UnknownHostException) {
                 // Offline is an expected state, not an error — but the host that could not be
@@ -626,7 +626,7 @@ class CricBuzzScraper {
             crumb("Fetching live commentary", data = mapOf("url" to matchUrl))
 
             try {
-                val doc = Jsoup.connect(matchUrl).userAgent(randomUserAgent()).timeout(COMMENTARY_TIMEOUT_MS).get()
+                val doc = ScrapeFetcher.get(matchUrl, randomUserAgent(), COMMENTARY_TIMEOUT_MS)
                 val html = doc.html()
 
                 val items = parseCommentaryItemsFromNextJs(html)
@@ -738,7 +738,7 @@ class CricBuzzScraper {
 
         val url = CricBuzzUrls.scorecardUrl(matchId)
         try {
-            val doc = Jsoup.connect(url).userAgent(randomUserAgent()).timeout(SCORECARD_TIMEOUT_MS).get()
+            val doc = ScrapeFetcher.get(url, randomUserAgent(), SCORECARD_TIMEOUT_MS)
             val inningsList = mutableListOf<Innings>()
 
             for (header in doc.select("div[id^=team-][id*=-innings-]")) {

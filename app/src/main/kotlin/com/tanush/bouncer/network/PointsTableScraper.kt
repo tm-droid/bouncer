@@ -40,10 +40,7 @@ class PointsTableScraper {
         for (attempt in 1..MAX_RETRIES) {
             try {
                 val url = "${CricBuzzUrls.BASE}/cricket-series/$seriesId/points-table"
-                val doc = Jsoup.connect(url)
-                    .userAgent(randomUserAgent())
-                    .timeout(10000)
-                    .get()
+                val doc = ScrapeFetcher.get(url, randomUserAgent(), 10_000)
 
                 val entries = mutableListOf<PointsTableEntry>()
 

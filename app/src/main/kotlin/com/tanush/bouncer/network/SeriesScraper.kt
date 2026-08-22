@@ -38,10 +38,7 @@ class SeriesScraper {
 
         for (attempt in 1..MAX_RETRIES) {
             try {
-                val doc = Jsoup.connect(SERIES_LIST_URL)
-                    .userAgent(randomUserAgent())
-                    .timeout(10000)
-                    .get()
+                val doc = ScrapeFetcher.get(SERIES_LIST_URL, randomUserAgent(), 10_000)
 
                 // Try Next.js __NEXT_DATA__ first
                 val nextDataSeries = parseFromNextJsData(doc.html())

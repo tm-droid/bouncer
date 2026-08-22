@@ -39,7 +39,18 @@ fun backoffDelayMs(
 ): Long {
     val doublings = (attempt - 1).coerceIn(0, MAX_DOUBLINGS)
     val capped = minOf(baseMs shl doublings, maxMs)
-    return capped + Random.nextLong(0, baseMs.coerceAtLeast(1L))
+    // Equal jitter: half the capped delay, plus a uniform draw over the other half.
+    //
+    // The previous form was `capped + random(0, baseMs)` — additive, and bounded by *baseMs* no
+    // matter how far the delay had grown. At attempt 6 that is 30s +/- 1s: a 3% spread, against
+    // the thundering herd this function's own KDoc says it exists to break up.
+    //
+    // Full jitter (a draw over the whole [0, capped]) spreads best but can return a near-zero
+    // delay, which for a scraper that is being rate-limited is the one outcome worth avoiding —
+    // and the existing tests deliberately pinned a floor for that reason. Equal jitter keeps a
+    // floor (half the exponential delay) and still gives a 50% spread instead of 3%.
+    val half = capped / 2
+    return half + Random.nextLong(0, (capped - half).coerceAtLeast(1L))
 }
 
 /**
@@ -74,8 +85,12 @@ suspend fun <T> RetryPolicy.withRetry(
             lastThrowable = e
             if (!isRetryable(e)) throw e
             if (attempt < maxAttempts - 1) {
-                onRetry(attempt + 1, currentDelay, e)
-                delay(currentDelay)
+                // Equal jitter, matching backoffDelayMs. This loop had no jitter at all, so the
+                // two retry paths in this one file disagreed about whether jitter mattered.
+                val half = currentDelay / 2
+                val jittered = half + Random.nextLong(0, (currentDelay - half).coerceAtLeast(1L))
+                onRetry(attempt + 1, jittered, e)
+                delay(jittered)
                 currentDelay = (currentDelay * multiplier).toLong().coerceAtMost(maxDelayMs)
             }
         }

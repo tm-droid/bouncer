@@ -28,7 +28,7 @@ import com.tanush.bouncer.data.local.entities.SeriesCacheEntity
         AICommentaryCacheEntity::class,
         HighlightEntity::class
     ],
-    version = 13,
+    version = 14,
     exportSchema = true
 )
 abstract class BouncerDatabase : RoomDatabase() {
@@ -204,8 +204,21 @@ abstract class BouncerDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Indexes `commentary.timestamp`.
+         *
+         * `DatabaseCleanupWorker` deletes by timestamp weekly and the column was unindexed, so that
+         * delete scanned the whole table. `IF NOT EXISTS` because Room creates the index itself on
+         * a fresh install at v14; this statement only matters on an upgrade.
+         */
+        internal val MIGRATION_13_14 = object : Migration(13, 14) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("CREATE INDEX IF NOT EXISTS idx_commentary_timestamp ON commentary(timestamp)")
+            }
+        }
+
         // Add new migrations here; Room will apply them in order on upgrade.
-        private val MIGRATIONS = arrayOf<Migration>(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13)
+        private val MIGRATIONS = arrayOf<Migration>(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14)
 
         fun getInstance(context: Context): BouncerDatabase {
             return INSTANCE ?: synchronized(this) {

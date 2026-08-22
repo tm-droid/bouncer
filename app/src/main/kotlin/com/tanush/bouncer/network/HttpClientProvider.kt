@@ -1,6 +1,7 @@
 package com.tanush.bouncer.network
 
 import android.util.Log
+import com.tanush.bouncer.BuildConfig
 import io.sentry.Breadcrumb
 import io.sentry.Sentry
 import io.sentry.SentryLogLevel
@@ -30,8 +31,10 @@ object HttpClientProvider {
         this.cacheDir = cacheDir
     }
 
+    // Release builds log nothing. This was added unconditionally, so every request URL the app
+    // made was printed to logcat on a shipped device.
     private val loggingInterceptor = HttpLoggingInterceptor().apply {
-        level = HttpLoggingInterceptor.Level.BASIC
+        level = if (BuildConfig.DEBUG) HttpLoggingInterceptor.Level.BASIC else HttpLoggingInterceptor.Level.NONE
     }
 
     /**
@@ -180,6 +183,10 @@ object HttpClientProvider {
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(20, TimeUnit.SECONDS)
             .writeTimeout(20, TimeUnit.SECONDS)
+            // The only timeout that bounds a whole call. Without it, connect/read/write reset per
+            // hop, and `retryOnConnectionFailure` plus redirects leave total wall-clock unbounded —
+            // which on a 6s poll loop means requests can outlive the interval that scheduled them.
+            .callTimeout(45, TimeUnit.SECONDS)
             .retryOnConnectionFailure(true)
             .apply {
                 cacheDir?.let { dir ->

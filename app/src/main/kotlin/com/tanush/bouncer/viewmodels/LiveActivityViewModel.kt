@@ -1,5 +1,6 @@
 package com.tanush.bouncer.viewmodels
 
+import com.tanush.bouncer.services.backoffDelayMs
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -442,9 +443,22 @@ class LiveActivityViewModel(
     }
 
     private suspend fun awaitNextPollTick(status: String) {
+        val base = getPollingInterval(status)
         val failures = consecutiveFailures[status] ?: 0
-        // Adaptive backoff: up to 5x base interval after repeated failures.
-        val interval = getPollingInterval(status) * (1 + failures.coerceAtMost(MAX_BACKOFF_MULTIPLIER))
+        // On the happy path this is the plain poll interval. After a failure it becomes the shared
+        // jittered exponential backoff, which is the third of three retry schemes this codebase
+        // had: the one here was *linear*, capped at 5x, and completely unjittered — so every
+        // device that failed on the same upstream blip retried in lockstep, which is the load
+        // pattern most likely to keep it failing.
+        val interval = if (failures == 0) {
+            base
+        } else {
+            backoffDelayMs(
+                attempt = failures,
+                baseMs = base,
+                maxMs = base * (MAX_BACKOFF_MULTIPLIER + 1),
+            ).coerceAtLeast(base)
+        }
         Log.d(TAG, "Waiting $interval ms before next update for $status (failures: $failures)")
         delay(interval)
     }

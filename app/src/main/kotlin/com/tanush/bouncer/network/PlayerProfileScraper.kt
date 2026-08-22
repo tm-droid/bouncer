@@ -189,10 +189,7 @@ object PlayerProfileScraper {
                 ?: return ScrapeOutcome.NotFound
 
             val profileUrl = buildProfileUrl(bestMatch)
-            val doc = Jsoup.connect(profileUrl)
-                .userAgent(randomUserAgent())
-                .timeout(PROFILE_TIMEOUT_MS)
-                .get()
+            val doc = ScrapeFetcher.get(profileUrl, randomUserAgent(), PROFILE_TIMEOUT_MS)
 
             val html = doc.html()
             // RSC first: Cricbuzz serves profiles from the App Router now, and the two parsers
