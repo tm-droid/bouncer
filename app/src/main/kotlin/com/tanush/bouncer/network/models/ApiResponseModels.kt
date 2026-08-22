@@ -1,31 +1,37 @@
 package com.tanush.bouncer.network.models
 
-import com.google.gson.annotations.SerializedName
+import kotlinx.serialization.Serializable
 
+@Serializable
 data class ApiResponse(
     val status: String,
     val response: List<SeriesData>
 )
 
+@Serializable
 data class UpcomingSchedulesApiResponse(
     val status: String,
     val response: UpcomingResponseData
 )
 
+@Serializable
 data class UpcomingSeriesApiResponse(
     val status: String,
     val response: List<SeriesData>
 )
 
+@Serializable
 data class UpcomingResponseData(
     val schedules: List<ScheduleData>
 )
 
+@Serializable
 data class ScheduleData(
     val date: String,
     val matchList: List<SeriesMatchData>
 )
 
+@Serializable
 data class SeriesMatchData(
     val date: String,
     val seriesName: String,
@@ -38,6 +44,7 @@ data class SeriesMatchData(
     val startDate: String
 )
 
+@Serializable
 data class MatchDetails(
     val date: String,
     val seriesName: String,
@@ -50,11 +57,13 @@ data class MatchDetails(
     val startDate: String
 )
 
+@Serializable
 data class SeriesData(
     val seriesName: String,
     val matchList: List<MatchData>
 )
 
+@Serializable
 data class MatchData(
     val seriesId: String?,
     val matchId: String,
@@ -70,12 +79,14 @@ data class MatchData(
     val teamTwo: TeamData?
 )
 
+@Serializable
 data class TeamData(
     val name: String,
     val score: String?,
     val status: String?
 )
 
+@Serializable
 data class SanwebMatchResponse(
     val title: String,
     val update: String,
@@ -101,11 +112,13 @@ data class SanwebMatchResponse(
     val bowlertwoeconomy: String
 )
 
+@Serializable
 data class SanwebMatchesListResponse(
     val matches: List<SanwebMatchSummary>,
     val count: Int
 )
 
+@Serializable
 data class SanwebMatchSummary(
     val id: String,
     val title: String,

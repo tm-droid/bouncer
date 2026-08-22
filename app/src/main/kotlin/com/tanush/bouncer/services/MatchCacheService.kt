@@ -1,9 +1,8 @@
 package com.tanush.bouncer.services
 
+import com.tanush.bouncer.data.AppJson
 import android.content.Context
 import android.util.Log
-import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
 import com.tanush.bouncer.data.cache.MemoryFifoCache
 import com.tanush.bouncer.models.CricketMatch
 import io.sentry.Breadcrumb
@@ -34,7 +33,6 @@ object MatchCacheService {
         maxSize = 16,
         ttlResolver = { status -> getCacheExpirationInterval(status) },
     )
-    private val gson = Gson()
     private var diskPrefs: android.content.SharedPreferences? = null
 
     /**
@@ -197,7 +195,7 @@ object MatchCacheService {
     private fun saveToDisk(status: String, matches: List<CricketMatch>) {
         try {
             val prefs = diskPrefs ?: return
-            val json = gson.toJson(matches)
+            val json = AppJson.encodeToString(matches)
             prefs.edit()
                 .putString("matches_$status", json)
                 .putLong("timestamp_$status", Date().time)
@@ -220,8 +218,7 @@ object MatchCacheService {
             }
             
             val json = prefs.getString("matches_$status", null) ?: return null
-            val type = object : TypeToken<List<CricketMatch>>() {}.type
-            val matches: List<CricketMatch> = gson.fromJson(json, type)
+            val matches: List<CricketMatch> = AppJson.decodeFromString(json)
             Log.d(TAG, "Loaded ${matches.size} matches from disk cache for $status")
             return matches
         } catch (e: Exception) {

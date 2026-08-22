@@ -1,7 +1,10 @@
 package com.tanush.bouncer.network
 
+import kotlinx.serialization.Serializable
+import okhttp3.MediaType.Companion.toMediaType
+import retrofit2.converter.kotlinx.serialization.asConverterFactory
+import com.tanush.bouncer.data.AppJson
 import retrofit2.Retrofit
-import retrofit2.converter.gson.GsonConverterFactory
 
 object RetrofitClient {
     private const val BASE_URL_VERCEL = "https://api-iota-jade.vercel.app/"
@@ -13,7 +16,10 @@ object RetrofitClient {
         return Retrofit.Builder()
             .baseUrl(baseUrl)
             .client(HttpClientProvider.sharedClient)
-            .addConverterFactory(GsonConverterFactory.create())
+            // kotlinx.serialization rather than Gson: Gson needed reflection over every DTO,
+            // which is what the blanket `-keep class com.tanush.bouncer.**` rule in
+            // proguard-rules.pro existed for — and that rule turned R8 into a no-op app-wide.
+            .addConverterFactory(AppJson.asConverterFactory("application/json".toMediaType()))
             .build()
     }
 
@@ -41,6 +47,7 @@ interface LocalApi {
 }
 
 // DTOs returned by the local/mock API
+@Serializable
 data class ProbabilityPointDto(
     val over: Float,
     val team1Probability: Float,
@@ -48,6 +55,7 @@ data class ProbabilityPointDto(
     val keyEvent: String? = null
 )
 
+@Serializable
 data class CommentaryDto(
     val latestCommentary: String
 )

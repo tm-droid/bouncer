@@ -1,9 +1,11 @@
 package com.tanush.bouncer.models
 
+import kotlinx.serialization.Serializable
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 
+@Serializable
 @Immutable
 data class ScrapedBowler(
     val name: String,
@@ -14,6 +16,7 @@ data class ScrapedBowler(
     val economy: String
 )
 
+@Serializable
 @Immutable
 data class ScrapedBatsman(
     val name: String,
@@ -27,6 +30,7 @@ data class ScrapedBatsman(
     val faceImageId: String? = null
 )
 
+@Serializable
 @Immutable
 data class DRSReviewData(
     val isSuccessful: Boolean,
@@ -35,6 +39,7 @@ data class DRSReviewData(
     val umpireName: String,
 )
 
+@Serializable
 @Immutable
 data class PowerPlayPhaseData(
     val phaseName: String,

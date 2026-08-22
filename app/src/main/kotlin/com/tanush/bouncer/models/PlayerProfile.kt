@@ -1,7 +1,9 @@
 package com.tanush.bouncer.models
 
+import kotlinx.serialization.Serializable
 import androidx.compose.runtime.Immutable
 
+@Serializable
 @Immutable
 data class RecentInnings(
     val runs: Int,
@@ -11,6 +13,7 @@ data class RecentInnings(
     val date: String = "",
 )
 
+@Serializable
 @Immutable
 data class PlayerProfile(
     val id: String,
@@ -27,6 +30,7 @@ data class PlayerProfile(
     val recentForm: List<RecentInnings> = emptyList(),
 )
 
+@Serializable
 @Immutable
 data class FormatStats(
     val matches: Int = 0,

@@ -1,7 +1,7 @@
 package com.tanush.bouncer.data.repository
 
-import com.google.gson.Gson
-import com.google.gson.JsonSyntaxException
+import com.tanush.bouncer.data.AppJson
+import kotlinx.serialization.SerializationException
 import com.tanush.bouncer.data.remote.AppwriteClient
 import com.tanush.bouncer.data.remote.FunctionOutcome
 import com.tanush.bouncer.models.CricbuzzNewsResponse
@@ -52,8 +52,8 @@ class CricbuzzNewsRepository : NewsRepository {
         }
 
         val response = try {
-            Gson().fromJson(body, CricbuzzNewsResponse::class.java)
-        } catch (e: JsonSyntaxException) {
+            AppJson.decodeFromString<CricbuzzNewsResponse>(body)
+        } catch (e: SerializationException) {
             // A 200 carrying something that is not the news shape is a source-format change, not a
             // transient outage, and it must not read as an empty news day.
             throw NewsUnavailableException(message = "News response could not be read.", cause = e)

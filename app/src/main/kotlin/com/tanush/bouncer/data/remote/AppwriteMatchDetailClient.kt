@@ -1,6 +1,6 @@
 package com.tanush.bouncer.data.remote
 
-import com.google.gson.Gson
+import com.tanush.bouncer.data.AppJson
 import com.tanush.bouncer.ApiKeys
 import com.tanush.bouncer.models.Scorecard
 import com.tanush.bouncer.models.ScrapedBatsman
@@ -14,7 +14,7 @@ import kotlinx.coroutines.withContext
 
 // Server-built live match snapshot (batsmen/bowler/score/scorecard), written by
 // bouncer-match-sync into match-live-detail as a JSON `payload`. Field names mirror the
-// function's output so Gson deserializes straight into the existing device models.
+// function's output so it deserializes straight into the existing device models.
 data class MatchLiveDetailPayload(
     val batsmen: List<ScrapedBatsman> = emptyList(),
     val bowler: ScrapedBowler? = null,
@@ -41,7 +41,6 @@ data class MatchLiveDetailPayload(
 
 object AppwriteMatchDetailClient : AppwriteTableClient("AppwriteMatchDetail") {
     private const val TABLE_ID = "match-live-detail"
-    private val gson = Gson()
 
     fun initialize() {
         initTable(ApiKeys.appwriteAiCacheDbId, TABLE_ID)
@@ -106,7 +105,7 @@ object AppwriteMatchDetailClient : AppwriteTableClient("AppwriteMatchDetail") {
     }
 
     private fun parsePayload(raw: String): MatchLiveDetailPayload? =
-        runCatching { gson.fromJson(raw, MatchLiveDetailPayload::class.java) }
+        runCatching { AppJson.decodeFromString<MatchLiveDetailPayload>(raw) }
             .onFailure { logSilentFailure("Live detail payload parse failed", it) }
             .getOrNull()
 }

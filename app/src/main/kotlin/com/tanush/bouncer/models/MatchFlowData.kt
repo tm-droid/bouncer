@@ -1,7 +1,9 @@
 package com.tanush.bouncer.models
 
+import kotlinx.serialization.Serializable
 import androidx.compose.runtime.Immutable
 
+@Serializable
 @Immutable
 data class MatchFlowData(
     val drsReviews: List<DrsReviewEvent> = emptyList(),
@@ -12,6 +14,7 @@ data class MatchFlowData(
     val overMilestones: List<Pair<Int, Int>> = emptyList(),
 )
 
+@Serializable
 @Immutable
 data class DrsReviewEvent(
     val over: String,
@@ -23,6 +26,7 @@ data class DrsReviewEvent(
     val isUpheld: Boolean,
 )
 
+@Serializable
 @Immutable
 data class PowerplayEvent(
     val phase: Int,
@@ -31,6 +35,7 @@ data class PowerplayEvent(
     val wickets: Int,
 )
 
+@Serializable
 @Immutable
 data class ImpactSubEvent(
     val team: String,
@@ -39,6 +44,7 @@ data class ImpactSubEvent(
     val over: String,
 )
 
+@Serializable
 @Immutable
 data class PreMatchData(
     val pitchDescription: String,

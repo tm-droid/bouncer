@@ -1,8 +1,9 @@
 package com.tanush.bouncer.models
 
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
-import com.google.gson.annotations.SerializedName
 import com.tanush.bouncer.utils.sentryBreadcrumb
 import io.sentry.SentryLevel
 
@@ -14,6 +15,7 @@ sealed class MatchStatus {
     object Live : MatchStatus()
     object Completed : MatchStatus()
     object Upcoming : MatchStatus()
+    @Serializable
     data class Unknown(val raw: String) : MatchStatus()
 
     companion object {
@@ -36,6 +38,7 @@ sealed class MatchStatus {
     }
 }
 
+@Serializable
 @Stable
 data class CricketMatch(
     val id: String,
@@ -159,6 +162,7 @@ data class CricketMatch(
         }
     }
 
+    @Serializable
     @Immutable
     data class Team(
         val name: String,
@@ -170,11 +174,12 @@ data class CricketMatch(
         val overs: String = "0.0"
     )
 
+    @Serializable
     @Immutable
     data class MatchScore(
-        @SerializedName("inningsBreak") val currentInnings: String,
-        @SerializedName("batsmanScores") val batsmen: List<BatsmanScore>,
-        @SerializedName("bowlerScores") val bowlers: List<BowlerScore>,
+        @SerialName("inningsBreak") val currentInnings: String,
+        @SerialName("batsmanScores") val batsmen: List<BatsmanScore>,
+        @SerialName("bowlerScores") val bowlers: List<BowlerScore>,
         // Additional properties for live activity content state
         val overs: String?,
         val currentRunRate: String?,
@@ -183,6 +188,7 @@ data class CricketMatch(
         val recentBalls: String?
     )
 
+    @Serializable
     @Immutable
     data class BatsmanScore(
         val name: String,
@@ -193,6 +199,7 @@ data class CricketMatch(
         val strikeRate: Double
     )
 
+    @Serializable
     @Immutable
     data class BowlerScore(
         val name: String,

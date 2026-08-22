@@ -1,12 +1,15 @@
 package com.tanush.bouncer.models
 
+import kotlinx.serialization.Serializable
 import androidx.compose.runtime.Immutable
 
+@Serializable
 @Immutable
 data class Scorecard(
     val innings: List<Innings> = emptyList()
 )
 
+@Serializable
 @Immutable
 data class Innings(
     val teamName: String,
@@ -20,6 +23,7 @@ data class Innings(
     val total: String
 )
 
+@Serializable
 @Immutable
 data class BatsmanStats(
     val name: String,
@@ -32,6 +36,7 @@ data class BatsmanStats(
     val profileUrl: String = ""
 )
 
+@Serializable
 @Immutable
 data class BowlerStats(
     val name: String,
@@ -45,6 +50,7 @@ data class BowlerStats(
     val profileUrl: String = ""
 )
 
+@Serializable
 @Immutable
 data class FallOfWicket(
     val score: String,
@@ -53,6 +59,7 @@ data class FallOfWicket(
     val number: Int = 0
 )
 
+@Serializable
 @Immutable
 data class PartnershipStats(
     val player1: String,

@@ -1,8 +1,9 @@
 package com.tanush.bouncer.data.remote
 
+import com.tanush.bouncer.data.AppJson
 import android.os.SystemClock
-import com.google.gson.Gson
-import com.google.gson.annotations.SerializedName
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 import com.tanush.bouncer.utils.sentryBreadcrumb
 import io.sentry.SentryLevel
 import kotlinx.coroutines.sync.Mutex
@@ -32,8 +33,9 @@ object WinProbabilityStore {
     private const val TTL_MS = 60_000L
     private const val HTTP_MAX_AGE_SECONDS = 60
 
+    @Serializable
     private data class Entry(
-        @SerializedName("team1WinProbability") val team1WinProbability: Double? = null,
+        @SerialName("team1WinProbability") val team1WinProbability: Double? = null,
         // Tests only. A draw belongs to neither side, so unlike the win probability the server does
         // not re-orient it.
         val drawProbability: Double? = null,
@@ -55,13 +57,13 @@ object WinProbabilityStore {
         val isPrematch: Boolean = false,
     )
 
+    @Serializable
     private data class Payload(
         val version: Int = 0,
         val updatedAt: Long = 0,
         val matches: Map<String, Entry> = emptyMap(),
     )
 
-    private val gson = Gson()
     private val mutex = Mutex()
 
     @Volatile
@@ -118,7 +120,7 @@ object WinProbabilityStore {
         !force && hasData && SystemClock.elapsedRealtime() - fetchedAtUptimeMs < TTL_MS
 
     private fun parse(bytes: ByteArray): Payload? = runCatching {
-        gson.fromJson(String(bytes, Charsets.UTF_8), Payload::class.java)
+        AppJson.decodeFromString<Payload>(String(bytes, Charsets.UTF_8))
     }.getOrElse { e ->
         sentryBreadcrumb(
             category = "winprob",

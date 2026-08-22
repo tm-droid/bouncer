@@ -266,7 +266,12 @@ dependencies {
 
     // Networking
     implementation(libs.retrofit)
-    implementation(libs.retrofit.converter.gson)
+    implementation(libs.retrofit.converter.kotlinx)
+    // Gson used to arrive transitively through converter-gson. It is declared explicitly now
+    // because the scrapers still use its JSON *tree* API (JsonObject/JsonParser) to walk
+    // Cricbuzz's flight payloads. That usage is not reflective over app classes, so unlike the
+    // Gson binding it replaced, it needs no ProGuard keep rules.
+    implementation(libs.gson)
     implementation(libs.okhttp.logging)
     implementation(libs.coil.compose)
     implementation(libs.jsoup)

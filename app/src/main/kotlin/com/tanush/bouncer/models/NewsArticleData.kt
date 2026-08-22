@@ -1,69 +1,76 @@
 package com.tanush.bouncer.models
 
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 import androidx.compose.runtime.Immutable
-import com.google.gson.annotations.SerializedName
 
 /**
  * Data models for Cricbuzz News API responses.
  * Fetched from: https://cricbuzz-cricket.p.rapidapi.com/news/v1/index
  */
 
+@Serializable
 @Immutable
 data class CricbuzzNewsResponse(
     // Nullable + default: Gson leaves this null when the payload omits storyList (error/empty
     // response), and a non-null declaration would NPE on the first iteration. See NewsRepository.
-    @SerializedName("storyList") val storyList: List<StoryListItem>? = null,
-    @SerializedName("lastUpdatedTime") val lastUpdatedTime: String? = null,
+    @SerialName("storyList") val storyList: List<StoryListItem>? = null,
+    @SerialName("lastUpdatedTime") val lastUpdatedTime: String? = null,
 
     // Written by bouncer-news-sync when it could not reach RapidAPI and served its cache instead.
     // The flag and the age are separate on purpose: a cache whose `fetchedAt` the function could
     // not read is still served, but no age is claimed for it, so the UI must key "is this stale?"
     // off the flag and treat the age as optional detail. Absent on a live response.
-    @SerializedName("_bouncerStale") val isStale: Boolean = false,
-    @SerializedName("_bouncerCacheAgeMs") val cacheAgeMs: Long? = null
+    @SerialName("_bouncerStale") val isStale: Boolean = false,
+    @SerialName("_bouncerCacheAgeMs") val cacheAgeMs: Long? = null
 )
 
+@Serializable
 @Immutable
 data class StoryListItem(
-    @SerializedName("story") val story: CricbuzzStory? = null,
-    @SerializedName("ad") val ad: CricbuzzAd? = null
+    @SerialName("story") val story: CricbuzzStory? = null,
+    @SerialName("ad") val ad: CricbuzzAd? = null
 )
 
 // Every field is nullable with a default, for the same reason storyList is: Gson allocates through
 // Unsafe and leaves an absent field null regardless of what the Kotlin type says, so a non-null
 // declaration here buys a crash at the first dereference rather than a guarantee. `pubTime` is the
 // one that actually bit (see 638c0cc). fromCricbuzzStory supplies the fallbacks in one place.
+@Serializable
 @Immutable
 data class CricbuzzStory(
-    @SerializedName("id") val id: Long? = null,
-    @SerializedName("hline") val headline: String? = null,
-    @SerializedName("intro") val intro: String? = null,
-    @SerializedName("pubTime") val pubTime: String? = null,
-    @SerializedName("source") val source: String? = null,
-    @SerializedName("storyType") val storyType: String? = null,
-    @SerializedName("imageId") val imageId: Long? = null,
-    @SerializedName("seoHeadline") val seoHeadline: String? = null,
-    @SerializedName("context") val context: String? = null,
-    @SerializedName("coverImage") val coverImage: CricbuzzCoverImage? = null
+    @SerialName("id") val id: Long? = null,
+    @SerialName("hline") val headline: String? = null,
+    @SerialName("intro") val intro: String? = null,
+    @SerialName("pubTime") val pubTime: String? = null,
+    @SerialName("source") val source: String? = null,
+    @SerialName("storyType") val storyType: String? = null,
+    @SerialName("imageId") val imageId: Long? = null,
+    @SerialName("seoHeadline") val seoHeadline: String? = null,
+    @SerialName("context") val context: String? = null,
+    @SerialName("coverImage") val coverImage: CricbuzzCoverImage? = null
 )
 
+@Serializable
 @Immutable
 data class CricbuzzCoverImage(
-    @SerializedName("id") val id: String? = null,
-    @SerializedName("caption") val caption: String? = null,
-    @SerializedName("source") val source: String? = null
+    @SerialName("id") val id: String? = null,
+    @SerialName("caption") val caption: String? = null,
+    @SerialName("source") val source: String? = null
 )
 
+@Serializable
 @Immutable
 data class CricbuzzAd(
-    @SerializedName("name") val name: String? = null,
-    @SerializedName("layout") val layout: String? = null,
-    @SerializedName("position") val position: Int? = null
+    @SerialName("name") val name: String? = null,
+    @SerialName("layout") val layout: String? = null,
+    @SerialName("position") val position: Int? = null
 )
 
 /**
  * UI-friendly news article model converted from API response.
  */
+@Serializable
 data class NewsArticleData(      // intentionally unannotated: timeAgo uses System.currentTimeMillis()
     val id: Long,
     val headline: String,

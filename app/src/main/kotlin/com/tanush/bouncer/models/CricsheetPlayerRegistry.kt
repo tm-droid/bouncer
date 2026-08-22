@@ -1,5 +1,7 @@
 package com.tanush.bouncer.models
 
+import kotlinx.serialization.Serializable
+
 /**
  * Represents a player entry from Cricsheet's people.csv registry.
  *
@@ -8,6 +10,7 @@ package com.tanush.bouncer.models
  * The external keys (keyCricbuzz, keyCricinfo, etc.) enable linking to
  * third-party data sources like CricBuzz player profiles.
  */
+@Serializable
 data class CricsheetPerson(
     val identifier: String,       // Cricsheet unique ID (8-char hex UUID)
     val name: String,

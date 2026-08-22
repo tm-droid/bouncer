@@ -1,8 +1,8 @@
 package com.tanush.bouncer.data
 
+import com.tanush.bouncer.data.AppJson
 import android.content.Context
 import android.util.Log
-import com.google.gson.Gson
 import com.tanush.bouncer.data.local.BouncerDatabase
 import com.tanush.bouncer.data.local.entities.MatchEntity
 import com.tanush.bouncer.data.remote.AppwriteClient
@@ -87,7 +87,7 @@ object CricketRepository {
             val fetchedAt = json.getLong("fetchedAt")
             if (System.currentTimeMillis() - fetchedAt > CacheConfig.matchStorageMaxAgeMs(type)) return null
             val dataJson = json.getJSONObject("data").toString()
-            Gson().fromJson(dataJson, SanwebMatchesListResponse::class.java)
+            AppJson.decodeFromString<SanwebMatchesListResponse>(dataJson)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {

@@ -1,10 +1,12 @@
 package com.tanush.bouncer.models
 
+import kotlinx.serialization.Serializable
 import androidx.compose.runtime.Immutable
 
 /**
  * Represents a single team row in a tournament points table.
  */
+@Serializable
 @Immutable
 data class PointsTableEntry(
     val position: Int,

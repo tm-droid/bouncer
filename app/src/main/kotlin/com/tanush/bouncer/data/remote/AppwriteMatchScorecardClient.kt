@@ -1,6 +1,6 @@
 package com.tanush.bouncer.data.remote
 
-import com.google.gson.Gson
+import com.tanush.bouncer.data.AppJson
 import com.tanush.bouncer.ApiKeys
 import com.tanush.bouncer.models.Scorecard
 import io.appwrite.exceptions.AppwriteException
@@ -23,7 +23,6 @@ import kotlinx.coroutines.withContext
  */
 object AppwriteMatchScorecardClient : AppwriteTableClient("AppwriteMatchScorecard") {
     private const val TABLE_ID = "match-scorecard"
-    private val gson = Gson()
 
     fun initialize() {
         initTable(ApiKeys.appwriteAiCacheDbId, TABLE_ID)
@@ -84,7 +83,7 @@ object AppwriteMatchScorecardClient : AppwriteTableClient("AppwriteMatchScorecar
     }
 
     private fun parseScorecard(raw: String): Scorecard? =
-        runCatching { gson.fromJson(raw, Scorecard::class.java) }
+        runCatching { AppJson.decodeFromString<Scorecard>(raw) }
             .onFailure { logSilentFailure("Scorecard parse failed", it) }
             .getOrNull()
 }

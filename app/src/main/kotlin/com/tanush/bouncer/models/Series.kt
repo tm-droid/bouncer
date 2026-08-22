@@ -1,7 +1,9 @@
 package com.tanush.bouncer.models
 
+import kotlinx.serialization.Serializable
 import androidx.compose.runtime.Immutable
 
+@Serializable
 @Immutable
 data class Series(
     val id: String,

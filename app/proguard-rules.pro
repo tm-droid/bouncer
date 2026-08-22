@@ -32,20 +32,15 @@
 -dontwarn retrofit2.KotlinExtensions$*
 
 # ── Gson ──────────────────────────────────────────────────────────────────────
+# Only the JSON *tree* API is still used (JsonObject/JsonParser, in the scrapers). That is not
+# reflective over app classes, so the model keeps that used to live here are gone:
+#   -keep class com.tanush.bouncer.models.** { *; }
+#   -keep class com.tanush.bouncer.network.*Dto { *; }
+# Serialization moved to kotlinx.serialization, whose serializers are generated at compile time
+# and need no reflection. Signature is still needed for generic type information at runtime.
 -keepattributes Signature
 -keepattributes *Annotation*
 -dontwarn sun.misc.**
--keep class com.google.gson.** { *; }
--keep class * extends com.google.gson.TypeAdapter
--keep class * implements com.google.gson.TypeAdapterFactory
--keep class * implements com.google.gson.JsonSerializer
--keep class * implements com.google.gson.JsonDeserializer
-
-# Keep model classes used with Gson (prevent obfuscation)
--keep class com.tanush.bouncer.models.** { *; }
--keep class com.tanush.bouncer.network.*Dto { *; }
--keep class com.tanush.bouncer.network.CommentaryDto { *; }
--keep class com.tanush.bouncer.network.ProbabilityPointDto { *; }
 
 # ── Jsoup ─────────────────────────────────────────────────────────────────────
 -keep class org.jsoup.** { *; }
@@ -77,7 +72,12 @@
 }
 
 # ── General ───────────────────────────────────────────────────────────────────
--keep class com.tanush.bouncer.** { *; }
--keepclassmembers class * {
-    @com.google.gson.annotations.SerializedName <fields>;
-}
+# `-keep class com.tanush.bouncer.** { *; }` used to sit here. It kept every class, field and
+# method in the application package, so `isMinifyEnabled = true` and proguard-android-optimize.txt
+# were both cosmetic: nothing of ours was shrunk, obfuscated or inlined, across 400 Kotlin files.
+# It existed for reflective Gson, which is gone. Do not reintroduce it — reach for a targeted keep,
+# or @Keep on the specific type.
+#
+# Reflection roots that DO still need keeping are declared where they belong: manifest-registered
+# components and WorkManager workers are kept by AGP's own rules, and kotlinx.serialization ships
+# its own consumer rules.

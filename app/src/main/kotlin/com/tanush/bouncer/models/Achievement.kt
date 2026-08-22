@@ -1,5 +1,6 @@
 package com.tanush.bouncer.models
 
+import kotlinx.serialization.Serializable
 import android.content.Context
 import androidx.compose.runtime.Stable
 import io.sentry.Sentry
@@ -66,6 +67,7 @@ enum class AchievementKind(val id: String) {
     }
 }
 
+@Serializable
 @Stable
 data class Achievement(
     val id: AchievementKind,
