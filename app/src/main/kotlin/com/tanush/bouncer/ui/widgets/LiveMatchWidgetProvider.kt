@@ -13,6 +13,7 @@ import android.graphics.Paint
 import android.graphics.RectF
 import android.graphics.Shader
 import android.os.Build
+import android.util.Log
 import android.view.View
 import android.widget.RemoteViews
 import com.tanush.bouncer.R
@@ -39,6 +40,7 @@ import io.sentry.Sentry
 class LiveMatchWidgetProvider : AppWidgetProvider() {
 
     companion object {
+        private const val TAG = "LiveMatchWidget"
         private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
         const val ACTION_REFRESH = "com.tanush.bouncer.widget.REFRESH"
         const val ACTION_NEXT_MATCH = "com.tanush.bouncer.widget.NEXT_MATCH"
@@ -251,6 +253,9 @@ class LiveMatchWidgetProvider : AppWidgetProvider() {
                             setViewVisibility(R.id.recent_balls_container, View.GONE)
                         }
                     } catch (e: Exception) {
+                        // Hiding the strip is the right fallback, but a widget that silently stops
+                        // showing recent balls is indistinguishable from a match with none.
+                        Log.w(TAG, "Recent-balls strip failed to render", e)
                         setViewVisibility(R.id.recent_balls_container, View.GONE)
                     }
                 } else {
@@ -264,7 +269,9 @@ class LiveMatchWidgetProvider : AppWidgetProvider() {
                 }
                 views.setImageViewBitmap(R.id.win_probability_bar, progressBitmap)
             } catch (e: Exception) {
-                // Fallback if bitmap creation fails
+                // The widget still renders without the win-probability bar; the failure is logged
+                // rather than discarded so a bitmap regression is visible.
+                Log.w(TAG, "Win-probability bitmap failed", e)
             }
 
             appWidgetManager.updateAppWidget(appWidgetId, views)

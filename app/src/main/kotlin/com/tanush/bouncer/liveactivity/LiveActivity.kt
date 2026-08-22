@@ -2,6 +2,7 @@ package com.tanush.bouncer.liveactivity
 
 import androidx.annotation.StringRes
 import com.tanush.bouncer.R
+import java.util.Locale
 
 sealed class LiveMatchUpdate {
     data class ScoreUpdate(
@@ -125,4 +126,5 @@ data class QueuedUpdate(
     val enqueueTimeMs: Long
 )
 
-fun Float.asRate(): String = String.format("%.2f", this)
+/** Cricket rates are dot-decimal by convention; Locale.US keeps that on a comma-decimal device. */
+fun Float.asRate(): String = String.format(Locale.US, "%.2f", this)

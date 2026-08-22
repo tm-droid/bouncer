@@ -277,7 +277,7 @@ class LiveNotificationManager(private val context: Context) {
             breadcrumb(
                 "Missing notification permission",
                 level = SentryLevel.WARNING,
-                data = breadcrumbData.toMap()
+                data = breadcrumbData.toMap() + ("cause" to e.message.orEmpty())
             )
         }
     }

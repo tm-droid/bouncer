@@ -1,11 +1,14 @@
 package com.tanush.bouncer.utils
 
+import android.util.Log
 import androidx.compose.ui.graphics.Color
 import com.tanush.bouncer.ui.theme.*
 import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.models.MatchStatusClassifier
 import com.tanush.bouncer.models.StatusSignal
 import io.sentry.Sentry
+
+private const val TAG = "MatchUtils"
 
 private val RAIN_RE = """\brain\b""".toRegex()
 private val TEA_RE = """\btea\b""".toRegex()
@@ -204,6 +207,10 @@ fun parseScore(score: String?): ScoreInfo {
 
             ScoreInfo(parsed.first, parsed.second, overs, score, true)
         } catch (e: Exception) {
+            // An unparseable score is a normal outcome for an upcoming or abandoned match, so this
+            // degrades rather than throws — but the reason is kept, because a parser that has
+            // started failing on live scores looks identical to one that has not from here.
+            Log.d(TAG, "Could not parse score \"$score\": ${e.message}")
             ScoreInfo(0, 0, "", score, false)
         }
     } catch (e: Exception) {

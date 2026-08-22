@@ -14,6 +14,7 @@ import io.sentry.Sentry
 import io.sentry.SentryLevel
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
+import java.util.Locale
 
 private const val PARSER_TAG = "CricBuzzParser"
 
@@ -210,7 +211,10 @@ internal fun parseScorecardBatsmen(content: Element): List<BatsmanStats> {
 private fun bowlerEconomy(overs: String?, runs: String?): String? {
     val balls = CricketConstants.ballsFromOvers(overs) ?: return null
     val conceded = runs?.toIntOrNull() ?: return null
-    return MatchProjections.currentRunRate(conceded, balls)?.let { String.format("%.2f", it) }
+    // Locale.US is load-bearing here rather than cosmetic: this is scraped data being
+    // re-serialised, and a comma-decimal locale would produce "4,25", which the callers'
+    // toDoubleOrNull cannot read back.
+    return MatchProjections.currentRunRate(conceded, balls)?.let { String.format(Locale.US, "%.2f", it) }
 }
 
 internal fun parseScorecardBowlers(content: Element): List<BowlerStats> {

@@ -47,23 +47,73 @@ complexity:
     active: false
 
 coroutines:
-  active: false
+  active: true
 
 empty-blocks:
-  active: false
+  active: true
 
+# Kept for the rules that catch a swallowed failure. The generic-catch rules are OFF on purpose:
+# `catch (e: Exception) { Sentry.captureException(e); ... }` is this codebase's deliberate house
+# style at ~262 sites, and flagging all of them would say nothing.
 exceptions:
-  active: false
+  active: true
+  TooGenericExceptionCaught:
+    active: false
+  InstanceOfCheckForException:
+    active: false
+  SwallowedException:
+    active: true
+  PrintStackTrace:
+    active: true
+  RethrowCaughtException:
+    active: true
+  ExceptionRaisedInUnexpectedLocation:
+    active: true
+  TooGenericExceptionThrown:
+    active: true
 
 
 naming:
-  active: false
+  active: true
+  FunctionNaming:
+    # Composables are PascalCase by convention; without this every one of ~800 is a finding.
+    ignoreAnnotated: ['Composable']
+  MatchingDeclarationName:
+    # Several composables per file is the norm here.
+    active: false
 
 performance:
-  active: false
+  active: true
+  SpreadOperator:
+    active: false
 
 potential-bugs:
-  active: false
+  active: true
 
+# Enabled for the dead-code and correctness rules. The purely typographic ones are off: this is a
+# Compose codebase, where MagicNumber flags every dp value (2352 of them) and WildcardImport flags
+# an import style used consistently throughout.
 style:
-  active: false
+  active: true
+  MagicNumber:
+    active: false
+  WildcardImport:
+    active: false
+  MaxLineLength:
+    active: true
+    maxLineLength: 140
+  ReturnCount:
+    # Guard clauses are used everywhere; a return-count cap fights the house style.
+    active: false
+  ForbiddenComment:
+    active: false
+  DestructuringDeclarationWithTooManyEntries:
+    active: false
+  LoopWithTooManyJumpStatements:
+    active: false
+  UnusedParameter:
+    active: true
+  UnusedPrivateProperty:
+    active: true
+  UnusedPrivateMember:
+    active: true

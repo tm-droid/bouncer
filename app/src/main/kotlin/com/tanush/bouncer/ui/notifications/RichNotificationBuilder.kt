@@ -27,6 +27,7 @@ import com.tanush.bouncer.R
 import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.utils.NotificationPermission
 import io.sentry.Sentry
+import java.util.Locale
 
 internal fun matchPendingIntent(context: Context, matchId: String): PendingIntent {
     try {
@@ -279,9 +280,12 @@ object RichNotificationBuilder {
         val team1 = match.teams.getOrNull(0)
         val team2 = match.teams.getOrNull(1)
 
-        var contentText = "Overs: ${String.format("%.1f", currentOvers)}/${"%.0f".format(totalOvers)}"
+        // Locale.US throughout: cricket figures are dot-decimal by convention, so a device in a
+        // comma-decimal locale should still read "12.3 overs", not "12,3".
+        var contentText =
+            "Overs: ${String.format(Locale.US, "%.1f", currentOvers)}/${String.format(Locale.US, "%.0f", totalOvers)}"
         runsRequired?.let { contentText += " • Need $it runs" }
-        runRate?.let { contentText += " @ ${String.format("%.2f", it)} RR" }
+        runRate?.let { contentText += " @ ${String.format(Locale.US, "%.2f", it)} RR" }
 
         val oversRemaining = totalOvers - currentOvers
         return baseBuilder(context, CricketNotificationChannel.CHANNEL_LIVE_SCORE)
@@ -297,7 +301,7 @@ object RichNotificationBuilder {
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setStyle(
                 NotificationCompat.BigTextStyle()
-                    .bigText("$contentText\n${String.format("%.1f", oversRemaining)} overs remaining")
+                    .bigText("$contentText\n${String.format(Locale.US, "%.1f", oversRemaining)} overs remaining")
             )
             .build()
     }

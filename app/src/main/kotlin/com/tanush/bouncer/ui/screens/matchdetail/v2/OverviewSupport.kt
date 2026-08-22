@@ -33,6 +33,7 @@ import com.tanush.bouncer.ui.theme.Gold400
 import com.tanush.bouncer.ui.theme.StatusInfo
 import com.tanush.bouncer.ui.theme.StatusLive
 import com.tanush.bouncer.ui.theme.StatusSuccess
+import java.util.Locale
 
 // Shared, pure helpers + player cards for OverviewTabV2 sections.
 
@@ -46,7 +47,9 @@ internal fun computeEconomy(overs: String, runs: String, declared: String): Stri
     declared.takeIf { it.isNotBlank() } ?: run {
         val balls = CricketConstants.ballsFromOvers(overs) ?: return@run null
         val r = runs.toIntOrNull() ?: return@run null
-        MatchProjections.currentRunRate(r, balls)?.let { String.format("%.2f", it) }
+        // Locale.US: cricket rates are dot-decimal by convention, and a comma-decimal locale
+        // would render "8,33".
+        MatchProjections.currentRunRate(r, balls)?.let { String.format(Locale.US, "%.2f", it) }
     }
 
 internal fun momentumEventFor(overLabel: String, ball: String): MomentumEvent? = when (ball.uppercase()) {

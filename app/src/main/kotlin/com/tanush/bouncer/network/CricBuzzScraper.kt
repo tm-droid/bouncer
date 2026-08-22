@@ -543,8 +543,14 @@ class CricBuzzScraper {
                 val doc = Jsoup.connect(url).userAgent(randomUserAgent()).timeout(DETAILS_TIMEOUT_MS).get()
                 return@withContext buildMatchDetails(doc)
             } catch (e: UnknownHostException) {
-                Log.w(TAG, "No internet fetching match details for $matchId")
-                crumb("No internet fetching match details", SentryLevel.WARNING, mapOf("matchId" to matchId))
+                // Offline is an expected state, not an error — but the host that could not be
+                // resolved is the useful half, so it goes into the breadcrumb rather than nowhere.
+                Log.w(TAG, "No internet fetching match details for $matchId", e)
+                crumb(
+                    "No internet fetching match details",
+                    SentryLevel.WARNING,
+                    mapOf("matchId" to matchId, "cause" to e.message.orEmpty()),
+                )
                 return@withContext emptyMatchDetails()
             } catch (e: HttpStatusException) {
                 val classified = classifyHttpException(e)
@@ -637,8 +643,12 @@ class CricBuzzScraper {
                 crumb("Successfully fetched commentary", data = mapOf("linesCount" to lines.size))
                 lines.map { ScrapedCommentaryItem(timestamp = 0L, text = it, ballMetric = null) }
             } catch (e: UnknownHostException) {
-                Log.w(TAG, "No internet fetching commentary: $matchUrl")
-                crumb("No internet fetching commentary", SentryLevel.WARNING, mapOf("url" to matchUrl))
+                Log.w(TAG, "No internet fetching commentary: $matchUrl", e)
+                crumb(
+                    "No internet fetching commentary",
+                    SentryLevel.WARNING,
+                    mapOf("url" to matchUrl, "cause" to e.message.orEmpty()),
+                )
                 emptyList()
             } catch (e: Exception) {
                 Log.e(TAG, "Error fetching Cricbuzz commentary", e)

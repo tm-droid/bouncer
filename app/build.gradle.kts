@@ -8,7 +8,7 @@ plugins {
     alias(libs.plugins.ksp)
     alias(libs.plugins.sentry)
     alias(libs.plugins.google.services)
-    id("io.gitlab.arturbosch.detekt") version "1.23.6"
+    alias(libs.plugins.detekt)
 }
 
 detekt {
@@ -17,7 +17,7 @@ detekt {
     baseline = file("$projectDir/config/detekt-baseline.xml")
 }
 
-// detekt 1.23.6 cannot accept the JDK 25 default jvm-target; pin to the project's JVM level.
+// detekt 1.23.x cannot accept the JDK 25 default jvm-target; pin to the project's JVM level.
 tasks.withType<io.gitlab.arturbosch.detekt.Detekt>().configureEach { jvmTarget = "17" }
 tasks.withType<io.gitlab.arturbosch.detekt.DetektCreateBaselineTask>().configureEach { jvmTarget = "17" }
 
@@ -142,6 +142,13 @@ buildConfigField("String", "APPWRITE_AI_CACHE_DB_ID", "\"${localProperties.getPr
         baseline = file("lint-baseline.xml")
         // checkDependencies stays off: lint already takes ~14 minutes on this module, and library
         // lint would not be actionable here anyway.
+        //
+        // The "a newer version exists" checks are disabled rather than baselined. With
+        // warningsAsErrors on they turn every upstream release into a red build here and in CI,
+        // for a condition that is not a defect in this code and cannot be fixed by editing it.
+        // Dependency currency is tracked by Dependabot, which is the tool that can actually open
+        // the change.
+        disable += setOf("NewerVersionAvailable", "GradleDependency", "AndroidGradlePluginVersion")
     }
 
     testOptions {
