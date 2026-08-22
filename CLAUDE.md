@@ -55,7 +55,7 @@ cp local.properties.template local.properties  # Fill in secret keys (RAPIDAPI_K
 
 ## Architecture
 
-**Single kotlin source tree.** `app/src/main/kotlin/` (~325 files) is the only main source tree — the former `app/src/main/java/` was merged into it in June 2026. `BouncerActivity`, `LiveActivityService`, `ui/components/glass/`, and `ui/components/premium/` all live in the kotlin tree. (`app/src/androidTest/java` and `app/src/test/java` remain for test code only.)
+**Single kotlin source tree.** `app/src/main/kotlin/` (~302 files) is the only main source tree — the former `app/src/main/java/` was merged into it in June 2026. `BouncerActivity`, `LiveActivityService`, `ui/components/glass/`, and `ui/components/premium/` all live in the kotlin tree. (`app/src/androidTest/java` and `app/src/test/java` remain for test code only.)
 
 ```
 app/src/main/kotlin/com/tanush/bouncer/
