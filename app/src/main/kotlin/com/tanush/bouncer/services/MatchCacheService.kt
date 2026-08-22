@@ -54,10 +54,22 @@ object MatchCacheService {
     /**
      * Different cache expiration intervals for different match types
      */
+    /**
+     * Per-status TTL for the in-memory tier.
+     *
+     * The Live value is deliberately equal to `LiveActivityViewModel.LIVE_POLL_INTERVAL_MS`, which
+     * means `get("Live")` essentially never hits: by the time the poll loop asks again, the entry
+     * has just expired. That is the intended behaviour and not a dead tier — a 6-second-old score
+     * is not worth serving on a 6-second poll, and the redundant *transfer* is already prevented a
+     * layer up by [com.tanush.bouncer.data.MatchesResponseCache]. What this tier is actually for is
+     * the offline/stale path, which reads through `peek()` and ignores TTL entirely.
+     *
+     * If the poll interval changes, this changes with it: the two are one decision.
+     */
     private fun getCacheExpirationInterval(status: String): Long {
         try {
             return when (status) {
-                "Live" -> 6_000L // Live matches cache expires after 6 seconds
+                "Live" -> 6_000L // matches the Live poll interval; see the KDoc above
                 "Upcoming", "Recent" -> 60_000L // Upcoming and Recent matches cache expires after 60 seconds
                 else -> 30_000L // Default fallback
             }

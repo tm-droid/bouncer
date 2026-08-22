@@ -1,5 +1,6 @@
 package com.tanush.bouncer.ui.screens
 
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.FiniteAnimationSpec
 import androidx.compose.foundation.background
@@ -27,7 +28,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -62,9 +62,9 @@ fun SeriesListScreen(
     val typography = BouncerThemeV2.typography
     val spacing = BouncerThemeV2.spacing
 
-    val allSeries by viewModel.series.collectAsState()
-    val isLoading by viewModel.isLoading.collectAsState()
-    val hasError by viewModel.hasError.collectAsState()
+    val allSeries by viewModel.series.collectAsStateWithLifecycle()
+    val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
+    val hasError by viewModel.hasError.collectAsStateWithLifecycle()
     var selectedFilter by remember { mutableStateOf("All") }
 
     val filteredSeries = filterSeries(allSeries, selectedFilter)

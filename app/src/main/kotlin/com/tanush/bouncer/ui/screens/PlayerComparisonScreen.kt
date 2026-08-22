@@ -1,5 +1,6 @@
 package com.tanush.bouncer.ui.screens
 
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -38,7 +39,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -76,10 +76,10 @@ fun PlayerComparisonScreen(
     val formats = remember { listOf("Test", "ODI", "T20I", "IPL") }
     var selectedFormat by remember { mutableStateOf("Test") }
 
-    val player1 by viewModel.player1.collectAsState()
-    val player2 by viewModel.player2.collectAsState()
-    val loadingPlayer1 by viewModel.loadingPlayer1.collectAsState()
-    val loadingPlayer2 by viewModel.loadingPlayer2.collectAsState()
+    val player1 by viewModel.player1.collectAsStateWithLifecycle()
+    val player2 by viewModel.player2.collectAsStateWithLifecycle()
+    val loadingPlayer1 by viewModel.loadingPlayer1.collectAsStateWithLifecycle()
+    val loadingPlayer2 by viewModel.loadingPlayer2.collectAsStateWithLifecycle()
 
     // Which picker is active (0 = none, 1 = player1, 2 = player2)
     var activePickerSlot by remember { mutableStateOf(0) }

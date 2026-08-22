@@ -1,5 +1,6 @@
 package com.tanush.bouncer.ui.screens
 
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
@@ -13,7 +14,6 @@ import androidx.compose.material.icons.outlined.TableChart
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.tanush.bouncer.viewmodels.PointsTableViewModel
@@ -58,9 +58,9 @@ fun PointsTableScreen(
     val colors = BouncerThemeV2.colors
     val spacing = BouncerThemeV2.spacing
 
-    val entries by viewModel.entries.collectAsState()
-    val isLoading by viewModel.isLoading.collectAsState()
-    val error by viewModel.error.collectAsState()
+    val entries by viewModel.entries.collectAsStateWithLifecycle()
+    val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
+    val error by viewModel.error.collectAsStateWithLifecycle()
 
     LaunchedEffect(seriesId) { viewModel.load(seriesId) }
 
