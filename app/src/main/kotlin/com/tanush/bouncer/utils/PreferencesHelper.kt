@@ -1,12 +1,39 @@
 package com.tanush.bouncer.utils
 
 import android.content.Context
-import io.sentry.Breadcrumb
 import io.sentry.Sentry
-import io.sentry.SentryLevel
 
+/**
+ * Thin wrapper over one SharedPreferences file.
+ *
+ * Two things were wrong here and both showed up under load rather than in review:
+ *
+ * 1. Every read and write added a Sentry breadcrumb. Sentry's ring buffer holds ~100 entries, and
+ *    `SettingsScreenV2` alone performs nine reads while composing its first frame — so opening
+ *    Settings evicted most of the buffer, and whatever crashed next arrived with a timeline of
+ *    "Reading boolean preference" and nothing useful. This is the same argument
+ *    `.claude/rules/appwrite-patterns.md` already makes for not breadcrumbing per Appwrite
+ *    operation. Exceptions are still captured; the routine traffic is not.
+ * 2. Every call went through `context.getSharedPreferences(...)`. That is cheap after the first
+ *    call but not free, and it obscured that there is exactly one file here. It is resolved once
+ *    now, against the application context so a cached instance cannot pin an Activity.
+ *
+ * Still synchronous, and still SharedPreferences: `apply()` hands the write to a background thread
+ * but blocks on `Activity.onPause`, and the first read on a cold start touches disk on whatever
+ * thread asks. DataStore is the real fix for both and is a larger change than this file — it
+ * turns every accessor into a suspend function or a Flow, which reaches all 30 call sites.
+ */
 object PreferencesHelper {
     private const val PREFS = "bouncer_prefs"
+
+    @Volatile private var cached: android.content.SharedPreferences? = null
+
+    private fun prefs(context: Context): android.content.SharedPreferences =
+        cached ?: synchronized(this) {
+            cached ?: context.applicationContext
+                .getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .also { cached = it }
+        }
 
     const val KEY_LIVE_NOTIFICATIONS = "live_notifications"
     const val KEY_BOUNDARY_ALERTS = "boundary_alerts"
@@ -33,15 +60,7 @@ object PreferencesHelper {
 
     fun getBoolean(context: Context, key: String, default: Boolean): Boolean {
         try {
-            Sentry.addBreadcrumb(Breadcrumb().apply {
-                category = "util.preferences"
-                message = "Reading boolean preference"
-                level = SentryLevel.DEBUG
-                setData("key", key)
-            })
-            
-            val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            return prefs.getBoolean(key, default)
+            return prefs(context).getBoolean(key, default)
         } catch (e: Exception) {
             Sentry.captureException(e)
             throw e
@@ -50,16 +69,7 @@ object PreferencesHelper {
 
     fun setBoolean(context: Context, key: String, value: Boolean) {
         try {
-            Sentry.addBreadcrumb(Breadcrumb().apply {
-                category = "util.preferences"
-                message = "Setting boolean preference"
-                level = SentryLevel.DEBUG
-                setData("key", key)
-                setData("value", value)
-            })
-            
-            val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            prefs.edit().putBoolean(key, value).apply()
+            prefs(context).edit().putBoolean(key, value).apply()
         } catch (e: Exception) {
             Sentry.captureException(e)
             throw e
@@ -68,8 +78,7 @@ object PreferencesHelper {
 
     fun getInt(context: Context, key: String, default: Int): Int {
         try {
-            val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            return prefs.getInt(key, default)
+            return prefs(context).getInt(key, default)
         } catch (e: Exception) {
             Sentry.captureException(e)
             throw e
@@ -78,8 +87,7 @@ object PreferencesHelper {
 
     fun setInt(context: Context, key: String, value: Int) {
         try {
-            val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            prefs.edit().putInt(key, value).apply()
+            prefs(context).edit().putInt(key, value).apply()
         } catch (e: Exception) {
             Sentry.captureException(e)
             throw e
@@ -89,8 +97,7 @@ object PreferencesHelper {
     // Follow helpers (simple per-stat follow flag stored under key)
     fun isFollowed(context: Context, statKey: String): Boolean {
         try {
-            val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            return prefs.getBoolean("follow_$statKey", false)
+            return prefs(context).getBoolean("follow_$statKey", false)
         } catch (e: Exception) {
             Sentry.captureException(e)
             throw e
@@ -99,8 +106,7 @@ object PreferencesHelper {
 
     fun setFollowed(context: Context, statKey: String, followed: Boolean) {
         try {
-            val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            prefs.edit().putBoolean("follow_$statKey", followed).apply()
+            prefs(context).edit().putBoolean("follow_$statKey", followed).apply()
         } catch (e: Exception) {
             Sentry.captureException(e)
             throw e
@@ -109,15 +115,7 @@ object PreferencesHelper {
     
     fun getString(context: Context, key: String, default: String): String {
         try {
-            Sentry.addBreadcrumb(Breadcrumb().apply {
-                category = "util.preferences"
-                message = "Reading string preference"
-                level = SentryLevel.DEBUG
-                setData("key", key)
-            })
-            
-            val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            return prefs.getString(key, default) ?: default
+            return prefs(context).getString(key, default) ?: default
         } catch (e: Exception) {
             Sentry.captureException(e)
             throw e
@@ -126,16 +124,7 @@ object PreferencesHelper {
 
     fun setString(context: Context, key: String, value: String) {
         try {
-            Sentry.addBreadcrumb(Breadcrumb().apply {
-                category = "util.preferences"
-                message = "Setting string preference"
-                level = SentryLevel.DEBUG
-                setData("key", key)
-                setData("value", value)
-            })
-            
-            val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            prefs.edit().putString(key, value).apply()
+            prefs(context).edit().putString(key, value).apply()
         } catch (e: Exception) {
             Sentry.captureException(e)
             throw e
