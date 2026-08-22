@@ -25,7 +25,6 @@ class DatabaseCleanupWorker(
             db.matchDao().deleteOlderThan(now - MATCH_RETENTION_MS)
             db.commentaryDao().deleteOlderThan(now - COMMENTARY_RETENTION_MS)
             db.playerCacheDao().deleteOlderThan(now - PLAYER_CACHE_RETENTION_MS)
-            db.historicalMatchCacheDao().deleteOlderThan(now - HISTORICAL_MATCH_RETENTION_MS)
             db.highlightDao().deleteOlderThan(now - HIGHLIGHTS_RETENTION_MS)
             db.seriesCacheDao().deleteOlderThan(now - SERIES_CACHE_RETENTION_MS)
             // ai_commentary_cache is bounded by row count, not age: completed-match rows carry a
@@ -43,7 +42,6 @@ class DatabaseCleanupWorker(
         private val MATCH_RETENTION_MS            = 7L  * 24 * 3_600_000
         private val COMMENTARY_RETENTION_MS       = 7L  * 24 * 3_600_000
         private val PLAYER_CACHE_RETENTION_MS     = 7L  * 24 * 3_600_000
-        private val HISTORICAL_MATCH_RETENTION_MS = 90L * 24 * 3_600_000
         private val HIGHLIGHTS_RETENTION_MS       = 14L * 24 * 3_600_000
         private val SERIES_CACHE_RETENTION_MS     = 30L * 24 * 3_600_000
 
@@ -53,7 +51,7 @@ class DatabaseCleanupWorker(
                 ExistingPeriodicWorkPolicy.KEEP,
                 PeriodicWorkRequestBuilder<DatabaseCleanupWorker>(7, TimeUnit.DAYS)
                     .setInitialDelay(1, TimeUnit.DAYS)
-                    // A seven-table delete sweep has no deadline; don't run it on a flat battery.
+                    // A multi-table delete sweep has no deadline; don't run it on a flat battery.
                     .setConstraints(
                         Constraints.Builder()
                             .setRequiresBatteryNotLow(true)

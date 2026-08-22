@@ -9,7 +9,21 @@ import com.tanush.bouncer.data.local.entities.SeriesCacheEntity
 
 @Dao
 interface SeriesCacheDao {
-    @Query("SELECT * FROM series_cache WHERE seriesId IN (SELECT seriesId FROM series_fts WHERE series_fts MATCH :query) LIMIT 5")
+    /**
+     * Substring search over series name and category. See [PlayerCacheDao.searchPlayers] for why
+     * the `series_fts MATCH` subquery this replaced could never return a row on a fresh install.
+     *
+     * LIKE also makes the acronym case work without tokenisation games: a caller expanding "IPL"
+     * to "Indian Premier League" matches, and so does a raw "premier".
+     */
+    @Query(
+        """
+        SELECT * FROM series_cache
+        WHERE name LIKE '%' || :query || '%'
+           OR category LIKE '%' || :query || '%'
+        LIMIT 5
+        """
+    )
     suspend fun searchSeries(query: String): List<SeriesCacheEntity>
 
     @Transaction

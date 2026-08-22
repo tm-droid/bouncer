@@ -26,6 +26,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.remember
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -57,6 +58,17 @@ fun IntelligenceFeedScreenV2(
     val colors = BouncerThemeV2.colors
     val typography = BouncerThemeV2.typography
     val spacing = BouncerThemeV2.spacing
+
+    // This screen is the only consumer of commentary-derived events, so it is the only thing that
+    // should make the app generate them. Held for as long as it is composed and released when it
+    // leaves; with no holder the poll loop generates nothing at all.
+    val focusedMatchId = match?.id
+    if (focusedMatchId != null && liveActivityViewModel != null) {
+        DisposableEffect(focusedMatchId, liveActivityViewModel) {
+            liveActivityViewModel.holdCommentary(focusedMatchId)
+            onDispose { liveActivityViewModel.releaseCommentary(focusedMatchId) }
+        }
+    }
 
     // Build alerts from ViewModel probability events
     val probabilityEvents by liveActivityViewModel?.probabilityEvents?.collectAsStateWithLifecycle()

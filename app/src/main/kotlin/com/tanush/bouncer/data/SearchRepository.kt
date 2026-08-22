@@ -1,6 +1,8 @@
 package com.tanush.bouncer.data
 
+import androidx.annotation.VisibleForTesting
 import com.tanush.bouncer.utils.acronymFor
+import com.tanush.bouncer.utils.competitionAliasesFor
 import android.content.Context
 import android.content.SharedPreferences
 import com.tanush.bouncer.models.CricketMatch
@@ -71,17 +73,6 @@ object SearchRepository {
             val endDate: String,
             override val relevanceScore: Double,
         ) : SearchResult()
-
-        data class HistoricalMatchResult(
-            val matchId: String,
-            val matchTitle: String,
-            val teams: List<String>,
-            val venue: String,
-            val date: String,
-            val season: String,
-            val matchType: String,
-            override val relevanceScore: Double,
-        ) : SearchResult()
     }
 
     data class SearchResults(
@@ -90,15 +81,14 @@ object SearchRepository {
         val players: List<SearchResult.PlayerResult> = emptyList(),
         val news: List<SearchResult.NewsResult> = emptyList(),
         val series: List<SearchResult.SeriesResult> = emptyList(),
-        val historicalMatches: List<SearchResult.HistoricalMatchResult> = emptyList(),
         val suggestion: String? = null,
     ) {
         val isEmpty: Boolean
             get() = matches.isEmpty() && teams.isEmpty() && players.isEmpty() && news.isEmpty()
-                        && series.isEmpty() && historicalMatches.isEmpty()
+                        && series.isEmpty()
 
         val totalCount: Int
-            get() = matches.size + teams.size + players.size + news.size + series.size + historicalMatches.size
+            get() = matches.size + teams.size + players.size + news.size + series.size
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -142,7 +132,14 @@ object SearchRepository {
         val q = query.trim().lowercase()
         if (q.length < 2) return@withContext SearchResults()
 
-        val matchResults = searchMatches(q, matches)
+        // A query that is itself the exact name of a known entity is not a typo, so nothing should
+        // be fuzzy-corrected towards. "india" is two edits from "indies", the same distance
+        // "kholi" is from "kohli" — distance alone cannot separate them, but "did the user type a
+        // real team name?" can. Without this, searching a country with no current fixtures filled
+        // the Matches section with every West Indies game.
+        val queryIsExactEntity = teamNames.any { it.lowercase() == q }
+
+        val matchResults = searchMatches(q, matches, allowFuzzy = !queryIsExactEntity)
         val teamResults = searchTeams(q, teamNames, matches)
         val playerResults = searchPlayers(q, matches)
         val newsResults = searchNews(q, news)
@@ -161,37 +158,43 @@ object SearchRepository {
         )
     }
 
-    suspend fun searchFromDb(
+    /**
+     * Cached series matching [query], widened by [competitionAliasesFor] so an acronym finds the
+     * full name the corpus actually stores ("IPL" → "Indian Premier League 2026").
+     *
+     * The alias terms are searched in order and the first non-empty result wins, so a query that
+     * matches literally is never displaced by its own expansion.
+     */
+    suspend fun searchSeriesFromDb(
         query: String,
         db: com.tanush.bouncer.data.local.BouncerDatabase,
-    ): AppResult<Pair<List<SearchResult.SeriesResult>, List<SearchResult.HistoricalMatchResult>>> {
-        if (query.trim().length < 2) return AppResult.Success(Pair(emptyList(), emptyList()))
-        val ftsQuery = buildFtsQuery(query)
+    ): AppResult<List<SearchResult.SeriesResult>> {
+        if (query.trim().length < 2) return AppResult.Success(emptyList())
         return AppResult.runCatchingSuspend {
             withContext(Dispatchers.IO) {
-                val seriesResults = db.seriesCacheDao().searchSeries(ftsQuery).map { entity ->
+                val (term, rows) = competitionAliasesFor(query)
+                    .firstNotNullOfOrNull { candidate ->
+                        db.seriesCacheDao().searchSeries(candidate)
+                            .takeIf { it.isNotEmpty() }
+                            ?.let { candidate to it }
+                    } ?: return@withContext emptyList()
+
+                // Score against the term that actually matched, not the raw query. "IPL" scores 0.0
+                // against "Indian Premier League 2026" at every tier, so scoring the raw query
+                // would rank the one result the alias table exists to find dead last.
+                val scoreAgainst = term.lowercase()
+                rows.map { entity ->
                     SearchResult.SeriesResult(
                         seriesId = entity.seriesId,
                         name = entity.name,
                         category = entity.category,
                         startDate = entity.startDate,
                         endDate = entity.endDate,
-                        relevanceScore = 1.0,
+                        // A flat 1.0 would put any LIKE hit — including a weak mid-string one —
+                        // level with an exact team name, and section order is decided by these now.
+                        relevanceScore = fuzzyMatchScore(scoreAgainst, entity.name.lowercase()),
                     )
                 }
-                val historicalResults = db.historicalMatchCacheDao().searchHistoricalMatches(ftsQuery).map { entity ->
-                    SearchResult.HistoricalMatchResult(
-                        matchId = entity.matchId,
-                        matchTitle = entity.matchTitle,
-                        teams = entity.teams.split(",").map { it.trim() }.filter { it.isNotEmpty() },
-                        venue = entity.venue,
-                        date = entity.date,
-                        season = entity.season,
-                        matchType = entity.matchType,
-                        relevanceScore = 1.0,
-                    )
-                }
-                Pair(seriesResults, historicalResults)
             }
         }
     }
@@ -200,28 +203,35 @@ object SearchRepository {
         query: String,
         db: com.tanush.bouncer.data.local.BouncerDatabase,
     ): AppResult<List<SearchResult.PlayerResult>> {
-        if (query.trim().length < 2) return AppResult.Success(emptyList())
-        val ftsQuery = buildFtsQuery(query)
+        val q = query.trim().lowercase()
+        if (q.length < 2) return AppResult.Success(emptyList())
         return AppResult.runCatchingSuspend {
             withContext(Dispatchers.IO) {
-                db.playerCacheDao().searchPlayers(ftsQuery).map { entity ->
+                db.playerCacheDao().searchPlayers(query.trim()).map { entity ->
                     SearchResult.PlayerResult(
                         playerName = entity.name,
                         teamName = entity.teamName,
                         role = entity.role,
-                        relevanceScore = 1.0,
+                        // Real score, not a flat 1.0: the caller uses it to decide whether a local
+                        // hit is confident enough to skip the billed network lookup, and a LIKE
+                        // match on a substring is not evidence of that.
+                        relevanceScore = fuzzyMatchScore(q, entity.name.lowercase()),
                     )
                 }
             }
         }
     }
 
-    private fun searchMatches(query: String, matches: List<CricketMatch>): List<SearchResult.MatchResult> {
+    private fun searchMatches(
+        query: String,
+        matches: List<CricketMatch>,
+        allowFuzzy: Boolean = true,
+    ): List<SearchResult.MatchResult> {
         return matches.mapNotNull { match ->
-            val titleScore = fuzzyMatchScore(query, match.matchTitle.lowercase())
-            val team1Score = match.teams.getOrNull(0)?.let { fuzzyMatchScore(query, it.name.lowercase()) } ?: 0.0
-            val team2Score = match.teams.getOrNull(1)?.let { fuzzyMatchScore(query, it.name.lowercase()) } ?: 0.0
-            val venueScore = fuzzyMatchScore(query, match.venue.lowercase()) * 0.5
+            val titleScore = fuzzyMatchScore(query, match.matchTitle.lowercase(), allowFuzzy)
+            val team1Score = match.teams.getOrNull(0)?.let { fuzzyMatchScore(query, it.name.lowercase(), allowFuzzy) } ?: 0.0
+            val team2Score = match.teams.getOrNull(1)?.let { fuzzyMatchScore(query, it.name.lowercase(), allowFuzzy) } ?: 0.0
+            val venueScore = fuzzyMatchScore(query, match.venue.lowercase(), allowFuzzy) * 0.5
             val statusScore = if (match.currentStatus.lowercase().contains(query)) 0.3 else 0.0
 
             val best = maxOf(titleScore, team1Score, team2Score, venueScore, statusScore)
@@ -248,9 +258,6 @@ object SearchRepository {
             } else null
         }
     }
-
-    private fun buildFtsQuery(query: String): String =
-        "${query.trim().replace("\"", "").trim()}*"
 
     private fun searchPlayers(query: String, matches: List<CricketMatch>): List<SearchResult.PlayerResult> {
         data class Candidate(val name: String, val team: String, val role: String)
@@ -299,8 +306,19 @@ object SearchRepository {
      * Previously `if (target.contains(query)) return 1.0` came first, so every substring hit tied at
      * exactly 1.0 and `sortedByDescending` degraded to arbitrary input order. It also made the
      * `startsWith` 0.95 tier below it unreachable — `startsWith` implies `contains`.
+     *
+     * [allowFuzzy] switches off the last tier only. The three exact tiers above it are always on;
+     * callers disable the fuzzy tier when the query is known to be a real entity name rather than
+     * something worth correcting.
      */
-    private fun fuzzyMatchScore(query: String, target: String): Double {
+    /**
+     * [fuzzyMatchScore] for tests. Exposed because the scoring is what section ordering and the
+     * acronym path both hinge on, and both bugs it guards were invisible from the public API.
+     */
+    @VisibleForTesting
+    internal fun relevanceOf(query: String, target: String): Double = fuzzyMatchScore(query, target)
+
+    private fun fuzzyMatchScore(query: String, target: String, allowFuzzy: Boolean = true): Double {
         if (query.isEmpty() || target.isEmpty()) return 0.0
         val coverage = (query.length.toDouble() / target.length).coerceIn(0.0, 1.0)
 
@@ -321,7 +339,7 @@ object SearchRepository {
             return SUBSTRING_MIN + (WORD_PREFIX_MIN - SUBSTRING_MIN) * coverage * position
         }
 
-        return fuzzyWordScore(query, words)
+        return if (allowFuzzy) fuzzyWordScore(query, words) else 0.0
     }
 
     /**

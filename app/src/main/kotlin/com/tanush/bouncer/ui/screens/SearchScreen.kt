@@ -219,17 +219,13 @@ private fun SearchScreenBody(
                 }
                 displayResults.isEmpty -> item(key = "no_results") { NoResultsMessage() }
                 else -> {
-                    searchResultsPrimary(
+                    searchResults(
                         displayResults = displayResults,
                         onMatchClick = { viewModel.onSearchSubmitted(query); onMatchClick(it) },
                         onTeamClick = { viewModel.onSearchSubmitted(query); onTeamClick(it) },
                         onPlayerClick = { viewModel.onSearchSubmitted(query); onPlayerClick(it) },
-                    )
-                    searchResultsSecondary(
-                        displayResults = displayResults,
                         onNewsClick = { viewModel.onSearchSubmitted(query); onNewsClick(it) },
                         onSeriesClick = { viewModel.onSearchSubmitted(query); onSeriesClick(it) },
-                        onHistoricalClick = { viewModel.onSearchSubmitted(query) },
                     )
                     item(key = "bottom") { Spacer(Modifier.height(80.dp)) }
                 }
@@ -247,20 +243,16 @@ private fun displayResultsFor(
         teams = emptyList(), players = emptyList(), news = emptyList(), series = emptyList()
     )
     SearchTab.PLAYERS -> results.copy(
-        matches = emptyList(), teams = emptyList(), news = emptyList(),
-        series = emptyList(), historicalMatches = emptyList()
+        matches = emptyList(), teams = emptyList(), news = emptyList(), series = emptyList()
     )
     SearchTab.TEAMS -> results.copy(
-        matches = emptyList(), players = emptyList(), news = emptyList(),
-        series = emptyList(), historicalMatches = emptyList()
+        matches = emptyList(), players = emptyList(), news = emptyList(), series = emptyList()
     )
     SearchTab.TOURNAMENTS -> results.copy(
-        matches = emptyList(), teams = emptyList(), players = emptyList(),
-        news = emptyList(), historicalMatches = emptyList()
+        matches = emptyList(), teams = emptyList(), players = emptyList(), news = emptyList()
     )
     SearchTab.NEWS -> results.copy(
-        matches = emptyList(), teams = emptyList(), players = emptyList(),
-        series = emptyList(), historicalMatches = emptyList()
+        matches = emptyList(), teams = emptyList(), players = emptyList(), series = emptyList()
     )
 }
 
@@ -378,46 +370,50 @@ private fun LazyListScope.searchSuggestions(
     }
 }
 
-private fun LazyListScope.searchResultsPrimary(
+/** A result section, paired with the relevance of its strongest member. */
+private class SearchSection(val score: Double, val emit: LazyListScope.() -> Unit)
+
+/**
+ * Emits the result sections ordered by their best member's relevance.
+ *
+ * This used to be a fixed Matches → Teams → Players → News → Tournaments precedence, with each
+ * bucket sorted only within itself. Scores were therefore never compared across types: searching
+ * "India" put an exact team hit (1.0) below whatever fuzzy match hits (0.39) happened to exist,
+ * which is invisible while the team has fixtures of its own and obviously wrong when it does not.
+ *
+ * `sortedByDescending` is stable, so ties keep the declaration order below — the old precedence
+ * survives exactly where relevance has nothing to say.
+ */
+private fun LazyListScope.searchResults(
     displayResults: SearchRepository.SearchResults,
     onMatchClick: (CricketMatch) -> Unit,
     onTeamClick: (String) -> Unit,
     onPlayerClick: (String) -> Unit,
+    onNewsClick: (NewsArticleData) -> Unit,
+    onSeriesClick: (String) -> Unit,
 ) {
-    if (displayResults.matches.isNotEmpty()) {
-        item(key = "matches_header") {
-            SectionHeaderV2(title = "Matches (${displayResults.matches.size})")
-        }
-        items(displayResults.matches, key = { "m_${it.match.id}" }) { result ->
+    listOfNotNull(
+        displayResults.matches.sectionOrNull("Matches", { "m_${it.match.id}" }) { result ->
             MatchCardV2(
                 match = result.match,
                 onClick = { onMatchClick(result.match) },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = BouncerThemeV2.spacing.lg, vertical = BouncerThemeV2.spacing.xs),
+                    .padding(
+                        horizontal = BouncerThemeV2.spacing.lg,
+                        vertical = BouncerThemeV2.spacing.xs,
+                    ),
             )
-        }
-    }
-
-    if (displayResults.teams.isNotEmpty()) {
-        item(key = "teams_header") {
-            SectionHeaderV2(title = "Teams (${displayResults.teams.size})")
-        }
-        items(displayResults.teams, key = { "t_${it.teamName}" }) { result ->
+        },
+        displayResults.teams.sectionOrNull("Teams", { "t_${it.teamName}" }) { result ->
             TeamSearchRow(
                 teamName = result.teamName,
                 acronym = result.teamAcronym,
                 logoUrl = result.logoUrl,
                 onClick = { onTeamClick(result.teamName) },
             )
-        }
-    }
-
-    if (displayResults.players.isNotEmpty()) {
-        item(key = "players_header") {
-            SectionHeaderV2(title = "Players (${displayResults.players.size})")
-        }
-        items(displayResults.players, key = { "p_${it.playerName}" }) { result ->
+        },
+        displayResults.players.sectionOrNull("Players", { "p_${it.playerName}" }) { result ->
             PlayerSearchRow(
                 playerName = result.playerName,
                 teamName = result.teamName,
@@ -425,34 +421,15 @@ private fun LazyListScope.searchResultsPrimary(
                 imageUrl = result.imageUrl,
                 onClick = { onPlayerClick(result.playerName) },
             )
-        }
-    }
-}
-
-private fun LazyListScope.searchResultsSecondary(
-    displayResults: SearchRepository.SearchResults,
-    onNewsClick: (NewsArticleData) -> Unit,
-    onSeriesClick: (String) -> Unit,
-    onHistoricalClick: () -> Unit,
-) {
-    if (displayResults.news.isNotEmpty()) {
-        item(key = "news_header") {
-            SectionHeaderV2(title = "News (${displayResults.news.size})")
-        }
-        items(displayResults.news, key = { "n_${it.article.id}" }) { result ->
+        },
+        displayResults.news.sectionOrNull("News", { "n_${it.article.id}" }) { result ->
             NewsSearchRow(
                 title = result.article.headline,
                 source = result.article.source,
                 onClick = { onNewsClick(result.article) },
             )
-        }
-    }
-
-    if (displayResults.series.isNotEmpty()) {
-        item(key = "series_header") {
-            SectionHeaderV2(title = "Tournaments (${displayResults.series.size})")
-        }
-        items(displayResults.series, key = { "s_${it.seriesId}" }) { result ->
+        },
+        displayResults.series.sectionOrNull("Tournaments", { "s_${it.seriesId}" }) { result ->
             SeriesSearchRow(
                 name = result.name,
                 category = result.category,
@@ -460,24 +437,25 @@ private fun LazyListScope.searchResultsSecondary(
                 endDate = result.endDate,
                 onClick = { onSeriesClick(result.seriesId) },
             )
-        }
-    }
-
-    if (displayResults.historicalMatches.isNotEmpty()) {
-        item(key = "historical_header") {
-            SectionHeaderV2(title = "Historical Matches (${displayResults.historicalMatches.size})")
-        }
-        items(displayResults.historicalMatches, key = { "h_${it.matchId}" }) { result ->
-            HistoricalMatchSearchRow(
-                matchTitle = result.matchTitle,
-                teams = result.teams,
-                venue = result.venue,
-                date = result.date,
-                season = result.season,
-                matchType = result.matchType,
-                onClick = onHistoricalClick,
-            )
-        }
-    }
+        },
+    ).sortedByDescending { it.score }.forEach { it.emit(this) }
 }
 
+/**
+ * A section for [this], or null when there is nothing to show.
+ *
+ * The score is the best member's, because that is what the section competes on: a list containing
+ * one exact hit and nine weak ones is a strong section, not an average one.
+ */
+private fun <T : SearchRepository.SearchResult> List<T>.sectionOrNull(
+    title: String,
+    key: (T) -> Any,
+    row: @Composable (T) -> Unit,
+): SearchSection? {
+    if (isEmpty()) return null
+    val results = this
+    return SearchSection(maxOf { it.relevanceScore }) {
+        item(key = "${title}_header") { SectionHeaderV2(title = "$title (${results.size})") }
+        items(results, key = key) { row(it) }
+    }
+}

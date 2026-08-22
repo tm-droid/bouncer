@@ -6,9 +6,11 @@ import androidx.lifecycle.viewModelScope
 import com.tanush.bouncer.data.AppResult
 import com.tanush.bouncer.data.SearchRepository
 import com.tanush.bouncer.network.PlayerProfileScraper
+import com.tanush.bouncer.network.PlayerSearchOutcome
 import com.tanush.bouncer.network.SeriesScraper
 import com.tanush.bouncer.data.local.BouncerDatabase
 import com.tanush.bouncer.utils.bouncerExceptionHandler
+import com.tanush.bouncer.utils.competitionAliasesFor
 import io.sentry.Sentry
 import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.models.NewsArticleData
@@ -25,10 +27,25 @@ enum class SearchTab { ALL, MATCHES, PLAYERS, TEAMS, TOURNAMENTS, NEWS }
 
 private data class SearchBundle(
     val live: SearchRepository.SearchResults,
-    val dbFrom: AppResult<Pair<List<SearchRepository.SearchResult.SeriesResult>, List<SearchRepository.SearchResult.HistoricalMatchResult>>>,
+    val dbSeries: AppResult<List<SearchRepository.SearchResult.SeriesResult>>,
     val dbPlayers: AppResult<List<SearchRepository.SearchResult.PlayerResult>>,
-    val networkPlayers: List<SearchRepository.SearchResult.PlayerResult>,
 )
+
+/** Local sources answer at this delay; the screen feels responsive at 300 ms. */
+private const val LOCAL_DEBOUNCE_MS = 300L
+
+/** The billed Appwrite leg waits for the user to genuinely stop typing. */
+private const val NETWORK_DEBOUNCE_MS = 800L
+
+/** Below this, a query is too broad to be worth an execution. Local sources still run at 2. */
+private const val MIN_NETWORK_QUERY_LENGTH = 3
+
+/** A local player hit at least this good makes the network lookup redundant. */
+private const val CONFIDENT_PLAYER_SCORE = 0.95
+
+private const val NETWORK_PLAYER_SCORE = 0.9
+private const val CATEGORY_ONLY_SERIES_SCORE = 0.7
+private const val MAX_PLAYER_RESULTS = 10
 
 class SearchViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -74,103 +91,136 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
             return
         }
         searchJob = viewModelScope.launch(bouncerExceptionHandler) {
-            delay(300) // debounce
+            delay(LOCAL_DEBOUNCE_MS)
             _isLoading.value = true
-            try {
-                performSearch(newQuery, matches, news)
+            val localResults = try {
+                performLocalSearch(newQuery, matches, news)
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
             } catch (e: Exception) {
-                // Partial-source failures degrade silently inside performSearch;
+                // Partial-source failures degrade silently inside performLocalSearch;
                 // this is the whole-search failure path — surface it instead of
                 // faking "no results".
                 Sentry.captureException(e)
                 _error.value = "Search hit a rain delay — check your connection and retry."
+                null
             } finally {
                 _isLoading.value = false
             }
+            if (localResults != null) mergeNetworkPlayers(newQuery, localResults)
         }
     }
 
-    private suspend fun performSearch(
+    /**
+     * The network player lookup, on its own longer debounce.
+     *
+     * The 300 ms above is a typing pause, not a rate limit: typed at any normal speed, "Virat
+     * Kohli" clears it several times and each clearance was one Appwrite function execution. The
+     * local sources still answer at 300 ms so the screen stays responsive; only the billed leg
+     * waits for the user to actually stop typing. This runs inside [searchJob], so the next
+     * keystroke cancels it before it can fire.
+     */
+    private suspend fun mergeNetworkPlayers(
         newQuery: String,
-        matches: List<CricketMatch>,
-        news: List<NewsArticleData>,
+        localResults: SearchRepository.SearchResults,
     ) {
-        val teamNames = (matches.flatMap { m -> m.teams.map { it.name } } + SearchRepository.KNOWN_CRICKET_TEAMS).distinct()
-        val bundle = coroutineScope {
-            val liveDeferred = async { SearchRepository.search(newQuery, matches, news, teamNames) }
-            val dbFromDeferred = async { SearchRepository.searchFromDb(newQuery, db) }
-            val dbPlayersDeferred = async { SearchRepository.searchPlayersFromDb(newQuery, db) }
-            val networkPlayersDeferred = async {
-                runCatching { PlayerProfileScraper.searchPlayers(newQuery) }.getOrDefault(emptyList())
+        // A confident local hit already answers the question; no need to spend an execution.
+        if (localResults.players.any { it.relevanceScore >= CONFIDENT_PLAYER_SCORE }) return
+        if (newQuery.trim().length < MIN_NETWORK_QUERY_LENGTH) return
+
+        delay(NETWORK_DEBOUNCE_MS - LOCAL_DEBOUNCE_MS)
+
+        when (val outcome = PlayerProfileScraper.searchPlayersDetailed(newQuery)) {
+            is PlayerSearchOutcome.Unavailable ->
+                // Deliberately not an empty list. A dead player-search backend rendering as a
+                // clean "no results" is exactly how the previous one stayed broken unnoticed.
+                _error.value = "Player search is unavailable right now."
+            is PlayerSearchOutcome.Success -> {
+                val existing = localResults.players.map { it.playerName.lowercase() }.toSet()
+                val merged = localResults.players + outcome.results
+                    .filter { it.name.lowercase() !in existing }
                     .map { p ->
                         SearchRepository.SearchResult.PlayerResult(
                             playerName = p.name,
                             teamName = p.country,
                             role = "",
-                            relevanceScore = 0.9,
+                            relevanceScore = NETWORK_PLAYER_SCORE,
                             imageUrl = p.imageUrl,
                         )
                     }
+                _results.value = _results.value.copy(
+                    players = merged.sortedByDescending { it.relevanceScore }.take(MAX_PLAYER_RESULTS)
+                )
             }
-            SearchBundle(liveDeferred.await(), dbFromDeferred.await(), dbPlayersDeferred.await(), networkPlayersDeferred.await())
+        }
+    }
+
+    /** Everything that costs no Appwrite execution: in-memory matches, Room, and the series scrape. */
+    private suspend fun performLocalSearch(
+        newQuery: String,
+        matches: List<CricketMatch>,
+        news: List<NewsArticleData>,
+    ): SearchRepository.SearchResults {
+        val teamNames = (matches.flatMap { m -> m.teams.map { it.name } } + SearchRepository.KNOWN_CRICKET_TEAMS).distinct()
+        val bundle = coroutineScope {
+            val liveDeferred = async { SearchRepository.search(newQuery, matches, news, teamNames) }
+            val dbSeriesDeferred = async { SearchRepository.searchSeriesFromDb(newQuery, db) }
+            val dbPlayersDeferred = async { SearchRepository.searchPlayersFromDb(newQuery, db) }
+            SearchBundle(liveDeferred.await(), dbSeriesDeferred.await(), dbPlayersDeferred.await())
         }
         val liveResults = bundle.live
-        val dbFromResult = bundle.dbFrom
-        val dbPlayersResult = bundle.dbPlayers
-        val networkPlayerResults = bundle.networkPlayers
 
-        val (dbSeries, dbHistorical) = when (dbFromResult) {
-            is AppResult.Success -> dbFromResult.data
-            is AppResult.Error -> { Sentry.captureException(dbFromResult.exception); Pair(emptyList(), emptyList()) }
-            is AppResult.Loading -> Pair(emptyList(), emptyList())
+        val dbSeries = when (val result = bundle.dbSeries) {
+            is AppResult.Success -> result.data
+            is AppResult.Error -> { Sentry.captureException(result.exception); emptyList() }
+            is AppResult.Loading -> emptyList()
         }
 
         val resolvedSeries = resolveSeries(newQuery, dbSeries)
 
-        val dbPlayers = dbPlayersResult.let { result ->
+        val dbPlayers = bundle.dbPlayers.let { result ->
             if (result is AppResult.Error) Sentry.captureException(result.exception)
             result.getOrDefault(emptyList())
         }
 
-        // Merge live + DB + network players (deduplicate by name, case-insensitive)
+        // Merge live + DB players (deduplicate by name, case-insensitive)
         val livePlayerNames = liveResults.players.map { it.playerName.lowercase() }.toSet()
-        val dbPlayerNames = dbPlayers.map { it.playerName.lowercase() }.toSet()
         val mergedPlayers = liveResults.players +
-            dbPlayers.filter { it.playerName.lowercase() !in livePlayerNames } +
-            networkPlayerResults.filter {
-                it.playerName.lowercase() !in livePlayerNames && it.playerName.lowercase() !in dbPlayerNames
-            }
+            dbPlayers.filter { it.playerName.lowercase() !in livePlayerNames }
 
-        _results.value = liveResults.copy(
-            players = mergedPlayers.sortedByDescending { it.relevanceScore }.take(10),
+        return liveResults.copy(
+            players = mergedPlayers.sortedByDescending { it.relevanceScore }.take(MAX_PLAYER_RESULTS),
             series = resolvedSeries,
-            historicalMatches = dbHistorical,
-        )
+        ).also { _results.value = it }
     }
 
-    /** Falls back to a live network fetch when Room has no series yet. */
+    /**
+     * Falls back to a live network fetch when Room has no series yet.
+     *
+     * Acronym-expanded like the Room path: the corpus stores "Indian Premier League 2026" and a
+     * raw `contains("ipl")` against it has never matched anything.
+     */
     private suspend fun resolveSeries(
         newQuery: String,
         dbSeries: List<SearchRepository.SearchResult.SeriesResult>,
     ): List<SearchRepository.SearchResult.SeriesResult> {
         if (dbSeries.isNotEmpty()) return dbSeries
+        val terms = competitionAliasesFor(newQuery).map { it.lowercase() }
+        if (terms.isEmpty()) return emptyList()
         return runCatching {
-            val q = newQuery.trim().lowercase()
             seriesScraper.fetchActiveSeries()
-                .filter { series ->
-                    series.name.lowercase().contains(q) ||
-                        series.category.name.lowercase().contains(q)
-                }
-                .map { series ->
+                .mapNotNull { series ->
+                    val name = series.name.lowercase()
+                    val category = series.category.name.lowercase()
+                    val nameHit = terms.any { name.contains(it) }
+                    if (!nameHit && terms.none { category.contains(it) }) return@mapNotNull null
                     SearchRepository.SearchResult.SeriesResult(
                         seriesId = series.id,
                         name = series.name,
                         category = series.category.name,
                         startDate = series.startDate,
                         endDate = series.endDate,
-                        relevanceScore = if (series.name.lowercase().contains(q)) 1.0 else 0.7,
+                        relevanceScore = if (nameHit) 1.0 else CATEGORY_ONLY_SERIES_SCORE,
                     )
                 }
         }.getOrDefault(emptyList())

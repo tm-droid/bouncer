@@ -131,6 +131,22 @@ class LiveActivityViewModel(
     private val _probabilityEvents = MutableStateFlow<Map<String, List<ProbabilityEvent>>>(emptyMap())
     val probabilityEvents: StateFlow<Map<String, List<ProbabilityEvent>>> = _probabilityEvents.asStateFlow()
 
+    /**
+     * Matches a screen is currently displaying commentary-derived content for, refcounted.
+     *
+     * This is the device-side half of the viewer gate that `bouncer-match-sync` already applies
+     * server-side. [updateAllLiveCommentaries] used to loop every live match on every poll, and
+     * the Live tab polls every six seconds: with ten live matches that is ~100 commentary
+     * generations a minute, each one an Appwrite function execution running an LLM, produced for
+     * matches nobody was looking at. Measured on a fresh install it wanted ~150 executions/minute
+     * and saturated the EXECUTIONS rate cap within seconds of launch, which starved player search
+     * — a user-initiated action losing its budget to background work.
+     *
+     * A count rather than a set: two screens may hold the same match, and the second one closing
+     * must not release it for the first.
+     */
+    private val commentaryFocus = MutableStateFlow<Map<String, Int>>(emptyMap())
+
     private val _firstInningsEndBall = MutableStateFlow<Map<String, Int>>(emptyMap())
     val firstInningsEndBall: StateFlow<Map<String, Int>> = _firstInningsEndBall.asStateFlow()
 
@@ -483,10 +499,33 @@ class LiveActivityViewModel(
         }
     }
 
+    /**
+     * Ask for commentary on [matchId] while a screen is showing it; release with [releaseCommentary].
+     *
+     * Nothing generates commentary for a match with no holder. There is deliberately no "focus
+     * everything" call — the whole cost of this path is that it used to be exactly that.
+     */
+    fun holdCommentary(matchId: String) {
+        commentaryFocus.value = commentaryFocus.value.toMutableMap().apply {
+            this[matchId] = (this[matchId] ?: 0) + 1
+        }
+    }
+
+    /** Release a hold taken by [holdCommentary]. Unbalanced releases are ignored, not negative. */
+    fun releaseCommentary(matchId: String) {
+        commentaryFocus.value = commentaryFocus.value.toMutableMap().apply {
+            val remaining = (this[matchId] ?: 0) - 1
+            if (remaining > 0) this[matchId] = remaining else remove(matchId)
+        }
+    }
+
     private suspend fun updateAllLiveCommentaries() {
+        val focused = commentaryFocus.value.keys
+        if (focused.isEmpty()) return
+
         val updatedCommentary = _aiCommentary.value.toMutableMap()
 
-        for (match in _currentMatches.value) {
+        for (match in _currentMatches.value.filter { it.id in focused }) {
             try {
                 val commentary = liveCommentaryManager.getBestCommentaryForMatch(
                     matchTitle = match.matchTitle,

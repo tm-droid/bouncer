@@ -162,4 +162,59 @@ class MigrationTest {
         after.close()
         db.close()
     }
+
+    @Test
+    fun migrate12to13_dropsFtsTablesAndTriggersButKeepsTheBackingRows() {
+        val v12 = helper.createDatabase("test-db-12", 12)
+        // A v1-upgraded database has the hand-written triggers from MIGRATION_1_2; a fresh v12
+        // install has the FTS tables with no triggers at all. Recreate the trigger here so this
+        // exercises the harder of the two paths.
+        v12.execSQL(
+            "CREATE TRIGGER IF NOT EXISTS series_cache_ai AFTER INSERT ON series_cache " +
+                "BEGIN INSERT INTO series_fts(docid, seriesId, name, category) " +
+                "VALUES(new.rowid, new.seriesId, new.name, new.category); END"
+        )
+        v12.execSQL(
+            "INSERT INTO series_cache (seriesId, name, category, startDate, endDate, lastUpdated) " +
+                "VALUES ('s1', 'Indian Premier League 2026', 'LEAGUE', '', '', 100)"
+        )
+        v12.execSQL(
+            "INSERT INTO player_cache (playerId, name, country, role, teamName, statsJson, lastUpdated) " +
+                "VALUES ('virat_kohli', 'Virat Kohli', 'India', 'Batsman', 'India', '{}', 100)"
+        )
+        v12.close()
+
+        val db = helper.runMigrationsAndValidate(
+            "test-db-12", 13, true,
+            BouncerDatabase.MIGRATION_12_13
+        )
+
+        // The indexes go; the data they were supposed to index does not.
+        val gone = db.query(
+            "SELECT COUNT(*) FROM sqlite_master WHERE name IN " +
+                "('player_fts', 'series_fts', 'historical_match_fts', 'historical_match_cache', 'series_cache_ai')"
+        )
+        gone.moveToFirst()
+        assertEquals("every FTS table, its triggers and historical_match_cache must be dropped", 0, gone.getInt(0))
+        gone.close()
+
+        // The LIKE search that replaced the FTS MATCH has to still find the row — this is the
+        // failure the whole change exists to fix, so assert the query, not just the row count.
+        val series = db.query("SELECT name FROM series_cache WHERE name LIKE '%Premier%'")
+        series.moveToFirst()
+        assertEquals("Indian Premier League 2026", series.getString(0))
+        series.close()
+
+        val player = db.query("SELECT name FROM player_cache WHERE name LIKE '%Kohli%'")
+        player.moveToFirst()
+        assertEquals("Virat Kohli", player.getString(0))
+        player.close()
+
+        // An insert must not fail on a trigger that references a table that no longer exists.
+        db.execSQL(
+            "INSERT INTO series_cache (seriesId, name, category, startDate, endDate, lastUpdated) " +
+                "VALUES ('s2', 'Big Bash League 2026', 'LEAGUE', '', '', 200)"
+        )
+        db.close()
+    }
 }

@@ -151,7 +151,14 @@ private fun findMatchingParenEnd(html: String, openParenIdx: Int): Int {
     return -1
 }
 
-private inline fun forEachNextFlightPayload(html: String, block: (JsonElement) -> Unit) {
+/**
+ * Every RSC flight payload on the page, in order.
+ *
+ * `internal` rather than private, and no longer `inline`, so [PlayerProfileRsc] can walk the same
+ * stream: Cricbuzz moved profile pages onto the App Router the way it moved the match pages, so
+ * there is one flight format to understand and one place that understands it.
+ */
+internal fun forEachNextFlightPayload(html: String, block: (JsonElement) -> Unit) {
     val startMarker = "self.__next_f.push("
     var startIndex = 0
     while (true) {

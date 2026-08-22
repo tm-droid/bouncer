@@ -104,4 +104,13 @@ object CacheConfig {
     // pushes — so an accidental write loop trips long before it can burn the org write budget.
     const val WRITE_GUARD_MAX_WRITES_PER_MINUTE = 100
     const val WRITE_GUARD_MAX_WRITES_PER_HOUR = 750
+
+    // Execution rate caps. Until player search existed, every function call was driven by a match
+    // event or a fixed heartbeat, so EXECUTIONS was breaker-only: it reacted to a 402 and never
+    // pre-emptively paused. A search box breaks that assumption — it is driven by typing, and a
+    // debounce regression turns one lookup into one per keystroke with nothing between it and the
+    // plan budget. Sized well above the real profile (a commentary call per ball, a presence ping
+    // per 90s, a debounced search) so only a genuine loop trips it.
+    const val EXECUTIONS_GUARD_MAX_PER_MINUTE = 30
+    const val EXECUTIONS_GUARD_MAX_PER_HOUR = 400
 }

@@ -41,6 +41,13 @@ more damage than the guess is worth.
 
 Latches persist in SharedPreferences: a cold start after a 402 must not re-probe a dead budget.
 
+**`EXECUTIONS` has local rate caps too**, as of the player-search work. It used to be breaker-only
+alongside `BANDWIDTH` and `STORAGE`, on the reasoning that every function call was driven by a match
+event or a fixed heartbeat and so was structurally rate-bounded. A search box is the first caller
+driven by user typing, and with no cap a debounce regression sits directly against the plan budget.
+`BANDWIDTH` and `STORAGE` stay breaker-only — they bill in bytes, which is server-side accounting we
+cannot count locally.
+
 ## Reads: Appwrite bills per DOCUMENT RETURNED
 
 Not per query. `Query.limit(60)` is 60 billed reads, and it was one of the two biggest drivers of
@@ -159,8 +166,11 @@ not add a session refresh loop** without revisiting that.
 
 ## Watching the numbers
 
-`AppwriteUsageTracker` counts rows read, writes, executions, storage bytes, realtime messages, 402s
-by quota and 429s, straight from the funnels, and flushes `Sentry.metrics().gauge` every 5 minutes.
+`AppwriteUsageTracker` counts rows read, writes, executions, player searches, storage bytes,
+realtime messages, 402s by quota and 429s, straight from the funnels, and flushes
+`Sentry.metrics().gauge` every 5 minutes. Player searches are a labelled subset of executions
+because they are the only ones driven by typing rather than by a match event or a fixed heartbeat —
+aggregated together, a search box that regressed into firing per keystroke reads as ordinary growth.
 402/429 also breadcrumb immediately. There is deliberately **no per-operation breadcrumb**: Sentry's
 ring buffer holds ~100 entries and per-read crumbs would evict everything useful for crash triage.
 

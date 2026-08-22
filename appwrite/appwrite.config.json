@@ -301,6 +301,31 @@
                     "value": "match-commentary"
                 }
             ]
+        },
+        {
+            "$id": "bouncer-player-search",
+            "name": "bouncer-player-search",
+            "$permissions": [
+                "execute(\"any\")"
+            ],
+            "enabled": true,
+            "logging": true,
+            "runtime": "node-22",
+            "timeout": 90,
+            "entrypoint": "src/main.js",
+            "commands": "npm install",
+            "version": "v3",
+            "path": "functions/player-search",
+            "vars": [
+                {
+                    "key": "APPWRITE_API_KEY",
+                    "value": ""
+                },
+                {
+                    "key": "MATCH_CACHE_BUCKET_ID",
+                    "value": "cricket-stats"
+                }
+            ]
         }
     ],
     "buckets": [

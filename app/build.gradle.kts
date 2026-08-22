@@ -155,6 +155,17 @@ buildConfigField("String", "APPWRITE_AI_CACHE_DB_ID", "\"${localProperties.getPr
         inputs.files(rootProject.file("appwrite/functions/match-sync/src/llm.js"))
             .withPropertyName("commentaryConstantParitySource")
             .withPathSensitivity(PathSensitivity.RELATIVE)
+
+        // Same reasoning for CricbuzzHttpVendorParityTest, which byte-compares the two vendored
+        // copies of cricbuzz-http.js. Both paths must be declared: with only one, editing the
+        // other leaves the task UP-TO-DATE and the drift ships.
+        inputs.files(
+            rootProject.file("appwrite/functions/match-sync/src/cricbuzz-http.js"),
+            rootProject.file("appwrite/functions/poll-live-matches/src/cricbuzz-http.js"),
+            rootProject.file("appwrite/functions/player-search/src/cricbuzz-http.js"),
+        )
+            .withPropertyName("cricbuzzHttpVendorParitySources")
+            .withPathSensitivity(PathSensitivity.RELATIVE)
     }
 
     // MigrationTestHelper loads the exported Room schemas from the instrumentation APK's assets.

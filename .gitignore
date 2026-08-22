@@ -80,3 +80,6 @@ sentry-wizard
 # on "Cannot find module @sentry/node/build/esm/index.js" every minute until the previous
 # deployment was reactivated by hand (2026-08-05 01:53-02:15 UTC).
 appwrite/functions/*/node_modules/
+
+# Session-scratch workflow scripts from the Workflow tool — not project config.
+.claude/workflows/

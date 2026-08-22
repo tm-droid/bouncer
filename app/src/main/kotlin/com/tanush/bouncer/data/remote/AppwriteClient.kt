@@ -183,7 +183,7 @@ object AppwriteClient {
                 headers = mapOf("x-bouncer-device" to DeviceIdentity.id),
             )
             AppwriteReadGuard.recordSuccess(quota = AppwriteReadGuard.Quota.EXECUTIONS)
-            AppwriteUsageTracker.recordFunctionExecution()
+            AppwriteUsageTracker.recordFunctionExecution(functionId)
             responseOrReport(functionId, execution)
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e

@@ -1,19 +1,21 @@
 package com.tanush.bouncer.network
 
+import com.tanush.bouncer.data.SingleFlight
+import com.tanush.bouncer.data.remote.AppwriteClient
+import com.tanush.bouncer.data.remote.FunctionOutcome
 import com.tanush.bouncer.services.WORKER_MAX_RETRIES
 import com.tanush.bouncer.services.backoffDelayMs
 import com.tanush.bouncer.models.FormatStats
 import com.tanush.bouncer.models.PlayerProfile
 import com.tanush.bouncer.models.RecentInnings
+import com.tanush.bouncer.utils.BoundedLruCache
 import io.sentry.Breadcrumb
 import io.sentry.Sentry
 import io.sentry.SentryLevel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
-import org.json.JSONArray
 import org.json.JSONObject
-import org.jsoup.HttpStatusException
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 
@@ -25,19 +27,37 @@ data class PlayerSearchResult(
 )
 
 /**
+ * Result of a player-name lookup.
+ *
+ * "No such player" and "the search backend is down" used to be the same value — an empty list —
+ * which is how a dead upstream rendered as a clean "no results" screen for as long as it took
+ * someone to notice. They are now separate cases and callers must choose which to show.
+ */
+sealed interface PlayerSearchOutcome {
+    data class Success(val results: List<PlayerSearchResult>) : PlayerSearchOutcome
+
+    /** The lookup could not be performed at all. Says nothing about whether the player exists. */
+    data object Unavailable : PlayerSearchOutcome
+}
+
+/**
  * Scrapes player profile and stats from CricBuzz.
  */
 object PlayerProfileScraper {
 
     private const val TAG = "PlayerProfileScraper"
     private const val MAX_RETRIES = WORKER_MAX_RETRIES
-    private const val SEARCH_TIMEOUT_MS = 10000
     private const val PROFILE_TIMEOUT_MS = 15000
     private const val MAX_SEARCH_RESULTS = 10
+    private const val SEARCH_FUNCTION_ID = "bouncer-player-search"
+    private const val SEARCH_CACHE_ENTRIES = 64
+
+    /** Recent query → answer. Bounded because it is keyed by arbitrary user input. */
+    private val searchCache = BoundedLruCache<String, PlayerSearchOutcome>(SEARCH_CACHE_ENTRIES)
+    private val searchFlight = SingleFlight<String, PlayerSearchOutcome>()
 
     private val FORMATS_JSON = listOf("Test" to "test", "ODI" to "odi", "T20I" to "t20i", "IPL" to "ipl")
     private val DEFAULT_FORMATS = listOf("Test", "ODI", "T20I", "IPL")
-    private val PROFILE_ID_REGEX = Regex("""/profiles/(\d+)/""")
     private val NEXT_DATA_REGEX = Regex(
         """<script id="__NEXT_DATA__" type="application/json">(.*?)</script>""",
         RegexOption.DOT_MATCHES_ALL
@@ -53,114 +73,82 @@ object PlayerProfileScraper {
     }
 
     /**
-     * Search for players by name. Returns basic search results for the player picker.
+     * Search for players by name, dropping the failure distinction.
+     *
+     * Kept for the callers that genuinely cannot act on "unavailable" —
+     * [scrapeProfile] and `PlayerCacheWorker` both just skip the player either way. UI callers
+     * should use [searchPlayersDetailed] so they can tell an empty result from a dead backend.
      */
-    suspend fun searchPlayers(query: String): List<PlayerSearchResult> = withContext(Dispatchers.IO) {
-        breadcrumb("network.player_search", "Searching players: $query")
+    suspend fun searchPlayers(query: String): List<PlayerSearchResult> =
+        (searchPlayersDetailed(query) as? PlayerSearchOutcome.Success)?.results.orEmpty()
 
-        try {
-            val results = searchPlayersViaApi(query).toMutableList()
-            if (results.isEmpty()) {
-                results.addAll(searchPlayersViaHtml(query, results))
+    /**
+     * Resolve a player name via `bouncer-player-search`.
+     *
+     * This used to scrape `cricbuzz.com/api/search/results` with a Cricinfo-shaped JSON parser and
+     * fall back to `cricbuzz.com/search`. Both paths returned 404 — the whole player pipeline
+     * (this, profile scraping, the comparison screen, `PlayerCacheWorker`, and therefore the shared
+     * `player-profiles` cache that could have covered for them) was dead. Resolution now happens
+     * server-side, where it can be fixed without an app release when the upstream moves again.
+     *
+     * Repeat and concurrent queries collapse onto one execution: [searchCache] holds recent
+     * answers and [searchFlight] shares an in-progress one. A search box is otherwise a very
+     * effective way to spend an executions quota.
+     */
+    suspend fun searchPlayersDetailed(query: String): PlayerSearchOutcome {
+        val key = query.trim().lowercase()
+        if (key.isEmpty()) return PlayerSearchOutcome.Success(emptyList())
+        searchCache[key]?.let { return it }
+
+        return searchFlight.run(key) {
+            breadcrumb("network.player_search", "Searching players: $query")
+            val body = JSONObject().put("q", query.trim()).toString()
+            val outcome = when (val response = AppwriteClient.executeFunctionDetailed(SEARCH_FUNCTION_ID, body)) {
+                is FunctionOutcome.Success -> parseSearchResponse(response.body)
+                is FunctionOutcome.HttpError -> {
+                    // The function answers 200 with an empty list when it finds nothing, so a
+                    // non-2xx is always a real failure and never "no such player".
+                    Sentry.captureMessage(
+                        "player-search returned HTTP ${response.statusCode}: ${response.body.take(200)}",
+                        SentryLevel.ERROR,
+                    )
+                    PlayerSearchOutcome.Unavailable
+                }
+                // Already reported by AppwriteClient (uninitialised SDK, guard-blocked, or threw).
+                FunctionOutcome.Unavailable -> PlayerSearchOutcome.Unavailable
             }
-            results.take(MAX_SEARCH_RESULTS)
-        } catch (e: HttpStatusException) {
-            if (e.statusCode == 401 || e.statusCode == 403) {
-                // Auth/forbidden — do NOT fall back to HTML (would mask the real problem)
-                Sentry.captureException(e)
-                emptyList()
-            } else {
-                // Non-auth HTTP error (404, 5xx). The Cricbuzz JSON search endpoint moves
-                // periodically; searchPlayersViaHtml is a working fallback. A successful
-                // fallback means this is handled degradation, not an actionable error — so
-                // only report to Sentry when the fallback ALSO fails.
-                breadcrumb(
-                    "network.player_search",
-                    "Search API HTTP ${e.statusCode}, falling back to HTML",
-                    SentryLevel.WARNING,
-                )
-                runCatching { searchPlayersViaHtml(query, emptyList()).take(MAX_SEARCH_RESULTS) }
-                    .getOrElse {
-                        Sentry.captureException(e)
-                        emptyList()
-                    }
-            }
-        } catch (e: Exception) {
-            Sentry.captureException(e)
-            emptyList()
+            // Only successes are cached. Caching Unavailable would keep a transient outage on
+            // screen after it cleared.
+            if (outcome is PlayerSearchOutcome.Success) searchCache[key] = outcome
+            outcome
         }
     }
 
-    private fun searchPlayersViaApi(query: String): List<PlayerSearchResult> {
-        val searchUrl = "${CricBuzzUrls.BASE}/api/search/results?q=${encode(query)}&type=player"
-        val response = Jsoup.connect(searchUrl)
-            .userAgent(randomUserAgent())
-            .ignoreContentType(true)
-            .timeout(SEARCH_TIMEOUT_MS)
-            .execute()
-
-        return try {
-            val json = JSONObject(response.body())
-            val categories = json.optJSONArray("categories") ?: json.optJSONArray("results")
-            extractApiResults(categories)
-        } catch (e: Exception) {
-            Sentry.captureException(e)
-            emptyList()
-        }
-    }
-
-    private fun extractApiResults(categories: JSONArray?): List<PlayerSearchResult> {
-        if (categories == null) return emptyList()
-        val results = mutableListOf<PlayerSearchResult>()
-        for (i in 0 until categories.length()) {
-            val category = categories.getJSONObject(i)
-            val items = category.optJSONArray("items")
-                ?: category.optJSONArray("results")
-                ?: continue
-            for (j in 0 until items.length()) {
-                val result = itemToSearchResult(items.getJSONObject(j))
-                if (result != null) results.add(result)
+    private fun parseSearchResponse(body: String): PlayerSearchOutcome = try {
+        val players = JSONObject(body).optJSONArray("players")
+        val results = buildList {
+            for (i in 0 until (players?.length() ?: 0)) {
+                itemToSearchResult(players!!.getJSONObject(i))?.let { add(it) }
             }
         }
-        return results
+        PlayerSearchOutcome.Success(results.take(MAX_SEARCH_RESULTS))
+    } catch (e: org.json.JSONException) {
+        // A body we cannot parse is a contract break between app and function, not an empty result.
+        Sentry.captureException(e)
+        PlayerSearchOutcome.Unavailable
     }
 
     private fun itemToSearchResult(item: JSONObject): PlayerSearchResult? {
-        val id = item.optString("objectId", "").ifEmpty { item.optString("id", "") }
-        val name = item.optString("title", "").ifEmpty { item.optString("name", "") }
+        val id = item.optString("id", "")
+        val name = item.optString("name", "")
         if (id.isEmpty() || name.isEmpty()) return null
         return PlayerSearchResult(
             id = id,
             name = name,
             country = item.optString("country", ""),
-            imageUrl = item.optString("image", null),
+            imageUrl = item.optString("imageUrl", "").ifEmpty { null },
         )
     }
-
-    private fun searchPlayersViaHtml(
-        query: String,
-        existing: List<PlayerSearchResult>,
-    ): List<PlayerSearchResult> {
-        val htmlUrl = "${CricBuzzUrls.BASE}/search?q=${encode(query)}"
-        val doc = Jsoup.connect(htmlUrl)
-            .userAgent(randomUserAgent())
-            .timeout(SEARCH_TIMEOUT_MS)
-            .get()
-
-        val seenIds = existing.map { it.id }.toMutableSet()
-        val results = mutableListOf<PlayerSearchResult>()
-        for (link in doc.select("a[href*=/profiles/]")) {
-            val playerId = PROFILE_ID_REGEX.find(link.attr("href"))?.groupValues?.getOrNull(1) ?: continue
-            val playerName = link.text().trim()
-            if (playerName.isEmpty() || playerId in seenIds) continue
-            seenIds.add(playerId)
-            results.add(PlayerSearchResult(id = playerId, name = playerName, country = ""))
-        }
-        return results
-    }
-
-    private fun encode(value: String): String =
-        java.net.URLEncoder.encode(value, "UTF-8")
 
     /**
      * Scrape full player profile and stats from CricBuzz.
@@ -206,7 +194,14 @@ object PlayerProfileScraper {
                 .timeout(PROFILE_TIMEOUT_MS)
                 .get()
 
-            val profile = parseFromNextJsData(doc.html(), bestMatch.id, bestMatch.name)
+            val html = doc.html()
+            // RSC first: Cricbuzz serves profiles from the App Router now, and the two parsers
+            // below are both dead against that markup — `__NEXT_DATA__` is absent, and the Jsoup
+            // selectors are old-site class names that match nothing. They stay as strategies
+            // rather than being deleted because a parser that answers null costs one call, while
+            // having no fallback at all when the upstream moves again costs a release.
+            val profile = PlayerProfileRsc.parse(html, bestMatch.id, bestMatch.name)
+                ?: parseFromNextJsData(html, bestMatch.id, bestMatch.name)
                 ?: parseFromHtml(doc, bestMatch.id, bestMatch.name)
             ScrapeOutcome.Success(profile)
         } catch (e: java.net.SocketTimeoutException) {

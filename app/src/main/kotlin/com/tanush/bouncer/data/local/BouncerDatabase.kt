@@ -9,35 +9,26 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import com.tanush.bouncer.data.local.dao.AICacheDao
 import com.tanush.bouncer.data.local.dao.CommentaryDao
 import com.tanush.bouncer.data.local.dao.HighlightDao
-import com.tanush.bouncer.data.local.dao.HistoricalMatchCacheDao
 import com.tanush.bouncer.data.local.dao.MatchDao
 import com.tanush.bouncer.data.local.dao.PlayerCacheDao
 import com.tanush.bouncer.data.local.dao.SeriesCacheDao
 import com.tanush.bouncer.data.local.entities.AICommentaryCacheEntity
 import com.tanush.bouncer.data.local.entities.CommentaryEntity
 import com.tanush.bouncer.data.local.entities.HighlightEntity
-import com.tanush.bouncer.data.local.entities.HistoricalMatchCacheEntity
-import com.tanush.bouncer.data.local.entities.HistoricalMatchFtsEntity
 import com.tanush.bouncer.data.local.entities.MatchEntity
 import com.tanush.bouncer.data.local.entities.PlayerCacheEntity
-import com.tanush.bouncer.data.local.entities.PlayerFtsEntity
 import com.tanush.bouncer.data.local.entities.SeriesCacheEntity
-import com.tanush.bouncer.data.local.entities.SeriesFtsEntity
 
 @Database(
     entities = [
         MatchEntity::class,
         CommentaryEntity::class,
         PlayerCacheEntity::class,
-        PlayerFtsEntity::class,
         SeriesCacheEntity::class,
-        SeriesFtsEntity::class,
-        HistoricalMatchCacheEntity::class,
-        HistoricalMatchFtsEntity::class,
         AICommentaryCacheEntity::class,
         HighlightEntity::class
     ],
-    version = 12,
+    version = 13,
     exportSchema = true
 )
 abstract class BouncerDatabase : RoomDatabase() {
@@ -46,7 +37,6 @@ abstract class BouncerDatabase : RoomDatabase() {
     abstract fun commentaryDao(): CommentaryDao
     abstract fun playerCacheDao(): PlayerCacheDao
     abstract fun seriesCacheDao(): SeriesCacheDao
-    abstract fun historicalMatchCacheDao(): HistoricalMatchCacheDao
     abstract fun aiCacheDao(): AICacheDao
     abstract fun highlightDao(): HighlightDao
 
@@ -183,8 +173,39 @@ abstract class BouncerDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Retire the three FTS indexes and the historical-match table.
+         *
+         * The FTS tables were declared `@Fts4` with no `contentEntity`, so Room created them with
+         * no sync triggers of its own; the triggers that actually populated them live in
+         * [MIGRATION_1_2] and a fresh install never runs it. Every install created after schema v1
+         * was therefore searching a permanently empty index — series, players and historical
+         * matches all returned zero rows no matter what the backing tables held. The DAOs now use
+         * LIKE over the backing tables directly, which for a few hundred rows is both correct and
+         * cheap, so the indexes and their hand-written triggers go.
+         *
+         * `historical_match_cache` goes with them: nothing in the app ever called its `upsertAll`,
+         * so it has only ever rendered an empty section.
+         *
+         * Every statement is `IF EXISTS` because the objects it drops are present on databases
+         * upgraded from v1 and absent on fresh ones — both paths reach here.
+         */
+        internal val MIGRATION_12_13 = object : Migration(12, 13) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                for (table in listOf("player_cache", "series_cache", "historical_match_cache")) {
+                    for (suffix in listOf("bu", "bd", "au", "ai")) {
+                        db.execSQL("DROP TRIGGER IF EXISTS ${table}_$suffix")
+                    }
+                }
+                db.execSQL("DROP TABLE IF EXISTS player_fts")
+                db.execSQL("DROP TABLE IF EXISTS series_fts")
+                db.execSQL("DROP TABLE IF EXISTS historical_match_fts")
+                db.execSQL("DROP TABLE IF EXISTS historical_match_cache")
+            }
+        }
+
         // Add new migrations here; Room will apply them in order on upgrade.
-        private val MIGRATIONS = arrayOf<Migration>(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12)
+        private val MIGRATIONS = arrayOf<Migration>(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13)
 
         fun getInstance(context: Context): BouncerDatabase {
             return INSTANCE ?: synchronized(this) {

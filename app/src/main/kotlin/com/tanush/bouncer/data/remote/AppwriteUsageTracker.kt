@@ -25,6 +25,16 @@ object AppwriteUsageTracker {
     private val dbRowsRead = AtomicLong()
     private val dbWrites = AtomicLong()
     private val functionExecutions = AtomicLong()
+
+    /**
+     * Player-search executions specifically.
+     *
+     * A subset of [functionExecutions], counted separately because it is the only execution driven
+     * directly by typing: commentary and presence fire on match events and a fixed heartbeat, so
+     * their volume is predictable and this one's is not. Aggregated together, a search box that
+     * regressed into firing per keystroke would look like ordinary growth.
+     */
+    private val playerSearches = AtomicLong()
     private val storageRequests = AtomicLong()
     private val storageBytesDown = AtomicLong()
     private val realtimeMessages = AtomicLong()
@@ -46,7 +56,14 @@ object AppwriteUsageTracker {
 
     fun recordRead(rows: Int) { dbRowsRead.addAndGet(rows.toLong()) }
     fun recordWrite() { dbWrites.incrementAndGet() }
-    fun recordFunctionExecution() { functionExecutions.incrementAndGet() }
+    /**
+     * One function execution. Counted at the funnel rather than by callers, so a new caller cannot
+     * forget to report itself and [functionId] cannot disagree with what was actually billed.
+     */
+    fun recordFunctionExecution(functionId: String = "") {
+        functionExecutions.incrementAndGet()
+        if (functionId == PLAYER_SEARCH_FUNCTION_ID) playerSearches.incrementAndGet()
+    }
 
     fun recordStorageDownload(bytes: Int) {
         storageRequests.incrementAndGet()
@@ -103,6 +120,7 @@ object AppwriteUsageTracker {
         emit("appwrite.db.rows_read", dbRowsRead.getAndSet(0).toDouble())
         emit("appwrite.db.writes", dbWrites.getAndSet(0).toDouble())
         emit("appwrite.functions.executions", functionExecutions.getAndSet(0).toDouble())
+        emit("appwrite.functions.player_searches", playerSearches.getAndSet(0).toDouble())
         emit("appwrite.storage.requests", storageRequests.getAndSet(0).toDouble())
         emit("appwrite.storage.bytes_down", storageBytesDown.getAndSet(0).toDouble())
         emit("appwrite.realtime.messages", realtimeMessages.getAndSet(0).toDouble())
@@ -115,7 +133,7 @@ object AppwriteUsageTracker {
 
     @VisibleForTesting
     internal fun reset() {
-        dbRowsRead.set(0); dbWrites.set(0); functionExecutions.set(0)
+        dbRowsRead.set(0); dbWrites.set(0); functionExecutions.set(0); playerSearches.set(0)
         storageRequests.set(0); storageBytesDown.set(0)
         realtimeMessages.set(0); realtimeBytesApprox.set(0)
         http429.set(0)
@@ -123,4 +141,5 @@ object AppwriteUsageTracker {
     }
 
     private const val FLUSH_INTERVAL_MS = 300_000L // 5 minutes
+    private const val PLAYER_SEARCH_FUNCTION_ID = "bouncer-player-search"
 }

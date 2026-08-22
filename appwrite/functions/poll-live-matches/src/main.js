@@ -3,6 +3,7 @@ import { InputFile } from "node-appwrite/file";
 import { createSign, createHash } from "crypto";
 import { seriesCategory, isWomensSeries } from "./series.js";
 import { parseJsonFile } from "./storageJson.js";
+import { CricbuzzBlockedError, fetchHtml } from "./cricbuzz-http.js";
 
 const VERCEL_BASE = process.env.VERCEL_API_BASE ?? "https://api-iota-jade.vercel.app";
 const BUCKET_ID = process.env.MATCH_CACHE_BUCKET_ID ?? "cricket-stats";
@@ -35,8 +36,10 @@ const hashOf = (data) => createHash("sha256").update(JSON.stringify(data)).diges
 // Cricbuzz's own schedule page, which carries a `matchInfo` block per fixture including
 // `matchFormat`. One page answers every upcoming fixture at once.
 const CRICBUZZ_SCHEDULE_URL = "https://www.cricbuzz.com/cricket-match/live-scores/upcoming-matches";
-const BROWSER_UA =
-  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+const SERIES_LIST_URL = "https://www.cricbuzz.com/cricket-schedule/series";
+// Archive pages, walked a few at a time so the corpus covers seasons that are over. `active-series`
+// alone meant "World Cup" matched nothing whenever no World Cup was in progress.
+const SERIES_ARCHIVE_URL = (year) => `https://www.cricbuzz.com/cricket-scorecard-archives/${year}`;
 // Bound the remembered formats so the state file cannot grow without limit.
 const MAX_REMEMBERED_FORMATS = 400;
 
@@ -170,23 +173,28 @@ export default async ({ req, res, log, error }) => {
 
   // Series sync: scrape Cricbuzz at most once per 24h server-side (replaces N per-device daily scrapes)
   try {
-    let seriesFresh = false;
+    let prevJson = null;
     try {
-      const prevJson = parseJsonFile(await storage.getFileDownload(BUCKET_ID, "active-series"));
-      seriesFresh = (Date.now() - (prevJson.fetchedAt ?? 0)) < 24 * 3600 * 1000;
+      prevJson = parseJsonFile(await storage.getFileDownload(BUCKET_ID, "active-series"));
     } catch { /* missing or parse error — treat as stale */ }
+    const seriesFresh = (Date.now() - (prevJson?.fetchedAt ?? 0)) < 24 * 3600 * 1000;
 
     if (!seriesFresh) {
-      const series = await fetchActiveSeries();
-      if (series.length > 0) {
-        const payload = JSON.stringify({ data: series, fetchedAt: Date.now() });
+      const active = await fetchActiveSeries();
+      const merged = await mergeArchiveSeries(active, prevJson, log, error);
+      if (merged.series.length > 0) {
+        const payload = JSON.stringify({
+          data: merged.series,
+          fetchedAt: Date.now(),
+          archiveCursor: merged.cursor,
+        });
         await storage.deleteFile(BUCKET_ID, "active-series").catch(() => {});
         await storage.createFile(
           BUCKET_ID, "active-series",
           InputFile.fromBuffer(Buffer.from(payload, "utf8"), "active-series.json"),
           ["read(\"any\")"]
         );
-        log(`Updated active-series (${series.length} series)`);
+        log(`Updated active-series (${merged.series.length} series, archive cursor ${merged.cursor})`);
       }
     }
   } catch (e) {
@@ -212,12 +220,9 @@ async function attachFormats(data, cache, log, error) {
   const missing = matches.filter((m) => m?.id && !cache[String(m.id)]);
   if (missing.length > 0) {
     try {
-      const resp = await fetch(CRICBUZZ_SCHEDULE_URL, {
-        headers: { "User-Agent": BROWSER_UA },
-        signal: AbortSignal.timeout(10_000),
-      });
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-      const found = parseFormats(await resp.text());
+      // Through the shared throttle layer, not a bare fetch: this shares one request budget and
+      // one 403 backoff window with every other Cricbuzz call in the container.
+      const found = parseFormats(await fetchHtml(CRICBUZZ_SCHEDULE_URL, 10_000));
       let added = 0;
       for (const m of missing) {
         const format = found[String(m.id)];
@@ -263,12 +268,7 @@ export function parseFormats(html) {
 }
 
 async function fetchActiveSeries() {
-  const resp = await fetch("https://www.cricbuzz.com/cricket-schedule/series", {
-    headers: { "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" },
-    signal: AbortSignal.timeout(10_000),
-  });
-  if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-  const html = await resp.text();
+  const html = await fetchHtml(SERIES_LIST_URL, 10_000);
 
   const nextDataMatch = html.match(/<script id="__NEXT_DATA__" type="application\/json">([\s\S]*?)<\/script>/);
   if (nextDataMatch) {
@@ -302,6 +302,118 @@ async function fetchActiveSeries() {
     result.push({ id, name, category: seriesCategory(name), isWomens: isWomensSeries(name), startDate: "", endDate: "" });
   }
   return result;
+}
+
+/**
+ * Number of archive years walked per run. One page is one Cricbuzz request; the corpus fills in
+ * over successive runs rather than in one burst.
+ */
+const ARCHIVE_PAGES_PER_RUN = 2;
+/** How far back the archive walk goes before wrapping to the newest year again. */
+const ARCHIVE_OLDEST_YEAR = 2015;
+
+/**
+ * Widen the active-series list with archived seasons, a couple of pages at a time.
+ *
+ * `active-series` only ever held series that were in progress, so a query for a competition out of
+ * season — "World Cup" for most of any four-year cycle — matched nothing anywhere in the app. The
+ * archive pages carry the same `/cricket-series/{id}/{slug}` anchors, so the same parser works.
+ *
+ * Three bounds, because spacing alone does not make an unbounded walk safe:
+ *  - [ARCHIVE_PAGES_PER_RUN] pages per run, resumed from `archiveCursor` in the previous file, so
+ *    the crawl is spread across runs instead of hammering the host once;
+ *  - a block aborts the walk and keeps everything gathered so far, including the previous file's
+ *    entries — a truncated corpus must never overwrite a good one;
+ *  - one Sentry-visible `error()` per throttled run rather than one per page.
+ *
+ * Never throws: this decorates the active list and must not be able to fail it.
+ *
+ * [fetchPage] is injectable so the bounds above are testable without a network — the abort path is
+ * the one that most needs proving and the one hardest to trigger on demand against the real host.
+ */
+export async function mergeArchiveSeries(active, prevJson, log, error, fetchPage = fetchHtml) {
+  const byId = new Map();
+  // Previous entries first so a re-crawl cannot shrink the corpus, then this run's live list wins
+  // on conflict — an in-progress series has fresher dates than an archived copy of itself.
+  for (const s of (prevJson?.data ?? [])) if (s?.id) byId.set(String(s.id), s);
+  for (const s of active) if (s?.id) byId.set(String(s.id), s);
+
+  const startYear = Number(prevJson?.archiveCursor) || new Date().getFullYear();
+  let year = startYear;
+  let blocked = null;
+  let walked = 0;
+
+  for (let i = 0; i < ARCHIVE_PAGES_PER_RUN; i++) {
+    try {
+      const html = await fetchPage(SERIES_ARCHIVE_URL(year), 12_000);
+      for (const s of parseSeriesAnchors(html)) {
+        if (!byId.has(s.id)) byId.set(s.id, s);
+      }
+      walked++;
+    } catch (e) {
+      // A block ends the walk for this run. The cursor is not advanced past the page we failed on,
+      // so the next run retries it rather than leaving a hole in the corpus.
+      if (e instanceof CricbuzzBlockedError || e?.blocked) { blocked = e; break; }
+      error(`Series archive ${year} failed: ${e?.message}`);
+    }
+    year = year - 1 < ARCHIVE_OLDEST_YEAR ? new Date().getFullYear() : year - 1;
+  }
+
+  if (blocked) {
+    error(
+      `Series archive walk throttled after ${walked} page(s) at ${year}: ${blocked.message}` +
+      (blocked.bodySnippet ? ` — body: ${blocked.bodySnippet}` : "")
+    );
+  }
+  log(`Series archive: walked ${walked} page(s), corpus ${byId.size}`);
+  return { series: [...byId.values()], cursor: year };
+}
+
+/**
+ * The `/cricket-series/{id}/{slug}` anchors an archive or schedule page carries.
+ *
+ * Two shapes, both live on cricbuzz.com right now:
+ *  - schedule pages put the name straight in the anchor text;
+ *  - archive pages wrap a `<div>` and put the name in `title`, suffixed with
+ *    " Matches 17 Dec 2023 - 31 Dec 2023".
+ * Reading only the first shape parsed 10 of 219 series on an archive page, which would have looked
+ * like a working crawl.
+ */
+export function parseSeriesAnchors(html) {
+  const out = [];
+  const seen = new Set();
+  const re = /href="\/cricket-series\/(\d+)\/[^"]*"([^>]*)>\s*(?:<[^>]*>\s*)*([^<]{0,120})/g;
+  let m;
+  while ((m = re.exec(html)) !== null) {
+    const id = m[1];
+    if (seen.has(id)) continue;
+    const name = nameFromAnchor(m[2], m[3]);
+    if (!name || name.length < 3) continue;
+    seen.add(id);
+    out.push({ id, name, category: seriesCategory(name), isWomens: isWomensSeries(name), startDate: "", endDate: "" });
+  }
+  return out;
+}
+
+/** Prefer the `title` attribute — it is the complete name; the inline text is often truncated. */
+function nameFromAnchor(attrs, innerText) {
+  const title = /title="([^"]+)"/.exec(attrs)?.[1];
+  if (title) {
+    // Drop the " Matches <start> - <end>" tail the archive appends to every title.
+    const stripped = title.replace(/\s+Matches\s+\d{1,2}\s+\w{3}\s+\d{4}\s*-.*$/, "").trim();
+    if (stripped.length >= 3) return decodeEntities(stripped);
+  }
+  return decodeEntities(innerText.trim());
+}
+
+function decodeEntities(text) {
+  return text
+    .replace(/&#x27;|&#39;|&apos;/g, "'")
+    .replace(/&quot;/g, '"')
+    .replace(/&#x26;|&#38;|&amp;/g, "&")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">");
 }
 
 async function getFirebaseAccessToken(serviceAccountJson) {

@@ -109,15 +109,23 @@ object AppwriteReadGuard {
     private class Breaker(val quota: Quota) {
         /**
          * Per-minute/per-hour caps, or null when there is no meaningful local unit to count.
-         * Bandwidth bytes, storage bytes and execution cost are all server-side accounting, so
-         * those quotas are breaker-only: they react to a 402 but never pre-emptively pause.
+         * Bandwidth and storage are billed in bytes, which is server-side accounting we cannot
+         * count here, so those two stay breaker-only: they react to a 402 but never pre-emptively
+         * pause.
+         *
+         * Executions used to be in that group. They are countable — one call is one execution —
+         * and the reason for leaving them uncapped (every call was driven by a match event or a
+         * fixed heartbeat, so the rate was structurally bounded) stopped holding once a
+         * user-typing-driven caller existed.
          */
         val rateLimits: Pair<Int, Int>? = when (quota) {
             Quota.DB_READ ->
                 CacheConfig.READ_GUARD_MAX_READS_PER_MINUTE to CacheConfig.READ_GUARD_MAX_READS_PER_HOUR
             Quota.DB_WRITE ->
                 CacheConfig.WRITE_GUARD_MAX_WRITES_PER_MINUTE to CacheConfig.WRITE_GUARD_MAX_WRITES_PER_HOUR
-            Quota.BANDWIDTH, Quota.EXECUTIONS, Quota.STORAGE -> null
+            Quota.EXECUTIONS ->
+                CacheConfig.EXECUTIONS_GUARD_MAX_PER_MINUTE to CacheConfig.EXECUTIONS_GUARD_MAX_PER_HOUR
+            Quota.BANDWIDTH, Quota.STORAGE -> null
         }
 
         var open = false
