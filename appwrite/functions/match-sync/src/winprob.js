@@ -182,6 +182,13 @@ function finalize(rawProb) {
     undetermined: false,
     battingTeamWinProbability: clamped,
     drawProbability: null,
+    // Decisiveness, not calibrated uncertainty: how far this is from the uniform prior over the
+    // outcome space, on 0..1. Two outcomes, so the prior is 0.5.
+    //
+    // The Test path (see the draw-aware return below) reported `max(win, draw, loss)` under this
+    // same field name, which is a different scale entirely — 0.34 is barely-decided over three
+    // outcomes but nearly-certain-against over two. Same key, same payload, incomparable numbers.
+    // Both now normalise against their own prior so a client can compare them.
     confidence: Math.abs(clamped - 0.5) * 2,
   };
 }
@@ -455,8 +462,16 @@ export function evaluate({
   const learned = learnedOf(model);
   const par = parRunRate(format, learned) ?? 8.0;
   const teamStats = learned?.teamStats ?? (model?.teamStats ?? model ?? {});
+  // Strength contributes nothing unless BOTH sides are in the corpus. winRateOf defaults an
+  // unknown team to 0.5, which is the right neutral when strength is one signal among fifteen —
+  // but only when it is symmetric. With one side known at 0.7 and the other absent, the
+  // difference became +0.2: a fabricated edge, indistinguishable from a measured one. The
+  // pre-match model already refuses this case outright (see knownWinRate); the live model has
+  // other features to fall back on, so it zeroes the term instead.
+  const battingRate = knownWinRate(teamStats, battingTeam, gender, format);
+  const bowlingRate = knownWinRate(teamStats, bowlingTeam, gender, format);
   const teamStrengthDiff =
-    winRateOf(teamStats, battingTeam, gender, format) - winRateOf(teamStats, bowlingTeam, gender, format);
+    battingRate === null || bowlingRate === null ? 0 : battingRate - bowlingRate;
   const isChase = requiredRunRate > 0;
 
   if (learned) {
@@ -615,6 +630,10 @@ export function evaluateLong({
     undetermined: false,
     battingTeamWinProbability: win,
     drawProbability: draw,
-    confidence: Math.max(win, draw, settled[0]),
+    // Normalised against a uniform prior over THREE outcomes, so it is on the same 0..1 scale as
+    // the two-outcome path above. Raw `max(win, draw, loss)` never goes below 1/3, so under the
+    // old code a completely undecided Test still reported confidence 0.34 while a completely
+    // undecided ODI reported 0.
+    confidence: (Math.max(win, draw, settled[0]) - 1 / 3) / (1 - 1 / 3),
   };
 }
