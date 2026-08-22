@@ -55,7 +55,7 @@ jobs:
 
       - uses: actions/setup-java@v5
         with:
-          java-version: '17'
+          java-version: '21'
           distribution: temurin
           cache: gradle
 
@@ -101,7 +101,7 @@ jobs:
 
       - uses: actions/setup-java@v5
         with:
-          java-version: '17'
+          java-version: '21'
           distribution: temurin
           cache: gradle
 
@@ -148,7 +148,7 @@ jobs:
 
       - uses: actions/setup-java@v5
         with:
-          java-version: '17'
+          java-version: '21'
           distribution: temurin
           cache: gradle
 

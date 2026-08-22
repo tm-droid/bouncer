@@ -17,7 +17,12 @@ detekt {
     baseline = file("$projectDir/config/detekt-baseline.xml")
 }
 
-// detekt 1.23.x cannot accept the JDK 25 default jvm-target; pin to the project's JVM level.
+// detekt 1.23.x embeds a Kotlin 1.9 frontend and crashes on JDK 25 (EnvironmentFacade), so it has
+// to be invoked with the daemon itself on JDK 21:
+//   ./gradlew detekt "-Dorg.gradle.java.home=$HOME/Library/Java/JavaVirtualMachines/jbr-21.0.10/Contents/Home"
+// The project's `jvmToolchain(21)` does NOT cover this: detekt 1.23 runs inside the Gradle daemon
+// rather than forking, and its task exposes no `javaLauncher`, so the daemon JDK is the only lever.
+// It retires with the move to detekt 2.x, not before.
 tasks.withType<io.gitlab.arturbosch.detekt.Detekt>().configureEach { jvmTarget = "17" }
 tasks.withType<io.gitlab.arturbosch.detekt.DetektCreateBaselineTask>().configureEach { jvmTarget = "17" }
 
@@ -116,8 +121,17 @@ buildConfigField("String", "APPWRITE_AI_CACHE_DB_ID", "\"${localProperties.getPr
     }
 
     kotlin {
+        // Pin the JDK the compiler RUNS on, not just the bytecode it emits. Without a toolchain the
+        // build used whatever JDK happened to be ambient — 25 locally, 17 in CI — which is what the
+        // `foojay-resolver-convention` plugin in settings.gradle.kts exists to prevent and was
+        // applied without ever being used. 21 rather than 17 because 17 is not installed on this
+        // machine and detekt 1.23.x cannot run above 21; one JDK now satisfies both.
+        jvmToolchain(21)
         compilerOptions {
             jvmTarget.set(JvmTarget.JVM_17)
+            // Resolve against JDK 17's java.base, not the toolchain's. Without this a JDK 21-only
+            // API compiles cleanly and fails at runtime on a device.
+            freeCompilerArgs.add("-Xjdk-release=17")
         }
     }
 
