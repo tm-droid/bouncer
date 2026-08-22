@@ -10,10 +10,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import com.tanush.bouncer.utils.PreferencesHelper
 import androidx.navigation.NavGraphBuilder
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.tanush.bouncer.models.AchievementKind
 import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.ui.HomeScreenV2
 import com.tanush.bouncer.ui.MatchDetailViewV2
@@ -52,7 +55,7 @@ fun BouncerNavHost(
     onMatchClick: (CricketMatch) -> Unit,
     onArTrackingClick: () -> Unit,
     isOnboardingComplete: Boolean = true,
-    themeMode: ThemeModeV2 = ThemeModeV2.Dark,
+    themeMode: ThemeModeV2 = ThemeModeV2.System,
     onThemeModeChanged: (ThemeModeV2) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
@@ -349,8 +352,22 @@ private fun NavGraphBuilder.moreChildDestinations(
 
     // Achievements
     composable(BouncerScreen.Achievements.route) {
+        // Unlocks were hardcoded to emptySet() here, so the screen always read "0 / N" no matter
+        // what the user had earned. They are genuinely persisted — MatchDetailViewModel unlocks
+        // them through AchievementKind.unlock and reads them back with loadUnlocked — the screen
+        // simply was never handed them. Same shape as the no-op favourites tap fixed in 65ab126.
+        //
+        // Loaded off the main thread: AchievementKind.loadUnlocked hits SharedPreferences, and this
+        // is a navigation destination rather than the first frame, so a moment of "0 / N" while it
+        // resolves costs nothing and a disk read in composition would not.
+        val context = LocalContext.current
+        val unlocked by produceState(initialValue = emptySet<AchievementKind>(), context) {
+            value = withContext(Dispatchers.IO) {
+                runCatching { AchievementKind.loadUnlocked(context) }.getOrDefault(emptySet())
+            }
+        }
         AchievementsScreenV2(
-            unlockedAchievements = emptySet(),
+            unlockedAchievements = unlocked,
             onBackClick = { navController.popBackStack() }
         )
     }

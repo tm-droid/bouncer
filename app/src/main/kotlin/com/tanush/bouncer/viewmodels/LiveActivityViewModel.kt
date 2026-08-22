@@ -845,6 +845,11 @@ class LiveActivityViewModel(
 
     override fun onCleared() {
         super.onCleared()
+        // viewModelScope cancellation already kills the poll jobs; this also clears the
+        // isPollingActive flag so a torn-down ViewModel never reports itself as polling.
+        // The real lifecycle gate is LifecycleStartEffect in MainAppContainer — without it this
+        // loop ran for the whole life of the Activity, backgrounded included.
+        stopPolling()
         notificationManager = null
         liveCommentaryManager.close()
     }

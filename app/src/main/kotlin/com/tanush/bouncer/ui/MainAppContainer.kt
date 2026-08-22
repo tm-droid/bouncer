@@ -12,6 +12,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.LifecycleStartEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
@@ -41,6 +42,43 @@ import com.tanush.bouncer.viewmodels.NewsViewModel
  *
  * The MainAppContainer handles all in-app navigation via NavController.
  */
+/**
+ * Runs [LiveActivityViewModel]'s score polling only while the host screen is started.
+ *
+ * `stopPolling()` existed with zero callers anywhere in the tree, and `onCleared()` closed the
+ * commentary manager without touching the poll loop — so the 6s Live loop ran for the whole life of
+ * the Activity, including every minute the app spent backgrounded, fetching matches nothing could
+ * render. Appwrite Realtime already gets exactly this treatment via `RealtimeLifecycleController`
+ * ("a backgrounded app can render none of it"); the HTTP half never did.
+ *
+ * START/STOP rather than RESUME/PAUSE, to match the boundary `RealtimeLifecycleController` uses and
+ * so a notification shade or a transparent overlay does not kill the loop. `startPolling()` is
+ * idempotent and runs its own fast-resume fetch when it was previously stopped, so returning to the
+ * foreground costs one catch-up fetch, not a restart.
+ */
+@Composable
+private fun PollWhileStarted(viewModel: LiveActivityViewModel) {
+    LifecycleStartEffect(viewModel) {
+        viewModel.startPolling()
+        onStopOrDispose { viewModel.stopPolling() }
+    }
+}
+
+/**
+ * The persisted [ThemeModeV2], defaulting to [ThemeModeV2.System] for anyone who has never picked.
+ *
+ * An unrecognised stored value (a rename, a downgrade) falls back to System rather than throwing —
+ * a corrupt preference should cost the user their choice, not the launch.
+ */
+private fun loadThemeMode(context: android.content.Context): ThemeModeV2 {
+    val stored = PreferencesHelper.getString(
+        context,
+        PreferencesHelper.KEY_THEME_VARIANT,
+        ThemeModeV2.System.name,
+    )
+    return ThemeModeV2.entries.firstOrNull { it.name == stored } ?: ThemeModeV2.System
+}
+
 @Composable
 fun BouncerAppContent(
     externalDeepLinkUri: String? = null
@@ -48,7 +86,16 @@ fun BouncerAppContent(
     var currentMatch by remember { mutableStateOf<CricketMatch?>(null) }
     var showArTracking by remember { mutableStateOf(false) }
     val context = LocalContext.current
-    var themeMode by rememberSaveable { mutableStateOf(ThemeModeV2.Dark) }
+    // The picked theme is persisted. It used to live only in `rememberSaveable`, so it survived a
+    // rotation and nothing else: every cold start reset it, and the reset landed on a hard `Dark`
+    // rather than `System` — meaning the app ignored the OS setting on every launch until the user
+    // re-picked. `KEY_THEME_VARIANT` had been defined in PreferencesHelper all along with nothing
+    // reading or writing it.
+    //
+    // Read synchronously rather than through produceState: this decides the very first frame, and
+    // a deferred read would paint one frame of the wrong theme. The prefs file is the same one
+    // read a few lines below for onboarding state, so this costs an in-memory map lookup.
+    var themeMode by rememberSaveable { mutableStateOf(loadThemeMode(context)) }
 
     LaunchedEffect(Unit) {
         BouncerMotion.applyReducedMotionPreference(
@@ -105,7 +152,14 @@ fun BouncerAppContent(
                             onArTrackingRequest = { showArTracking = true },
                             externalDeepLinkUri = externalDeepLinkUri,
                             themeMode = themeMode,
-                            onThemeModeChanged = { themeMode = it }
+                            onThemeModeChanged = {
+                                themeMode = it
+                                PreferencesHelper.setString(
+                                    context,
+                                    PreferencesHelper.KEY_THEME_VARIANT,
+                                    it.name,
+                                )
+                            }
                         )
                     }
                 }
@@ -143,7 +197,7 @@ fun MainAppContainer(
     onMatchClick: (CricketMatch) -> Unit,
     onArTrackingRequest: () -> Unit = {},
     externalDeepLinkUri: String? = null,
-    themeMode: ThemeModeV2 = ThemeModeV2.Dark,
+    themeMode: ThemeModeV2 = ThemeModeV2.System,
     onThemeModeChanged: (ThemeModeV2) -> Unit = {}
 ) {
     // Navigation controller - survives configuration changes via rememberNavController
@@ -155,6 +209,8 @@ fun MainAppContainer(
         PreferencesHelper.getBoolean(context, PreferencesHelper.KEY_ONBOARDING_COMPLETE, false)
             || FavouriteTeamsManager.favourites.value.isNotEmpty()
     }
+
+    PollWhileStarted(viewModel)
 
     // Observe current route for bottom nav state
     val navBackStackEntry by navController.currentBackStackEntryAsState()

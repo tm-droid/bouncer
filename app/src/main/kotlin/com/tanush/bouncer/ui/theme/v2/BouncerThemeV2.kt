@@ -25,11 +25,11 @@ import androidx.core.view.WindowCompat
 
 enum class ThemeModeV2 { Light, Dark, System }
 
-val LocalThemeModeV2 = staticCompositionLocalOf { ThemeModeV2.Dark }
+val LocalThemeModeV2 = staticCompositionLocalOf { ThemeModeV2.System }
 
 @Composable
 fun BouncerThemeV2(
-    themeMode: ThemeModeV2 = ThemeModeV2.Dark,
+    themeMode: ThemeModeV2 = ThemeModeV2.System,
     content: @Composable () -> Unit,
 ) {
     val isDark = when (themeMode) {
