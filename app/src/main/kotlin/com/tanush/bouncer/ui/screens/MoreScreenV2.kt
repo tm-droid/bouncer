@@ -1,5 +1,7 @@
 package com.tanush.bouncer.ui.screens
 
+import com.tanush.bouncer.BuildConfig
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -57,7 +59,6 @@ fun MoreScreenV2(
     onStatsClick: () -> Unit,
     onAchievementsClick: () -> Unit,
     onActivityClick: () -> Unit,
-    onArTrackingClick: () -> Unit,
     onAboutClick: () -> Unit,
     onDevToolsClick: () -> Unit,
     onNewsClick: () -> Unit = {},
@@ -70,13 +71,12 @@ fun MoreScreenV2(
 
     data class ExploreItem(val icon: ImageVector, val label: String, val onClick: () -> Unit)
 
-    val exploreItems = remember(onStatsClick, onAchievementsClick, onActivityClick, onArTrackingClick, onSeriesClick) {
+    val exploreItems = remember(onStatsClick, onAchievementsClick, onActivityClick, onSeriesClick) {
         listOf(
             ExploreItem(Icons.Default.BarChart, "Stats", onStatsClick),
             ExploreItem(Icons.Default.EmojiEvents, "Trophies", onStatsClick),
             ExploreItem(Icons.Default.SportsCricket, "Achievements", onAchievementsClick),
             ExploreItem(Icons.Default.Timeline, "Activity", onActivityClick),
-            ExploreItem(Icons.Default.ViewInAr, "AR Track", onArTrackingClick),
             ExploreItem(Icons.Default.DateRange, "Series", onSeriesClick),
         )
     }
@@ -157,13 +157,17 @@ fun MoreScreenV2(
                         trailing = SettingsTrailing.Navigation,
                         onClick = onAboutClick,
                     )
-                    SettingsItemV2(
-                        icon = Icons.Default.Build,
-                        title = "Dev Tools",
-                        subtitle = "Diagnostics and debug",
-                        trailing = SettingsTrailing.Navigation,
-                        onClick = onDevToolsClick,
-                    )
+                    // Debug builds only. This row shipped in release, and the screen behind it
+                    // led with an "Echo" button wired to a placeholder MCP client.
+                    if (BuildConfig.DEBUG) {
+                        SettingsItemV2(
+                            icon = Icons.Default.Build,
+                            title = "Dev Tools",
+                            subtitle = "Diagnostics and debug",
+                            trailing = SettingsTrailing.Navigation,
+                            onClick = onDevToolsClick,
+                        )
+                    }
                 }
             }
 

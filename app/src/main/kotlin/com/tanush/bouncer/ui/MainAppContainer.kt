@@ -38,7 +38,6 @@ import com.tanush.bouncer.viewmodels.NewsViewModel
  *
  * This composable manages the root-level navigation state:
  * - Match detail modal (overlays the main container)
- * - AR tracking overlay
  *
  * The MainAppContainer handles all in-app navigation via NavController.
  */
@@ -84,7 +83,6 @@ fun BouncerAppContent(
     externalDeepLinkUri: String? = null
 ) {
     var currentMatch by remember { mutableStateOf<CricketMatch?>(null) }
-    var showArTracking by remember { mutableStateOf(false) }
     val context = LocalContext.current
     // The picked theme is persisted. It used to live only in `rememberSaveable`, so it survived a
     // rotation and nothing else: every cold start reset it, and the reset landed on a hard `Dark`
@@ -109,7 +107,6 @@ fun BouncerAppContent(
 
     BouncerThemeV2(themeMode = themeMode) {
         BackHandler(enabled = currentMatch != null) { currentMatch = null }
-        BackHandler(enabled = showArTracking) { showArTracking = false }
 
         Box(
             modifier = Modifier
@@ -149,7 +146,6 @@ fun BouncerAppContent(
                             onMatchClick = { clickedMatch ->
                                 currentMatch = clickedMatch
                             },
-                            onArTrackingRequest = { showArTracking = true },
                             externalDeepLinkUri = externalDeepLinkUri,
                             themeMode = themeMode,
                             onThemeModeChanged = {
@@ -163,15 +159,6 @@ fun BouncerAppContent(
                         )
                     }
                 }
-            }
-
-            // AR Overlay Layer
-            AnimatedVisibility(
-                visible = showArTracking,
-                enter = BouncerMotion.Transitions.scaleFadeIn(initialScale = 0.9f),
-                exit = BouncerMotion.Transitions.scaleFadeOut(targetScale = 0.9f)
-            ) {
-                ArBallTrackingScreen(onBackClick = { showArTracking = false })
             }
         }
     }
@@ -188,14 +175,12 @@ fun BouncerAppContent(
  * @param viewModel ViewModel for live match data
  * @param newsViewModel ViewModel for news data
  * @param onMatchClick Callback when a match is clicked (shows modal detail)
- * @param onArTrackingRequest Callback to show AR tracking overlay
  */
 @Composable
 fun MainAppContainer(
     viewModel: LiveActivityViewModel = viewModel(),
     newsViewModel: NewsViewModel = viewModel(),
     onMatchClick: (CricketMatch) -> Unit,
-    onArTrackingRequest: () -> Unit = {},
     externalDeepLinkUri: String? = null,
     themeMode: ThemeModeV2 = ThemeModeV2.System,
     onThemeModeChanged: (ThemeModeV2) -> Unit = {}
@@ -251,7 +236,6 @@ fun MainAppContainer(
             liveActivityViewModel = viewModel,
             newsViewModel = newsViewModel,
             onMatchClick = onMatchClick,
-            onArTrackingClick = onArTrackingRequest,
             isOnboardingComplete = isOnboardingComplete,
             themeMode = themeMode,
             onThemeModeChanged = onThemeModeChanged,
@@ -309,7 +293,6 @@ private fun handleExternalDeepLink(
         "about" -> navController.navigateForward(BouncerScreen.About.route)
         "news" -> navController.navigateToTab(BouncerScreen.News.route)
         "activity" -> navController.navigateForward(BouncerScreen.ActivityFeed.route)
-        "ar", "ar-tracking" -> navController.navigateForward(BouncerScreen.ArTracking.route)
         "match" -> {
             val deepLinkMatchId = pathSegments.getOrNull(1) ?: parsedUri.getQueryParameter("matchId")
             if (deepLinkMatchId != null) {

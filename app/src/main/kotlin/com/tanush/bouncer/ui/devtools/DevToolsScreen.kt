@@ -6,29 +6,29 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.*
-import com.tanush.bouncer.mcp.McpViewModel
 import androidx.compose.material3.ExperimentalMaterial3Api
 import com.tanush.bouncer.ui.components.SectionDivider
 
+/**
+ * Debug-only diagnostics: offline stub, canned latency, simulated matches, log buffer, FPS/memory
+ * sampling, crash dump. Registered in the nav graph **only in debug builds** — see BouncerNavHost.
+ *
+ * It used to be reachable from the More tab of a release build, and its first control ran an "Echo"
+ * against `mcp/McpClient`, a 13-line stub that returned the literal string `"Echo: <input>"` and
+ * pointed at `http://localhost:8080/mcp` — which on a phone is the phone. That package is deleted;
+ * the rest of this screen is real and stays, behind the gate.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DevToolsScreen(
     onBackClick: () -> Unit = {}
 ) {
-    val vm: McpViewModel = viewModel()
-    var echoInput by remember { mutableStateOf("ping") }
-    val echoResult by vm.echoResult.collectAsStateWithLifecycle()
-    var busy by remember { mutableStateOf(false) }
-
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("devtools_prefs", Context.MODE_PRIVATE) }
     var offlineMode by remember { mutableStateOf(prefs.getBoolean("offline_mode", false)) }
@@ -39,20 +39,6 @@ fun DevToolsScreen(
             title = { Text("Dev Tools") },
             navigationIcon = { IconButton(onClick = onBackClick) { Icon(Icons.Filled.Close, contentDescription = "Close") } }
         )
-
-        // Echo
-        OutlinedTextField(
-            value = echoInput,
-            onValueChange = { echoInput = it },
-            label = { Text("Echo message") },
-            singleLine = true
-        )
-        FilledTonalButton(onClick = { busy = true; vm.callEcho(echoInput); busy = false }, modifier = Modifier.fillMaxWidth()) {
-            Icon(Icons.AutoMirrored.Filled.Send, contentDescription = null)
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("Run Echo")
-        }
-        Text("Echo Result: $echoResult", style = MaterialTheme.typography.bodySmall)
 
         SectionDivider(title = "Simulation & Diagnostics")
 

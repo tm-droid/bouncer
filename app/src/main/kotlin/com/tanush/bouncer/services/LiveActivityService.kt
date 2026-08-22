@@ -3,6 +3,8 @@ package com.tanush.bouncer.services
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ServiceInfo
+import androidx.core.app.ServiceCompat
 import android.os.Binder
 import android.os.IBinder
 import com.tanush.bouncer.liveactivity.LiveActivityManager
@@ -91,7 +93,15 @@ class LiveActivityService : Service() {
                 relativeTime = getString(com.tanush.bouncer.R.string.live_activity_last_update_just_now),
                 highPriority = false
             )
-            startForeground(matchId.hashCode(), warmNotification)
+            // Type asserted at the call site, not only in the manifest: on API 34+ the platform
+            // wants the service type declared where the service actually starts, and a mismatch
+            // between the two is a runtime failure rather than a build one.
+            ServiceCompat.startForeground(
+                this@LiveActivityService,
+                matchId.hashCode(),
+                warmNotification,
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC,
+            )
 
             repository.subscribeToMatch(matchId, intervalMs = 7_000L).collectLatest { (state, update) ->
                 manager.postUpdate(state, update)

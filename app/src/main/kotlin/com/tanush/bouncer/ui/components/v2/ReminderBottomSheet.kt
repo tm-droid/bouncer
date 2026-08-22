@@ -1,10 +1,6 @@
 package com.tanush.bouncer.ui.components.v2
 
-import android.app.AlarmManager
-import android.app.PendingIntent
 import android.content.Context
-import android.content.Intent
-import android.os.Build
 import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -19,6 +15,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 import com.tanush.bouncer.utils.PrefsRegistry
+import com.tanush.bouncer.utils.ReminderScheduler
 import io.sentry.Sentry
 import io.sentry.Breadcrumb
 
@@ -129,33 +126,30 @@ private fun scheduleReminder(
         return
     }
 
+    // Goes through ReminderScheduler rather than building its own alarm. The copy that lived here
+    // resolved its receiver with
+    // `Class.forName("com.tanush.bouncer.receivers.ReminderReceiver")` — a package that does not
+    // exist; the real one is `com.tanush.bouncer.utils.ReminderReceiver`, which is also what the
+    // manifest registers. So every reminder set from this sheet threw ClassNotFoundException, was
+    // swallowed by the catch below, and reported "Reminder saved" to the user while scheduling
+    // nothing. The extras did not match the receiver's either ("match_title" vs the "title" it
+    // reads), so even the right class would have fired a notification with default text.
     try {
-        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-        val intent = Intent(context, Class.forName("com.tanush.bouncer.receivers.ReminderReceiver")).apply {
-            putExtra("match_id", matchId)
-            putExtra("match_title", matchTitle)
-            putExtra("minutes_before", minutesBefore)
-        }
-        val pendingIntent = PendingIntent.getBroadcast(
-            context,
-            matchId.hashCode() + minutesBefore,
-            intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-        )
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !alarmManager.canScheduleExactAlarms()) {
-            alarmManager.set(AlarmManager.RTC_WAKEUP, triggerTime, pendingIntent)
-        } else {
-            alarmManager.setExact(AlarmManager.RTC_WAKEUP, triggerTime, pendingIntent)
-        }
-
-        saveReminderPreference(context, matchId, minutesBefore)
         val label = if (minutesBefore == 0) "at match start" else "$minutesBefore min before"
+        ReminderScheduler.scheduleReminder(
+            context = context,
+            id = matchId.hashCode() + minutesBefore,
+            title = matchTitle,
+            body = if (minutesBefore == 0) "Starting now" else "Starts in $minutesBefore minutes",
+            delayMillis = triggerTime - System.currentTimeMillis(),
+        )
+        saveReminderPreference(context, matchId, minutesBefore)
         Toast.makeText(context, "Reminder set: $label", Toast.LENGTH_SHORT).show()
     } catch (e: Exception) {
         Sentry.captureException(e)
-        saveReminderPreference(context, matchId, minutesBefore)
-        Toast.makeText(context, "Reminder saved", Toast.LENGTH_SHORT).show()
+        // Deliberately not "Reminder saved". Saying a reminder is set when scheduling failed is
+        // how this stayed broken: the user has no way to learn it will not fire.
+        Toast.makeText(context, "Couldn't set that reminder — try again", Toast.LENGTH_SHORT).show()
     }
 }
 

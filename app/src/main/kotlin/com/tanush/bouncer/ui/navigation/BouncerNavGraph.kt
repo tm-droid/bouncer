@@ -110,9 +110,6 @@ sealed class BouncerScreen(val route: String) {
     /** Extended stats overview screen (analytics details) */
     data object StatsOverview : BouncerScreen("stats_overview")
 
-    /** AR Ball Tracking screen */
-    data object ArTracking : BouncerScreen("ar-tracking")
-
     /** Intelligence/Activity Feed screen */
     data object ActivityFeed : BouncerScreen("activity-feed")
 
@@ -230,7 +227,6 @@ sealed class BouncerScreen(val route: String) {
             About.route,
             DevTools.route,
             Achievements.route,
-            ArTracking.route,
             ActivityFeed.route,
             Search.route,
             SeriesList.route,

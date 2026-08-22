@@ -1,5 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+    API 26-30 backup rules. API 31+ uses data_extraction_rules.xml instead; both are declared in
+    the manifest because minSdk is 26.
+
+    These two files must agree. This one used to include the sharedpref and database domains
+    wholesale with no excludes, so on 26-30 it backed up strictly more than the 31+ rules allow —
+    every database rather than just bouncer_db, plus whatever lands in the app's root and external
+    dirs. Mirrored against data_extraction_rules.xml so the same data leaves the device on every
+    supported API level.
+-->
 <full-backup-content>
+    <include domain="database" path="bouncer_db"/>
     <include domain="sharedpref" path="."/>
-    <include domain="database" path="."/>
+    <exclude domain="root" path="."/>
+    <exclude domain="external" path="."/>
 </full-backup-content>

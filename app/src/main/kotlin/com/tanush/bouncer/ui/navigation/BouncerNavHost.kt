@@ -16,6 +16,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.tanush.bouncer.BuildConfig
 import com.tanush.bouncer.models.AchievementKind
 import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.ui.HomeScreenV2
@@ -44,7 +45,6 @@ import com.tanush.bouncer.viewmodels.NewsViewModel
  * @param liveActivityViewModel ViewModel for live match data
  * @param newsViewModel ViewModel for news data
  * @param onMatchClick Callback when a match card is clicked (for modal detail view)
- * @param onArTrackingClick Callback to show AR tracking overlay
  * @param modifier Modifier for the NavHost
  */
 @Composable
@@ -53,7 +53,6 @@ fun BouncerNavHost(
     liveActivityViewModel: LiveActivityViewModel,
     newsViewModel: NewsViewModel,
     onMatchClick: (CricketMatch) -> Unit,
-    onArTrackingClick: () -> Unit,
     isOnboardingComplete: Boolean = true,
     themeMode: ThemeModeV2 = ThemeModeV2.System,
     onThemeModeChanged: (ThemeModeV2) -> Unit = {},
@@ -85,7 +84,7 @@ fun BouncerNavHost(
         primaryTabDestinations(navController, liveActivityViewModel, newsViewModel, onMatchClick)
 
         // Secondary screens from More tab
-        moreChildDestinations(navController, liveActivityViewModel, newsViewModel, onMatchClick, onArTrackingClick, themeMode, onThemeModeChanged)
+        moreChildDestinations(navController, liveActivityViewModel, newsViewModel, onMatchClick, themeMode, onThemeModeChanged)
 
         // Parameterized screens
         parameterizedDestinations(navController, newsViewModel, liveActivityViewModel, onMatchClick)
@@ -232,9 +231,6 @@ private fun NavGraphBuilder.primaryTabDestinations(
             onActivityClick = {
                 navController.navigateForward(BouncerScreen.ActivityFeed.route)
             },
-            onArTrackingClick = {
-                navController.navigateForward(BouncerScreen.ArTracking.route)
-            },
             onAboutClick = {
                 navController.navigateForward(BouncerScreen.About.route)
             },
@@ -263,7 +259,6 @@ private fun NavGraphBuilder.moreChildDestinations(
     liveActivityViewModel: LiveActivityViewModel,
     newsViewModel: NewsViewModel,
     onMatchClick: (CricketMatch) -> Unit,
-    onArTrackingClick: () -> Unit,
     themeMode: ThemeModeV2,
     onThemeModeChanged: (ThemeModeV2) -> Unit
 ) {
@@ -343,11 +338,15 @@ private fun NavGraphBuilder.moreChildDestinations(
         )
     }
 
-    // DevTools (unchanged — not redesigned)
-    composable(BouncerScreen.DevTools.route) {
-        DevToolsScreen(
-            onBackClick = { navController.popBackStack() }
-        )
+    // DevTools — debug builds only. It was in the release graph and reachable from the More tab,
+    // fronted by an "Echo" control wired to a stub MCP client that returned a canned string and
+    // pointed at http://localhost:8080. The stub is gone; the real diagnostics stay behind here.
+    if (BuildConfig.DEBUG) {
+        composable(BouncerScreen.DevTools.route) {
+            DevToolsScreen(
+                onBackClick = { navController.popBackStack() }
+            )
+        }
     }
 
     // Achievements
@@ -382,14 +381,6 @@ private fun NavGraphBuilder.moreChildDestinations(
     // Stats Overview (analytics)
     composable(BouncerScreen.StatsOverview.route) {
         StatsOverviewScreenV2(onBackClick = { navController.popBackStack() })
-    }
-
-    // AR Tracking (uses overlay pattern)
-    composable(BouncerScreen.ArTracking.route) {
-        LaunchedEffect(Unit) {
-            navController.popBackStack()
-            onArTrackingClick()
-        }
     }
 
     // Activity / Intelligence Feed
