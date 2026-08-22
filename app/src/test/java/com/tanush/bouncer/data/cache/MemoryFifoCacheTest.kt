@@ -13,11 +13,11 @@ import org.junit.Test
  * which is precisely why the previous wall-clock/uptime mismatch in MatchCacheService could ship
  * undetected: no test could advance time, so no test could observe expiry at all.
  */
-class MemoryLruCacheTest {
+class MemoryFifoCacheTest {
 
     private var now = 1_000L
     private fun cache(maxSize: Int = 4, ttlMs: Long = 100L) =
-        MemoryLruCache<String, String>(maxSize, { ttlMs }, { now })
+        MemoryFifoCache<String, String>(maxSize, { ttlMs }, { now })
 
     // ── TTL ──
 
@@ -68,7 +68,7 @@ class MemoryLruCacheTest {
 
     @Test
     fun `ttl is resolved per key`() {
-        val c = MemoryLruCache<String, String>(
+        val c = MemoryFifoCache<String, String>(
             maxSize = 4,
             ttlResolver = { key -> if (key == "Live") 6_000L else 60_000L },
             uptimeMs = { now },
@@ -149,7 +149,7 @@ class MemoryLruCacheTest {
 
     @Test(expected = IllegalArgumentException::class)
     fun `non-positive maxSize is rejected at construction`() {
-        MemoryLruCache<String, String>(maxSize = 0, ttlMs = 100L)
+        MemoryFifoCache<String, String>(maxSize = 0, ttlMs = 100L)
     }
 
     // ── Basic map ops ──

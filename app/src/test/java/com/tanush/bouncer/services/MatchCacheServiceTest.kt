@@ -19,7 +19,7 @@ import org.junit.Test
  * every entry ever written. Its only caller — LiveActivityViewModel — therefore refetched from
  * the network on every poll and the 16-entry memory tier was write-only.
  *
- * Expiry-over-time is covered in MemoryLruCacheTest, which can advance the injected clock;
+ * Expiry-over-time is covered in MemoryFifoCacheTest, which can advance the injected clock;
  * MatchCacheService is an object singleton whose cache is constructed at class-init, so the
  * fresh-entry case is what is meaningfully assertable here.
  */

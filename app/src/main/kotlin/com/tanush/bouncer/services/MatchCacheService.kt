@@ -4,7 +4,7 @@ import android.content.Context
 import android.util.Log
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
-import com.tanush.bouncer.data.cache.MemoryLruCache
+import com.tanush.bouncer.data.cache.MemoryFifoCache
 import com.tanush.bouncer.models.CricketMatch
 import io.sentry.Breadcrumb
 import io.sentry.Sentry
@@ -30,7 +30,7 @@ object MatchCacheService {
     // Shared in-memory tier scaffolding (lock + eviction). The per-status TTL lives in the
     // cache itself; this service never computes entry age, so there is no second clock to
     // get wrong.
-    private val cache = MemoryLruCache<String, List<CricketMatch>>(
+    private val cache = MemoryFifoCache<String, List<CricketMatch>>(
         maxSize = 16,
         ttlResolver = { status -> getCacheExpirationInterval(status) },
     )

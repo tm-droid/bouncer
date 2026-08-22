@@ -12,8 +12,11 @@ import kotlin.concurrent.write
  * each cache service (AICacheService, MatchCacheService, ...). This handles ONLY the
  * in-memory layer — Room/Appwrite/disk tiers stay in the owning service.
  *
- * Eviction is least-recently-inserted: [get] does not bump recency (insertion order),
- * matching the access pattern of the callers that warm memory from a slower tier.
+ * Eviction is FIFO, not LRU: the backing LinkedHashMap is built with `accessOrder = false`,
+ * so [get] does not bump recency and the oldest *insertion* is evicted first. That matches the
+ * access pattern of the callers, which warm memory from a slower tier rather than re-reading a
+ * hot working set. The class was called `MemoryLruCache` until the name was corrected — see
+ * [com.tanush.bouncer.utils.BoundedLruCache] for the real LRU.
  *
  * TTL is resolved per key via [ttlResolver], so a caller whose expiry varies by key
  * (e.g. MatchCacheService: 6s for Live, 60s for Upcoming/Recent) configures it here
@@ -28,7 +31,7 @@ import kotlin.concurrent.write
  * to hold their own outer mutex; this class's internal lock only guarantees per-call
  * thread-safety of the memory map.
  */
-open class MemoryLruCache<K, V>(
+open class MemoryFifoCache<K, V>(
     private val maxSize: Int = 256,
     private val ttlResolver: (K) -> Long,
     // The single place this cache's clock is chosen. Injectable because SystemClock is stubbed
@@ -54,12 +57,19 @@ open class MemoryLruCache<K, V>(
 
     /** Returns the cached value if present and not expired, else null. Expired entries are evicted. */
     fun get(key: K): V? {
-        val entry = lock.read { cache[key] } ?: return null
-        if (isExpired(key, entry)) {
-            lock.write { cache.remove(key) }
-            return null
+        lock.read { cache[key] }?.let { if (!isExpired(key, it)) return it.value }
+        // Slow path: the entry looked expired under the read lock. Re-read under the write lock
+        // before evicting — a put() can land in the gap between the two locks, and an
+        // unconditional remove() would throw away the fresh value it just wrote.
+        return lock.write {
+            val current = cache[key] ?: return@write null
+            if (isExpired(key, current)) {
+                cache.remove(key)
+                null
+            } else {
+                current.value
+            }
         }
-        return entry.value
     }
 
     /**

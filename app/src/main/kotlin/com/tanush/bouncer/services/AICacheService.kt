@@ -2,7 +2,8 @@ package com.tanush.bouncer.services
 
 import android.util.Log
 import com.tanush.bouncer.data.CacheConfig
-import com.tanush.bouncer.data.cache.MemoryLruCache
+import com.tanush.bouncer.data.SingleFlight
+import com.tanush.bouncer.data.cache.MemoryFifoCache
 import com.tanush.bouncer.data.local.dao.AICacheDao
 import com.tanush.bouncer.data.local.entities.AICommentaryCacheEntity
 import com.tanush.bouncer.data.remote.AppwriteAICache
@@ -13,17 +14,14 @@ import io.sentry.Sentry
 import io.sentry.SentryLevel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.util.Date
-import java.util.concurrent.ConcurrentHashMap
 
 object AICacheService {
     private const val TAG = "AICacheService"
@@ -34,16 +32,24 @@ object AICacheService {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val mutex = Mutex()
     private val CACHE_EXPIRATION_INTERVAL_MS = CacheConfig.AI_CACHE_TTL_MS
-    // Shared in-memory LRU tier (256 entries, TTL + permanent semantics). Compound
+    // Shared in-memory tier (256 entries, TTL + permanent semantics, FIFO eviction). Compound
     // memory+Room operations are still serialized by [mutex]; this only guards the map.
-    private val cache = MemoryLruCache<String, String>(
+    private val cache = MemoryFifoCache<String, String>(
         maxSize = MAX_MEMORY_ENTRIES,
         ttlMs = CACHE_EXPIRATION_INTERVAL_MS,
     )
     private var dao: AICacheDao? = null
-    // In-flight deduplication: prevents duplicate remote lookups for the same key
-    // when multiple coroutines miss memory+Room simultaneously.
-    private val inFlight = ConcurrentHashMap<String, Deferred<String?>>()
+    // In-flight deduplication: prevents duplicate remote lookups for the same key when multiple
+    // coroutines miss memory+Room simultaneously.
+    //
+    // This used to be a hand-rolled `ConcurrentHashMap.computeIfAbsent { scope.async { … } }` with
+    // the entry cleared from inside the coroutine's own `finally`. Two things were wrong with it:
+    // ConcurrentHashMap documents that the mapping function must not modify the map, and that code
+    // launched a coroutine which removed the very key being installed — it only survived because
+    // the coroutine landed on a different thread. And nothing stopped an already-completed
+    // Deferred being handed to a later caller, which would serve a stale result. SingleFlight
+    // solves both, and it is what CricketRepository already uses.
+    private val inFlight = SingleFlight<String, String?>(scope)
 
     fun close() { scope.cancel() }
 
@@ -152,16 +158,19 @@ object AICacheService {
         // Appwrite, reuse its Deferred rather than launching a second remote call. This
         // prevents duplicate LLM invocations when multiple callers miss the local caches
         // simultaneously (e.g. cold start or concurrent ball commentary requests).
-        val deferred: Deferred<String?> = inFlight.computeIfAbsent(key) {
-            scope.async {
-                try {
-                    val remoteHit = AppwriteAICache.get(key) ?: return@async null
+        return inFlight.run(key) {
+            try {
+                val remoteHit = AppwriteAICache.get(key)
+                if (remoteHit == null) {
+                    null
+                } else {
                     val (remoteResult, isPermanent) = remoteHit
                     Log.d(TAG, "Remote hit for key $key (permanent=$isPermanent), warming local caches")
                     // Phase 3: write-back to local caches under mutex
                     mutex.withLock {
                         cache.put(key, remoteResult, permanent = isPermanent)
-                        val dbTimestamp = if (isPermanent) CacheConfig.AI_CACHE_PERMANENT_TIMESTAMP else Date().time
+                        val dbTimestamp =
+                            if (isPermanent) CacheConfig.AI_CACHE_PERMANENT_TIMESTAMP else Date().time
                         // Came FROM Appwrite, so it is by definition already mirrored — never queue
                         // it for replay.
                         dao?.insert(
@@ -169,16 +178,13 @@ object AICacheService {
                         )
                     }
                     remoteResult
-                } catch (e: Exception) {
-                    if (e is CancellationException) throw e
-                    Sentry.captureException(e)
-                    null  // treat remote failure as miss, degrade gracefully
-                } finally {
-                    inFlight.remove(key)
                 }
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                Sentry.captureException(e)
+                null  // treat remote failure as miss, degrade gracefully
             }
         }
-        return deferred.await()
     }
 
     // A failed generation must never be persisted: caching the placeholder (or blank) poisons all

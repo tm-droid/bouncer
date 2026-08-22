@@ -23,6 +23,12 @@ object MatchSubscriptionManager {
     private val _subscriptions = MutableStateFlow<Set<String>>(emptySet())
     val subscriptions: StateFlow<Set<String>> = _subscriptions.asStateFlow()
 
+    // Mutators below carry @Synchronized. They are read-modify-write across the StateFlow and
+    // prefs together, so the disk write has to sit inside the same critical section —
+    // `MutableStateFlow.update {}` alone would let two concurrent callers persist in the opposite
+    // order to the one they published. The monitor is this object and is reentrant, so toggle()
+    // can call subscribe()/unsubscribe().
+
     fun initialize(context: Context) {
         if (initialized) return
         try {
@@ -36,6 +42,7 @@ object MatchSubscriptionManager {
         }
     }
 
+    @Synchronized
     fun subscribe(matchId: String) {
         if (!initialized) return
         try {
@@ -49,6 +56,7 @@ object MatchSubscriptionManager {
         }
     }
 
+    @Synchronized
     fun unsubscribe(matchId: String) {
         if (!initialized) return
         try {
@@ -62,6 +70,7 @@ object MatchSubscriptionManager {
         }
     }
 
+    @Synchronized
     fun toggle(matchId: String): Boolean {
         if (!initialized) return false
         return if (isSubscribed(matchId)) {
@@ -79,7 +88,10 @@ object MatchSubscriptionManager {
     }
 
     private fun save(set: Set<String>) {
-        // Persist first so a process kill between disk + StateFlow doesn't lose state.
+        // Persist before publishing so the two never disagree in the order callers observe.
+        // `apply()` is asynchronous, so this is an ordering guarantee, not a durability one — a
+        // process kill in the next few milliseconds can still lose the write. DataStore is the
+        // real fix; commit() would only trade the loss for a main-thread disk write.
         prefs.edit().putString(KEY_SUBSCRIBED, gson.toJson(set.toList())).apply()
         _subscriptions.value = set
     }

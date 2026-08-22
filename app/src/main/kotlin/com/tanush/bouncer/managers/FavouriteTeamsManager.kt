@@ -35,6 +35,12 @@ object FavouriteTeamsManager {
     private val _favourites = MutableStateFlow<List<String>>(emptyList())
     val favourites: StateFlow<List<String>> = _favourites.asStateFlow()
 
+    // Mutators below carry @Synchronized. Every one is read-modify-write across two places — the
+    // StateFlow and prefs — so `MutableStateFlow.update {}` is not enough on its own: the disk
+    // write has to be inside the same critical section, or two concurrent callers can persist in
+    // the opposite order to the one they published. The monitor is this object; it is reentrant,
+    // so toggle() can call isFavourite()/add()/remove().
+
     /**
      * Whether the favourites list is at maximum capacity
      */
@@ -78,6 +84,7 @@ object FavouriteTeamsManager {
     /**
      * Add a team to favourites. Returns false if at max capacity.
      */
+    @Synchronized
     fun add(team: String): Boolean {
         try {
             val current = _favourites.value.toMutableList()
@@ -96,6 +103,7 @@ object FavouriteTeamsManager {
         }
     }
 
+    @Synchronized
     fun remove(team: String) {
         try {
             val current = _favourites.value.toMutableList()
@@ -114,6 +122,7 @@ object FavouriteTeamsManager {
      * Returns true if the team is now a favourite, false if removed.
      * Returns null if the team couldn't be added (at max capacity).
      */
+    @Synchronized
     fun toggle(team: String): Boolean? {
         try {
             return if (isFavourite(team)) {
@@ -131,6 +140,7 @@ object FavouriteTeamsManager {
     /**
      * Move a team from one position to another (drag-to-reorder support).
      */
+    @Synchronized
     fun move(fromIndex: Int, toIndex: Int) {
         try {
             val current = _favourites.value.toMutableList()
@@ -151,6 +161,7 @@ object FavouriteTeamsManager {
     /**
      * Replace entire order (iOS Parity: used after drag-reorder completion)
      */
+    @Synchronized
     fun reorder(newOrder: List<String>) {
         try {
             save(newOrder)
@@ -184,7 +195,11 @@ object FavouriteTeamsManager {
 
     private fun save(list: List<String>) {
         try {
-            // Persist first so a process kill between disk + StateFlow doesn't lose state.
+            // Persist before publishing so the two never disagree in the order callers observe.
+            // Note `apply()` is asynchronous: it hands the write to a background thread, so this
+            // does NOT guarantee the value survives a process kill in the next few milliseconds.
+            // Only commit() would, and that is a main-thread disk write. The real answer is
+            // DataStore; until then this ordering is the best available, not a durability promise.
             val json = gson.toJson(list)
             prefs.edit().putString(KEY, json).apply()
             _favourites.value = list

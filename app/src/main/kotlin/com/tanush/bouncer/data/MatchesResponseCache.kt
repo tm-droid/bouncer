@@ -1,7 +1,7 @@
 package com.tanush.bouncer.data
 
 import android.os.SystemClock
-import com.tanush.bouncer.data.cache.MemoryLruCache
+import com.tanush.bouncer.data.cache.MemoryFifoCache
 import com.tanush.bouncer.network.models.SanwebMatchesListResponse
 
 /**
@@ -21,7 +21,7 @@ import com.tanush.bouncer.network.models.SanwebMatchesListResponse
 class MatchesResponseCache(
     uptimeMs: () -> Long = SystemClock::elapsedRealtime,
 ) {
-    private val cache = MemoryLruCache<String, SanwebMatchesListResponse>(
+    private val cache = MemoryFifoCache<String, SanwebMatchesListResponse>(
         maxSize = MAX_ENTRIES,
         ttlResolver = ::ttlFor,
         uptimeMs = uptimeMs,
