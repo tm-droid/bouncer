@@ -1,6 +1,8 @@
 package com.tanush.bouncer.analysis
 
 import com.tanush.bouncer.analysis.CricketConstants.BALLS_PER_OVER
+import com.tanush.bouncer.models.CricketMatch
+import com.tanush.bouncer.utils.parseScore
 import kotlin.math.roundToInt
 
 /**
@@ -11,6 +13,14 @@ import kotlin.math.roundToInt
  * ODI_INNINGS_BALLS = 300).
  */
 object MatchProjections {
+
+    /** A full complement of wickets. */
+    private const val MAX_WICKETS = 10
+
+    // Wicket damping for [projectedScore], mirroring winprob.js: at 10 wickets in hand the
+    // remaining overs are worth the full current run rate, at 0 they are worth 55% of it.
+    private const val WICKET_DAMPING_FLOOR = 0.55
+    private const val WICKET_DAMPING_RANGE = 0.45
 
     /**
      * Current run rate in runs per over.
@@ -45,31 +55,82 @@ object MatchProjections {
     }
 
     /**
-     * Projected final score based on current run rate extrapolated to end of innings.
+     * Projected final score, damped by wickets in hand.
      *
-     * Formula: currentRuns * totalBalls / ballsBowled
-     * (equivalent to currentRuns + crr_per_ball * ballsRemaining).
+     * `runs + crr * oversRemaining * (0.55 + 0.45 * wicketsInHand / 10)`
      *
+     * This used to be straight linear extrapolation — `currentRuns * totalBalls / ballsBowled` —
+     * which ignored wickets entirely, so a side 6 down after 8 overs of a T20 projected exactly the
+     * same total as one 0 down. That is wrong in the direction that matters: a team with two
+     * wickets left does not keep scoring at its current rate, and the projection was most
+     * confident precisely when a collapse had made it least reliable.
+     *
+     * The damping factor is the one this project's own trained win-probability model already uses
+     * server-side (`appwrite/functions/win-probability/src/winprob.js`), so the device and the
+     * server now answer the same question the same way. At all ten wickets in hand it is the old
+     * linear projection; at one wicket left it discounts the remaining overs to ~60%.
+     *
+     * @param wicketsInHand 0..10; coerced into range
      * @return null when no balls bowled yet (would be meaningless)
      */
-    fun projectedScore(currentRuns: Int, ballsBowled: Int, totalBalls: Int): Int? {
+    fun projectedScore(currentRuns: Int, ballsBowled: Int, totalBalls: Int, wicketsInHand: Int): Int? {
         if (ballsBowled <= 0 || totalBalls <= 0) return null
         if (ballsBowled >= totalBalls) return currentRuns   // innings over: projection = actual
-        return (currentRuns.toDouble() * totalBalls / ballsBowled).roundToInt()
+        val runRatePerBall = currentRuns.toDouble() / ballsBowled
+        val ballsRemaining = totalBalls - ballsBowled
+        val wicketFraction = wicketsInHand.coerceIn(0, MAX_WICKETS).toDouble() / MAX_WICKETS
+        val damping = WICKET_DAMPING_FLOOR + WICKET_DAMPING_RANGE * wicketFraction
+        return (currentRuns + runRatePerBall * ballsRemaining * damping).roundToInt()
     }
 
     /**
-     * Over-by-over run rate at over index [overIndex] (0-based) from cumulative scores.
+     * Cumulative run rate after each completed over — the "run rate progression" line, not the
+     * runs scored in each individual over.
      *
-     * Replaces the [RunRateComparisonCard] bug (index+1 assumes exactly one entry per over).
+     * Named `overRunRates` and documented as "over-by-over run rate" until 2026-08, while the body
+     * computed `total / (index + 1)`; the tests asserted the cumulative behaviour, so the code and
+     * the tests agreed and only the name and the KDoc were wrong. Cumulative is the right curve for
+     * [com.tanush.bouncer.ui.components.RunRateComparisonCard], which plots progression — but under
+     * the old name a reader had every reason to expect per-over values, where a 22-run over in over
+     * 15 barely moves the line because it is divided by 15.
+     *
+     * For genuine per-over runs, difference the cumulative scores instead.
+     *
      * Each entry in [cumulativeScores] must correspond to exactly one completed over.
-     * Returns 0f when no data.
+     * Returns an empty list when there is no data.
      */
-    fun overRunRates(cumulativeScores: List<Int>): List<Float> {
+    fun cumulativeRunRates(cumulativeScores: List<Int>): List<Float> {
         if (cumulativeScores.isEmpty()) return emptyList()
         return cumulativeScores.mapIndexed { index, total ->
             val oversCompleted = (index + 1).toFloat()
             total.toFloat() / oversCompleted
         }
+    }
+
+    /**
+     * The batting side's projected final total for [match], or its current total when a projection
+     * would be meaningless.
+     *
+     * Exists because the "Projected: N" label on the live scoring card was being fed the score the
+     * team was already on, so it announced a projection while displaying the present — while
+     * [projectedScore] sat here with no callers in main source at all.
+     *
+     * Returns the current total rather than null for the cases a projection cannot cover: a format
+     * with no fixed innings length (Test), an unparseable score, or no balls bowled yet.
+     */
+    fun projectedTotalFor(match: CricketMatch, cumulativeScores: List<Int>): Int {
+        val current = cumulativeScores.lastOrNull() ?: 0
+        val batting = match.teams.firstOrNull { it.isBatting } ?: return current
+        val parsed = parseScore(batting.score).takeIf { it.isValid } ?: return current
+        val ballsBowled = CricketConstants.ballsFromOvers(batting.overs) ?: return current
+        val totalBalls = CricketConstants.inningsBalls(
+            CricketConstants.formatFromMatchType(match.matchType)
+        ) ?: return current
+        return projectedScore(
+            currentRuns = parsed.runs,
+            ballsBowled = ballsBowled,
+            totalBalls = totalBalls,
+            wicketsInHand = MAX_WICKETS - parsed.wickets,
+        ) ?: current
     }
 }

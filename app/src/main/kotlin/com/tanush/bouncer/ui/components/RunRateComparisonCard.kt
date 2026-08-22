@@ -72,8 +72,8 @@ fun RunRateComparisonCard(
     val team1Cumulative = overData.runningFold(0) { acc, data -> acc + data.team1Runs }.drop(1)
     val team2Cumulative = overData.mapNotNull { it.team2Runs }.runningFold(0) { acc, runs -> acc + runs }.drop(1)
     
-    val team1RunRates = MatchProjections.overRunRates(team1Cumulative)
-    val team2RunRates = MatchProjections.overRunRates(team2Cumulative)
+    val team1RunRates = MatchProjections.cumulativeRunRates(team1Cumulative)
+    val team2RunRates = MatchProjections.cumulativeRunRates(team2Cumulative)
     
     val maxRunRate = max(
         team1RunRates.maxOrNull() ?: 0f,

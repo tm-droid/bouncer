@@ -13,6 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import com.tanush.bouncer.analysis.MatchProjections
 import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.models.DRSReviewData
 import com.tanush.bouncer.models.Innings
@@ -167,7 +168,7 @@ internal fun LazyListScope.overviewScoringCharts(
                     team1Scores = cumulativeScores,
                     team2Scores = emptyList(),
                     currentOver = maxOver,
-                    projectedScore = cumulativeScores.lastOrNull() ?: 0,
+                    projectedScore = MatchProjections.projectedTotalFor(match, cumulativeScores),
                 ),
             )
         }
