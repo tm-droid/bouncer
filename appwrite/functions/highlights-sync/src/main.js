@@ -68,6 +68,8 @@ function rememberSeen(id) {
 
 const isoDate = (ms) => new Date(ms).toISOString().slice(0, 10);
 const DAY_MS = 24 * 60 * 60 * 1000;
+// Matches the 15s used by every other outbound fetch across the functions.
+const HIGHLIGHTLY_FETCH_TIMEOUT_MS = 15_000;
 
 /**
  * The dates this run should fetch, newest first, or `[]` when the run is not on a working slot.
@@ -336,6 +338,11 @@ async function fetchDate(date, highlightlyApiKey, log, error) {
           "x-rapidapi-host": HIGHLIGHTLY_HOST,
           "Content-Type": "application/json",
         },
+        // The only fetch in any function that was missing a timeout. It sits inside the
+        // MAX_PAGES_PER_DATE loop, so a hung Highlightly connection blocked until Appwrite's own
+        // execution timeout killed the container — throwing away every page already fetched.
+        // Caught below and reported as http_error, which keeps the pages collected so far.
+        signal: AbortSignal.timeout(HIGHLIGHTLY_FETCH_TIMEOUT_MS),
       });
     } catch (e) {
       error(`Highlightly fetch failed for ${date}: ${e?.message}`);

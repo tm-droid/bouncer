@@ -152,7 +152,13 @@ buildConfigField("String", "APPWRITE_AI_CACHE_DB_ID", "\"${localProperties.getPr
     // is what makes a one-sided edit fail the build — without this the test passes even with llm.js
     // deleted, which is exactly the vacuous-green it exists to prevent.
     tasks.withType<Test>().configureEach {
-        inputs.files(rootProject.file("appwrite/functions/match-sync/src/llm.js"))
+        // Both llm.js copies, not just the canonical one: CommentaryConstantParityTest only reads
+        // match-sync's, but LlmJsVendorParityTest byte-compares the pair, and with only one path
+        // declared an edit to the other leaves the task UP-TO-DATE and the drift ships.
+        inputs.files(
+            rootProject.file("appwrite/functions/match-sync/src/llm.js"),
+            rootProject.file("appwrite/functions/generate-commentary/src/llm.js"),
+        )
             .withPropertyName("commentaryConstantParitySource")
             .withPathSensitivity(PathSensitivity.RELATIVE)
 

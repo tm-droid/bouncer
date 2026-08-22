@@ -1,6 +1,23 @@
-// LLM provider chain + sanitization for server-side commentary generation.
-// Mirrors generate-commentary/src/main.js (PROVIDERS) and the Kotlin
-// CommentaryFusionService.SYSTEM_INSTRUCTION + CommentaryFormatter.sanitize.
+// LLM provider chain + sanitization + event classification for server-side commentary generation.
+//
+// VENDORED: byte-identical copies live at
+//   appwrite/functions/match-sync/src/llm.js
+//   appwrite/functions/generate-commentary/src/llm.js
+// and LlmJsVendorParityTest fails the build if they diverge. Copy one over the other to resync;
+// this header is part of the compared bytes, so it stays identical in both.
+//
+// Duplicated rather than shared because it has to be: tools/deploy-function.mjs builds each
+// deployment with `tar -C <that function's dir> .`, so nothing outside a function's own directory
+// reaches the container.
+//
+// The two functions are the two halves of one pipeline — match-sync narrates a ball for everyone,
+// generate-commentary narrates it for the device that asked — so drift shows up as two house
+// styles inside one match. It had already happened when the parity test was added: match-sync had
+// classifyEvent and the dropped-catch/no-ball wicket veto and generate-commentary did not, while
+// generate-commentary's own header asserted the two files were byte-identical.
+//
+// Also mirrors the Kotlin CommentaryFusionService.SYSTEM_INSTRUCTION and
+// CommentaryFormatter.sanitize — see CommentaryConstantParityTest for that half.
 
 // The model ids live ONLY here and in the generate-commentary mirror of this file — the Kotlin side
 // stopped holding a provider list when the keys moved server-side in 26ce990, so a model bump is a
