@@ -1,10 +1,10 @@
 package com.tanush.bouncer.managers
 
+import kotlinx.serialization.Serializable
+import com.tanush.bouncer.data.AppJson
 import android.content.Context
 import android.content.SharedPreferences
 import android.util.Log
-import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import java.util.UUID
 
+@Serializable
 data class NotificationItem(
     val id: String = UUID.randomUUID().toString(),
     val matchId: String,
@@ -33,7 +34,6 @@ object NotificationInboxManager {
     private const val MAX_ITEMS = 50
     private const val TAG = "NotificationInboxManager"
 
-    private val gson = Gson()
     private var prefs: SharedPreferences? = null
     private var scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
@@ -109,15 +109,14 @@ object NotificationInboxManager {
     }
 
     private fun saveToPrefs(items: List<NotificationItem>) {
-        val json = gson.toJson(items)
+        val json = AppJson.encodeToString(items)
         prefs?.edit()?.putString(KEY_ITEMS, json)?.apply()
     }
 
     private fun loadFromPrefs(): List<NotificationItem> {
         val json = prefs?.getString(KEY_ITEMS, null) ?: return emptyList()
         return try {
-            val type = object : TypeToken<List<NotificationItem>>() {}.type
-            gson.fromJson(json, type) ?: emptyList()
+            AppJson.decodeFromString<List<NotificationItem>>(json)
         } catch (e: Exception) {
             Log.w(TAG, "Failed to deserialize notification inbox, resetting", e)
             emptyList()

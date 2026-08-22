@@ -1,9 +1,8 @@
 package com.tanush.bouncer.managers
 
+import com.tanush.bouncer.data.AppJson
 import com.tanush.bouncer.utils.acronymFor
 import android.content.Context
-import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
 import java.io.IOException
 import io.sentry.Sentry
 
@@ -13,8 +12,7 @@ object TeamAcronymManager {
     fun initialize(context: Context) {
         try {
             val jsonString = context.assets.open("TeamAcronyms.json").bufferedReader().use { it.readText() }
-            val type = object : TypeToken<Map<String, String>>() {}.type
-            acronyms = Gson().fromJson(jsonString, type)
+            acronyms = AppJson.decodeFromString<Map<String, String>>(jsonString)
         } catch (e: IOException) {
             Sentry.captureException(e)
         }

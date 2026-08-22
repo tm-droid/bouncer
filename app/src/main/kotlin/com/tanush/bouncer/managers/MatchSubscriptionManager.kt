@@ -1,10 +1,9 @@
 package com.tanush.bouncer.managers
 
+import com.tanush.bouncer.data.AppJson
 import android.content.Context
 import android.content.SharedPreferences
 import android.util.Log
-import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
 import com.tanush.bouncer.utils.PrefsRegistry
 import io.sentry.Sentry
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -17,7 +16,6 @@ object MatchSubscriptionManager {
     private val KEY_SUBSCRIBED = PrefsRegistry.MatchSubscriptions.SUBSCRIBED_IDS
 
     private lateinit var prefs: SharedPreferences
-    private val gson = Gson()
     private var initialized = false
 
     private val _subscriptions = MutableStateFlow<Set<String>>(emptySet())
@@ -92,7 +90,7 @@ object MatchSubscriptionManager {
         // `apply()` is asynchronous, so this is an ordering guarantee, not a durability one — a
         // process kill in the next few milliseconds can still lose the write. DataStore is the
         // real fix; commit() would only trade the loss for a main-thread disk write.
-        prefs.edit().putString(KEY_SUBSCRIBED, gson.toJson(set.toList())).apply()
+        prefs.edit().putString(KEY_SUBSCRIBED, AppJson.encodeToString(set.toList())).apply()
         _subscriptions.value = set
     }
 
@@ -100,9 +98,7 @@ object MatchSubscriptionManager {
         if (!::prefs.isInitialized) return emptySet()
         val json = prefs.getString(KEY_SUBSCRIBED, null) ?: return emptySet()
         return try {
-            val type = object : TypeToken<List<String>>() {}.type
-            val list: List<String> = gson.fromJson(json, type)
-            list.toSet()
+            AppJson.decodeFromString<List<String>>(json).toSet()
         } catch (e: Exception) {
             Log.e(TAG, "Failed to parse subscriptions JSON", e)
             emptySet()

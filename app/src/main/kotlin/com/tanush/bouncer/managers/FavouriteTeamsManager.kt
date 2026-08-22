@@ -1,12 +1,11 @@
 package com.tanush.bouncer.managers
 
+import com.tanush.bouncer.data.AppJson
 import android.content.Context
 import android.content.SharedPreferences
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.util.Log
-import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
 import com.tanush.bouncer.data.remote.AppwriteFavouritesSync
 import com.tanush.bouncer.data.remote.DeviceIdentity
 import io.sentry.Sentry
@@ -29,7 +28,6 @@ object FavouriteTeamsManager {
     const val MAX_FAVOURITES = 10
 
     private lateinit var prefs: SharedPreferences
-    private val gson = Gson()
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     private val _favourites = MutableStateFlow<List<String>>(emptyList())
@@ -68,7 +66,7 @@ object FavouriteTeamsManager {
                     if (remote != null && _favourites.value.isEmpty()) {
                         Log.d(TAG, "Adopting ${remote.size} favourites from remote")
                         _favourites.value = remote
-                        prefs.edit().putString(KEY, gson.toJson(remote)).apply()
+                        prefs.edit().putString(KEY, AppJson.encodeToString(remote)).apply()
                     }
                 }.onFailure { e ->
                     Log.d(TAG, "Remote favourites pull failed: ${e.message}")
@@ -200,7 +198,7 @@ object FavouriteTeamsManager {
             // does NOT guarantee the value survives a process kill in the next few milliseconds.
             // Only commit() would, and that is a main-thread disk write. The real answer is
             // DataStore; until then this ordering is the best available, not a durability promise.
-            val json = gson.toJson(list)
+            val json = AppJson.encodeToString(list)
             prefs.edit().putString(KEY, json).apply()
             _favourites.value = list
             scope.launch {
@@ -221,8 +219,7 @@ object FavouriteTeamsManager {
             if (!::prefs.isInitialized) return emptyList()
             val json = prefs.getString(KEY, null) ?: return emptyList()
             return try {
-                val type = object : TypeToken<List<String>>() {}.type
-                gson.fromJson(json, type)
+                AppJson.decodeFromString<List<String>>(json)
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to parse favourites JSON", e)
                 Sentry.captureException(e)

@@ -1,9 +1,8 @@
 package com.tanush.bouncer.managers
 
+import com.tanush.bouncer.data.AppJson
 import android.content.Context
 import android.util.Log
-import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
 import java.io.IOException
 import io.sentry.Sentry
 
@@ -17,8 +16,7 @@ object TeamLogoManager {
         if (isInitialized) return
         try {
             val jsonString = context.assets.open("TeamLogos.json").bufferedReader().use { it.readText() }
-            val type = object : TypeToken<Map<String, String>>() {}.type
-            logos = Gson().fromJson(jsonString, type)
+            logos = AppJson.decodeFromString<Map<String, String>>(jsonString)
             isInitialized = true
             initError = null
             Log.d(TAG, "Loaded ${logos.size} team logos")
