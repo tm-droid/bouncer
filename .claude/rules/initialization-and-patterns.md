@@ -31,7 +31,7 @@ Each step wrapped in `initializeSafely()` block (try-catch + Sentry breadcrumb).
 
 **Deep linking:** Match details accessible via `app://bouncer/match/{matchId}` intent URLs (scheme `app`, host `bouncer`)
 
-**MCP integration:** Model Context Protocol handlers in `/mcp` folder for external tool integration
+**MCP integration:** none. `mcp/` held a 13-line stub returning `"Echo: $message"` against `http://localhost:8080/mcp`, fronted by a DevTools screen that shipped in release; it was deleted rather than implemented. Do not recreate it as a placeholder.
 
 **Global exception handler:** Prevents silent crashes. All exceptions → Sentry breadcrumb + normal exception flow
 

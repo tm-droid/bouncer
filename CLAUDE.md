@@ -86,7 +86,6 @@ app/src/main/kotlin/com/tanush/bouncer/
 ├── models/             # Data models and entities (proguard-kept for Gson — never delete on grep evidence)
 ├── analysis/           # Cricket analysis + ML models (score prediction, win probability)
 ├── auto/               # Android Auto (BouncerCarAppService)
-├── mcp/                # Model Context Protocol handlers
 └── utils/              # WorkerLogger.enqueued/failed (Workers) + sentryBreadcrumb() (SentryBreadcrumbs.kt)
                         # — use these instead of raw Breadcrumb().apply boilerplate
 ```
