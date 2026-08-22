@@ -22,7 +22,7 @@ jobs:
           python-version: '3.x'
 
       - name: Run update_logos.py
-        run: python update_logos.py
+        run: python tools/update_logos.py
 
       - name: Commit and push changes
         run: |
