@@ -1,15 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+    API 31+ backup and device-transfer rules; backup_rules.xml covers 26-30 and is narrowed the
+    same way.
+
+    No <exclude> elements. Naming any <include> already restricts backup to those paths, so
+    excluding root/ and external/ on top of that excluded nothing — and an exclude that is not
+    inside an included path is a FullBackupContent lint error, reported as Fatal. Four of them sat
+    here unnoticed because lint.abortOnError was false and CI ran bundleRelease with
+    -x lintVitalRelease.
+-->
 <data-extraction-rules>
     <cloud-backup>
         <include domain="database" path="bouncer_db" />
         <include domain="sharedpref" path="." />
-        <exclude domain="root" path="." />
-        <exclude domain="external" path="." />
     </cloud-backup>
     <device-transfer>
         <include domain="database" path="bouncer_db" />
         <include domain="sharedpref" path="." />
-        <exclude domain="root" path="." />
-        <exclude domain="external" path="." />
     </device-transfer>
 </data-extraction-rules>

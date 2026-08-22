@@ -105,7 +105,9 @@ class LiveActivityNotificationBuilder(
             setShowBadge(false)
             lockscreenVisibility = Notification.VISIBILITY_PUBLIC
             enableVibration(false)
-            setAllowBubbles(false)
+            // setAllowBubbles is API 29; minSdk is 26. Unguarded this is a NoSuchMethodError on
+            // 26-28, which lint reported as an error and nothing failed on.
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) setAllowBubbles(false)
         }
         manager.createNotificationChannel(channel)
     }

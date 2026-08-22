@@ -25,6 +25,7 @@ import androidx.core.app.NotificationManagerCompat
 import com.tanush.bouncer.BouncerActivity
 import com.tanush.bouncer.R
 import com.tanush.bouncer.models.CricketMatch
+import com.tanush.bouncer.utils.NotificationPermission
 import io.sentry.Sentry
 
 internal fun matchPendingIntent(context: Context, matchId: String): PendingIntent {
@@ -843,15 +844,17 @@ object NotificationManagerExtensions {
         tag: String? = null
     ): Int {
         val id = RichNotificationBuilder.CricketNotificationChannel.getNextNotificationId()
+        // Both branches used to call notify() with no POST_NOTIFICATIONS check, so on Android 13+
+        // with notifications denied they threw SecurityException rather than doing nothing.
         if (tag != null) {
             try {
-                notify(tag, id, notification)
+                NotificationPermission.notify(context, tag, id, notification)
             } catch (e: Exception) {
                 Sentry.captureException(e)
                 throw e
             }
         } else {
-            notify(id, notification)
+            NotificationPermission.notify(context, id, notification)
         }
         return id
     }

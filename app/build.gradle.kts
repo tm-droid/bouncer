@@ -127,16 +127,21 @@ buildConfigField("String", "APPWRITE_AI_CACHE_DB_ID", "\"${localProperties.getPr
     }
 
     lint {
-        // Surface all warnings as errors in CI; locally they remain warnings.
-        abortOnError = false
+        // The comment here used to say "surface all warnings as errors in CI" next to
+        // `abortOnError = false`, with the baseline commented out — so nothing lint found could
+        // fail anything, and CI compounded it by running bundleRelease with -x lintVital*. Six
+        // Fatal FullBackupContent errors and a NewApi call that would NoSuchMethodError on API
+        // 26-28 were sitting in the report, green.
+        abortOnError = true
+        warningsAsErrors = true
         checkReleaseBuilds = true
-        // Write machine-readable report alongside the default HTML one.
-        xmlReport = true
-        htmlReport = true
         // Ignore auto-generated code (R.*, databinding, etc.)
         ignoreTestSources = true
-        // Baseline captures pre-existing issues so new code is held to a higher bar.
-        // baseline = file("lint-baseline.xml")
+        // Pre-existing warnings are recorded here so new code is held to the real bar. Errors were
+        // fixed rather than baselined. Do not regenerate this wholesale to make a build pass.
+        baseline = file("lint-baseline.xml")
+        // checkDependencies stays off: lint already takes ~14 minutes on this module, and library
+        // lint would not be actionable here anyway.
     }
 
     testOptions {

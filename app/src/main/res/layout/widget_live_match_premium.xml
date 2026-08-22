@@ -1,6 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Premium Live Match Widget Layout - iOS Live Activity Parity -->
+<!--
+    Premium Live Match Widget Layout - iOS Live Activity Parity
+
+    android:tint is deliberate on the ImageViews below. app:tint requires AppCompatImageView, which
+    RemoteViews cannot inflate, so the lint UseAppTint suggestion does not apply to a widget layout.
+    minSdk is 26, well past android:tint's API 21 floor.
+-->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/widget_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -66,7 +73,8 @@
             android:contentDescription="Refresh"
             android:background="@drawable/bg_widget_action_chip"
             android:tint="@color/shiny_gold_light"
-            android:padding="6dp" />
+            android:padding="6dp"
+            tools:ignore="UseAppTint" />
 
         <!-- Next Match Button -->
         <ImageView
@@ -78,7 +86,8 @@
             android:background="@drawable/bg_widget_action_chip"
             android:tint="@color/shiny_gold_light"
             android:padding="6dp"
-            android:layout_marginStart="8dp" />
+            android:layout_marginStart="8dp"
+            tools:ignore="UseAppTint" />
     </LinearLayout>
 
     <!-- Teams & Scores Section -->

@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
 import androidx.core.app.NotificationManagerCompat
+import com.tanush.bouncer.utils.NotificationPermission
 import androidx.core.content.ContextCompat
 import com.tanush.bouncer.R
 import com.tanush.bouncer.ui.screens.NotificationPrefsManager
@@ -58,7 +59,10 @@ class LiveActivityManager(
             relativeTime = relativeTime,
             highPriority = update is LiveMatchUpdate.WicketUpdate
         )
-        NotificationManagerCompat.from(context).notify(state.matchId.hashCode(), notification)
+        // postUpdate() returns early on !hasNotificationPermission(), so this is guarded — lint
+        // just cannot follow the check across the function. Routed through the shared helper so
+        // the guarantee is in one place rather than resting on that early return alone.
+        NotificationPermission.notify(context, state.matchId.hashCode(), notification)
 
         lock.withLock {
             lastUpdateTimeMs = now

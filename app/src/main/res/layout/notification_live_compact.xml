@@ -5,10 +5,17 @@
     android:orientation="horizontal"
     android:background="@color/black_background">
 
-    <View
+    <!--
+        ImageView, not View: plain View is not on the RemoteViews allowlist, so inflating this as a
+        custom notification layout risked a "views not allowed in a RemoteView" failure at post
+        time. ImageView is on the list and takes the same setBackgroundColor call
+        LiveNotificationManager makes against this id.
+    -->
+    <ImageView
         android:id="@+id/team_accent_bar"
         android:layout_width="4dp"
         android:layout_height="match_parent"
+        android:contentDescription="@null"
         android:background="#D4AF37" />
 
     <LinearLayout

@@ -187,7 +187,10 @@ jobs:
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
           GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx6g -XX:MaxMetaspaceSize=1g -Dorg.gradle.parallel=true"
-        run: ./gradlew bundleRelease --no-daemon --stacktrace -x lintVitalAnalyzeRelease -x lintVitalReportRelease -x lintVitalRelease
+        # lintVital* used to be excluded here. It is the release-blocking subset — the check
+        # that catches a NewApi call, a wrong exported flag or an invalid backup rule before an
+        # upload — so skipping it meant the release path had no lint at all.
+        run: ./gradlew bundleRelease --no-daemon --stacktrace
 
       - uses: actions/upload-artifact@v7
         with:

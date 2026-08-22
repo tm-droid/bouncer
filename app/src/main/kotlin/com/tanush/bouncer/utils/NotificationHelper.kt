@@ -7,7 +7,6 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import androidx.core.app.NotificationCompat
-import androidx.core.app.NotificationManagerCompat
 import com.tanush.bouncer.BouncerActivity
 import io.sentry.Breadcrumb
 import io.sentry.Sentry
@@ -73,9 +72,10 @@ object NotificationHelper {
                 .setAutoCancel(true)
                 .setPriority(NotificationCompat.PRIORITY_DEFAULT)
 
-            with(NotificationManagerCompat.from(context)) {
-                notify(id, builder.build())
-            }
+            // Silently skipped when the user has denied notifications. This used to call
+            // notify() unguarded and rethrow the resulting SecurityException, which took
+            // ReminderReceiver.onReceive down with it.
+            NotificationPermission.notify(context, id, builder.build())
         } catch (e: Exception) {
             Sentry.captureException(e)
             throw e
