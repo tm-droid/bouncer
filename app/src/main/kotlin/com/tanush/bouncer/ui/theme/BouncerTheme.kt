@@ -17,8 +17,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 import androidx.compose.ui.draw.blur
@@ -262,19 +260,12 @@ fun BouncerTheme(
         SideEffect {
             val activity = view.context as Activity
             val window = activity.window
-            
-            // Enable edge-to-edge
-            WindowCompat.setDecorFitsSystemWindows(window, false)
-            
-            // Transparent status bar for immersive glass effect
-            @Suppress("DEPRECATION")
-            window.statusBarColor = Color.Transparent.toArgb()
-            
-            // Navigation bar blends with variant background
-            @Suppress("DEPRECATION")
-            window.navigationBarColor = variantPalette.backgroundBase.toArgb()
-            
-            // Icon contrast: light icons on dark backgrounds
+
+            // Window/system-bar colour is not set here. `Window.setStatusBarColor` and
+            // `setNavigationBarColor` were deprecated in API 35 and are ignored at targetSdk 36+;
+            // `enableEdgeToEdge()` in BouncerActivity owns bar appearance, and
+            // `WindowCompat.setDecorFitsSystemWindows(window, false)` is redundant beside it.
+            // Only icon contrast is still a real API.
             val insetsController = WindowCompat.getInsetsController(window, view)
             insetsController.isAppearanceLightStatusBars = !useDarkTheme
             insetsController.isAppearanceLightNavigationBars = !useDarkTheme

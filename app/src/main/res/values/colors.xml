@@ -37,6 +37,11 @@
     <color name="widget_ball_wicket">#FF5A4E</color>
     <color name="widget_ball_extra">#F4B740</color>
 
+    <!-- Host window background. Painted by the framework before Compose draws and during
+         recreation; values-night/ carries the dark value so a light-theme user never sees a
+         black flash. Not a Compose token — BouncerThemeV2 owns everything after first frame. -->
+    <color name="window_background">#FAFAFA</color>
+
     <!-- LEGACY COMPAT -->
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>

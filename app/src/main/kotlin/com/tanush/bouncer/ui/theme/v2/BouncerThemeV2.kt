@@ -1,5 +1,6 @@
 package com.tanush.bouncer.ui.theme.v2
 
+import android.app.Activity
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
@@ -7,7 +8,10 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.ReadOnlyComposable
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
 
 /**
  * Bouncer V2 theme wrapper.
@@ -72,6 +76,8 @@ fun BouncerThemeV2(
         )
     }
 
+    SystemBarIconContrast(isDark)
+
     CompositionLocalProvider(
         LocalBouncerColorsV2 provides colors,
         LocalBouncerTypographyV2 provides typography,
@@ -86,6 +92,27 @@ fun BouncerThemeV2(
             shapes = shapes.toMaterial3(),
             content = content,
         )
+    }
+}
+
+/**
+ * Matches system-bar icon contrast to the *app's* resolved mode rather than the system's.
+ *
+ * `enableEdgeToEdge()` in BouncerActivity defaults to `SystemBarStyle.auto`, which reads the system
+ * dark setting — so a user on system-light with the app set to Dark got dark icons on a dark bar.
+ * At targetSdk 36 edge-to-edge is mandatory, so the content always sits under the bars and this has
+ * to be right. Bar *colour* is deliberately not set: those setters are deprecated and ignored.
+ */
+@Composable
+private fun SystemBarIconContrast(isDark: Boolean) {
+    val view = LocalView.current
+    if (view.isInEditMode) return
+    SideEffect {
+        val window = (view.context as Activity).window
+        WindowCompat.getInsetsController(window, view).apply {
+            isAppearanceLightStatusBars = !isDark
+            isAppearanceLightNavigationBars = !isDark
+        }
     }
 }
 

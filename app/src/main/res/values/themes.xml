@@ -1,10 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!--
+        Host theme for a Compose-only app. It exists to paint the window before Compose's first
+        frame and during recreation; BouncerThemeV2 owns every pixel after that.
+
+        `android:statusBarColor` / `android:navigationBarColor` used to be set here. Both were
+        deprecated in API 35 and are ignored at targetSdk 36+, where edge-to-edge is mandatory —
+        `enableEdgeToEdge()` in BouncerActivity is the single source of system-bar appearance.
+
+        `windowBackground` resolves through values-night/, so a light-theme user no longer gets a
+        black frame before Compose paints.
+    -->
     <style name="Theme.Bouncer" parent="android:Theme.Material.NoActionBar">
-        <item name="android:windowBackground">@color/black_background</item>
-        <item name="android:colorBackground">@color/black_background</item>
-        <item name="android:statusBarColor">@color/black_background</item>
-        <item name="android:navigationBarColor">@color/black_background</item>
+        <item name="android:windowBackground">@color/window_background</item>
+        <item name="android:colorBackground">@color/window_background</item>
     </style>
 
     <style name="Theme.Bouncer.Splash" parent="Theme.SplashScreen">

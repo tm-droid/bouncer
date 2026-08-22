@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Dark counterpart of values/colors.xml window_background. Matches DarkBg in
+         ui/theme/v2/ColorTokensV2.kt so the pre-Compose frame and the first composed frame
+         are the same colour. -->
+    <color name="window_background">#0C1015</color>
+</resources>
