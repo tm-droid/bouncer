@@ -27,7 +27,7 @@ sealed class BouncerScreen(val route: String) {
     /** Favourites - saved teams and matches (deep-link route, not a bottom tab) */
     data object Favorites : BouncerScreen("favourites")
 
-    /** Stats/Trophy Room - achievements and statistics (reached via More, not a bottom tab) */
+    /** Stats hub - achievements and statistics (reached via More, not a bottom tab) */
     data object Stats : BouncerScreen("stats")
 
     /** More tab - Settings, About, News, DevTools access */
@@ -57,9 +57,6 @@ sealed class BouncerScreen(val route: String) {
 
     /** Achievements gallery screen */
     data object Achievements : BouncerScreen("achievements")
-
-    /** Trophy room (legacy access) */
-    data object Trophy : BouncerScreen("trophy-room")
 
     /** Series list screen */
     data object SeriesList : BouncerScreen("series")
@@ -220,7 +217,6 @@ sealed class BouncerScreen(val route: String) {
          */
         val moreChildRoutes = setOf(
             Stats.route,
-            Trophy.route,
             StatsOverview.route,
             Settings.route,
             Appearance.route,

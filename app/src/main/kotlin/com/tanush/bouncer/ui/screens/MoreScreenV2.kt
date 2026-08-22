@@ -74,7 +74,10 @@ fun MoreScreenV2(
     val exploreItems = remember(onStatsClick, onAchievementsClick, onActivityClick, onSeriesClick) {
         listOf(
             ExploreItem(Icons.Default.BarChart, "Stats", onStatsClick),
-            ExploreItem(Icons.Default.EmojiEvents, "Trophies", onStatsClick),
+            // Was wired to onStatsClick — the tile said "Trophies" and opened Stats. It now goes
+            // where the real, persisted achievements live; the Trophy Room screen it used to
+            // suggest was six hardcoded entries reporting a made-up "3 / 6 Trophies".
+            ExploreItem(Icons.Default.EmojiEvents, "Trophies", onAchievementsClick),
             ExploreItem(Icons.Default.SportsCricket, "Achievements", onAchievementsClick),
             ExploreItem(Icons.Default.Timeline, "Activity", onActivityClick),
             ExploreItem(Icons.Default.DateRange, "Series", onSeriesClick),

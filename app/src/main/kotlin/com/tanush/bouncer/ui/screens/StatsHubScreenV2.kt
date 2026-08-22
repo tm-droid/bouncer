@@ -28,7 +28,6 @@ import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 @Composable
 fun StatsHubScreenV2(
     onBackClick: () -> Unit,
-    onOpenTrophy: () -> Unit,
     onOpenAnalytics: () -> Unit,
     onOpenAchievements: () -> Unit,
 ) {
@@ -70,15 +69,6 @@ fun StatsHubScreenV2(
                     subtitle = "Deep dive into match data",
                     trailing = SettingsTrailing.Navigation,
                     onClick = onOpenAnalytics,
-                )
-            }
-            item(key = "trophy") {
-                SettingsItemV2(
-                    icon = Icons.Default.EmojiEvents,
-                    title = "Trophy Room",
-                    subtitle = "Your cricket trophies",
-                    trailing = SettingsTrailing.Navigation,
-                    onClick = onOpenTrophy,
                 )
             }
             item(key = "achievements") {

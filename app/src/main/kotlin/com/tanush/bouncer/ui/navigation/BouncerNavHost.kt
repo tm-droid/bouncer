@@ -198,9 +198,6 @@ private fun NavGraphBuilder.primaryTabDestinations(
                     navController.navigateToTab(BouncerScreen.Home.route)
                 }
             },
-            onOpenTrophy = {
-                navController.navigateForward(BouncerScreen.Trophy.route)
-            },
             onOpenAnalytics = {
                 navController.navigateForward(BouncerScreen.StatsOverview.route)
             },
@@ -371,12 +368,6 @@ private fun NavGraphBuilder.moreChildDestinations(
         )
     }
 
-    // Trophy Room
-    composable(BouncerScreen.Trophy.route) {
-        TrophyRoomScreenV2(
-            onBackClick = { navController.popBackStack() }
-        )
-    }
 
     // Stats Overview (analytics)
     composable(BouncerScreen.StatsOverview.route) {

@@ -121,7 +121,6 @@
     <ID>CognitiveComplexMethod:TeamRow.kt$@Composable fun TeamRowV2( teamName: String, teamAcronym: String, score: String, overs: String, isBatting: Boolean, logoUrl: String?, modifier: Modifier = Modifier, teamColor: Color? = null, )</ID>
     <ID>CognitiveComplexMethod:TimelineEventExtractor.kt$TimelineEventExtractor$internal fun deduplicateByBall(lines: List&lt;String&gt;): List&lt;String&gt;</ID>
     <ID>CognitiveComplexMethod:TossResultCard.kt$@Composable fun TossResultCard( tossDetails: TossDetails, modifier: Modifier = Modifier, )</ID>
-    <ID>CognitiveComplexMethod:TrophyRoomScreenV2.kt$@Composable private fun TrophyCard(trophy: TrophyItem)</ID>
     <ID>CognitiveComplexMethod:WidgetConfigurationActivity.kt$WidgetConfigurationActivity$@Composable private fun MatchSelectionCard( match: WidgetMatchData, isSelected: Boolean, onSelect: () -&gt; Unit )</ID>
     <ID>CyclomaticComplexMethod:AICacheService.kt$AICacheService$suspend fun getCommentary(key: String): String?</ID>
     <ID>CyclomaticComplexMethod:AdvancedDataVisualization.kt$@Composable fun OverComparisonChart( team1Runs: List&lt;Int&gt;, team2Runs: List&lt;Int&gt;, team1Name: String, team2Name: String, team1Color: Color = GoldPrimary, team2Color: Color = StatusInfo, modifier: Modifier = Modifier )</ID>
@@ -500,7 +499,6 @@
     <ID>LongMethod:SeriesStandingsCard.kt$@Composable private fun StandingsTeamRow( position: Int, team: SeriesTeam, isCurrentMatchTeam: Boolean, isQualified: Boolean, modifier: Modifier = Modifier, )</ID>
     <ID>LongMethod:SettingsItem.kt$@Composable fun SettingsItemV2( title: String, modifier: Modifier = Modifier, icon: ImageVector? = null, subtitle: String? = null, trailing: SettingsTrailing? = null, showDivider: Boolean = true, onClick: (() -&gt; Unit)? = null, )</ID>
     <ID>LongMethod:SettingsScreenV2.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun SettingsScreenV2( onBackClick: () -&gt; Unit, onFavoritesClick: () -&gt; Unit = {}, onAchievementsClick: () -&gt; Unit = {}, onAboutClick: () -&gt; Unit = {}, onAppearanceClick: () -&gt; Unit = {}, onRedoSetup: () -&gt; Unit = {}, )</ID>
-    <ID>LongMethod:StatsHubScreenV2.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun StatsHubScreenV2( onBackClick: () -&gt; Unit, onOpenTrophy: () -&gt; Unit, onOpenAnalytics: () -&gt; Unit, onOpenAchievements: () -&gt; Unit, )</ID>
     <ID>LongMethod:StatsOverviewScreenV2.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun StatsOverviewScreenV2(onBackClick: () -&gt; Unit)</ID>
     <ID>LongMethod:TeamBadge.kt$@Composable fun MatchStatusBadge( status: MatchStatus, modifier: Modifier = Modifier )</ID>
     <ID>LongMethod:TeamComparisonView.kt$@Composable fun CompactTeamComparison( team1Name: String, team2Name: String, team1Color: Color, team2Color: Color, team1Wins: Int, team2Wins: Int, totalMatches: Int, modifier: Modifier = Modifier )</ID>
@@ -510,7 +508,6 @@
     <ID>LongMethod:TeamComparisonView.kt$@Composable private fun StatComparisonBar( stat: StatComparison, team1Color: Color, team2Color: Color, animationProgress: Float )</ID>
     <ID>LongMethod:TeamComparisonView.kt$@Composable private fun TeamComparisonHeader( team1Name: String, team2Name: String, team1Color: Color, team2Color: Color )</ID>
     <ID>LongMethod:TossResultCard.kt$@Composable fun TossResultCard( tossDetails: TossDetails, modifier: Modifier = Modifier, )</ID>
-    <ID>LongMethod:TrophyRoomScreenV2.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun TrophyRoomScreenV2(onBackClick: () -&gt; Unit)</ID>
     <ID>LongMethod:WidgetConfigurationActivity.kt$WidgetConfigurationActivity$@Composable private fun MatchSelectionCard( match: WidgetMatchData, isSelected: Boolean, onSelect: () -&gt; Unit )</ID>
     <ID>LongMethod:WidgetConfigurationActivity.kt$WidgetConfigurationActivity$@Composable private fun WidgetConfigurationContent()</ID>
     <ID>TooManyFunctions:AdvancedEffects.kt$com.tanush.bouncer.ui.theme.AdvancedEffects.kt</ID>
