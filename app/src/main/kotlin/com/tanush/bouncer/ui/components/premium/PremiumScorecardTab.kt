@@ -140,7 +140,7 @@ fun PremiumScorecardTab(
             
             item { BattingTableHeader() }
             
-            items(innings?.batsmen ?: emptyList(), key = { it.name }) { batsman ->
+            items(innings?.batsmen ?: emptyList(), key = { "bat_${it.name}" }) { batsman ->
                 BattingRow(batsman)
             }
             
@@ -184,7 +184,7 @@ fun PremiumScorecardTab(
             // Bowling Section
             item { SectionHeader("Bowling") }
             item { BowlingTableHeader() }
-            items(innings?.bowlers ?: emptyList(), key = { it.name }) { bowler ->
+            items(innings?.bowlers ?: emptyList(), key = { "bowl_${it.name}" }) { bowler ->
                 BowlingRow(bowler)
             }
 
