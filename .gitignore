@@ -49,7 +49,9 @@ fabric.properties
 # Sentry Config File
 sentry.properties
 
-# Accidentally created ~ directory (Android SDK symlink artifact)
+# A shell command whose $HOME failed to expand once wrote an entire Android SDK copy into
+# a literal ~/ directory here. That copy is gone; the rule stays so a repeat is ignored
+# rather than committed.
 ~/
 
 # Design mockups / prototypes
