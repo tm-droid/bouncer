@@ -1,6 +1,7 @@
 package com.tanush.bouncer.data.prefs
 
 import android.content.Context
+import androidx.annotation.VisibleForTesting
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.SharedPreferencesMigration
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
@@ -17,11 +18,13 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 
@@ -81,7 +84,20 @@ object PreferenceStore {
     private object Removed
 
     private val lock = Any()
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    /**
+     * Parent of both the write scope and each DataStore's own scope.
+     *
+     * The DataStore gets a *child* rather than this scope directly, because DataStore holds an
+     * exclusive lock on its file for as long as its scope is alive and refuses to construct a
+     * second instance over the same path. Cancelling this scope to release that lock would also
+     * kill every pending write, permanently — the same trap `.claude/rules/appwrite-patterns.md`
+     * documents for `stop()` cancelling a scope instead of its children.
+     */
+    private val parentJob = SupervisorJob()
+    private val scope = CoroutineScope(parentJob + Dispatchers.IO)
+
+    @Volatile private var storeScope: CoroutineScope? = null
 
     /** Idempotent. Safe to call from any site that has a [Context] but no startup ordering. */
     fun initialize(context: Context) {
@@ -89,14 +105,41 @@ object PreferenceStore {
         synchronized(lock) {
             if (store != null) return
             val app = context.applicationContext
+            val ownScope = CoroutineScope(SupervisorJob(parentJob) + Dispatchers.IO)
+            storeScope = ownScope
             install(
                 PreferenceDataStoreFactory.create(
-                    scope = scope,
+                    scope = ownScope,
                     migrations = listOf(SharedPreferencesMigration(app, PrefsRegistry.PREFS_APP)),
                     produceFile = { app.preferencesDataStoreFile(PrefsRegistry.PREFS_APP) },
                 )
             )
         }
+    }
+
+    /**
+     * Test seam: drop the store so the next [initialize] rebuilds it, migration and all.
+     *
+     * DataStore evaluates its migrations once per instance, on that instance's first read. The
+     * instrumented test runs inside the app process, where `BouncerApp.onCreate` has already
+     * initialized and warmed the store — so without this, a test that writes to SharedPreferences
+     * and then calls [initialize] is writing after the migration window has closed, and measures
+     * nothing.
+     */
+    @VisibleForTesting
+    fun resetForTest() {
+        collector?.cancel()
+        collector = null
+        // Join, do not just cancel: DataStore releases its file lock when the scope's job actually
+        // completes, and the next initialize() constructs a second instance over the same path.
+        // Cancelling without waiting throws "There are multiple DataStores active for the same
+        // file" — which is how this was found.
+        storeScope?.let { runBlocking { it.coroutineContext.job.cancelAndJoin() } }
+        storeScope = null
+        pending.clear()
+        store = null
+        snapshot = emptyPreferences()
+        hydrated = false
     }
 
     /** Test seam: swap in a store over a temp file. */

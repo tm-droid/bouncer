@@ -33,6 +33,12 @@ class BouncerPreferencesMigrationTest {
 
     @Before
     fun clearStores() {
+        // BouncerApp.onCreate has already initialized and warmed the store in this process, and
+        // DataStore evaluates its migrations once per instance on that instance's first read. Both
+        // stores are wiped and the singleton dropped, so `initialize` below genuinely rebuilds —
+        // otherwise the test writes to SharedPreferences after the migration window has closed and
+        // asserts against a store that was never asked to migrate.
+        PreferenceStore.resetForTest()
         context.deleteSharedPreferences(PrefsRegistry.PREFS_APP)
         File(context.filesDir, "datastore/${PrefsRegistry.PREFS_APP}.preferences_pb").delete()
     }

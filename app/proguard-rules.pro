@@ -42,6 +42,25 @@
 -keepattributes *Annotation*
 -dontwarn sun.misc.**
 
+# ── Appwrite SDK ──────────────────────────────────────────────────────────────
+# The SDK deserializes with reflective Gson — every Realtime frame goes through
+# `Gson.fromJson` in `io.appwrite.services.Realtime$AppwriteWebSocketListener.onMessage` — and
+# sdk-for-android 25.1.0 ships **no consumer ProGuard rules** (verified: the AAR contains no
+# proguard.txt). R8 therefore sees no constructor call for the model classes, makes them abstract,
+# and the first Realtime message kills the process:
+#
+#   Abstract classes can't be instantiated! ... Class name: io.appwrite.models.RealtimeResponse
+#
+# This is release-only and invisible to every gate the project has: it compiles, all 646 unit tests
+# pass, lint and detekt are clean. It was found by installing the minified APK on a device and
+# opening the app. No rule for `io.appwrite` has ever existed here, so this is not fallout from
+# dropping the app's own Gson keeps — the app has no reflective Gson left at all.
+#
+# Enums are kept alongside the models because Gson matches enum constants by field name, which R8
+# renames.
+-keep class io.appwrite.models.** { *; }
+-keep class io.appwrite.enums.** { *; }
+
 # ── Jsoup ─────────────────────────────────────────────────────────────────────
 -keep class org.jsoup.** { *; }
 -keeppackagenames org.jsoup.nodes
