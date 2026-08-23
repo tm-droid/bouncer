@@ -13,6 +13,7 @@ import androidx.work.*
 import com.tanush.bouncer.R
 import com.tanush.bouncer.data.AppResult
 import com.tanush.bouncer.data.CricketRepository
+import com.tanush.bouncer.data.remote.AppwriteMatchDetailClient
 import com.tanush.bouncer.network.models.SanwebMatchSummary
 import com.tanush.bouncer.network.models.SanwebMatchesListResponse
 import com.tanush.bouncer.managers.MatchSubscriptionManager
@@ -131,8 +132,14 @@ class ScorePollingWorker(
             return
         }
 
-        val scoreData = try {
-            (CricketRepository.getMatchScore(primary.id) as? AppResult.Success)?.data
+        // The widget's live score comes from the same `match-live-detail` row the detail screen
+        // reads — one billed getRow on a deterministic id, and only for the single match shown.
+        // It used to come from the Vercel API, which was this app's one remaining use of a
+        // second, separately-hosted scraper for data Appwrite already had.
+        val detail = try {
+            AppwriteMatchDetailClient.getForMatch(primary.id)
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.w(TAG, "Score fetch for widget failed", e)
             Sentry.captureException(e)
@@ -144,15 +151,22 @@ class ScorePollingWorker(
         widgetPrefs.edit().apply {
             putString("team1_name", team1)
             putString("team2_name", team2)
-            putString("match_status", scoreData?.update ?: primary.status)
+            putString("match_status", detail?.status ?: primary.status)
             putBoolean("is_live", true)
-            if (scoreData != null) {
-                putString("team1_score", scoreData.livescore)
-                val battingPair = "${scoreData.batterone}|${scoreData.batsmanonerun}|${scoreData.batsmanoneball}" +
-                        ";${scoreData.battertwo}|${scoreData.batsmantworun}|${scoreData.batsmantwoball}"
-                putString("batting_pair", battingPair)
-                val currentBowler = "${scoreData.bowlerone}|${scoreData.bowleronewickers}|${scoreData.bowleronerun}|${scoreData.bowleroneover}"
-                putString("current_bowler", currentBowler)
+            detail?.score?.let { putString("team1_score", it) }
+            // BouncerGlanceWidget.parseBattingPair needs both halves of "N|runs|balls;N|runs|balls"
+            // and returns null on one, so a single batsman at the crease is written as no pair
+            // rather than as a half-formed string.
+            detail?.batsmen?.takeIf { it.size >= 2 }?.let { batsmen ->
+                putString(
+                    "batting_pair",
+                    batsmen.take(2).joinToString(";") { "${it.name}|${it.runs}|${it.balls}" },
+                )
+            }
+            // "name|wickets|runs|overs" — the field order parseBowler expects, which is not the
+            // order the fields are declared in.
+            detail?.bowler?.let {
+                putString("current_bowler", "${it.name}|${it.wickets}|${it.runs}|${it.overs}")
             }
             apply()
         }

@@ -7,7 +7,6 @@ import com.tanush.bouncer.data.local.BouncerDatabase
 import com.tanush.bouncer.data.local.entities.MatchEntity
 import com.tanush.bouncer.data.remote.AppwriteClient
 import com.tanush.bouncer.network.RetrofitClient
-import com.tanush.bouncer.network.models.SanwebMatchResponse
 import com.tanush.bouncer.network.models.SanwebMatchesListResponse
 import io.sentry.Sentry
 import io.sentry.SentryLogLevel
@@ -43,79 +42,77 @@ object CricketRepository {
         // this call was queued behind the lock.
         matchesCache.get(type)?.let { return AppResult.Success(it) }
         sentryBreadcrumb("network.api", "Fetching matches", data = mapOf("type" to type))
-        // Try Appwrite Storage first (updated by backend function every minute)
-        val cached = tryReadMatchesFromStorage(type)
-        if (cached != null) {
-            matchesCache.put(type, cached)
-            return AppResult.Success(cached)
+
+        val stored = readMatchesFromStorage(type)
+        if (stored == null) {
+            // UnknownException rather than NetworkException: `downloadFile` also returns null when
+            // the read guard is latched on a 402, and telling the user to check their connection
+            // would be a confident wrong answer.
+            val error = AppException.UnknownException(
+                "No match list available from Appwrite Storage for $type"
+            )
+            Log.e(TAG, "Error fetching matches for type: $type", error)
+            sentryBreadcrumb(
+                "network.api",
+                "Error fetching matches",
+                SentryLevel.ERROR,
+                mapOf("type" to type, "error" to error.message)
+            )
+            Sentry.captureException(error)
+            Sentry.metrics().count("repository.getMatches.error", 1.0)
+            return AppResult.Error(error)
         }
-        // Fall back to direct Vercel API. Cached too — otherwise a Storage outage would send every
-        // 6s poll straight to Vercel.
-        return AppResult.runCatchingSuspend {
-            val resp = RetrofitClient.vercelApi.getMatches(type)
-            Log.d(TAG, "Successfully fetched matches for type: $type")
-            Sentry.metrics().gauge("repository.matches.count", resp.matches.size.toDouble())
-            Sentry.metrics().count("repository.getMatches.success", 1.0)
-            Sentry.logger().log(SentryLogLevel.INFO, "Repository getMatches success for %s", type)
-            sentryBreadcrumb("network.api", "Successfully fetched matches", data = mapOf("type" to type))
-            matchesCache.put(type, resp)
-            resp
-        }.also {
-            if (it is AppResult.Error) {
-                Log.e(TAG, "Error fetching matches for type: $type", it.exception)
-                sentryBreadcrumb(
-                    "network.api",
-                    "Error fetching matches",
-                    SentryLevel.ERROR,
-                    mapOf("type" to type, "error" to it.exception.message)
-                )
-                Sentry.captureException(it.exception)
-                Sentry.metrics().count("repository.getMatches.error", 1.0)
-            }
+
+        Sentry.metrics().gauge("repository.matches.count", stored.value.matches.size.toDouble())
+        Sentry.metrics().count("repository.getMatches.success", 1.0)
+        Sentry.logger().log(SentryLogLevel.INFO, "Repository getMatches success for %s", type)
+
+        // A file past its freshness window is served rather than discarded, but deliberately not
+        // cached: the next call retries the download instead of being answered from memory with the
+        // same stale payload. This replaced a fallback to a separately-hosted scraper API — which
+        // was reached on every late cron run, not only during an outage, and which duplicated data
+        // Appwrite already had.
+        if (stored.isFresh) {
+            matchesCache.put(type, stored.value)
+        } else {
+            sentryBreadcrumb(
+                "network.api",
+                "Serving stale match list",
+                SentryLevel.WARNING,
+                mapOf("type" to type, "ageMs" to stored.ageMs),
+            )
         }
+        return AppResult.Success(stored.value)
     }
 
-    private suspend fun tryReadMatchesFromStorage(type: String): SanwebMatchesListResponse? {
+    private class StoredMatches(
+        val value: SanwebMatchesListResponse,
+        val ageMs: Long,
+        val isFresh: Boolean,
+    )
+
+    private suspend fun readMatchesFromStorage(type: String): StoredMatches? {
         return try {
             val fileId = "$type-matches"
-            // The HTTP cache is bounded by the same age this method then enforces on `fetchedAt`.
-            // Any longer and a cached body would be served only to be rejected as stale below, which
-            // is a download's worth of latency followed by a Vercel call anyway.
-            val maxAgeSeconds = (CacheConfig.matchStorageMaxAgeMs(type) / MILLIS_PER_SECOND).toInt()
+            // The HTTP cache is bounded by the same age this method then reports on, so a body that
+            // would only be judged stale is not re-downloaded.
+            val maxAgeMs = CacheConfig.matchStorageMaxAgeMs(type)
+            val maxAgeSeconds = (maxAgeMs / MILLIS_PER_SECOND).toInt()
             val bytes = AppwriteClient.downloadFile("cricket-stats", fileId, maxAgeSeconds) ?: return null
             val json = org.json.JSONObject(String(bytes))
             val fetchedAt = json.getLong("fetchedAt")
-            if (System.currentTimeMillis() - fetchedAt > CacheConfig.matchStorageMaxAgeMs(type)) return null
+            val ageMs = System.currentTimeMillis() - fetchedAt
             val dataJson = json.getJSONObject("data").toString()
-            AppJson.decodeFromString<SanwebMatchesListResponse>(dataJson)
+            StoredMatches(
+                value = AppJson.decodeFromString<SanwebMatchesListResponse>(dataJson),
+                ageMs = ageMs,
+                isFresh = ageMs <= maxAgeMs,
+            )
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            Log.w(TAG, "tryReadMatchesFromStorage failed for $type", e)
+            Log.w(TAG, "readMatchesFromStorage failed for $type", e)
             null
-        }
-    }
-
-    suspend fun getMatchScore(id: String): AppResult<SanwebMatchResponse> {
-        sentryBreadcrumb("network.api", "Fetching match score", data = mapOf("matchId" to id))
-        return AppResult.runCatchingSuspend {
-            val resp = RetrofitClient.vercelApi.getMatchScore(id)
-            Log.d(TAG, "Successfully fetched match score for id: $id")
-            Sentry.metrics().count("repository.getMatchScore.success", 1.0)
-            sentryBreadcrumb("network.api", "Successfully fetched match score", data = mapOf("matchId" to id))
-            resp
-        }.also {
-            if (it is AppResult.Error) {
-                Log.e(TAG, "Error fetching match score for id: $id", it.exception)
-                sentryBreadcrumb(
-                    "network.api",
-                    "Error fetching match score",
-                    SentryLevel.ERROR,
-                    mapOf("matchId" to id, "error" to it.exception.message)
-                )
-                Sentry.captureException(it.exception)
-                Sentry.metrics().count("repository.getMatchScore.error", 1.0)
-            }
         }
     }
 
@@ -178,34 +175,6 @@ object CricketRepository {
         }
     }
 
-    fun getMatchScoreCached(context: Context, matchId: String): Flow<MatchEntity?> = flow {
-        val db = BouncerDatabase.getInstance(context)
-        val dao = db.matchDao()
-
-        val cached = dao.getMatch(matchId).firstOrNull()
-        if (cached != null) {
-            emit(cached)
-        }
-
-        try {
-            val result = getMatchScore(matchId)
-            result.getOrNull()?.let { response ->
-                val entity = mergedMatchEntity(matchId, cached, response)
-                dao.upsertMatch(entity)
-                emit(entity)
-            }
-        } catch (e: Exception) {
-            sentryBreadcrumb(
-                "cache",
-                "Network fetch failed, using cached data",
-                SentryLevel.WARNING,
-                mapOf("matchId" to matchId)
-            )
-            Sentry.captureException(e)
-            if (cached == null) emit(null)
-        }
-    }
-
     fun observeCachedMatches(context: Context): Flow<List<MatchEntity>> {
         val db = BouncerDatabase.getInstance(context)
         return db.matchDao().getAllMatches()
@@ -230,40 +199,3 @@ object CricketRepository {
         }
     }
 }
-
-private val TITLE_SEPARATORS = listOf(" vs ", " v ", " vs. ", " against ")
-
-private fun parseTeamFromTitle(title: String, index: Int): String {
-    for (sep in TITLE_SEPARATORS) {
-        val parts = title.split(sep, ignoreCase = true)
-        if (parts.size >= 2) {
-            return parts.getOrElse(index) { "" }
-                .split(",", "|").first().trim()
-        }
-    }
-    return ""
-}
-
-private fun mergedMatchEntity(
-    matchId: String,
-    cached: MatchEntity?,
-    response: SanwebMatchResponse
-): MatchEntity = MatchEntity(
-    matchId = matchId,
-    seriesId = cached?.seriesId ?: "",
-    matchTitle = response.title,
-    matchType = cached?.matchType ?: "",
-    status = response.update,
-    venue = cached?.venue ?: "",
-    date = cached?.date ?: "",
-    matchTime = cached?.matchTime ?: "",
-    currentStatus = response.update,
-    info = response.livescore,
-    team1Name = cached?.team1Name?.takeIf { it.isNotBlank() }
-        ?: parseTeamFromTitle(response.title, 0),
-    team1Score = response.livescore,
-    team2Name = cached?.team2Name?.takeIf { it.isNotBlank() }
-        ?: parseTeamFromTitle(response.title, 1),
-    team2Score = null,
-    lastUpdated = System.currentTimeMillis()
-)

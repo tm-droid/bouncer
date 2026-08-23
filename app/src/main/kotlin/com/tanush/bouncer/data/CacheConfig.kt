@@ -9,7 +9,7 @@ object CacheConfig {
     const val PLAYER_FORM_TTL_MS = 24 * 3_600_000L // 24 hours
     const val PLAYER_PROFILE_TTL_MS = 7L * 24 * 3_600_000L // 7 days — mirrors Room worker TTL
     // 2.5 min: Appwrite poll-live-matches runs every 1 min; 150s gives a half-cycle buffer
-    // so a slow or skipped run doesn't immediately fall through to direct Vercel polling.
+    // so a slow or skipped run doesn't immediately mark the cache stale.
     const val MATCH_CACHE_TTL_MS = 150_000L
 
     // In-memory TTLs for the raw match-list response (MatchesResponseCache), checked BEFORE the
@@ -19,14 +19,18 @@ object CacheConfig {
     const val MATCHES_RESPONSE_TTL_STATIC_MS = 600_000L // upcoming/recent change a few times a day
 
     /**
-     * How old a downloaded `{type}-matches` file may be before the device ignores it and falls back
-     * to the Vercel API.
+     * How old a downloaded `{type}-matches` file may be before the device treats it as stale.
+     *
+     * Stale no longer means discarded. `CricketRepository` serves the file anyway and simply does
+     * not cache it, so the next call retries the download — showing a slightly old list beats
+     * showing none. It used to mean "fall through to the Vercel API", which was a second scraper
+     * hosted separately for data Appwrite already had.
      *
      * Per-type because `bouncer-poll-live-matches` only rewrites a file when its content actually
      * changed or its refresh floor elapsed — fixtures legitimately sit unchanged for hours. A single
-     * 150s bound (the old [MATCH_CACHE_TTL_MS]) would reject every unchanged upcoming/recent file
-     * and push all devices onto Vercel. Each value sits above the server's floor for that type so a
-     * file written exactly at the floor is still accepted.
+     * 150s bound (the old [MATCH_CACHE_TTL_MS]) would mark every unchanged upcoming/recent file
+     * stale. Each value sits above the server's floor for that type so a file written exactly at
+     * the floor is still accepted.
      */
     fun matchStorageMaxAgeMs(type: String): Long =
         if (type.lowercase() == "live") LIVE_STORAGE_MAX_AGE_MS else STATIC_STORAGE_MAX_AGE_MS

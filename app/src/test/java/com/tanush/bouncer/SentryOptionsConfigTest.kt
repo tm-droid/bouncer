@@ -94,7 +94,7 @@ class SentryOptionsConfigTest {
     @Test
     fun `ConnectException to non-Sentry host is NOT dropped`() {
         // ConnectException to owned/third-party backends (Appwrite, RapidAPI, etc.) is actionable.
-        val event = buildEvent("ConnectException" to "Failed to connect to api-iota-jade.vercel.app/64.29.17.195:443")
+        val event = buildEvent("ConnectException" to "Failed to connect to sgp.cloud.appwrite.io/64.29.17.195:443")
         assertFalse(config.shouldDropEvent(event))
     }
 

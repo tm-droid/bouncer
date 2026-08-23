@@ -70,7 +70,6 @@ agents.md
 
 # Backend API project (separate repo)
 cricket-api/
-vercel-api/
 
 # Sentry wizard binary
 sentry-wizard

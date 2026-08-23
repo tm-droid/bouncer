@@ -215,8 +215,8 @@ object AppwriteClient {
      *
      * Bandwidth is a shared API+Storage+Realtime pool, so this is guarded on [Quota.BANDWIDTH]. It
      * used to only REPORT a 402 and then download again on the very next call; now it stops.
-     * Returning null is already the not-ready path and `CricketRepository` falls through to the
-     * Vercel API.
+     * Returning null is already every caller's not-ready path; `CricketRepository` turns it into an
+     * error rather than reaching for a second data source.
      */
     suspend fun downloadFile(bucketId: String, fileId: String, maxAgeSeconds: Int): ByteArray? {
         if (!isReady) return null

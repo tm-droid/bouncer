@@ -7,7 +7,6 @@ import com.tanush.bouncer.data.AppJson
 import retrofit2.Retrofit
 
 object RetrofitClient {
-    private const val BASE_URL_VERCEL = "https://api-iota-jade.vercel.app/"
     // Local development API (Android emulator uses 10.0.2.2 to reach host localhost)
     private const val BASE_URL_LOCAL = "http://10.0.2.2:8000/"
 
@@ -21,11 +20,6 @@ object RetrofitClient {
             // proguard-rules.pro existed for — and that rule turned R8 into a no-op app-wide.
             .addConverterFactory(AppJson.asConverterFactory("application/json".toMediaType()))
             .build()
-    }
-
-    val vercelApi: VercelApi by lazy {
-        retrofit(BASE_URL_VERCEL)
-            .create(VercelApi::class.java)
     }
 
     // Local API client used for development and testing (mock server)
