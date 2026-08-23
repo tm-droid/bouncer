@@ -1,9 +1,9 @@
 <resources>
-    <string name="app_name">Bouncer</string>
+    <string name="app_name" translatable="false">Bouncer</string>
     <string name="live_match_widget_description">Real-time cricket updates and live match scores.</string>
     <string name="bouncer_glance_widget_description">Live cricket scores at a glance</string>
     <string name="bouncer_lock_widget_description">Quick cricket score updates on your lock screen</string>
-    <string name="widget_app_name">Bouncer</string>
+    <string name="widget_app_name" translatable="false">Bouncer</string>
     <string name="widget_configuration_title">Configure Widget</string>
     <string name="countdown_widget_description">Upcoming match countdown and schedule highlights.</string>
     <string name="title_stats_detail">Statistics Details</string>
@@ -64,12 +64,12 @@
     <string name="update_whats_new">What\'s New</string>
     <string name="update_current_version">Current: v%1$s</string>
     <string name="update_new_version">New: v%1$s</string>
-    <string name="update_version_arrow">→</string>
+    <string name="update_version_arrow" translatable="false">→</string>
     <string name="update_size_and_time">(%1$.1f MB, ~%2$d minutes on WiFi)</string>
     <string name="update_downloading">Downloading Update</string>
     <string name="update_download_in_progress">Optimizing package for secure install...</string>
     <string name="update_ready_to_install">Ready to Install</string>
-    <string name="update_progress_percent">%1$d%%</string>
+    <string name="update_progress_percent" translatable="false">%1$d%%</string>
     <string name="update_action_now">Update Now</string>
     <string name="update_action_later">Later</string>
     <string name="update_action_install">Install</string>
@@ -189,4 +189,59 @@
     <string name="live_activity_style_animated_subtitle">Most expressive live look with pulse-forward emphasis.</string>
     <string name="live_activity_style_statistics_title">Statistics</string>
     <string name="live_activity_style_statistics_subtitle">Run rates, win probability, and wickets remaining at a glance.</string>
+
+    <!-- ── Home ─────────────────────────────────────────────────────────── -->
+    <string name="home_title" translatable="false">BOUNCER</string>
+    <string name="home_empty_title">No matches found</string>
+    <string name="home_empty_subtitle">Try changing your filters or pull to refresh</string>
+    <string name="section_matches">Matches</string>
+    <string name="action_see_all">See All</string>
+    <string name="cd_search">Search</string>
+    <string name="cd_filters_show">Show category filters</string>
+    <string name="cd_filters_hide">Hide category filters</string>
+    <string name="home_unread_badge_overflow" translatable="false">9+</string>
+
+    <!-- ── Search ───────────────────────────────────────────────────────── -->
+    <string name="search_error_title">Search interrupted</string>
+    <string name="search_did_you_mean">Did you mean:\u0020</string>
+    <string name="search_recent_title">Recent Searches</string>
+    <string name="search_trending_title">Trending</string>
+    <string name="search_no_results_title">No results found</string>
+    <string name="search_no_results_subtitle">Try a different search term</string>
+    <!-- Section heading with its result count, e.g. "Teams (3)". -->
+    <string name="search_section_with_count" translatable="false">%1$s (%2$d)</string>
+    <string name="search_section_teams">Teams</string>
+    <string name="search_section_players">Players</string>
+    <string name="search_section_news">News</string>
+    <string name="search_section_tournaments">Tournaments</string>
+    <string name="action_clear_short">Clear</string>
+    <string name="cd_clear">Clear</string>
+    <string name="cd_back">Back</string>
+    <string name="search_placeholder">Search matches, players, teams, tournaments\u2026</string>
+
+    <!-- ── Onboarding ───────────────────────────────────────────────────── -->
+    <string name="action_skip">Skip</string>
+    <string name="action_next">Next</string>
+    <string name="onboarding_get_started">Get Started</string>
+    <string name="onboarding_welcome_subtitle">Your cricket companion for live scores and match intelligence.</string>
+    <string name="onboarding_feature_ball_by_ball">Live ball-by-ball updates</string>
+    <string name="onboarding_feature_win_probability">Win-probability insights</string>
+    <string name="onboarding_feature_follow_teams">Follow your teams</string>
+    <string name="onboarding_teams_title">Your Cricket</string>
+    <string name="onboarding_teams_subtitle">Pick your teams and preferred cricket.</string>
+    <string name="onboarding_preferred_matches">Preferred matches</string>
+    <string name="onboarding_notifications_title">Stay in the Loop</string>
+    <string name="onboarding_notifications_subtitle">Enable notifications for wickets, milestones, and match starts for your followed teams.</string>
+    <string name="onboarding_allow_notifications">Allow Notifications</string>
+    <string name="onboarding_not_now">Not Now</string>
+    <string name="onboarding_complete_title">You\'re All Set</string>
+    <string name="onboarding_complete_generic">Start exploring matches, squads, and insights.</string>
+    <string name="onboarding_add_widget">Add Widget to Home Screen</string>
+    <!-- "Following 2 teams." — the count is grammatical, so it is a plural, not a concatenated "s". -->
+    <plurals name="onboarding_following_teams">
+        <item quantity="one">Following %1$d team.</item>
+        <item quantity="other">Following %1$d teams.</item>
+    </plurals>
+    <string name="onboarding_showing_category">Showing %1$s matches.</string>
+    <string name="onboarding_start_exploring">Start exploring!</string>
 </resources>

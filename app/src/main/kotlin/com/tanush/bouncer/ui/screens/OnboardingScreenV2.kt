@@ -58,6 +58,9 @@ import com.tanush.bouncer.ui.widgets.BouncerGlanceWidgetReceiver
 import com.tanush.bouncer.utils.PreferencesHelper
 import com.tanush.bouncer.utils.rememberHapticFeedback
 import kotlinx.coroutines.launch
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.pluralStringResource
+import com.tanush.bouncer.R
 
 private val POPULAR_TEAMS = listOf(
     "India", "Australia", "England", "Pakistan", "South Africa",
@@ -113,7 +116,7 @@ fun OnboardingScreenV2(onComplete: () -> Unit) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
             if (!isLastPage) {
                 TextButton(onClick = { finishOnboarding() }) {
-                    Text("Skip", color = colors.textSecondary)
+                    Text(stringResource(R.string.action_skip), color = colors.textSecondary)
                 }
             }
         }
@@ -133,7 +136,7 @@ fun OnboardingScreenV2(onComplete: () -> Unit) {
                         Icon(Icons.Default.SportsCricket, null, Modifier.size(72.dp), tint = colors.primary)
                         Spacer(Modifier.height(spacing.xl))
                         Text(
-                            "Welcome to Bouncer",
+                            stringResource(R.string.onboarding_title),
                             style = typography.headlineMedium,
                             fontWeight = FontWeight.Bold,
                             color = colors.onSurface,
@@ -141,16 +144,16 @@ fun OnboardingScreenV2(onComplete: () -> Unit) {
                         )
                         Spacer(Modifier.height(spacing.sm))
                         Text(
-                            "Your cricket companion for live scores and match intelligence.",
+                            stringResource(R.string.onboarding_welcome_subtitle),
                             style = typography.bodyMedium,
                             color = colors.textSecondary,
                             textAlign = TextAlign.Center,
                         )
                         Spacer(Modifier.height(spacing.lg))
                         listOf(
-                            "Live ball-by-ball updates",
-                            "Win-probability insights",
-                            "Follow your teams",
+                            R.string.onboarding_feature_ball_by_ball,
+                            R.string.onboarding_feature_win_probability,
+                            R.string.onboarding_feature_follow_teams,
                         ).forEach { highlight ->
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
@@ -158,7 +161,11 @@ fun OnboardingScreenV2(onComplete: () -> Unit) {
                             ) {
                                 Icon(Icons.Default.Check, null, Modifier.size(16.dp), tint = colors.primary)
                                 Spacer(Modifier.padding(start = spacing.sm))
-                                Text(highlight, style = typography.bodyMedium, color = colors.onSurface)
+                                Text(
+                                    stringResource(highlight),
+                                    style = typography.bodyMedium,
+                                    color = colors.onSurface,
+                                )
                             }
                         }
                     }
@@ -173,7 +180,7 @@ fun OnboardingScreenV2(onComplete: () -> Unit) {
                         Icon(Icons.Default.Groups, null, Modifier.size(56.dp), tint = colors.primary)
                         Spacer(Modifier.height(spacing.lg))
                         Text(
-                            "Your Cricket",
+                            stringResource(R.string.onboarding_teams_title),
                             style = typography.headlineMedium,
                             fontWeight = FontWeight.Bold,
                             color = colors.onSurface,
@@ -181,7 +188,7 @@ fun OnboardingScreenV2(onComplete: () -> Unit) {
                         )
                         Spacer(Modifier.height(spacing.sm))
                         Text(
-                            "Pick your teams and preferred cricket.",
+                            stringResource(R.string.onboarding_teams_subtitle),
                             style = typography.bodyMedium,
                             color = colors.textSecondary,
                             textAlign = TextAlign.Center,
@@ -215,7 +222,7 @@ fun OnboardingScreenV2(onComplete: () -> Unit) {
                         }
                         Spacer(Modifier.height(spacing.xl))
                         Text(
-                            "Preferred matches",
+                            stringResource(R.string.onboarding_preferred_matches),
                             style = typography.labelMedium,
                             color = colors.textSecondary,
                         )
@@ -257,7 +264,7 @@ fun OnboardingScreenV2(onComplete: () -> Unit) {
                         Icon(Icons.Default.Notifications, null, Modifier.size(56.dp), tint = colors.primary)
                         Spacer(Modifier.height(spacing.lg))
                         Text(
-                            "Stay in the Loop",
+                            stringResource(R.string.onboarding_notifications_title),
                             style = typography.headlineMedium,
                             fontWeight = FontWeight.Bold,
                             color = colors.onSurface,
@@ -265,7 +272,7 @@ fun OnboardingScreenV2(onComplete: () -> Unit) {
                         )
                         Spacer(Modifier.height(spacing.sm))
                         Text(
-                            "Enable notifications for wickets, milestones, and match starts for your followed teams.",
+                            stringResource(R.string.onboarding_notifications_subtitle),
                             style = typography.bodyMedium,
                             color = colors.textSecondary,
                             textAlign = TextAlign.Center,
@@ -299,13 +306,13 @@ fun OnboardingScreenV2(onComplete: () -> Unit) {
                                 contentColor = colors.onPrimary,
                             ),
                         ) {
-                            Text("Allow Notifications", fontWeight = FontWeight.Bold)
+                            Text(stringResource(R.string.onboarding_allow_notifications), fontWeight = FontWeight.Bold)
                         }
                         Spacer(Modifier.height(spacing.sm))
                         TextButton(
                             onClick = { scope.launch { pagerState.animateScrollToPage(PAGE_COMPLETE) } },
                         ) {
-                            Text("Not Now", color = colors.textSecondary)
+                            Text(stringResource(R.string.onboarding_not_now), color = colors.textSecondary)
                         }
                     }
                 }
@@ -323,7 +330,7 @@ fun OnboardingScreenV2(onComplete: () -> Unit) {
                         Icon(Icons.Default.RocketLaunch, null, Modifier.size(72.dp), tint = colors.primary)
                         Spacer(Modifier.height(spacing.xl))
                         Text(
-                            "You're All Set",
+                            stringResource(R.string.onboarding_complete_title),
                             style = typography.headlineMedium,
                             fontWeight = FontWeight.Bold,
                             color = colors.onSurface,
@@ -331,13 +338,7 @@ fun OnboardingScreenV2(onComplete: () -> Unit) {
                         )
                         Spacer(Modifier.height(spacing.sm))
                         Text(
-                            when {
-                                selectedTeams.isNotEmpty() && selectedCategory != "All" ->
-                                    "Following ${selectedTeams.size} team${if (selectedTeams.size > 1) "s" else ""}. Showing $selectedCategory matches."
-                                selectedTeams.isNotEmpty() ->
-                                    "Following ${selectedTeams.size} team${if (selectedTeams.size > 1) "s" else ""}. Start exploring!"
-                                else -> "Start exploring matches, squads, and insights."
-                            },
+                            completionSummary(selectedTeams.size, selectedCategory),
                             style = typography.bodyMedium,
                             color = colors.textSecondary,
                             textAlign = TextAlign.Center,
@@ -349,7 +350,7 @@ fun OnboardingScreenV2(onComplete: () -> Unit) {
                                     appWidgetManager.requestPinAppWidget(widgetProvider, null, null)
                                 },
                             ) {
-                                Text("Add Widget to Home Screen", color = colors.primary)
+                                Text(stringResource(R.string.onboarding_add_widget), color = colors.primary)
                             }
                         }
                     }
@@ -388,8 +389,31 @@ fun OnboardingScreenV2(onComplete: () -> Unit) {
                     contentColor = colors.onPrimary,
                 ),
             ) {
-                Text(if (isLastPage) "Get Started" else "Next", fontWeight = FontWeight.Bold)
+                Text(
+                    stringResource(
+                        if (isLastPage) R.string.onboarding_get_started else R.string.action_next
+                    ),
+                    fontWeight = FontWeight.Bold,
+                )
             }
         }
     }
+}
+
+/**
+ * The completion line on the last onboarding page.
+ *
+ * The count is grammatical, so it goes through a plural rather than the `"team" + "s"` concatenation
+ * this replaced — that construction has no correct translation in a language whose plural rules are
+ * not English's.
+ */
+@Composable
+private fun completionSummary(teamCount: Int, category: String): String = when {
+    teamCount > 0 && category != "All" ->
+        pluralStringResource(R.plurals.onboarding_following_teams, teamCount, teamCount) + " " +
+            stringResource(R.string.onboarding_showing_category, category)
+    teamCount > 0 ->
+        pluralStringResource(R.plurals.onboarding_following_teams, teamCount, teamCount) + " " +
+            stringResource(R.string.onboarding_start_exploring)
+    else -> stringResource(R.string.onboarding_complete_generic)
 }

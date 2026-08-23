@@ -67,6 +67,9 @@ import com.tanush.bouncer.ui.components.v2.SectionHeaderV2
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 import com.tanush.bouncer.viewmodels.SearchTab
 import com.tanush.bouncer.viewmodels.SearchViewModel
+import androidx.compose.ui.res.stringResource
+import androidx.annotation.StringRes
+import com.tanush.bouncer.R
 
 @Composable
 fun SearchScreen(
@@ -212,7 +215,7 @@ private fun SearchScreenBody(
                 )
                 searchError != null && displayResults.isEmpty -> item(key = "search_error") {
                     EmptyStateV2(
-                        title = "Search interrupted",
+                        title = stringResource(R.string.search_error_title),
                         subtitle = searchError ?: "",
                         onRetry = { viewModel.retrySearch(matches, news) },
                     )
@@ -308,7 +311,11 @@ private fun LazyListScope.suggestionBanner(suggestion: String, onClick: () -> Un
                 .clickable { onClick() }
                 .padding(horizontal = spacing.lg, vertical = spacing.sm),
         ) {
-            Text("Did you mean: ", style = typography.bodyMedium, color = colors.textSecondary)
+            Text(
+                stringResource(R.string.search_did_you_mean),
+                style = typography.bodyMedium,
+                color = colors.textSecondary,
+            )
             Text(
                 suggestion,
                 style = typography.bodyMedium,
@@ -327,8 +334,8 @@ private fun LazyListScope.searchSuggestions(
     if (recentQueries.isNotEmpty()) {
         item(key = "recent_header") {
             SectionHeaderV2(
-                title = "Recent Searches",
-                action = "Clear",
+                title = stringResource(R.string.search_recent_title),
+                action = stringResource(R.string.action_clear_short),
                 onAction = onClearRecent,
             )
         }
@@ -352,7 +359,7 @@ private fun LazyListScope.searchSuggestions(
     }
 
     item(key = "trending_header") {
-        SectionHeaderV2(title = "Trending")
+        SectionHeaderV2(title = stringResource(R.string.search_trending_title))
     }
     items(SearchRepository.getTrendingSearches(), key = { "trend_$it" }) { trend ->
         SearchSuggestionRow(
@@ -393,7 +400,7 @@ private fun LazyListScope.searchResults(
     onSeriesClick: (String) -> Unit,
 ) {
     listOfNotNull(
-        displayResults.matches.sectionOrNull("Matches", { "m_${it.match.id}" }) { result ->
+        displayResults.matches.sectionOrNull(R.string.section_matches, "m", { "m_${it.match.id}" }) { result ->
             MatchCardV2(
                 match = result.match,
                 onClick = { onMatchClick(result.match) },
@@ -405,7 +412,7 @@ private fun LazyListScope.searchResults(
                     ),
             )
         },
-        displayResults.teams.sectionOrNull("Teams", { "t_${it.teamName}" }) { result ->
+        displayResults.teams.sectionOrNull(R.string.search_section_teams, "t", { "t_${it.teamName}" }) { result ->
             TeamSearchRow(
                 teamName = result.teamName,
                 acronym = result.teamAcronym,
@@ -413,7 +420,7 @@ private fun LazyListScope.searchResults(
                 onClick = { onTeamClick(result.teamName) },
             )
         },
-        displayResults.players.sectionOrNull("Players", { "p_${it.playerName}" }) { result ->
+        displayResults.players.sectionOrNull(R.string.search_section_players, "p", { "p_${it.playerName}" }) { result ->
             PlayerSearchRow(
                 playerName = result.playerName,
                 teamName = result.teamName,
@@ -422,14 +429,14 @@ private fun LazyListScope.searchResults(
                 onClick = { onPlayerClick(result.playerName) },
             )
         },
-        displayResults.news.sectionOrNull("News", { "n_${it.article.id}" }) { result ->
+        displayResults.news.sectionOrNull(R.string.search_section_news, "n", { "n_${it.article.id}" }) { result ->
             NewsSearchRow(
                 title = result.article.headline,
                 source = result.article.source,
                 onClick = { onNewsClick(result.article) },
             )
         },
-        displayResults.series.sectionOrNull("Tournaments", { "s_${it.seriesId}" }) { result ->
+        displayResults.series.sectionOrNull(R.string.search_section_tournaments, "s", { "s_${it.seriesId}" }) { result ->
             SeriesSearchRow(
                 name = result.name,
                 category = result.category,
@@ -447,15 +454,28 @@ private fun LazyListScope.searchResults(
  * The score is the best member's, because that is what the section competes on: a list containing
  * one exact hit and nine weak ones is a strong section, not an average one.
  */
+/**
+ * [keyPrefix] is separate from [titleRes] on purpose: the heading is translated, and a LazyList item
+ * key built from translated text would change identity when the locale does.
+ */
 private fun <T : SearchRepository.SearchResult> List<T>.sectionOrNull(
-    title: String,
+    @StringRes titleRes: Int,
+    keyPrefix: String,
     key: (T) -> Any,
     row: @Composable (T) -> Unit,
 ): SearchSection? {
     if (isEmpty()) return null
     val results = this
     return SearchSection(maxOf { it.relevanceScore }) {
-        item(key = "${title}_header") { SectionHeaderV2(title = "$title (${results.size})") }
+        item(key = "${keyPrefix}_header") {
+            SectionHeaderV2(
+                title = stringResource(
+                    R.string.search_section_with_count,
+                    stringResource(titleRes),
+                    results.size,
+                )
+            )
+        }
         items(results, key = key) { row(it) }
     }
 }

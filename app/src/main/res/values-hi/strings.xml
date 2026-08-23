@@ -1,0 +1,240 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Hindi translations for the strings extracted so far: Home, Search and Onboarding.
+
+  Two conventions, both deliberate:
+
+  - Cricket terms stay in English where that is how they are said in Hindi commentary and in the
+    ground — "over", "wicket", "LBW". Translating them would read as stilted, not as localised.
+  - Counts go through plurals rather than string concatenation, because Hindi's plural rules are
+    not English's and "team" + "s" has no correct translation.
+
+  Machine-assisted and NOT reviewed by a native speaker. Worth a pass by one before this ships to
+  users — the strings are correct in meaning but the register may not be right everywhere.
+-->
+<resources>
+    <!-- Home -->
+    <string name="home_empty_title">कोई मैच नहीं मिला</string>
+    <string name="home_empty_subtitle">फ़िल्टर बदलें या रिफ़्रेश करने के लिए खींचें</string>
+    <string name="section_matches">मैच</string>
+    <string name="action_see_all">सभी देखें</string>
+    <string name="cd_search">खोजें</string>
+    <string name="cd_filters_show">श्रेणी फ़िल्टर दिखाएँ</string>
+    <string name="cd_filters_hide">श्रेणी फ़िल्टर छिपाएँ</string>
+    <string name="cd_notifications">सूचनाएँ प्रबंधित करें</string>
+    <string name="cd_settings">ऐप सेटिंग्स खोलें</string>
+
+    <!-- Search -->
+    <string name="search_error_title">खोज बाधित हुई</string>
+    <string name="search_did_you_mean">क्या आपका मतलब था:\u0020</string>
+    <string name="search_recent_title">हाल की खोजें</string>
+    <string name="search_trending_title">ट्रेंडिंग</string>
+    <string name="search_no_results_title">कोई परिणाम नहीं मिला</string>
+    <string name="search_no_results_subtitle">कोई दूसरा शब्द आज़माएँ</string>
+    <string name="search_placeholder">मैच, खिलाड़ी, टीम या टूर्नामेंट खोजें…</string>
+    <string name="search_section_teams">टीमें</string>
+    <string name="search_section_players">खिलाड़ी</string>
+    <string name="search_section_news">खबरें</string>
+    <string name="search_section_tournaments">टूर्नामेंट</string>
+    <string name="action_clear_short">हटाएँ</string>
+    <string name="cd_clear">हटाएँ</string>
+    <string name="cd_back">पीछे</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_title">Bouncer में आपका स्वागत है</string>
+    <string name="action_skip">छोड़ें</string>
+    <string name="action_next">आगे</string>
+    <string name="onboarding_get_started">शुरू करें</string>
+    <string name="onboarding_welcome_subtitle">लाइव स्कोर और मैच विश्लेषण के लिए आपका क्रिकेट साथी।</string>
+    <string name="onboarding_feature_ball_by_ball">बॉल-दर-बॉल लाइव अपडेट</string>
+    <string name="onboarding_feature_win_probability">जीत की संभावना का विश्लेषण</string>
+    <string name="onboarding_feature_follow_teams">अपनी टीमों को फ़ॉलो करें</string>
+    <string name="onboarding_teams_title">आपका क्रिकेट</string>
+    <string name="onboarding_teams_subtitle">अपनी टीमें और पसंदीदा क्रिकेट चुनें।</string>
+    <string name="onboarding_preferred_matches">पसंदीदा मैच</string>
+    <string name="onboarding_notifications_title">खबरों से जुड़े रहें</string>
+    <string name="onboarding_notifications_subtitle">अपनी फ़ॉलो की गई टीमों के विकेट, मीलका और मैच शुरू होने की सूचनाएँ चालू करें।</string>
+    <string name="onboarding_allow_notifications">सूचनाएँ चालू करें</string>
+    <string name="onboarding_not_now">अभी नहीं</string>
+    <string name="onboarding_complete_title">सब तैयार है</string>
+    <string name="onboarding_complete_generic">मैच, स्क्वाड और विश्लेषण देखना शुरू करें।</string>
+    <string name="onboarding_add_widget">होम स्क्रीन पर विजेट जोड़ें</string>
+    <plurals name="onboarding_following_teams">
+        <item quantity="one">%1$d टीम फ़ॉलो की गई।</item>
+        <item quantity="other">%1$d टीमें फ़ॉलो की गईं।</item>
+    </plurals>
+    <string name="onboarding_showing_category">%1$s मैच दिखाए जा रहे हैं।</string>
+    <string name="onboarding_start_exploring">देखना शुरू करें!</string>
+    <!-- Widgets -->
+    <string name="live_match_widget_description">रीयल-टाइम क्रिकेट अपडेट और लाइव मैच स्कोर।</string>
+    <string name="bouncer_glance_widget_description">एक नज़र में लाइव क्रिकेट स्कोर</string>
+    <string name="bouncer_lock_widget_description">लॉक स्क्रीन पर तुरंत स्कोर अपडेट</string>
+    <string name="widget_configuration_title">विजेट कॉन्फ़िगर करें</string>
+    <string name="countdown_widget_description">आने वाले मैच का काउंटडाउन और शेड्यूल।</string>
+
+    <!-- Titles and navigation -->
+    <string name="title_stats_detail">आँकड़ों का विवरण</string>
+    <string name="title_reminders">मैच रिमाइंडर</string>
+    <string name="nav_stats">विश्लेषण</string>
+    <string name="nav_achievements">उपलब्धियाँ</string>
+
+    <!-- Sections -->
+    <string name="section_more_matches">आने वाले मैच</string>
+    <string name="section_quick_actions">त्वरित विकल्प</string>
+    <string name="section_insights">मैच विश्लेषण</string>
+    <string name="section_activity">हाल की गतिविधि</string>
+    <string name="section_trending_news">ट्रेंडिंग खबरें</string>
+
+    <!-- Tabs. "Scorecard" and "over" are the words used in Hindi commentary; they stay. -->
+    <string name="tab_live">लाइव</string>
+    <string name="tab_scorecard">स्कोरकार्ड</string>
+    <string name="tab_lineups">प्लेइंग इलेवन</string>
+    <string name="tab_overs">ओवर</string>
+    <string name="tab_info">मैच जानकारी</string>
+
+    <!-- Actions -->
+    <string name="action_refresh">डेटा रिफ़्रेश करें</string>
+    <string name="action_back">वापस</string>
+    <string name="action_view_all">सभी देखें</string>
+    <string name="action_clear">सभी हटाएँ</string>
+    <string name="action_share">मैच साझा करें</string>
+
+    <!-- States -->
+    <string name="state_loading">नया डेटा लाया जा रहा है…</string>
+    <string name="state_no_matches_title">कोई मैच नहीं मिला</string>
+    <string name="state_no_matches_desc">इस समय दिखाने के लिए कोई सक्रिय मैच नहीं है।</string>
+    <string name="state_error_title">कनेक्शन त्रुटि</string>
+    <string name="state_error_desc">डेटा लोड नहीं हो सका। कृपया अपना कनेक्शन जाँचें और फिर कोशिश करें।</string>
+
+    <!-- Alerts and events -->
+    <string name="event_wicket">विकेट</string>
+    <string name="event_boundary">बाउंड्री</string>
+    <string name="event_powerplay">पावरप्ले चालू</string>
+    <string name="event_milestone">मील का पत्थर</string>
+
+    <!-- Accessibility -->
+    <string name="cd_match_card">%1$s बनाम %2$s का मैच कार्ड</string>
+    <string name="cd_team_logo">%1$s का आधिकारिक लोगो</string>
+    <string name="cd_live_indicator">लाइव मैच सक्रिय होने का संकेत</string>
+    <string name="cd_profile">प्रोफ़ाइल देखें</string>
+    <string name="cd_back_button">वापस जाएँ</string>
+    <string name="cd_share_button">मैच का विवरण साझा करें</string>
+
+    <!-- App update -->
+    <string name="update_available_title">अपडेट उपलब्ध है</string>
+    <string name="update_subtitle">Bouncer %1$s तैयार है</string>
+    <string name="update_whats_new">क्या नया है</string>
+    <string name="update_current_version">मौजूदा: v%1$s</string>
+    <string name="update_new_version">नया: v%1$s</string>
+    <string name="update_size_and_time">(%1$.1f MB, WiFi पर लगभग %2$d मिनट)</string>
+    <string name="update_downloading">अपडेट डाउनलोड हो रहा है</string>
+    <string name="update_download_in_progress">सुरक्षित इंस्टॉल के लिए पैकेज तैयार किया जा रहा है…</string>
+    <string name="update_ready_to_install">इंस्टॉल के लिए तैयार</string>
+    <string name="update_action_now">अभी अपडेट करें</string>
+    <string name="update_action_later">बाद में</string>
+    <string name="update_action_install">इंस्टॉल करें</string>
+    <string name="update_action_retry">फिर कोशिश करें</string>
+    <string name="update_notification_title">Bouncer का अपडेट उपलब्ध है</string>
+    <string name="update_notification_body">संस्करण %1$s डाउनलोड के लिए तैयार है</string>
+    <string name="update_notification_channel_name">ऐप अपडेट</string>
+    <string name="update_notification_channel_desc">पृष्ठभूमि में चुपचाप जाँच और अपडेट तैयार होने के संकेत</string>
+    <string name="update_mock_feature_one">लाइव स्कोर तेज़ी से और आसानी से दिखते हैं</string>
+    <string name="update_mock_feature_two">मैच फ़ीड रिफ़्रेश और कुछ दुर्लभ क्रैश ठीक किए गए</string>
+    <string name="update_mock_feature_three">नेटवर्क डेटा की जाँच अधिक सुरक्षित बनाई गई</string>
+    <string name="update_mock_feature_four">बेहतर कंट्रास्ट के लिए ग्लास डिज़ाइन में सुधार</string>
+    <string name="cd_update_dialog">Bouncer ऐप अपडेट डायलॉग</string>
+    <string name="cd_update_bouncer_logo">Bouncer अपडेट आइकॉन</string>
+    <string name="cd_update_feature_icon">अपडेट सुविधा का आइकॉन</string>
+    <string name="cd_update_download_estimate">डाउनलोड आकार और अनुमानित समय</string>
+    <string name="cd_update_badge">अपडेट उपलब्ध होने का बैज</string>
+
+    <!-- Notification settings -->
+    <string name="notification_title">सूचनाएँ</string>
+    <string name="notification_overview_title">एक नज़र में</string>
+    <string name="notification_section_live_match_alerts">लाइव मैच अलर्ट</string>
+    <string name="notification_section_team_preferences">टीम पसंद</string>
+    <string name="notification_section_sound_haptics">आवाज़ और कंपन</string>
+    <string name="notification_section_do_not_disturb">परेशान न करें</string>
+    <string name="notification_section_advanced">उन्नत</string>
+    <string name="notification_live_match_subtext">तय करें कि लाइव मैच के दौरान क्या-क्या सूचित हो — शुरुआत से लेकर मील के पत्थर तक।</string>
+    <string name="notification_match_start_alerts">मैच शुरू होने का अलर्ट</string>
+    <string name="notification_match_start_alerts_help">आपका मैच शुरू होते ही सूचना पाएँ।</string>
+    <string name="notification_wicket_alerts">विकेट अलर्ट</string>
+    <string name="notification_wicket_alerts_help">हर विकेट पर तुरंत सूचना। कम सूचनाएँ चाहें तो इसे बंद रखें।</string>
+    <string name="notification_milestone_alerts">मील के पत्थर के अलर्ट</string>
+    <string name="notification_milestone_alerts_help">अर्धशतक, शतक, अहम साझेदारियाँ और यादगार पल।</string>
+    <string name="notification_score_updates">स्कोर अपडेट</string>
+    <string name="notification_score_updates_help">चुनें कि स्कोर अपडेट कितनी बार आएँ।</string>
+    <string name="notification_frequency_every_run">हर रन पर</string>
+    <string name="notification_frequency_every_over">हर ओवर पर</string>
+    <string name="notification_frequency_every_wicket">हर विकेट पर</string>
+    <string name="notification_count_teams_selected">%2$d में से %1$d टीमें</string>
+    <string name="team_india">भारत</string>
+    <string name="team_australia">ऑस्ट्रेलिया</string>
+    <string name="team_england">इंग्लैंड</string>
+    <string name="team_pakistan">पाकिस्तान</string>
+    <string name="team_south_africa">दक्षिण अफ़्रीका</string>
+    <string name="notification_sound_enabled">आवाज़ चालू</string>
+    <string name="notification_sound_enabled_help">ज़रूरी अलर्ट पर आवाज़ बजाएँ।</string>
+    <string name="notification_sound_wicket_chime">विकेट चाइम</string>
+    <string name="notification_sound_goal_horn">गोल हॉर्न</string>
+    <string name="notification_sound_stadium_roar">स्टेडियम की गर्जना</string>
+    <string name="notification_sound_soft_pulse">हल्की धड़कन</string>
+    <string name="notification_sound_classic_bell">क्लासिक घंटी</string>
+    <string name="notification_preview_sound">आवाज़ सुनकर देखें</string>
+    <string name="notification_haptic_feedback">हैप्टिक फ़ीडबैक</string>
+    <string name="notification_haptic_feedback_help">अहम अलर्ट पर हल्का कंपन जोड़ें।</string>
+    <string name="notification_vibration_intensity">कंपन की तीव्रता</string>
+    <string name="notification_vibration_low">कम</string>
+    <string name="notification_vibration_medium">मध्यम</string>
+    <string name="notification_vibration_high">अधिक</string>
+    <string name="notification_dnd_subtext">तय करें कि अलर्ट कब रुकें और रात में लाइव मैच का क्या हो।</string>
+    <string name="notification_enable_quiet_hours">शांत समय चालू करें</string>
+    <string name="notification_enable_quiet_hours_help">चुने गए घंटों में गैर-ज़रूरी सूचनाएँ बंद रखें।</string>
+    <string name="notification_quiet_hours_from">से</string>
+    <string name="notification_quiet_hours_to">तक</string>
+    <string name="notification_allow_live_during_quiet_hours">शांत समय में भी लाइव मैच अलर्ट आने दें</string>
+    <string name="notification_quiet_hours_queue_help">शांत समय खत्म होने तक सूचनाएँ रुकी रहेंगी।</string>
+    <string name="notification_quiet_hours_summary">शांत: %1$s - %2$s</string>
+    <string name="notification_quiet_hours_off">शांत समय बंद</string>
+    <string name="notification_battery_optimization">बैटरी बचत</string>
+    <string name="notification_battery_optimization_help">बैटरी कम होने पर कम ज़रूरी अलर्ट टालें।</string>
+    <string name="notification_group_similar">एक जैसी सूचनाएँ समूह में रखें</string>
+    <string name="notification_group_similar_help">बार-बार आने वाले अपडेट को एक साथ दिखाएँ।</string>
+    <string name="notification_show_previews">लॉक स्क्रीन पर झलक दिखाएँ</string>
+    <string name="notification_show_previews_help">लॉक स्क्रीन कार्ड पर अलर्ट की सामग्री दिखाएँ।</string>
+    <string name="notification_clear_history">सारा सूचना इतिहास हटाएँ</string>
+    <string name="notification_clear_history_title">सूचना इतिहास हटाएँ?</string>
+    <string name="notification_clear_history_message">इससे इस डिवाइस पर Bouncer का सूचना इतिहास हट जाएगा।</string>
+    <string name="notification_action_cancel">रद्द करें</string>
+    <string name="notification_preset_balanced">संतुलित</string>
+    <string name="notification_preset_minimal">न्यूनतम</string>
+    <string name="notification_preset_maximum">सब कुछ</string>
+    <string name="notification_cd_expand_section">अनुभाग खोलें या बंद करें</string>
+
+    <!-- Live activity -->
+    <string name="live_activity_title">Bouncer लाइव अपडेट</string>
+    <string name="live_activity_channel_name">लाइव मैच अपडेट</string>
+    <string name="live_activity_channel_description">सूचनाओं में सबसे ऊपर टिका रहने वाला लाइव स्कोर अपडेट।</string>
+    <string name="live_activity_action_view_full_score">पूरा स्कोर देखें</string>
+    <string name="live_activity_action_open_app">ऐप खोलें</string>
+    <string name="live_activity_last_update_just_now">अभी</string>
+    <string name="live_activity_last_update_less_than_min">&lt; 1 मिनट पहले</string>
+    <string name="live_activity_last_update_minutes">%1$d मिनट पहले</string>
+    <string name="live_activity_last_update_hours">%1$d घंटे पहले</string>
+    <string name="live_activity_style_section_title">लाइव गतिविधियाँ</string>
+    <string name="live_activity_style_section_subtitle">रीयल-टाइम क्रिकेट के लिए टिकी रहने वाली Android लाइव अपडेट सूचनाएँ।</string>
+    <string name="live_activity_style_battery">बैटरी: %1$d/5</string>
+    <string name="live_activity_style_visibility">दृश्यता: %1$d/5</string>
+    <string name="live_activity_style_live_indicator">लाइव • तुरंत अपडेट</string>
+    <string name="live_activity_style_compact_title">संक्षिप्त</string>
+    <string name="live_activity_style_compact_subtitle">स्टेटस-चिप में साफ़ दिखने के लिए संतुलित स्कोरलाइन।</string>
+    <string name="live_activity_style_detailed_title">विस्तृत</string>
+    <string name="live_activity_style_detailed_subtitle">बल्लेबाज़, गेंदबाज़, आखिरी गेंद और लक्ष्य — पूरा संदर्भ।</string>
+    <string name="live_activity_style_minimal_title">न्यूनतम</string>
+    <string name="live_activity_style_minimal_subtitle">सिर्फ़ आँकड़े, सबसे कम जगह और सबसे अच्छी बैटरी।</string>
+    <string name="live_activity_style_animated_title">एनिमेटेड</string>
+    <string name="live_activity_style_animated_subtitle">सबसे जीवंत लाइव रूप, धड़कते हुए ज़ोर के साथ।</string>
+    <string name="live_activity_style_statistics_title">आँकड़े</string>
+    <string name="live_activity_style_statistics_subtitle">रन रेट, जीत की संभावना और बचे विकेट एक नज़र में।</string>
+</resources>

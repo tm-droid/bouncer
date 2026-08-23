@@ -20,6 +20,10 @@ import org.junit.Test
  *
  * `ui/widgets/` is excluded: those are RemoteViews and Glance surfaces, which cannot read Compose
  * resources and are a separate problem with a separate fix (a resource-based token set).
+ *
+ * The count is a floor, not a census: the pattern matches named arguments (`title = "…"`) and not
+ * positional ones (`Text("…")`), so the real number is higher. That is fine for a ratchet — it
+ * still cannot rise — but do not read it as "699 strings left to extract".
  */
 class HardcodedUiStringRatchetTest {
 
@@ -28,7 +32,7 @@ class HardcodedUiStringRatchetTest {
      *
      * Raising it to make a build pass re-opens the exact hole this test exists to close.
      */
-    private val ceiling = 712
+    private val ceiling = 699
 
     private val uiParameter = Regex(
         """\b(?:text|title|subtitle|label|placeholder|contentDescription)\s*=\s*"([^"]{2,})""""

@@ -41,6 +41,8 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
+import androidx.compose.ui.res.stringResource
+import com.tanush.bouncer.R
 
 @Composable
 internal fun NoResultsMessage() {
@@ -53,10 +55,14 @@ internal fun NoResultsMessage() {
             .padding(spacing.xxl),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text("No results found", style = typography.titleMedium, color = colors.onSurface)
+        Text(
+            stringResource(R.string.search_no_results_title),
+            style = typography.titleMedium,
+            color = colors.onSurface,
+        )
         Spacer(Modifier.height(spacing.xs))
         Text(
-            "Try a different search term",
+            stringResource(R.string.search_no_results_subtitle),
             style = typography.bodyMedium,
             color = colors.textSecondary,
         )
@@ -73,7 +79,6 @@ internal fun SearchBarHeader(
     focusRequester: FocusRequester,
 ) {
     val colors = BouncerThemeV2.colors
-    val typography = BouncerThemeV2.typography
     val spacing = BouncerThemeV2.spacing
 
     Row(
@@ -84,50 +89,86 @@ internal fun SearchBarHeader(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         IconButton(onClick = onBack) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = colors.textSecondary)
+            Icon(
+                Icons.AutoMirrored.Filled.ArrowBack,
+                contentDescription = stringResource(R.string.cd_back),
+                tint = colors.textSecondary,
+            )
         }
 
-        Box(
-            modifier = Modifier
-                .weight(1f)
-                .clip(RoundedCornerShape(12.dp))
-                .background(colors.surfaceVariant)
-                .padding(horizontal = spacing.md, vertical = spacing.sm),
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.Search, contentDescription = null, tint = colors.textSecondary, modifier = Modifier.size(20.dp))
-                Spacer(Modifier.width(spacing.sm))
-                Box(modifier = Modifier.weight(1f)) {
-                    if (query.isEmpty()) {
-                        Text(
-                            "Search matches, players, teams, tournaments…",
-                            style = typography.bodyMedium,
-                            color = colors.textSecondary,
-                        )
-                    }
-                    BasicTextField(
-                        value = query,
-                        onValueChange = onQueryChange,
-                        textStyle = typography.bodyMedium.copy(color = colors.onSurface),
-                        cursorBrush = SolidColor(colors.primary),
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                        keyboardActions = KeyboardActions(onSearch = { onSearch() }),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .focusRequester(focusRequester),
+        SearchQueryField(
+            query = query,
+            onQueryChange = onQueryChange,
+            onClear = onClear,
+            onSearch = onSearch,
+            focusRequester = focusRequester,
+            modifier = Modifier.weight(1f),
+        )
+
+        Spacer(Modifier.width(spacing.sm))
+    }
+}
+
+@Composable
+private fun SearchQueryField(
+    query: String,
+    onQueryChange: (String) -> Unit,
+    onClear: () -> Unit,
+    onSearch: () -> Unit,
+    focusRequester: FocusRequester,
+    modifier: Modifier = Modifier,
+) {
+    val colors = BouncerThemeV2.colors
+    val typography = BouncerThemeV2.typography
+    val spacing = BouncerThemeV2.spacing
+
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(12.dp))
+            .background(colors.surfaceVariant)
+            .padding(horizontal = spacing.md, vertical = spacing.sm),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                Icons.Default.Search,
+                contentDescription = null,
+                tint = colors.textSecondary,
+                modifier = Modifier.size(20.dp),
+            )
+            Spacer(Modifier.width(spacing.sm))
+            Box(modifier = Modifier.weight(1f)) {
+                if (query.isEmpty()) {
+                    Text(
+                        stringResource(R.string.search_placeholder),
+                        style = typography.bodyMedium,
+                        color = colors.textSecondary,
                     )
                 }
-                AnimatedVisibility(visible = query.isNotEmpty(), enter = fadeIn(), exit = fadeOut()) {
-                    // 48dp touch target overflowing the 24dp layout slot (keeps bar height).
-                    IconButton(onClick = onClear, modifier = Modifier.size(24.dp).requiredSize(48.dp)) {
-                        Icon(Icons.Default.Clear, contentDescription = "Clear", tint = colors.textSecondary, modifier = Modifier.size(18.dp))
-                    }
+                BasicTextField(
+                    value = query,
+                    onValueChange = onQueryChange,
+                    textStyle = typography.bodyMedium.copy(color = colors.onSurface),
+                    cursorBrush = SolidColor(colors.primary),
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                    keyboardActions = KeyboardActions(onSearch = { onSearch() }),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .focusRequester(focusRequester),
+                )
+            }
+            AnimatedVisibility(visible = query.isNotEmpty(), enter = fadeIn(), exit = fadeOut()) {
+                // 48dp touch target overflowing the 24dp layout slot (keeps bar height).
+                IconButton(onClick = onClear, modifier = Modifier.size(24.dp).requiredSize(48.dp)) {
+                    Icon(
+                        Icons.Default.Clear,
+                        contentDescription = stringResource(R.string.cd_clear),
+                        tint = colors.textSecondary,
+                        modifier = Modifier.size(18.dp),
+                    )
                 }
             }
         }
-
-        Spacer(Modifier.width(spacing.sm))
     }
 }
 

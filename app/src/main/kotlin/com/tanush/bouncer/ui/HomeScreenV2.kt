@@ -61,6 +61,8 @@ import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 import com.tanush.bouncer.ui.theme.v2.bouncerScreenBackground
 import com.tanush.bouncer.ui.screens.RefreshFailureSnackbarEffect
 import com.tanush.bouncer.viewmodels.LiveActivityViewModel
+import androidx.compose.ui.res.stringResource
+import com.tanush.bouncer.R
 
 /**
  * HomeScreenV2 — The main home tab.
@@ -155,24 +157,39 @@ fun HomeScreenV2(
         topBar = {
             Column {
                 BouncerTopBarV2(
-                    title = "BOUNCER",
+                    title = stringResource(R.string.home_title),
                     actions = {
                         BadgedBox(
                             badge = {
                                 if (unreadCount > 0) {
-                                    Badge { Text(if (unreadCount > 9) "9+" else unreadCount.toString()) }
+                                    Badge { Text(
+                                        if (unreadCount > 9) {
+                                            stringResource(R.string.home_unread_badge_overflow)
+                                        } else {
+                                            unreadCount.toString()
+                                        }
+                                    ) }
                                 }
                             },
                         ) {
                             IconButton(onClick = onNotificationsClick) {
-                                Icon(Icons.Default.Notifications, contentDescription = "Notifications")
+                                Icon(
+                                    Icons.Default.Notifications,
+                                    contentDescription = stringResource(R.string.cd_notifications),
+                                )
                             }
                         }
                         IconButton(onClick = onSearchClick) {
-                            Icon(Icons.Default.Search, contentDescription = "Search")
+                            Icon(
+                                Icons.Default.Search,
+                                contentDescription = stringResource(R.string.cd_search),
+                            )
                         }
                         IconButton(onClick = onSettingsClick) {
-                            Icon(Icons.Default.Settings, contentDescription = "Settings")
+                            Icon(
+                                Icons.Default.Settings,
+                                contentDescription = stringResource(R.string.cd_settings),
+                            )
                         }
                     },
                 )
@@ -203,7 +220,13 @@ fun HomeScreenV2(
                             IconButton(onClick = { filtersExpanded = !filtersExpanded }) {
                                 Icon(
                                     Icons.Default.FilterList,
-                                    contentDescription = if (filtersExpanded) "Hide category filters" else "Show category filters",
+                                    contentDescription = stringResource(
+                                        if (filtersExpanded) {
+                                            R.string.cd_filters_hide
+                                        } else {
+                                            R.string.cd_filters_show
+                                        }
+                                    ),
                                     tint = if (categoryActive) colors.primary else colors.textSecondary,
                                 )
                             }
@@ -244,8 +267,8 @@ fun HomeScreenV2(
                 if (currentMatches.isEmpty() && !isLoading) {
                     item(key = "empty") {
                         EmptyStateV2(
-                            title = "No matches found",
-                            subtitle = "Try changing your filters or pull to refresh",
+                            title = stringResource(R.string.home_empty_title),
+                            subtitle = stringResource(R.string.home_empty_subtitle),
                             icon = Icons.Outlined.SportsCricket,
                         )
                     }
@@ -272,8 +295,8 @@ fun HomeScreenV2(
                     item(key = "matches_header") {
                         val handleMoreClick = remember { { onMoreMatchesClick() } }
                         SectionHeaderV2(
-                            title = "Matches",
-                            action = if (remainingMatches.size > 5) "See All" else null,
+                            title = stringResource(R.string.section_matches),
+                            action = if (remainingMatches.size > 5) stringResource(R.string.action_see_all) else null,
                             onAction = handleMoreClick,
                         )
                     }
