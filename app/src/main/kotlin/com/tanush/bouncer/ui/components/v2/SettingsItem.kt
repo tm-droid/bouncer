@@ -25,7 +25,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.dp
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
-import com.tanush.bouncer.utils.PreferencesManager
+import com.tanush.bouncer.utils.PreferencesHelper
 
 /**
  * Settings list item — icon, title, subtitle, trailing widget (toggle/chevron/text).
@@ -52,7 +52,7 @@ fun SettingsItemV2(
     val spacing = BouncerThemeV2.spacing
     val haptic = LocalHapticFeedback.current
     val context = LocalContext.current
-    val hapticEnabled = remember { PreferencesManager.getInstance(context).hapticFeedbackEnabled }
+    val hapticEnabled = remember { PreferencesHelper.getBoolean(context, PreferencesHelper.KEY_HAPTIC_FEEDBACK, true) }
 
     val clickMod = if (onClick != null) {
         Modifier.clickable(onClick = {

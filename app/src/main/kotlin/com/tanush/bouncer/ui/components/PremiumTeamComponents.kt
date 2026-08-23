@@ -35,7 +35,7 @@ import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.ui.components.CoilImage
 import com.tanush.bouncer.ui.theme.*
 import com.tanush.bouncer.ui.theme.GoldPrimary
-import com.tanush.bouncer.utils.PreferencesManager
+import com.tanush.bouncer.utils.PreferencesHelper
 import com.tanush.bouncer.utils.rememberHapticFeedback
 
 /**
@@ -264,7 +264,7 @@ private fun FavoriteToggleButton(
     val context = LocalContext.current
     val haptics = rememberHapticFeedback()
     val hapticEnabled = remember {
-        PreferencesManager.getInstance(context).hapticFeedbackEnabled
+        PreferencesHelper.getBoolean(context, PreferencesHelper.KEY_HAPTIC_FEEDBACK, true)
     }
     IconButton(
         onClick = {

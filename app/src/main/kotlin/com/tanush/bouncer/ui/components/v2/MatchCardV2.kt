@@ -45,7 +45,7 @@ import com.tanush.bouncer.ui.theme.MatchTeamPalette
 import com.tanush.bouncer.ui.theme.liftForContrast
 import com.tanush.bouncer.ui.theme.rememberMatchTeamPalette
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
-import com.tanush.bouncer.utils.PreferencesManager
+import com.tanush.bouncer.utils.PreferencesHelper
 import com.tanush.bouncer.utils.rememberHapticFeedback
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
@@ -68,7 +68,7 @@ fun MatchCardV2(
     val spacing = BouncerThemeV2.spacing
     val haptic = LocalHapticFeedback.current
     val context = LocalContext.current
-    val hapticEnabled = remember { PreferencesManager.getInstance(context).hapticFeedbackEnabled }
+    val hapticEnabled = remember { PreferencesHelper.getBoolean(context, PreferencesHelper.KEY_HAPTIC_FEEDBACK, true) }
 
     var showContextMenu by remember { mutableStateOf(false) }
 
@@ -159,7 +159,7 @@ private fun MatchCardHeaderRow(
 private fun SubscribeBellButton(isSubscribed: Boolean, onToggle: () -> Unit) {
     val colors = BouncerThemeV2.colors
     val context = LocalContext.current
-    val hapticEnabled = remember { PreferencesManager.getInstance(context).hapticFeedbackEnabled }
+    val hapticEnabled = remember { PreferencesHelper.getBoolean(context, PreferencesHelper.KEY_HAPTIC_FEEDBACK, true) }
     val haptics = rememberHapticFeedback()
     val bellScale = bellBounceScale(isSubscribed)
     IconButton(

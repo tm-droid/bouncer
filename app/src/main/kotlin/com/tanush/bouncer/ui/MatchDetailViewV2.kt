@@ -82,7 +82,7 @@ import com.tanush.bouncer.ui.theme.rememberMatchTeamPalette
 import com.tanush.bouncer.ui.theme.rememberTeamColors
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 import com.tanush.bouncer.ui.theme.v2.CricketEventColors
-import com.tanush.bouncer.utils.PreferencesManager
+import com.tanush.bouncer.utils.PreferencesHelper
 import kotlinx.coroutines.delay
 import com.tanush.bouncer.ui.theme.v2.bouncerScreenBackground
 import com.tanush.bouncer.ui.components.BatsmanMilestoneCard
@@ -495,7 +495,7 @@ private fun ScoreHeaderV2(
 private fun rememberEventFlashOverlay(recentBalls: List<String>): Color {
     val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
-    val hapticEnabled = remember { PreferencesManager.getInstance(context).hapticFeedbackEnabled }
+    val hapticEnabled = remember { PreferencesHelper.getBoolean(context, PreferencesHelper.KEY_HAPTIC_FEEDBACK, true) }
     val cricket = BouncerThemeV2.colors.cricket
     var flashTint by remember { mutableStateOf(Color.Unspecified) }
     var prevBalls by remember { mutableStateOf<List<String>?>(null) }

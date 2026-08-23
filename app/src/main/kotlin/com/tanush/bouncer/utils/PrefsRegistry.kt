@@ -1,5 +1,18 @@
 package com.tanush.bouncer.utils
 
+/**
+ * Names of the SharedPreferences files the app opens, and the keys inside them.
+ *
+ * The reason this is centralised: two preference *files* holding the same key *name* is invisible
+ * in review, silent at runtime, and not findable by searching for the key — the names match, the
+ * file differs. The app shipped two instances of exactly that. `haptic_feedback` was written by
+ * `PreferencesHelper` into `bouncer_prefs` and read by a second facade out of
+ * `bouncer_preferences`, so the Settings toggle changed nothing. `muted_matches` lived in three
+ * files, and the live-notification suppression check read the one that nothing ever wrote.
+ *
+ * Before adding a file here, check whether an existing one already owns the keys.
+ * `SharedPreferencesFileInventoryTest` pins the set so a new file cannot arrive unnoticed.
+ */
 object PrefsRegistry {
     // SharedPreferences file names
     const val PREFS_APP = "bouncer_prefs"

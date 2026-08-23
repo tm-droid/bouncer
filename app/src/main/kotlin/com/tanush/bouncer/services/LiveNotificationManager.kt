@@ -197,9 +197,11 @@ class LiveNotificationManager(private val context: Context) {
         // Respect per-match notification preferences
         val perMatchPrefs = context.getSharedPreferences("bouncer_match_notif_prefs", Context.MODE_PRIVATE)
         if (!perMatchPrefs.getBoolean("notif_${match.id}_scoreUpdates", true)) return
-        val mutedMatches = context.getSharedPreferences("notification_state", Context.MODE_PRIVATE)
-            .getStringSet("muted_matches", emptySet()) ?: emptySet()
-        if (match.id in mutedMatches) return
+        // Read the store the mute action actually writes. This used to open a "notification_state"
+        // file that nothing in the app has ever written, so the Mute button on a live notification
+        // silently did nothing on this path — it only suppressed the FCM path, which reads
+        // MuteMatchReceiver's own store.
+        if (MuteMatchReceiver.isMatchMuted(context, match.id)) return
 
         breadcrumb(
             "Showing live match notification",

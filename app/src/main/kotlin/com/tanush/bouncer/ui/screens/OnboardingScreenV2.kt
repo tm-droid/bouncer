@@ -56,7 +56,6 @@ import com.tanush.bouncer.managers.FavouriteTeamsManager
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 import com.tanush.bouncer.ui.widgets.BouncerGlanceWidgetReceiver
 import com.tanush.bouncer.utils.PreferencesHelper
-import com.tanush.bouncer.utils.PreferencesManager
 import com.tanush.bouncer.utils.rememberHapticFeedback
 import kotlinx.coroutines.launch
 
@@ -83,7 +82,7 @@ fun OnboardingScreenV2(onComplete: () -> Unit) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val haptics = rememberHapticFeedback()
-    val hapticEnabled = remember { PreferencesManager.getInstance(context).hapticFeedbackEnabled }
+    val hapticEnabled = remember { PreferencesHelper.getBoolean(context, PreferencesHelper.KEY_HAPTIC_FEEDBACK, true) }
 
     val pagerState = rememberPagerState(pageCount = { PAGE_COUNT })
     val isLastPage = pagerState.currentPage == PAGE_COUNT - 1

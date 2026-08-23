@@ -15,7 +15,7 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
-import com.tanush.bouncer.utils.PreferencesManager
+import com.tanush.bouncer.utils.PreferencesHelper
 
 /**
  * Horizontal scrollable row of selectable filter chips.
@@ -34,7 +34,7 @@ fun FilterChipRowV2(
     val spacing = BouncerThemeV2.spacing
     val haptic = LocalHapticFeedback.current
     val context = LocalContext.current
-    val hapticEnabled = remember { PreferencesManager.getInstance(context).hapticFeedbackEnabled }
+    val hapticEnabled = remember { PreferencesHelper.getBoolean(context, PreferencesHelper.KEY_HAPTIC_FEEDBACK, true) }
 
     Row(
         modifier = modifier

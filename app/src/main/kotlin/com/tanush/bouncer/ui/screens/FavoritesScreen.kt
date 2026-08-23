@@ -76,7 +76,7 @@ import com.tanush.bouncer.ui.components.CoilImage
 import com.tanush.bouncer.ui.components.v2.BouncerCard
 import com.tanush.bouncer.ui.components.v2.EmptyStateV2
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
-import com.tanush.bouncer.utils.PreferencesManager
+import com.tanush.bouncer.utils.PreferencesHelper
 import kotlinx.coroutines.launch
 
 private fun teamLogoRequest(context: Context, teamName: String, size: Int): ImageRequest? {
@@ -153,7 +153,7 @@ fun FavoritesScreen(
 
     var reorderableFavorites by remember(favorites) { mutableStateOf(favorites.toList()) }
     val haptic = LocalHapticFeedback.current
-    val hapticEnabled = remember { PreferencesManager.getInstance(context).hapticFeedbackEnabled }
+    val hapticEnabled = remember { PreferencesHelper.getBoolean(context, PreferencesHelper.KEY_HAPTIC_FEEDBACK, true) }
 
     Box(
         modifier = Modifier
@@ -497,7 +497,7 @@ private fun FavoriteTeamListRow(
     val spacing = BouncerThemeV2.spacing
     val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
-    val hapticEnabled = remember { PreferencesManager.getInstance(context).hapticFeedbackEnabled }
+    val hapticEnabled = remember { PreferencesHelper.getBoolean(context, PreferencesHelper.KEY_HAPTIC_FEEDBACK, true) }
     var showRemoveDialog by remember { mutableStateOf(false) }
 
     BouncerCard(
