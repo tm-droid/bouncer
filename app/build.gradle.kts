@@ -282,6 +282,7 @@ dependencies {
     implementation(libs.window)
     implementation(libs.material3.windowsizeclass)
     implementation(libs.work.runtime.ktx)
+    implementation(libs.datastore.preferences)
     implementation(libs.play.app.update.ktx)
 
     // Glance Widgets
@@ -324,6 +325,9 @@ dependencies {
     // Testing
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
+    // Pure-JVM DataStore, so BouncerPreferences can be exercised over a temp file
+    // without an emulator.
+    testImplementation(libs.datastore.preferences.core)
     // Real org.json impl so unit tests don't hit the mocked Android stub
     testImplementation(libs.json)
     testImplementation(libs.mockk)

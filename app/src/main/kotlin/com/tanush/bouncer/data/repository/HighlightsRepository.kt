@@ -12,6 +12,8 @@ import com.tanush.bouncer.data.remote.AppwriteHighlightsClient
 import com.tanush.bouncer.data.remote.HighlightRow
 import com.tanush.bouncer.services.HighlightFallbackUrlBuilder
 import com.tanush.bouncer.services.HighlightFuzzyMatcher
+import com.tanush.bouncer.data.prefs.BouncerPreferences
+import com.tanush.bouncer.data.prefs.PreferenceStore
 import com.tanush.bouncer.utils.PrefsRegistry
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
@@ -34,23 +36,22 @@ interface HighlightsSyncMarker {
     fun recordRowFetchedAt(value: Long)
 }
 
-/** SharedPreferences-backed [HighlightsSyncMarker] — survives process death. */
+/** [HighlightsSyncMarker] over the app's main preference store — survives process death. */
 class PrefsHighlightsSyncMarker(context: Context) : HighlightsSyncMarker {
-    private val prefs = context.applicationContext
-        .getSharedPreferences(PrefsRegistry.PREFS_APP, Context.MODE_PRIVATE)
+    private val prefs = BouncerPreferences.also { PreferenceStore.initialize(context) }
 
     override fun lastFullSyncAtMs(): Long =
         prefs.getLong(PrefsRegistry.Highlights.LAST_FULL_SYNC_AT, 0L)
 
     override fun recordFullSync(nowMs: Long) {
-        prefs.edit().putLong(PrefsRegistry.Highlights.LAST_FULL_SYNC_AT, nowMs).apply()
+        prefs.putLong(PrefsRegistry.Highlights.LAST_FULL_SYNC_AT, nowMs)
     }
 
     override fun lastRowFetchedAt(): Long =
         prefs.getLong(PrefsRegistry.Highlights.LAST_ROW_FETCHED_AT, 0L)
 
     override fun recordRowFetchedAt(value: Long) {
-        prefs.edit().putLong(PrefsRegistry.Highlights.LAST_ROW_FETCHED_AT, value).apply()
+        prefs.putLong(PrefsRegistry.Highlights.LAST_ROW_FETCHED_AT, value)
     }
 }
 

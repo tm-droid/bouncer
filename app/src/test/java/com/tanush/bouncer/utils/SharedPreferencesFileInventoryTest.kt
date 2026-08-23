@@ -54,7 +54,14 @@ class SharedPreferencesFileInventoryTest {
         "widget_prefs",
     )
 
-    private val callSite = Regex("""getSharedPreferences\(\s*([^,)]+)\s*,""")
+    // Two shapes, and the file name is in a different argument in each:
+    // `getSharedPreferences(name, mode)` and `SharedPreferencesMigration(context, name)`. The
+    // migration counts as a call site because `bouncer_prefs` has moved to DataStore but its XML
+    // still exists on disk until the migration has run once on each device.
+    private val callSites = listOf(
+        Regex("""getSharedPreferences\(\s*([^,)]+)\s*,"""),
+        Regex("""SharedPreferencesMigration\(\s*[^,)]+\s*,\s*([^,)]+)\s*\)"""),
+    )
     private val literalConst = Regex("""val\s+([A-Z][A-Z0-9_]*)\s*(?::\s*String\s*)?=\s*"([^"]+)"""")
     private val aliasConst = Regex("""val\s+([A-Z][A-Z0-9_]*)\s*=\s*([A-Za-z_]+(?:\.[A-Za-z_]+)+)""")
 
@@ -102,7 +109,7 @@ class SharedPreferencesFileInventoryTest {
 
         init {
             sources.forEach { (fileName, text) ->
-                callSite.findAll(text).forEach { match ->
+                callSites.flatMap { it.findAll(text).toList() }.forEach { match ->
                     val argument = match.groupValues[1].trim()
                     val resolved = resolveArgument(fileName, argument)
                     if (resolved == null) unresolved += "$fileName: $argument" else found += resolved

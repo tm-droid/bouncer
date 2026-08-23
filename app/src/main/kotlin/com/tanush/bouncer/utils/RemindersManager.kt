@@ -1,6 +1,8 @@
 package com.tanush.bouncer.utils
 
 import android.content.Context
+import com.tanush.bouncer.data.prefs.BouncerPreferences
+import com.tanush.bouncer.data.prefs.PreferenceStore
 import org.json.JSONArray
 import org.json.JSONObject
 import io.sentry.Sentry
@@ -12,15 +14,15 @@ object RemindersManager {
 
     fun saveReminder(context: Context, reminder: Reminder) {
         try {
-            val prefs = context.getSharedPreferences("bouncer_prefs", Context.MODE_PRIVATE)
-            val arr = JSONArray(prefs.getString(KEY, "[]"))
+            PreferenceStore.initialize(context)
+            val arr = JSONArray(BouncerPreferences.getString(KEY, "[]"))
             val obj = JSONObject()
             obj.put("id", reminder.id)
             obj.put("title", reminder.title)
             obj.put("body", reminder.body)
             obj.put("triggerAt", reminder.triggerAt)
             arr.put(obj)
-            prefs.edit().putString(KEY, arr.toString()).apply()
+            BouncerPreferences.putString(KEY, arr.toString())
         } catch (e: Exception) {
             Sentry.captureException(e)
             throw e
@@ -29,8 +31,8 @@ object RemindersManager {
 
     fun getReminders(context: Context): List<Reminder> {
         try {
-            val prefs = context.getSharedPreferences("bouncer_prefs", Context.MODE_PRIVATE)
-            val arr = JSONArray(prefs.getString(KEY, "[]"))
+            PreferenceStore.initialize(context)
+            val arr = JSONArray(BouncerPreferences.getString(KEY, "[]"))
             val out = mutableListOf<Reminder>()
             for (i in 0 until arr.length()) {
                 val o = arr.getJSONObject(i)
@@ -45,14 +47,14 @@ object RemindersManager {
 
     fun deleteReminder(context: Context, id: Int) {
         try {
-            val prefs = context.getSharedPreferences("bouncer_prefs", Context.MODE_PRIVATE)
-            val arr = JSONArray(prefs.getString(KEY, "[]"))
+            PreferenceStore.initialize(context)
+            val arr = JSONArray(BouncerPreferences.getString(KEY, "[]"))
             val newArr = JSONArray()
             for (i in 0 until arr.length()) {
                 val o = arr.getJSONObject(i)
                 if (o.getInt("id") != id) newArr.put(o)
             }
-            prefs.edit().putString(KEY, newArr.toString()).apply()
+            BouncerPreferences.putString(KEY, newArr.toString())
         } catch (e: Exception) {
             Sentry.captureException(e)
             throw e
@@ -62,8 +64,8 @@ object RemindersManager {
     fun updateReminder(context: Context, reminder: Reminder) {
         try {
             // Replace reminder with same id
-            val prefs = context.getSharedPreferences("bouncer_prefs", Context.MODE_PRIVATE)
-            val arr = JSONArray(prefs.getString(KEY, "[]"))
+            PreferenceStore.initialize(context)
+            val arr = JSONArray(BouncerPreferences.getString(KEY, "[]"))
             val newArr = JSONArray()
             var replaced = false
             for (i in 0 until arr.length()) {
@@ -88,7 +90,7 @@ object RemindersManager {
                 obj.put("triggerAt", reminder.triggerAt)
                 newArr.put(obj)
             }
-            prefs.edit().putString(KEY, newArr.toString()).apply()
+            BouncerPreferences.putString(KEY, newArr.toString())
         } catch (e: Exception) {
             Sentry.captureException(e)
             throw e
@@ -97,8 +99,8 @@ object RemindersManager {
 
     fun clearAll(context: Context) {
         try {
-            val prefs = context.getSharedPreferences("bouncer_prefs", Context.MODE_PRIVATE)
-            prefs.edit().putString(KEY, "[]").apply()
+            PreferenceStore.initialize(context)
+            BouncerPreferences.putString(KEY, "[]")
         } catch (e: Exception) {
             Sentry.captureException(e)
             throw e

@@ -1,40 +1,33 @@
 package com.tanush.bouncer.utils
 
 import android.content.Context
-import io.sentry.Sentry
+import com.tanush.bouncer.data.prefs.BouncerPreferences
+import com.tanush.bouncer.data.prefs.PreferenceStore
+import kotlinx.coroutines.flow.Flow
 
 /**
- * Thin wrapper over one SharedPreferences file.
+ * Thin, synchronous facade over [BouncerPreferences] — the app's DataStore-backed main preference
+ * store.
  *
- * Two things were wrong here and both showed up under load rather than in review:
+ * Two things used to be wrong here and both showed up under load rather than in review:
  *
  * 1. Every read and write added a Sentry breadcrumb. Sentry's ring buffer holds ~100 entries, and
  *    `SettingsScreenV2` alone performs nine reads while composing its first frame — so opening
  *    Settings evicted most of the buffer, and whatever crashed next arrived with a timeline of
  *    "Reading boolean preference" and nothing useful. This is the same argument
  *    `.claude/rules/appwrite-patterns.md` already makes for not breadcrumbing per Appwrite
- *    operation. Exceptions are still captured; the routine traffic is not.
- * 2. Every call went through `context.getSharedPreferences(...)`. That is cheap after the first
- *    call but not free, and it obscured that there is exactly one file here. It is resolved once
- *    now, against the application context so a cached instance cannot pin an Activity.
+ *    operation.
+ * 2. Storage was SharedPreferences, whose `apply()` is drained on `Activity.onPause` — a burst of
+ *    Settings toggles stalls the way out of the screen — and which offers no way to observe a
+ *    change, so every consumer cached a value in `remember` and went stale.
  *
- * Still synchronous, and still SharedPreferences: `apply()` hands the write to a background thread
- * but blocks on `Activity.onPause`, and the first read on a cold start touches disk on whatever
- * thread asks. DataStore is the real fix for both and is a larger change than this file — it
- * turns every accessor into a suspend function or a Flow, which reaches all 30 call sites.
+ * The 34 call sites keep taking a [Context] and keep returning values synchronously, deliberately:
+ * swapping the storage engine and reshaping every accessor into a suspend function in one change
+ * would make a storage bug and a threading bug indistinguishable. The [Context] is now used only
+ * to initialize the store on first touch. Prefer the `flowOf*` accessors in new code — they are
+ * the reason the migration was worth doing.
  */
 object PreferencesHelper {
-    private const val PREFS = "bouncer_prefs"
-
-    @Volatile private var cached: android.content.SharedPreferences? = null
-
-    private fun prefs(context: Context): android.content.SharedPreferences =
-        cached ?: synchronized(this) {
-            cached ?: context.applicationContext
-                .getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-                .also { cached = it }
-        }
-
     const val KEY_LIVE_NOTIFICATIONS = "live_notifications"
     const val KEY_BOUNDARY_ALERTS = "boundary_alerts"
     const val KEY_WICKET_ALERTS = "wicket_alerts"
@@ -59,75 +52,50 @@ object PreferencesHelper {
     const val KEY_PREFERRED_CATEGORY = "preferred_category"
 
     fun getBoolean(context: Context, key: String, default: Boolean): Boolean {
-        try {
-            return prefs(context).getBoolean(key, default)
-        } catch (e: Exception) {
-            Sentry.captureException(e)
-            throw e
-        }
+        PreferenceStore.initialize(context)
+        return BouncerPreferences.getBoolean(key, default)
     }
 
     fun setBoolean(context: Context, key: String, value: Boolean) {
-        try {
-            prefs(context).edit().putBoolean(key, value).apply()
-        } catch (e: Exception) {
-            Sentry.captureException(e)
-            throw e
-        }
+        PreferenceStore.initialize(context)
+        BouncerPreferences.putBoolean(key, value)
     }
 
     fun getInt(context: Context, key: String, default: Int): Int {
-        try {
-            return prefs(context).getInt(key, default)
-        } catch (e: Exception) {
-            Sentry.captureException(e)
-            throw e
-        }
+        PreferenceStore.initialize(context)
+        return BouncerPreferences.getInt(key, default)
     }
 
     fun setInt(context: Context, key: String, value: Int) {
-        try {
-            prefs(context).edit().putInt(key, value).apply()
-        } catch (e: Exception) {
-            Sentry.captureException(e)
-            throw e
-        }
+        PreferenceStore.initialize(context)
+        BouncerPreferences.putInt(key, value)
     }
 
-    // Follow helpers (simple per-stat follow flag stored under key)
-    fun isFollowed(context: Context, statKey: String): Boolean {
-        try {
-            return prefs(context).getBoolean("follow_$statKey", false)
-        } catch (e: Exception) {
-            Sentry.captureException(e)
-            throw e
-        }
-    }
-
-    fun setFollowed(context: Context, statKey: String, followed: Boolean) {
-        try {
-            prefs(context).edit().putBoolean("follow_$statKey", followed).apply()
-        } catch (e: Exception) {
-            Sentry.captureException(e)
-            throw e
-        }
-    }
-    
     fun getString(context: Context, key: String, default: String): String {
-        try {
-            return prefs(context).getString(key, default) ?: default
-        } catch (e: Exception) {
-            Sentry.captureException(e)
-            throw e
-        }
+        PreferenceStore.initialize(context)
+        return BouncerPreferences.getString(key, default)
     }
 
     fun setString(context: Context, key: String, value: String) {
-        try {
-            prefs(context).edit().putString(key, value).apply()
-        } catch (e: Exception) {
-            Sentry.captureException(e)
-            throw e
-        }
+        PreferenceStore.initialize(context)
+        BouncerPreferences.putString(key, value)
+    }
+
+    // Follow helpers (simple per-stat follow flag stored under key)
+    fun isFollowed(context: Context, statKey: String): Boolean =
+        getBoolean(context, followKey(statKey), false)
+
+    fun setFollowed(context: Context, statKey: String, followed: Boolean) =
+        setBoolean(context, followKey(statKey), followed)
+
+    private fun followKey(statKey: String) = "follow_$statKey"
+
+    /**
+     * Observable read. Unlike [getBoolean] this re-emits when the value changes, so a toggle on
+     * the Settings screen reaches a consumer that is already composed.
+     */
+    fun flowOfBoolean(context: Context, key: String, default: Boolean): Flow<Boolean> {
+        PreferenceStore.initialize(context)
+        return BouncerPreferences.flowOfBoolean(key, default)
     }
 }

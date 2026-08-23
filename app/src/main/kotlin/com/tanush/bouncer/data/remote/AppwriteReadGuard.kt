@@ -4,6 +4,8 @@ import android.content.Context
 import androidx.annotation.VisibleForTesting
 import com.tanush.bouncer.BuildConfig
 import com.tanush.bouncer.data.CacheConfig
+import com.tanush.bouncer.data.prefs.BouncerPreferences
+import com.tanush.bouncer.data.prefs.PreferenceStore
 import com.tanush.bouncer.utils.PrefsRegistry
 import com.tanush.bouncer.utils.sentryBreadcrumb
 import io.appwrite.exceptions.AppwriteException
@@ -368,24 +370,24 @@ object AppwriteReadGuard {
         }
     }
 
-    /** SharedPreferences-backed [BreakerStore] — persists latches across process restarts. */
+    /**
+     * [BreakerStore] over the app's main preference store — persists latches across process
+     * restarts, so a cold start after a 402 does not re-probe a budget that is still spent.
+     */
     class PrefsBreakerStore(context: Context) : BreakerStore {
-        private val prefs = context.applicationContext
-            .getSharedPreferences(PrefsRegistry.PREFS_APP, Context.MODE_PRIVATE)
+        private val prefs = BouncerPreferences.also { PreferenceStore.initialize(context) }
 
         override fun save(quota: Quota, state: BreakerState?) {
             val openKey = PrefsRegistry.ReadGuard.BREAKER_OPEN_PREFIX + quota.name
             val atKey = PrefsRegistry.ReadGuard.BREAKER_OPENED_AT_PREFIX + quota.name
             val intervalKey = PrefsRegistry.ReadGuard.BREAKER_PROBE_INTERVAL_PREFIX + quota.name
-            prefs.edit().apply {
-                if (state == null) {
-                    remove(openKey); remove(atKey); remove(intervalKey)
-                } else {
-                    putBoolean(openKey, true)
-                    putLong(atKey, state.openedAtMs)
-                    putLong(intervalKey, state.probeIntervalMs)
-                }
-            }.apply()
+            if (state == null) {
+                prefs.remove(openKey, atKey, intervalKey)
+            } else {
+                prefs.putBoolean(openKey, true)
+                prefs.putLong(atKey, state.openedAtMs)
+                prefs.putLong(intervalKey, state.probeIntervalMs)
+            }
         }
 
         override fun loadAll(): Map<Quota, BreakerState> = buildMap {
@@ -410,10 +412,10 @@ object AppwriteReadGuard {
         override fun consumeLegacy(): BreakerState? {
             if (!prefs.getBoolean(PrefsRegistry.ReadGuard.LEGACY_BREAKER_OPEN, false)) return null
             val openedAt = prefs.getLong(PrefsRegistry.ReadGuard.LEGACY_BREAKER_OPENED_AT, 0L)
-            prefs.edit()
-                .remove(PrefsRegistry.ReadGuard.LEGACY_BREAKER_OPEN)
-                .remove(PrefsRegistry.ReadGuard.LEGACY_BREAKER_OPENED_AT)
-                .apply()
+            prefs.remove(
+                PrefsRegistry.ReadGuard.LEGACY_BREAKER_OPEN,
+                PrefsRegistry.ReadGuard.LEGACY_BREAKER_OPENED_AT,
+            )
             return BreakerState(openedAt, CacheConfig.READ_GUARD_PROBE_INTERVAL_MS)
         }
     }

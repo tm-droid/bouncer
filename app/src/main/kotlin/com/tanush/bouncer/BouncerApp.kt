@@ -10,6 +10,7 @@ import com.tanush.bouncer.managers.MatchSubscriptionManager
 import com.tanush.bouncer.managers.NotificationInboxManager
 import com.tanush.bouncer.managers.TeamLogoManager
 import com.tanush.bouncer.managers.TeamAcronymManager
+import com.tanush.bouncer.data.prefs.PreferenceStore
 import com.tanush.bouncer.data.local.BouncerDatabase
 import com.tanush.bouncer.data.remote.AppwriteAICache
 import com.tanush.bouncer.data.remote.AppwriteClient
@@ -102,6 +103,13 @@ class BouncerApp : Application() {
 
         // ── Initialize managers ──────────────────────────────────────────
         HttpClientProvider.initialize(cacheDir)
+        // Before anything that reads a preference — AppwriteReadGuard's latch restore, a few lines
+        // down, is the first. warmUp() blocks on the initial store read, and on the first launch
+        // after upgrade also on the one-time SharedPreferences migration.
+        initializeSafely("PreferenceStore") {
+            PreferenceStore.initialize(this)
+            PreferenceStore.warmUp()
+        }
         // TeamLogoManager: Gson cold-init + JSON parsing is heavy — run off main thread.
         // The manager returns null/emptyMap gracefully until initialized, so callers are safe.
         applicationScope.launch(Dispatchers.IO) {
