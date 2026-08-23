@@ -15,6 +15,8 @@ import com.tanush.bouncer.data.local.entities.HighlightEntity
 import com.tanush.bouncer.ui.components.HighlightClipCard
 import com.tanush.bouncer.ui.components.HighlightPlayerDialog
 import com.tanush.bouncer.ui.components.v2.EmptyStateV2
+import androidx.compose.ui.res.stringResource
+import com.tanush.bouncer.R
 
 @Composable
 fun HighlightsTabV2(
@@ -25,8 +27,8 @@ fun HighlightsTabV2(
         Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             EmptyStateV2(
                 icon = Icons.Outlined.Movie,
-                title = "No highlights yet",
-                subtitle = "Clips appear here once key moments are available for this match.",
+                title = stringResource(R.string.highlights_empty_title),
+                subtitle = stringResource(R.string.highlights_empty_subtitle),
             )
         }
         return

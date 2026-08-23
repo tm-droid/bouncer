@@ -26,6 +26,8 @@ import com.tanush.bouncer.ui.components.v2.BouncerCard
 import com.tanush.bouncer.ui.components.v2.SectionHeaderV2
 import com.tanush.bouncer.ui.components.v2.StatRowV2
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
+import androidx.compose.ui.res.stringResource
+import com.tanush.bouncer.R
 
 /**
  * InfoTabV2 — Match information: series, venue, date, toss, status, etc.
@@ -87,36 +89,36 @@ fun InfoTabV2(
         }
 
         item(key = "info_header") {
-            SectionHeaderV2(title = "Match Information")
+            SectionHeaderV2(title = stringResource(R.string.match_info_title))
         }
         item(key = "info_card") {
             BouncerCard {
                 val pad = Modifier.padding(horizontal = spacing.md)
                 Spacer(Modifier.height(spacing.sm))
-                StatRowV2(label = "Series", value = match.matchTitle, modifier = pad)
-                StatRowV2(label = "Format", value = match.matchType, modifier = pad)
-                StatRowV2(label = "Date", value = match.date, modifier = pad)
+                StatRowV2(label = stringResource(R.string.match_info_series), value = match.matchTitle, modifier = pad)
+                StatRowV2(label = stringResource(R.string.match_info_format), value = match.matchType, modifier = pad)
+                StatRowV2(label = stringResource(R.string.match_info_date), value = match.date, modifier = pad)
                 if (match.matchTime.isNotBlank()) {
-                    StatRowV2(label = "Time", value = match.matchTime, modifier = pad)
+                    StatRowV2(label = stringResource(R.string.match_info_time), value = match.matchTime, modifier = pad)
                 }
-                StatRowV2(label = "Venue", value = match.venue, modifier = pad)
+                StatRowV2(label = stringResource(R.string.match_info_venue), value = match.venue, modifier = pad)
 
                 // Structured toss fallback for display in info rows
                 if (match.tossWinner == null) {
                     val tossInfo = extractTossInfo(match.info, match.currentStatus)
                     if (tossInfo.isNotBlank()) {
-                        StatRowV2(label = "Toss", value = tossInfo, modifier = pad)
+                        StatRowV2(label = stringResource(R.string.match_info_toss), value = tossInfo, modifier = pad)
                     }
                 }
 
                 // Umpires
-                match.umpire1?.let { StatRowV2(label = "Umpire 1", value = it, modifier = pad) }
-                match.umpire2?.let { StatRowV2(label = "Umpire 2", value = it, modifier = pad) }
+                match.umpire1?.let { StatRowV2(label = stringResource(R.string.match_info_umpire_1), value = it, modifier = pad) }
+                match.umpire2?.let { StatRowV2(label = stringResource(R.string.match_info_umpire_2), value = it, modifier = pad) }
 
                 // Show match day for Tests
                 val dayInfo = extractDayInfo(match.currentStatus, match.matchType)
                 if (dayInfo.isNotBlank()) {
-                    StatRowV2(label = "Day", value = dayInfo, modifier = pad)
+                    StatRowV2(label = stringResource(R.string.match_info_day), value = dayInfo, modifier = pad)
                 }
 
                 Spacer(Modifier.height(spacing.sm))
@@ -130,13 +132,13 @@ fun InfoTabV2(
             } else match.info
             if (displayInfo.isNotBlank()) {
                 item(key = "extra_info_header") {
-                    SectionHeaderV2(title = "Additional Info")
+                    SectionHeaderV2(title = stringResource(R.string.match_info_additional))
                 }
                 item(key = "extra_info") {
                     BouncerCard {
                         Spacer(Modifier.height(spacing.sm))
                         StatRowV2(
-                            label = "Info",
+                            label = stringResource(R.string.match_info_info),
                             value = displayInfo,
                             modifier = Modifier.padding(horizontal = spacing.md),
                             showDivider = false,
@@ -150,7 +152,7 @@ fun InfoTabV2(
         // Teams section
         if (match.teams.size >= 2) {
             item(key = "teams_header") {
-                SectionHeaderV2(title = "Teams")
+                SectionHeaderV2(title = stringResource(R.string.match_info_teams))
             }
             item(key = "teams_card") {
                 BouncerCard {

@@ -47,6 +47,8 @@ import com.tanush.bouncer.ui.components.premium.winProbabilityStateFor
 import com.tanush.bouncer.ui.components.premium.WinProbabilityChartCard
 import com.tanush.bouncer.ui.components.v2.BouncerCard
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
+import androidx.compose.ui.res.stringResource
+import com.tanush.bouncer.R
 
 // Win-probability, phase, scoring-chart, scorecard, commentary and upcoming sections.
 
@@ -207,7 +209,7 @@ internal fun LazyListScope.overviewScorecardSections(
     headToHead: H2HPair?,
 ) {
     if (batsmen.isEmpty() && uniqueInnings.isNotEmpty()) {
-        item(key = "scorecard_summary_header") { SectionHeaderV2(title = "Innings Summary") }
+        item(key = "scorecard_summary_header") { SectionHeaderV2(title = stringResource(R.string.overview_innings_summary)) }
         items(uniqueInnings.size, key = { "inn_summary_$it" }) { idx -> ScorecardInningsCard(uniqueInnings[idx]) }
     }
     if (scorecard != null) {
@@ -226,7 +228,7 @@ internal fun LazyListScope.overviewScorecardSections(
         }
     }
     if (keyMoments.size >= 2) {
-        item(key = "key_moments_header") { SectionHeaderV2(title = "Key Moments") }
+        item(key = "key_moments_header") { SectionHeaderV2(title = stringResource(R.string.overview_key_moments)) }
         item(key = "key_moments_card") { HighlightMomentsCard(moments = keyMoments) }
     }
     headToHead?.let { h2h ->
@@ -246,7 +248,7 @@ internal fun LazyListScope.overviewCommentary(
     val hasCommentary = !isUpcoming && (meaningfulCommentary.isNotEmpty() || hasStreaming)
     when {
         hasCommentary -> {
-            item(key = "commentary_header") { SectionHeaderV2(title = "Recent Commentary") }
+            item(key = "commentary_header") { SectionHeaderV2(title = stringResource(R.string.overview_recent_commentary)) }
             if (hasStreaming) {
                 item(key = "streaming_commentary") {
                     CommentaryLineCard(text = cleanCommentary(streamingCommentary), highlighted = true)
@@ -270,7 +272,11 @@ internal fun LazyListScope.overviewUpcomingInfo(match: CricketMatch, isUpcoming:
         val spacing = BouncerThemeV2.spacing
         BouncerCard {
             Column(modifier = Modifier.padding(spacing.md)) {
-                Text(text = "Match Preview", style = typography.labelMedium, color = colors.textSecondary)
+                Text(
+                    text = stringResource(R.string.overview_match_preview),
+                    style = typography.labelMedium,
+                    color = colors.textSecondary,
+                )
                 Spacer(Modifier.height(spacing.xs))
                 if (match.matchTime.isNotBlank()) {
                     Text(

@@ -54,19 +54,27 @@ import com.tanush.bouncer.ui.components.v2.ShimmerCommentaryList
 import com.tanush.bouncer.ui.theme.v2.BouncerSpacingV2
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 import com.tanush.bouncer.utils.TimelineEventExtractor
+import androidx.compose.ui.res.stringResource
+import com.tanush.bouncer.R
 
 /** Contextual empty state — a quiet feed reads differently at stumps vs. pre-match. */
 @Composable
 private fun CommentaryEmptyState(matchStatus: String) {
     val statusLower = matchStatus.lowercase()
+    // The status text being matched is upstream scoreboard copy, always English; only the message
+    // shown to the reader is a resource.
     val (title, subtitle) = when {
-        statusLower.contains("stumps") -> "Stumps" to "Commentary will resume at start of play"
-        statusLower.contains("break") -> "Session Break" to "Commentary will resume after the break"
-        statusLower.contains("rain") || statusLower.contains("delay") -> "Rain Delay" to "Commentary will resume when play restarts"
-        statusLower.contains("won") || statusLower.contains("drawn") -> "Match Complete" to "No more commentary available"
-        else -> "No commentary yet" to "Commentary will appear once the match starts"
+        statusLower.contains("stumps") ->
+            R.string.commentary_empty_stumps_title to R.string.commentary_empty_stumps_subtitle
+        statusLower.contains("break") ->
+            R.string.commentary_empty_break_title to R.string.commentary_empty_break_subtitle
+        statusLower.contains("rain") || statusLower.contains("delay") ->
+            R.string.commentary_empty_rain_title to R.string.commentary_empty_rain_subtitle
+        statusLower.contains("won") || statusLower.contains("drawn") ->
+            R.string.commentary_empty_complete_title to R.string.commentary_empty_complete_subtitle
+        else -> R.string.commentary_empty_none_title to R.string.commentary_empty_none_subtitle
     }
-    EmptyStateV2(title = title, subtitle = subtitle)
+    EmptyStateV2(title = stringResource(title), subtitle = stringResource(subtitle))
 }
 
 // ── Main composable ──────────────────────────────────────────────────────────
@@ -89,7 +97,11 @@ fun CommentaryTabV2(
 
     // Feed failed (distinct from a genuinely quiet match)
     if (error != null && commentary.isEmpty()) {
-        EmptyStateV2(title = "Commentary interrupted", subtitle = error, onRetry = onRetry)
+        EmptyStateV2(
+            title = stringResource(R.string.commentary_error_title),
+            subtitle = error,
+            onRetry = onRetry,
+        )
         return
     }
 
@@ -178,7 +190,11 @@ private fun ThisOverStrip(recentBalls: List<String>) {
     val typography = BouncerThemeV2.typography
     val spacing = BouncerThemeV2.spacing
     Column(modifier = Modifier.padding(horizontal = spacing.lg, vertical = spacing.sm)) {
-        Text("This Over", style = typography.labelMedium, color = colors.textSecondary)
+        Text(
+            stringResource(R.string.overview_this_over),
+            style = typography.labelMedium,
+            color = colors.textSecondary,
+        )
         Spacer(Modifier.height(spacing.xs))
         Row(horizontalArrangement = Arrangement.spacedBy(spacing.xs)) {
             recentBalls.takeLast(6).forEach { ball ->
@@ -340,14 +356,14 @@ private fun CommentaryLine(ball: ParsedBall, modifier: Modifier = Modifier) {
             onDismissRequest = { showMenu = false },
         ) {
             DropdownMenuItem(
-                text = { Text("Copy text") },
+                text = { Text(stringResource(R.string.commentary_action_copy)) },
                 onClick = {
                     clipboardManager.setText(AnnotatedString(shareText))
                     showMenu = false
                 },
             )
             DropdownMenuItem(
-                text = { Text("Share") },
+                text = { Text(stringResource(R.string.commentary_action_share)) },
                 onClick = {
                     context.startActivity(
                         Intent.createChooser(

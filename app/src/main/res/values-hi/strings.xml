@@ -237,4 +237,56 @@
     <string name="live_activity_style_animated_subtitle">सबसे जीवंत लाइव रूप, धड़कते हुए ज़ोर के साथ।</string>
     <string name="live_activity_style_statistics_title">आँकड़े</string>
     <string name="live_activity_style_statistics_subtitle">रन रेट, जीत की संभावना और बचे विकेट एक नज़र में।</string>
+    <!-- Match detail -->
+    <string name="tab_overview">अवलोकन</string>
+    <string name="tab_commentary">कॉमेंट्री</string>
+    <string name="tab_highlights">हाइलाइट्स</string>
+    <string name="action_retry">फिर कोशिश करें</string>
+
+    <string name="match_info_title">मैच जानकारी</string>
+    <string name="match_info_series">सीरीज़</string>
+    <string name="match_info_format">फ़ॉर्मैट</string>
+    <string name="match_info_date">तारीख़</string>
+    <string name="match_info_time">समय</string>
+    <string name="match_info_venue">मैदान</string>
+    <string name="match_info_toss">टॉस</string>
+    <string name="match_info_umpire_1">अंपायर 1</string>
+    <string name="match_info_umpire_2">अंपायर 2</string>
+    <string name="match_info_day">दिन</string>
+    <string name="match_info_additional">अन्य जानकारी</string>
+    <string name="match_info_info">जानकारी</string>
+    <string name="match_info_teams">टीमें</string>
+
+    <string name="overview_innings_summary">पारी का सारांश</string>
+    <string name="overview_key_moments">अहम पल</string>
+    <string name="overview_recent_commentary">हाल की कॉमेंट्री</string>
+    <string name="overview_match_preview">मैच पूर्वावलोकन</string>
+    <string name="overview_at_the_crease">क्रीज़ पर</string>
+    <string name="overview_last_batsmen">पिछले बल्लेबाज़</string>
+    <string name="overview_current_bowler">मौजूदा गेंदबाज़</string>
+    <string name="overview_best_bowler">सर्वश्रेष्ठ गेंदबाज़</string>
+    <string name="overview_match_status">मैच की स्थिति</string>
+    <string name="overview_this_over">यह ओवर</string>
+    <string name="overview_last_wicket">पिछला विकेट</string>
+    <string name="overview_not_started_title">मैच अभी शुरू नहीं हुआ</string>
+    <string name="overview_not_started_subtitle">खेल शुरू होते ही लाइव स्कोर, क्रीज़ पर मौजूद बल्लेबाज़ और जीत की संभावना यहाँ दिखेंगे।</string>
+    <string name="overview_pending_title">विवरण आ रहा है</string>
+    <string name="overview_pending_subtitle">लाइव मैच का डेटा यहाँ जल्द ही दिखेगा।</string>
+
+    <string name="commentary_error_title">कॉमेंट्री बाधित हुई</string>
+    <string name="commentary_action_copy">टेक्स्ट कॉपी करें</string>
+    <string name="commentary_action_share">साझा करें</string>
+    <string name="commentary_empty_stumps_title">स्टंप्स</string>
+    <string name="commentary_empty_stumps_subtitle">खेल शुरू होने पर कॉमेंट्री फिर से चालू होगी</string>
+    <string name="commentary_empty_break_title">सत्र का ब्रेक</string>
+    <string name="commentary_empty_break_subtitle">ब्रेक के बाद कॉमेंट्री फिर से चालू होगी</string>
+    <string name="commentary_empty_rain_title">बारिश से रुकावट</string>
+    <string name="commentary_empty_rain_subtitle">खेल दोबारा शुरू होने पर कॉमेंट्री लौट आएगी</string>
+    <string name="commentary_empty_complete_title">मैच समाप्त</string>
+    <string name="commentary_empty_complete_subtitle">अब और कॉमेंट्री उपलब्ध नहीं है</string>
+    <string name="commentary_empty_none_title">अभी कोई कॉमेंट्री नहीं</string>
+    <string name="commentary_empty_none_subtitle">मैच शुरू होते ही कॉमेंट्री दिखने लगेगी</string>
+
+    <string name="highlights_empty_title">अभी कोई हाइलाइट नहीं</string>
+    <string name="highlights_empty_subtitle">इस मैच के अहम पल उपलब्ध होते ही क्लिप यहाँ दिखेंगी।</string>
 </resources>

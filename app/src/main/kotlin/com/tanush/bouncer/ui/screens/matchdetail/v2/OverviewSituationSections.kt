@@ -31,6 +31,8 @@ import com.tanush.bouncer.ui.components.v2.BouncerCard
 import com.tanush.bouncer.ui.components.v2.RecentBallsStripV2
 import com.tanush.bouncer.ui.components.v2.SectionHeaderV2
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
+import androidx.compose.ui.res.stringResource
+import com.tanush.bouncer.R
 
 // Situation, live-state, batsmen and bowler sections for OverviewTabV2's LazyColumn.
 
@@ -91,12 +93,20 @@ internal fun LazyListScope.overviewBatsmen(
 ) {
     when {
         batsmen.isNotEmpty() -> {
-            item(key = "crease_header") { SectionHeaderV2(title = "At the Crease") }
+            item(key = "crease_header") { SectionHeaderV2(title = stringResource(R.string.overview_at_the_crease)) }
             items(batsmen, key = { "bat_${it.name}" }) { bat -> BatsmanCreaseCard(bat) }
         }
         (isMatchActive || isCompleted) && fallbackBatsmen.isNotEmpty() -> {
             item(key = "crease_header") {
-                SectionHeaderV2(title = if (fallbackHasNotOut) "At the Crease" else "Last Batsmen")
+                SectionHeaderV2(
+                    title = stringResource(
+                        if (fallbackHasNotOut) {
+                            R.string.overview_at_the_crease
+                        } else {
+                            R.string.overview_last_batsmen
+                        }
+                    )
+                )
             }
             items(fallbackBatsmen.size, key = { "scbat_$it" }) { idx ->
                 FallbackBatsmanCard(fallbackBatsmen[idx])
@@ -113,7 +123,7 @@ internal fun LazyListScope.overviewBowler(
 ) {
     when {
         bowler != null -> {
-            item(key = "bowler_header") { SectionHeaderV2(title = "Current Bowler") }
+            item(key = "bowler_header") { SectionHeaderV2(title = stringResource(R.string.overview_current_bowler)) }
             item(key = "bowler") {
                 BowlerStatCard(
                     name = bowler.name,
@@ -125,7 +135,7 @@ internal fun LazyListScope.overviewBowler(
         (isMatchActive || isCompleted) && scorecard != null && scorecard.innings.isNotEmpty() -> {
             val topBowler = scorecard.innings.last().bowlers.maxByOrNull { it.wickets.toIntOrNull() ?: 0 }
             if (topBowler != null) {
-                item(key = "bowler_header") { SectionHeaderV2(title = "Best Bowler") }
+                item(key = "bowler_header") { SectionHeaderV2(title = stringResource(R.string.overview_best_bowler)) }
                 item(key = "bowler") {
                     BowlerStatCard(
                         name = topBowler.name,
@@ -145,7 +155,11 @@ internal fun MatchSituationCard(match: CricketMatch, isCompleted: Boolean) {
     val spacing = BouncerThemeV2.spacing
     BouncerCard {
         Column(modifier = Modifier.padding(spacing.md)) {
-            Text(text = "Match Status", style = typography.labelMedium, color = colors.textSecondary)
+            Text(
+                text = stringResource(R.string.overview_match_status),
+                style = typography.labelMedium,
+                color = colors.textSecondary,
+            )
             Spacer(Modifier.height(spacing.xs))
             Text(
                 text = match.currentStatus,
@@ -170,7 +184,7 @@ internal fun QuickStatsRow(
         currentRunRate?.let {
             InsightGridCard(
                 modifier = Modifier.weight(1f),
-                label = "CRR",
+                label = stringResource(R.string.stat_crr),
                 value = it,
                 subValue = "curr rate",
                 icon = Icons.Default.Speed,
@@ -179,7 +193,7 @@ internal fun QuickStatsRow(
         requiredRunRate?.let {
             InsightGridCard(
                 modifier = Modifier.weight(1f),
-                label = "RRR",
+                label = stringResource(R.string.stat_rrr),
                 value = it,
                 subValue = "reqd rate",
                 icon = Icons.AutoMirrored.Filled.TrendingUp,
@@ -195,7 +209,11 @@ internal fun RecentBallsCard(recentBalls: List<String>) {
     val spacing = BouncerThemeV2.spacing
     BouncerCard {
         Column(modifier = Modifier.padding(spacing.md)) {
-            Text(text = "This Over", style = typography.labelMedium, color = colors.textSecondary)
+            Text(
+                text = stringResource(R.string.overview_this_over),
+                style = typography.labelMedium,
+                color = colors.textSecondary,
+            )
             Spacer(Modifier.height(spacing.xs))
             RecentBallsStripV2(balls = recentBalls.takeLast(6))
         }
@@ -209,7 +227,11 @@ internal fun LastWicketCard(lastWicket: String) {
     val spacing = BouncerThemeV2.spacing
     BouncerCard {
         Column(modifier = Modifier.padding(spacing.md)) {
-            Text(text = "Last Wicket", style = typography.labelMedium, color = colors.textSecondary)
+            Text(
+                text = stringResource(R.string.overview_last_wicket),
+                style = typography.labelMedium,
+                color = colors.textSecondary,
+            )
             Spacer(Modifier.height(spacing.xs))
             Text(
                 text = lastWicket,

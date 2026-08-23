@@ -244,4 +244,63 @@
     </plurals>
     <string name="onboarding_showing_category">Showing %1$s matches.</string>
     <string name="onboarding_start_exploring">Start exploring!</string>
+
+    <!-- ── Match detail ─────────────────────────────────────────────────── -->
+    <string name="tab_overview">Overview</string>
+    <string name="tab_commentary">Commentary</string>
+    <string name="tab_highlights">Highlights</string>
+    <string name="tab_ai" translatable="false">AI</string>
+    <string name="action_retry">Retry</string>
+    <!-- Current and required run rate. Standard cricket abbreviations, said the same in Hindi. -->
+    <string name="stat_crr_value" translatable="false">CRR: %1$s</string>
+    <string name="stat_rrr_value" translatable="false">RRR: %1$s</string>
+    <string name="stat_crr" translatable="false">CRR</string>
+    <string name="stat_rrr" translatable="false">RRR</string>
+
+    <string name="match_info_title">Match Information</string>
+    <string name="match_info_series">Series</string>
+    <string name="match_info_format">Format</string>
+    <string name="match_info_date">Date</string>
+    <string name="match_info_time">Time</string>
+    <string name="match_info_venue">Venue</string>
+    <string name="match_info_toss">Toss</string>
+    <string name="match_info_umpire_1">Umpire 1</string>
+    <string name="match_info_umpire_2">Umpire 2</string>
+    <string name="match_info_day">Day</string>
+    <string name="match_info_additional">Additional Info</string>
+    <string name="match_info_info">Info</string>
+    <string name="match_info_teams">Teams</string>
+
+    <string name="overview_innings_summary">Innings Summary</string>
+    <string name="overview_key_moments">Key Moments</string>
+    <string name="overview_recent_commentary">Recent Commentary</string>
+    <string name="overview_match_preview">Match Preview</string>
+    <string name="overview_at_the_crease">At the Crease</string>
+    <string name="overview_last_batsmen">Last Batsmen</string>
+    <string name="overview_current_bowler">Current Bowler</string>
+    <string name="overview_best_bowler">Best Bowler</string>
+    <string name="overview_match_status">Match Status</string>
+    <string name="overview_this_over">This Over</string>
+    <string name="overview_last_wicket">Last Wicket</string>
+    <string name="overview_not_started_title">Match hasn\'t started</string>
+    <string name="overview_not_started_subtitle">Live scores, batsmen at the crease and win probability will appear here once play begins.</string>
+    <string name="overview_pending_title">Details on their way</string>
+    <string name="overview_pending_subtitle">Live match data will appear here shortly.</string>
+
+    <string name="commentary_error_title">Commentary interrupted</string>
+    <string name="commentary_action_copy">Copy text</string>
+    <string name="commentary_action_share">Share</string>
+    <string name="commentary_empty_stumps_title">Stumps</string>
+    <string name="commentary_empty_stumps_subtitle">Commentary will resume at start of play</string>
+    <string name="commentary_empty_break_title">Session Break</string>
+    <string name="commentary_empty_break_subtitle">Commentary will resume after the break</string>
+    <string name="commentary_empty_rain_title">Rain Delay</string>
+    <string name="commentary_empty_rain_subtitle">Commentary will resume when play restarts</string>
+    <string name="commentary_empty_complete_title">Match Complete</string>
+    <string name="commentary_empty_complete_subtitle">No more commentary available</string>
+    <string name="commentary_empty_none_title">No commentary yet</string>
+    <string name="commentary_empty_none_subtitle">Commentary will appear once the match starts</string>
+
+    <string name="highlights_empty_title">No highlights yet</string>
+    <string name="highlights_empty_subtitle">Clips appear here once key moments are available for this match.</string>
 </resources>

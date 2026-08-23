@@ -89,6 +89,8 @@ import com.tanush.bouncer.ui.theme.StatusInfo
 import com.tanush.bouncer.ui.theme.StatusLive
 import com.tanush.bouncer.ui.theme.StatusSuccess
 import kotlin.math.abs
+import androidx.compose.ui.res.stringResource
+import com.tanush.bouncer.R
 
 /**
  * OverviewTabV2 — Quick stats, batsmen at crease, current bowler, commentary preview, win probability.
@@ -277,14 +279,14 @@ internal fun OverviewNoDataMessage(isUpcoming: Boolean) {
     if (isUpcoming) {
         EmptyStateV2(
             icon = Icons.Outlined.Schedule,
-            title = "Match hasn't started",
-            subtitle = "Live scores, batsmen at the crease and win probability will appear here once play begins.",
+            title = stringResource(R.string.overview_not_started_title),
+            subtitle = stringResource(R.string.overview_not_started_subtitle),
         )
     } else {
         EmptyStateV2(
             icon = Icons.Outlined.SportsCricket,
-            title = "Details on their way",
-            subtitle = "Live match data will appear here shortly.",
+            title = stringResource(R.string.overview_pending_title),
+            subtitle = stringResource(R.string.overview_pending_subtitle),
         )
     }
 }

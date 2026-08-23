@@ -89,6 +89,8 @@ import com.tanush.bouncer.ui.components.BatsmanMilestoneCard
 import com.tanush.bouncer.ui.components.ShareCardData
 import com.tanush.bouncer.ui.components.ShareCardGenerator
 import kotlinx.coroutines.launch
+import androidx.compose.ui.res.stringResource
+import com.tanush.bouncer.R
 
 private const val EVENT_FLASH_MILLIS = 1500L
 
@@ -120,7 +122,14 @@ fun MatchDetailViewV2(
     )
     val highlights by highlightsViewModel.highlights.collectAsStateWithLifecycle()
 
-    val tabTitles = listOf("Overview", "Scorecard", "Commentary", "Highlights", "Info", "AI")
+    val tabTitles = listOf(
+        R.string.tab_overview,
+        R.string.tab_scorecard,
+        R.string.tab_commentary,
+        R.string.tab_highlights,
+        R.string.tab_info,
+        R.string.tab_ai,
+    )
     val pagerState = rememberPagerState(pageCount = { tabTitles.size })
     val scope = rememberCoroutineScope()
 
@@ -199,7 +208,10 @@ fun MatchDetailViewV2(
                 },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = stringResource(R.string.cd_back),
+                        )
                     }
                 },
                 actions = {
@@ -301,7 +313,7 @@ fun MatchDetailViewV2(
                         },
                         text = {
                             Text(
-                                text = title,
+                                text = stringResource(title),
                                 style = typography.labelLarge,
                                 fontWeight = if (pagerState.currentPage == index) FontWeight.Bold else FontWeight.Normal,
                                 color = if (pagerState.currentPage == index) tabAccentColor else colors.textSecondary,
@@ -318,12 +330,15 @@ fun MatchDetailViewV2(
                     .weight(1f)
                     .bouncerScreenBackground(),
             ) { page ->
+                // Dispatching on the resource id rather than on the rendered title: the title is
+                // translated now, so matching its text would send every tab to the else branch in
+                // any locale but English.
                 val tabTitle = tabTitles.getOrNull(page) ?: return@HorizontalPager
                 // Overview only narrates the lines; the per-ball event verdict is the commentary
                 // tab's filter input, so it is not threaded through the whole overview tree.
                 val commentaryText = remember(uiState.commentary) { uiState.commentary.map { it.text } }
                 when (tabTitle) {
-                    "Overview" -> OverviewTabV2(
+                    R.string.tab_overview -> OverviewTabV2(
                         match = liveMatch,
                         batsmen = uiState.batsmen,
                         bowler = uiState.bowler,
@@ -337,11 +352,11 @@ fun MatchDetailViewV2(
                         probabilityHistory = uiState.probabilityHistory,
                         headToHead = uiState.headToHead,
                     )
-                    "Scorecard" -> ScorecardTab(
+                    R.string.tab_scorecard -> ScorecardTab(
                         scorecard = uiState.scorecard,
                         isLoading = uiState.scorecardLoading,
                     )
-                    "Commentary" -> CommentaryTabV2(
+                    R.string.tab_commentary -> CommentaryTabV2(
                         commentary = uiState.commentary,
                         recentBalls = uiState.recentBalls,
                         matchStatus = liveMatch.currentStatus,
@@ -349,9 +364,9 @@ fun MatchDetailViewV2(
                         error = uiState.commentaryError,
                         onRetry = vm::retryInitialLoad,
                     )
-                    "Highlights" -> HighlightsTabV2(highlights = highlights)
-                    "Info" -> InfoTabV2(match = match, preMatchData = uiState.preMatchData)
-                    "AI" -> PremiumAiStatisticsTab(match = liveMatch)
+                    R.string.tab_highlights -> HighlightsTabV2(highlights = highlights)
+                    R.string.tab_info -> InfoTabV2(match = match, preMatchData = uiState.preMatchData)
+                    R.string.tab_ai -> PremiumAiStatisticsTab(match = liveMatch)
                 }
             }
             }
@@ -467,11 +482,19 @@ private fun ScoreHeaderV2(
             Spacer(Modifier.height(spacing.xs))
             Row {
                 currentRunRate?.let {
-                    Text("CRR: $it", style = typography.labelSmall, color = colors.textSecondary)
+                    Text(
+                        stringResource(R.string.stat_crr_value, it),
+                        style = typography.labelSmall,
+                        color = colors.textSecondary,
+                    )
                     Spacer(Modifier.width(spacing.lg))
                 }
                 requiredRunRate?.let {
-                    Text("RRR: $it", style = typography.labelSmall, color = colors.textSecondary)
+                    Text(
+                        stringResource(R.string.stat_rrr_value, it),
+                        style = typography.labelSmall,
+                        color = colors.textSecondary,
+                    )
                 }
             }
         }
@@ -670,7 +693,7 @@ private fun LiveDataErrorBanner(message: String, onRetry: () -> Unit) {
             modifier = Modifier.weight(1f),
         )
         TextButton(onClick = onRetry) {
-            Text("Retry", color = colors.primary)
+            Text(stringResource(R.string.action_retry), color = colors.primary)
         }
     }
 }
