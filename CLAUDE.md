@@ -122,6 +122,25 @@ Endpoint/projectId are auto-injected by the runtime — only `APPWRITE_API_KEY` 
 
 **Cricbuzz profile pages are App Router.** `/profiles/{id}/{slug}` carries no `__NEXT_DATA__` block — only `self.__next_f.push(...)` chunks — and the legacy Jsoup selectors (`cb-font-40`, `cb-plyr-inf`, `cb-plyr-thead`, …) match **zero** elements on it. Both of `PlayerProfileScraper`'s original strategies were therefore dead, and the fallback produced a profile with a name and every other field empty rather than an error. `PlayerProfileRsc` reads the flight stream via `forEachNextFlightPayload` — the same parser the match pages use — and runs first; the other two stay as fallbacks. Pinned by `PlayerProfileRscTest` against captured markup.
 
+**Scorecard player names are in a span, not the row's link.** A `div.grid.scorecard-bat-grid` /
+`scorecard-bowl-grid` row's only `<a>` elements are a hidden per-player menu — "View match
+performance", then "View profile" pointing at `/profiles/{id}/{slug}` — while the name sits in a
+`span` whose class carries `hover:underline`. `row.select("a").first()` therefore named **every**
+batter and **every** bowler "View match performance"; those names were written to `match-scorecard`
+by `bouncer-match-sync` and rendered by the Scorecard tab, where `items(..., key = { it.name })`
+turned the collision into `IllegalArgumentException: Key … was already used` (Sentry ANDROID-40).
+`playerNameOf` (both `CricBuzzParser.kt` and `match-sync/src/cricbuzz.js`) reads the span first and
+falls back to a non-menu link. Pinned by `CricBuzzScorecardRowFilterTest` against captured markup,
+with `cricbuzz.js` declared as a Gradle test input so a one-sided edit fails the build.
+**Never key a lazy list on scraped text** — keys must include the index.
+
+**The commentary `ball` column is the over number.** `CommentaryEntry.ball` comes straight off the
+`match-commentary` row. The tab used to regex a leading `40.4` out of the prose, which only exists
+on lines the AI chain rewrote: the passthrough branch (`ai_generated = false`) writes raw Cricbuzz
+text unprefixed, and that is the dominant path in production, so the over and ball number were
+absent from most rows. It is also the only thing that carries The Hundred's `Ball 72`, which no
+over-shaped regex can match.
+
 **Player profile cache (global):** `PlayerCacheWorker` checks `AppwritePlayerProfilesClient` before scraping Cricbuzz. First device that scrapes a player pushes to Appwrite (`player-profiles` table, `bouncer-db`); all subsequent devices get a cache hit. Row ID = `entity.playerId` (Room format: `virat_kohli`).
 
 **Appwrite project:** single database `bouncer-db`. Known tables: `ai-commentary-cache`, `highlights`, `highlights-meta`, `user-favourites`, `player-profiles`, `match-commentary`, `match-live-detail`, `match-scorecard`.

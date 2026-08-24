@@ -28,13 +28,30 @@ import kotlinx.coroutines.withContext
  * searching broadcast prose for the word "six", which is a word commentators write about the
  * target score. See `CommentaryEntry.eventType`.
  */
-data class CommentaryEntry(val text: String, val event: TimelineEventType?)
+/**
+ * @param ball the server's own ball label for this delivery — `"18.5"`, or The Hundred's
+ *   `"Ball 72"` — straight off the row's `ball` column, and null for a row that has none (an
+ *   on-device scrape fallback, or a row written before the column existed).
+ *
+ *   The UI used to re-derive this by regexing the prose for a leading `18.5`, which only works
+ *   when the line carries the prefix. `bouncer-match-sync` adds it on the AI path but writes raw
+ *   Cricbuzz text unprefixed when the provider chain produces nothing, and that passthrough is the
+ *   dominant path in production — so the over and ball number simply vanished from those rows.
+ *   Reading the column the server already writes fixes every row, past and future, and is the only
+ *   thing that can work for `Ball 72`, which no over-shaped regex will ever match.
+ */
+data class CommentaryEntry(
+    val text: String,
+    val event: TimelineEventType?,
+    val ball: String? = null,
+)
 
 data class CommentaryEvent(
     val matchId: String,
     val commentary: String,
     val sortKey: Double,
     val event: TimelineEventType?,
+    val ball: String? = null,
 )
 
 /**
@@ -92,7 +109,11 @@ object AppwriteMatchCommentaryClient : AppwriteTableClient("AppwriteMatchComment
         val sorted = if (ordered) rows else rows.sortedByDescending { (it.data["sort_key"] as? Number)?.toDouble() ?: 0.0 }
         return sorted.mapNotNull { row ->
             val text = (row.data["commentary"] as? String)?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
-            CommentaryEntry(text, parseCommentaryEvent(row.data["event"] as? String))
+            CommentaryEntry(
+                text = text,
+                event = parseCommentaryEvent(row.data["event"] as? String),
+                ball = (row.data["ball"] as? String)?.takeIf { it.isNotBlank() },
+            )
         }
     }
 
@@ -120,7 +141,8 @@ object AppwriteMatchCommentaryClient : AppwriteTableClient("AppwriteMatchComment
                 ?: return@acquireChannel
             val sortKey = (payload["sort_key"] as? Number)?.toDouble() ?: 0.0
             val event = parseCommentaryEvent(payload["event"] as? String)
-            trySend(CommentaryEvent(matchId, commentary, sortKey, event))
+            val ball = (payload["ball"] as? String)?.takeIf { it.isNotBlank() }
+            trySend(CommentaryEvent(matchId, commentary, sortKey, event, ball))
         }
         awaitClose { handle.close() }
     }

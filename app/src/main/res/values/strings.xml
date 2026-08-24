@@ -250,6 +250,8 @@
     <string name="tab_commentary">Commentary</string>
     <string name="tab_highlights">Highlights</string>
     <string name="tab_ai" translatable="false">AI</string>
+    <string name="tab_unavailable_title">Tab unavailable</string>
+    <string name="tab_unavailable_subtitle">This section could not be loaded.</string>
     <string name="action_retry">Retry</string>
     <!-- Current and required run rate. Standard cricket abbreviations, said the same in Hindi. -->
     <string name="stat_crr_value" translatable="false">CRR: %1$s</string>

@@ -269,11 +269,39 @@ function mapBowler(b) {
   };
 }
 
+// The player's name for one `scorecard-*-grid` row.
+//
+// Cricbuzz's current markup puts the name in a `span.hover:underline`. The row's only <a> elements
+// are a hidden per-player menu — "View match performance", then "View profile" pointing at
+// /profiles/{id}/{slug} — so the long-standing `$row.find("a").first()` named EVERY batter and
+// EVERY bowler "View match performance". Those names were written to `match-scorecard` and then
+// rendered by the Android Scorecard tab, where two list items sharing a key is a crash.
+//
+// Order matters: the span first, then a link that is not one of the menu labels, so older markup
+// with the name in the anchor still parses. Mirrors playerNameOf in CricBuzzParser.kt.
+const MENU_LINK_LABELS = ["View match performance", "View profile"];
+
+function playerNameOf($, $row) {
+  const span = $row.find("span[class*='hover:underline']").first().text().trim();
+  if (span) return span;
+  const link = $row
+    .find("a")
+    .toArray()
+    .map((a) => $(a).text().trim())
+    .find((text) => text && !MENU_LINK_LABELS.includes(text));
+  return link || "";
+}
+
+// The player's Cricbuzz profile link, which is a menu item rather than the name's own anchor.
+function profileUrlOf($, $row) {
+  return absUrl($row.find('a[href*="/profiles/"]').first().attr("href"));
+}
+
 function parseScorecardBatsmen($, $content) {
   const out = [];
   $content.find("div.grid.scorecard-bat-grid").each((_, row) => {
     const $row = $(row);
-    const name = $row.find("a").first().text() || "";
+    const name = playerNameOf($, $row);
     if (!name || name.includes("Batter")) return;
     const stats = $row.children();
     if (stats.length < 6) return;
@@ -297,7 +325,7 @@ function parseScorecardBatsmen($, $content) {
       fours: txt($, stats[3]) || "0",
       sixes: txt($, stats[4]) || "0",
       strikeRate: txt($, stats[5]) || "0",
-      profileUrl: absUrl($row.find("a").first().attr("href")),
+      profileUrl: profileUrlOf($, $row),
     });
   });
   return out;
@@ -307,7 +335,7 @@ function parseScorecardBowlers($, $content) {
   const out = [];
   $content.find("div.grid.scorecard-bowl-grid").each((_, row) => {
     const $row = $(row);
-    const name = $row.find("a").first().text() || "";
+    const name = playerNameOf($, $row);
     if (!name || name.includes("Bowler")) return;
     const stats = $row.children();
     if (stats.length < 5) return;
@@ -325,7 +353,7 @@ function parseScorecardBowlers($, $content) {
       noBalls: stats.length > 5 ? txt($, stats[5]) || "0" : "0",
       wides: stats.length > 6 ? txt($, stats[6]) || "0" : "0",
       economy: computeEconomy(runs, overs),
-      profileUrl: absUrl($row.find("a").first().attr("href")),
+      profileUrl: profileUrlOf($, $row),
     });
   });
   return out;

@@ -289,4 +289,6 @@
 
     <string name="highlights_empty_title">अभी कोई हाइलाइट नहीं</string>
     <string name="highlights_empty_subtitle">इस मैच के अहम पल उपलब्ध होते ही क्लिप यहाँ दिखेंगी।</string>
+    <string name="tab_unavailable_title">टैब उपलब्ध नहीं</string>
+    <string name="tab_unavailable_subtitle">यह सेक्शन लोड नहीं हो सका।</string>
 </resources>

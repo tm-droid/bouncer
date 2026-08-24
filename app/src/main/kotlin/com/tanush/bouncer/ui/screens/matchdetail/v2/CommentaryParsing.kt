@@ -8,12 +8,24 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import com.tanush.bouncer.data.remote.CommentaryEntry
 import com.tanush.bouncer.models.TimelineEventType
+import com.tanush.bouncer.utils.BallMetric
 import com.tanush.bouncer.utils.TimelineEventExtractor
+import com.tanush.bouncer.utils.ballMetricOfLine
+import java.util.Locale
 
 // ── Commentary parsing helpers (pure; rendering lives in CommentaryTabV2.kt) ──
 
 @Immutable
 internal data class ParsedBall(
+    /**
+     * What the pill shows: `"18.5"`, or The Hundred's bare `"72"`. Null means this line is not a
+     * delivery at all.
+     *
+     * Separate from [overNumber] because The Hundred has no overs — it counts 1..100 — so there is
+     * no over-shaped number to put here, and inventing one is what
+     * [com.tanush.bouncer.utils.BallMetric] exists to prevent.
+     */
+    val ballLabel: String?,
     val overNumber: Float,
     val ballText: String,
     val runs: Int,
@@ -55,10 +67,34 @@ private val BOUNDARY_EVENTS = setOf(TimelineEventType.SIX, TimelineEventType.FOU
 internal fun CommentaryEntry.eventType(): TimelineEventType? =
     event ?: TimelineEventExtractor.detectBallType(text)
 
+/**
+ * The delivery's label and over, from the row's `ball` column ahead of anything in the prose.
+ *
+ * The prefix is present only on lines the AI chain rewrote: `match-sync` writes raw Cricbuzz text
+ * with no prefix whenever that chain produces nothing, and in production that is most lines. The
+ * column is also the only thing that can carry The Hundred, which has no over to write.
+ *
+ * @param ball the row's `ball` column, or null.
+ * @param prosePrefix the `40.4` captured from the head of the text, or null.
+ */
+private fun resolveBallLabel(ball: String?, prosePrefix: String?): Pair<String?, Float> {
+    val metric = ball?.let { ballMetricOfLine(it) }
+    val overNumber = when (metric) {
+        is BallMetric.OverBall -> metric.over + metric.ball / 10f
+        else -> prosePrefix?.toFloatOrNull() ?: 0f
+    }
+    val label = when {
+        metric is BallMetric.BallCount -> metric.ball.toString()
+        overNumber > 0f -> String.format(Locale.US, "%.1f", overNumber)
+        else -> null
+    }
+    return label to overNumber
+}
+
 internal fun CommentaryEntry.parseBall(): ParsedBall {
     val clean = text.replace(AI_FUSED_PREFIX, "").trimEnd('/').trim()
     val m = OVER_REGEX.find(clean)
-    val overNumber = m?.groupValues?.get(1)?.toFloatOrNull() ?: 0f
+    val (ballLabel, overNumber) = resolveBallLabel(ball, m?.groupValues?.get(1))
     val ballText = m?.groupValues?.get(2) ?: clean
     val lower = ballText.lowercase()
 
@@ -71,7 +107,7 @@ internal fun CommentaryEntry.parseBall(): ParsedBall {
 
     val runs = runsFor(lower, isSix = isSix, isFour = isFour, isWicket = isWicket)
 
-    return ParsedBall(overNumber, ballText, runs, isWicket, isFour, isSix, isWide, isNoBall)
+    return ParsedBall(ballLabel, overNumber, ballText, runs, isWicket, isFour, isSix, isWide, isNoBall)
 }
 
 private fun runsFor(lower: String, isSix: Boolean, isFour: Boolean, isWicket: Boolean): Int = when {
@@ -119,9 +155,12 @@ internal fun filterCommentary(
     }
 }
 
-internal fun buildShareText(ball: ParsedBall): String =
-    if (ball.overNumber > 0f) "Over ${"%.1f".format(ball.overNumber)}: ${ball.ballText}"
-    else ball.ballText
+internal fun buildShareText(ball: ParsedBall): String = when {
+    // "Over" is only meaningful for over-based formats; The Hundred counts deliveries.
+    ball.overNumber > 0f -> "Over ${ball.ballLabel}: ${ball.ballText}"
+    ball.ballLabel != null -> "Ball ${ball.ballLabel}: ${ball.ballText}"
+    else -> ball.ballText
+}
 
 internal fun parseBoldTags(text: String): AnnotatedString {
     return buildAnnotatedString {

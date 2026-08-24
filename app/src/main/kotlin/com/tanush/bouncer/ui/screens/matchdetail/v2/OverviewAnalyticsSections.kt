@@ -254,8 +254,11 @@ internal fun LazyListScope.overviewCommentary(
                     CommentaryLineCard(text = cleanCommentary(streamingCommentary), highlighted = true)
                 }
             }
-            items(meaningfulCommentary.take(5), key = { line -> "overview_comm_${line.hashCode()}" }) { line ->
-                CommentaryLineCard(text = cleanCommentary(line), highlighted = false)
+            // Keyed by position, not by the line's hash: two identical commentary lines are
+            // ordinary (successive dot balls read the same) and a repeated key is a hard crash.
+            val recent = meaningfulCommentary.take(5)
+            items(recent.size, key = { "overview_comm_$it" }) { idx ->
+                CommentaryLineCard(text = cleanCommentary(recent[idx]), highlighted = false)
             }
         }
         !isUpcoming -> item(key = "no_commentary") {

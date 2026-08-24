@@ -94,7 +94,7 @@ internal fun LazyListScope.overviewBatsmen(
     when {
         batsmen.isNotEmpty() -> {
             item(key = "crease_header") { SectionHeaderV2(title = stringResource(R.string.overview_at_the_crease)) }
-            items(batsmen, key = { "bat_${it.name}" }) { bat -> BatsmanCreaseCard(bat) }
+            items(batsmen.size, key = { "bat_$it" }) { idx -> BatsmanCreaseCard(batsmen[idx]) }
         }
         (isMatchActive || isCompleted) && fallbackBatsmen.isNotEmpty() -> {
             item(key = "crease_header") {

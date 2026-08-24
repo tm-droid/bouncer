@@ -34,6 +34,7 @@ import com.tanush.bouncer.ui.theme.ShinyGoldMid
 import com.tanush.bouncer.ui.theme.SuccessGreen
 import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
+import java.util.Locale
 
 /**
  * Partnership Breakdown Card
@@ -94,7 +95,10 @@ fun PartnershipBreakdownCard(
         )
     }
 
-    val maxPartnership = partnerships.maxOfOrNull { it.totalRuns } ?: 1
+    // coerceAtLeast, not `?: 1`: the elvis only fires on an empty list, but scraped partnership
+    // runs are `toIntOrNull() ?: 0`, so a non-empty list of unparseable rows yields a max of 0 and
+    // the bar fraction below becomes 0f/0 = NaN. fillMaxWidth(NaN) throws "Cannot round NaN value".
+    val maxPartnership = (partnerships.maxOfOrNull { it.totalRuns } ?: 0).coerceAtLeast(1)
     val totalRuns = partnerships.sumOf { it.totalRuns }
 
     Card(
@@ -222,7 +226,7 @@ fun PartnershipBreakdownCard(
                             fontWeight = FontWeight.Bold,
                         )
                         Text(
-                            text = "RR: ${String.format("%.2f", best.runRate)}",
+                            text = "RR: ${String.format(Locale.US, "%.2f", best.runRate)}",
                             color = colors.textSecondary,
                             fontSize = 11.sp,
                         )
@@ -232,6 +236,17 @@ fun PartnershipBreakdownCard(
         }
     }
 }
+
+/**
+ * Bar width as a fraction of the row: always finite, always within `0f..1f`.
+ *
+ * `maxRuns` is derived from scraped strings via `toIntOrNull() ?: 0`, so a partnership list none of
+ * whose rows parsed yields a max of 0 and an unguarded `totalRuns / maxRuns` of `0f/0` = NaN.
+ * `Modifier.fillMaxWidth(fraction = NaN)` does not degrade — it throws
+ * `IllegalArgumentException: Cannot round NaN value`, taking down the Scorecard tab.
+ */
+internal fun partnershipBarFraction(totalRuns: Int, maxRuns: Int, progress: Float): Float =
+    if (maxRuns <= 0) 0f else (totalRuns.toFloat() / maxRuns * progress).coerceIn(0f, 1f)
 
 @Composable
 private fun PartnershipRow(
@@ -244,11 +259,13 @@ private fun PartnershipRow(
     val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
     val delayedProgress = ((progress - index * 0.08f) / 0.92f).coerceIn(0f, 1f)
-    val barWidth = (partnership.totalRuns.toFloat() / maxRuns * delayedProgress)
+    val barWidth = partnershipBarFraction(partnership.totalRuns, maxRuns, delayedProgress)
 
     // Calculate contribution percentages
+    // A scraped contribution can exceed the partnership total; an unclamped fraction > 1f
+    // overflows the bar's layout.
     val batter1Pct = if (partnership.totalRuns > 0) {
-        partnership.batter1Runs.toFloat() / partnership.totalRuns
+        (partnership.batter1Runs.toFloat() / partnership.totalRuns).coerceIn(0f, 1f)
     } else {
         0.5f
     }

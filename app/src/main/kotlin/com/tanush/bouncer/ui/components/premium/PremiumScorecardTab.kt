@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -34,6 +35,7 @@ import com.tanush.bouncer.ui.components.BowlingPerformanceCard
 import com.tanush.bouncer.ui.theme.*
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 import com.tanush.bouncer.utils.parseRuns
+import java.util.Locale
 
 @Composable
 fun PremiumScorecardTab(
@@ -140,7 +142,13 @@ fun PremiumScorecardTab(
             
             item { BattingTableHeader() }
             
-            items(innings?.batsmen ?: emptyList(), key = { it.name }) { batsman ->
+            // Indexed keys: a scorecard can legitimately repeat a name (and a scraped row can
+            // duplicate one outright), and a batsman and a bowler in the same LazyColumn collided
+            // on the bare name — a duplicate key is a hard crash, not a rendering glitch.
+            itemsIndexed(
+                innings?.batsmen ?: emptyList(),
+                key = { index, batsman -> "bat_${index}_${batsman.name}" },
+            ) { _, batsman ->
                 BattingRow(batsman)
             }
             
@@ -184,7 +192,10 @@ fun PremiumScorecardTab(
             // Bowling Section
             item { SectionHeader("Bowling") }
             item { BowlingTableHeader() }
-            items(innings?.bowlers ?: emptyList(), key = { it.name }) { bowler ->
+            itemsIndexed(
+                innings?.bowlers ?: emptyList(),
+                key = { index, bowler -> "bowl_${index}_${bowler.name}" },
+            ) { _, bowler ->
                 BowlingRow(bowler)
             }
 
@@ -323,7 +334,7 @@ private fun calculateCurrentRunRate(innings: Innings?): String {
     val balls = oversParts.getOrNull(1)?.toIntOrNull() ?: 0
     val ballsBowled = completedOvers * CricketConstants.BALLS_PER_OVER + balls
     return MatchProjections.currentRunRate(runs, ballsBowled)
-        ?.let { String.format("%.2f", it) } ?: "-"
+        ?.let { String.format(Locale.US, "%.2f", it) } ?: "-"
 }
 
 private fun calculateRequiredRunRate(scorecard: Scorecard, currentInningsIndex: Int): String? {
@@ -345,7 +356,7 @@ private fun calculateRequiredRunRate(scorecard: Scorecard, currentInningsIndex: 
     val balls = secondOversParts.getOrNull(1)?.toIntOrNull() ?: 0
     val ballsBowled = completedOvers * CricketConstants.BALLS_PER_OVER + balls
     return MatchProjections.requiredRunRate(targetRuns, currentRuns, ballsBowled, totalBalls)
-        ?.let { String.format("%.2f", it) }
+        ?.let { String.format(Locale.US, "%.2f", it) }
 }
 
 @Composable
@@ -355,7 +366,7 @@ private fun FallOfWicketsCarousel(fow: List<String>) {
         contentPadding = PaddingValues(horizontal = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        items(fow, key = { it }) { entry ->
+        itemsIndexed(fow, key = { index, entry -> "fow_${index}_$entry" }) { _, entry ->
             val parts = entry.split("(")
             val score = parts.getOrNull(0)?.trim() ?: "-"
             val detail = parts.getOrNull(1)?.replace(")", "") ?: ""

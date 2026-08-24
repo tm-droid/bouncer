@@ -166,12 +166,38 @@ internal fun parseInningsHeader(header: Element, content: Element): Innings {
     return Innings(teamName, score, overs, batsmen, bowlers, fows, mutableListOf(), "", "")
 }
 
+/**
+ * The player's name for one `scorecard-*-grid` row.
+ *
+ * Cricbuzz's current markup puts the name in a `span.hover:underline`. The row's only `<a>`
+ * elements are a hidden per-player menu — "View match performance", then "View profile" pointing at
+ * `/profiles/{id}/{slug}` — so the long-standing `row.select("a").first()` named **every** batter
+ * and **every** bowler "View match performance". Those names reached Appwrite and then the
+ * Scorecard tab, where two LazyColumn items sharing a key is a crash, not a glitch (ANDROID-40).
+ *
+ * Order matters: the span first, then a link that is not one of the menu labels, so markup old
+ * enough to have the name in the anchor still parses. Pinned by `CricBuzzScorecardRowFilterTest`
+ * against captured markup.
+ */
+private val MENU_LINK_LABELS = setOf("View match performance", "View profile")
+
+private fun playerNameOf(row: Element): String {
+    row.selectFirst("span[class*='hover:underline']")?.text()?.trim()
+        ?.takeIf { it.isNotEmpty() }
+        ?.let { return it }
+    return row.select("a").firstOrNull { it.text().trim() !in MENU_LINK_LABELS }?.text()?.trim().orEmpty()
+}
+
+/** The player's Cricbuzz profile link, which is a menu item rather than the name's own anchor. */
+private fun profileUrlOf(row: Element): String =
+    row.selectFirst("a[href*=/profiles/]")?.attr("href").orEmpty()
+
 internal fun parseScorecardBatsmen(content: Element): List<BatsmanStats> {
     val batsmen = mutableListOf<BatsmanStats>()
     val batRows = content.select("div.grid.scorecard-bat-grid")
     selectorCrumb("div.grid.scorecard-bat-grid", "scorecard batsman rows", batRows.size)
     batRows.forEach { row ->
-        val name = row.select("a").first()?.text() ?: ""
+        val name = playerNameOf(row)
         if (name.isEmpty() || name.contains("Batter")) return@forEach
         val stats = row.children()
         if (stats.size < 6) return@forEach
@@ -188,7 +214,8 @@ internal fun parseScorecardBatsmen(content: Element): List<BatsmanStats> {
                 stats.getOrNull(2)?.text() ?: "0",
                 stats.getOrNull(3)?.text() ?: "0",
                 stats.getOrNull(4)?.text() ?: "0",
-                stats.getOrNull(5)?.text() ?: "0"
+                stats.getOrNull(5)?.text() ?: "0",
+                profileUrl = profileUrlOf(row)
             ))
         } catch (e: Exception) {
             Log.w(PARSER_TAG, "Error parsing scorecard batsman: $name", e)
@@ -222,7 +249,7 @@ internal fun parseScorecardBowlers(content: Element): List<BowlerStats> {
     val bowlRows = content.select("div.grid.scorecard-bowl-grid")
     selectorCrumb("div.grid.scorecard-bowl-grid", "scorecard bowler rows", bowlRows.size)
     bowlRows.forEach { row ->
-        val name = row.select("a").first()?.text() ?: ""
+        val name = playerNameOf(row)
         if (name.isEmpty() || name.contains("Bowler")) return@forEach
         val stats = row.children()
         if (stats.size < 5) return@forEach
@@ -238,7 +265,8 @@ internal fun parseScorecardBowlers(content: Element): List<BowlerStats> {
                 "0",
                 "0",
                 // Fall back to the grid's own cell only when the overs figure is unparseable.
-                bowlerEconomy(overs, runs) ?: stats.lastOrNull()?.text() ?: ""
+                bowlerEconomy(overs, runs) ?: stats.lastOrNull()?.text() ?: "",
+                profileUrl = profileUrlOf(row)
             ))
         } catch (e: Exception) {
             Log.w(PARSER_TAG, "Error parsing scorecard bowler: $name", e)

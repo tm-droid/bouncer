@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.ui.theme.*
+import java.util.Locale
 
 /**
  * MEGA UI UPGRADE: PremiumAiStatisticsTab (v5.0).
@@ -142,7 +143,7 @@ private fun AiImpactHero(winProb: Float) {
                 letterSpacing = 2.5.sp
             )
             Text(
-                "${"%.1f".format(winProb)}",
+                String.format(Locale.US, "%.1f", winProb),
                 color = TextPrimary,
                 fontSize = 80.sp,
                 fontWeight = FontWeight.Black,

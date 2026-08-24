@@ -91,6 +91,7 @@ import com.tanush.bouncer.ui.components.ShareCardGenerator
 import kotlinx.coroutines.launch
 import androidx.compose.ui.res.stringResource
 import com.tanush.bouncer.R
+import com.tanush.bouncer.ui.components.v2.EmptyStateV2
 
 private const val EVENT_FLASH_MILLIS = 1500L
 
@@ -367,6 +368,13 @@ fun MatchDetailViewV2(
                     R.string.tab_highlights -> HighlightsTabV2(highlights = highlights)
                     R.string.tab_info -> InfoTabV2(match = match, preMatchData = uiState.preMatchData)
                     R.string.tab_ai -> PremiumAiStatisticsTab(match = liveMatch)
+                    // Resource ids are non-final under nonTransitiveRClass, so this `when` is a
+                    // chain of runtime comparisons, not a verified-exhaustive switch: a tab added
+                    // to tabTitles without a branch here rendered a silently blank page.
+                    else -> EmptyStateV2(
+                        title = stringResource(R.string.tab_unavailable_title),
+                        subtitle = stringResource(R.string.tab_unavailable_subtitle),
+                    )
                 }
             }
             }

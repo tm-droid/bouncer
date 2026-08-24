@@ -155,14 +155,23 @@ private fun LazyListScope.commentaryFeedItems(
     }
 
     if (selectedFilter == "All") {
-        val (ballLines, nonBallLines) = parsedBalls.partition { it.overNumber > 0f }
-        val grouped = ballLines
+        // A delivery is anything carrying a ball label, which now comes from the server's own
+        // `ball` column rather than a regex over the prose. Splitting again on overNumber keeps
+        // The Hundred out of the over grouping: it counts 1..100 and has no overs to group by.
+        val (deliveries, nonBallLines) = parsedBalls.partition { it.ballLabel != null }
+        val (overBalls, countedBalls) = deliveries.partition { it.overNumber > 0f }
+        val grouped = overBalls
             .groupBy { it.overNumber.toInt() }
             .toSortedMap(reverseOrder())
 
         // Non-ball lines (session notes, weather updates) at top
         items(nonBallLines.size, key = { "nonball_$it" }) { idx ->
             NonBallLine(nonBallLines[idx].ballText)
+        }
+
+        // Hundred deliveries: labelled, but with no over to sit under.
+        items(countedBalls.size, key = { "counted_$it" }) { idx ->
+            CommentaryLine(countedBalls[idx], modifier = Modifier.animateItem())
         }
 
         // Ball lines grouped by over with separator cards
@@ -317,7 +326,7 @@ private fun CommentaryLine(ball: ParsedBall, modifier: Modifier = Modifier) {
                 .padding(horizontal = spacing.lg, vertical = spacing.sm),
         ) {
             Row(verticalAlignment = Alignment.Top) {
-                if (ball.overNumber > 0f) {
+                if (ball.ballLabel != null) {
                     ResultPill(ball)
                     Spacer(Modifier.width(spacing.xs))
                     Box(
@@ -328,7 +337,7 @@ private fun CommentaryLine(ball: ParsedBall, modifier: Modifier = Modifier) {
                         contentAlignment = Alignment.Center,
                     ) {
                         Text(
-                            text = "%.1f".format(ball.overNumber),
+                            text = ball.ballLabel,
                             style = typography.labelSmall,
                             color = colors.onSurface,
                             fontWeight = FontWeight.Bold,
