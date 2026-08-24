@@ -32,7 +32,12 @@
 // merely busy. Swapped to DeepSeek-V3.1: 3/3 on the ball-prefix format contract and 3/3 self-verify
 // PASS on the fixture balls, ~13 RPM before its own 429, versus 0.
 const PROVIDERS = [
-  { name: "groq",      url: "https://api.groq.com/openai/v1/chat/completions",  model: "openai/gpt-oss-20b",          keyEnv: "GROQ_API_KEY" },
+  // `reasoning_effort: low` is load-bearing, not tuning: gpt-oss is a reasoning model and spends
+  // the token budget on reasoning before it writes any `content`. At match-sync's per-ball
+  // budget it returned `empty completion` every time — a 200 with nothing in it, which the
+  // chain correctly treats as a failed generation. Sent only to groq; Cerebras and SambaNova
+  // reject unknown body fields.
+  { name: "groq",      url: "https://api.groq.com/openai/v1/chat/completions",  model: "openai/gpt-oss-20b",          keyEnv: "GROQ_API_KEY", extraBody: { reasoning_effort: "low" } },
   { name: "cerebras",  url: "https://api.cerebras.ai/v1/chat/completions",      model: "gpt-oss-120b",                keyEnv: "CEREBRAS_API_KEY" },
   { name: "sambanova", url: "https://api.sambanova.ai/v1/chat/completions",     model: "DeepSeek-V3.1",               keyEnv: "SAMBANOVA_API_KEY" },
 ];
@@ -290,6 +295,7 @@ export async function generateLine(
           ],
           max_tokens: maxTokens,
           temperature,
+          ...(provider.extraBody ?? {}),
         }),
         signal: AbortSignal.timeout(15_000),
       });

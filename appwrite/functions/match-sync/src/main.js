@@ -850,7 +850,10 @@ async function syncMatch({ db, matchId, title, commentaryCap, model, log, error 
       // provider keys no longer live. A rejected line is a failed generation, not a usable one —
       // it falls through to raw text and is marked, rather than being written as if it were AI.
       const generated = await generateVerifiedLine(prompt, {
-        maxTokens: 100,
+        // Covers reasoning tokens as well as the line itself. gpt-oss emits its reasoning first
+        // and only then the `content`; at 100 the budget was spent before a single word of
+        // commentary was written and every call came back `empty completion`.
+        maxTokens: 320,
         temperature: 0.7,
         // Narrowed from unconditional `true` on 2026-08-05. See isHighStakesBall: verification is
         // the difference between one provider call a line and two, and the chain sustains ~48
