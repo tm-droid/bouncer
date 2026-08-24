@@ -6,6 +6,7 @@ import com.tanush.bouncer.models.Scorecard
 import com.tanush.bouncer.models.ScrapedBatsman
 import com.tanush.bouncer.models.ScrapedBowler
 import io.appwrite.exceptions.AppwriteException
+import kotlinx.serialization.Serializable
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -15,6 +16,7 @@ import kotlinx.coroutines.withContext
 // Server-built live match snapshot (batsmen/bowler/score/scorecard), written by
 // bouncer-match-sync into match-live-detail as a JSON `payload`. Field names mirror the
 // function's output so it deserializes straight into the existing device models.
+@Serializable
 data class MatchLiveDetailPayload(
     val batsmen: List<ScrapedBatsman> = emptyList(),
     val bowler: ScrapedBowler? = null,
