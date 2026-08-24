@@ -396,16 +396,19 @@ private fun EconomyGauge(
             }
             
             // Indicator
+            // coerceIn(min, max) throws when min > max, and a canvas narrower than 10.dp — a
+            // zero-width first frame included — makes `barWidth - 5.dp` smaller than `5.dp`.
+            val inset = 5.dp.toPx().coerceAtMost(barWidth / 2f)
             val indicatorPosition = (economy / 12f).coerceIn(0f, 1f) * barWidth
             drawCircle(
                 color = category.color,
                 radius = 5.dp.toPx(),
-                center = Offset(indicatorPosition.coerceIn(5.dp.toPx(), barWidth - 5.dp.toPx()), barHeight / 2)
+                center = Offset(indicatorPosition.coerceIn(inset, (barWidth - inset).coerceAtLeast(inset)), barHeight / 2)
             )
             drawCircle(
                 color = TextPrimary,
                 radius = 2.dp.toPx(),
-                center = Offset(indicatorPosition.coerceIn(5.dp.toPx(), barWidth - 5.dp.toPx()), barHeight / 2)
+                center = Offset(indicatorPosition.coerceIn(inset, (barWidth - inset).coerceAtLeast(inset)), barHeight / 2)
             )
         }
     }

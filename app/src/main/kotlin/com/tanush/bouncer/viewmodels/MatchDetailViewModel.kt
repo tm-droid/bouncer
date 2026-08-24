@@ -202,19 +202,10 @@ class MatchDetailViewModel(
             // up to a minute of a blank Overview otherwise. Every update after this arrives free
             // over observeScorecard. The on-device CricBuzz scrape below stays as the last resort
             // for matches match-sync has not written (no live viewer, or not yet started).
-            if (_uiState.value.scorecard == null) {
-                liveSource.getScorecardForMatch(match.id)
-                    ?.takeIf { it.innings.isNotEmpty() }
-                    ?.let { sc -> _uiState.update { it.copy(scorecard = sc) } }
-            }
-            if (_uiState.value.scorecard == null) {
-                runCatching { matchRepository.fetchScorecard(match.id) }
-                    .onSuccess { sc -> _uiState.update { it.copy(scorecard = sc) } }
-                    .onFailure {
-                        breadcrumb("scorecard_fallback", "On-device scorecard fetch failed: ${it.message}")
-                        Sentry.captureException(it)
-                    }
-            }
+            resolveScorecard(_uiState.value.scorecard, match.id, liveSource, matchRepository) { e ->
+                breadcrumb("scorecard_fallback", "On-device scorecard fetch failed: ${e.message}")
+                Sentry.captureException(e)
+            }?.let { sc -> _uiState.update { it.copy(scorecard = sc) } }
             loadCommentaryFeed()
         } finally {
             _uiState.update { st ->
@@ -496,6 +487,28 @@ private fun noLiveDataError(st: MatchDetailViewModel.UiState): String? =
  */
 private fun isMatchOver(match: CricketMatch, liveStatus: String?): Boolean =
     match.isCompleted || MatchStatusClassifier.classify(liveStatus) == StatusSignal.TERMINAL
+
+/**
+ * Scorecard for first paint: Appwrite's row, then the on-device scrape as a last resort.
+ *
+ * Returns null when neither source has one, and **never returns an empty `Scorecard()`**. Both
+ * callers gate on `scorecard == null`, so storing an empty one closes the retry gates while the tab
+ * still renders "No scorecard available" — the on-device fallback used to do exactly that.
+ */
+private suspend fun resolveScorecard(
+    current: Scorecard?,
+    matchId: String,
+    liveSource: LiveMatchDetailSource,
+    repository: MatchRepository,
+    onScrapeFailure: (Throwable) -> Unit,
+): Scorecard? {
+    if (current != null) return null
+    liveSource.getScorecardForMatch(matchId)?.takeIf { it.innings.isNotEmpty() }?.let { return it }
+    return runCatching { repository.fetchScorecard(matchId) }
+        .onFailure(onScrapeFailure)
+        .getOrNull()
+        ?.takeIf { it.innings.isNotEmpty() }
+}
 
 private suspend fun scrapeCommentary(repository: MatchRepository, matchId: String): List<String> =
     runCatching {

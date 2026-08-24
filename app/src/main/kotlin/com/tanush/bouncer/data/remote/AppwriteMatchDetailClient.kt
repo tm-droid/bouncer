@@ -6,6 +6,7 @@ import com.tanush.bouncer.models.Scorecard
 import com.tanush.bouncer.models.ScrapedBatsman
 import com.tanush.bouncer.models.ScrapedBowler
 import io.appwrite.exceptions.AppwriteException
+import kotlinx.serialization.Serializable
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -15,6 +16,13 @@ import kotlinx.coroutines.withContext
 // Server-built live match snapshot (batsmen/bowler/score/scorecard), written by
 // bouncer-match-sync into match-live-detail as a JSON `payload`. Field names mirror the
 // function's output so it deserializes straight into the existing device models.
+//
+// @Serializable is load-bearing and was missing from the Gson -> kotlinx migration (02dd2fa): with
+// no compile-time serializer, `AppJson.decodeFromString<MatchLiveDetailPayload>` threw
+// "Serializer for class 'MatchLiveDetailPayload' is not found" on every read, the whole
+// match-live-detail path was dead, and the only symptom was a warning breadcrumb (ANDROID-3X).
+// Pinned by MatchLiveDetailPayloadSerializationTest.
+@Serializable
 data class MatchLiveDetailPayload(
     val batsmen: List<ScrapedBatsman> = emptyList(),
     val bowler: ScrapedBowler? = null,
