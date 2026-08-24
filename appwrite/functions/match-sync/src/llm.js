@@ -32,10 +32,69 @@
 // merely busy. Swapped to DeepSeek-V3.1: 3/3 on the ball-prefix format contract and 3/3 self-verify
 // PASS on the fixture balls, ~13 RPM before its own 429, versus 0.
 const PROVIDERS = [
-  { name: "groq",      url: "https://api.groq.com/openai/v1/chat/completions",  model: "llama-3.3-70b-versatile",     keyEnv: "GROQ_API_KEY" },
-  { name: "cerebras",  url: "https://api.cerebras.ai/v1/chat/completions",      model: "gemma-4-31b",                 keyEnv: "CEREBRAS_API_KEY" },
+  { name: "groq",      url: "https://api.groq.com/openai/v1/chat/completions",  model: "openai/gpt-oss-20b",          keyEnv: "GROQ_API_KEY" },
+  { name: "cerebras",  url: "https://api.cerebras.ai/v1/chat/completions",      model: "gpt-oss-120b",                keyEnv: "CEREBRAS_API_KEY" },
   { name: "sambanova", url: "https://api.sambanova.ai/v1/chat/completions",     model: "DeepSeek-V3.1",               keyEnv: "SAMBANOVA_API_KEY" },
 ];
+
+
+/**
+ * What each provider key can actually reach, straight from `GET /v1/models`.
+ *
+ * The chain reports failures per call, and a failed call cannot distinguish "this model is behind a
+ * paywall for my tier" from "my key is dead" from "the account is out of credit" — Groq answers 404
+ * `model_not_found` for all three. The model list can: a key that lists models is a live key, and
+ * what it lists is what that tier may ask for. This is the same check that diagnosed SambaNova's
+ * silent 429s on 2026-08-05, made repeatable instead of a one-off curl.
+ *
+ * Never throws, returns no secrets, and is read-only.
+ */
+export async function probeProviders() {
+  const out = [];
+  for (const provider of PROVIDERS) {
+    const apiKey = process.env[provider.keyEnv];
+    if (!apiKey) {
+      out.push({ provider: provider.name, configured: provider.model, error: `no ${provider.keyEnv}` });
+      continue;
+    }
+    const url = provider.url.replace(/\/chat\/completions$/, "/models");
+    try {
+      const resp = await fetch(url, {
+        headers: { Authorization: `Bearer ${apiKey}` },
+        signal: AbortSignal.timeout(15_000),
+      });
+      const body = await resp.text();
+      if (!resp.ok) {
+        out.push({
+          provider: provider.name,
+          configured: provider.model,
+          status: resp.status,
+          error: body.slice(0, PROVIDER_ERROR_DETAIL_MAX),
+        });
+        continue;
+      }
+      let ids = [];
+      try {
+        ids = (JSON.parse(body)?.data ?? []).map((m) => m?.id).filter(Boolean);
+      } catch {
+        ids = [];
+      }
+      out.push({
+        provider: provider.name,
+        configured: provider.model,
+        status: resp.status,
+        configuredIsListed: ids.includes(provider.model),
+        models: ids.slice(0, PROBE_MODEL_LIST_MAX),
+        modelCount: ids.length,
+      });
+    } catch (e) {
+      out.push({ provider: provider.name, configured: provider.model, error: e?.message ?? "threw" });
+    }
+  }
+  return out;
+}
+
+const PROBE_MODEL_LIST_MAX = 40;
 
 // How many times a provider must have been asked before "it 429s every time" is evidence of
 // anything. Below this it is indistinguishable from bad luck during a burst.

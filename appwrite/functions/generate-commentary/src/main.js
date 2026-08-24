@@ -2,7 +2,7 @@ import { Client, Databases, Storage } from "node-appwrite";
 import { InputFile } from "node-appwrite/file";
 import { createHash } from "crypto";
 
-import { deadProviders, generateVerifiedLine, isHighStakesBall, sanitize, stripPreamble } from "./llm.js";
+import { deadProviders, generateVerifiedLine, isHighStakesBall, probeProviders, sanitize, stripPreamble } from "./llm.js";
 import {
   identify,
   checkRateLimit,
@@ -144,6 +144,13 @@ async function handle({ req, res, log, error }) {
     if (!body || typeof body !== "object" || Array.isArray(body)) throw new Error();
   } catch {
     return res.json({ error: "Body must be a JSON object" }, 400);
+  }
+
+  // Diagnostic: which models each key can actually reach. A body flag rather than an env var,
+  // because a variable is snapshotted per container and removing one costs a second rebuild that is
+  // easy to skip — see .claude/rules/api-keys-and-setup.md. Read-only, returns no secrets.
+  if (body.probeProviders === true) {
+    return res.json({ providers: await probeProviders() }, 200);
   }
 
   const {
