@@ -252,6 +252,10 @@
     <string name="tab_ai" translatable="false">AI</string>
     <string name="tab_unavailable_title">Tab unavailable</string>
     <string name="tab_unavailable_subtitle">This section could not be loaded.</string>
+    <string name="commentary_filter_all">All</string>
+    <string name="commentary_filter_wickets">Wickets</string>
+    <string name="commentary_filter_boundaries">Boundaries</string>
+    <string name="commentary_filter_milestones">Milestones</string>
     <string name="action_retry">Retry</string>
     <!-- Current and required run rate. Standard cricket abbreviations, said the same in Hindi. -->
     <string name="stat_crr_value" translatable="false">CRR: %1$s</string>

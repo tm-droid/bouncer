@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.ui.components.CoilImage
 import com.tanush.bouncer.ui.theme.*
+import java.util.Locale
 
 /**
  * Bowler performance data
@@ -339,7 +340,7 @@ private fun EconomyGauge(
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 Text(
-                    text = String.format("%.2f", animatedEconomy),
+                    text = String.format(Locale.US, "%.2f", animatedEconomy),
                     color = category.color,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold
@@ -484,7 +485,7 @@ private fun BowlingSummary(bowlers: List<BowlerPerformance>, teamColor: Color) {
                 
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
-                        text = String.format("%.2f", teamEconomy),
+                        text = String.format(Locale.US, "%.2f", teamEconomy),
                         color = if (teamEconomy < 7) colors.statusSuccess else if (teamEconomy < 9) colors.statusWarning else colors.statusLive,
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Black
@@ -581,7 +582,7 @@ fun MiniBowlingCard(
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = String.format("%.1f", bowler.economy),
+                    text = String.format(Locale.US, "%.1f", bowler.economy),
                     color = bowler.economyCategory.color,
                     fontSize = 10.sp
                 )

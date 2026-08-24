@@ -6,7 +6,6 @@ import android.util.Log
 import com.tanush.bouncer.data.local.BouncerDatabase
 import com.tanush.bouncer.data.local.entities.MatchEntity
 import com.tanush.bouncer.data.remote.AppwriteClient
-import com.tanush.bouncer.network.RetrofitClient
 import com.tanush.bouncer.network.models.SanwebMatchesListResponse
 import io.sentry.Sentry
 import io.sentry.SentryLogLevel
@@ -113,65 +112,6 @@ object CricketRepository {
         } catch (e: Exception) {
             Log.w(TAG, "readMatchesFromStorage failed for $type", e)
             null
-        }
-    }
-
-    suspend fun getProbabilityHistory(matchId: String, localApi: com.tanush.bouncer.network.LocalApi? = null): AppResult<List<com.tanush.bouncer.models.WinProbabilityPoint>> {
-        sentryBreadcrumb("network.api", "Fetching probability history", data = mapOf("matchId" to matchId))
-        return AppResult.runCatchingSuspend {
-            val api = localApi ?: RetrofitClient.localApi
-            val resp = api.getProbability(matchId)
-            val mapped = resp.map { dto ->
-                com.tanush.bouncer.models.WinProbabilityPoint(
-                    over = dto.over,
-                    team1Probability = dto.team1Probability,
-                    team2Probability = dto.team2Probability,
-                    keyEvent = dto.keyEvent
-                )
-            }
-            Log.d(TAG, "Successfully fetched probability history for matchId: $matchId")
-            Sentry.metrics().distribution("repository.probability.points", mapped.size.toDouble())
-            sentryBreadcrumb(
-                "network.api",
-                "Successfully fetched probability history",
-                data = mapOf("matchId" to matchId, "pointCount" to mapped.size)
-            )
-            mapped
-        }.also {
-            if (it is AppResult.Error) {
-                Log.e(TAG, "Error fetching probability history for matchId: $matchId", it.exception)
-                sentryBreadcrumb(
-                    "network.api",
-                    "Error fetching probability history",
-                    SentryLevel.ERROR,
-                    mapOf("matchId" to matchId, "error" to it.exception.message)
-                )
-                Sentry.captureException(it.exception)
-                Sentry.metrics().count("repository.getProbabilityHistory.error", 1.0)
-            }
-        }
-    }
-
-    suspend fun getMatchCommentary(matchId: String): AppResult<String> {
-        sentryBreadcrumb("network.api", "Fetching match commentary", data = mapOf("matchId" to matchId))
-        return AppResult.runCatchingSuspend {
-            val resp = RetrofitClient.localApi.getCommentary(matchId)
-            Log.d(TAG, "Successfully fetched match commentary for matchId: $matchId")
-            Sentry.metrics().count("repository.getMatchCommentary.success", 1.0)
-            sentryBreadcrumb("network.api", "Successfully fetched match commentary", data = mapOf("matchId" to matchId))
-            resp.latestCommentary
-        }.also {
-            if (it is AppResult.Error) {
-                Log.e(TAG, "Error fetching match commentary for matchId: $matchId", it.exception)
-                sentryBreadcrumb(
-                    "network.api",
-                    "Error fetching match commentary",
-                    SentryLevel.ERROR,
-                    mapOf("matchId" to matchId, "error" to it.exception.message)
-                )
-                Sentry.captureException(it.exception)
-                Sentry.metrics().count("repository.getMatchCommentary.error", 1.0)
-            }
         }
     }
 

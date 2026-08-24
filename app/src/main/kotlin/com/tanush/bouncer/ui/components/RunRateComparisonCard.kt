@@ -29,6 +29,7 @@ import com.tanush.bouncer.ui.theme.*
 import kotlin.math.max
 import kotlin.math.min
 import com.tanush.bouncer.ui.theme.GoldPrimary
+import java.util.Locale
 
 /**
  * Run rate data for each over
@@ -134,7 +135,11 @@ fun RunRateComparisonCard(
                 LegendDot(color = team2Color, label = team2Name)
                 if (requiredRunRate != null) {
                     Spacer(modifier = Modifier.width(24.dp))
-                    LegendDot(color = colors.statusLive, label = "Required (${String.format("%.2f", requiredRunRate)})", dashed = true)
+                    LegendDot(
+                        color = colors.statusLive,
+                        label = "Required (${String.format(Locale.US, "%.2f", requiredRunRate)})",
+                        dashed = true,
+                    )
                 }
             }
             
@@ -306,7 +311,7 @@ fun RunRateComparisonCard(
                     for (i in 5 downTo 0) {
                         val value = maxRunRate * i / 5
                         Text(
-                            String.format("%.1f", value),
+                            String.format(Locale.US, "%.1f", value),
                             color = colors.textTertiary,
                             fontSize = 9.sp,
                             modifier = Modifier.weight(1f)
@@ -432,7 +437,7 @@ private fun RunRateIndicator(
             border = BorderStroke(0.5.dp, color.copy(alpha = 0.3f))
         ) {
             Text(
-                String.format("%.2f", runRate),
+                String.format(Locale.US, "%.2f", runRate),
                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                 color = color,
                 fontSize = 18.sp,
@@ -469,7 +474,7 @@ fun CompactRunRateDisplay(
                 fontWeight = FontWeight.Medium
             )
             Text(
-                String.format("%.2f", currentRunRate),
+                String.format(Locale.US, "%.2f", currentRunRate),
                 color = colors.textPrimary,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold
@@ -489,7 +494,7 @@ fun CompactRunRateDisplay(
                     fontWeight = FontWeight.Medium
                 )
                 Text(
-                    String.format("%.2f", requiredRunRate),
+                    String.format(Locale.US, "%.2f", requiredRunRate),
                     color = if (requiredRunRate > currentRunRate) colors.statusLive else colors.statusSuccess,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold
@@ -533,7 +538,7 @@ fun RunRateTrendIndicator(
             modifier = Modifier.size(16.dp)
         )
         Text(
-            String.format("%.2f", currentRunRate),
+            String.format(Locale.US, "%.2f", currentRunRate),
             color = trendColor,
             fontSize = 14.sp,
             fontWeight = FontWeight.Bold

@@ -43,6 +43,16 @@ import java.util.Locale
  * Over notation is not a decimal: "19.5" is 19 overs and 5 balls (119 balls), not 19.5 overs.
  * Dividing by the decimal reported 5.13 where the true figure was 5.04.
  */
+/**
+ * A required run rate worth showing, or null.
+ *
+ * The server sends `"0"` whenever a required rate does not exist — a first innings, a Test that is
+ * not a fourth-innings chase, a completed chase — and `"RRR: 0"` is not a true statement about any
+ * of them. Null is: there is no target to chase at this rate.
+ */
+internal fun meaningfulRequiredRunRate(raw: String?): String? =
+    raw?.takeIf { it.isNotBlank() && (it.trim().toDoubleOrNull() ?: 0.0) > 0.0 }
+
 internal fun computeEconomy(overs: String, runs: String, declared: String): String? =
     declared.takeIf { it.isNotBlank() } ?: run {
         val balls = CricketConstants.ballsFromOvers(overs) ?: return@run null

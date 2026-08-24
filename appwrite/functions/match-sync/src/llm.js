@@ -146,6 +146,32 @@ export function stripPreamble(text) {
  * where no key was configured at all — while raw Cricbuzz text went on being written to
  * `match-commentary` as if it were generated.
  */
+/**
+ * The provider's own error code/message, trimmed to something that fits a Sentry tag.
+ *
+ * Never throws and never blocks the fallback: a body that cannot be read is simply no detail.
+ */
+async function providerErrorDetail(resp) {
+  try {
+    const body = await resp.text();
+    if (!body) return "";
+    let parsed;
+    try {
+      parsed = JSON.parse(body);
+    } catch {
+      return body.slice(0, PROVIDER_ERROR_DETAIL_MAX);
+    }
+    const err = parsed?.error ?? parsed;
+    const code = err?.code ?? err?.type ?? "";
+    const message = err?.message ?? "";
+    return [code, message].filter(Boolean).join(": ").slice(0, PROVIDER_ERROR_DETAIL_MAX);
+  } catch {
+    return "";
+  }
+}
+
+const PROVIDER_ERROR_DETAIL_MAX = 160;
+
 export async function generateLine(
   prompt,
   {
@@ -209,8 +235,13 @@ export async function generateLine(
         signal: AbortSignal.timeout(15_000),
       });
       if (!resp.ok) {
-        error?.(`${provider.name} HTTP ${resp.status}`);
-        note(provider.name, `HTTP ${resp.status}`);
+        // The status alone is not diagnosable. Groq answers 404 both for a decommissioned model
+        // and for one this key's tier cannot reach; a 402 may be a spent budget or an unpaid
+        // account. Those need different actions, and the difference is only in the body — which is
+        // exactly what "attempts: groq: HTTP 404" left out while the chain sat down for weeks.
+        const detail = await providerErrorDetail(resp);
+        error?.(`${provider.name} HTTP ${resp.status}${detail ? ` (${detail})` : ""}`);
+        note(provider.name, `HTTP ${resp.status}${detail ? ` ${detail}` : ""}`);
         noteHealth(provider.name, resp.status === 429 ? "rate_limited" : "error");
         unavailable?.add(provider.name);
         continue;

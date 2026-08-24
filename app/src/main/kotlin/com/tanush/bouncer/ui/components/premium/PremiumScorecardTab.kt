@@ -28,6 +28,7 @@ import com.tanush.bouncer.models.Scorecard
 import com.tanush.bouncer.models.Innings
 import com.tanush.bouncer.models.BatsmanStats
 import com.tanush.bouncer.models.BowlerStats
+import com.tanush.bouncer.models.FallOfWicket
 import com.tanush.bouncer.analysis.CricketConstants
 import com.tanush.bouncer.analysis.MatchProjections
 import com.tanush.bouncer.ui.components.BowlerPerformance
@@ -161,7 +162,7 @@ fun PremiumScorecardTab(
             if (innings != null && innings.fallOfWickets.isNotEmpty()) {
                 item { SectionHeader("Fall of Wickets") }
                 item {
-                    FallOfWicketsCarousel(innings.fallOfWickets.map { "${it.score} (${it.batsman}, ${it.overs})" })
+                    FallOfWicketsCarousel(innings.fallOfWickets)
                 }
             }
 
@@ -359,18 +360,21 @@ private fun calculateRequiredRunRate(scorecard: Scorecard, currentInningsIndex: 
         ?.let { String.format(Locale.US, "%.2f", it) }
 }
 
+// Takes the model, not a formatted string. The caller used to format "score (batsman, overs)" and
+// this split it back apart on "(" — a format-then-parse round trip whose only possible outcomes are
+// the original data or a worse version of it, and which loses the batsman on any name with a
+// bracket in it.
 @Composable
-private fun FallOfWicketsCarousel(fow: List<String>) {
+private fun FallOfWicketsCarousel(fow: List<FallOfWicket>) {
     val hierarchy = BouncerDesignSystem.hierarchy
     LazyRow(
         contentPadding = PaddingValues(horizontal = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        itemsIndexed(fow, key = { index, entry -> "fow_${index}_$entry" }) { _, entry ->
-            val parts = entry.split("(")
-            val score = parts.getOrNull(0)?.trim() ?: "-"
-            val detail = parts.getOrNull(1)?.replace(")", "") ?: ""
-            
+        itemsIndexed(fow, key = { index, entry -> "fow_${index}_${entry.score}_${entry.batsman}" }) { _, entry ->
+            val score = entry.score.ifBlank { "-" }
+            val detail = listOf(entry.batsman, entry.overs).filter { it.isNotBlank() }.joinToString(", ")
+
             Box(
                 modifier = Modifier
                     .width(140.dp)

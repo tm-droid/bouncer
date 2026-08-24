@@ -44,6 +44,7 @@ import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.ui.theme.ChartBlue
 import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
+import java.util.Locale
 
 /**
  * PowerPlay Analysis Card
@@ -335,7 +336,7 @@ private fun PowerPlayPhaseRow(
                 )
 
                 StatBubble(
-                    value = String.format("%.2f", phase.runRate),
+                    value = String.format(Locale.US, "%.2f", phase.runRate),
                     label = "RR",
                     isHighlighted = phase.runRate > 8.0,
                 )

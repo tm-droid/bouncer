@@ -61,6 +61,20 @@
 -keep class io.appwrite.models.** { *; }
 -keep class io.appwrite.enums.** { *; }
 
+# `Query` and `Operator` serialise THEMSELVES with the same reflective Gson: `Query.toString()` is
+# `JsonExtensionsKt.toJson(this)` over the private fields `method`, `attribute`, `values`, and that
+# string is what goes on the wire. R8 renames those fields, so a minified build sent
+# `{"a":"orderDesc",...}` and Appwrite answered
+#
+#   Invalid query method:
+#
+# — with the method name empty, because there was no `method` key to read. Every query in the app
+# failed at once (commentary ordered, its unordered retry, and highlights, in the same second) and
+# each caller swallowed it into its own fallback, so the app looked slow rather than broken.
+# They are outside `io.appwrite.models`, so the keep above does not reach them.
+-keep class io.appwrite.Query { *; }
+-keep class io.appwrite.Operator { *; }
+
 # ── Jsoup ─────────────────────────────────────────────────────────────────────
 -keep class org.jsoup.** { *; }
 -keeppackagenames org.jsoup.nodes

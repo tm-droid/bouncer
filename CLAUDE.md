@@ -134,6 +134,21 @@ falls back to a non-menu link. Pinned by `CricBuzzScorecardRowFilterTest` agains
 with `cricbuzz.js` declared as a Gradle test input so a one-sided edit fails the build.
 **Never key a lazy list on scraped text** — keys must include the index.
 
+**R8 renames the Appwrite SDK's own request fields.** `io.appwrite.Query.toString()` is
+`JsonExtensionsKt.toJson(this)` — reflective Gson over the private `method` / `attribute` / `values`
+fields — and that string is what goes on the wire. Minified, it sent `{"a":"orderDesc",…}` and
+Appwrite answered `Invalid query method:` with an empty name, failing **every** query in the app at
+once while each caller swallowed it into its own fallback. `Query` and `Operator` sit outside
+`io.appwrite.models`, so the existing keep did not reach them; `proguard-rules.pro` now keeps both.
+Verify a change here in the minified dex, not the source: `dexdump -d <classes.dex>` must still show
+`name : 'method'` inside `Lio/appwrite/Query;`.
+
+**There is no win-probability history on the server.** `live-winprob` and the detail payload are both
+snapshots. `MatchDetailViewModel` accumulates the swing series on the device as the probability
+moves, session-scoped. It used to come from `RetrofitClient.localApi` — `http://10.0.2.2:8000/`, an
+emulator-only dev mock — so on any real device it was a guaranteed CLEARTEXT failure per match open
+and the chart never rendered. That client is deleted; do not reintroduce a localhost API.
+
 **The commentary `ball` column is the over number.** `CommentaryEntry.ball` comes straight off the
 `match-commentary` row. The tab used to regex a leading `40.4` out of the prose, which only exists
 on lines the AI chain rewrote: the passthrough branch (`ai_generated = false`) writes raw Cricbuzz

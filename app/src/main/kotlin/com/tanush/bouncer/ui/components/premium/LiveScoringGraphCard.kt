@@ -37,6 +37,7 @@ import com.tanush.bouncer.analysis.MatchProjections
 import com.tanush.bouncer.ui.theme.*
 import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
+import java.util.Locale
 
 /**
  * Live scoring graph card
@@ -437,7 +438,7 @@ fun LiveScoringGraphCard(
 
                     ScoringStatItem(
                         label = "Required RR",
-                        value = String.format("%.2f", rrr),
+                        value = String.format(Locale.US, "%.2f", rrr),
                         subtext = "$required from $oversRemaining",
                     )
                 }

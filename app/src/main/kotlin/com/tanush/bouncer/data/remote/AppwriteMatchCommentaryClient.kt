@@ -44,6 +44,11 @@ data class CommentaryEntry(
     val text: String,
     val event: TimelineEventType?,
     val ball: String? = null,
+    /**
+     * The row's `sort_key`, which is what the feed is ordered by. Null for a line that did not come
+     * from the table (the on-device scrape fallback), which sorts as newest.
+     */
+    val sortKey: Double? = null,
 )
 
 data class CommentaryEvent(
@@ -113,6 +118,7 @@ object AppwriteMatchCommentaryClient : AppwriteTableClient("AppwriteMatchComment
                 text = text,
                 event = parseCommentaryEvent(row.data["event"] as? String),
                 ball = (row.data["ball"] as? String)?.takeIf { it.isNotBlank() },
+                sortKey = (row.data["sort_key"] as? Number)?.toDouble(),
             )
         }
     }

@@ -59,6 +59,7 @@ import com.tanush.bouncer.ui.components.v2.SectionHeaderV2
 import com.tanush.bouncer.ui.components.v2.ShimmerPlayerHeader
 import com.tanush.bouncer.ui.components.v2.ShimmerStatGrid
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
+import java.util.Locale
 
 private enum class LoadState { Loading, Success, Error }
 
@@ -256,8 +257,8 @@ fun PlayerDetailScreenV2(
                                             "Innings" to "${currentStats.innings}",
                                             "Runs" to "${currentStats.runs}",
                                             "HS" to currentStats.highScore,
-                                            "Avg" to "%.1f".format(currentStats.average),
-                                            "SR" to "%.1f".format(currentStats.strikeRate),
+                                            "Avg" to String.format(Locale.US, "%.1f", currentStats.average),
+                                            "SR" to String.format(Locale.US, "%.1f", currentStats.strikeRate),
                                             "100s" to "${currentStats.hundreds}",
                                             "50s" to "${currentStats.fifties}",
                                             "4s" to "${currentStats.fours}",
@@ -282,8 +283,8 @@ fun PlayerDetailScreenV2(
                                             listOf(
                                                 "Wickets" to "${currentStats.wickets}",
                                                 "Best" to currentStats.bestBowling,
-                                                "Avg" to "%.1f".format(currentStats.bowlingAverage),
-                                                "Econ" to "%.1f".format(currentStats.economy),
+                                                "Avg" to String.format(Locale.US, "%.1f", currentStats.bowlingAverage),
+                                                "Econ" to String.format(Locale.US, "%.1f", currentStats.economy),
                                                 "5W" to "${currentStats.fiveWickets}",
                                                 "Ct" to "${currentStats.catches}",
                                             ),

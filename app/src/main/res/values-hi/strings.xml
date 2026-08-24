@@ -291,4 +291,12 @@
     <string name="highlights_empty_subtitle">इस मैच के अहम पल उपलब्ध होते ही क्लिप यहाँ दिखेंगी।</string>
     <string name="tab_unavailable_title">टैब उपलब्ध नहीं</string>
     <string name="tab_unavailable_subtitle">यह सेक्शन लोड नहीं हो सका।</string>
+    <string name="commentary_filter_all">सभी</string>
+    <string name="commentary_filter_wickets">विकेट</string>
+    <string name="commentary_filter_boundaries">बाउंड्री</string>
+    <string name="commentary_filter_milestones">माइलस्टोन</string>
+    <string name="stat_crr">CRR</string>
+    <string name="stat_crr_value">CRR: %1$s</string>
+    <string name="stat_rrr">RRR</string>
+    <string name="stat_rrr_value">RRR: %1$s</string>
 </resources>

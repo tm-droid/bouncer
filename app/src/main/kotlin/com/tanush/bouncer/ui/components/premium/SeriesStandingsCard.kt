@@ -36,6 +36,7 @@ import com.tanush.bouncer.ui.theme.WarningYellow
 import com.tanush.bouncer.ui.theme.WicketRed
 import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
+import java.util.Locale
 
 /**
  * Series Standings Card
@@ -379,9 +380,9 @@ private fun StandingsTeamRow(
         )
         TableDataText(
             text = if (team.netRunRate >= 0) {
-                "+${String.format("%.2f", team.netRunRate)}"
+                "+${String.format(Locale.US, "%.2f", team.netRunRate)}"
             } else {
-                String.format("%.2f", team.netRunRate)
+                String.format(Locale.US, "%.2f", team.netRunRate)
             },
             color = if (team.netRunRate >= 0) colors.statusSuccess else colors.statusLive,
             modifier = Modifier.width(50.dp),

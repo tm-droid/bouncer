@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.ui.theme.*
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
+import java.util.Locale
 
 /**
  * Premium batsman milestone card with celebration effects
@@ -307,7 +308,7 @@ fun BatsmanMilestoneCard(
                     )
                     InningsStatBox(
                         label = "S/R",
-                        value = String.format("%.1f", milestoneInfo.strikeRate),
+                        value = String.format(Locale.US, "%.1f", milestoneInfo.strikeRate),
                         icon = "⚡",
                         color = hierarchy.secondary.primary
                     )

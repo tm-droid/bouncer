@@ -32,6 +32,7 @@ import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 import com.tanush.bouncer.BouncerActivity
+import java.util.Locale
 
 /**
  * InteractiveWidgetComponents - Tappable and Interactive Widget Elements
@@ -327,7 +328,7 @@ fun OversProgressBar(
                 style = WidgetTypography.labelMedium
             )
             Text(
-                text = "${String.format("%.1f", currentOvers)}/${totalOvers.toInt()}",
+                text = "${String.format(Locale.US, "%.1f", currentOvers)}/${totalOvers.toInt()}",
                 style = TextStyle(
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Medium,
@@ -431,7 +432,7 @@ private fun InningsProgressRow(
         }
         
         Text(
-            text = String.format("%.1f", overs),
+            text = String.format(Locale.US, "%.1f", overs),
             style = WidgetTypography.labelSmall,
             modifier = GlanceModifier.width(32.dp)
         )
@@ -1125,7 +1126,7 @@ fun RunRateComparison(
                 style = WidgetTypography.labelSmall
             )
             Text(
-                text = String.format("%.2f", currentRunRate),
+                text = String.format(Locale.US, "%.2f", currentRunRate),
                 style = TextStyle(
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
@@ -1152,7 +1153,7 @@ fun RunRateComparison(
                 )
                 val rrrColor = if (rrr > currentRunRate) WidgetColorScheme.error else WidgetColorScheme.success
                 Text(
-                    text = String.format("%.2f", rrr),
+                    text = String.format(Locale.US, "%.2f", rrr),
                     style = TextStyle(
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,
@@ -1343,7 +1344,7 @@ private fun ScoreProgressBar(
         Spacer(modifier = GlanceModifier.width(8.dp))
         
         Text(
-            text = "$score (${String.format("%.1f", overs)})",
+            text = "$score (${String.format(Locale.US, "%.1f", overs)})",
             style = WidgetTypography.labelSmall
         )
     }
@@ -1605,7 +1606,7 @@ fun PowerplayIndicator(
             Spacer(modifier = GlanceModifier.width(6.dp))
             
             Text(
-                text = "${String.format("%.1f", oversInPhase)}/${totalOversInPhase.toInt()}",
+                text = "${String.format(Locale.US, "%.1f", oversInPhase)}/${totalOversInPhase.toInt()}",
                 style = WidgetTypography.labelSmall
             )
         }

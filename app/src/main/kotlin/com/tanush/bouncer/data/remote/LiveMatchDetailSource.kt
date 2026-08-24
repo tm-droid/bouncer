@@ -1,14 +1,11 @@
 package com.tanush.bouncer.data.remote
 
-import com.tanush.bouncer.data.AppResult
-import com.tanush.bouncer.data.CricketRepository
-import com.tanush.bouncer.models.WinProbabilityPoint
 import kotlinx.coroutines.flow.Flow
 
 /**
  * Abstraction over the server-backed live match detail feeds consumed by
- * MatchDetailViewModel: the live snapshot, the Realtime detail/commentary
- * event streams, and the win-probability history.
+ * MatchDetailViewModel: the live snapshot, the scorecard, and the Realtime
+ * detail/commentary event streams.
  *
  * Follows the [com.tanush.bouncer.data.MatchRepository] pattern: no DI
  * framework, implementations are constructed manually and passed in via
@@ -41,9 +38,6 @@ interface LiveMatchDetailSource {
 
     /** Realtime new commentary lines for ONE match, subscribed while collected. */
     fun observeCommentary(matchId: String): Flow<CommentaryEvent>
-
-    /** Win-probability history points for the swing chart. */
-    suspend fun getProbabilityHistory(matchId: String): AppResult<List<WinProbabilityPoint>>
 }
 
 /** Production wiring: Appwrite Realtime clients + CricketRepository. */
@@ -66,7 +60,4 @@ object ProductionLiveDetailSource : LiveMatchDetailSource {
 
     override fun observeCommentary(matchId: String): Flow<CommentaryEvent> =
         AppwriteMatchCommentaryClient.observeCommentary(matchId)
-
-    override suspend fun getProbabilityHistory(matchId: String): AppResult<List<WinProbabilityPoint>> =
-        CricketRepository.getProbabilityHistory(matchId)
 }

@@ -50,8 +50,6 @@ internal class FakeLiveDetailSource(private val elapsed: () -> Long) : LiveMatch
         }
     }
 
-    override suspend fun getProbabilityHistory(matchId: String): AppResult<List<WinProbabilityPoint>> =
-        AppResult.Success(ShowcaseScript.probabilityHistory())
 
     private companion object {
         const val DETAIL_TICK_MS = 4_000L

@@ -69,8 +69,6 @@ class MatchDetailPresenceHeartbeatTest {
         override fun observeDetail(matchId: String): Flow<MatchLiveDetailPayload> = emptyFlow()
         override fun observeCommentary(matchId: String): Flow<CommentaryEvent> = emptyFlow()
         override fun observeScorecard(matchId: String): Flow<Scorecard> = emptyFlow()
-        override suspend fun getProbabilityHistory(matchId: String): AppResult<List<WinProbabilityPoint>> =
-            AppResult.Success(emptyList())
     }
 
     private fun match(status: String, currentStatus: String) = CricketMatch(

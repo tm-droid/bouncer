@@ -33,6 +33,7 @@ import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.random.Random
 import com.tanush.bouncer.ui.theme.GoldPrimary
+import java.util.Locale
 
 /**
  * Premium circular win probability indicator with animated arcs
@@ -319,7 +320,7 @@ fun RunRateSpeedometer(
             modifier = Modifier.offset(y = 20.dp)
         ) {
             Text(
-                text = String.format("%.2f", animatedCRR),
+                text = String.format(Locale.US, "%.2f", animatedCRR),
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Black,
                 color = crrColor
@@ -649,7 +650,7 @@ fun PlayerImpactRating(
             // Impact score
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
-                    String.format("%.1f", animatedScore),
+                    String.format(Locale.US, "%.1f", animatedScore),
                     color = ratingColor,
                     fontSize = 22.sp,
                     fontWeight = FontWeight.Black

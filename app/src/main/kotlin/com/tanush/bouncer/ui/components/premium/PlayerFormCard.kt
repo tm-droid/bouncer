@@ -33,6 +33,7 @@ import com.tanush.bouncer.ui.theme.TextTertiary
 import com.tanush.bouncer.ui.theme.WarningOrange
 import com.tanush.bouncer.ui.theme.WicketRed
 import com.tanush.bouncer.ui.theme.BouncerDesignSystem
+import java.util.Locale
 
 /**
  * Player Form Card - Technical Performance Analytics.
@@ -294,13 +295,13 @@ private fun BatterFormRow(
             // Stats
             Column(horizontalAlignment = Alignment.End) {
                 Text(
-                    text = "AVG ${String.format("%.1f", batter.average)}",
+                    text = "AVG ${String.format(Locale.US, "%.1f", batter.average)}",
                     color = colors.textPrimary,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Black,
                 )
                 Text(
-                    text = "SR ${String.format("%.1f", batter.strikeRate)}",
+                    text = "SR ${String.format(Locale.US, "%.1f", batter.strikeRate)}",
                     color = colors.textTertiary,
                     fontSize = 9.sp,
                     fontWeight = FontWeight.Bold
@@ -397,13 +398,13 @@ private fun BowlerFormRow(
             // Stats
             Column(horizontalAlignment = Alignment.End) {
                 Text(
-                    text = "ECON ${String.format("%.1f", bowler.economy)}",
+                    text = "ECON ${String.format(Locale.US, "%.1f", bowler.economy)}",
                     color = colors.statusInfo,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Black,
                 )
                 Text(
-                    text = "AVG ${String.format("%.1f", bowler.average)}",
+                    text = "AVG ${String.format(Locale.US, "%.1f", bowler.average)}",
                     color = colors.textTertiary,
                     fontSize = 9.sp,
                     fontWeight = FontWeight.Bold

@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.ui.theme.*
 import io.sentry.Sentry
+import java.util.Locale
 
 /**
  * Data class for partnership information
@@ -292,7 +293,7 @@ private fun CurrentPartnershipCard(
                     val runRate = if (partnership.totalBalls > 0) 
                         (partnership.totalRuns * 6.0 / partnership.totalBalls) else 0.0
                     Text(
-                        text = "RR ${String.format("%.2f", runRate)}",
+                        text = "RR ${String.format(Locale.US, "%.2f", runRate)}",
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Medium,
                         color = when {

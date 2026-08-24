@@ -62,6 +62,7 @@ import com.tanush.bouncer.ui.components.v2.FilterChipRowV2
 import com.tanush.bouncer.ui.components.v2.SectionHeaderV2
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 import kotlinx.coroutines.delay
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -495,7 +496,7 @@ private fun buildComparisonRows(s1: FormatStats, s2: FormatStats): List<Comparis
 private fun formatStat(value: Number): String {
     return when (value) {
         is Int -> value.toString()
-        is Double -> if (value == 0.0) "0" else "%.1f".format(value)
+        is Double -> if (value == 0.0) "0" else String.format(Locale.US, "%.1f", value)
         else -> value.toString()
     }
 }

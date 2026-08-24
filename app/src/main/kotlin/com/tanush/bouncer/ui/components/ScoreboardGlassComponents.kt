@@ -32,6 +32,7 @@ import com.tanush.bouncer.ui.theme.*
 import kotlinx.coroutines.delay
 import kotlin.random.Random
 import io.sentry.Sentry
+import java.util.Locale
 
 @Composable
 fun AnimatedScoreDisplay(
@@ -98,7 +99,7 @@ fun RunRateIndicator(
                     letterSpacing = 1.sp
                 )
                 Text(
-                    text = String.format("%.2f", currentRunRate),
+                    text = String.format(Locale.US, "%.2f", currentRunRate),
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Black,
                     color = colors.textPrimary
@@ -114,7 +115,7 @@ fun RunRateIndicator(
                         letterSpacing = 1.sp
                     )
                     Text(
-                        text = String.format("%.2f", rrr),
+                        text = String.format(Locale.US, "%.2f", rrr),
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Black,
                         color = color

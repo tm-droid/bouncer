@@ -68,7 +68,7 @@ class CommentaryFilterTest {
     fun `Boundaries returns the fours and sixes the server classified`() {
         assertEquals(
             listOf(fourProse, sixProse),
-            filterCommentary(feed(), "Boundaries").map { it.text },
+            filterCommentary(feed(), CommentaryFilter.BOUNDARIES).map { it.text },
         )
     }
 
@@ -76,13 +76,13 @@ class CommentaryFilterTest {
     fun `Wickets returns the dismissal, not the boundaries`() {
         assertEquals(
             listOf(wicketProse),
-            filterCommentary(feed(), "Wickets").map { it.text },
+            filterCommentary(feed(), CommentaryFilter.WICKETS).map { it.text },
         )
     }
 
     @Test
     fun `All returns every line untouched by the chips`() {
-        assertEquals(feed().map { it.text }, filterCommentary(feed(), "All").map { it.text })
+        assertEquals(feed().map { it.text }, filterCommentary(feed(), CommentaryFilter.ALL).map { it.text })
     }
 
     // ── The two ways an event can be absent ──────────────────────────────────
@@ -95,7 +95,7 @@ class CommentaryFilterTest {
             "18.2: Bumrah nails the yorker, no run, and India need six from four.",
             TimelineEventType.OTHER,
         )
-        assertTrue(filterCommentary(listOf(entry), "Boundaries").isEmpty())
+        assertTrue(filterCommentary(listOf(entry), CommentaryFilter.BOUNDARIES).isEmpty())
         assertFalse(entry.parseBall().isSix)
         assertFalse(entry.parseBall().isFour)
     }
@@ -108,8 +108,8 @@ class CommentaryFilterTest {
             CommentaryEntry(rawFour, event = null),
             CommentaryEntry(rawWicket, event = null),
         )
-        assertEquals(listOf(rawFour), filterCommentary(scraped, "Boundaries").map { it.text })
-        assertEquals(listOf(rawWicket), filterCommentary(scraped, "Wickets").map { it.text })
+        assertEquals(listOf(rawFour), filterCommentary(scraped, CommentaryFilter.BOUNDARIES).map { it.text })
+        assertEquals(listOf(rawWicket), filterCommentary(scraped, CommentaryFilter.WICKETS).map { it.text })
     }
 
     @Test
@@ -120,8 +120,8 @@ class CommentaryFilterTest {
             "8.4 Caught at the FOUR boundary rope, and that is the innings over.",
             TimelineEventType.WICKET,
         )
-        assertTrue(filterCommentary(listOf(entry), "Boundaries").isEmpty())
-        assertEquals(1, filterCommentary(listOf(entry), "Wickets").size)
+        assertTrue(filterCommentary(listOf(entry), CommentaryFilter.BOUNDARIES).isEmpty())
+        assertEquals(1, filterCommentary(listOf(entry), CommentaryFilter.WICKETS).size)
     }
 
     // ── Milestones read the text on purpose ──────────────────────────────────
@@ -134,7 +134,7 @@ class CommentaryFilterTest {
             "31.3: Burns pushes it away for a single and brings up a composed fifty at Hove.",
             TimelineEventType.OTHER,
         )
-        assertEquals(1, filterCommentary(listOf(entry), "Milestones").size)
+        assertEquals(1, filterCommentary(listOf(entry), CommentaryFilter.MILESTONES).size)
     }
 
     // ── Ball prefix ──────────────────────────────────────────────────────────
@@ -172,7 +172,7 @@ class CommentaryFilterTest {
             CommentaryEntry("40.5: Albert drives.", TimelineEventType.FOUR),
             CommentaryEntry(fourProse, TimelineEventType.FOUR),
         )
-        val boundaries = filterCommentary(entries, "Boundaries")
+        val boundaries = filterCommentary(entries, CommentaryFilter.BOUNDARIES)
         assertEquals(1, boundaries.size)
         assertEquals(TimelineEventType.FOUR, boundaries.single().event)
     }

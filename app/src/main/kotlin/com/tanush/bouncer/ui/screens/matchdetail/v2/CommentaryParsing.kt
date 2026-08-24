@@ -6,6 +6,7 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
+import com.tanush.bouncer.R
 import com.tanush.bouncer.data.remote.CommentaryEntry
 import com.tanush.bouncer.models.TimelineEventType
 import com.tanush.bouncer.utils.BallMetric
@@ -128,9 +129,24 @@ internal fun ParsedBall.toBallString(): String = when {
     else -> runs.toString()
 }
 
+/**
+ * The commentary tab's filter chips.
+ *
+ * An enum rather than the chip's own label, which is what this compared before. The labels are
+ * translated now, so a `selectedFilter == "Wickets"` test passes only in English — every filter
+ * would silently return the whole feed in any other locale. Same trap the pager's `when` on tab
+ * titles had, and the reason it dispatches on resource ids.
+ */
+internal enum class CommentaryFilter(val labelRes: Int) {
+    ALL(R.string.commentary_filter_all),
+    WICKETS(R.string.commentary_filter_wickets),
+    BOUNDARIES(R.string.commentary_filter_boundaries),
+    MILESTONES(R.string.commentary_filter_milestones),
+}
+
 internal fun filterCommentary(
     commentary: List<CommentaryEntry>,
-    selectedFilter: String,
+    selectedFilter: CommentaryFilter,
 ): List<CommentaryEntry> {
     // The generic overload carries `event` through a pass that rewrites the text; the per-line
     // cleanup that used to run here first is exactly what deduplicateByBall's own normalize does.
@@ -139,18 +155,18 @@ internal fun filterCommentary(
         textOf = { it.text },
         withText = { entry, text -> entry.copy(text = text) },
     )
-    if (selectedFilter == "All") return cleaned
+    if (selectedFilter == CommentaryFilter.ALL) return cleaned
     return cleaned.filter { entry ->
         when (selectedFilter) {
-            "Wickets" -> entry.eventType() == TimelineEventType.WICKET
-            "Boundaries" -> entry.eventType() in BOUNDARY_EVENTS
+            CommentaryFilter.WICKETS -> entry.eventType() == TimelineEventType.WICKET
+            CommentaryFilter.BOUNDARIES -> entry.eventType() in BOUNDARY_EVENTS
             // Read from the text, never from `event`: match-sync deliberately does not classify
             // milestones (they are not reliably marked in Cricbuzz's commText), so consulting a
             // verdict that is FOUR or WICKET here could only ever hide a fifty, never find one.
             // The words themselves survive the rewrite — a century is a fact, not a phrasing.
-            "Milestones" ->
+            CommentaryFilter.MILESTONES ->
                 TimelineEventExtractor.detectBallType(entry.text) == TimelineEventType.MILESTONE
-            else -> true
+            CommentaryFilter.ALL -> true
         }
     }
 }

@@ -227,9 +227,6 @@ class MatchDetailViewModel(
             val t2 = match.teams.getOrNull(1)?.name ?: return@runCatchingSuspend
             H2HRepository.getH2H(t1, t2)?.let { h2h -> _uiState.update { it.copy(headToHead = h2h) } }
         }.onError { breadcrumb("h2h", "H2H fetch failed: ${it.message}") }
-        liveSource.getProbabilityHistory(match.id).onSuccess { history ->
-            if (history.isNotEmpty()) _uiState.update { it.copy(probabilityHistory = history) }
-        }
     }
 
     private suspend fun loadCommentaryFeed() {
@@ -342,6 +339,12 @@ class MatchDetailViewModel(
                 // arrival is itself the evidence that any earlier pre-match prior is superseded.
                 liveWinProbabilityIsPrematch =
                     if (p.winProbabilityTeam1 != null) false else st.liveWinProbabilityIsPrematch,
+                // The swing chart's series, accumulated on the device. The server keeps only the
+                // current probability — `live-winprob` and the detail payload are both snapshots,
+                // and nothing stores a history — so a point is recorded each time the probability
+                // moves. Session-scoped by design: it is the swing since this screen opened, not
+                // the match's whole arc.
+                probabilityHistory = appendProbabilityPoint(st, p),
             )
         }
         p.batsmen.forEach { handleBatsmanMilestone(it) }
@@ -355,8 +358,8 @@ class MatchDetailViewModel(
             if (st.commentary.any { it.text == ev.commentary }) st
             else {
                 isNew = true
-                val entry = CommentaryEntry(ev.commentary, ev.event, ev.ball)
-                st.copy(commentary = listOf(entry) + st.commentary, commentaryError = null)
+                val entry = CommentaryEntry(ev.commentary, ev.event, ev.ball, ev.sortKey)
+                st.copy(commentary = insertBySortKey(st.commentary, entry), commentaryError = null)
             }
         }
         if (!isNew) return
@@ -508,6 +511,76 @@ private suspend fun resolveScorecard(
         .onFailure(onScrapeFailure)
         .getOrNull()
         ?.takeIf { it.innings.isNotEmpty() }
+}
+
+/**
+ * The over the chart plots against: the batting side's, which is the one still advancing.
+ *
+ * Both figures arrive as Cricbuzz's `"66.5"` notation, where the fraction is a ball count and not a
+ * decimal — but only their ordering matters here, and `66.5 < 67.1` holds either way.
+ */
+internal fun battingOverOf(team1Overs: String, team2Overs: String): Float {
+    val first = team1Overs.trim().toFloatOrNull() ?: 0f
+    val second = team2Overs.trim().toFloatOrNull() ?: 0f
+    return maxOf(first, second)
+}
+
+/**
+ * Adds one point to the swing series, or returns [history] unchanged.
+ *
+ * A point is worth keeping only when the probability actually moved: match-sync rewrites the detail
+ * row every minute whether or not a ball was bowled, and recording every rewrite would fill the
+ * series with duplicates and flatten the chart. Bounded because a Test runs for five days.
+ */
+private fun appendProbabilityPoint(
+    state: MatchDetailViewModel.UiState,
+    payload: MatchLiveDetailPayload,
+): List<WinProbabilityPoint> = appendProbabilityPoint(
+    history = state.probabilityHistory,
+    over = battingOverOf(
+        payload.team1Overs ?: state.liveTeam1Overs,
+        payload.team2Overs ?: state.liveTeam2Overs,
+    ),
+    team1Percent = payload.winProbabilityTeam1?.times(PERCENT_SCALE) ?: state.liveWinProbability,
+)
+
+internal fun appendProbabilityPoint(
+    history: List<WinProbabilityPoint>,
+    over: Float,
+    team1Percent: Double?,
+): List<WinProbabilityPoint> {
+    if (team1Percent == null) return history
+    val team1 = (team1Percent / PERCENT_SCALE).toFloat()
+    val last = history.lastOrNull()
+    if (last != null && kotlin.math.abs(last.team1Probability - team1) < PROBABILITY_EPSILON &&
+        over <= last.over
+    ) {
+        return history
+    }
+    val point = WinProbabilityPoint(over = over, team1Probability = team1, team2Probability = 1f - team1)
+    return (history + point).takeLast(PROBABILITY_HISTORY_MAX)
+}
+
+private const val PERCENT_SCALE = 100.0
+private const val PROBABILITY_EPSILON = 0.005f
+private const val PROBABILITY_HISTORY_MAX = 240
+
+/**
+ * Places a realtime line in the newest-first feed by its `sort_key`.
+ *
+ * Realtime delivery is not ordered. Prepending unconditionally — which is what this did — put a
+ * late-arriving ball above the deliveries that actually followed it, and the tab's over grouping
+ * then rendered that as the wrong over leading the feed. The key travels on the event and on every
+ * stored row, so the insert point is known exactly; an entry without one (the scrape fallback)
+ * sorts as newest, which is what a locally scraped line is.
+ */
+internal fun insertBySortKey(
+    feed: List<CommentaryEntry>,
+    entry: CommentaryEntry,
+): List<CommentaryEntry> {
+    val key = entry.sortKey ?: return listOf(entry) + feed
+    val at = feed.indexOfFirst { (it.sortKey ?: Double.MAX_VALUE) < key }
+    return if (at < 0) feed + entry else feed.subList(0, at) + entry + feed.subList(at, feed.size)
 }
 
 private suspend fun scrapeCommentary(repository: MatchRepository, matchId: String): List<String> =

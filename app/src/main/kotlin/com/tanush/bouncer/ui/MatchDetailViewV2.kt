@@ -92,6 +92,7 @@ import kotlinx.coroutines.launch
 import androidx.compose.ui.res.stringResource
 import com.tanush.bouncer.R
 import com.tanush.bouncer.ui.components.v2.EmptyStateV2
+import com.tanush.bouncer.ui.screens.matchdetail.v2.meaningfulRequiredRunRate
 
 private const val EVENT_FLASH_MILLIS = 1500L
 
@@ -281,7 +282,7 @@ fun MatchDetailViewV2(
                 overs1 = overs1,
                 overs2 = overs2,
                 currentRunRate = uiState.liveCurrentRunRate,
-                requiredRunRate = uiState.liveRequiredRunRate,
+                requiredRunRate = meaningfulRequiredRunRate(uiState.liveRequiredRunRate),
                 recentBalls = uiState.recentBalls,
             )
 
@@ -346,7 +347,7 @@ fun MatchDetailViewV2(
                         recentBalls = uiState.recentBalls,
                         commentary = commentaryText,
                         currentRunRate = uiState.liveCurrentRunRate,
-                        requiredRunRate = uiState.liveRequiredRunRate,
+                        requiredRunRate = meaningfulRequiredRunRate(uiState.liveRequiredRunRate),
                         scorecard = uiState.scorecard,
                         streamingCommentary = streamingCommentary,
                         matchFlow = uiState.matchFlow,

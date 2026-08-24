@@ -110,8 +110,10 @@ fun CommentaryTabV2(
         return
     }
 
-    var selectedFilter by remember { mutableStateOf("All") }
-    val filterOptions = listOf("All", "Wickets", "Boundaries", "Milestones")
+    var selectedFilter by remember { mutableStateOf(CommentaryFilter.ALL) }
+    // Labels are for display only; the filter itself travels as an enum, so a translated chip
+    // cannot silently turn every filter into "All".
+    val filterLabels = CommentaryFilter.entries.map { stringResource(it.labelRes) }
 
     val filteredCommentary = remember(commentary, selectedFilter) {
         filterCommentary(commentary, selectedFilter)
@@ -123,9 +125,12 @@ fun CommentaryTabV2(
 
     Column(modifier = Modifier.fillMaxSize()) {
         FilterChipRowV2(
-            items = filterOptions,
-            selectedItem = selectedFilter,
-            onItemSelected = { selectedFilter = it },
+            items = filterLabels,
+            selectedItem = filterLabels[selectedFilter.ordinal],
+            onItemSelected = { label ->
+                filterLabels.indexOf(label).takeIf { it >= 0 }
+                    ?.let { selectedFilter = CommentaryFilter.entries[it] }
+            },
             modifier = Modifier.padding(vertical = spacing.sm),
         )
 
@@ -146,15 +151,15 @@ fun CommentaryTabV2(
 private fun LazyListScope.commentaryFeedItems(
     parsedBalls: List<ParsedBall>,
     recentBalls: List<String>,
-    selectedFilter: String,
+    selectedFilter: CommentaryFilter,
     spacing: BouncerSpacingV2,
 ) {
     // Current over ball strip
-    if (recentBalls.isNotEmpty() && selectedFilter == "All") {
+    if (recentBalls.isNotEmpty() && selectedFilter == CommentaryFilter.ALL) {
         item(key = "recent_strip") { ThisOverStrip(recentBalls) }
     }
 
-    if (selectedFilter == "All") {
+    if (selectedFilter == CommentaryFilter.ALL) {
         // A delivery is anything carrying a ball label, which now comes from the server's own
         // `ball` column rather than a regex over the prose. Splitting again on overNumber keeps
         // The Hundred out of the over grouping: it counts 1..100 and has no overs to group by.
@@ -185,7 +190,7 @@ private fun LazyListScope.commentaryFeedItems(
         }
     } else {
         // Filtered views: flat list without separators
-        items(parsedBalls.size, key = { "comm_${selectedFilter}_$it" }) { idx ->
+        items(parsedBalls.size, key = { "comm_${selectedFilter.name}_$it" }) { idx ->
             CommentaryLine(parsedBalls[idx], modifier = Modifier.animateItem())
         }
     }
