@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 import com.tanush.bouncer.ui.theme.GlassOpacity
 import kotlin.random.Random
+import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 
 /**
  * Core glass-morphism card container.
@@ -295,10 +296,11 @@ fun GlassCardHero(
         }
         
         // Premium Etched Gold Inner Border (top only)
+        val edgeLift = BouncerThemeV2.colors.highlight.copy(alpha = 0.1f)
         Canvas(modifier = Modifier.matchParentSize()) {
             val strokeWidth = 1.dp.toPx()
             drawLine(
-                color = Color.White.copy(alpha = 0.1f),
+                color = edgeLift,
                 start = Offset(20.dp.toPx(), 0f),
                 end = Offset(size.width - 20.dp.toPx(), 0f),
                 strokeWidth = strokeWidth
@@ -365,6 +367,7 @@ fun NoiseOverlay(
         }
     }
     
+    val noiseLift = BouncerThemeV2.colors.highlight
     Canvas(modifier = modifier) {
         val pointsToDraw = (size.width * size.height * density * 0.0001f).toInt()
             .coerceIn(50, noisePoints.size)
@@ -374,7 +377,7 @@ fun NoiseOverlay(
             val y = yRatio * size.height
             
             drawCircle(
-                color = Color.White.copy(alpha = breathingOpacity * brightness),
+                color = noiseLift.copy(alpha = breathingOpacity * brightness),
                 radius = 0.5f,
                 center = Offset(x, y)
             )

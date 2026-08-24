@@ -1,7 +1,54 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Dark counterpart of values/colors.xml window_background. Matches DarkBg in
-         ui/theme/v2/ColorTokensV2.kt so the pre-Compose frame and the first composed frame
-         are the same colour. -->
+    <!--
+        Dark counterpart of values/colors.xml. These are the values the whole file used to carry
+        unqualified, which is why every RemoteViews surface — the home-screen widgets and the seven
+        live-score notification layouts — stayed charcoal-on-gold in a light notification shade.
+        Keep the two files key-for-key identical; a key present in only one resolves to the other
+        mode's value and reads as a random wrong colour rather than a build error.
+    -->
+
+    <!-- BOUNCER PREMIUM PALETTE -->
+    <color name="black_background">#0C1015</color>
+    <color name="card_surface">#161C26</color>
+    <color name="card_surface_light">#202834</color>
+    <color name="shiny_gold_deep">#E0B74F</color>
+    <color name="shiny_gold_light">#F3DB93</color>
+    <color name="shiny_gold_mid">#EBC968</color>
+    <color name="shiny_gold_dark">#AF8327</color>
+    <color name="shiny_gold_bronze">#CD8A33</color>
+
+    <!-- SYSTEM -->
+    <color name="text_primary">#FCF7ED</color>
+    <color name="text_secondary">#C1B08D</color>
+    <color name="text_tertiary">#8D7E61</color>
+    <color name="live_blue">#007AFF</color>
+    <color name="live_blue_bright">#4DA3FF</color>
+    <color name="success_green">#34C759</color>
+    <color name="warning_orange">#F4B740</color>
+    <color name="error_red">#FF5A4E</color>
+    <color name="error_red_muted">#401614</color>
+    <color name="card_border">#33F3DB93</color>
+    <color name="card_dark_blue">#121823</color>
+
+    <!-- WIDGET SURFACES -->
+    <color name="widget_surface_alt">#2B3442</color>
+    <color name="widget_gold_container">#34270D</color>
+    <color name="widget_border_accent">#47E0B74F</color>
+    <color name="widget_action_chip">#1B2330</color>
+    <color name="widget_live_badge_bg">#401614</color>
+    <color name="widget_live_badge_stroke">#66FF5A4E</color>
+    <color name="widget_probability_track">#1A202A</color>
+    <color name="widget_ball_neutral">#313B49</color>
+    <color name="widget_ball_six">#9B7BFF</color>
+    <color name="widget_ball_four">#34C759</color>
+    <color name="widget_ball_wicket">#FF5A4E</color>
+    <color name="widget_ball_extra">#F4B740</color>
+    <color name="widget_text_on_primary">#130F08</color>
+    <color name="widget_live">#FF453A</color>
+    <color name="widget_dot_ball">#3B4452</color>
+
+    <!-- Matches DarkBg in ui/theme/v2/ColorTokensV2.kt so the pre-Compose frame and the first
+         composed frame are the same colour. -->
     <color name="window_background">#0C1015</color>
 </resources>

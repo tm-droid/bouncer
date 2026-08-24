@@ -189,6 +189,8 @@ fun LiveScoringGraphCard(
                     .background(BouncerThemeV2.colors.surfaceVariant)
                     .padding(16.dp),
             ) {
+                val markerLift = BouncerThemeV2.colors.highlight.copy(alpha = 0.05f)
+                val gridLift = BouncerThemeV2.colors.highlight.copy(alpha = 0.08f)
                 Canvas(modifier = Modifier.fillMaxSize()) {
                     val width = size.width
                     val height = size.height
@@ -211,7 +213,7 @@ fun LiveScoringGraphCard(
                     for (i in 0..gridLines) {
                         val y = height - (height * i / gridLines)
                         drawLine(
-                            color = Color.White.copy(alpha = 0.08f),
+                            color = gridLift,
                             start = Offset(0f, y),
                             end = Offset(width, y),
                             strokeWidth = 0.5.dp.toPx(),
@@ -224,7 +226,7 @@ fun LiveScoringGraphCard(
                     overMarkers.forEach { over ->
                         val x = width * over / maxOvers
                         drawLine(
-                            color = Color.White.copy(alpha = 0.05f),
+                            color = markerLift,
                             start = Offset(x, 0f),
                             end = Offset(x, height),
                             strokeWidth = 1.dp.toPx(),

@@ -76,7 +76,7 @@ fun AboutScreenV2(onBackClick: () -> Unit) {
                     imageVector = Icons.Default.SportsCricket,
                     contentDescription = null,
                     modifier = Modifier.size(64.dp),
-                    tint = colors.primary,
+                    tint = colors.primaryText,
                 )
                 Spacer(Modifier.height(spacing.md))
                 Text(

@@ -41,7 +41,7 @@ fun SectionHeaderV2(
             Text(
                 text = action,
                 style = typography.labelLarge,
-                color = colors.primary,
+                color = colors.primaryText,
                 modifier = Modifier.clickable(onClick = onAction),
             )
         }

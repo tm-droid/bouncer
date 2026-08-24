@@ -136,7 +136,7 @@ private fun MatchCardHeaderRow(
             Icon(
                 imageVector = Icons.Default.Star,
                 contentDescription = "Following",
-                tint = colors.primary,
+                tint = colors.primaryText,
                 modifier = Modifier.size(14.dp).padding(end = 2.dp),
             )
         }

@@ -34,6 +34,7 @@ import com.tanush.bouncer.ui.theme.WarningOrange
 import com.tanush.bouncer.ui.theme.WicketRed
 import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 import java.util.Locale
+import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 
 /**
  * Player Form Card - Technical Performance Analytics.
@@ -428,13 +429,14 @@ private fun FormRatingRing(
         modifier = Modifier.size(36.dp),
         contentAlignment = Alignment.Center,
     ) {
+        val trackLift = BouncerThemeV2.colors.highlight.copy(alpha = 0.05f)
         Canvas(modifier = Modifier.fillMaxSize()) {
             val strokeWidth = 3.dp.toPx()
             val radius = (size.minDimension - strokeWidth) / 2
 
             // Background
             drawCircle(
-                color = Color.White.copy(alpha = 0.05f),
+                color = trackLift,
                 radius = radius,
                 style = Stroke(width = strokeWidth),
             )

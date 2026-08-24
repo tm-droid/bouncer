@@ -117,3 +117,6 @@ style:
     active: true
   UnusedPrivateMember:
     active: true
+    # Compose previews are invoked by the IDE/render tooling, never from code. Without this every
+    # new preview needs a baseline entry, which is why the repo has eight of them.
+    ignoreAnnotated: ['Preview']

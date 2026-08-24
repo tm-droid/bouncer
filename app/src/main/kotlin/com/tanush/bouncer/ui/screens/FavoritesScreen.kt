@@ -680,7 +680,7 @@ private fun TeamSelectionRow(teamName: String, onClick: () -> Unit) {
             Icon(
                 imageVector = Icons.Default.Add,
                 contentDescription = "Add",
-                tint = colors.primary,
+                tint = colors.primaryText,
                 modifier = Modifier.size(22.dp),
             )
         }

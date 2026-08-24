@@ -35,6 +35,7 @@ import com.tanush.bouncer.ui.theme.GoldHairline
 import com.tanush.bouncer.ui.theme.TextPrimary
 import com.tanush.bouncer.ui.theme.TextTertiary
 import com.tanush.bouncer.ui.theme.BouncerDesignSystem
+import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 
 /**
  * Premium Sleek Win Probability Chart.
@@ -198,17 +199,18 @@ private fun ProbabilityChartCanvas(
     goldPrimary: Color,
     progress: Float,
 ) {
+    val gridLift = BouncerThemeV2.colors.highlight
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .height(180.dp)
             .clip(RoundedCornerShape(8.dp))
             .background(Color.Black.copy(alpha = 0.3f))
-            .border(0.5.dp, Color.White.copy(alpha = 0.05f), RoundedCornerShape(8.dp))
+            .border(0.5.dp, gridLift.copy(alpha = 0.05f), RoundedCornerShape(8.dp))
             .padding(12.dp),
     ) {
         Canvas(modifier = Modifier.fillMaxSize()) {
-            drawProbabilityGrid()
+            drawProbabilityGrid(gridLift)
             if (probabilityHistory.size >= 2) {
                 drawProbabilityLine(probabilityHistory, team1Color, goldPrimary, progress)
             }
@@ -216,13 +218,13 @@ private fun ProbabilityChartCanvas(
     }
 }
 
-private fun DrawScope.drawProbabilityGrid() {
+private fun DrawScope.drawProbabilityGrid(lift: Color) {
     // Draw subtle technical grid (dashed)
     val probGridDash = PathEffect.dashPathEffect(floatArrayOf(6f, 6f), 0f)
     for (i in 0..4) {
         val y = size.height * (i / 4f)
         drawLine(
-            color = Color.White.copy(alpha = 0.06f),
+            color = lift.copy(alpha = 0.06f),
             start = Offset(0f, y),
             end = Offset(size.width, y),
             strokeWidth = 0.5f,
@@ -232,7 +234,7 @@ private fun DrawScope.drawProbabilityGrid() {
 
     // 50% Baseline - Dotted Technical
     drawLine(
-        color = Color.White.copy(alpha = 0.1f),
+        color = lift.copy(alpha = 0.1f),
         start = Offset(0f, size.height / 2),
         end = Offset(size.width, size.height / 2),
         strokeWidth = 1f,

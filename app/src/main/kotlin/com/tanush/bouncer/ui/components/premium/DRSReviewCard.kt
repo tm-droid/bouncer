@@ -87,6 +87,7 @@ fun DRSReviewCard(
             }
 
             // Ball Tracking Visualization
+            val stumpBrush = GoldGradient
             Canvas(modifier = Modifier.size(200.dp)) {
                 val centerX = size.width / 2
                 val centerY = size.height / 2
@@ -94,7 +95,7 @@ fun DRSReviewCard(
                 // Draw Stumps (Elite Metallic Gold)
                 listOf(-20.dp, 0.dp, 20.dp).forEach { offset ->
                     drawRect(
-                        brush = GoldGradient,
+                        brush = stumpBrush,
                         topLeft = Offset(centerX + offset.toPx() - 4.dp.toPx(), centerY - 40.dp.toPx()),
                         size = Size(8.dp.toPx(), 120.dp.toPx())
                     )

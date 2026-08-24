@@ -7,6 +7,7 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -19,7 +20,7 @@ import androidx.compose.ui.graphics.Color
  * (incl. `CricketEventColors` for wicket/four/six semantics).
  *
  * Migration Guide:
- * 1. Replace standalone color values (e.g., `GoldPrimary`) with `BouncerThemeV2.colors.primary`
+ * 1. Replace standalone color values (e.g., `GoldPrimaryDark`) with `BouncerThemeV2.colors.primary`
  * 2. Replace `BouncerColors` data class usage with `BouncerColorsV2`
  * 3. Access colors via `BouncerThemeV2.colors` in composables
  *
@@ -33,13 +34,13 @@ import androidx.compose.ui.graphics.Color
 // =============================================================================
 
 @Deprecated("Use BouncerThemeV2.colors (ui/theme/v2/ColorTokensV2.kt) instead")
-val BackgroundBase = Color(0xFF0C1015)
+val BackgroundBaseDark = Color(0xFF0C1015)
 @Deprecated("Use BouncerThemeV2.colors (ui/theme/v2/ColorTokensV2.kt) instead")
 val BackgroundElevated = Color(0xFF171510)
 @Deprecated("Use BouncerThemeV2.colors (ui/theme/v2/ColorTokensV2.kt) instead")
-val Surface1 = Color(0xFF161C26)
+val Surface1Dark = Color(0xFF161C26)
 @Deprecated("Use BouncerThemeV2.colors (ui/theme/v2/ColorTokensV2.kt) instead")
-val Surface2 = Color(0xFF202834)
+val Surface2Dark = Color(0xFF202834)
 @Deprecated("Use BouncerThemeV2.colors (ui/theme/v2/ColorTokensV2.kt) instead")
 val Surface3 = Color(0xFF2B3442)
 
@@ -48,25 +49,25 @@ val Surface3 = Color(0xFF2B3442)
 // =============================================================================
 
 @Deprecated("Use BouncerThemeV2.colors (ui/theme/v2/ColorTokensV2.kt) instead")
-val GoldPrimary = Color(0xFFE0B74F)
+val GoldPrimaryDark = Color(0xFFE0B74F)
 @Deprecated("Use BouncerThemeV2.colors (ui/theme/v2/ColorTokensV2.kt) instead")
 val GoldDark = Color(0xFFAF8327)
 @Deprecated("Use BouncerThemeV2.colors (ui/theme/v2/ColorTokensV2.kt) instead")
-val GoldLight = Color(0xFFF3DB93)
+val GoldLightDark = Color(0xFFF3DB93)
 @Deprecated("Use BouncerThemeV2.colors (ui/theme/v2/ColorTokensV2.kt) instead")
 val GoldSubtle = Color(0xFF34270D)
 @Deprecated("Use BouncerThemeV2.colors (ui/theme/v2/ColorTokensV2.kt) instead")
 val EtchedGold = Color(0xFFE4C56F)  // Handcrafted metallic feel
 
 @Deprecated("Use BouncerThemeV2.colors (ui/theme/v2/ColorTokensV2.kt) instead")
-val GoldGradient = Brush.verticalGradient(
+val GoldGradientDark = Brush.verticalGradient(
     0.0f to Color(0xFFF8E7BC),
-    0.55f to GoldPrimary,
+    0.55f to GoldPrimaryDark,
     1.0f to GoldDark
 )
 @Deprecated("Use BouncerThemeV2.colors (ui/theme/v2/ColorTokensV2.kt) instead")
 val GoldGradientHorizontal = Brush.horizontalGradient(
-    colors = listOf(Color(0xFFF7DF9A), GoldPrimary, GoldDark)
+    colors = listOf(Color(0xFFF7DF9A), GoldPrimaryDark, GoldDark)
 )
 
 // =============================================================================
@@ -74,13 +75,13 @@ val GoldGradientHorizontal = Brush.horizontalGradient(
 // =============================================================================
 
 @Deprecated("Use BouncerThemeV2.colors (ui/theme/v2/ColorTokensV2.kt) instead")
-val TextPrimary = Color(0xFFFCF7ED)
+val TextPrimaryDark = Color(0xFFFCF7ED)
 @Deprecated("Use BouncerThemeV2.colors (ui/theme/v2/ColorTokensV2.kt) instead")
-val TextSecondary = Color(0xFFC1B08D)
+val TextSecondaryDark = Color(0xFFC1B08D)
 @Deprecated("Use BouncerThemeV2.colors (ui/theme/v2/ColorTokensV2.kt) instead")
-val TextTertiary = Color(0xFF8D7E61)
+val TextTertiaryDark = Color(0xFF8D7E61)
 @Deprecated("Use BouncerThemeV2.colors (ui/theme/v2/ColorTokensV2.kt) instead")
-val TextMuted = Color(0xFF665844)
+val TextMutedDark = Color(0xFF665844)
 
 // =============================================================================
 // Status Colors — Clear semantic indicators
@@ -119,7 +120,7 @@ object TeamPrimaryColors {
     val WestIndiesMaroon = Color(0xFF7D1328)
     val IndiaBlue = Color(0xFF3B82F6)
     val PakistanGreen = Color(0xFF138808)
-    val AustraliaGold = Color(0xFFD4AF37) // Matching GoldPrimary
+    val AustraliaGold = Color(0xFFD4AF37) // Matching GoldPrimaryDark
     val EnglandNavy = Color(0xFF1D4ED8)
     val SriLankaBlue = Color(0xFF1E3A8A)
     val BangladeshGreen = Color(0xFF166534)
@@ -145,7 +146,7 @@ object TeamPrimaryColors {
             "ZIM", "ZW" -> ZimbabweRed
             "NED", "NL" -> NetherlandsOrange
             "SCO" -> ScotlandBlue
-            else -> GoldPrimary
+            else -> GoldPrimaryDark
         }
     }
     
@@ -188,11 +189,11 @@ object GlassOpacity {
     const val SCRIM = 0.80f
 }
 
-val GlassBackground = GoldLight.copy(alpha = GlassOpacity.BACKGROUND)
-val GlassBackgroundHover = GoldLight.copy(alpha = GlassOpacity.BACKGROUND_HOVER)
-val GlassBackgroundPressed = GoldPrimary.copy(alpha = GlassOpacity.BACKGROUND_PRESSED)
-val GlassBorder = GoldLight.copy(alpha = GlassOpacity.BORDER)
-val GlassBorderHighlight = GoldPrimary.copy(alpha = GlassOpacity.BORDER_HIGHLIGHT)
+val GlassBackgroundDark = GoldLightDark.copy(alpha = GlassOpacity.BACKGROUND)
+val GlassBackgroundHover = GoldLightDark.copy(alpha = GlassOpacity.BACKGROUND_HOVER)
+val GlassBackgroundPressed = GoldPrimaryDark.copy(alpha = GlassOpacity.BACKGROUND_PRESSED)
+val GlassBorderDark = GoldLightDark.copy(alpha = GlassOpacity.BORDER)
+val GlassBorderHighlight = GoldPrimaryDark.copy(alpha = GlassOpacity.BORDER_HIGHLIGHT)
 val GlassOverlay = Color.Black.copy(alpha = GlassOpacity.OVERLAY)
 val GlassScrim = Color.Black.copy(alpha = GlassOpacity.SCRIM)
 
@@ -215,7 +216,7 @@ val BallBye = Color(0xFF06B6D4)
 // =============================================================================
 
 object ChartColors {
-    val Primary = GoldPrimary
+    val Primary = GoldPrimaryDark
     val Secondary = Color(0xFF3B82F6)
     val Tertiary = Color(0xFF22C55E)
     val Quaternary = Color(0xFFF97316)
@@ -245,7 +246,7 @@ val ProbabilityNeutral = Color(0xFF6B7280)
 // =============================================================================
 
 // Background tiers (aliases)
-val BgBase = BackgroundBase
+val BgBase = BackgroundBaseDark
 val BgElevated = BackgroundElevated
 val BgRecessed = Color(0xFF040406)
 
@@ -253,11 +254,11 @@ val BgRecessed = Color(0xFF040406)
 val Gold100 = Color(0xFFFFF8E7)
 val Gold200 = Color(0xFFFFE9B8)
 val Gold300 = Color(0xFFFFD780)
-val Gold400 = GoldPrimary
+val Gold400 = GoldPrimaryDark
 val Gold500 = Color(0xFFC69433)
 val Gold600 = Color(0xFF8F661C)
-val GoldAccentDeep = GoldPrimary
-val GoldAccentLight = GoldLight
+val GoldAccentDeep = GoldPrimaryDark
+val GoldAccentLight = GoldLightDark
 val GoldAccentDim = GoldDark
 val GoldAccentMid = Gold300
 val GoldAccentBronze = Color(0xFFCD7F32)
@@ -281,7 +282,7 @@ val ErrorRed = StatusLive
 val WarningOrange = StatusWarning
 
 // Text (aliases)
-val TextInverse = BackgroundBase
+val TextInverse = BackgroundBaseDark
 
 // Cricket-specific
 val WicketRed = StatusLive
@@ -292,13 +293,13 @@ val BoundaryFour = StatusBoundary
 val BoundaryBlue = StatusBoundary
 val SixerPurple = StatusSix
 val FullLength = Color(0xFF4ADE80)
-val GoodLength = GoldPrimary
+val GoodLength = GoldPrimaryDark
 val ShortPitch = Color(0xFFFB923C)
 val Yorker = Color(0xFFF87171)
 
 // Glass (aliases)
-val GlassBorderLight = GoldLight.copy(alpha = 0.08f)
-val GlassSurface = GoldPrimary.copy(alpha = 0.10f)
+val GlassBorderLight = GoldLightDark.copy(alpha = 0.08f)
+val GlassSurfaceDark = GoldPrimaryDark.copy(alpha = 0.10f)
 val GlassWhite = Color.White.copy(alpha = 0.10f)
 val GlassDark = Color.Black.copy(alpha = 0.20f)
 val GlassEtchedGold = EtchedGold.copy(alpha = 0.15f)
@@ -313,16 +314,16 @@ val ChartOrange = Color(0xFFF97316)
 // Achievement tiers
 val TierBronze = Color(0xFFCD7F32)
 val TierSilver = Color(0xFFC0C0C0)
-val TierGold = GoldPrimary
+val TierGold = GoldPrimaryDark
 val TierPlatinum = Color(0xFFE5E4E2)
 val TierDiamond = Color(0xFFB9F2FF)
 
 // Surface aliases
-val BlackSurface = Surface1
-val BlackElevated = Surface2
-val BlackBackground = BackgroundBase
-val CardSurface = Surface1
-val CardSurfaceLight = Surface2
+val BlackSurface = Surface1Dark
+val BlackElevated = Surface2Dark
+val BlackBackground = BackgroundBaseDark
+val CardSurface = Surface1Dark
+val CardSurfaceLight = Surface2Dark
 val CardDarkBlue = Color(0xFF1A1F2E)
 val CardAlmostBlack = Color(0xFF0A0B0D)
 
@@ -343,8 +344,8 @@ fun liveIndicatorColor(): Color = StatusLive
 // =============================================================================
 
 // Shiny Gold aliases for backward compatibility with older components
-val ShinyGoldDeep = GoldPrimary
-val ShinyGoldLight = GoldLight
+val ShinyGoldDeep = GoldPrimaryDark
+val ShinyGoldLight = GoldLightDark
 val ShinyGoldMid = Gold500
 val ShinyGoldDark = GoldDark
 val ShinyGoldBronze = GoldAccentBronze
@@ -359,34 +360,34 @@ val NeonError = Color(0xFFFF6B6B)
 val NeonSuccess = Color(0xFF4ADE80)
 
 // Gold variants
-val GoldHairline = GoldPrimary.copy(alpha = 0.3f)
+val GoldHairline = GoldPrimaryDark.copy(alpha = 0.3f)
 val GoldGradientVariant = Brush.verticalGradient(
-    colors = listOf(GoldLight, GoldPrimary, GoldDark)
+    colors = listOf(GoldLightDark, GoldPrimaryDark, GoldDark)
 )
-val GradientAccentStart = GoldPrimary
+val GradientAccentStart = GoldPrimaryDark
 
 // Surface/Card variants
-val CardBorder = GlassBorder
-val CardSurfaceColor = Surface1
-val CardSurfaceElevated = Surface2
-val PrimaryBackground = BackgroundBase
+val CardBorder = GlassBorderDark
+val CardSurfaceColor = Surface1Dark
+val CardSurfaceElevated = Surface2Dark
+val PrimaryBackground = BackgroundBaseDark
 
 // Ball event colors
 val BoundaryGreen = Color(0xFF22C55E)
 val DotBallGray = Color(0xFF4B5563)
 val NoBallOrange = Color(0xFFF97316)
-val SixGold = GoldPrimary
+val SixGold = GoldPrimaryDark
 val WicketBlue = Color(0xFF3B82F6)
 val WideBallAmber = Color(0xFFFBBF24)
 
 // Pill colors
-val OversPillBg = Surface2
-val OversPillText = TextSecondary
+val OversPillBg = Surface2Dark
+val OversPillText = TextSecondaryDark
 
 // Hero text
-val HeroTextPrimary = TextPrimary
-val HeroTextSecondary = TextSecondary
-val HeroTextMuted = TextMuted
+val HeroTextPrimary = TextPrimaryDark
+val HeroTextSecondary = TextSecondaryDark
+val HeroTextMuted = TextMutedDark
 
 // Shimmer
 val Shimmer = Color(0xFF2C2C2C)
@@ -430,26 +431,26 @@ val TeamBangladesh = TeamPrimaryColors.BangladeshGreen
 @Immutable
 data class BouncerColors(
     // Backgrounds
-    val backgroundBase: Color = BackgroundBase,
+    val backgroundBase: Color = BackgroundBaseDark,
     val backgroundElevated: Color = BackgroundElevated,
-    val surface1: Color = Surface1,
-    val surface2: Color = Surface2,
+    val surface1: Color = Surface1Dark,
+    val surface2: Color = Surface2Dark,
     val surface3: Color = Surface3,
     
     // Gold Accents
-    val goldPrimary: Color = GoldPrimary,
+    val goldPrimary: Color = GoldPrimaryDark,
     val goldDark: Color = GoldDark,
-    val goldLight: Color = GoldLight,
+    val goldLight: Color = GoldLightDark,
     val goldSubtle: Color = GoldSubtle,
     val etchedGold: Color = EtchedGold,
-    val goldGradient: Brush = GoldGradient,
+    val goldGradient: Brush = GoldGradientDark,
     val goldGradientHorizontal: Brush = GoldGradientHorizontal,
     
     // Text
-    val textPrimary: Color = TextPrimary,
-    val textSecondary: Color = TextSecondary,
-    val textTertiary: Color = TextTertiary,
-    val textMuted: Color = TextMuted,
+    val textPrimary: Color = TextPrimaryDark,
+    val textSecondary: Color = TextSecondaryDark,
+    val textTertiary: Color = TextTertiaryDark,
+    val textMuted: Color = TextMutedDark,
     
     // Status
     val statusLive: Color = StatusLive,
@@ -458,14 +459,14 @@ data class BouncerColors(
     val statusInfo: Color = StatusInfo,
     
     // Glass
-    val glassBackground: Color = GlassBackground,
+    val glassBackground: Color = GlassBackgroundDark,
     val glassBackgroundHover: Color = GlassBackgroundHover,
     val glassBackgroundPressed: Color = GlassBackgroundPressed,
-    val glassBorder: Color = GlassBorder,
+    val glassBorder: Color = GlassBorderDark,
     val glassBorderHighlight: Color = GlassBorderHighlight,
     val glassOverlay: Color = GlassOverlay,
     val glassScrim: Color = GlassScrim,
-    val glassSurface: Color = GlassSurface,
+    val glassSurface: Color = GlassSurfaceDark,
     
     // Ball Colors
     val ballDot: Color = BallDot,
@@ -514,12 +515,12 @@ data class BouncerColors(
         
         // Gold colors
         val GoldHairline = com.tanush.bouncer.ui.theme.GoldHairline
-        val GoldGradient = com.tanush.bouncer.ui.theme.GoldGradient
+        val GoldGradientDark = com.tanush.bouncer.ui.theme.GoldGradientDark
         val EtchedGold = com.tanush.bouncer.ui.theme.EtchedGold
         val GradientAccentStart = com.tanush.bouncer.ui.theme.GradientAccentStart
         val ShinyGoldDeep = com.tanush.bouncer.ui.theme.GoldDark
-        val ShinyGoldLight = com.tanush.bouncer.ui.theme.GoldLight
-        val ShinyGoldMid = com.tanush.bouncer.ui.theme.GoldPrimary
+        val ShinyGoldLight = com.tanush.bouncer.ui.theme.GoldLightDark
+        val ShinyGoldMid = com.tanush.bouncer.ui.theme.GoldPrimaryDark
         val ShinyGoldDim = com.tanush.bouncer.ui.theme.GoldSubtle
         val ShinyGoldBronze = com.tanush.bouncer.ui.theme.GoldDark
         
@@ -528,8 +529,8 @@ data class BouncerColors(
         val CardSurfaceColor = com.tanush.bouncer.ui.theme.CardSurfaceColor
         val CardSurfaceElevated = com.tanush.bouncer.ui.theme.CardSurfaceElevated
         val PrimaryBackground = com.tanush.bouncer.ui.theme.PrimaryBackground
-        val GlassBorder = com.tanush.bouncer.ui.theme.GlassBorder
-        val GlassSurface = com.tanush.bouncer.ui.theme.GlassSurface
+        val GlassBorderDark = com.tanush.bouncer.ui.theme.GlassBorderDark
+        val GlassSurfaceDark = com.tanush.bouncer.ui.theme.GlassSurfaceDark
         
         // Pill colors
         val OversPillBg = com.tanush.bouncer.ui.theme.OversPillBg
@@ -545,18 +546,18 @@ data class BouncerColors(
         val ShimmerHighlight = com.tanush.bouncer.ui.theme.ShimmerHighlight
         
         // Primary colors
-        val GoldPrimary = com.tanush.bouncer.ui.theme.GoldPrimary
-        val GoldLight = com.tanush.bouncer.ui.theme.GoldLight
+        val GoldPrimaryDark = com.tanush.bouncer.ui.theme.GoldPrimaryDark
+        val GoldLightDark = com.tanush.bouncer.ui.theme.GoldLightDark
         val GoldDark = com.tanush.bouncer.ui.theme.GoldDark
-        val BackgroundBase = com.tanush.bouncer.ui.theme.BackgroundBase
-        val Surface1 = com.tanush.bouncer.ui.theme.Surface1
-        val Surface2 = com.tanush.bouncer.ui.theme.Surface2
+        val BackgroundBaseDark = com.tanush.bouncer.ui.theme.BackgroundBaseDark
+        val Surface1Dark = com.tanush.bouncer.ui.theme.Surface1Dark
+        val Surface2Dark = com.tanush.bouncer.ui.theme.Surface2Dark
         val StatusLive = com.tanush.bouncer.ui.theme.StatusLive
         val StatusSuccess = com.tanush.bouncer.ui.theme.StatusSuccess
         val StatusWarning = com.tanush.bouncer.ui.theme.StatusWarning
-        val TextPrimary = com.tanush.bouncer.ui.theme.TextPrimary
-        val TextSecondary = com.tanush.bouncer.ui.theme.TextSecondary
-        val TextMuted = com.tanush.bouncer.ui.theme.TextMuted
+        val TextPrimaryDark = com.tanush.bouncer.ui.theme.TextPrimaryDark
+        val TextSecondaryDark = com.tanush.bouncer.ui.theme.TextSecondaryDark
+        val TextMutedDark = com.tanush.bouncer.ui.theme.TextMutedDark
     }
 }
 
@@ -579,50 +580,50 @@ val LocalBouncerColors = staticCompositionLocalOf { BouncerColors() }
  */
 @Suppress("DEPRECATION")
 val BouncerDarkColorScheme: ColorScheme = darkColorScheme(
-    primary = GoldPrimary,
-    onPrimary = BackgroundBase,
+    primary = GoldPrimaryDark,
+    onPrimary = BackgroundBaseDark,
     primaryContainer = GoldSubtle,
-    onPrimaryContainer = GoldLight,
+    onPrimaryContainer = GoldLightDark,
     
-    secondary = GoldLight,
-    onSecondary = BackgroundBase,
-    secondaryContainer = Surface2,
-    onSecondaryContainer = TextPrimary,
+    secondary = GoldLightDark,
+    onSecondary = BackgroundBaseDark,
+    secondaryContainer = Surface2Dark,
+    onSecondaryContainer = TextPrimaryDark,
     
     tertiary = StatusInfo,
-    onTertiary = TextPrimary,
+    onTertiary = TextPrimaryDark,
     tertiaryContainer = Color(0xFF1E3A5F),
     onTertiaryContainer = Color(0xFF93C5FD),
     
     error = StatusLive,
-    onError = TextPrimary,
+    onError = TextPrimaryDark,
     errorContainer = Color(0xFF450A0A),
     onErrorContainer = Color(0xFFFCA5A5),
     
-    background = BackgroundBase,
-    onBackground = TextPrimary,
+    background = BackgroundBaseDark,
+    onBackground = TextPrimaryDark,
     
     surface = BackgroundElevated,
-    onSurface = TextPrimary,
-    surfaceVariant = Surface1,
-    onSurfaceVariant = TextSecondary,
+    onSurface = TextPrimaryDark,
+    surfaceVariant = Surface1Dark,
+    onSurfaceVariant = TextSecondaryDark,
     
-    surfaceTint = GoldPrimary,
-    inverseSurface = TextPrimary,
-    inverseOnSurface = BackgroundBase,
+    surfaceTint = GoldPrimaryDark,
+    inverseSurface = TextPrimaryDark,
+    inverseOnSurface = BackgroundBaseDark,
     inversePrimary = GoldDark,
     
-    outline = TextTertiary,
-    outlineVariant = TextMuted,
+    outline = TextTertiaryDark,
+    outlineVariant = TextMutedDark,
     scrim = Color.Black,
     
     surfaceBright = Surface3,
-    surfaceDim = BackgroundBase,
-    surfaceContainer = Surface1,
-    surfaceContainerHigh = Surface2,
+    surfaceDim = BackgroundBaseDark,
+    surfaceContainer = Surface1Dark,
+    surfaceContainerHigh = Surface2Dark,
     surfaceContainerHighest = Surface3,
     surfaceContainerLow = BackgroundElevated,
-    surfaceContainerLowest = BackgroundBase
+    surfaceContainerLowest = BackgroundBaseDark
 )
 
 /**
@@ -635,7 +636,7 @@ val BouncerLightColorScheme: ColorScheme = lightColorScheme(
     primaryContainer = Color(0xFFFFF8E7),
     onPrimaryContainer = GoldDark,
     
-    secondary = GoldPrimary,
+    secondary = GoldPrimaryDark,
     onSecondary = Color.White,
     secondaryContainer = Color(0xFFFFF3D6),
     onSecondaryContainer = Color(0xFF5C4100),
@@ -658,10 +659,10 @@ val BouncerLightColorScheme: ColorScheme = lightColorScheme(
     surfaceVariant = Color(0xFFF3F4F6),
     onSurfaceVariant = Color(0xFF4B5563),
     
-    surfaceTint = GoldPrimary,
+    surfaceTint = GoldPrimaryDark,
     inverseSurface = Color(0xFF1F2937),
     inverseOnSurface = Color(0xFFF9FAFB),
-    inversePrimary = GoldLight,
+    inversePrimary = GoldLightDark,
     
     outline = Color(0xFF9CA3AF),
     outlineVariant = Color(0xFFE5E7EB),
@@ -723,15 +724,15 @@ fun Color.glow(alpha: Float = 0.3f): Color {
  * Returns the glass surface color for glassmorphism effects.
  */
 @Composable
-fun glassSurfaceColor(): Color = GlassSurface
+fun glassSurfaceColor(): Color = GlassSurfaceDark
 
 /**
  * Blends a color with gold accent for premium effects.
  */
 fun Color.blendWithGoldAccents(ratio: Float = 0.2f): Color {
-    val r = this.red * (1 - ratio) + GoldPrimary.red * ratio
-    val g = this.green * (1 - ratio) + GoldPrimary.green * ratio
-    val b = this.blue * (1 - ratio) + GoldPrimary.blue * ratio
+    val r = this.red * (1 - ratio) + GoldPrimaryDark.red * ratio
+    val g = this.green * (1 - ratio) + GoldPrimaryDark.green * ratio
+    val b = this.blue * (1 - ratio) + GoldPrimaryDark.blue * ratio
     return Color(r, g, b, this.alpha)
 }
 
@@ -742,6 +743,64 @@ fun blendWithGoldAccents(colorScheme: ColorScheme, ratio: Float = 0.3f): ColorSc
     return colorScheme.copy(
         primary = colorScheme.primary.blendWithGoldAccents(ratio),
         secondary = colorScheme.secondary.blendWithGoldAccents(ratio * 0.5f),
-        tertiary = GoldLight
+        tertiary = GoldLightDark
     )
 }
+
+// =============================================================================
+// Theme-aware aliases for the legacy token names
+// =============================================================================
+
+/*
+ * The raw constants above are the *dark* palette and are now suffixed `Dark`. The unsuffixed names
+ * live on here as composable getters that read [LocalBouncerColors], which BouncerThemeV2 provides
+ * per theme mode.
+ *
+ * Why aliases rather than a rewrite: ~260 call sites across ~50 unmigrated files under
+ * `ui/components` read these names as plain identifiers. As `val`s they were constant by
+ * construction, so light mode drew near-white text onto a white page everywhere they appeared.
+ * Re-declaring the same names with a composable getter makes every one of those sites follow the
+ * theme without editing them — and the compiler flags the handful used outside composition, which
+ * point at the `Dark` constant instead.
+ *
+ * New code should use `BouncerThemeV2.colors`; these exist to retire the legacy layer gradually.
+ */
+
+val BackgroundBase: Color
+    @Composable @ReadOnlyComposable get() = LocalBouncerColors.current.backgroundBase
+
+val Surface1: Color
+    @Composable @ReadOnlyComposable get() = LocalBouncerColors.current.surface1
+
+val Surface2: Color
+    @Composable @ReadOnlyComposable get() = LocalBouncerColors.current.surface2
+
+val GoldPrimary: Color
+    @Composable @ReadOnlyComposable get() = LocalBouncerColors.current.goldPrimary
+
+val GoldLight: Color
+    @Composable @ReadOnlyComposable get() = LocalBouncerColors.current.goldLight
+
+val GoldGradient: Brush
+    @Composable @ReadOnlyComposable get() = LocalBouncerColors.current.goldGradient
+
+val TextPrimary: Color
+    @Composable @ReadOnlyComposable get() = LocalBouncerColors.current.textPrimary
+
+val TextSecondary: Color
+    @Composable @ReadOnlyComposable get() = LocalBouncerColors.current.textSecondary
+
+val TextTertiary: Color
+    @Composable @ReadOnlyComposable get() = LocalBouncerColors.current.textTertiary
+
+val TextMuted: Color
+    @Composable @ReadOnlyComposable get() = LocalBouncerColors.current.textMuted
+
+val GlassBackground: Color
+    @Composable @ReadOnlyComposable get() = LocalBouncerColors.current.glassBackground
+
+val GlassBorder: Color
+    @Composable @ReadOnlyComposable get() = LocalBouncerColors.current.glassBorder
+
+val GlassSurface: Color
+    @Composable @ReadOnlyComposable get() = LocalBouncerColors.current.glassSurface

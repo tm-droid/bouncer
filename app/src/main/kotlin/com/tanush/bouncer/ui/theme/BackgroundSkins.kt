@@ -110,7 +110,7 @@ data class BackgroundSkinConfig(
     val type: BackgroundSkinType,
     val primaryColor: Color = Color.Transparent,
     val secondaryColor: Color = Color.Transparent,
-    val accentColor: Color = GoldPrimary,
+    val accentColor: Color = GoldPrimaryDark,
     val intensity: Float = 1.0f,
     val animated: Boolean = false
 )
@@ -195,7 +195,7 @@ sealed class BackgroundSkin(
         override val config: BackgroundSkinConfig = BackgroundSkinConfig(
             type = BackgroundSkinType.TEAM_COLORS
         ),
-        val team1Color: Color = GoldPrimary,
+        val team1Color: Color = GoldPrimaryDark,
         val team2Color: Color = Color(0xFF3B82F6),
         val blendMode: TeamColorBlendMode = TeamColorBlendMode.GRADIENT
     ) : BackgroundSkin(config)
@@ -341,7 +341,7 @@ private fun MidnightGradientBackground(
                 .drawBehind {
                     drawRect(
                         brush = Brush.radialGradient(
-                            0.0f to GoldPrimary.copy(alpha = skin.goldBloomAlpha * skin.config.intensity),
+                            0.0f to GoldPrimaryDark.copy(alpha = skin.goldBloomAlpha * skin.config.intensity),
                             1.0f to Color.Transparent,
                             center = Offset(size.width / 2f, -size.height * 0.05f),
                             radius = size.width * 1.2f
@@ -406,7 +406,7 @@ private fun StadiumLightsBackground(
                 .drawBehind {
                     drawRect(
                         brush = Brush.radialGradient(
-                            0.0f to GoldPrimary.copy(alpha = 0.08f * skin.config.intensity),
+                            0.0f to GoldPrimaryDark.copy(alpha = 0.08f * skin.config.intensity),
                             1.0f to Color.Transparent,
                             center = Offset(size.width / 2f, size.height * 1.1f),
                             radius = size.width * 0.8f
@@ -533,8 +533,8 @@ private fun AuroraBackground(
                     drawRect(
                         brush = Brush.verticalGradient(
                             0.0f to Color.Transparent,
-                            0.9f to GoldPrimary.copy(alpha = 0.06f * skin.config.intensity),
-                            1.0f to GoldPrimary.copy(alpha = 0.12f * skin.config.intensity)
+                            0.9f to GoldPrimaryDark.copy(alpha = 0.06f * skin.config.intensity),
+                            1.0f to GoldPrimaryDark.copy(alpha = 0.12f * skin.config.intensity)
                         )
                     )
                 }
@@ -666,7 +666,7 @@ private fun TeamColorsBackground(
                 .drawBehind {
                     drawRect(
                         brush = Brush.radialGradient(
-                            0.0f to GoldPrimary.copy(alpha = 0.08f * skin.config.intensity),
+                            0.0f to GoldPrimaryDark.copy(alpha = 0.08f * skin.config.intensity),
                             1.0f to Color.Transparent,
                             center = Offset(size.width / 2f, -size.height * 0.1f),
                             radius = size.width * 1.0f

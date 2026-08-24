@@ -86,7 +86,7 @@ fun ReminderBottomSheet(
                     Icon(
                         Icons.Default.Alarm,
                         contentDescription = null,
-                        tint = colors.primary,
+                        tint = colors.primaryText,
                         modifier = Modifier.size(24.dp),
                     )
                     Spacer(Modifier.width(spacing.lg))

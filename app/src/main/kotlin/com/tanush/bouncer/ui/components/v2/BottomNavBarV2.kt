@@ -67,8 +67,8 @@ fun BottomNavBarV2(
                 },
                 label = { Text(text = item.label) },
                 colors = NavigationBarItemDefaults.colors(
-                    selectedIconColor = colors.primary,
-                    selectedTextColor = colors.primary,
+                    selectedIconColor = colors.primaryText,
+                    selectedTextColor = colors.primaryText,
                     unselectedIconColor = colors.textSecondary,
                     unselectedTextColor = colors.textSecondary,
                     indicatorColor = colors.primaryContainer,

@@ -124,15 +124,15 @@ object BouncerColorsCompat {
     // Match result colours
     val WinGreen = StatusSuccess
     val LossRed = StatusLive
-    val DrawGray = TextTertiary
+    val DrawGray = TextTertiaryDark
 
     // Chip / filter UI
-    val ChipSelectedBg = GoldPrimary.copy(alpha = 0.12f)
-    val ChipSelectedBgDark = GoldPrimary.copy(alpha = 0.16f)
-    val ChipUnselectedBg = Surface1
-    val ChipUnselectedBgDark = Surface2
-    val ChipSelectedContent = GoldPrimary
-    val ChipSelectedContentDark = GoldLight
+    val ChipSelectedBg = GoldPrimaryDark.copy(alpha = 0.12f)
+    val ChipSelectedBgDark = GoldPrimaryDark.copy(alpha = 0.16f)
+    val ChipUnselectedBg = Surface1Dark
+    val ChipUnselectedBgDark = Surface2Dark
+    val ChipSelectedContent = GoldPrimaryDark
+    val ChipSelectedContentDark = GoldLightDark
 
     // Cricket pitch visualisation
     val PitchLightGreen = androidx.compose.ui.graphics.Color(0xFF7CB342)
@@ -144,43 +144,43 @@ object BouncerColorsCompat {
     // Card / surface gradients
     val GradientStartLight = androidx.compose.ui.graphics.Color(0xFFFFFFFF)
     val GradientEndLight = androidx.compose.ui.graphics.Color(0xFFF5F5F5)
-    val GradientStartDark = Surface1
-    val GradientEndDark = BackgroundBase
-    val GradientAccentStart = GoldPrimary
+    val GradientStartDark = Surface1Dark
+    val GradientEndDark = BackgroundBaseDark
+    val GradientAccentStart = GoldPrimaryDark
     val GradientAccentEnd = GoldDark
-    val GradientGoldStart = GoldLight
-    val GradientGoldEnd = GoldPrimary
+    val GradientGoldStart = GoldLightDark
+    val GradientGoldEnd = GoldPrimaryDark
 
     // Misc
-    val Shimmer = Surface2
+    val Shimmer = Surface2Dark
     val ShimmerHighlight = Surface3
-    val Divider = TextMuted
-    val DividerDark = Surface2
+    val Divider = TextMutedDark
+    val DividerDark = Surface2Dark
     val ScrimOverlay = GlassScrim
 
     // Glassmorphism & Hero Scorecard
-    val GlassSurface = GlassBackground
-    val GlassSurfaceDark = GlassBackground
+    val GlassSurface = GlassBackgroundDark
+    val GlassSurfaceDark = GlassBackgroundDark
     val GlassSurfaceLight = GlassBackgroundHover
-    val GlassBorder = com.tanush.bouncer.ui.theme.GlassBorder
+    val GlassBorderDark = com.tanush.bouncer.ui.theme.GlassBorderDark
     val GlassBorderTop = GlassBorderHighlight
 
     // Hero scorecard gradients
-    val HeroGradientStart = BackgroundBase
-    val HeroGradientMid = Surface1
-    val HeroGradientEnd = Surface2
-    val HeroGradientStartDark = BackgroundBase
+    val HeroGradientStart = BackgroundBaseDark
+    val HeroGradientMid = Surface1Dark
+    val HeroGradientEnd = Surface2Dark
+    val HeroGradientStartDark = BackgroundBaseDark
     val HeroGradientMidDark = BackgroundElevated
-    val HeroGradientEndDark = Surface1
+    val HeroGradientEndDark = Surface1Dark
 
     // Score display on hero
-    val HeroTextPrimary = TextPrimary
-    val HeroTextSecondary = TextSecondary
-    val HeroTextMuted = TextMuted
+    val HeroTextPrimary = TextPrimaryDark
+    val HeroTextSecondary = TextSecondaryDark
+    val HeroTextMuted = TextMutedDark
 
     // Overs pill on hero
-    val OversPillBg = GlassBackground
-    val OversPillText = TextSecondary
+    val OversPillBg = GlassBackgroundDark
+    val OversPillText = TextSecondaryDark
 
     // Material 3 schemes
     val LightColorScheme = BouncerLightColorScheme

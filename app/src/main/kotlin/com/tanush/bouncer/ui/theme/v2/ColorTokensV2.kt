@@ -7,6 +7,11 @@ import androidx.compose.ui.graphics.Color
 /**
  * Complete light + dark color palettes for Bouncer V2.
  * Primary brand: premium warm gold — prestigious, bold, and distinct.
+ *
+ * Contrast is a hard requirement, not a preference: every foreground/background pair defined here
+ * is asserted against WCAG in `LightModeContrastTest`. The light palette used to fail badly —
+ * `primary` (#E0B74F) measures 1.74:1 against white, so gold text and icons were invisible — which
+ * is why [BouncerColorsV2.primaryText] exists as a separate role.
  */
 
 // ─── Raw palette ──────────────────────────────────────────
@@ -18,6 +23,14 @@ val Gold300 = Color(0xFFF3DB93)
 val GoldContainer = Color(0xFFFDF3C0)
 val GoldContainerDark = Color(0xFF34270D)
 
+/**
+ * Foreground-safe gold. 5.34:1 on [White] and 5.12:1 on [Gray50] — AA for body text.
+ *
+ * [Gold700] is a *fill* colour: it pairs with a dark ink at 10.6:1 and is correct behind text, but
+ * as ink itself on a light surface it is unreadable. Light mode uses this wherever gold is the ink.
+ */
+val GoldText = Color(0xFF8A6516)
+
 // Neutrals — light
 val White = Color(0xFFFFFFFF)
 val Gray50 = Color(0xFFFAFAFA)
@@ -26,6 +39,7 @@ val Gray200 = Color(0xFFE5E7EB)
 val Gray300 = Color(0xFFD1D5DB)
 val Gray400 = Color(0xFF9CA3AF)
 val Gray500 = Color(0xFF6B7280)
+val Gray600 = Color(0xFF4B5563)
 val Gray900 = Color(0xFF1A1A1A)
 
 // Neutrals — dark
@@ -41,6 +55,7 @@ val LiveRed = Color(0xFFDC2626)
 val LiveRedDark = Color(0xFFEF4444)
 val WinGreen = Color(0xFF16A34A)
 val WinGreenDark = Color(0xFF22C55E)
+val WinGreenText = Color(0xFF15803D)
 val ScheduledGray = Color(0xFF9CA3AF)
 
 // Extras
@@ -67,17 +82,22 @@ data class CricketEventColors(
     val onEvent: Color,
 )
 
+/**
+ * Light-mode event colours. These are drawn as filled pills with [onEvent] text on top, so each is
+ * chosen for contrast against white text rather than against the page — the mid-tone Tailwind-600
+ * step rather than the -500 step the dark palette can afford.
+ */
 val LightCricketEventColors = CricketEventColors(
     wicket = LiveRed,
-    four = WinGreen,
-    six = Color(0xFF7C3AED),
-    wide = Color(0xFFF59E0B),
-    noBall = Color(0xFFF97316),
-    maiden = Color(0xFF0D9488),
-    milestone = Gold800,
-    matchStart = Color(0xFF3B82F6),
-    matchEnd = Color(0xFF94A3B8),
-    dotBall = Gray400,
+    four = WinGreenText,
+    six = Color(0xFF6D28D9),
+    wide = Color(0xFFB45309),
+    noBall = Color(0xFFC2410C),
+    maiden = Color(0xFF0F766E),
+    milestone = GoldText,
+    matchStart = Color(0xFF1D4ED8),
+    matchEnd = Color(0xFF64748B),
+    dotBall = Gray500,
     onEvent = White,
 )
 
@@ -97,11 +117,20 @@ val DarkCricketEventColors = CricketEventColors(
 
 @Immutable
 data class BouncerColorsV2(
+    /** True for [DarkColors]. Read it instead of comparing palette identity — a `.copy()` breaks that. */
+    val isDark: Boolean,
+
     // Brand
     val primary: Color,
     val primaryDark: Color,
     val primaryContainer: Color,
     val onPrimary: Color,
+
+    /**
+     * Gold as *ink* — accent text, icons, hairlines. Distinct from [primary], which is a fill.
+     * On light surfaces the two must differ or the accent is unreadable.
+     */
+    val primaryText: Color,
 
     // Backgrounds & surfaces
     val background: Color,
@@ -125,10 +154,20 @@ data class BouncerColorsV2(
 
     // Top bar
     val topBar: Color,
+    /** Title ink on [topBar]. */
     val onTopBar: Color,
+    /** Secondary ink on [topBar] — navigation and action icons. */
+    val onTopBarMuted: Color,
 
     // Scrim (overlay dimmer)
     val scrim: Color,
+
+    /**
+     * Opaque base for translucent "lift" overlays — glass highlights, hover states, inner strokes.
+     * Callers apply their own alpha. White lifts a dark surface; on a light surface only a dark
+     * wash reads, so this inverts with the theme instead of being a hardcoded `Color.White`.
+     */
+    val highlight: Color,
 
     // Misc
     val shimmer: Color,
@@ -139,10 +178,13 @@ data class BouncerColorsV2(
 )
 
 val LightColors = BouncerColorsV2(
+    isDark = false,
+
     primary = Gold700,
     primaryDark = Gold800,
     primaryContainer = GoldContainer,
     onPrimary = DarkBg,
+    primaryText = GoldText,
 
     background = Gray50,
     surface = White,
@@ -150,20 +192,25 @@ val LightColors = BouncerColorsV2(
 
     onBackground = Gray900,
     onSurface = Gray900,
-    textSecondary = Gray500,
+    textSecondary = Gray600,
 
-    border = Gray200,
-    divider = DividerLight,
+    // Was Gray200/DividerLight. A #F0F0F0 divider on a #FAFAFA page is 1.09:1 — it did not render.
+    border = Gray400,
+    divider = Gray300,
 
     live = LiveRed,
-    win = WinGreen,
+    win = WinGreenText,
     scheduled = ScheduledGray,
     error = LiveRed,
 
-    topBar = Gold800,
+    // Was Gold800, which puts white text at 3.44:1 — below AA.
+    topBar = GoldText,
     onTopBar = White,
+    onTopBarMuted = White,
 
     scrim = ScrimDark,
+
+    highlight = Gray900,
 
     shimmer = Gray200,
     shimmerHighlight = Gray100,
@@ -172,10 +219,13 @@ val LightColors = BouncerColorsV2(
 )
 
 val DarkColors = BouncerColorsV2(
+    isDark = true,
+
     primary = Gold300,
     primaryDark = Gold700,
     primaryContainer = GoldContainerDark,
     onPrimary = Gray900,
+    primaryText = Gold300,
 
     background = DarkBg,
     surface = DarkSurface,
@@ -194,9 +244,14 @@ val DarkColors = BouncerColorsV2(
     error = LiveRedDark,
 
     topBar = Color(0xFF131923),
-    onTopBar = DarkTextPrimary,
+    // Gold title on near-black is the shipped dark bar; onTopBar carries it so the component does
+    // not have to branch on mode.
+    onTopBar = Gold300,
+    onTopBarMuted = DarkTextSecondary,
 
     scrim = ScrimDark,
+
+    highlight = White,
 
     shimmer = DarkSurfaceVariant,
     shimmerHighlight = DarkBorder,

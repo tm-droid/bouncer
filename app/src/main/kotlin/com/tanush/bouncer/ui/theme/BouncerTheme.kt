@@ -112,7 +112,7 @@ object BouncerDesignSystem {
     /**
      * Semantic glass surface color.
      */
-    val GlassSurface = com.tanush.bouncer.ui.theme.GlassSurface
+    val GlassSurfaceDark = com.tanush.bouncer.ui.theme.GlassSurfaceDark
     
     /**
      * Handcrafted metallic gold color.

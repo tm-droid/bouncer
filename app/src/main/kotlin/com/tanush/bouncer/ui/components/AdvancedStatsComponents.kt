@@ -85,6 +85,8 @@ fun PremiumWinProbabilityRing(
         modifier = modifier.size(size),
         contentAlignment = Alignment.Center
     ) {
+        val shimmerColor = TextPrimary
+        val trackColor = Surface2
         Canvas(modifier = Modifier.fillMaxSize()) {
             val strokePx = strokeWidth.toPx()
             val radius = (size.toPx() - strokePx) / 2
@@ -106,7 +108,7 @@ fun PremiumWinProbabilityRing(
             
             // Background arc
             drawArc(
-                color = Surface2,
+                color = trackColor,
                 startAngle = -90f,
                 sweepAngle = 360f,
                 useCenter = false,
@@ -156,7 +158,7 @@ fun PremiumWinProbabilityRing(
                     brush = Brush.sweepGradient(
                         colors = listOf(
                             Color.Transparent,
-                            TextPrimary.copy(alpha = 0.3f),
+                            shimmerColor.copy(alpha = 0.3f),
                             Color.Transparent,
                             Color.Transparent
                         ),
@@ -236,6 +238,7 @@ fun RunRateSpeedometer(
         modifier = modifier.size(size),
         contentAlignment = Alignment.Center
     ) {
+        val trackColor = Surface2
         Canvas(modifier = Modifier.fillMaxSize()) {
             val strokeWidth = 10.dp.toPx()
             val radius = (size.toPx() - strokeWidth) / 2
@@ -260,7 +263,7 @@ fun RunRateSpeedometer(
                 val segmentColor = if (i <= (animatedCRR / maxRunRate * segments)) {
                     crrColor
                 } else {
-                    Surface2
+                    trackColor
                 }
                 
                 drawLine(

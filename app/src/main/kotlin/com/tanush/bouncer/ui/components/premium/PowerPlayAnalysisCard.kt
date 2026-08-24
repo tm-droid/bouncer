@@ -184,6 +184,7 @@ fun PowerPlayAnalysisCard(
             val statusInfoColor = colors.statusInfo
 
             // Run rate comparison graph
+            val labelDot = BouncerThemeV2.colors.onSurface.copy(alpha = 0.9f)
             Canvas(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -228,7 +229,7 @@ fun PowerPlayAnalysisCard(
 
                     // Rate label
                     drawCircle(
-                        color = Color.White.copy(alpha = 0.9f),
+                        color = labelDot,
                         radius = 4f,
                         center = Offset(x + barWidth / 2, size.height - barHeight - 10f),
                     )

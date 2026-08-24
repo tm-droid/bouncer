@@ -126,7 +126,7 @@ private fun ThemeOptionCard(
         onClick = onClick,
         modifier = modifier.height(110.dp),
         shape = BouncerThemeV2.shapes.medium,
-        border = if (isSelected) BorderStroke(2.dp, colors.primary) else null,
+        border = if (isSelected) BorderStroke(2.dp, colors.primaryText) else null,
         colors = CardDefaults.cardColors(containerColor = colors.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = BouncerThemeV2.elevation.card),
     ) {
@@ -144,7 +144,7 @@ private fun ThemeOptionCard(
                 Icon(
                     Icons.Default.Check,
                     contentDescription = "Selected",
-                    tint = colors.primary,
+                    tint = colors.primaryText,
                     modifier = Modifier.size(18.dp).align(Alignment.TopEnd),
                 )
             }

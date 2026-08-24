@@ -256,7 +256,7 @@ private fun SeriesCard(series: Series, onClick: () -> Unit) {
                 Icon(
                     Icons.Default.DateRange,
                     contentDescription = null,
-                    tint = colors.primary,
+                    tint = colors.primaryText,
                     modifier = Modifier.size(22.dp),
                 )
             }
@@ -282,7 +282,7 @@ private fun SeriesCard(series: Series, onClick: () -> Unit) {
                 Text(
                     categoryLabel,
                     style = typography.labelSmall,
-                    color = colors.primary,
+                    color = colors.primaryText,
                 )
             }
 

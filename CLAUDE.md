@@ -120,6 +120,39 @@ Endpoint/projectId are auto-injected by the runtime — only `APPWRITE_API_KEY` 
 
 **AI cache (3-tier):** `MemoryFifoCache` (256 entries; FIFO eviction, not LRU — `utils/BoundedLruCache` is the real LRU) → Room `ai_commentary_cache` → Appwrite `ai-commentary-cache` table. All four commentary functions (`generateBallCommentary`, `fuse`, `streamCommentary`, `summarizeOversWithAI`) check cache before calling any AI provider. Completed matches use **permanent TTL** (`Long.MAX_VALUE` in Room, `expires_at = "2099-01-01T00:00:00.000Z"` in Appwrite) — `isMatchComplete` flag threads from ViewModels → `LiveCommentaryManager` → `CommentaryFusionService` → `AICacheService`. Never set permanent=true for live matches.
 
+**Light mode is a first-class palette, and the legacy layer is bridged into it.** `BouncerThemeV2`
+resolves Light/Dark/System and there is a user picker, but for a long time light mode was unusable
+for three independent reasons. (1) `LocalBouncerColors` — read by ~46 files via
+`BouncerDesignSystem.colors` — had **no provider** outside the legacy `BouncerTheme`, which the app
+never calls, so every one of those reads returned the static dark default. `BouncerThemeV2` now
+provides `legacyColorsFor(isDark)` from `ui/theme/LegacyColorBridge.kt`; `LegacyDarkColors` is
+`BouncerColors()` so dark is byte-identical. (2) The dark-only top-level constants (`TextPrimary`,
+`GlassSurface`, `GoldPrimary`, …) were `val`s, constant by construction. The raw literals are now
+suffixed `*Dark` and the original names are **composable getters** reading the bridge, so ~260 call
+sites follow the theme unedited; anything used outside composition points at the `*Dark` constant.
+(3) Light `primary` (#E0B74F) is 1.74:1 on white. Gold as *fill* and gold as *ink* are now separate
+roles — `primary` vs **`primaryText`** (#8A6516, 5.34:1). In dark they are the same value, so every
+`primary` → `primaryText` swap is a light-only change. `BouncerThemeV2` also maps the **full** M3
+scheme: unmapped roles fall through to the M3 baseline, which is purple, and `secondaryContainer` /
+`surfaceContainer*` paint the nav indicator and every Card. Pinned by `LightModeContrastTest`
+(WCAG floors for both palettes) — add a token, add its pair there.
+
+**Contrast helpers are direction-aware, and team colours have a ground.** `Color.ensureContrast`
+compared luminance the wrong way round and walked colours *toward* the background;
+`liftForContrast` only ever raised HSV value, which is correct on a dark surface and bleaches on a
+light one. Both now move away from the background. `TeamColorRegistry` baked every brand colour
+against `BlackBackground` regardless of theme — it now takes a `Ground` (background + surface + ink);
+use `rememberTeamGround()` / `rememberMatchTeamPalette` rather than calling the registry with the
+default.
+
+**RemoteViews colour is resolved per Context, not per constant.** `values/colors.xml` is the light
+set and `values-night/colors.xml` the dark one — keep them key-for-key identical. Widgets and the
+seven notification layouts read through them, and `WidgetRemoteViewsColors.of(context)` replaces the
+old object of `toArgb()` constants (a singleton would cache the wrong mode). Glance styles pair
+day/night via `cp(light, dark)`. The **splash stays dark in both modes on purpose**:
+`ic_launcher_foreground.png` is a mostly-opaque black mark, so a light plate renders a black square
+— hence `@color/splash_background` has no night variant.
+
 **Cricbuzz profile pages are App Router.** `/profiles/{id}/{slug}` carries no `__NEXT_DATA__` block — only `self.__next_f.push(...)` chunks — and the legacy Jsoup selectors (`cb-font-40`, `cb-plyr-inf`, `cb-plyr-thead`, …) match **zero** elements on it. Both of `PlayerProfileScraper`'s original strategies were therefore dead, and the fallback produced a profile with a name and every other field empty rather than an error. `PlayerProfileRsc` reads the flight stream via `forEachNextFlightPayload` — the same parser the match pages use — and runs first; the other two stay as fallbacks. Pinned by `PlayerProfileRscTest` against captured markup.
 
 **Scorecard player names are in a span, not the row's link.** A `div.grid.scorecard-bat-grid` /

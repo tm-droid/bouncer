@@ -108,6 +108,7 @@ private fun AiImpactHero(winProb: Float) {
             label = "pulse"
         )
 
+        val ringColor = GlassSurface
         Canvas(modifier = Modifier.size(240.dp)) {
             // High-fidelity background glow
             drawCircle(
@@ -128,7 +129,7 @@ private fun AiImpactHero(winProb: Float) {
             }
             
             drawCircle(
-                color = GlassSurface,
+                color = ringColor,
                 style = Stroke(width = 1.dp.toPx()),
                 radius = 85.dp.toPx()
             )
@@ -233,13 +234,14 @@ private fun ValueAddedChart(winProb: Float, probDelta: String) {
                 .border(0.5.dp, GlassBorder, RoundedCornerShape(28.dp))
                 .padding(24.dp)
         ) {
+            val gridColor = GlassSurface
             Canvas(modifier = Modifier.fillMaxSize()) {
                 val lines = 5
                 val spacing = size.height / lines
                 for (i in 0..lines) {
                     val y = i * spacing
                     drawLine(
-                        color = GlassSurface.copy(alpha = 0.5f),
+                        color = gridColor.copy(alpha = 0.5f),
                         start = Offset(0f, y),
                         end = Offset(size.width, y),
                         strokeWidth = 1.dp.toPx()

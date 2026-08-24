@@ -114,9 +114,12 @@ fun Color.ensureContrast(
         return adjustedColor
     }
     
-    // Determine if we need to lighten or darken
+    // Move away from the background, not toward it. This compared the wrong way round: a colour
+    // darker than its background was lightened, which walks it into the background and never
+    // converges — 50 iterations later it returns something washed out. It only stayed invisible
+    // because most inputs clear the ratio on the first check and return above.
     val backgroundLuminance = background.relativeLuminance()
-    val shouldLighten = adjustedColor.relativeLuminance() < backgroundLuminance
+    val shouldLighten = adjustedColor.relativeLuminance() > backgroundLuminance
     
     // Adjust until we reach minimum contrast
     while (!adjustedColor.hasMinimumContrast(background, minimumRatio) 
@@ -148,16 +151,26 @@ fun Color.liftForContrast(background: Color, minimumRatio: Float): Color {
     if (hasMinimumContrast(background, minimumRatio)) return this
     val hsv = FloatArray(3)
     android.graphics.Color.colorToHSV(this.toArgb(), hsv)
+    // Step *away* from the background: brighter on a dark ground, darker on a light one. Raising
+    // value unconditionally was correct only while the app was dark-only — on a white surface it
+    // walks the colour toward white, i.e. toward the background, so a team segment came out
+    // bleached to nothing exactly where it most needed to read.
+    val brighten = background.relativeLuminance() < MID_LUMINANCE
     var value = hsv[2]
-    while (value < 1f) {
-        value = (value + HSV_VALUE_STEP).coerceAtMost(1f)
-        val lifted = Color.hsv(hsv[0], hsv[1], value)
-        if (lifted.hasMinimumContrast(background, minimumRatio)) return lifted
+    while (if (brighten) value < 1f else value > 0f) {
+        value = if (brighten) {
+            (value + HSV_VALUE_STEP).coerceAtMost(1f)
+        } else {
+            (value - HSV_VALUE_STEP).coerceAtLeast(0f)
+        }
+        val shifted = Color.hsv(hsv[0], hsv[1], value)
+        if (shifted.hasMinimumContrast(background, minimumRatio)) return shifted
     }
     return ensureContrast(background, minimumRatio)
 }
 
 private const val HSV_VALUE_STEP = 0.04f
+private const val MID_LUMINANCE = 0.5f
 
 /**
  * Ensure this color is readable as foreground text using WCAG contrast.
@@ -403,7 +416,7 @@ fun Color.toTeamSurface(): Color {
     return this
         .darken(0.7f)
         .adjustSaturation(-0.4f)
-        .ensureContrast(TextPrimary, 4.5f)
+        .ensureContrast(TextPrimaryDark, 4.5f)
 }
 
 /**

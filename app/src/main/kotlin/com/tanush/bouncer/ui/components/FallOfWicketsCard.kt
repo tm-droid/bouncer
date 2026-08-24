@@ -185,6 +185,8 @@ private fun WicketTimeline(
             .fillMaxWidth()
             .height(100.dp)
     ) {
+        val baselineColor = GlassBorder
+        val gridColor = GlassBorder
         Canvas(modifier = Modifier.fillMaxSize()) {
             val chartWidth = this.size.width
             val chartHeight = this.size.height - 20.dp.toPx()
@@ -206,7 +208,7 @@ private fun WicketTimeline(
             zones.forEach { score ->
                 val y = chartHeight - (score.toFloat() / maxScore) * chartHeight
                 drawLine(
-                    color = GlassBorder.copy(alpha = 0.2f),
+                    color = gridColor.copy(alpha = 0.2f),
                     start = Offset(0f, y),
                     end = Offset(size.width, y),
                     strokeWidth = 1.dp.toPx(),
@@ -274,7 +276,7 @@ private fun WicketTimeline(
             
             // Baseline
             drawLine(
-                color = GlassBorder.copy(alpha = 0.3f),
+                color = baselineColor.copy(alpha = 0.3f),
                 start = Offset(0f, chartHeight),
                 end = Offset(chartWidth, chartHeight),
                 strokeWidth = 1.dp.toPx()
@@ -424,20 +426,15 @@ private fun WicketCard(
 /**
  * Get color for dismissal type
  */
-private fun getDismissalColor(type: DismissalType): Color {
-    try {
-        return when (type) {
-            DismissalType.BOWLED -> StatusLive
-            DismissalType.LBW -> StatusInfo
-            DismissalType.CAUGHT, DismissalType.CAUGHT_BEHIND, DismissalType.CAUGHT_AND_BOWLED -> GoldPrimary
-            DismissalType.RUN_OUT -> StatusWarning
-            DismissalType.STUMPED -> StatusSuccess
-            DismissalType.HIT_WICKET -> TextTertiary
-        }
-    } catch (e: Exception) {
-        Sentry.captureException(e)
-        throw e
-    }
+@Composable
+@ReadOnlyComposable
+private fun getDismissalColor(type: DismissalType): Color = when (type) {
+    DismissalType.BOWLED -> StatusLive
+    DismissalType.LBW -> StatusInfo
+    DismissalType.CAUGHT, DismissalType.CAUGHT_BEHIND, DismissalType.CAUGHT_AND_BOWLED -> GoldPrimary
+    DismissalType.RUN_OUT -> StatusWarning
+    DismissalType.STUMPED -> StatusSuccess
+    DismissalType.HIT_WICKET -> TextTertiary
 }
 
 /**

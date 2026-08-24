@@ -39,7 +39,7 @@ data class OverByOverComparisonInfo(
     val currentOver: Int = 0,
     val maxOvers: Int = 20,
     val team1Color: Color = StatusInfo,
-    val team2Color: Color = GoldPrimary,
+    val team2Color: Color = GoldDark,
     val highlightOvers: List<Int> = emptyList() // Overs with significant events
 )
 
@@ -168,6 +168,8 @@ fun OverByOverComparisonCard(
                     .fillMaxWidth()
                     .height(180.dp)
             ) {
+                val gridColor = GlassBorder
+                val gridLift = BouncerThemeV2.colors.highlight.copy(alpha = 0.05f)
                 Canvas(modifier = Modifier.fillMaxSize()) {
                     val graphWidth = size.width
                     val graphHeight = size.height
@@ -178,7 +180,7 @@ fun OverByOverComparisonCard(
                     for (i in 0..gridLines) {
                         val y = padding + (graphHeight - 2 * padding) * i / gridLines
                         drawLine(
-                            color = GlassBorder,
+                            color = gridColor,
                             start = Offset(padding, y),
                             end = Offset(graphWidth - padding, y),
                             strokeWidth = 1f
@@ -194,7 +196,7 @@ fun OverByOverComparisonCard(
                         
                         // Vertical grid line
                         drawLine(
-                            color = Color.White.copy(alpha = 0.05f),
+                            color = gridLift,
                             start = Offset(x, padding),
                             end = Offset(x, graphHeight - padding),
                             strokeWidth = 1f

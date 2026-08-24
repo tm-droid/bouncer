@@ -91,7 +91,7 @@ object OLEDBlackScheme {
     val onBackground = Color.White
     val onSurface = Color.White
     val primary = GoldDark
-    val secondary = GoldPrimary
+    val secondary = GoldPrimaryDark
     val outline = Color(0xFF1A1A1A)
     
     val colorScheme = darkColorScheme(
@@ -110,7 +110,7 @@ object OLEDBlackScheme {
         surface = surface,
         onSurface = onSurface,
         surfaceVariant = surfaceVariant,
-        onSurfaceVariant = TextSecondary,
+        onSurfaceVariant = TextSecondaryDark,
         surfaceTint = primary,
         surfaceBright = Color(0xFF0F0F0F),
         surfaceContainer = surface,
@@ -141,8 +141,8 @@ object DimmedModeScheme {
     val background = BlackBackground.dimmed(DIM_FACTOR)
     val surface = BlackSurface.dimmed(DIM_FACTOR)
     val surfaceVariant = BlackElevated.dimmed(DIM_FACTOR)
-    val onBackground = TextPrimary.dimmed(0.85f)
-    val onSurface = TextPrimary.dimmed(0.85f)
+    val onBackground = TextPrimaryDark.dimmed(0.85f)
+    val onSurface = TextPrimaryDark.dimmed(0.85f)
     val primary = ShinyGoldDeep.dimmed(0.8f)
     val secondary = ShinyGoldMid.dimmed(0.8f)
     
@@ -162,7 +162,7 @@ object DimmedModeScheme {
         surface = surface,
         onSurface = onSurface,
         surfaceVariant = surfaceVariant,
-        onSurfaceVariant = TextSecondary.dimmed(0.85f),
+        onSurfaceVariant = TextSecondaryDark.dimmed(0.85f),
         surfaceTint = primary,
         surfaceBright = Color(0xFF1A1A1A).dimmed(DIM_FACTOR),
         surfaceContainer = surface,
@@ -174,7 +174,7 @@ object DimmedModeScheme {
         inverseSurface = Color.White.dimmed(0.9f),
         inverseOnSurface = Color.Black,
         inversePrimary = ShinyGoldDark.dimmed(0.8f),
-        outline = GlassBorder.dimmed(0.8f),
+        outline = GlassBorderDark.dimmed(0.8f),
         outlineVariant = GlassBorderLight.dimmed(0.8f),
         scrim = Color.Black.copy(alpha = 0.8f),
         error = ErrorRed.dimmed(0.85f),
@@ -299,7 +299,7 @@ fun ThemeSelector(
         Text(
             text = "Dark Mode Theme",
             style = typography.titleMedium,
-            color = TextPrimary,
+            color = TextPrimaryDark,
             modifier = Modifier.padding(bottom = 16.dp)
         )
         
@@ -331,23 +331,23 @@ private fun ThemePreviewCard(
 ) {
     val typography = BouncerDesignSystem.typography
     val borderColor by animateColorAsState(
-        targetValue = if (isSelected) ShinyGoldDeep else GlassBorder,
+        targetValue = if (isSelected) ShinyGoldDeep else GlassBorderDark,
         animationSpec = tween(200),
         label = "themeBorder"
     )
     
     val (bgColor, surfaceColor, textColor) = when (variant) {
-        DarkModeVariant.Standard -> Triple(BlackBackground, BlackSurface, TextPrimary)
+        DarkModeVariant.Standard -> Triple(BlackBackground, BlackSurface, TextPrimaryDark)
         DarkModeVariant.OLED -> Triple(Color.Black, Color(0xFF050505), Color.White)
         DarkModeVariant.Dimmed -> Triple(
             BlackBackground.dimmed(0.7f),
             BlackSurface.dimmed(0.7f),
-            TextPrimary.dimmed(0.85f)
+            TextPrimaryDark.dimmed(0.85f)
         )
         DarkModeVariant.Dynamic -> Triple(
             Color(0xFF1A1A2E),   // Wallpaper-tinted preview hint
             Color(0xFF16213E),
-            TextPrimary
+            TextPrimaryDark
         )
     }
     
@@ -547,7 +547,7 @@ fun BrightnessAdjustmentBar(
             Text(
                 text = "Brightness",
                 style = typography.titleMedium,
-                color = TextPrimary
+                color = TextPrimaryDark
             )
             
             Spacer(modifier = Modifier.weight(1f))
@@ -612,12 +612,12 @@ fun BrightnessAdjustmentBar(
             Text(
                 text = "Dim",
                 style = typography.labelSmall,
-                color = TextTertiary
+                color = TextTertiaryDark
             )
             Text(
                 text = "Bright",
                 style = typography.labelSmall,
-                color = TextTertiary
+                color = TextTertiaryDark
             )
         }
     }

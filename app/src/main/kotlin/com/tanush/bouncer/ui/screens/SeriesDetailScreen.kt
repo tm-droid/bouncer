@@ -52,7 +52,7 @@ fun SeriesDetailScreen(
             ScrollableTabRow(
                 selectedTabIndex = selectedTab,
                 containerColor = colors.surface,
-                contentColor = colors.primary,
+                contentColor = colors.primaryText,
                 edgePadding = 16.dp,
             ) {
                 tabs.forEachIndexed { index, title ->

@@ -32,6 +32,7 @@ import com.tanush.bouncer.ui.theme.*
 import kotlinx.coroutines.delay
 import kotlin.random.Random
 import io.sentry.Sentry
+import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 
 private fun reversingSpec(durationMs: Int, easing: Easing = FastOutSlowInEasing) =
     infiniteRepeatable<Float>(animation = tween(durationMs, easing = easing), repeatMode = RepeatMode.Reverse)
@@ -60,6 +61,7 @@ private fun pulsingFloat(
 }
 
 fun Modifier.noiseOverlay(
+    tint: Color,
     opacity: Float = 0.04f,
     density: Float = 0.12f,
     seed: Int = 42
@@ -75,7 +77,7 @@ fun Modifier.noiseOverlay(
             if (rng.nextFloat() < 0.45f) {
                 val dotAlpha = opacity * (0.3f + rng.nextFloat() * 0.7f)
                 drawCircle(
-                    color = Color.White.copy(alpha = dotAlpha),
+                    color = tint.copy(alpha = dotAlpha),
                     radius = 0.5f + rng.nextFloat() * 0.8f,
                     center = Offset(x + rng.nextFloat() * stepX, y + rng.nextFloat() * stepY)
                 )
@@ -183,16 +185,17 @@ fun GlassCard(
         shape = shape,
         border = BorderStroke(if (isCritical) 1.dp else 0.5.dp, glassCardBorderBrush(importance))
     ) {
+        val lift = BouncerThemeV2.colors.highlight
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .noiseOverlay()
+                .noiseOverlay(tint = lift)
                 .drawWithContent {
                     drawContent()
                     if (isCritical) {
                         drawRect(
                             brush = Brush.verticalGradient(
-                                listOf(Color.White.copy(alpha = shimmerAlpha), Color.Transparent)
+                                listOf(lift.copy(alpha = shimmerAlpha), Color.Transparent)
                             )
                         )
                     }

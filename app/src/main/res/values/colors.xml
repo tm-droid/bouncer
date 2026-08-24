@@ -1,46 +1,65 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!--
+        LIGHT values. values-night/colors.xml carries the dark ones.
+
+        These back the RemoteViews surfaces only — home-screen widgets, notification layouts and the
+        window/splash background. Compose reads none of them; BouncerThemeV2 owns everything the app
+        itself draws. Golds here are the ink-safe #8A6516 family, not the #E0B74F fill gold, which
+        measures 1.74:1 on white.
+    -->
+
     <!-- BOUNCER PREMIUM PALETTE -->
-    <color name="black_background">#0C1015</color>
-    <color name="card_surface">#161C26</color>
-    <color name="card_surface_light">#202834</color>
-    <color name="shiny_gold_deep">#E0B74F</color>
-    <color name="shiny_gold_light">#F3DB93</color>
-    <color name="shiny_gold_mid">#EBC968</color>
-    <color name="shiny_gold_dark">#AF8327</color>
-    <color name="shiny_gold_bronze">#CD8A33</color>
+    <color name="black_background">#FAFAFA</color>
+    <color name="card_surface">#FFFFFF</color>
+    <color name="card_surface_light">#F5F5F5</color>
+    <color name="shiny_gold_deep">#8A6516</color>
+    <color name="shiny_gold_light">#AF8327</color>
+    <color name="shiny_gold_mid">#9A7219</color>
+    <color name="shiny_gold_dark">#6B4E11</color>
+    <color name="shiny_gold_bronze">#8A5A16</color>
 
     <!-- SYSTEM -->
-    <color name="text_primary">#FCF7ED</color>
-    <color name="text_secondary">#C1B08D</color>
-    <color name="text_tertiary">#8D7E61</color>
-    <color name="live_blue">#007AFF</color>
-    <color name="live_blue_bright">#4DA3FF</color>
-    <color name="success_green">#34C759</color>
-    <color name="warning_orange">#F4B740</color>
-    <color name="error_red">#FF5A4E</color>
-    <color name="error_red_muted">#401614</color>
-    <color name="card_border">#33F3DB93</color>
-    <color name="card_dark_blue">#121823</color>
+    <color name="text_primary">#1A1A1A</color>
+    <color name="text_secondary">#4B5563</color>
+    <color name="text_tertiary">#6B7280</color>
+    <color name="live_blue">#1D4ED8</color>
+    <color name="live_blue_bright">#2563EB</color>
+    <color name="success_green">#15803D</color>
+    <color name="warning_orange">#B45309</color>
+    <color name="error_red">#DC2626</color>
+    <color name="error_red_muted">#FEE2E2</color>
+    <color name="card_border">#331A1A1A</color>
+    <color name="card_dark_blue">#FFFFFF</color>
 
     <!-- WIDGET SURFACES -->
-    <color name="widget_surface_alt">#2B3442</color>
-    <color name="widget_gold_container">#34270D</color>
-    <color name="widget_border_accent">#47E0B74F</color>
-    <color name="widget_action_chip">#1B2330</color>
-    <color name="widget_live_badge_bg">#401614</color>
-    <color name="widget_live_badge_stroke">#66FF5A4E</color>
-    <color name="widget_probability_track">#1A202A</color>
-    <color name="widget_ball_neutral">#313B49</color>
-    <color name="widget_ball_six">#9B7BFF</color>
-    <color name="widget_ball_four">#34C759</color>
-    <color name="widget_ball_wicket">#FF5A4E</color>
-    <color name="widget_ball_extra">#F4B740</color>
+    <color name="widget_surface_alt">#E5E7EB</color>
+    <color name="widget_gold_container">#FDF3C0</color>
+    <color name="widget_border_accent">#478A6516</color>
+    <color name="widget_action_chip">#F5F5F5</color>
+    <color name="widget_live_badge_bg">#FEE2E2</color>
+    <color name="widget_live_badge_stroke">#66DC2626</color>
+    <color name="widget_probability_track">#E5E7EB</color>
+    <color name="widget_ball_neutral">#9CA3AF</color>
+    <color name="widget_ball_six">#6D28D9</color>
+    <color name="widget_ball_four">#15803D</color>
+    <color name="widget_ball_wicket">#DC2626</color>
+    <color name="widget_ball_extra">#B45309</color>
+    <color name="widget_text_on_primary">#FFFFFF</color>
+    <color name="widget_live">#DC2626</color>
+    <color name="widget_dot_ball">#9CA3AF</color>
 
     <!-- Host window background. Painted by the framework before Compose draws and during
          recreation; values-night/ carries the dark value so a light-theme user never sees a
          black flash. Not a Compose token — BouncerThemeV2 owns everything after first frame. -->
     <color name="window_background">#FAFAFA</color>
+
+    <!--
+        The splash stays dark in both modes, deliberately: ic_launcher_foreground.png is a
+        predominantly opaque black mark, so on a light plate it renders as a black square rather
+        than a logo. Fixing that means redrawing the asset, not re-qualifying this colour.
+    -->
+    <color name="splash_background">#0C1015</color>
 
     <!-- LEGACY COMPAT -->
     <color name="black">#FF000000</color>

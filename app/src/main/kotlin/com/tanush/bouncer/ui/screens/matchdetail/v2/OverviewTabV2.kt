@@ -260,7 +260,7 @@ private fun WinProbRow(teamName: String, probability: Float) {
                 .weight(1f)
                 .height(8.dp)
                 .clip(RoundedCornerShape(4.dp)),
-            color = colors.primary,
+            color = colors.primaryText,
             trackColor = colors.surfaceVariant,
         )
         Spacer(Modifier.width(spacing.sm))

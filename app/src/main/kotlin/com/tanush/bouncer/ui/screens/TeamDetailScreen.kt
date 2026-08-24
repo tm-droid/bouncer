@@ -85,7 +85,12 @@ fun TeamDetailScreen(
                         )
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = colors.topBar),
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = colors.topBar,
+                    titleContentColor = colors.onTopBar,
+                    navigationIconContentColor = colors.onTopBarMuted,
+                    actionIconContentColor = colors.onTopBarMuted,
+                ),
             )
         },
     ) { innerPadding ->

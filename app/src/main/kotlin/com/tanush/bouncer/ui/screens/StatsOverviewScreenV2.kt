@@ -83,7 +83,7 @@ fun StatsOverviewScreenV2(onBackClick: () -> Unit) {
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
                                 Text("$rank $name", style = typography.bodyMedium, color = colors.onSurface)
-                                Text("⭐ $rating", style = typography.bodyMedium, fontWeight = FontWeight.Bold, color = colors.primary)
+                                Text("⭐ $rating", style = typography.bodyMedium, fontWeight = FontWeight.Bold, color = colors.primaryText)
                             }
                         }
                     }
@@ -128,7 +128,7 @@ private fun TrendCard(label: String, value: String, modifier: Modifier = Modifie
         elevation = CardDefaults.cardElevation(defaultElevation = BouncerThemeV2.elevation.card),
     ) {
         Column(Modifier.padding(spacing.lg), horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(value, style = typography.headlineMedium, fontWeight = FontWeight.Bold, color = colors.primary)
+            Text(value, style = typography.headlineMedium, fontWeight = FontWeight.Bold, color = colors.primaryText)
             Text(label, style = typography.labelSmall, color = colors.textSecondary)
         }
     }
@@ -144,7 +144,7 @@ private fun ProbabilityBar(team: String, probability: Float) {
         LinearProgressIndicator(
             progress = { probability },
             modifier = Modifier.weight(0.5f).height(8.dp).clip(RoundedCornerShape(4.dp)),
-            color = colors.primary,
+            color = colors.primaryText,
             trackColor = colors.surfaceVariant,
         )
         Text(

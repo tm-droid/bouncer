@@ -702,7 +702,7 @@ private fun LiveDataErrorBanner(message: String, onRetry: () -> Unit) {
             modifier = Modifier.weight(1f),
         )
         TextButton(onClick = onRetry) {
-            Text(stringResource(R.string.action_retry), color = colors.primary)
+            Text(stringResource(R.string.action_retry), color = colors.primaryText)
         }
     }
 }

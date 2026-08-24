@@ -76,7 +76,7 @@ fun SettingsItemV2(
                     imageVector = icon,
                     contentDescription = null,
                     modifier = Modifier.size(24.dp),
-                    tint = colors.primary,
+                    tint = colors.primaryText,
                 )
                 Spacer(Modifier.width(spacing.lg))
             }

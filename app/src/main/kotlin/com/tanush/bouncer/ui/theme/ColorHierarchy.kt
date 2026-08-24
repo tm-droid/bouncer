@@ -122,10 +122,10 @@ data class ColorHierarchy(
 val LocalColorHierarchy = staticCompositionLocalOf {
     buildColorHierarchy(
         teamPrimary = GoldDark,
-        teamSecondary = GoldPrimary,
-        teamSurface = Surface1,
+        teamSecondary = GoldPrimaryDark,
+        teamSurface = Surface1Dark,
         teamOnPrimary = Color.White,
-        teamOnSurface = TextPrimary,
+        teamOnSurface = TextPrimaryDark,
         palette = DarkVariantPalette
     )
 }

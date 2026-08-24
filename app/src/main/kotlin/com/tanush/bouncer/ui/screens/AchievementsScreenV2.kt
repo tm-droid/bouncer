@@ -113,7 +113,7 @@ fun AchievementsScreenV2(
                         LinearProgressIndicator(
                             progress = { progress },
                             modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)),
-                            color = colors.primary,
+                            color = colors.primaryText,
                             trackColor = colors.surfaceVariant,
                         )
                         Spacer(Modifier.height(spacing.xs))

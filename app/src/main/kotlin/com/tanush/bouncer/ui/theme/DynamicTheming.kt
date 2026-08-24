@@ -42,7 +42,7 @@ data class TeamColorScheme(
     val onPrimary: Color = Color.White,
     val onSecondary: Color = Color.White,
     val onTertiary: Color = Color.White,
-    val onSurface: Color = TextPrimary
+    val onSurface: Color = TextPrimaryDark
 )
 
 /**
@@ -116,7 +116,7 @@ object LegacyTeamSchemes {
     
     val Default = TeamColorScheme(
         primary = GoldDark,
-        secondary = GoldPrimary,
+        secondary = GoldPrimaryDark,
         tertiary = ChartCyan
     )
 }
@@ -377,12 +377,12 @@ fun TeamColorScheme.toMaterialColorScheme(): ColorScheme {
             tertiaryContainer = tertiary.copy(alpha = 0.3f),
             onTertiaryContainer = tertiary,
             background = BlackBackground,
-            onBackground = TextPrimary,
+            onBackground = TextPrimaryDark,
             surface = surface,
             onSurface = onSurface,
             surfaceVariant = BlackElevated,
-            onSurfaceVariant = TextSecondary,
-            outline = GlassBorder,
+            onSurfaceVariant = TextSecondaryDark,
+            outline = GlassBorderDark,
             outlineVariant = GlassBorderLight
         )
     } catch (e: Exception) {

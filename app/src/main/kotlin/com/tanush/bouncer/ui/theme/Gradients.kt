@@ -22,10 +22,10 @@ object GradientPresets {
      */
     fun goldShimmer(alpha: Float = 1f) = Brush.linearGradient(
         colors = listOf(
-            GoldLight.copy(alpha = alpha * 0.9f),
-            GoldPrimary.copy(alpha = alpha),
+            GoldLightDark.copy(alpha = alpha * 0.9f),
+            GoldPrimaryDark.copy(alpha = alpha),
             GoldDark.copy(alpha = alpha),
-            GoldPrimary.copy(alpha = alpha)
+            GoldPrimaryDark.copy(alpha = alpha)
         )
     )
     
@@ -34,7 +34,7 @@ object GradientPresets {
      */
     fun goldHorizontal(alpha: Float = 1f) = Brush.horizontalGradient(
         colors = listOf(
-            GoldPrimary.copy(alpha = alpha),
+            GoldPrimaryDark.copy(alpha = alpha),
             GoldDark.copy(alpha = alpha),
             GoldDark.copy(alpha = alpha)
         )
@@ -46,7 +46,7 @@ object GradientPresets {
     fun goldSubtle(alpha: Float = 0.12f) = Brush.linearGradient(
         colors = listOf(
             GoldDark.copy(alpha = alpha),
-            GoldPrimary.copy(alpha = alpha * 0.5f),
+            GoldPrimaryDark.copy(alpha = alpha * 0.5f),
             Color.Transparent
         )
     )
@@ -56,7 +56,7 @@ object GradientPresets {
      */
     fun goldGlow(alpha: Float = 0.25f) = Brush.radialGradient(
         colors = listOf(
-            GoldPrimary.copy(alpha = alpha),
+            GoldPrimaryDark.copy(alpha = alpha),
             GoldDark.copy(alpha = alpha * 0.5f),
             Color.Transparent
         )
@@ -67,11 +67,11 @@ object GradientPresets {
      */
     fun metallicGold(alpha: Float = 1f) = Brush.linearGradient(
         colors = listOf(
-            GoldLight.copy(alpha = alpha),
+            GoldLightDark.copy(alpha = alpha),
             GoldDark.copy(alpha = alpha),
             GoldDark.copy(alpha = alpha),
             GoldDark.copy(alpha = alpha),
-            GoldLight.copy(alpha = alpha)
+            GoldLightDark.copy(alpha = alpha)
         )
     )
     
@@ -190,9 +190,9 @@ object GradientPresets {
     fun goldShimmerSweep(alpha: Float = 0.2f) = Brush.horizontalGradient(
         colors = listOf(
             Color.Transparent,
-            GoldLight.copy(alpha = alpha * 0.5f),
-            GoldPrimary.copy(alpha = alpha),
-            GoldLight.copy(alpha = alpha * 0.5f),
+            GoldLightDark.copy(alpha = alpha * 0.5f),
+            GoldPrimaryDark.copy(alpha = alpha),
+            GoldLightDark.copy(alpha = alpha * 0.5f),
             Color.Transparent
         )
     )
@@ -226,7 +226,7 @@ object GradientPresets {
         colors = listOf(
             Color.Transparent,
             GoldDark.copy(alpha = alpha),
-            GoldPrimary.copy(alpha = alpha * 1.2f),
+            GoldPrimaryDark.copy(alpha = alpha * 1.2f),
             GoldDark.copy(alpha = alpha),
             Color.Transparent
         )
@@ -355,7 +355,7 @@ object GradientPresets {
             return if (isLive) {
                 Brush.linearGradient(
                     colors = listOf(
-                        GoldLight.copy(alpha = alpha),
+                        GoldLightDark.copy(alpha = alpha),
                         GoldDark.copy(alpha = alpha)
                     )
                 )
@@ -391,7 +391,7 @@ object GradientPresets {
         try {
             Brush.linearGradient(
                 colors = listOf(
-                    GoldPrimary,
+                    GoldPrimaryDark,
                     GoldDark
                 )
             )
@@ -402,8 +402,8 @@ object GradientPresets {
     } else {
         Brush.linearGradient(
             colors = listOf(
-                TextSecondary,
-                TextTertiary
+                TextSecondaryDark,
+                TextTertiaryDark
             )
         )
     }

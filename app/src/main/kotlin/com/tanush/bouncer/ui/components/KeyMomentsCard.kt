@@ -67,7 +67,7 @@ enum class HighlightHighlightMomentType(val icon: ImageVector, val color: Color)
     CATCH(Icons.Filled.ThumbUp, ChartBlue),
     RUNOUT(Icons.Filled.FlashOn, WarningYellow),
     DRS_REVIEW(Icons.Filled.Tv, Color.Magenta),
-    DROPPED_CATCH(Icons.Outlined.ErrorOutline, TextTertiary),
+    DROPPED_CATCH(Icons.Outlined.ErrorOutline, TextTertiaryDark),
     MILESTONE(Icons.Filled.Star, ShinyGoldLight),
     INJURY(Icons.Filled.LocalHospital, Color.Red),
     RAIN_DELAY(Icons.Filled.WaterDrop, ChartBlue),
@@ -151,12 +151,13 @@ fun HighlightMomentsCard(
                     .fillMaxWidth()
                     .height(60.dp)
             ) {
+                val timelineColor = GlassBorder
                 Canvas(modifier = Modifier.fillMaxSize()) {
                     val timelineY = size.height / 2
                     
                     // Draw timeline
                     drawLine(
-                        color = GlassBorder,
+                        color = timelineColor,
                         start = Offset(0f, timelineY),
                         end = Offset(size.width, timelineY),
                         strokeWidth = 3f,
@@ -357,13 +358,15 @@ private fun ImpactIndicator(impact: Float) {
                 .scale(pulseScale),
             contentAlignment = Alignment.Center
         ) {
+            val mutedColor = TextTertiary
+            val bubbleColor = GlassSurface
             Canvas(modifier = Modifier.fillMaxSize()) {
                 val radius = size.minDimension / 2
                 val center = Offset(size.width / 2, size.height / 2)
                 
                 // Background
                 drawCircle(
-                    color = GlassSurface,
+                    color = bubbleColor,
                     radius = radius,
                     center = center,
                     style = Stroke(width = 3f)
@@ -374,7 +377,7 @@ private fun ImpactIndicator(impact: Float) {
                 val impactColor = when {
                     impact > 0.8f -> statusLiveColor
                     impact > 0.5f -> statusWarningColor
-                    else -> TextTertiary
+                    else -> mutedColor
                 }
                 
                 drawArc(

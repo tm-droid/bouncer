@@ -586,9 +586,10 @@ private fun ImpactIndicator(
         modifier = Modifier.size(32.dp),
         contentAlignment = Alignment.Center
     ) {
+        val ringColor = GlassBorder
         Canvas(modifier = Modifier.fillMaxSize()) {
             drawArc(
-                color = GlassBorder,
+                color = ringColor,
                 startAngle = 0f,
                 sweepAngle = 360f,
                 useCenter = false,

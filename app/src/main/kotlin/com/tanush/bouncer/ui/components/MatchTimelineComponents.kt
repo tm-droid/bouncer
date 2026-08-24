@@ -38,6 +38,7 @@ import com.tanush.bouncer.ui.theme.*
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
+import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 
 /**
  * Premium timeline for match events with animated connectors
@@ -795,7 +796,7 @@ fun RunMeter(
                     text = currentRuns.toString(),
                     fontSize = 36.sp,
                     fontWeight = FontWeight.Black,
-                    color = Color.White
+                    color = BouncerThemeV2.colors.onSurface
                 )
                 Text(
                     text = "/ $targetRuns",

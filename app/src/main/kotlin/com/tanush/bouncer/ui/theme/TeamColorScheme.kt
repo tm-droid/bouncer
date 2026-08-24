@@ -4,6 +4,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
+import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
+import com.tanush.bouncer.ui.theme.v2.Gray900
 import kotlin.math.absoluteValue
 
 @Immutable
@@ -76,35 +78,57 @@ object TeamColorRegistry {
         "LSG" to "lucknow super giants"
     )
 
-    val default: TeamColors = buildTeamColors(GoldDark, GoldPrimary)
+    /**
+     * The ground a team's brand colour is adjusted against.
+     *
+     * Brand colours are fixed, so they have to be nudged to clear contrast against whatever they are
+     * drawn on — and that ground is not a constant. The registry baked every team against
+     * [BlackBackground] regardless of theme, so in light mode a bar or label came out tuned for a
+     * surface it was never drawn on.
+     */
+    @Immutable
+    data class Ground(val background: Color, val surface: Color, val ink: Color) {
+        val isLight: Boolean get() = background.relativeLuminance() >= LIGHT_GROUND_LUMINANCE
+    }
 
-    fun forTeam(teamName: String?): TeamColors {
-        if (teamName.isNullOrBlank()) return default
+    val DarkGround = Ground(BlackBackground, BlackSurface, TextPrimaryDark)
+
+    val default: TeamColors = buildTeamColors(GoldDark, GoldPrimaryDark, DarkGround)
+
+    fun forTeam(teamName: String?, ground: Ground = DarkGround): TeamColors {
+        if (teamName.isNullOrBlank()) return if (ground == DarkGround) default else buildTeamColors(GoldDark, GoldPrimaryDark, ground)
 
         val normalized = normalize(teamName)
         val key = acronyms[normalized.uppercase()] ?: normalized
 
-        knownTeams[key]?.let { return buildTeamColors(it.first, it.second) }
+        knownTeams[key]?.let { return buildTeamColors(it.first, it.second, ground) }
 
         knownTeams.entries.firstOrNull { (name, _) ->
             name.contains(key) || key.contains(name)
-        }?.let { return buildTeamColors(it.value.first, it.value.second) }
+        }?.let { return buildTeamColors(it.value.first, it.value.second, ground) }
 
-        return hashFallback(key)
+        return hashFallback(key, ground)
     }
 
-    fun forMatch(homeTeam: String?, awayTeam: String?): MatchTeamPalette {
+    fun forMatch(homeTeam: String?, awayTeam: String?, ground: Ground = DarkGround): MatchTeamPalette {
         return MatchTeamPalette(
-            home = forTeam(homeTeam),
-            away = forTeam(awayTeam)
+            home = forTeam(homeTeam, ground),
+            away = forTeam(awayTeam, ground)
         )
     }
 
-    private fun buildTeamColors(primaryRaw: Color, secondaryRaw: Color): TeamColors {
-        val primary = primaryRaw.ensureContrast(background = BlackBackground, minimumRatio = 3.0f)
-        val secondary = secondaryRaw.ensureContrast(background = BlackBackground, minimumRatio = 2.8f)
-        val surface = primary.darken(0.72f).blend(BlackSurface, 0.62f)
-        val onSurface = TextPrimary.ensureContrast(surface, minimumRatio = 4.5f)
+    private fun buildTeamColors(primaryRaw: Color, secondaryRaw: Color, ground: Ground): TeamColors {
+        val primary = primaryRaw.ensureContrast(background = ground.background, minimumRatio = 3.0f)
+        val secondary = secondaryRaw.ensureContrast(background = ground.background, minimumRatio = 2.8f)
+        // A team-tinted card: a wash of brand colour over the ground, in the direction the ground
+        // goes. Darkening toward a dark surface reads as tinted charcoal; the same recipe on white
+        // reads as mud.
+        val surface = if (ground.isLight) {
+            primary.blend(ground.surface, LIGHT_SURFACE_TINT)
+        } else {
+            primary.darken(0.72f).blend(ground.surface, 0.62f)
+        }
+        val onSurface = ground.ink.ensureContrast(surface, minimumRatio = 4.5f)
         val onPrimary = primary.contrastingTextColor().ensureContrast(primary, minimumRatio = 4.5f)
 
         return TeamColors(
@@ -118,7 +142,7 @@ object TeamColorRegistry {
         )
     }
 
-    private fun hashFallback(teamName: String): TeamColors {
+    private fun hashFallback(teamName: String, ground: Ground): TeamColors {
         val hash = teamName.hashCode().absoluteValue
         val hue = (hash % 360).toFloat()
         val saturation = 0.58f + ((hash / 360) % 20) / 100f
@@ -126,8 +150,11 @@ object TeamColorRegistry {
 
         val primary = Color.hsv(hue, saturation.coerceIn(0.52f, 0.8f), value)
         val secondary = Color.hsv((hue + 42f) % 360f, (saturation - 0.08f).coerceIn(0.45f, 0.75f), 0.88f)
-        return buildTeamColors(primary, secondary)
+        return buildTeamColors(primary, secondary, ground)
     }
+
+    private const val LIGHT_GROUND_LUMINANCE = 0.5f
+    private const val LIGHT_SURFACE_TINT = 0.88f
 
     private fun normalize(value: String): String {
         return value
@@ -140,14 +167,29 @@ object TeamColorRegistry {
     }
 }
 
+/** The active theme's ground — what team colours are actually drawn on. */
+@Composable
+fun rememberTeamGround(): TeamColorRegistry.Ground {
+    val colors = BouncerThemeV2.colors
+    return remember(colors) {
+        TeamColorRegistry.Ground(
+            background = colors.background,
+            surface = colors.surface,
+            ink = if (colors.isDark) TextPrimaryDark else Gray900,
+        )
+    }
+}
+
 @Composable
 fun rememberTeamColors(teamName: String?): TeamColors {
-    return remember(teamName) { TeamColorRegistry.forTeam(teamName) }
+    val ground = rememberTeamGround()
+    return remember(teamName, ground) { TeamColorRegistry.forTeam(teamName, ground) }
 }
 
 @Composable
 fun rememberMatchTeamPalette(homeTeam: String?, awayTeam: String?): MatchTeamPalette {
-    return remember(homeTeam, awayTeam) { TeamColorRegistry.forMatch(homeTeam, awayTeam) }
+    val ground = rememberTeamGround()
+    return remember(homeTeam, awayTeam, ground) { TeamColorRegistry.forMatch(homeTeam, awayTeam, ground) }
 }
 
 @Composable

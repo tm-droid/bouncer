@@ -67,13 +67,13 @@ fun FilterChipRowV2(
                 // (Von Restorff — the isolate only pops if it is rare).
                 colors = FilterChipDefaults.filterChipColors(
                     selectedContainerColor = colors.surfaceVariant,
-                    selectedLabelColor = colors.primary,
+                    selectedLabelColor = colors.primaryText,
                     containerColor = colors.surfaceVariant,
                     labelColor = colors.onSurface,
                 ),
                 border = FilterChipDefaults.filterChipBorder(
                     borderColor = colors.border,
-                    selectedBorderColor = colors.primary,
+                    selectedBorderColor = colors.primaryText,
                     enabled = true,
                     selected = isSelected,
                 ),

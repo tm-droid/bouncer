@@ -353,7 +353,7 @@ private fun PlayerSearchBox(
 
         if (searching) {
             Box(Modifier.fillMaxWidth().padding(spacing.lg), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(modifier = Modifier.size(24.dp), color = colors.primary, strokeWidth = 2.dp)
+                CircularProgressIndicator(modifier = Modifier.size(24.dp), color = colors.primaryText, strokeWidth = 2.dp)
             }
         }
 

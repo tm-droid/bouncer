@@ -121,6 +121,7 @@ fun PremiumTeamCard(
     }
 }
 
+@Composable
 private fun favoriteCardBorder(isFavorite: Boolean): BorderStroke? {
     if (!isFavorite) return null
     return BorderStroke(
@@ -333,7 +334,7 @@ enum class MatchResult {
 
 enum class TeamType(val displayName: String, val color: Color) {
     INTERNATIONAL("International", StatusInfo),
-    FRANCHISE("Franchise", GoldPrimary),
+    FRANCHISE("Franchise", GoldDark),
     DOMESTIC("Domestic", StatusSuccess),
     WOMEN("Women", Color(0xFFE91E63))
 }
@@ -506,11 +507,12 @@ fun FavoriteTeamChip(
     )
 
     val glowModifier = if (isSelected) {
+        val glowColor = GoldPrimary
         Modifier.drawBehind {
             drawRoundRect(
                 brush = Brush.radialGradient(
                     colors = listOf(
-                        GoldPrimary.copy(alpha = glowPulse * 0.3f),
+                        glowColor.copy(alpha = glowPulse * 0.3f),
                         Color.Transparent
                     )
                 ),

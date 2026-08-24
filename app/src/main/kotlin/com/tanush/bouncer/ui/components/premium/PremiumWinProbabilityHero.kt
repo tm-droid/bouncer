@@ -23,6 +23,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -36,7 +37,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.tanush.bouncer.ui.theme.BlackBackground
+import com.tanush.bouncer.ui.theme.BackgroundBase
 import com.tanush.bouncer.ui.theme.GlassSurface
 import com.tanush.bouncer.ui.theme.GoldHairline
 import com.tanush.bouncer.ui.theme.LiveRed
@@ -49,6 +50,7 @@ import com.tanush.bouncer.ui.theme.lighten
 import kotlin.math.abs
 import kotlin.math.floor
 import kotlin.math.roundToInt
+import com.tanush.bouncer.ui.theme.rememberTeamGround
 
 /** What the number is a statement about, which changes both the label and whether it can move. */
 enum class WinProbabilityState { LIVE, PRE_MATCH, FINAL }
@@ -86,8 +88,12 @@ private const val SEGMENT_MIN_CONTRAST = 2.2f
 private const val SEGMENT_SHADE = 0.18f
 
 /** The card's fill as it actually reaches the eye — [GlassSurface] is translucent. */
-private val CardFill = GlassSurface.compositeOver(BlackBackground)
+private val CardFill: Color
+    @Composable @ReadOnlyComposable
+    get() = GlassSurface.compositeOver(BackgroundBase)
 
+@Composable
+@ReadOnlyComposable
 private fun onCard(color: Color): Color = color.liftForContrast(CardFill, SEGMENT_MIN_CONTRAST)
 
 /**
@@ -124,8 +130,9 @@ fun PremiumWinProbabilityHero(
     val animatedTeam1 by animateFloatAsState(team1, tween(900, easing = FastOutSlowInEasing), label = "team1")
     val animatedDraw by animateFloatAsState(draw, tween(900, easing = FastOutSlowInEasing), label = "draw")
 
-    val team1Color = onCard(TeamColorRegistry.forTeam(team1Name).primary)
-    val team2Color = onCard(TeamColorRegistry.forTeam(team2Name).primary)
+    val ground = rememberTeamGround()
+    val team1Color = onCard(TeamColorRegistry.forTeam(team1Name, ground).primary)
+    val team2Color = onCard(TeamColorRegistry.forTeam(team2Name, ground).primary)
     val percents = wholePercents(team1, draw, team2)
 
     Column(

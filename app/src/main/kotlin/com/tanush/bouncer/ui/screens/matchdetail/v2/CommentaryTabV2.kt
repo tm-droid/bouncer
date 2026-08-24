@@ -254,7 +254,7 @@ private fun OverSeparatorCard(overNumber: Int, balls: List<ParsedBall>) {
                     Text(
                         text = "Over $overNumber",
                         style = typography.labelSmall,
-                        color = colors.primary,
+                        color = colors.primaryText,
                         fontWeight = FontWeight.Bold,
                     )
                 }

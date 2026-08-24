@@ -31,6 +31,7 @@ import com.tanush.bouncer.ui.components.CoilImage
 import coil.request.ImageRequest
 import com.tanush.bouncer.ui.theme.*
 import kotlin.math.*
+import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 
 /**
  * Head to head history data
@@ -111,7 +112,7 @@ fun HistoricalStatsCard(
                 spotColor = hierarchy.secondary.primary.copy(alpha = 0.2f)
             ),
         shape = RoundedCornerShape(20.dp),
-        color = Color.White.copy(alpha = 0.05f)
+        color = BouncerThemeV2.colors.highlight.copy(alpha = 0.05f)
     ) {
         Column(
             modifier = Modifier.padding(20.dp),

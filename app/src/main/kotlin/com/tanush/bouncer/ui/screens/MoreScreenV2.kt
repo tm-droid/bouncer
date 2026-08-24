@@ -217,7 +217,7 @@ private fun ExploreCard(
             Icon(
                 imageVector = icon,
                 contentDescription = label,
-                tint = colors.primary,
+                tint = colors.primaryText,
                 modifier = Modifier.size(28.dp),
             )
             Spacer(Modifier.height(spacing.xs))

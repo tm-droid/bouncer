@@ -69,9 +69,9 @@ fun GlassmorphismSurface(
     blurRadius: Dp = BouncerDesign.GlassBlur,
     frostIntensity: Float = 0.15f,
     borderWidth: Dp = BorderWidth.hairline,
-    borderColor: Color = GlassBorder,
+    borderColor: Color = GlassBorderDark,
     cornerRadius: Dp = CornerRadius.sm,
-    backgroundColor: Color = GlassSurface,
+    backgroundColor: Color = GlassSurfaceDark,
     content: @Composable BoxScope.() -> Unit
 ) {
     val shape = RoundedCornerShape(cornerRadius)
@@ -115,9 +115,9 @@ fun Modifier.glassmorphism(
     blurRadius: Dp = BouncerDesign.GlassBlur,
     frostIntensity: Float = 0.12f,
     borderWidth: Dp = BorderWidth.hairline,
-    borderColor: Color = GlassBorder,
+    borderColor: Color = GlassBorderDark,
     cornerRadius: Dp = CornerRadius.sm,
-    backgroundColor: Color = GlassSurface
+    backgroundColor: Color = GlassSurfaceDark
 ): Modifier {
     val shape = RoundedCornerShape(cornerRadius)
     return this
@@ -184,7 +184,7 @@ fun defaultShadowLayers(): List<ShadowLayer> = listOf(
 
 fun goldShadowLayers(): List<ShadowLayer> = listOf(
     ShadowLayer(GoldDark.copy(alpha = 0.15f), offsetY = 12.dp, blurRadius = 32.dp),
-    ShadowLayer(GoldPrimary.copy(alpha = 0.1f), offsetY = 6.dp, blurRadius = 16.dp),
+    ShadowLayer(GoldPrimaryDark.copy(alpha = 0.1f), offsetY = 6.dp, blurRadius = 16.dp),
     ShadowLayer(Color.Black.copy(alpha = 0.2f), offsetY = 2.dp, blurRadius = 6.dp)
 )
 

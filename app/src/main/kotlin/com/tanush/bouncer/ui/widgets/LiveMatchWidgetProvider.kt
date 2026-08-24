@@ -150,17 +150,18 @@ class LiveMatchWidgetProvider : AppWidgetProvider() {
             )
 
             // Build the widget views
+            val widgetColors = WidgetRemoteViewsColors.of(context)
             val prefs = context.getSharedPreferences("widget_cache", Context.MODE_PRIVATE)
             val winProbability = prefs.getFloat("win_probability", 0.5f)
-            val team1Color = prefs.getInt("team1_color", WidgetRemoteViewsColors.primary)
+            val team1Color = prefs.getInt("team1_color", widgetColors.primary)
 
             val views = RemoteViews(context.packageName, R.layout.widget_live_match_premium).apply {
                 // Set click handlers
                 setOnClickPendingIntent(R.id.widget_root, mainPendingIntent)
                 setOnClickPendingIntent(R.id.refresh_button, refreshPendingIntent)
                 setOnClickPendingIntent(R.id.next_match_button, nextMatchPendingIntent)
-                setInt(R.id.refresh_button, "setColorFilter", WidgetRemoteViewsColors.primaryLight)
-                setInt(R.id.next_match_button, "setColorFilter", WidgetRemoteViewsColors.primaryLight)
+                setInt(R.id.refresh_button, "setColorFilter", widgetColors.primaryLight)
+                setInt(R.id.next_match_button, "setColorFilter", widgetColors.primaryLight)
 
                 // Load cached match data
                 val team1Name = prefs.getString("team1_name", "Team 1") ?: "Team 1"
@@ -178,24 +179,24 @@ class LiveMatchWidgetProvider : AppWidgetProvider() {
                 setTextViewText(R.id.team2_name, team2Name)
                 setTextColor(
                     R.id.team1_name,
-                    if (team1Leading) WidgetRemoteViewsColors.primary else WidgetRemoteViewsColors.textSecondary
+                    if (team1Leading) widgetColors.primary else widgetColors.textSecondary
                 )
                 setTextColor(
                     R.id.team2_name,
-                    if (team1Leading) WidgetRemoteViewsColors.textSecondary else WidgetRemoteViewsColors.primary
+                    if (team1Leading) widgetColors.textSecondary else widgetColors.primary
                 )
             
                 // Update scores
                 setTextViewText(R.id.team1_score, team1Score)
                 setTextColor(
                     R.id.team1_score,
-                    if (team1Leading) WidgetRemoteViewsColors.primaryLight else WidgetRemoteViewsColors.textPrimary
+                    if (team1Leading) widgetColors.primaryLight else widgetColors.textPrimary
                 )
                 if (team2Score != null && team2Score != "-") {
                     setTextViewText(R.id.team2_score, team2Score)
                     setTextColor(
                         R.id.team2_score,
-                        if (team1Leading) WidgetRemoteViewsColors.textPrimary else WidgetRemoteViewsColors.primaryLight
+                        if (team1Leading) widgetColors.textPrimary else widgetColors.primaryLight
                     )
                     setViewVisibility(R.id.team2_score, View.VISIBLE)
                 } else {
@@ -205,21 +206,21 @@ class LiveMatchWidgetProvider : AppWidgetProvider() {
                 // Update status
                 setTextViewText(R.id.match_status, matchStatus)
                 setTextViewText(R.id.match_type, matchType)
-                setTextColor(R.id.match_type, WidgetRemoteViewsColors.textTertiary)
+                setTextColor(R.id.match_type, widgetColors.textTertiary)
             
                 // Live indicator visibility
                 if (isLive) {
                     setViewVisibility(R.id.live_indicator, View.VISIBLE)
-                    setTextColor(R.id.match_status, WidgetRemoteViewsColors.live)
+                    setTextColor(R.id.match_status, widgetColors.live)
                 } else {
                     setViewVisibility(R.id.live_indicator, View.GONE)
-                    setTextColor(R.id.match_status, WidgetRemoteViewsColors.textSecondary)
+                    setTextColor(R.id.match_status, widgetColors.textSecondary)
                 }
             
                 // Win probability display
                 val winProbPercent = (winProbability * 100).toInt()
                 setTextViewText(R.id.win_probability_text, "$winProbPercent%")
-                setTextColor(R.id.win_probability_text, WidgetRemoteViewsColors.primary)
+                setTextColor(R.id.win_probability_text, widgetColors.primary)
             
                 // Recent balls display (iOS Live Activity parity)
                 if (recentBallsJson != null && isLive) {
@@ -240,13 +241,13 @@ class LiveMatchWidgetProvider : AppWidgetProvider() {
                                     val ball = lastSixBalls[index]
                                     setTextViewText(ballId, ball)
                                 
-                                    val (backgroundRes, textColor) = getBallStyle(ball)
+                                    val (backgroundRes, textColor) = getBallStyle(ball, widgetColors)
                                     setInt(ballId, "setBackgroundResource", backgroundRes)
                                     setTextColor(ballId, textColor)
                                 } else {
                                     setTextViewText(ballId, "")
                                     setInt(ballId, "setBackgroundResource", R.drawable.bg_widget_ball_neutral)
-                                    setTextColor(ballId, WidgetRemoteViewsColors.textTertiary)
+                                    setTextColor(ballId, widgetColors.textTertiary)
                                 }
                             }
                         } else {
@@ -265,7 +266,7 @@ class LiveMatchWidgetProvider : AppWidgetProvider() {
 
             try {
                 val progressBitmap = withContext(Dispatchers.Default) {
-                    createTeamGradientProgressBitmap(winProbability, 200, 8, team1Color)
+                    createTeamGradientProgressBitmap(winProbability, 200, 8, team1Color, widgetColors)
                 }
                 views.setImageViewBitmap(R.id.win_probability_bar, progressBitmap)
             } catch (e: Exception) {
@@ -284,15 +285,15 @@ class LiveMatchWidgetProvider : AppWidgetProvider() {
     /**
      * Get ball colors based on ball result (iOS Live Activity parity)
      */
-    private fun getBallStyle(ball: String): Pair<Int, Int> {
+    private fun getBallStyle(ball: String, colors: WidgetRemoteViewsColors): Pair<Int, Int> {
         try {
             return when (ball.uppercase().trim()) {
-                "W" -> Pair(R.drawable.bg_widget_ball_wicket, WidgetRemoteViewsColors.textPrimary)
-                "6" -> Pair(R.drawable.bg_widget_ball_six, WidgetRemoteViewsColors.textPrimary)
-                "4" -> Pair(R.drawable.bg_widget_ball_four, WidgetRemoteViewsColors.textPrimary)
-                "0", "•" -> Pair(R.drawable.bg_widget_ball_neutral, WidgetRemoteViewsColors.textTertiary)
-                "NB", "WD" -> Pair(R.drawable.bg_widget_ball_extra, WidgetRemoteViewsColors.textOnPrimary)
-                else -> Pair(R.drawable.bg_widget_ball_neutral, WidgetRemoteViewsColors.textPrimary)
+                "W" -> Pair(R.drawable.bg_widget_ball_wicket, colors.textPrimary)
+                "6" -> Pair(R.drawable.bg_widget_ball_six, colors.textPrimary)
+                "4" -> Pair(R.drawable.bg_widget_ball_four, colors.textPrimary)
+                "0", "•" -> Pair(R.drawable.bg_widget_ball_neutral, colors.textTertiary)
+                "NB", "WD" -> Pair(R.drawable.bg_widget_ball_extra, colors.textOnPrimary)
+                else -> Pair(R.drawable.bg_widget_ball_neutral, colors.textPrimary)
             }
         } catch (e: Exception) {
             Sentry.captureException(e)
@@ -303,21 +304,27 @@ class LiveMatchWidgetProvider : AppWidgetProvider() {
     /**
      * Creates a team-gradient progress bar bitmap for win probability
      */
-    private fun createTeamGradientProgressBitmap(probability: Float, width: Int, height: Int, teamColor: Int): Bitmap {
+    private fun createTeamGradientProgressBitmap(
+        probability: Float,
+        width: Int,
+        height: Int,
+        teamColor: Int,
+        colors: WidgetRemoteViewsColors,
+    ): Bitmap {
         try {
             val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
             val canvas = Canvas(bitmap)
             val paint = Paint(Paint.ANTI_ALIAS_FLAG)
         
             // Background
-            paint.color = WidgetRemoteViewsColors.progressTrack
+            paint.color = colors.progressTrack
             canvas.drawRoundRect(RectF(0f, 0f, width.toFloat(), height.toFloat()), 4f, 4f, paint)
         
             // Branded gold progress with a slightly warmer leading edge.
             val team1Width = width * probability
             paint.shader = LinearGradient(
                 0f, 0f, team1Width, 0f,
-                intArrayOf(WidgetRemoteViewsColors.primaryDim, teamColor, WidgetRemoteViewsColors.primaryLight),
+                intArrayOf(colors.primaryDim, teamColor, colors.primaryLight),
                 null,
                 Shader.TileMode.CLAMP
             )
@@ -361,7 +368,7 @@ class LiveMatchWidgetProvider : AppWidgetProvider() {
             }
             
             // Store team color for gradient
-            putInt("team1_color", teamColor ?: WidgetRemoteViewsColors.primary)
+            putInt("team1_color", teamColor ?: WidgetRemoteViewsColors.of(context).primary)
             
             apply()
         }

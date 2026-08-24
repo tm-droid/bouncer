@@ -363,6 +363,8 @@ private fun EconomyGauge(
         Spacer(modifier = Modifier.height(6.dp))
         
         // Economy bar
+        val markerColor = TextPrimary
+        val borderColor = GlassBorder
         Canvas(
             modifier = Modifier
                 .fillMaxWidth()
@@ -374,7 +376,7 @@ private fun EconomyGauge(
             
             // Background
             drawRoundRect(
-                color = GlassBorder.copy(alpha = 0.2f),
+                color = borderColor.copy(alpha = 0.2f),
                 cornerRadius = CornerRadius(4.dp.toPx())
             )
             
@@ -407,7 +409,7 @@ private fun EconomyGauge(
                 center = Offset(indicatorPosition.coerceIn(inset, (barWidth - inset).coerceAtLeast(inset)), barHeight / 2)
             )
             drawCircle(
-                color = TextPrimary,
+                color = markerColor,
                 radius = 2.dp.toPx(),
                 center = Offset(indicatorPosition.coerceIn(inset, (barWidth - inset).coerceAtLeast(inset)), barHeight / 2)
             )

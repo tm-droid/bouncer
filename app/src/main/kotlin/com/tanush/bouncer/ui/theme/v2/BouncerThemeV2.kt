@@ -10,8 +10,11 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
+import com.tanush.bouncer.ui.theme.LocalBouncerColors
+import com.tanush.bouncer.ui.theme.legacyColorsFor
 
 /**
  * Bouncer V2 theme wrapper.
@@ -44,37 +47,7 @@ fun BouncerThemeV2(
     val spacing = BouncerSpacingV2()
     val elevation = BouncerElevationV2()
 
-    val materialColorScheme = if (isDark) {
-        darkColorScheme(
-            primary = colors.primary,
-            onPrimary = colors.onPrimary,
-            primaryContainer = colors.primaryContainer,
-            background = colors.background,
-            surface = colors.surface,
-            surfaceVariant = colors.surfaceVariant,
-            onBackground = colors.onBackground,
-            onSurface = colors.onSurface,
-            error = colors.error,
-            outline = colors.border,
-            outlineVariant = colors.divider,
-            scrim = colors.scrim,
-        )
-    } else {
-        lightColorScheme(
-            primary = colors.primary,
-            onPrimary = colors.onPrimary,
-            primaryContainer = colors.primaryContainer,
-            background = colors.background,
-            surface = colors.surface,
-            surfaceVariant = colors.surfaceVariant,
-            onBackground = colors.onBackground,
-            onSurface = colors.onSurface,
-            error = colors.error,
-            outline = colors.border,
-            outlineVariant = colors.divider,
-            scrim = colors.scrim,
-        )
-    }
+    val materialColorScheme = if (isDark) materialDark(colors) else materialLight(colors)
 
     SystemBarIconContrast(isDark)
 
@@ -85,6 +58,7 @@ fun BouncerThemeV2(
         LocalBouncerSpacingV2 provides spacing,
         LocalBouncerElevationV2 provides elevation,
         LocalThemeModeV2 provides themeMode,
+        LocalBouncerColors provides legacyColorsFor(isDark),
     ) {
         MaterialTheme(
             colorScheme = materialColorScheme,
@@ -94,6 +68,107 @@ fun BouncerThemeV2(
         )
     }
 }
+
+/**
+ * Every Material role is mapped deliberately, including the ones Bouncer never names itself.
+ *
+ * The unmapped roles used to fall through to the M3 baseline, which is purple: `secondaryContainer`
+ * (#E8DEF8) paints the navigation-bar indicator, selected filter chips and switch tracks, and the
+ * `surfaceContainer*` family (#F3EDF7 …) backs every Card, menu and bottom sheet. In light mode that
+ * read as a lavender tint over most of the app. Leaving a role unset is never neutral — it is a
+ * decision to ship Material's purple.
+ */
+private fun materialLight(colors: BouncerColorsV2) = lightColorScheme(
+    primary = colors.primary,
+    onPrimary = colors.onPrimary,
+    primaryContainer = colors.primaryContainer,
+    onPrimaryContainer = Gray900,
+    inversePrimary = Gold300,
+
+    secondary = Gray600,
+    onSecondary = White,
+    secondaryContainer = Gray100,
+    onSecondaryContainer = Gray900,
+
+    tertiary = colors.primaryText,
+    onTertiary = White,
+    tertiaryContainer = GoldContainer,
+    onTertiaryContainer = Gray900,
+
+    background = colors.background,
+    onBackground = colors.onBackground,
+    surface = colors.surface,
+    onSurface = colors.onSurface,
+    surfaceVariant = colors.surfaceVariant,
+    onSurfaceVariant = colors.textSecondary,
+    surfaceTint = colors.primary,
+
+    surfaceBright = White,
+    surfaceDim = Gray200,
+    surfaceContainerLowest = White,
+    surfaceContainerLow = Gray50,
+    surfaceContainer = Gray100,
+    surfaceContainerHigh = Gray200,
+    surfaceContainerHighest = Gray300,
+
+    inverseSurface = Gray900,
+    inverseOnSurface = Gray50,
+
+    error = colors.error,
+    onError = White,
+    errorContainer = Color(0xFFFEE2E2),
+    onErrorContainer = Color(0xFF7F1D1D),
+
+    outline = colors.border,
+    outlineVariant = colors.divider,
+    scrim = colors.scrim,
+)
+
+private fun materialDark(colors: BouncerColorsV2) = darkColorScheme(
+    primary = colors.primary,
+    onPrimary = colors.onPrimary,
+    primaryContainer = colors.primaryContainer,
+    onPrimaryContainer = Gold300,
+    inversePrimary = GoldText,
+
+    secondary = DarkTextSecondary,
+    onSecondary = Gray900,
+    secondaryContainer = DarkSurfaceVariant,
+    onSecondaryContainer = DarkTextPrimary,
+
+    tertiary = Gold300,
+    onTertiary = Gray900,
+    tertiaryContainer = GoldContainerDark,
+    onTertiaryContainer = Gold300,
+
+    background = colors.background,
+    onBackground = colors.onBackground,
+    surface = colors.surface,
+    onSurface = colors.onSurface,
+    surfaceVariant = colors.surfaceVariant,
+    onSurfaceVariant = colors.textSecondary,
+    surfaceTint = colors.primary,
+
+    surfaceBright = DarkSurfaceVariant,
+    surfaceDim = DarkBg,
+    surfaceContainerLowest = DarkBg,
+    surfaceContainerLow = Color(0xFF131923),
+    surfaceContainer = DarkSurface,
+    surfaceContainerHigh = DarkSurfaceVariant,
+    surfaceContainerHighest = DarkBorder,
+
+    inverseSurface = DarkTextPrimary,
+    inverseOnSurface = Gray900,
+
+    error = colors.error,
+    onError = Gray900,
+    errorContainer = Color(0xFF401614),
+    onErrorContainer = Color(0xFFFECACA),
+
+    outline = colors.border,
+    outlineVariant = colors.divider,
+    scrim = colors.scrim,
+)
 
 /**
  * Matches system-bar icon contrast to the *app's* resolved mode rather than the system's.
@@ -140,5 +215,5 @@ object BouncerThemeV2 {
 
     val isDark: Boolean
         @Composable @ReadOnlyComposable
-        get() = LocalBouncerColorsV2.current == DarkColors
+        get() = LocalBouncerColorsV2.current.isDark
 }

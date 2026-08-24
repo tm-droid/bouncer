@@ -133,7 +133,7 @@ fun OnboardingScreenV2(onComplete: () -> Unit) {
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Center,
                     ) {
-                        Icon(Icons.Default.SportsCricket, null, Modifier.size(72.dp), tint = colors.primary)
+                        Icon(Icons.Default.SportsCricket, null, Modifier.size(72.dp), tint = colors.primaryText)
                         Spacer(Modifier.height(spacing.xl))
                         Text(
                             stringResource(R.string.onboarding_title),
@@ -159,7 +159,7 @@ fun OnboardingScreenV2(onComplete: () -> Unit) {
                                 verticalAlignment = Alignment.CenterVertically,
                                 modifier = Modifier.padding(vertical = 4.dp),
                             ) {
-                                Icon(Icons.Default.Check, null, Modifier.size(16.dp), tint = colors.primary)
+                                Icon(Icons.Default.Check, null, Modifier.size(16.dp), tint = colors.primaryText)
                                 Spacer(Modifier.padding(start = spacing.sm))
                                 Text(
                                     stringResource(highlight),
@@ -177,7 +177,7 @@ fun OnboardingScreenV2(onComplete: () -> Unit) {
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Center,
                     ) {
-                        Icon(Icons.Default.Groups, null, Modifier.size(56.dp), tint = colors.primary)
+                        Icon(Icons.Default.Groups, null, Modifier.size(56.dp), tint = colors.primaryText)
                         Spacer(Modifier.height(spacing.lg))
                         Text(
                             stringResource(R.string.onboarding_teams_title),
@@ -261,7 +261,7 @@ fun OnboardingScreenV2(onComplete: () -> Unit) {
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Center,
                     ) {
-                        Icon(Icons.Default.Notifications, null, Modifier.size(56.dp), tint = colors.primary)
+                        Icon(Icons.Default.Notifications, null, Modifier.size(56.dp), tint = colors.primaryText)
                         Spacer(Modifier.height(spacing.lg))
                         Text(
                             stringResource(R.string.onboarding_notifications_title),
@@ -287,7 +287,7 @@ fun OnboardingScreenV2(onComplete: () -> Unit) {
                                 "Follow your teams first — we'll only ping you about them."
                             },
                             style = typography.labelMedium,
-                            color = colors.primary,
+                            color = colors.primaryText,
                             textAlign = TextAlign.Center,
                         )
                         Spacer(Modifier.height(spacing.xl))
@@ -327,7 +327,7 @@ fun OnboardingScreenV2(onComplete: () -> Unit) {
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Center,
                     ) {
-                        Icon(Icons.Default.RocketLaunch, null, Modifier.size(72.dp), tint = colors.primary)
+                        Icon(Icons.Default.RocketLaunch, null, Modifier.size(72.dp), tint = colors.primaryText)
                         Spacer(Modifier.height(spacing.xl))
                         Text(
                             stringResource(R.string.onboarding_complete_title),
@@ -350,7 +350,7 @@ fun OnboardingScreenV2(onComplete: () -> Unit) {
                                     appWidgetManager.requestPinAppWidget(widgetProvider, null, null)
                                 },
                             ) {
-                                Text(stringResource(R.string.onboarding_add_widget), color = colors.primary)
+                                Text(stringResource(R.string.onboarding_add_widget), color = colors.primaryText)
                             }
                         }
                     }

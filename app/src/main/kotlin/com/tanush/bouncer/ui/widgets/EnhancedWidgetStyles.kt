@@ -3,8 +3,9 @@ package com.tanush.bouncer.ui.widgets
 import android.content.Context
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.Dp
+import androidx.core.content.ContextCompat
+import com.tanush.bouncer.R
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -20,6 +21,12 @@ import androidx.glance.unit.ColorProvider as GlanceColorProvider
 import io.sentry.Sentry
 
 private fun cp(c: Color): GlanceColorProvider = ColorProvider(day = c, night = c)
+
+/**
+ * Day/night pair. Glance resolves this against the *system* setting, not the in-app theme picker —
+ * correct for a home-screen surface, which sits on the launcher rather than inside the app.
+ */
+private fun cp(light: Color, dark: Color): GlanceColorProvider = ColorProvider(day = light, night = dark)
 
 private inline fun <T> sentryGuard(block: () -> T): T {
     try {
@@ -57,52 +64,101 @@ object WidgetBrandPalette {
     val progressTrack = Color(0xFF1A202A)
 }
 
-object WidgetColorScheme {
-    val background = cp(WidgetBrandPalette.background)
-    val surface = cp(WidgetBrandPalette.surface)
-    val surfaceElevated = cp(WidgetBrandPalette.surfaceElevated)
-    val surfaceHighest = cp(WidgetBrandPalette.surfaceHighest)
-    val primary = cp(WidgetBrandPalette.primary)
-    val primaryDim = cp(WidgetBrandPalette.primaryDim)
-    val primaryContainer = cp(WidgetBrandPalette.primaryContainer)
-    val textPrimary = cp(WidgetBrandPalette.textPrimary)
-    val textSecondary = cp(WidgetBrandPalette.textSecondary)
-    val textTertiary = cp(WidgetBrandPalette.textTertiary)
-    val textOnPrimary = cp(WidgetBrandPalette.textOnPrimary)
-    val success = cp(WidgetBrandPalette.success)
-    val error = cp(WidgetBrandPalette.error)
-    val warning = cp(WidgetBrandPalette.warning)
-    val live = cp(WidgetBrandPalette.live)
-    val wicket = cp(WidgetBrandPalette.wicket)
-    val six = cp(WidgetBrandPalette.six)
-    val four = cp(WidgetBrandPalette.four)
-    val dotBall = cp(WidgetBrandPalette.dotBall)
-    val border = cp(WidgetBrandPalette.border)
-    val borderAccent = cp(WidgetBrandPalette.borderAccent)
+/**
+ * Light counterpart of [WidgetBrandPalette]. Widgets used to be fixed-dark: every colour went
+ * through `cp(c)`, which hands the same value to day and night, so a charcoal card with near-white
+ * text sat on a light wallpaper.
+ *
+ * Golds here are the ink-safe family (#8A6516), not the #E0B74F fill gold — that measures 1.74:1 on
+ * white. Mirrors res/values/colors.xml, which backs the RemoteViews widget for the same reason.
+ */
+object WidgetLightPalette {
+    val background = Color(0xFFFAFAFA)
+    val surface = Color(0xFFFFFFFF)
+    val surfaceElevated = Color(0xFFF5F5F5)
+    val surfaceHighest = Color(0xFFE5E7EB)
+    val primary = Color(0xFF8A6516)
+    val primaryDim = Color(0xFF6B4E11)
+    val primaryContainer = Color(0xFFFDF3C0)
+    val textPrimary = Color(0xFF1A1A1A)
+    val textSecondary = Color(0xFF4B5563)
+    val textTertiary = Color(0xFF6B7280)
+    val textOnPrimary = Color(0xFFFFFFFF)
+    val success = Color(0xFF15803D)
+    val error = Color(0xFFDC2626)
+    val warning = Color(0xFFB45309)
+    val live = Color(0xFFDC2626)
+    val wicket = Color(0xFFDC2626)
+    val six = Color(0xFF6D28D9)
+    val four = Color(0xFF15803D)
+    val dotBall = Color(0xFF9CA3AF)
+    val border = Color(0x1F1A1A1A)
+    val borderAccent = primary.copy(alpha = 0.28f)
+    val actionChip = Color(0xFFF5F5F5)
+    val liveBadgeBackground = Color(0xFFFEE2E2)
+    val progressTrack = Color(0xFFE5E7EB)
 }
 
-object WidgetRemoteViewsColors {
-    val background = WidgetBrandPalette.background.toArgb()
-    val surface = WidgetBrandPalette.surface.toArgb()
-    val surfaceElevated = WidgetBrandPalette.surfaceElevated.toArgb()
-    val primary = WidgetBrandPalette.primary.toArgb()
-    val primaryDim = WidgetBrandPalette.primaryDim.toArgb()
-    val primaryLight = Color(0xFFF3DB93).toArgb()
-    val primaryContainer = WidgetBrandPalette.primaryContainer.toArgb()
-    val textPrimary = WidgetBrandPalette.textPrimary.toArgb()
-    val textSecondary = WidgetBrandPalette.textSecondary.toArgb()
-    val textTertiary = WidgetBrandPalette.textTertiary.toArgb()
-    val textOnPrimary = WidgetBrandPalette.textOnPrimary.toArgb()
-    val success = WidgetBrandPalette.success.toArgb()
-    val error = WidgetBrandPalette.error.toArgb()
-    val warning = WidgetBrandPalette.warning.toArgb()
-    val live = WidgetBrandPalette.live.toArgb()
-    val wicket = WidgetBrandPalette.wicket.toArgb()
-    val six = WidgetBrandPalette.six.toArgb()
-    val four = WidgetBrandPalette.four.toArgb()
-    val dotBall = WidgetBrandPalette.dotBall.toArgb()
-    val progressTrack = WidgetBrandPalette.progressTrack.toArgb()
+object WidgetColorScheme {
+    val background = cp(WidgetLightPalette.background, WidgetBrandPalette.background)
+    val surface = cp(WidgetLightPalette.surface, WidgetBrandPalette.surface)
+    val surfaceElevated = cp(WidgetLightPalette.surfaceElevated, WidgetBrandPalette.surfaceElevated)
+    val surfaceHighest = cp(WidgetLightPalette.surfaceHighest, WidgetBrandPalette.surfaceHighest)
+    val primary = cp(WidgetLightPalette.primary, WidgetBrandPalette.primary)
+    val primaryDim = cp(WidgetLightPalette.primaryDim, WidgetBrandPalette.primaryDim)
+    val primaryContainer = cp(WidgetLightPalette.primaryContainer, WidgetBrandPalette.primaryContainer)
+    val textPrimary = cp(WidgetLightPalette.textPrimary, WidgetBrandPalette.textPrimary)
+    val textSecondary = cp(WidgetLightPalette.textSecondary, WidgetBrandPalette.textSecondary)
+    val textTertiary = cp(WidgetLightPalette.textTertiary, WidgetBrandPalette.textTertiary)
+    val textOnPrimary = cp(WidgetLightPalette.textOnPrimary, WidgetBrandPalette.textOnPrimary)
+    val success = cp(WidgetLightPalette.success, WidgetBrandPalette.success)
+    val error = cp(WidgetLightPalette.error, WidgetBrandPalette.error)
+    val warning = cp(WidgetLightPalette.warning, WidgetBrandPalette.warning)
+    val live = cp(WidgetLightPalette.live, WidgetBrandPalette.live)
+    val wicket = cp(WidgetLightPalette.wicket, WidgetBrandPalette.wicket)
+    val six = cp(WidgetLightPalette.six, WidgetBrandPalette.six)
+    val four = cp(WidgetLightPalette.four, WidgetBrandPalette.four)
+    val dotBall = cp(WidgetLightPalette.dotBall, WidgetBrandPalette.dotBall)
+    val border = cp(WidgetLightPalette.border, WidgetBrandPalette.border)
+    val borderAccent = cp(WidgetLightPalette.borderAccent, WidgetBrandPalette.borderAccent)
 }
+
+/**
+ * RemoteViews colours, resolved from resources against [context].
+ *
+ * These cannot be a `ColorProvider`: `RemoteViews.setTextColor` takes a plain ARGB int, so the
+ * day/night choice has to be made when the views are built. Reading through `R.color.*` lets the
+ * resource system make it — `values-night/colors.xml` carries the dark set — which is why this is a
+ * per-Context instance rather than the singleton of constants it used to be. A singleton would also
+ * have cached the wrong mode across a theme change.
+ */
+class WidgetRemoteViewsColors private constructor(ctx: Context) {
+    val background = ContextCompat.getColor(ctx, R.color.black_background)
+    val surface = ContextCompat.getColor(ctx, R.color.card_surface)
+    val surfaceElevated = ContextCompat.getColor(ctx, R.color.card_surface_light)
+    val primary = ContextCompat.getColor(ctx, R.color.shiny_gold_deep)
+    val primaryDim = ContextCompat.getColor(ctx, R.color.shiny_gold_dark)
+    val primaryLight = ContextCompat.getColor(ctx, R.color.shiny_gold_light)
+    val primaryContainer = ContextCompat.getColor(ctx, R.color.widget_gold_container)
+    val textPrimary = ContextCompat.getColor(ctx, R.color.text_primary)
+    val textSecondary = ContextCompat.getColor(ctx, R.color.text_secondary)
+    val textTertiary = ContextCompat.getColor(ctx, R.color.text_tertiary)
+    val textOnPrimary = ContextCompat.getColor(ctx, R.color.widget_text_on_primary)
+    val success = ContextCompat.getColor(ctx, R.color.success_green)
+    val error = ContextCompat.getColor(ctx, R.color.error_red)
+    val warning = ContextCompat.getColor(ctx, R.color.warning_orange)
+    val live = ContextCompat.getColor(ctx, R.color.widget_live)
+    val wicket = ContextCompat.getColor(ctx, R.color.widget_ball_wicket)
+    val six = ContextCompat.getColor(ctx, R.color.widget_ball_six)
+    val four = ContextCompat.getColor(ctx, R.color.widget_ball_four)
+    val dotBall = ContextCompat.getColor(ctx, R.color.widget_dot_ball)
+    val progressTrack = ContextCompat.getColor(ctx, R.color.widget_probability_track)
+
+    companion object {
+        fun of(context: Context): WidgetRemoteViewsColors = WidgetRemoteViewsColors(context)
+    }
+}
+
 
 object WidgetTypography {
     private fun style(weight: FontWeight, size: TextUnit, color: GlanceColorProvider) =
@@ -427,7 +483,7 @@ object WidgetGlassmorphism {
         night = Color(0xB30F0F0F)
     )
     val glassBorder = ColorProvider(
-        day = Color(0x33FFFFFF),
+        day = Color(0x1F1A1A1A),
         night = Color(0x1AFFFFFF)
     )
 

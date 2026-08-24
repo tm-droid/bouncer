@@ -58,15 +58,15 @@ private inline fun safeDraw(block: () -> Unit) {
 }
 
 object BrandGradients {
-    val GoldGradient: Brush
-        get() = Brush.linearGradient(listOf(GoldLight, GoldDark, GoldPrimary, GoldDark))
+    val GoldGradientDark: Brush
+        get() = Brush.linearGradient(listOf(GoldLightDark, GoldDark, GoldPrimaryDark, GoldDark))
 
     fun GoldGradientAlpha(alpha: Float = 0.8f): Brush = Brush.linearGradient(
-        listOf(GoldLight.copy(alpha = alpha), GoldDark.copy(alpha = alpha), GoldPrimary.copy(alpha = alpha))
+        listOf(GoldLightDark.copy(alpha = alpha), GoldDark.copy(alpha = alpha), GoldPrimaryDark.copy(alpha = alpha))
     )
 
     val GoldHorizontal: Brush
-        get() = Brush.horizontalGradient(listOf(GoldPrimary, GoldDark, GoldDark))
+        get() = Brush.horizontalGradient(listOf(GoldPrimaryDark, GoldDark, GoldDark))
 
     val LiveGradient: Brush
         get() = Brush.linearGradient(listOf(LiveBlueBright, LiveBlue, LiveBlueBright.copy(alpha = 0.8f)))
@@ -91,7 +91,7 @@ object BrandGradients {
         )
 
     val GlassGradient: Brush
-        get() = Brush.linearGradient(listOf(GlassWhite, GlassSurface, GlassDark))
+        get() = Brush.linearGradient(listOf(GlassWhite, GlassSurfaceDark, GlassDark))
 
     val ChartGradient: Brush
         get() = Brush.horizontalGradient(listOf(ChartCyan, ChartBlue, ChartPurple))

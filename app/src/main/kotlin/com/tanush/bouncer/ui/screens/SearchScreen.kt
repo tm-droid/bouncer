@@ -165,7 +165,7 @@ private fun SearchTopBar(
         AnimatedVisibility(visible = isLoading) {
             LinearProgressIndicator(
                 modifier = Modifier.fillMaxWidth(),
-                color = colors.primary,
+                color = colors.primaryText,
                 trackColor = colors.surfaceVariant,
             )
         }
@@ -271,7 +271,7 @@ private fun SearchResultsTabRow(
     ScrollableTabRow(
         selectedTabIndex = selectedTab.ordinal,
         containerColor = colors.background,
-        contentColor = colors.primary,
+        contentColor = colors.primaryText,
         edgePadding = spacing.md,
     ) {
         SearchTab.values().forEach { tab ->
@@ -319,7 +319,7 @@ private fun LazyListScope.suggestionBanner(suggestion: String, onClick: () -> Un
             Text(
                 suggestion,
                 style = typography.bodyMedium,
-                color = colors.primary,
+                color = colors.primaryText,
                 fontWeight = FontWeight.Bold,
             )
         }
@@ -370,7 +370,7 @@ private fun LazyListScope.searchSuggestions(
                     Icons.Default.Star,
                     contentDescription = null,
                     modifier = Modifier.size(18.dp),
-                    tint = BouncerThemeV2.colors.primary,
+                    tint = BouncerThemeV2.colors.primaryText,
                 )
             },
         )

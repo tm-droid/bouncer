@@ -261,7 +261,7 @@ internal fun PlayerSearchRow(
                 modifier = Modifier.size(32.dp).clip(CircleShape).background(colors.primaryContainer),
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(Icons.Default.Person, contentDescription = null, tint = colors.primary, modifier = Modifier.size(18.dp))
+                Icon(Icons.Default.Person, contentDescription = null, tint = colors.primaryText, modifier = Modifier.size(18.dp))
             }
         }
         Spacer(Modifier.width(spacing.md))
@@ -325,7 +325,7 @@ internal fun SeriesSearchRow(
             Text(
                 category.take(1),
                 style = typography.labelSmall,
-                color = colors.primary,
+                color = colors.primaryText,
                 fontWeight = FontWeight.Bold,
             )
         }

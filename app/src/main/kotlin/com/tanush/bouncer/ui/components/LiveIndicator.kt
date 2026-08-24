@@ -28,8 +28,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.tanush.bouncer.ui.theme.BouncerDesignSystem
 import com.tanush.bouncer.ui.theme.BouncerDimens
-import com.tanush.bouncer.ui.theme.BouncerTheme
 import com.tanush.bouncer.ui.theme.PillShape
+import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
+import com.tanush.bouncer.ui.theme.v2.ThemeModeV2
 
 /**
  * Pulsing red dot with "LIVE" label for live match indicators.
@@ -119,18 +120,26 @@ fun MatchTypeBadge(
 
 // ── Previews ────────────────────────────────────────────────────────────────
 
-@Preview(showBackground = true)
+@Preview(name = "Live — Light", showBackground = true)
 @Composable
-private fun LiveIndicatorPreview() {
-    BouncerTheme(dynamicColor = false) {
+private fun LiveIndicatorPreviewLight() {
+    BouncerThemeV2(themeMode = ThemeModeV2.Light) {
         LiveIndicator(modifier = Modifier.padding(16.dp))
     }
 }
 
-@Preview(showBackground = true)
+@Preview(name = "Live — Dark", showBackground = true)
 @Composable
-private fun MatchTypeBadgePreview() {
-    BouncerTheme(dynamicColor = false) {
+private fun LiveIndicatorPreviewDark() {
+    BouncerThemeV2(themeMode = ThemeModeV2.Dark) {
+        LiveIndicator(modifier = Modifier.padding(16.dp))
+    }
+}
+
+@Preview(name = "Badges — Light", showBackground = true)
+@Composable
+private fun MatchTypeBadgePreviewLight() {
+    BouncerThemeV2(themeMode = ThemeModeV2.Light) {
         Row(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             modifier = Modifier.padding(16.dp)
