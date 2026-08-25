@@ -45,7 +45,7 @@
     <string name="action_skip">छोड़ें</string>
     <string name="action_next">आगे</string>
     <string name="onboarding_get_started">शुरू करें</string>
-    <string name="onboarding_welcome_subtitle">लाइव स्कोर और मैच विश्लेषण के लिए आपका क्रिकेट साथी।</string>
+    <string name="onboarding_welcome_subtitle">लाइव स्कोर, बॉल-दर-बॉल कमेंट्री और मैच आँकड़े।</string>
     <string name="onboarding_feature_ball_by_ball">बॉल-दर-बॉल लाइव अपडेट</string>
     <string name="onboarding_feature_win_probability">जीत की संभावना का विश्लेषण</string>
     <string name="onboarding_feature_follow_teams">अपनी टीमों को फ़ॉलो करें</string>
@@ -141,7 +141,7 @@
     <string name="update_mock_feature_one">लाइव स्कोर तेज़ी से और आसानी से दिखते हैं</string>
     <string name="update_mock_feature_two">मैच फ़ीड रिफ़्रेश और कुछ दुर्लभ क्रैश ठीक किए गए</string>
     <string name="update_mock_feature_three">नेटवर्क डेटा की जाँच अधिक सुरक्षित बनाई गई</string>
-    <string name="update_mock_feature_four">बेहतर कंट्रास्ट के लिए ग्लास डिज़ाइन में सुधार</string>
+    <string name="update_mock_feature_four">सघन मैच सूची और अधिक सरल, शांत इंटरफ़ेस</string>
     <string name="cd_update_dialog">Bouncer ऐप अपडेट डायलॉग</string>
     <string name="cd_update_bouncer_logo">Bouncer अपडेट आइकॉन</string>
     <string name="cd_update_feature_icon">अपडेट सुविधा का आइकॉन</string>

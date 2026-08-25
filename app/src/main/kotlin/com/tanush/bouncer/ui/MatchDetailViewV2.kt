@@ -48,7 +48,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
@@ -78,7 +77,6 @@ import com.tanush.bouncer.viewmodels.HighlightsViewModel
 import com.tanush.bouncer.viewmodels.MatchDetailViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.tanush.bouncer.ui.theme.BouncerMotion
-import com.tanush.bouncer.ui.theme.rememberMatchTeamPalette
 import com.tanush.bouncer.ui.theme.rememberTeamColors
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 import com.tanush.bouncer.ui.theme.v2.CricketEventColors
@@ -429,13 +427,9 @@ private fun ScoreHeaderV2(
     val typography = BouncerThemeV2.typography
     val spacing = BouncerThemeV2.spacing
 
-    val palette = rememberMatchTeamPalette(team1?.name, team2?.name)
-    val headerBrush = Brush.horizontalGradient(
-        0f to palette.home.primary.copy(alpha = 0.13f),
-        0.5f to colors.surface,
-        1f to palette.away.primary.copy(alpha = 0.13f),
-    )
-    val livePrimaryColor = if (team1?.isBatting == true) palette.home.primary else palette.away.primary
+    // Flat. The header used to be a three-stop horizontal gradient tinted with both teams'
+    // brand colours at 13% alpha — a wash faint enough to read as nothing in particular and
+    // loud enough to make the scores sit on an uneven ground. The scores are the header.
 
     val statusType = determineMatchStatus(match)
 
@@ -444,7 +438,7 @@ private fun ScoreHeaderV2(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(brush = headerBrush)
+            .background(colors.surface)
             .background(flashOverlay)
             .padding(horizontal = spacing.lg, vertical = spacing.md),
     ) {
@@ -467,7 +461,6 @@ private fun ScoreHeaderV2(
             score = score1,
             overs = overs1,
             isBatting = team1?.isBatting == true,
-            teamColor = palette.home.primary,
         )
         Spacer(Modifier.height(spacing.sm))
 
@@ -478,13 +471,12 @@ private fun ScoreHeaderV2(
             score = score2,
             overs = overs2,
             isBatting = team2?.isBatting == true,
-            teamColor = palette.away.primary,
         )
         Spacer(Modifier.height(spacing.sm))
 
         // Status line — a decided match gets a designed end moment (Peak-End:
         // the last thing seen of a match is its result, not a stale score).
-        MatchStatusLine(match = match, livePrimaryColor = livePrimaryColor)
+        MatchStatusLine(match = match)
 
         // Run rates
         if (currentRunRate != null || requiredRunRate != null) {
@@ -568,7 +560,7 @@ private fun eventFlashColor(ball: String, cricket: CricketEventColors): Color? =
 }
 
 @Composable
-private fun MatchStatusLine(match: CricketMatch, livePrimaryColor: Color) {
+private fun MatchStatusLine(match: CricketMatch) {
     if (match.currentStatus.isBlank()) return
     val colors = BouncerThemeV2.colors
     val typography = BouncerThemeV2.typography
@@ -578,7 +570,7 @@ private fun MatchStatusLine(match: CricketMatch, livePrimaryColor: Color) {
         Text(
             text = match.currentStatus,
             style = typography.bodySmall,
-            color = if (match.isLive) livePrimaryColor else colors.textSecondary,
+            color = colors.textSecondary,
             fontWeight = FontWeight.Medium,
         )
     }
@@ -620,12 +612,12 @@ private fun TeamScoreRow(
     score: String,
     overs: String,
     isBatting: Boolean,
-    teamColor: Color = Color.Unspecified,
 ) {
     val colors = BouncerThemeV2.colors
     val typography = BouncerThemeV2.typography
     val spacing = BouncerThemeV2.spacing
-    val activeColor = if (isBatting && teamColor != Color.Unspecified) teamColor else colors.onSurface
+    // Neutral for both sides. Batting is carried by weight, not hue — see TeamRowV2.
+    val activeColor = colors.onSurface
 
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -663,7 +655,7 @@ private fun TeamScoreRow(
                 Spacer(Modifier.width(spacing.xs))
                 Text(
                     text = "($overs)",
-                    style = typography.bodySmall,
+                    style = typography.numericSmall,
                     color = colors.textSecondary,
                     maxLines = 1,
                 )

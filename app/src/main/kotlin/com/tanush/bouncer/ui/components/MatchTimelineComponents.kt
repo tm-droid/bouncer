@@ -281,15 +281,7 @@ fun PlayerSpotlightCard(
     onClick: () -> Unit = {}
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "spotlight")
-    val shimmerOffset by infiniteTransition.animateFloat(
-        initialValue = -1f,
-        targetValue = 2f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(3000, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "shimmer"
-    )
+    val shimmerOffset = 0.5f
     
     val glowPulse by infiniteTransition.animateFloat(
         initialValue = 0.2f,
@@ -704,15 +696,7 @@ fun RunMeter(
     )
     
     val infiniteTransition = rememberInfiniteTransition(label = "runMeter")
-    val pulseAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.3f,
-        targetValue = 0.7f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1500, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "pulse"
-    )
+    val pulseAlpha = 0.55f
 
     Column(
         modifier = modifier.padding(16.dp),

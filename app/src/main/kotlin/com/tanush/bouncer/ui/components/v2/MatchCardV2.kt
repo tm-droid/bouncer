@@ -5,6 +5,9 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
+import androidx.compose.foundation.LocalIndication
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -51,7 +54,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 
 /**
- * Compact match card for lists — series header, two team rows, status line.
+ * One match in a list: series header, two team rows, status line, and a trailing divider.
+ *
+ * Deliberately **not** a card. A list of same-kind things is rows on one surface separated by
+ * hairlines — that is what Cricbuzz and Cricinfo do, and it is what lets four or five matches
+ * share a screen. Wrapping each row in an elevated 12dp-radius card gave every match equal
+ * visual weight, floated it off the background, and cost ~40dp of chrome per row for ~2.5
+ * matches per screen.
  */
 @Composable
 fun MatchCardV2(
@@ -64,7 +73,6 @@ fun MatchCardV2(
     isFavouriteTeam: Boolean = false,
 ) {
     val colors = BouncerThemeV2.colors
-    val typography = BouncerThemeV2.typography
     val spacing = BouncerThemeV2.spacing
     val haptic = LocalHapticFeedback.current
     val context = LocalContext.current
@@ -73,28 +81,37 @@ fun MatchCardV2(
     var showContextMenu by remember { mutableStateOf(false) }
 
     val statusType = remember(match) { determineMatchStatus(match) }
-    val winProb: Double? = match.winProbability
     val teamPalette = rememberMatchTeamPalette(
         match.teams.getOrNull(0)?.name,
         match.teams.getOrNull(1)?.name,
     )
 
     val cardDescription = remember(match) { matchCardDescription(match) }
+    val interactionSource = remember { MutableInteractionSource() }
 
-    BouncerCard(
+    Column(
         modifier = modifier
             .fillMaxWidth()
-            .semantics { contentDescription = cardDescription },
-        onClick = {
-            if (hapticEnabled) haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-            onClick()
-        },
-        onLongClick = {
-            if (hapticEnabled) haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-            showContextMenu = true
-        },
+            .semantics { contentDescription = cardDescription }
+            .combinedClickable(
+                interactionSource = interactionSource,
+                indication = LocalIndication.current,
+                onClick = {
+                    if (hapticEnabled) haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    onClick()
+                },
+                onLongClick = {
+                    if (hapticEnabled) haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    showContextMenu = true
+                },
+            ),
     ) {
-        Column(modifier = Modifier.padding(spacing.lg)) {
+        Column(
+            modifier = Modifier.padding(
+                horizontal = spacing.lg,
+                vertical = spacing.rowVertical,
+            ),
+        ) {
             MatchCardHeaderRow(
                 match = match,
                 statusType = statusType,
@@ -102,11 +119,14 @@ fun MatchCardV2(
                 isSubscribed = isSubscribed,
                 onSubscribeToggle = onSubscribeToggle,
             )
-            Spacer(Modifier.height(spacing.md))
-            MatchCardTeamRows(match = match, teamPalette = teamPalette)
-            MatchCardStatusLine(match = match, teamPalette = teamPalette)
-            MatchCardWinProbBar(match = match, winProb = winProb, teamPalette = teamPalette)
+            Spacer(Modifier.height(spacing.sm))
+            MatchCardTeamRows(match = match)
+            MatchCardStatusLine(match = match)
+            MatchCardWinProbBar(match = match, teamPalette = teamPalette)
         }
+        // Full-bleed: the hairline runs edge to edge so the list reads as one surface rather
+        // than as a stack of inset blocks.
+        HorizontalDivider(color = colors.divider)
     }
 
     if (showContextMenu) {
@@ -203,7 +223,7 @@ private fun bellBounceScale(isSubscribed: Boolean): Float {
 }
 
 @Composable
-private fun MatchCardTeamRows(match: CricketMatch, teamPalette: MatchTeamPalette) {
+private fun MatchCardTeamRows(match: CricketMatch) {
     val spacing = BouncerThemeV2.spacing
     if (match.teams.size >= 2) {
         val team1 = match.teams[0]
@@ -215,9 +235,8 @@ private fun MatchCardTeamRows(match: CricketMatch, teamPalette: MatchTeamPalette
             overs = team1.overs,
             isBatting = team1.isBatting,
             logoUrl = team1.logoUrl,
-            teamColor = teamPalette.home.primary,
         )
-        Spacer(Modifier.height(spacing.sm))
+        Spacer(Modifier.height(spacing.xs))
         TeamRowV2(
             teamName = team2.name,
             teamAcronym = team2.acronym,
@@ -225,31 +244,28 @@ private fun MatchCardTeamRows(match: CricketMatch, teamPalette: MatchTeamPalette
             overs = team2.overs,
             isBatting = team2.isBatting,
             logoUrl = team2.logoUrl,
-            teamColor = teamPalette.away.primary,
         )
     }
 }
 
 @Composable
-private fun MatchCardStatusLine(match: CricketMatch, teamPalette: MatchTeamPalette) {
+private fun MatchCardStatusLine(match: CricketMatch) {
     if (match.currentStatus.isBlank()) return
     val colors = BouncerThemeV2.colors
     val typography = BouncerThemeV2.typography
     val spacing = BouncerThemeV2.spacing
-    HorizontalDivider(
-        modifier = Modifier.padding(vertical = spacing.sm),
-        color = colors.divider,
-    )
+    Spacer(Modifier.height(spacing.sm))
     Text(
         text = match.currentStatus,
         style = typography.bodySmall,
-        // Live chase line keeps the batting team's color (open loop);
-        // a decided result reads in win green so resolution is scannable.
-        color = when {
-            match.isLive ->
-                if (match.teams.getOrNull(0)?.isBatting == true) teamPalette.home.primary else teamPalette.away.primary
-            match.currentStatus.contains("won", ignoreCase = true) -> colors.win
-            else -> colors.textSecondary
+        // Neutral. This line used to be painted in the batting team's brand colour, which made
+        // every row a different hue and forced `liftForContrast` gymnastics to keep the text
+        // legible. Colour on data is what read as decoration; a decided result still gets win
+        // green, because that is a state change and not an identity.
+        color = if (match.currentStatus.contains("won", ignoreCase = true)) {
+            colors.win
+        } else {
+            colors.textSecondary
         },
         maxLines = 2,
         overflow = TextOverflow.Ellipsis,
@@ -257,10 +273,13 @@ private fun MatchCardStatusLine(match: CricketMatch, teamPalette: MatchTeamPalet
 }
 
 @Composable
-private fun MatchCardWinProbBar(match: CricketMatch, winProb: Double?, teamPalette: MatchTeamPalette) {
+private fun MatchCardWinProbBar(match: CricketMatch, teamPalette: MatchTeamPalette) {
     // Null means the server produced no probability for this match; show nothing rather than an
     // even split. The old `== 50.0` guard also hid genuinely even matches.
-    if (winProb == null || match.teams.size < 2) return
+    val winProb = match.winProbability
+    // Live only. A finished match has a known result printed one line above, so a probability
+    // bar under it is decoration; an upcoming match has nothing to be probable about yet.
+    if (!match.isLive || winProb == null || match.teams.size < 2) return
     val colors = BouncerThemeV2.colors
     val typography = BouncerThemeV2.typography
     val spacing = BouncerThemeV2.spacing
@@ -273,30 +292,32 @@ private fun MatchCardWinProbBar(match: CricketMatch, winProb: Double?, teamPalet
     val home = (winProb / 100.0).toFloat().coerceIn(0f, 1f - draw)
     val away = (1f - draw - home).coerceAtLeast(0f)
     // Team colours are guaranteed 3:1 against the app background, which a dark green clears while
-    // still reading as an empty bar on a lifted card. Lifted against the card's own fill instead.
-    val homeColor = teamPalette.home.primary.liftForContrast(colors.surface, SEGMENT_MIN_CONTRAST)
-    val awayColor = teamPalette.away.primary.liftForContrast(colors.surface, SEGMENT_MIN_CONTRAST)
+    // still reading as an empty bar on a lifted card. Lifted against the surface it is drawn on.
+    val homeColor = teamPalette.home.primary.liftForContrast(colors.background, SEGMENT_MIN_CONTRAST)
+    val awayColor = teamPalette.away.primary.liftForContrast(colors.background, SEGMENT_MIN_CONTRAST)
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        // The percentages are the one place team colour is legitimate ink here: they label the
+        // bar segment directly below them, so the colour is doing identification, not emphasis.
         Text(
             text = "${match.teams[0].acronym} ${(home * WIN_PROB_PERCENT).roundToInt()}%",
-            style = typography.bodySmall,
-            color = homeColor,
+            style = typography.numericSmall,
+            color = colors.textSecondary,
         )
         Spacer(Modifier.weight(1f))
         Text(
             text = "${(away * WIN_PROB_PERCENT).roundToInt()}% ${match.teams[1].acronym}",
-            style = typography.bodySmall,
-            color = awayColor,
+            style = typography.numericSmall,
+            color = colors.textSecondary,
         )
     }
     Spacer(Modifier.height(4.dp))
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(4.dp)
+            .height(3.dp)
             .clip(RoundedCornerShape(2.dp))
             .background(
                 Brush.horizontalGradient(
@@ -309,7 +330,7 @@ private fun MatchCardWinProbBar(match: CricketMatch, winProb: Double?, teamPalet
     )
 }
 
-/** One-utterance TalkBack description so the card reads as a unit, not fragments. */
+/** One-utterance TalkBack description so the row reads as a unit, not fragments. */
 private fun matchCardDescription(match: CricketMatch): String = buildString {
     append(match.matchTitle)
     val team1 = match.teams.getOrNull(0)
@@ -332,7 +353,7 @@ private fun matchCardDescription(match: CricketMatch): String = buildString {
 internal const val WIN_PROB_PERCENT = 100f
 
 /**
- * Contrast floor for a filled probability segment against the card it sits on. Lower than a text
- * floor on purpose — a solid block needs far less separation than a glyph.
+ * Contrast floor for a filled probability segment against the surface it sits on. Lower than a
+ * text floor on purpose — a solid block needs far less separation than a glyph.
  */
 internal const val SEGMENT_MIN_CONTRAST = 2.2f

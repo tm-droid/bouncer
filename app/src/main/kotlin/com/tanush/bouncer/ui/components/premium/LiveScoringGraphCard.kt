@@ -60,16 +60,10 @@ fun LiveScoringGraphCard(
 ) {
     val animatedProgress = remember { Animatable(0f) }
 
-    val infiniteTransition = rememberInfiniteTransition(label = "scoring")
-    val livePulse by infiniteTransition.animateFloat(
-        initialValue = 1f,
-        targetValue = 1.3f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(800, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse,
-        ),
-        label = "pulse",
-    )
+    // No ambient loop. Motion in this app reports a state change (a score tick, a
+    // toggle); a permanent breathing glow reports nothing and is the kind of
+    // decoration this design system spends its budget away from.
+    val livePulse = 1f
 
     LaunchedEffect(scoringData) {
         animatedProgress.animateTo(
@@ -86,9 +80,9 @@ fun LiveScoringGraphCard(
 
     Card(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = BouncerThemeV2.colors.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 12.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
     ) {
         Column(
             modifier = Modifier

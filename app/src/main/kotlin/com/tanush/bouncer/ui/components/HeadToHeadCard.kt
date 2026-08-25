@@ -31,6 +31,7 @@ import com.tanush.bouncer.managers.TeamLogoManager
 import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.ui.theme.*
 import com.tanush.bouncer.ui.theme.GoldPrimary
+import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 
 /**
  * Head-to-Head statistics data
@@ -67,27 +68,20 @@ fun HeadToHeadCard(
     val team1 = match.teams.firstOrNull()
     val team2 = match.teams.getOrNull(1)
     
-    val infiniteTransition = rememberInfiniteTransition(label = "h2hShimmer")
-    val shimmerOffset by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(2500, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "shimmer"
-    )
+    // Ambient loop removed: motion in this app reports a state change, never idles.
+    // See BouncerCard's docs for the rule.
+    val shimmerOffset = 0.5f
 
     Card(
         modifier = modifier
             .fillMaxWidth()
             .shadow(
-                elevation = 20.dp,
-                shape = RoundedCornerShape(28.dp),
+                elevation = 0.dp,
+                shape = RoundedCornerShape(12.dp),
                 spotColor = hierarchy.secondary.primary.copy(alpha = 0.2f)
             ),
         colors = CardDefaults.cardColors(containerColor = colors.glassSurface),
-        shape = RoundedCornerShape(28.dp),
+        shape = RoundedCornerShape(12.dp),
         border = BorderStroke(
             0.5.dp,
             Brush.linearGradient(
@@ -248,7 +242,7 @@ private fun TeamWinsComparison(
                 .background(
                     Brush.radialGradient(
                         colors = listOf(
-                            colors.glassBorderHighlight,
+                            BouncerThemeV2.colors.surfaceVariant,
                             colors.glassSurface
                         )
                     ),
@@ -626,7 +620,7 @@ fun HeadToHeadChip(
     val colors = BouncerDesignSystem.colors
     Surface(
         modifier = modifier,
-        color = colors.glassBorderHighlight,
+        color = BouncerThemeV2.colors.surfaceVariant,
         shape = RoundedCornerShape(8.dp),
         border = BorderStroke(0.5.dp, colors.glassBorder.copy(alpha = 0.3f))
     ) {

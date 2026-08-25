@@ -85,18 +85,7 @@ fun HistoricalStatsCard(
 ) {
     val colors = BouncerDesignSystem.colors
     val hierarchy = BouncerDesignSystem.hierarchy
-    val infiniteTransition = rememberInfiniteTransition(label = "history")
-    
-    // Subtle shimmer
-    val shimmer by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(2500, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "shimmer"
-    )
+    // Ambient shimmer removed: it drove nothing that reported a state change.
     
     val team1WinRate = if (data.totalMatches > 0) 
         (data.team1Wins.toFloat() / data.totalMatches * 100) else 0f
@@ -107,11 +96,11 @@ fun HistoricalStatsCard(
         modifier = modifier
             .fillMaxWidth()
             .shadow(
-                elevation = 12.dp,
-                shape = RoundedCornerShape(20.dp),
+                elevation = 0.dp,
+                shape = RoundedCornerShape(12.dp),
                 spotColor = hierarchy.secondary.primary.copy(alpha = 0.2f)
             ),
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(12.dp),
         color = BouncerThemeV2.colors.highlight.copy(alpha = 0.05f)
     ) {
         Column(

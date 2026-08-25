@@ -29,6 +29,7 @@ import com.tanush.bouncer.ui.theme.*
 import kotlin.math.abs
 import io.sentry.Sentry
 import com.tanush.bouncer.ui.theme.GoldPrimary
+import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 
 /**
  * Fall of wicket data
@@ -78,13 +79,13 @@ fun FallOfWicketsCard(
         modifier = modifier
             .fillMaxWidth()
             .shadow(
-                elevation = 24.dp,
-                shape = RoundedCornerShape(28.dp),
+                elevation = 0.dp,
+                shape = RoundedCornerShape(12.dp),
                 spotColor = colors.statusLive.copy(alpha = 0.15f)
             ),
-        colors = CardDefaults.cardColors(containerColor = colors.glassSurface),
-        shape = RoundedCornerShape(28.dp),
-        border = BorderStroke(0.5.dp, colors.glassBorder.copy(alpha = 0.3f))
+        colors = CardDefaults.cardColors(containerColor = BouncerThemeV2.colors.surface),
+        shape = RoundedCornerShape(12.dp),
+        border = BorderStroke(0.5.dp, BouncerThemeV2.colors.divider)
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
             // Header
@@ -114,8 +115,8 @@ fun FallOfWicketsCard(
                 
                 Surface(
                     shape = RoundedCornerShape(8.dp),
-                    color = teamColor.copy(alpha = 0.15f),
-                    border = BorderStroke(0.5.dp, teamColor.copy(alpha = 0.3f))
+                    color = BouncerThemeV2.colors.surfaceVariant,
+                    border = BorderStroke(1.dp, BouncerThemeV2.colors.divider)
                 ) {
                     Text(
                         text = teamName,
@@ -313,24 +314,16 @@ private fun WicketCard(
     teamColor: Color
 ) {
     val colors = BouncerDesignSystem.colors
-    val infiniteTransition = rememberInfiniteTransition(label = "wicket")
-    
-    val borderAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.3f,
-        targetValue = 0.8f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1000, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "border"
-    )
+    // Ambient loop removed: motion in this app reports a state change, never idles.
+    // See BouncerCard's docs for the rule.
+    val borderAlpha = 0.55f
     
     Surface(
         shape = RoundedCornerShape(14.dp),
-        color = if (isLatest) colors.statusLive.copy(alpha = 0.1f) else colors.glassBorderHighlight.copy(alpha = 0.3f),
+        color = if (isLatest) colors.statusLive.copy(alpha = 0.1f) else BouncerThemeV2.colors.surfaceVariant,
         border = BorderStroke(
             1.dp,
-            if (isLatest) colors.statusLive.copy(alpha = borderAlpha) else colors.glassBorder.copy(alpha = 0.2f)
+            if (isLatest) colors.statusLive.copy(alpha = borderAlpha) else BouncerThemeV2.colors.divider
         ),
         modifier = Modifier.width(160.dp)
     ) {
@@ -372,7 +365,7 @@ private fun WicketCard(
             }
             
             Spacer(modifier = Modifier.height(10.dp))
-            HorizontalDivider(color = colors.glassBorder.copy(alpha = 0.2f))
+            HorizontalDivider(color = BouncerThemeV2.colors.divider)
             Spacer(modifier = Modifier.height(10.dp))
             
             // Batsman info
@@ -453,8 +446,8 @@ private fun WicketsSummary(wickets: List<FallOfWicket>, currentScore: Int) {
     
     Surface(
         shape = RoundedCornerShape(12.dp),
-        color = colors.glassBorderHighlight.copy(alpha = 0.3f),
-        border = BorderStroke(0.5.dp, colors.glassBorder.copy(alpha = 0.2f)),
+        color = BouncerThemeV2.colors.surfaceVariant,
+        border = BorderStroke(0.5.dp, BouncerThemeV2.colors.divider),
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
@@ -510,7 +503,7 @@ private fun WicketsSummary(wickets: List<FallOfWicket>, currentScore: Int) {
             // Collapse warning if detected
             collapsePhase?.let { (start, end, wicketsLost) ->
                 Spacer(modifier = Modifier.height(12.dp))
-                HorizontalDivider(color = colors.glassBorder.copy(alpha = 0.2f))
+                HorizontalDivider(color = BouncerThemeV2.colors.divider)
                 Spacer(modifier = Modifier.height(10.dp))
                 
                 Row(

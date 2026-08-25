@@ -83,24 +83,16 @@ fun HighlightMomentsCard(
 ) {
     val colors = BouncerDesignSystem.colors
     val hierarchy = BouncerDesignSystem.hierarchy
-    val infiniteTransition = rememberInfiniteTransition(label = "moments_animation")
-    
-    val glowAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.4f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1500, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "glow_alpha"
-    )
+    // Ambient loop removed: motion in this app reports a state change, never idles.
+    // See BouncerCard's docs for the rule.
+    val glowAlpha = 0.7f
     
     Card(
         modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
             containerColor = Color(0xFF0D1117)
         ),
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(12.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
     ) {
         Column(
@@ -332,21 +324,13 @@ private fun MomentRow(
 @Composable
 private fun ImpactIndicator(impact: Float) {
     val colors = BouncerDesignSystem.colors
-    val infiniteTransition = rememberInfiniteTransition(label = "impact_animation")
-    
+    // Ambient loop removed: motion in this app reports a state change, never idles.
+    // See BouncerCard's docs for the rule.
     // Capture colors for Canvas scope
     val statusLiveColor = colors.statusLive
     val statusWarningColor = colors.statusWarning
     
-    val pulseScale by infiniteTransition.animateFloat(
-        initialValue = 1f,
-        targetValue = if (impact > 0.8f) 1.2f else 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(600, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "pulse_scale"
-    )
+    val pulseScale = 1f
     
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -420,25 +404,17 @@ fun FeaturedMomentCard(
 ) {
     val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
-    val infiniteTransition = rememberInfiniteTransition(label = "featured_animation")
-    
-    val borderPhase by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 360f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(3000, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "border_phase"
-    )
+    // Ambient loop removed: motion in this app reports a state change, never idles.
+    // See BouncerCard's docs for the rule.
+    val borderPhase = 0f
     
     Card(
         modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
             containerColor = Color(0xFF0D1117)
         ),
-        shape = RoundedCornerShape(24.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 12.dp)
+        shape = RoundedCornerShape(12.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Box {
             // Animated gradient border effect

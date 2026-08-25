@@ -1,10 +1,5 @@
 package com.tanush.bouncer.ui.components.v2
 
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,38 +10,29 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 
 /**
- * Shimmer placeholder shapes for loading states.
+ * Placeholder shapes for loading states.
  */
 
+/**
+ * The placeholder fill: a flat block, not a travelling highlight.
+ *
+ * This was a 1.2s `infiniteRepeatable` gradient sweep on every skeleton on screen. A sweep is a
+ * promise that something is arriving imminently, and these lists are served from a Room cache
+ * that usually resolves in one frame — so the animation mostly played over data that was already
+ * there. Ambient motion with nothing to report is the loop this design has no room for; the
+ * shapes alone say "content goes here".
+ */
 @Composable
-private fun shimmerBrush(): Brush {
-    val colors = BouncerThemeV2.colors
-    val transition = rememberInfiniteTransition(label = "shimmer")
-    val translateAnim by transition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1000f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1200),
-            repeatMode = RepeatMode.Restart,
-        ),
-        label = "shimmerTranslate",
-    )
-    return Brush.linearGradient(
-        colors = listOf(colors.shimmer, colors.shimmerHighlight, colors.shimmer),
-        start = Offset(translateAnim - 200f, 0f),
-        end = Offset(translateAnim, 0f),
-    )
-}
+private fun shimmerBrush(): Brush = SolidColor(BouncerThemeV2.colors.shimmer)
 
 @Composable
 fun ShimmerBox(

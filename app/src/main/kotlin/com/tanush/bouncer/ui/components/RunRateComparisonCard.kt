@@ -58,17 +58,7 @@ fun RunRateComparisonCard(
 ) {
     val colors = BouncerDesignSystem.colors
     val hierarchy = BouncerDesignSystem.hierarchy
-    val infiniteTransition = rememberInfiniteTransition(label = "rrShimmer")
-    val shimmerOffset by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(2500, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "shimmer"
-    )
-
+    // Ambient shimmer removed: it drove nothing that reported a state change.
     // Calculate cumulative runs for run rate
     val team1Cumulative = overData.runningFold(0) { acc, data -> acc + data.team1Runs }.drop(1)
     val team2Cumulative = overData.mapNotNull { it.team2Runs }.runningFold(0) { acc, runs -> acc + runs }.drop(1)
@@ -85,12 +75,12 @@ fun RunRateComparisonCard(
         modifier = modifier
             .fillMaxWidth()
             .shadow(
-                elevation = 16.dp,
-                shape = RoundedCornerShape(24.dp),
+                elevation = 0.dp,
+                shape = RoundedCornerShape(12.dp),
                 spotColor = hierarchy.secondary.primary.copy(alpha = 0.15f)
             ),
         colors = CardDefaults.cardColors(containerColor = colors.glassSurface),
-        shape = RoundedCornerShape(24.dp),
+        shape = RoundedCornerShape(12.dp),
         border = BorderStroke(0.5.dp, colors.glassBorder.copy(alpha = 0.3f))
     ) {
         Column(

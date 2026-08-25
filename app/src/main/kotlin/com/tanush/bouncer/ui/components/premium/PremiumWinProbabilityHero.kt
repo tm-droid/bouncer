@@ -28,7 +28,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.semantics.contentDescription
@@ -38,15 +37,13 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.ui.theme.BackgroundBase
-import com.tanush.bouncer.ui.theme.GlassSurface
-import com.tanush.bouncer.ui.theme.GoldHairline
+import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 import com.tanush.bouncer.ui.theme.LiveRed
 import com.tanush.bouncer.ui.theme.TeamColorRegistry
 import com.tanush.bouncer.ui.theme.TextMuted
 import com.tanush.bouncer.ui.theme.TextPrimary
 import com.tanush.bouncer.ui.theme.TextSecondary
 import com.tanush.bouncer.ui.theme.liftForContrast
-import com.tanush.bouncer.ui.theme.lighten
 import kotlin.math.abs
 import kotlin.math.floor
 import kotlin.math.roundToInt
@@ -85,12 +82,16 @@ private const val DELTA_WORTH_SHOWING = 0.02f
  * floor is lower because a 14dp block of solid colour needs far less separation than a glyph.
  */
 private const val SEGMENT_MIN_CONTRAST = 2.2f
-private const val SEGMENT_SHADE = 0.18f
 
-/** The card's fill as it actually reaches the eye — [GlassSurface] is translucent. */
+/**
+ * The fill the segments are actually drawn on, and therefore what [SEGMENT_MIN_CONTRAST] is
+ * measured against. It must track the container's real background — it used to be the translucent
+ * `GlassSurface` composited over `BackgroundBase`, which stopped being what the card paints when
+ * the container moved to the V2 `surface` token.
+ */
 private val CardFill: Color
     @Composable @ReadOnlyComposable
-    get() = GlassSurface.compositeOver(BackgroundBase)
+    get() = BouncerThemeV2.colors.surface
 
 @Composable
 @ReadOnlyComposable
@@ -138,10 +139,13 @@ fun PremiumWinProbabilityHero(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(24.dp))
-            .background(GlassSurface)
-            .border(0.5.dp, GoldHairline.copy(alpha = 0.4f), RoundedCornerShape(24.dp))
-            .padding(20.dp)
+            // Same geometry as every other grouping container: 12dp, surface, hairline. The
+            // gold-tinted border at 24dp made this the loudest object on the Overview tab, and
+            // gold's one job in this app is "you can tap this".
+            .clip(RoundedCornerShape(12.dp))
+            .background(BouncerThemeV2.colors.surface)
+            .border(1.dp, BouncerThemeV2.colors.divider, RoundedCornerShape(12.dp))
+            .padding(16.dp)
             .semantics {
                 contentDescription = describe(team1Name, team2Name, percents, drawProbability != null, state)
             },
@@ -255,11 +259,7 @@ private fun SegmentedBar(
                     .weight(team1 / total)
                     .fillMaxWidth()
                     .height(14.dp)
-                    // Shaded by lightening, not by alpha: alpha over a dark card drags the segment
-                    // back below the contrast floor onCard() just lifted it above.
-                    .background(
-                        Brush.horizontalGradient(listOf(team1Color.lighten(SEGMENT_SHADE), team1Color)),
-                    ),
+                    .background(team1Color),
             )
         }
         if (draw > 0f) {
@@ -277,9 +277,7 @@ private fun SegmentedBar(
                     .weight(team2 / total)
                     .fillMaxWidth()
                     .height(14.dp)
-                    .background(
-                        Brush.horizontalGradient(listOf(team2Color, team2Color.lighten(SEGMENT_SHADE))),
-                    ),
+                    .background(team2Color),
             )
         }
     }
@@ -290,13 +288,8 @@ private fun visible(share: Float): Float =
 
 @Composable
 private fun StateChip(state: WinProbabilityState) {
-    val transition = rememberInfiniteTransition(label = "pulse")
-    val pulse by transition.animateFloat(
-        initialValue = 0.35f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(tween(1200, easing = FastOutSlowInEasing), RepeatMode.Reverse),
-        label = "pulseAlpha",
-    )
+    // A solid LIVE dot. The badge beside it already says LIVE; a fading dot adds nothing.
+    val pulse = 1f
     val (label, color) = when (state) {
         WinProbabilityState.LIVE -> "LIVE" to LiveRed
         // Labelled distinctly on purpose: a pre-match number is a prediction from form alone, and

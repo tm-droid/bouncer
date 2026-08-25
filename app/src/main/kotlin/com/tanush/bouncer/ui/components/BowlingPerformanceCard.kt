@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.sp
 import com.tanush.bouncer.ui.components.CoilImage
 import com.tanush.bouncer.ui.theme.*
 import java.util.Locale
+import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 
 /**
  * Bowler performance data
@@ -75,12 +76,12 @@ fun BowlingPerformanceCard(
         modifier = modifier
             .fillMaxWidth()
             .shadow(
-                elevation = 24.dp,
-                shape = RoundedCornerShape(28.dp),
+                elevation = 0.dp,
+                shape = RoundedCornerShape(12.dp),
                 spotColor = teamColor.copy(alpha = 0.15f)
             ),
         colors = CardDefaults.cardColors(containerColor = colors.glassSurface),
-        shape = RoundedCornerShape(28.dp),
+        shape = RoundedCornerShape(12.dp),
         border = BorderStroke(0.5.dp, colors.glassBorder.copy(alpha = 0.3f))
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
@@ -152,21 +153,13 @@ private fun BowlerRow(
 ) {
     val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
-    val infiniteTransition = rememberInfiniteTransition(label = "bowler")
-    
-    val pulseAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.3f,
-        targetValue = 0.8f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1000, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "pulse"
-    )
+    // Ambient loop removed: motion in this app reports a state change, never idles.
+    // See BouncerCard's docs for the rule.
+    val pulseAlpha = 0.55f
     
     Surface(
         shape = RoundedCornerShape(16.dp),
-        color = if (bowler.isBowling) teamColor.copy(alpha = 0.1f) else colors.glassBorderHighlight,
+        color = if (bowler.isBowling) teamColor.copy(alpha = 0.1f) else BouncerThemeV2.colors.surfaceVariant,
         border = BorderStroke(
             0.5.dp,
             if (bowler.isBowling) teamColor.copy(alpha = pulseAlpha) else colors.glassBorder.copy(alpha = 0.2f)
@@ -454,7 +447,7 @@ private fun BowlingSummary(bowlers: List<BowlerPerformance>, teamColor: Color) {
     
     Surface(
         shape = RoundedCornerShape(12.dp),
-        color = colors.glassBorderHighlight,
+        color = BouncerThemeV2.colors.surfaceVariant,
         border = BorderStroke(0.5.dp, colors.glassBorder.copy(alpha = 0.2f)),
         modifier = Modifier.fillMaxWidth()
     ) {
@@ -554,7 +547,7 @@ fun MiniBowlingCard(
     val colors = BouncerDesignSystem.colors
     Surface(
         shape = RoundedCornerShape(10.dp),
-        color = colors.glassBorderHighlight,
+        color = BouncerThemeV2.colors.surfaceVariant,
         border = BorderStroke(0.5.dp, bowler.economyCategory.color.copy(alpha = 0.3f)),
         modifier = modifier
     ) {

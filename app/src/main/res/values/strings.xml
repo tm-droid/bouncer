@@ -83,7 +83,7 @@
     <string name="update_mock_feature_one">Faster live score rendering with smoother transitions</string>
     <string name="update_mock_feature_two">Fixes for match feed refresh and edge-case crashes</string>
     <string name="update_mock_feature_three">Security hardening for network payload validation</string>
-    <string name="update_mock_feature_four">Premium glass visuals tuned for better contrast</string>
+    <string name="update_mock_feature_four">Denser match list and a flatter, quieter interface</string>
 
     <string name="cd_update_dialog">Bouncer app update dialog</string>
     <string name="cd_update_bouncer_logo">Bouncer update icon</string>
@@ -223,7 +223,7 @@
     <string name="action_skip">Skip</string>
     <string name="action_next">Next</string>
     <string name="onboarding_get_started">Get Started</string>
-    <string name="onboarding_welcome_subtitle">Your cricket companion for live scores and match intelligence.</string>
+    <string name="onboarding_welcome_subtitle">Live scores, ball-by-ball commentary and match stats.</string>
     <string name="onboarding_feature_ball_by_ball">Live ball-by-ball updates</string>
     <string name="onboarding_feature_win_probability">Win-probability insights</string>
     <string name="onboarding_feature_follow_teams">Follow your teams</string>

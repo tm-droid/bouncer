@@ -404,12 +404,7 @@ private fun LazyListScope.searchResults(
             MatchCardV2(
                 match = result.match,
                 onClick = { onMatchClick(result.match) },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(
-                        horizontal = BouncerThemeV2.spacing.lg,
-                        vertical = BouncerThemeV2.spacing.xs,
-                    ),
+                modifier = Modifier.fillMaxWidth(),
             )
         },
         displayResults.teams.sectionOrNull(R.string.search_section_teams, "t", { "t_${it.teamName}" }) { result ->

@@ -121,81 +121,84 @@ internal fun commentaryPausedMessage(match: CricketMatch, isCompleted: Boolean):
 internal fun cleanCommentary(line: String): String =
     line.replace(Regex("^\\[AI Fused\\]\\s*"), "").trimEnd('/').trim()
 
+/**
+ * One batter at the crease, as a row — the caller groups them into a single container.
+ *
+ * This used to be a card per batter, so "At the crease" rendered as two floating tiles for what
+ * is one two-line fact. Two people batting together belong in one box.
+ */
 @Composable
-internal fun BatsmanCreaseCard(bat: ScrapedBatsman) {
+internal fun BatsmanCreaseRow(bat: ScrapedBatsman) {
     val colors = BouncerThemeV2.colors
     val typography = BouncerThemeV2.typography
     val spacing = BouncerThemeV2.spacing
-    BouncerCard {
-        Column(modifier = Modifier.padding(spacing.md)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = bat.name + if (bat.isStriker) " *" else "",
-                    style = typography.titleSmall,
-                    color = colors.onSurface,
-                    fontWeight = if (bat.isStriker) FontWeight.Bold else FontWeight.Normal,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f),
-                )
-                AnimatedScoreText(
-                    text = "${bat.runs} (${bat.balls})",
-                    style = typography.scoreMedium,
-                    color = colors.onSurface,
-                    fontWeight = FontWeight.Bold,
-                )
-            }
-            Spacer(Modifier.height(spacing.xs))
+    Column(modifier = Modifier.padding(spacing.md)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             Text(
-                text = "SR: ${bat.strikeRate} • 4s: ${bat.fours} • 6s: ${bat.sixes}",
-                style = typography.bodySmall,
-                color = colors.textSecondary,
+                text = bat.name + if (bat.isStriker) " *" else "",
+                style = typography.titleSmall,
+                color = colors.onSurface,
+                fontWeight = if (bat.isStriker) FontWeight.Bold else FontWeight.Normal,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
+            )
+            AnimatedScoreText(
+                text = "${bat.runs} (${bat.balls})",
+                style = typography.scoreMedium,
+                color = colors.onSurface,
+                fontWeight = FontWeight.Bold,
             )
         }
+        Spacer(Modifier.height(spacing.xs))
+        Text(
+            text = "SR ${bat.strikeRate} • 4s ${bat.fours} • 6s ${bat.sixes}",
+            style = typography.numericSmall,
+            color = colors.textSecondary,
+        )
     }
 }
 
+/** Scorecard-sourced batter row, used when live crease data is unavailable. */
 @Composable
-internal fun FallbackBatsmanCard(bat: BatsmanStats) {
+internal fun FallbackBatsmanRow(bat: BatsmanStats) {
     val colors = BouncerThemeV2.colors
     val typography = BouncerThemeV2.typography
     val spacing = BouncerThemeV2.spacing
-    BouncerCard {
-        Column(modifier = Modifier.padding(spacing.md)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = bat.name,
-                    style = typography.titleSmall,
-                    color = colors.onSurface,
-                    modifier = Modifier.weight(1f),
-                )
-                Text(
-                    text = "${bat.runs} (${bat.balls})",
-                    style = typography.scoreMedium,
-                    color = colors.onSurface,
-                    fontWeight = FontWeight.Bold,
-                )
-            }
-            Spacer(Modifier.height(spacing.xs))
-            val details = buildString {
-                append("SR: ${bat.strikeRate}")
-                if (bat.fours != "0") append(" • 4s: ${bat.fours}")
-                if (bat.sixes != "0") append(" • 6s: ${bat.sixes}")
-                if (bat.dismissal.isNotBlank() && !bat.dismissal.lowercase().contains("not out")) {
-                    append(" • ${bat.dismissal}")
-                }
-            }
+    Column(modifier = Modifier.padding(spacing.md)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             Text(
-                text = details,
-                style = typography.bodySmall,
-                color = colors.textSecondary,
+                text = bat.name,
+                style = typography.titleSmall,
+                color = colors.onSurface,
+                modifier = Modifier.weight(1f),
+            )
+            Text(
+                text = "${bat.runs} (${bat.balls})",
+                style = typography.scoreMedium,
+                color = colors.onSurface,
+                fontWeight = FontWeight.Bold,
             )
         }
+        Spacer(Modifier.height(spacing.xs))
+        val details = buildString {
+            append("SR: ${bat.strikeRate}")
+            if (bat.fours != "0") append(" • 4s: ${bat.fours}")
+            if (bat.sixes != "0") append(" • 6s: ${bat.sixes}")
+            if (bat.dismissal.isNotBlank() && !bat.dismissal.lowercase().contains("not out")) {
+                append(" • ${bat.dismissal}")
+            }
+        }
+        Text(
+            text = details,
+            style = typography.numericSmall,
+            color = colors.textSecondary,
+        )
     }
 }

@@ -144,11 +144,8 @@ fun OverviewTabV2(
         ),
         verticalArrangement = Arrangement.spacedBy(spacing.md),
     ) {
-        overviewHeaderSections(
-            match, isUpcoming, isCompleted, hasAnyContent,
-            currentRunRate, requiredRunRate, winProb,
-        )
-        overviewLiveSituation(match, recentBalls, isMatchActive)
+        overviewHeaderSections(isUpcoming, hasAnyContent)
+        overviewLiveSituation(match, isMatchActive)
         overviewBatsmen(batsmen, isMatchActive, isCompleted, derived.fallbackBatsmen, derived.fallbackHasNotOut)
         overviewBowler(bowler, isMatchActive, isCompleted, scorecard)
         overviewWinProbability(match, winProb, probabilityHistory, currentRunRate, requiredRunRate)
@@ -232,7 +229,8 @@ private fun QuickStatCard(
         ) {
             Text(text = label, style = typography.labelSmall, color = colors.textSecondary)
             Spacer(Modifier.height(spacing.xxs))
-            Text(text = value, style = typography.titleLarge, color = colors.onSurface, fontWeight = FontWeight.Bold)
+            // Tabular: these tiles hold live figures that re-render in place.
+            Text(text = value, style = typography.scoreMedium, color = colors.onSurface)
         }
     }
 }

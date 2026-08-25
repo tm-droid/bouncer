@@ -72,15 +72,7 @@ fun CricketBallPullRefreshIndicator(
     )
 
     // --- Reduced-motion alpha pulse ---
-    val pulseAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.5f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(800, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "pulse_alpha"
-    )
+    val pulseAlpha = 0.55f
 
     val rotation = when {
         reducedMotion -> 0f

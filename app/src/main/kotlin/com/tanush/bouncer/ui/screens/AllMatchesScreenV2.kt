@@ -164,7 +164,6 @@ fun AllMatchesScreenV2(
                         onClick = { onMatchClick(match) },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = spacing.lg, vertical = spacing.xs)
                             .animateItem(),
                     )
                 }

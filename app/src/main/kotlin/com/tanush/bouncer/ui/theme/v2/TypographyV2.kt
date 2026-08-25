@@ -11,7 +11,19 @@ import com.tanush.bouncer.ui.theme.InterFontFamily
 /**
  * Bouncer V2 typography scale.
  * Uses the Inter brand font — bold/extra-bold for scores, semibold for headers.
+ *
+ * Hierarchy is carried by size and weight, never by colour or by wrapping something in a box.
+ *
+ * Anything that re-renders with new digits in place — scores, overs, run rates, stats — must use
+ * a [TABULAR] style. Proportional digits are different widths, so a live score repolling every
+ * ~6s reflows its whole row on each tick (a `1` narrowing to a `4` visibly shifts the overs and
+ * the win-probability labels beside it). Tabular figures pin every digit to one advance width.
  */
+
+/**
+ * OpenType `tnum`: fixed-advance digits. Required on any numeral that updates in place.
+ */
+private const val TABULAR = "tnum"
 
 @Immutable
 data class BouncerTypographyV2(
@@ -116,19 +128,46 @@ data class BouncerTypographyV2(
         lineHeight = 16.sp,
         letterSpacing = 0.5.sp,
     ),
-    /** 22sp ExtraBold — compact match card scores */
+    /** 11sp Medium, wide-tracked — uppercase section headers ("MATCHES", "THIS OVER") */
+    val overline: TextStyle = TextStyle(
+        fontFamily = InterFontFamily,
+        fontWeight = FontWeight.Medium,
+        fontSize = 11.sp,
+        lineHeight = 16.sp,
+        letterSpacing = 0.8.sp,
+    ),
+    /** 22sp ExtraBold, tabular — compact match card scores */
     val scoreLarge: TextStyle = TextStyle(
         fontFamily = InterFontFamily,
         fontWeight = FontWeight.ExtraBold,
         fontSize = 22.sp,
         lineHeight = 28.sp,
+        fontFeatureSettings = TABULAR,
     ),
-    /** 16sp Bold — secondary scores, overs */
+    /** 16sp Bold, tabular — secondary scores, overs */
     val scoreMedium: TextStyle = TextStyle(
         fontFamily = InterFontFamily,
         fontWeight = FontWeight.Bold,
         fontSize = 16.sp,
         lineHeight = 22.sp,
+        fontFeatureSettings = TABULAR,
+    ),
+    /** 14sp Medium, tabular — stat figures, overs, run rates in tables and rows */
+    val numeric: TextStyle = TextStyle(
+        fontFamily = InterFontFamily,
+        fontWeight = FontWeight.Medium,
+        fontSize = 14.sp,
+        lineHeight = 20.sp,
+        fontFeatureSettings = TABULAR,
+    ),
+    /** 12sp Normal, tabular — the small `(14.2)` overs figure beside a score */
+    val numericSmall: TextStyle = TextStyle(
+        fontFamily = InterFontFamily,
+        fontWeight = FontWeight.Normal,
+        fontSize = 12.sp,
+        lineHeight = 16.sp,
+        letterSpacing = 0.4.sp,
+        fontFeatureSettings = TABULAR,
     ),
 )
 

@@ -153,9 +153,7 @@ private fun TeamDetailContent(
                 MatchCardV2(
                     match = match,
                     onClick = { onMatchClick(match) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = spacing.lg, vertical = spacing.xs),
+                    modifier = Modifier.fillMaxWidth(),
                 )
             }
         }

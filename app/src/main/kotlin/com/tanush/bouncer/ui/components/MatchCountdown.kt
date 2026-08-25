@@ -70,7 +70,7 @@ fun MatchCountdown(
 
     Surface(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(12.dp),
         color = GlassSurface,
         border = androidx.compose.foundation.BorderStroke(
             1.dp,

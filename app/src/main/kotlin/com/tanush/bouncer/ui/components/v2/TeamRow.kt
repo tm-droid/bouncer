@@ -19,7 +19,11 @@ import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 
 /**
  * A single team row: logo (24dp) + name + score right-aligned.
- * Bold score when team is batting.
+ *
+ * Ink is neutral for both teams. The batting side is marked by weight (ExtraBold vs Bold) and by
+ * a larger score, never by colour — painting each team's score in its brand colour turned every
+ * list into a different hue per row and made the numbers, which are the content, compete with
+ * each other. Team colour still identifies teams where it is a *shape* (the win-probability bar).
  */
 @Composable
 fun TeamRowV2(
@@ -30,12 +34,10 @@ fun TeamRowV2(
     isBatting: Boolean,
     logoUrl: String?,
     modifier: Modifier = Modifier,
-    teamColor: Color? = null,
 ) {
     val colors = BouncerThemeV2.colors
     val typography = BouncerThemeV2.typography
-    val nameColor = if (isBatting && teamColor != null) teamColor else colors.onSurface
-    val scoreColor = if (isBatting && teamColor != null) teamColor else colors.onSurface
+    val ink = colors.onSurface
 
     Row(
         modifier = modifier.fillMaxWidth(),
@@ -45,7 +47,7 @@ fun TeamRowV2(
             CoilImage(
                 model = logoUrl,
                 contentDescription = teamName,
-                modifier = Modifier.size(24.dp),
+                modifier = Modifier.size(20.dp),
             )
             Spacer(Modifier.width(8.dp))
         }
@@ -53,39 +55,48 @@ fun TeamRowV2(
         Text(
             text = teamAcronym.ifBlank { teamName },
             style = typography.titleMedium,
-            color = nameColor,
+            color = ink,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f),
         )
 
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            if (score.isBlank()) {
-                Text(
-                    text = "—",
-                    style = typography.bodyMedium,
-                    color = colors.textSecondary,
-                    maxLines = 1,
-                )
-            } else {
-                AnimatedScoreText(
-                    text = score,
-                    style = if (isBatting) typography.scoreLarge else typography.scoreMedium,
-                    fontWeight = if (isBatting) FontWeight.ExtraBold else FontWeight.Bold,
-                    color = scoreColor,
-                )
-            }
-            if (overs.isNotBlank() && overs != "0.0") {
-                Text(
-                    text = "($overs)",
-                    style = typography.bodySmall,
-                    color = colors.textSecondary,
-                    maxLines = 1,
-                )
-            }
+        TeamScoreCell(score = score, overs = overs, isBatting = isBatting, ink = ink)
+    }
+}
+
+/** Score plus overs, right-aligned. Split out to keep [TeamRowV2] under the complexity budget. */
+@Composable
+private fun TeamScoreCell(score: String, overs: String, isBatting: Boolean, ink: Color) {
+    val colors = BouncerThemeV2.colors
+    val typography = BouncerThemeV2.typography
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (score.isBlank()) {
+            Text(
+                text = "—",
+                style = typography.bodyMedium,
+                color = colors.textSecondary,
+                maxLines = 1,
+            )
+        } else {
+            AnimatedScoreText(
+                text = score,
+                style = if (isBatting) typography.scoreLarge else typography.scoreMedium,
+                fontWeight = if (isBatting) FontWeight.ExtraBold else FontWeight.Bold,
+                color = ink,
+            )
+        }
+        // "0.0" is the scraper's not-started sentinel, not a real over count.
+        if (overs.isNotBlank() && overs != "0.0") {
+            Text(
+                text = "($overs)",
+                style = typography.numericSmall,
+                color = colors.textSecondary,
+                maxLines = 1,
+            )
         }
     }
 }

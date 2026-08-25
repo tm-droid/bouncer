@@ -16,19 +16,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.Speed
 import com.tanush.bouncer.models.CricketMatch
 import com.tanush.bouncer.models.Scorecard
 import com.tanush.bouncer.models.ScrapedBatsman
 import com.tanush.bouncer.models.ScrapedBowler
 import com.tanush.bouncer.models.BatsmanStats
-import com.tanush.bouncer.ui.components.premium.EliteMomentumTracker
-import com.tanush.bouncer.ui.components.premium.InsightGridCard
 import com.tanush.bouncer.ui.components.v2.AnimatedScoreText
 import com.tanush.bouncer.ui.components.v2.BouncerCard
-import com.tanush.bouncer.ui.components.v2.RecentBallsStripV2
+import com.tanush.bouncer.ui.components.v2.BouncerRowGroup
 import com.tanush.bouncer.ui.components.v2.SectionHeaderV2
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 import androidx.compose.ui.res.stringResource
@@ -37,50 +33,34 @@ import com.tanush.bouncer.R
 // Situation, live-state, batsmen and bowler sections for OverviewTabV2's LazyColumn.
 
 internal fun LazyListScope.overviewHeaderSections(
-    match: CricketMatch,
     isUpcoming: Boolean,
-    isCompleted: Boolean,
     hasAnyContent: Boolean,
-    currentRunRate: String?,
-    requiredRunRate: String?,
-    winProb: Double?,
 ) {
+    // Nothing here restates the score header.
+    //
+    // `ScoreHeaderV2` is a sibling of the pager, not a page inside it, so it stays on screen for
+    // every tab. This section used to open with the match status, a CRR/RRR tile pair, the recent
+    // balls and a six-card "momentum stream" — all four of which the header already shows, three
+    // of them from the identical field. A tab whose first screenful repeats the thing pinned above
+    // it reads as padding, which is what made this screen feel generated. Overview now starts at
+    // the first fact the header does not carry: who is at the crease.
+    //
+    // No WIN % tile either. The hero below states both sides, the draw and what kind of number it
+    // is; a one-sided tile above it showed the same probability rounded differently (49% against
+    // the hero's 50%) and read as a second, disagreeing model.
     if (!hasAnyContent) {
         item(key = "no_data") { OverviewNoDataMessage(isUpcoming = isUpcoming) }
-    }
-    if (!match.isLive && match.currentStatus.isNotBlank() && !isUpcoming) {
-        item(key = "match_situation") { MatchSituationCard(match, isCompleted) }
-    }
-    // No WIN % tile here. The hero below states both sides, the draw and what kind of number it is;
-    // a one-sided tile above it showed the same probability rounded differently (49% against the
-    // hero's 50%) and read as a second, disagreeing model.
-    if (currentRunRate != null || requiredRunRate != null) {
-        item(key = "quick_stats") { QuickStatsRow(currentRunRate, requiredRunRate) }
     }
 }
 
 internal fun LazyListScope.overviewLiveSituation(
     match: CricketMatch,
-    recentBalls: List<String>,
     isMatchActive: Boolean,
 ) {
-    if (recentBalls.isNotEmpty()) {
-        item(key = "recent_balls") { RecentBallsCard(recentBalls) }
-    }
+    // The last wicket is the only thing here the header does not already show.
     val lastWicket = match.score?.lastWicket
     if (!lastWicket.isNullOrBlank() && isMatchActive) {
         item(key = "last_wicket") { LastWicketCard(lastWicket) }
-    }
-    if (recentBalls.isNotEmpty()) {
-        val battingOvers = match.teams.firstOrNull { it.isBatting }?.overs
-            ?: match.teams.firstOrNull()?.overs ?: "0"
-        val currentOverNum = battingOvers.split(".").firstOrNull()?.toIntOrNull() ?: 0
-        val momentumEvents = recentBalls.takeLast(6).mapIndexedNotNull { idx, ball ->
-            momentumEventFor("$currentOverNum.${idx + 1}", ball)
-        }
-        if (momentumEvents.isNotEmpty()) {
-            item(key = "momentum_tracker") { EliteMomentumTracker(events = momentumEvents) }
-        }
     }
 }
 
@@ -94,12 +74,17 @@ internal fun LazyListScope.overviewBatsmen(
     when {
         batsmen.isNotEmpty() -> {
             item(key = "crease_header") { SectionHeaderV2(title = stringResource(R.string.overview_at_the_crease)) }
-            items(batsmen.size, key = { "bat_$it" }) { idx -> BatsmanCreaseCard(batsmen[idx]) }
+            // One container for the pair, not a card each — the partnership is the unit.
+            item(key = "crease") {
+                BouncerRowGroup(batsmen) { BatsmanCreaseRow(it) }
+            }
         }
         (isMatchActive || isCompleted) && fallbackBatsmen.isNotEmpty() -> {
             item(key = "crease_header") {
                 SectionHeaderV2(
                     title = stringResource(
+                        // Without a not-out batter these rows are the last pair to have
+                        // batted, not the current one, and the heading has to say so.
                         if (fallbackHasNotOut) {
                             R.string.overview_at_the_crease
                         } else {
@@ -108,8 +93,8 @@ internal fun LazyListScope.overviewBatsmen(
                     )
                 )
             }
-            items(fallbackBatsmen.size, key = { "scbat_$it" }) { idx ->
-                FallbackBatsmanCard(fallbackBatsmen[idx])
+            item(key = "crease_fallback") {
+                BouncerRowGroup(fallbackBatsmen) { FallbackBatsmanRow(it) }
             }
         }
     }
@@ -144,78 +129,6 @@ internal fun LazyListScope.overviewBowler(
                     )
                 }
             }
-        }
-    }
-}
-
-@Composable
-internal fun MatchSituationCard(match: CricketMatch, isCompleted: Boolean) {
-    val colors = BouncerThemeV2.colors
-    val typography = BouncerThemeV2.typography
-    val spacing = BouncerThemeV2.spacing
-    BouncerCard {
-        Column(modifier = Modifier.padding(spacing.md)) {
-            Text(
-                text = stringResource(R.string.overview_match_status),
-                style = typography.labelMedium,
-                color = colors.textSecondary,
-            )
-            Spacer(Modifier.height(spacing.xs))
-            Text(
-                text = match.currentStatus,
-                style = typography.titleSmall,
-                color = if (isCompleted) colors.win else colors.primary,
-                fontWeight = FontWeight.Bold,
-            )
-        }
-    }
-}
-
-@Composable
-internal fun QuickStatsRow(
-    currentRunRate: String?,
-    requiredRunRate: String?,
-) {
-    val spacing = BouncerThemeV2.spacing
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(spacing.sm),
-    ) {
-        currentRunRate?.let {
-            InsightGridCard(
-                modifier = Modifier.weight(1f),
-                label = stringResource(R.string.stat_crr),
-                value = it,
-                subValue = "curr rate",
-                icon = Icons.Default.Speed,
-            )
-        }
-        requiredRunRate?.let {
-            InsightGridCard(
-                modifier = Modifier.weight(1f),
-                label = stringResource(R.string.stat_rrr),
-                value = it,
-                subValue = "reqd rate",
-                icon = Icons.AutoMirrored.Filled.TrendingUp,
-            )
-        }
-    }
-}
-
-@Composable
-internal fun RecentBallsCard(recentBalls: List<String>) {
-    val colors = BouncerThemeV2.colors
-    val typography = BouncerThemeV2.typography
-    val spacing = BouncerThemeV2.spacing
-    BouncerCard {
-        Column(modifier = Modifier.padding(spacing.md)) {
-            Text(
-                text = stringResource(R.string.overview_this_over),
-                style = typography.labelMedium,
-                color = colors.textSecondary,
-            )
-            Spacer(Modifier.height(spacing.xs))
-            RecentBallsStripV2(balls = recentBalls.takeLast(6))
         }
     }
 }

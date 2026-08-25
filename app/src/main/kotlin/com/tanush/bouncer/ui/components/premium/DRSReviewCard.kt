@@ -44,13 +44,10 @@ fun DRSReviewCard(
 ) {
     val colors = BouncerDesignSystem.colors
     val hierarchy = BouncerDesignSystem.hierarchy
-    val infiniteTransition = rememberInfiniteTransition(label = "drs_elite")
-    val neonPulse by infiniteTransition.animateFloat(
-        initialValue = 0.4f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(tween(800), repeatMode = RepeatMode.Reverse),
-        label = "neon"
-    )
+    // No ambient loop. Motion in this app reports a state change (a score tick, a
+    // toggle); a permanent breathing glow reports nothing and is the kind of
+    // decoration this design system spends its budget away from.
+    val neonPulse = 0.7f
 
     Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(20.dp)) {
         // Dramatic DRS Visualization

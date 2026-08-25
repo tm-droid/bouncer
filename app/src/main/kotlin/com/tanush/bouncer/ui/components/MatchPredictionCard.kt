@@ -62,37 +62,13 @@ fun MatchPredictionCard(
 ) {
     val colors = BouncerDesignSystem.colors
     val hierarchy = BouncerDesignSystem.hierarchy
-    val infiniteTransition = rememberInfiniteTransition(label = "prediction_animation")
+    // Ambient loop removed: motion in this app reports a state change, never idles.
+    // See BouncerCard's docs for the rule.
+    val pulseScale = 1f
     
-    val pulseScale by infiniteTransition.animateFloat(
-        initialValue = 1f,
-        targetValue = 1.05f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1500, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "pulse_scale"
-    )
+    val glowAlpha = 0.55f
     
-    val glowAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.3f,
-        targetValue = 0.8f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(2000, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "glow_alpha"
-    )
-    
-    val scanLineOffset by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(3000, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "scan_line"
-    )
+    val scanLineOffset = 0f
     
     val team1Progress by animateFloatAsState(
         targetValue = predictionInfo.team1WinProbability / 100f,
@@ -115,8 +91,8 @@ fun MatchPredictionCard(
         colors = CardDefaults.cardColors(
             containerColor = colors.backgroundBase
         ),
-        shape = RoundedCornerShape(24.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 12.dp)
+        shape = RoundedCornerShape(12.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Box {
             // AI scan effect background

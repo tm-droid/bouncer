@@ -50,17 +50,9 @@ fun OverByOverComparisonCard(
 ) {
     val colors = BouncerDesignSystem.colors
     val hierarchy = BouncerDesignSystem.hierarchy
-    val infiniteTransition = rememberInfiniteTransition(label = "comparison_animation")
-    
-    val glowAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.3f,
-        targetValue = 0.8f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1500, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "glow_alpha"
-    )
+    // Ambient loop removed: motion in this app reports a state change, never idles.
+    // See BouncerCard's docs for the rule.
+    val glowAlpha = 0.55f
     
     val pathProgress by animateFloatAsState(
         targetValue = 1f,
@@ -84,7 +76,7 @@ fun OverByOverComparisonCard(
         colors = CardDefaults.cardColors(
             containerColor = BouncerThemeV2.colors.surface
         ),
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(12.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
     ) {
         Column(

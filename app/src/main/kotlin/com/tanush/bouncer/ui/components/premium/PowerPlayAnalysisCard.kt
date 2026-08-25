@@ -82,17 +82,10 @@ fun PowerPlayAnalysisCard(
 ) {
     val colors = BouncerDesignSystem.colors
     val hierarchy = BouncerDesignSystem.hierarchy
-    val infiniteTransition = rememberInfiniteTransition(label = "powerplay")
-
-    val pulseAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.3f,
-        targetValue = 0.7f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1200, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse,
-        ),
-        label = "pulse",
-    )
+    // No ambient loop. Motion in this app reports a state change (a score tick, a
+    // toggle); a permanent breathing glow reports nothing and is the kind of
+    // decoration this design system spends its budget away from.
+    val pulseAlpha = 0.5f
 
     val animatedProgress = remember { Animatable(0f) }
 
@@ -105,9 +98,9 @@ fun PowerPlayAnalysisCard(
 
     Card(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = BouncerThemeV2.colors.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 12.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
     ) {
         Column(
             modifier = Modifier

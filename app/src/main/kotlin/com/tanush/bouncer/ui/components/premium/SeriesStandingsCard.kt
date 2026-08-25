@@ -77,39 +77,13 @@ fun SeriesStandingsCard(
 ) {
     val colors = BouncerDesignSystem.colors
     val hierarchy = BouncerDesignSystem.hierarchy
-    val infiniteTransition = rememberInfiniteTransition(label = "standings")
-
-    val shimmerOffset by infiniteTransition.animateFloat(
-        initialValue = -0.3f,
-        targetValue = 1.3f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(2000, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Restart,
-        ),
-        label = "shimmer",
-    )
-
     Card(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = BouncerThemeV2.colors.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 12.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
     ) {
         Box {
-            // Shimmer effect
-            val goldDarkC = hierarchy.secondary.primary
-            Canvas(modifier = Modifier.fillMaxSize()) {
-                val shimmerBrush = Brush.linearGradient(
-                    colors = listOf(
-                        Color.Transparent,
-                        goldDarkC.copy(alpha = 0.08f),
-                        Color.Transparent,
-                    ),
-                    start = Offset(size.width * shimmerOffset, 0f),
-                    end = Offset(size.width * (shimmerOffset + 0.3f), size.height),
-                )
-                drawRect(brush = shimmerBrush)
-            }
 
             Column(
                 modifier = Modifier

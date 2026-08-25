@@ -65,12 +65,12 @@ fun MatchPhasesCard(
         modifier = modifier
             .fillMaxWidth()
             .shadow(
-                elevation = 24.dp,
-                shape = RoundedCornerShape(28.dp),
+                elevation = 0.dp,
+                shape = RoundedCornerShape(12.dp),
                 spotColor = hierarchy.secondary.primary.copy(alpha = 0.15f)
             ),
         colors = CardDefaults.cardColors(containerColor = GlassSurface),
-        shape = RoundedCornerShape(28.dp),
+        shape = RoundedCornerShape(12.dp),
         border = BorderStroke(0.5.dp, colors.glassBorder.copy(alpha = 0.3f))
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
@@ -173,17 +173,9 @@ private fun PhaseRow(
 ) {
     val hierarchy = BouncerDesignSystem.hierarchy
     val colors = BouncerDesignSystem.colors
-    val infiniteTransition = rememberInfiniteTransition(label = "phase")
-    
-    val activeGlow by infiniteTransition.animateFloat(
-        initialValue = 0.3f,
-        targetValue = 0.8f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1000, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "glow"
-    )
+    // Ambient loop removed: motion in this app reports a state change, never idles.
+    // See BouncerCard's docs for the rule.
+    val activeGlow = 0.55f
     
     val phaseColor = when (phase.momentumShift) {
         MomentumShift.TEAM1_STRONG -> team1Color

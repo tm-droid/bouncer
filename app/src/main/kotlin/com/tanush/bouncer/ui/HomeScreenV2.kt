@@ -256,8 +256,12 @@ fun HomeScreenV2(
                 // ── Loading shimmers ──
                 if (isLoading && currentMatches.isEmpty()) {
                     items(3, key = { "shimmer_$it" }) {
+                        // Mirror the real row's geometry so first paint does not jump.
                         ShimmerMatchCard(
-                            modifier = Modifier.padding(horizontal = spacing.lg, vertical = spacing.xs),
+                            modifier = Modifier.padding(
+                                horizontal = spacing.lg,
+                                vertical = spacing.rowVertical,
+                            ),
                         )
                     }
                     return@LazyColumn
@@ -279,14 +283,13 @@ fun HomeScreenV2(
                 featuredMatch?.let { fm ->
                     item(key = "hero_${fm.id}") {
                         val handleHeroClick = remember(fm.id) { { onMatchClick(fm) } }
+                        // Full-bleed: the hero and the rows below share one surface, so no
+                        // horizontal inset and no gap — its own trailing divider is the break.
                         HeroMatchCard(
                             match = fm,
                             onClick = handleHeroClick,
-                            modifier = Modifier
-                                .padding(horizontal = spacing.lg)
-                                .animateItem(),
+                            modifier = Modifier.animateItem(),
                         )
-                        Spacer(Modifier.height(spacing.lg))
                     }
                 }
 
@@ -310,9 +313,9 @@ fun HomeScreenV2(
                         MatchCardV2(
                             match = match,
                             onClick = handleMatchClick,
+                            // No inset and no gap — the row owns its own padding and divider.
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = spacing.lg, vertical = spacing.xs)
                                 .animateItem(),
                             isSubscribed = match.id in subscriptions,
                             onSubscribeToggle = handleSubscribeToggle,
