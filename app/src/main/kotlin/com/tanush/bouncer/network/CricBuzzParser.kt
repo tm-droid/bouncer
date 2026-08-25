@@ -163,7 +163,17 @@ internal fun parseInningsHeader(header: Element, content: Element): Innings {
     val bowlers = parseScorecardBowlers(content)
     val fows = parseFallOfWickets(content)
 
-    return Innings(teamName, score, overs, batsmen, bowlers, fows, mutableListOf(), "", "")
+    return Innings(
+        teamName,
+        score,
+        overs,
+        batsmen,
+        bowlers,
+        fows,
+        parsePartnerships(content),
+        scoreLabelValue(content, "Extras"),
+        scoreLabelValue(content, "Total")
+    )
 }
 
 /**
@@ -276,23 +286,92 @@ internal fun parseScorecardBowlers(content: Element): List<BowlerStats> {
     return bowlers
 }
 
-internal fun parseFallOfWickets(content: Element): List<FallOfWicket> {
-    val fows = mutableListOf<FallOfWicket>()
-    val fowSection = content.select("div:contains(Fall of Wickets)").first()
-    selectorCrumb("div:contains(Fall of Wickets)", "FOW section", fowSection?.let { 1 } ?: 0)
-    fowSection ?: return fows
-    val fowText = fowSection.nextElementSibling()?.text() ?: ""
-    fowText.split("),").forEachIndexed { idx, item ->
-        val parts = item.trim().split(" (")
-        if (parts.size < 2) return@forEachIndexed
-        val detailParts = parts[1].replace(")", "").split(", ")
-        if (detailParts.size < 2) return@forEachIndexed
-        fows.add(FallOfWicket(
-            score = parts[0],
-            overs = detailParts[1],
-            batsman = detailParts[0],
-            number = idx + 1
-        ))
+private val FOW_SECTION_HEADER = Regex("^(Fall of Wickets|Powerplays|Partnerships)$", RegexOption.IGNORE_CASE)
+
+/**
+ * The rows of one `scorecard-fow-grid` section, as elements.
+ *
+ * Fall of wickets is a run of sibling grid rows introduced by a bold header row, so the section is
+ * bounded by the next header rather than by a container of its own. Rows come back as elements and
+ * not as flattened text because the name cell holds the hidden per-player menu alongside the name
+ * span — the caller has to run [playerNameOf] over it. Mirrors `fowGridRows` in cricbuzz.js.
+ */
+private fun fowGridRows(content: Element, header: String): List<Element> {
+    val rows = content.select("div.grid.scorecard-fow-grid")
+    selectorCrumb("div.grid.scorecard-fow-grid", "fall-of-wickets grid rows", rows.size)
+    val out = mutableListOf<Element>()
+    var inSection = false
+    rows.forEach { row ->
+        val head = row.children().firstOrNull()?.text()?.trim().orEmpty()
+        if (head.equals(header, ignoreCase = true)) {
+            inSection = true
+        } else if (FOW_SECTION_HEADER.matches(head)) {
+            inSection = false
+        } else if (inSection) {
+            out.add(row)
+        }
     }
-    return fows
+    return out
+}
+
+private val RUNS_AND_BALLS = Regex("""(\d+)\s*\(\s*(\d+)\s*\)""")
+
+/** `"19(31)"` to `"19" to "31"`, matched out of a cell that also carries a name and menu labels. */
+private fun runsAndBalls(text: String): Pair<String, String> =
+    RUNS_AND_BALLS.find(text)?.destructured?.let { (runs, balls) -> runs to balls } ?: ("" to "")
+
+/** A bold label ("Extras", "Total") whose value sits in the immediately following sibling. */
+private fun scoreLabelValue(content: Element, label: String): String =
+    content.select("div.font-bold").firstOrNull { it.text().trim() == label }
+        ?.nextElementSibling()?.text()?.trim().orEmpty()
+
+/**
+ * Fall of wickets, from the current grid markup.
+ *
+ * This used to split a `"45-1 (D Warner, 8.2), …"` text blob out of the sibling of a
+ * `div:contains(Fall of Wickets)` match — a shape Cricbuzz stopped serving with the App Router
+ * rewrite, so it had been returning nothing. `score` is the runs half alone: `mapFallOfWickets`
+ * reads it with `toIntOrNull`, for which `"45-1"` is silently 0, and match-sync already writes the
+ * split form to `match-scorecard`, so the two sources have to agree.
+ */
+internal fun parseFallOfWickets(content: Element): List<FallOfWicket> =
+    fowGridRows(content, "Fall of Wickets")
+        .map { it.children() }
+        .filter { it.size >= 3 }
+        .mapIndexed { idx, cells ->
+            // cells = [name span + hidden menu, "score-wicketNumber", over]
+            val scoreCell = cells[1].text().trim()
+            val parts = scoreCell.split("-")
+            FallOfWicket(
+                score = parts.firstOrNull()?.trim()?.takeIf { it.isNotEmpty() } ?: scoreCell,
+                overs = cells[2].text().trim(),
+                batsman = playerNameOf(cells[0]),
+                number = parts.getOrNull(1)?.trim()?.toIntOrNull() ?: (idx + 1)
+            )
+        }
+
+/**
+ * Partnerships, which are **not** fall-of-wickets rows.
+ *
+ * They render as `div.scorecard-pship-grid`, which is why the section walk above finds none of them
+ * and why `partnerships` reached every device empty. Three cells: player 1 with their own `19(31)`,
+ * the partnership's `37(64)`, then `18(33)` with player 2. Contributions are stored as runs alone —
+ * `PremiumScorecardTab` reads them with `toIntOrNull`, which `"19(31)"` fails.
+ */
+internal fun parsePartnerships(content: Element): List<PartnershipStats> {
+    val rows = content.select("div.grid.scorecard-pship-grid")
+    selectorCrumb("div.grid.scorecard-pship-grid", "partnership rows", rows.size)
+    return rows.map { it.children() }
+        .filter { it.size >= 3 }
+        .map { cells ->
+            val (runs, balls) = runsAndBalls(cells[1].text())
+            PartnershipStats(
+                player1 = playerNameOf(cells[0]),
+                player2 = playerNameOf(cells[2]),
+                runs = runs,
+                balls = balls,
+                contribution1 = runsAndBalls(cells[0].text()).first,
+                contribution2 = runsAndBalls(cells[2].text()).first
+            )
+        }
 }

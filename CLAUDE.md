@@ -199,6 +199,21 @@ falls back to a non-menu link. Pinned by `CricBuzzScorecardRowFilterTest` agains
 with `cricbuzz.js` declared as a Gradle test input so a one-sided edit fails the build.
 **Never key a lazy list on scraped text** — keys must include the index.
 
+**That menu is in the fall-of-wickets cell too, and partnerships are a different grid.** The
+ANDROID-40 fix reached only the batting and bowling grids. A `div.grid.scorecard-fow-grid` row has
+three cells and the first holds the name span *and* the same hidden menu, so both parsers named
+every dismissed batter `KL RahulView match performanceView profile` — rendered as "KL RahulView
+match", and, because `mapFallOfWickets` looks the batter up in `innings.batsmen` by name, followed
+by a `0 (0)` where their score should be. `score` is the **runs half alone** (`"37"`, not `"37-1"`)
+in both parsers: `OverviewDerivedData` reads it with `toIntOrNull`, for which the joined form is
+silently 0. Separately, partnerships render as `div.scorecard-pship-grid` and never as fow-grid
+rows, so the header walk that looked for a "Partnerships" section among them returned nothing on
+every match — `innings.partnerships` was always empty and the Partnerships card never appeared.
+Kotlin also had no partnerships parser at all, and left `extras`/`total` blank. Pinned by
+`CricBuzzFowPartnershipTest`. The Kotlin FOW parser had been dead since the App Router rewrite and
+its unit test kept passing, because that test asserted a hand-written `45-1 (D Warner, 8.2)` text
+blob rather than captured markup — the same trap the paragraph above records.
+
 **R8 renames the Appwrite SDK's own request fields.** `io.appwrite.Query.toString()` is
 `JsonExtensionsKt.toJson(this)` — reflective Gson over the private `method` / `attribute` / `values`
 fields — and that string is what goes on the wire. Minified, it sent `{"a":"orderDesc",…}` and

@@ -172,7 +172,13 @@ fun PremiumScorecardTab(
                 item {
                     PartnershipBreakdownCard(
                         teamName = innings.teamName,
-                        partnerships = innings.partnerships.map { p ->
+                        // This mapping had never run: partnerships parsed empty until the scraper
+                        // was pointed at scorecard-pship-grid. Run rate and wicket number were
+                        // constants here, and the card renders the first of them ("RR: 0.00") —
+                        // both are derivable from what the row actually carries.
+                        partnerships = innings.partnerships.mapIndexed { index, p ->
+                            val totalRuns = p.runs.toIntOrNull() ?: 0
+                            val totalBalls = p.balls.toIntOrNull() ?: 0
                             PartnershipEntry(
                                 batter1Name = p.player1,
                                 batter1Runs = p.contribution1.toIntOrNull() ?: 0,
@@ -180,10 +186,10 @@ fun PremiumScorecardTab(
                                 batter2Name = p.player2,
                                 batter2Runs = p.contribution2.toIntOrNull() ?: 0,
                                 batter2Balls = 0,
-                                totalRuns = p.runs.toIntOrNull() ?: 0,
-                                totalBalls = p.balls.toIntOrNull() ?: 0,
-                                runRate = 0.0,
-                                wicketNumber = 0,
+                                totalRuns = totalRuns,
+                                totalBalls = totalBalls,
+                                runRate = MatchProjections.currentRunRate(totalRuns, totalBalls) ?: 0.0,
+                                wicketNumber = index + 1,
                             )
                         }
                     )

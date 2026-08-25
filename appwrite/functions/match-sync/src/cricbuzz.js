@@ -359,50 +359,69 @@ function parseScorecardBowlers($, $content) {
   return out;
 }
 
-// Fall of Wickets and Partnerships are rendered as sibling `div.scorecard-fow-grid` rows,
-// each section introduced by a bold header row ("Fall of Wickets", "Powerplays",
-// "Partnerships"). Walk the rows and collect the ones under the requested header.
+// Fall of Wickets is rendered as sibling `div.scorecard-fow-grid` rows, each section introduced by
+// a bold header row ("Fall of Wickets", "Powerplays", "Partnerships"). Returns the row ELEMENTS,
+// not their flattened text: the name cell holds the hidden per-player menu alongside the name span,
+// so the caller has to run playerNameOf over it rather than read it as text.
 function fowGridRows($, $content, header) {
   const out = [];
   let inSection = false;
   $content.find("div.scorecard-fow-grid").each((_, el) => {
-    const kids = $(el).children().map((__, k) => $(k).text().trim()).get();
-    const head = (kids[0] || "").trim();
+    const head = $(el).children().first().text().trim();
     if (new RegExp(`^${header}$`, "i").test(head)) { inSection = true; return; }
     if (/^(Fall of Wickets|Powerplays|Partnerships)$/i.test(head)) {
       if (inSection) { inSection = false; }
       return;
     }
-    if (inSection) out.push(kids);
+    if (inSection) out.push(el);
   });
   return out;
 }
 
+// "19(31)" -> ["19", "31"]. The figure is embedded in a cell that also carries the player's name
+// and menu labels, so it is matched out rather than read as the cell's whole text.
+function runsAndBalls(text) {
+  const m = /(\d+)\s*\(\s*(\d+)\s*\)/.exec(String(text || ""));
+  return m ? [m[1], m[2]] : ["", ""];
+}
+
 function parseFallOfWickets($, $content) {
   return fowGridRows($, $content, "Fall of Wickets")
-    .filter((kids) => kids.length >= 3)
-    .map((kids, idx) => {
-      // kids = [batsman, "score-wicketNumber" (e.g. "11-1"), over (e.g. "1.6")]
-      const [runs, wkt] = String(kids[1]).split("-");
+    .map((el) => $(el).children())
+    .filter((cells) => cells.length >= 3)
+    .map((cells, idx) => {
+      // cells = [name span + hidden menu, "score-wicketNumber" (e.g. "11-1"), over (e.g. "1.6")]
+      const scoreCell = txt($, cells[1]);
+      const [runs, wkt] = scoreCell.split("-");
       return {
-        score: (runs || kids[1] || "").trim(),
-        overs: kids[2] || "",
-        batsman: kids[0] || "",
+        score: (runs || scoreCell).trim(),
+        overs: txt($, cells[2]),
+        batsman: playerNameOf($, $(cells[0])),
         number: Number(wkt) || idx + 1,
       };
     });
 }
 
+// Partnerships are NOT fow-grid rows. They are `div.scorecard-pship-grid`, which is why the section
+// walk above found none of them and `partnerships` reached every device empty. Three cells:
+// [player 1 + their "19(31)", partnership "37(64)", "18(33)" + player 2].
 function parsePartnerships($, $content) {
-  return fowGridRows($, $content, "Partnerships")
-    .filter((kids) => kids.length >= 2)
-    .map((kids) => {
-      const players = String(kids[0]).split(/\s*\/\s*/);
+  return $content
+    .find("div.scorecard-pship-grid")
+    .toArray()
+    .map((el) => $(el).children())
+    .filter((cells) => cells.length >= 3)
+    .map((cells) => {
+      const [runs, balls] = runsAndBalls(txt($, cells[1]));
+      // Runs only: PremiumScorecardTab reads contribution1/2 with toIntOrNull, which "19(31)"
+      // fails, giving a silent 0 rather than a missing figure.
       return {
-        player1: players[0] || "",
-        player2: players[1] || "",
-        runs: kids[1] || "",
-        balls: kids[2] || "",
+        player1: playerNameOf($, $(cells[0])),
+        player2: playerNameOf($, $(cells[2])),
+        runs,
+        balls,
+        contribution1: runsAndBalls(txt($, cells[0]))[0],
+        contribution2: runsAndBalls(txt($, cells[2]))[0],
       };
     });
 }

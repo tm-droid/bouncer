@@ -200,9 +200,10 @@ buildConfigField("String", "APPWRITE_AI_CACHE_DB_ID", "\"${localProperties.getPr
             .withPropertyName("cricbuzzHttpVendorParitySources")
             .withPathSensitivity(PathSensitivity.RELATIVE)
 
-        // CricBuzzScorecardRowFilterTest asserts match-sync's scorecard parser keeps the same
-        // /profiles/ row guard as CricBuzzParser.kt. Same reasoning as above: undeclared, an edit
-        // to cricbuzz.js leaves the task UP-TO-DATE and the parity check never runs.
+        // CricBuzzScorecardRowFilterTest and CricBuzzFowPartnershipTest assert that match-sync's
+        // scorecard parser reads player names, fall of wickets and partnerships the same way
+        // CricBuzzParser.kt does. Same reasoning as above: undeclared, an edit to cricbuzz.js
+        // leaves the task UP-TO-DATE and the parity checks never run.
         inputs.files(rootProject.file("appwrite/functions/match-sync/src/cricbuzz.js"))
             .withPropertyName("cricbuzzScorecardParitySource")
             .withPathSensitivity(PathSensitivity.RELATIVE)

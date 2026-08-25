@@ -323,29 +323,14 @@ class CricBuzzScraperTest {
 
     @Test
     fun `parseFallOfWickets handles missing FOW section without throwing`() {
+        // The companion case — a section that is present and correctly parsed — is in
+        // CricBuzzFowPartnershipTest, against captured markup. The text-blob test that used to sit
+        // here asserted a shape Cricbuzz stopped serving with the App Router rewrite, so it went on
+        // passing while the parser returned nothing on every real page.
         val content = Jsoup.parse("<div>No FOW here</div>").body()
         val fows = parseFallOfWickets(content)
         assertNotNull(fows)
         assertTrue(fows.isEmpty())
-    }
-
-    @Test
-    fun `parseFallOfWickets parses standard FOW text correctly`() {
-        // No outer wrapping div — div:contains matches only the FOW header div itself,
-        // so nextElementSibling() correctly finds the FOW data div.
-        val html = """
-            <div>Fall of Wickets</div>
-            <div>45-1 (D Warner, 8.2), 89-2 (M Labuschagne, 21.4), 162-3 (S Smith, 40.1)</div>
-        """.trimIndent()
-        val content = Jsoup.parse(html).body()
-        val fows = parseFallOfWickets(content)
-        assertEquals(3, fows.size)
-        assertEquals("45-1", fows[0].score)
-        assertEquals("D Warner", fows[0].batsman)
-        assertEquals("8.2", fows[0].overs)
-        assertEquals("89-2", fows[1].score)
-        assertEquals("162-3", fows[2].score)
-        assertEquals("S Smith", fows[2].batsman)
     }
 
     // ── Task 6: Malformed data + edge case robustness ────────────────────────
