@@ -120,6 +120,38 @@ Endpoint/projectId are auto-injected by the runtime — only `APPWRITE_API_KEY` 
 
 **AI cache (3-tier):** `MemoryFifoCache` (256 entries; FIFO eviction, not LRU — `utils/BoundedLruCache` is the real LRU) → Room `ai_commentary_cache` → Appwrite `ai-commentary-cache` table. All four commentary functions (`generateBallCommentary`, `fuse`, `streamCommentary`, `summarizeOversWithAI`) check cache before calling any AI provider. Completed matches use **permanent TTL** (`Long.MAX_VALUE` in Room, `expires_at = "2099-01-01T00:00:00.000Z"` in Appwrite) — `isMatchComplete` flag threads from ViewModels → `LiveCommentaryManager` → `CommentaryFusionService` → `AICacheService`. Never set permanent=true for live matches.
 
+**The visual grammar is restraint, and it is load-bearing.** The August 2026 pass exists because
+the app read as generated rather than designed. Four rules, each written into the file that owns it:
+
+- **Surface.** A list of same-kind things is **rows on one background split by `HorizontalDivider`**,
+  never a card each — `MatchCardV2` is the reference. `BouncerCard` means "these belong together",
+  not "this is important": 12dp radius, `surface` fill, 1dp `divider` border, **0 elevation**. Use
+  `BouncerRowGroup(items) { row(it) }` when several rows share one container. Never nest cards.
+- **Colour, one job each.** Every number, name, over and status line is neutral
+  (`onSurface`/`textSecondary`). Red = live only. **Gold = interactive affordance only** — links,
+  selected chip/tab, action text; not section headers, not borders, not fills. Team colour only
+  where it identifies a team as a *shape* (the win-probability bar), **never as ink**. Event colours
+  only on ball chips and commentary badges. `glassBorderHighlight`/`glassBorder` are **border**
+  tokens — using them as a fill is what gave Fall of Wickets its olive cast.
+- **Numerals are tabular.** Scores repoll ~every 6s; proportional digits reflow the row on each
+  tick. `scoreLarge`/`scoreMedium`/`numeric`/`numericSmall` set `fontFeatureSettings = "tnum"` —
+  use them for anything that re-renders with new digits in place.
+- **Motion reports state changes only.** No ambient loops. A score tick, a subscribe toggle, the
+  event flash and the LIVE dot are motion; a breathing glow, a sweeping shimmer or a pulsing border
+  is decoration. `SkeletonLoaders` are static blocks for the same reason.
+
+Two related traps. **Don't restate the fixed header**: `ScoreHeaderV2` is a sibling of the pager,
+so it is on screen for every tab — Overview used to open with the status, CRR/RRR, recent balls and
+a "momentum stream" that were all already above it. And **never present a figure the app does not
+have**: `PremiumAiStatisticsTab` shipped a hardcoded bar chart as "ANALYTIC CONTRIBUTION",
+hardcoded sparklines as run-rate trends, a constant string as a "predictive engine" insight, and
+the win probability relabelled as both an impact score and a model confidence. The only server-side
+model is win probability (`bouncer-win-probability`).
+
+Density target: Home shows **4–5 matches per screen**, measured against
+`other-apps/cricinfo|cricbuzz`. Those three reference apps and `design/stitch-mocks/` are the
+design spec; check a change against them before adding chrome.
+
 **Light mode is a first-class palette, and the legacy layer is bridged into it.** `BouncerThemeV2`
 resolves Light/Dark/System and there is a user picker, but for a long time light mode was unusable
 for three independent reasons. (1) `LocalBouncerColors` — read by ~46 files via
