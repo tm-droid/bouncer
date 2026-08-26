@@ -36,6 +36,13 @@ internal data class ParsedBall(
      * zero draws a dot. See [com.tanush.bouncer.data.remote.CommentaryEntry.runs].
      */
     val runs: Int?,
+    /**
+     * The kind of delivery, where it is not an ordinary one — the server's verdict if it gave one.
+     *
+     * Null means no verdict, not "ordinary": a legacy row or a scrape fallback. [isWide] and
+     * [isNoBall] fall back to the prose only there.
+     */
+    val extra: BallExtra?,
     val isWicket: Boolean,
     val isFour: Boolean,
     val isSix: Boolean,
@@ -108,21 +115,34 @@ internal fun CommentaryEntry.parseBall(): ParsedBall {
     val isWicket = ballType == TimelineEventType.WICKET
     val isSix = ballType == TimelineEventType.SIX
     val isFour = ballType == TimelineEventType.FOUR
-    val isWide = lower.contains("wide")
-    val isNoBall = lower.contains("no ball") || lower.contains("no-ball")
+    // The server's verdicts first. The fallbacks only reach raw Cricbuzz text — a passthrough row
+    // or an on-device scrape — because neither the number nor the kind survives the AI rewrite.
+    val outcome = parseBallOutcome(ballText)
+    val extra = parseBallExtra(this.extra) ?: outcome.extra
+    val runs = this.runs ?: runsFor(ballText, outcome, isSix = isSix, isFour = isFour, isWicket = isWicket)
+    // Prose is consulted for the kind only when nothing classified the ball, and it is the last
+    // resort for the same reason it is for the runs: a rewrite that says "strays down leg" instead
+    // of "wide" is the common case, not the exception.
+    val isWide = extra == BallExtra.WIDE || (extra == null && lower.contains("wide"))
+    val isNoBall = extra == BallExtra.NOBALL ||
+        (extra == null && (lower.contains("no ball") || lower.contains("no-ball")))
 
-    // The server's value first. The fallback only reaches raw Cricbuzz text — a passthrough row or
-    // an on-device scrape — because the number does not survive the AI rewrite at all.
-    val runs = this.runs ?: runsFor(ballText, isSix = isSix, isFour = isFour, isWicket = isWicket)
-
-    return ParsedBall(ballLabel, overNumber, ballText, runs, isWicket, isFour, isSix, isWide, isNoBall)
+    return ParsedBall(
+        ballLabel, overNumber, ballText, runs, extra, isWicket, isFour, isSix, isWide, isNoBall,
+    )
 }
 
-private fun runsFor(text: String, isSix: Boolean, isFour: Boolean, isWicket: Boolean): Int? = when {
+private fun runsFor(
+    text: String,
+    outcome: BallOutcome,
+    isSix: Boolean,
+    isFour: Boolean,
+    isWicket: Boolean,
+): Int? = when {
     isSix -> 6
     isFour -> 4
     isWicket -> 0
-    else -> parseBallRuns(text)
+    else -> outcome.runs
         // The one outcome the rewrite tends to keep verbatim, and the only prose signal trusted
         // here: a line that says "no run" is a dot ball. Nothing infers a SCORE from prose — that
         // inference, defaulting to 0, is what put a dot on every single.
@@ -131,18 +151,6 @@ private fun runsFor(text: String, isSix: Boolean, isFour: Boolean, isWicket: Boo
 
 /** "no run", but not "no run out" — a dropped run-out chance is not a verdict on the runs. */
 private val NO_RUN_IN_PROSE = Regex("\\bno run\\b(?!\\s+out)", RegexOption.IGNORE_CASE)
-
-/** The over strip's glyph, or null when the runs are unknown and nothing else names the ball. */
-internal fun ParsedBall.toBallString(): String? = when {
-    isWicket -> "W"
-    isSix -> "6"
-    isFour -> "4"
-    isWide -> "WD"
-    isNoBall -> "NB"
-    runs == null -> null
-    runs == 0 -> "."
-    else -> runs.toString()
-}
 
 /**
  * The commentary tab's filter chips.

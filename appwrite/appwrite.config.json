@@ -740,6 +740,13 @@
                     "min": 0,
                     "max": 999,
                     "array": false
+                },
+                {
+                    "key": "extra",
+                    "type": "varchar",
+                    "required": false,
+                    "size": 8,
+                    "array": false
                 }
             ],
             "indexes": [

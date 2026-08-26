@@ -61,6 +61,16 @@ data class CommentaryEntry(
      * single rendered as a dot ball and an over of six of them rendered as a MAIDEN.
      */
     val runs: Int? = null,
+    /**
+     * The kind of delivery, where it is not an ordinary one: `WIDE`, `NOBALL`, `BYE`, `LEGBYE` —
+     * `bouncer-match-sync`'s reading of Cricbuzz's outcome clause, taken before the rewrite.
+     *
+     * Null is "no verdict", not "ordinary delivery", exactly as for [runs] and [event]. It travels
+     * as data because the rewrite destroys it: a wide reads "strays down leg", so the commentary
+     * tab's `text.contains("wide")` test was the same guess-from-prose failure that put a dot ball
+     * on every single. Only where this is null does the tab fall back to reading the text.
+     */
+    val extra: String? = null,
 )
 
 data class CommentaryEvent(
@@ -70,6 +80,7 @@ data class CommentaryEvent(
     val event: TimelineEventType?,
     val ball: String? = null,
     val runs: Int? = null,
+    val extra: String? = null,
 )
 
 /**
@@ -133,6 +144,7 @@ object AppwriteMatchCommentaryClient : AppwriteTableClient("AppwriteMatchComment
                 ball = (row.data["ball"] as? String)?.takeIf { it.isNotBlank() },
                 sortKey = (row.data["sort_key"] as? Number)?.toDouble(),
                 runs = (row.data["runs"] as? Number)?.toInt(),
+                extra = (row.data["extra"] as? String)?.takeIf { it.isNotBlank() },
             )
         }
     }
@@ -163,7 +175,8 @@ object AppwriteMatchCommentaryClient : AppwriteTableClient("AppwriteMatchComment
             val event = parseCommentaryEvent(payload["event"] as? String)
             val ball = (payload["ball"] as? String)?.takeIf { it.isNotBlank() }
             val runs = (payload["runs"] as? Number)?.toInt()
-            trySend(CommentaryEvent(matchId, commentary, sortKey, event, ball, runs))
+            val extra = (payload["extra"] as? String)?.takeIf { it.isNotBlank() }
+            trySend(CommentaryEvent(matchId, commentary, sortKey, event, ball, runs, extra))
         }
         awaitClose { handle.close() }
     }

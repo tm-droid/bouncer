@@ -205,36 +205,100 @@ const RUNS_OFF_BAT = /^(\d{1,3}) runs?$/i;
 const NO_RUN = /^no run$/i;
 const OUTCOME_FOUR = /^four$/i;
 const OUTCOME_SIX = /^six$/i;
-const OUTCOME_WICKET = /^out\b/i;
+// Two wordings, both live. Cricbuzz pushes a short flash node ("THATS OUT!! Caught!!") and then the
+// detailed one ("out Caught by Steven Smith!! ..."). Measured over 124 deliveries across 8 live
+// matches, the flash form was 11 of the 12 clauses the `^out\b`-only version could not read.
+const OUTCOME_WICKET = /^(?:out\b|that'?s out\b)/i;
 // Extras, in Cricbuzz's own shorthand: "1 wd", "2 nb", "1 lb", "4 b", plus the bare word it uses
-// when the extra is worth one.
-const EXTRA_RUNS = /^(?:(\d{1,3})\s*)?(?:wd|wides?|nb|no.?balls?|lb|leg ?byes?|byes?|b)$/i;
-// Cricbuzz writes the bare-word extras with their runs in the NEXT segment — "leg byes, 4 runs" —
-// where the shorthand carries them in the same one ("4 lb"). Without this, every such delivery
-// scored 1: right for the common case and silently wrong for the rest.
-const EXTRA_FOLLOW_RUNS = /^[^,]+,\s*[^,]+,\s*(\d{1,3}) runs?\b/i;
+// when the extra is worth one. The captured word decides the KIND, which travels as data for the
+// same reason the runs do — the rewrite turns "wide" into "strays down leg" and the device was
+// deciding `isWide` by searching that prose for the word.
+const EXTRA_KIND = /^(?:(\d{1,3})\s*)?(wd|wides?|nb|no.?balls?|lb|leg ?byes?|byes?|b)$/i;
+// Cricbuzz writes the bare-word extras with their runs in the NEXT segment — "leg byes, 1 run" —
+// where the shorthand carries them in the same one ("4 lb"). A boundary bye puts the word FOUR
+// there rather than a numeral ("byes, FOUR" — `B4` in the over summary), which the numeric-only
+// version scored as 1.
+const EXTRA_FOLLOW = /^[^,]+,\s*[^,]+,\s*(?:(\d{1,3}) runs?|(four|six))\b/i;
 
-export function parseBallRuns(text) {
+// Named, not inline, so CommentaryRunsParityTest can compare them against the Kotlin copies. An
+// unnamed literal here is a pattern the guard cannot see, which is how a one-sided edit gets in.
+const KIND_WIDE = /^(?:wd|wides?)$/i;
+const KIND_NOBALL = /^(?:nb|no.?balls?)$/i;
+const KIND_LEGBYE = /^(?:lb|leg ?byes?)$/i;
+const KIND_BYE = /^(?:byes?|b)$/i;
+
+const EXTRA_KINDS = [
+  [KIND_WIDE, "WIDE"],
+  [KIND_NOBALL, "NOBALL"],
+  [KIND_LEGBYE, "LEGBYE"],
+  [KIND_BYE, "BYE"],
+];
+
+function extraKindOf(word) {
+  for (const [re, kind] of EXTRA_KINDS) if (re.test(word)) return kind;
+  return null;
+}
+
+function followRunsOf(text) {
+  const m = String(text).match(EXTRA_FOLLOW);
+  if (!m) return null;
+  if (m[1]) return Number(m[1]);
+  return /^four$/i.test(m[2]) ? 4 : 6;
+}
+
+/**
+ * What the delivery was worth and what kind of delivery it was: `{ runs, kind }`.
+ *
+ * `runs` is TOTAL runs off the delivery, extras included, because the over total sums it. `kind` is
+ * one of WIDE / NOBALL / BYE / LEGBYE, or null for an ordinary delivery.
+ */
+export function parseBallOutcome(text) {
   const m = String(text || "").match(BALL_OUTCOME);
   // Trailing punctuation is trimmed because the clause is matched whole: the passthrough path
   // writes Cricbuzz's text verbatim, but a "1 run." reaching an anchored `^(\d+) runs?$` would
   // score null and lose a delivery the raw text names outright.
   const clause = m ? m[1].trim().replace(TRAILING_PUNCTUATION, "") : "";
-  if (!clause) return null;
-  if (NO_RUN.test(clause)) return 0;
+  if (!clause) return { runs: null, kind: null };
+  if (NO_RUN.test(clause)) return { runs: 0, kind: null };
   const offBat = clause.match(RUNS_OFF_BAT);
-  if (offBat) return Number(offBat[1]);
-  if (OUTCOME_FOUR.test(clause)) return 4;
-  if (OUTCOME_SIX.test(clause)) return 6;
-  // A dismissal's own clause carries no runs; a run-out's completed runs are not in it either.
-  if (OUTCOME_WICKET.test(clause)) return 0;
-  const extra = clause.match(EXTRA_RUNS);
-  if (extra) {
-    if (extra[1]) return Number(extra[1]);
-    const follow = String(text).match(EXTRA_FOLLOW_RUNS);
-    return follow ? Number(follow[1]) : 1;
-  }
-  return null;
+  if (offBat) return { runs: Number(offBat[1]), kind: null };
+  if (OUTCOME_FOUR.test(clause)) return { runs: 4, kind: null };
+  if (OUTCOME_SIX.test(clause)) return { runs: 6, kind: null };
+  // A dismissal's own clause carries no runs. A run-out that completed one is `W1` in the over
+  // summary, but the clause does not say so, and inventing the 1 is the failure this file exists
+  // to prevent.
+  if (OUTCOME_WICKET.test(clause)) return { runs: 0, kind: null };
+  const extra = clause.match(EXTRA_KIND);
+  if (!extra) return { runs: null, kind: null };
+  const kind = extraKindOf(extra[2]);
+  if (!kind) return { runs: null, kind: null };
+  return { runs: extraRunsOf(kind, extra[1], text), kind };
+}
+
+/**
+ * Total runs off an extra: the number the clause states, read the way Cricbuzz means it.
+ *
+ * Two numbers with two meanings, and Cricbuzz's own over summary is what settles them. An INLINE
+ * number is the delivery's total, penalty included: `1 Wd3 0 0 4 W W` totals `overRuns = 8`, so
+ * `Wd3` is 3 and not 4. A number in the FOLLOWING segment is the runs scored, to which the
+ * penalty is added: match 169561's over 5 reads `B1 0 1 0 1 N2 0` for `overRuns = 6`, so its
+ * "no ball, 2 runs" is 3; match 154452's `6 Wd 6 6 1 4 N1 1` totals 27, so "no ball, 1 run" is 2.
+ *
+ * Only wides and no-balls carry a penalty. Byes and leg byes are the batting side's, so
+ * "byes, 1 run" is worth exactly the one run — `B1`.
+ */
+function extraRunsOf(kind, inline, text) {
+  if (inline) return Number(inline);
+  const penalty = kind === "WIDE" || kind === "NOBALL" ? 1 : 0;
+  const follow = followRunsOf(text);
+  // A bare "wide" or "no ball" scored nothing beyond its penalty; a bare "byes" is worth at least
+  // the one run Cricbuzz writes as `B1`.
+  if (follow === null) return penalty || 1;
+  return penalty + follow;
+}
+
+export function parseBallRuns(text) {
+  return parseBallOutcome(text).runs;
 }
 
 function parseRecentBallsNext(html) {

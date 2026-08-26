@@ -86,11 +86,17 @@ class CommentaryRunsTest {
         // Cricbuzz writes the shorthand with the number attached ("4 lb") and the bare word with
         // the number one segment later ("leg byes, 4 runs"). Reading only the clause scored every
         // one of the latter as 1 — right for the common case, silently wrong for the rest.
+        //
+        // The two numbers do not mean the same thing: an inline one is the delivery's TOTAL, a
+        // following one is the runs SCORED, and a wide's or no-ball's penalty is added to it. See
+        // `extraRunsOf` — Cricbuzz's own over summaries are what settle it.
         assertEquals(1, parseBallRuns("Saransh Jain to Sonal Dinusha, leg byes, 1 run, into leg"))
         assertEquals(4, parseBallRuns("Bumrah to Root, leg byes, 4 runs, down to fine leg"))
-        assertEquals(5, parseBallRuns("Starc to Smith, wides, 5 runs, through to the fence"))
-        assertEquals(2, parseBallRuns("Starc to Smith, no balls, 2 runs"))
         assertEquals(4, parseBallRuns("Starc to Smith, byes, 4 runs"))
+        // Same delivery, both notations: match 169561's over 5 reads "B1 0 1 0 1 N2 0" for
+        // overRuns=6, and its clause is "no ball, 2 runs". The three is the penalty plus the two.
+        assertEquals(3, parseBallRuns("Sriya Reddy to Zehra Ender, no ball, 2 runs"))
+        assertEquals(2, parseBallRuns("Nathan Edward to Kusal Perera, no ball, 1 run, high full-toss"))
     }
 
     @Test

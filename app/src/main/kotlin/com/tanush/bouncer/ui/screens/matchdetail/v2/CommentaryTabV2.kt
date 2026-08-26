@@ -52,6 +52,7 @@ import com.tanush.bouncer.ui.components.v2.EmptyStateV2
 import com.tanush.bouncer.ui.components.v2.FilterChipRowV2
 import com.tanush.bouncer.ui.components.v2.ShimmerCommentaryList
 import com.tanush.bouncer.ui.theme.v2.BouncerColorsV2
+import com.tanush.bouncer.ui.theme.v2.CricketEventColors
 import com.tanush.bouncer.ui.theme.v2.BouncerSpacingV2
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 import com.tanush.bouncer.utils.TimelineEventExtractor
@@ -422,57 +423,7 @@ private fun NonBallLine(text: String) {
 
 // ── Small composables ────────────────────────────────────────────────────────
 
-/**
- * The delivery's outcome, or null when nobody knows what it was.
- *
- * Null is reached only when the `runs` column is absent — a row written before it existed, or a
- * scrape fallback — and the raw clause was not there to fall back on. It draws no pill rather than
- * a `·`, because a dot ball is a claim, and the claim was wrong: every single used to land here.
- */
-private fun resultPillOf(ball: ParsedBall, colors: BouncerColorsV2): Triple<String, Color, Color>? {
-    val cricket = colors.cricket
-    return when {
-        ball.isWicket -> Triple("W", cricket.wicket, cricket.wicket.copy(alpha = 0.2f))
-        ball.isSix -> Triple("6", cricket.six, cricket.six.copy(alpha = 0.2f))
-        ball.isFour -> Triple("4", cricket.four, cricket.four.copy(alpha = 0.2f))
-        ball.isWide -> Triple("WD", cricket.wide, cricket.wide.copy(alpha = 0.15f))
-        ball.isNoBall -> Triple("NB", cricket.noBall, cricket.noBall.copy(alpha = 0.15f))
-        // textSecondary keeps dot/run balls visually quieter than boundaries
-        // while staying above the 4.5:1 AA contrast floor (raw alpha dips failed it).
-        ball.runs == 0 -> Triple("·", colors.textSecondary, colors.surfaceVariant)
-        ball.runs != null -> Triple(ball.runs.toString(), colors.onSurface, colors.surfaceVariant)
-        else -> null
-    }
-}
-
-@Composable
-private fun ResultPill(ball: ParsedBall) {
-    val colors = BouncerThemeV2.colors
-    val outcome = resultPillOf(ball, colors)
-
-    if (outcome == null) {
-        // Width still reserved: the ball label and text columns line up down the whole feed, and a
-        // feed that reflows around the unknown rows reads as a rendering fault.
-        Spacer(Modifier.size(24.dp))
-        return
-    }
-    val (text, fg, bg) = outcome
-
-    Box(
-        modifier = Modifier
-            .size(24.dp)
-            .clip(RoundedCornerShape(4.dp))
-            .background(bg),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            text = text,
-            style = BouncerThemeV2.typography.labelSmall,
-            color = fg,
-            fontWeight = FontWeight.Bold,
-        )
-    }
-}
+private val EXTRAS_GLYPH = Regex("^(?:WD|NB|LB|[BLN]\\d{1,2}|WD\\d{1,2}|B)$")
 
 @Composable
 private fun BallBadge(ball: String, size: Dp = 28.dp) {
@@ -483,8 +434,10 @@ private fun BallBadge(ball: String, size: Dp = 28.dp) {
         b == "W" -> cricket.wicket.copy(alpha = 0.2f) to cricket.wicket
         b == "6" -> cricket.six.copy(alpha = 0.2f) to cricket.six
         b == "4" -> cricket.four.copy(alpha = 0.2f) to cricket.four
-        b.startsWith("WD") || b.startsWith("NB") || b.startsWith("LB") || b.startsWith("B") ->
-            cricket.wide.copy(alpha = 0.15f) to cricket.wide
+        // Every extras glyph Cricbuzz's overSummary writes: Wd, Wd3, Nb, N1, B1, B4, L1. The `N`
+        // and `L` forms reach this from the score header's own strip too, where they used to fall
+        // through to the neutral branch and render as if they were runs off the bat.
+        EXTRAS_GLYPH.matches(b) -> cricket.wide.copy(alpha = 0.15f) to cricket.wide
         // "\u2013" is the over strip's unknown-ball placeholder; it is quiet for the same reason a
         // dot is, and must not read as a scoring shot.
         b == "." || b == "\u2013" -> colors.surfaceVariant to colors.textSecondary

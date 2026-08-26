@@ -25,7 +25,7 @@ import {
   liveScoresUrl,
   scorecardUrl,
   fetchHtml,
-  parseBallRuns,
+  parseBallOutcome,
   parseCommentary,
   parseLiveDetail,
   parseScorecard,
@@ -892,7 +892,13 @@ async function syncMatch({ db, matchId, title, commentaryCap, model, log, error 
     // clause and `line` is broadcast prose by now. Omitted rather than written as 0 when the clause
     // is not recognised — the device draws no pill for an absent value and a fabricated dot ball is
     // exactly the bug this column exists to end.
-    const runs = parseBallRuns(clean);
+    // Same source and the same reason as `event`: both the number and the KIND of delivery live
+    // only in Cricbuzz's outcome clause, and `line` is broadcast prose by now — a wide reads
+    // "strays down leg", so the device's `text.contains("wide")` test was the same guess-from-prose
+    // failure in a different field. Omitted rather than written as 0/"" when the clause is not
+    // recognised: the device draws no pill for an absent value and a fabricated dot ball is exactly
+    // the bug these columns exist to end.
+    const { runs, kind: extra } = parseBallOutcome(clean);
 
     try {
       await db.createDocument(
@@ -909,6 +915,7 @@ async function syncMatch({ db, matchId, title, commentaryCap, model, log, error 
           created_at: new Date().toISOString(),
           event,
           ...(runs === null ? {} : { runs }),
+          ...(extra === null ? {} : { extra }),
         },
         READ_ANY
       );

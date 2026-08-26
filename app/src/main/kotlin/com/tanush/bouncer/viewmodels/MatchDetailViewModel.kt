@@ -358,7 +358,7 @@ class MatchDetailViewModel(
             if (st.commentary.any { it.text == ev.commentary }) st
             else {
                 isNew = true
-                val entry = CommentaryEntry(ev.commentary, ev.event, ev.ball, ev.sortKey, ev.runs)
+                val entry = CommentaryEntry(ev.commentary, ev.event, ev.ball, ev.sortKey, ev.runs, ev.extra)
                 st.copy(commentary = insertBySortKey(st.commentary, entry), commentaryError = null)
             }
         }

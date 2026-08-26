@@ -40,12 +40,12 @@ class CommentaryRunsParityTest {
         assertTrue("cricbuzz.js appears empty", js.length > 1000)
         assertTrue("BallOutcome.kt appears empty", kotlin.length > 1000)
         assertTrue(
-            "cricbuzz.js no longer exports parseBallRuns",
-            js.contains("export function parseBallRuns"),
+            "cricbuzz.js no longer exports parseBallOutcome",
+            js.contains("export function parseBallOutcome"),
         )
         assertTrue(
-            "BallOutcome.kt no longer declares parseBallRuns",
-            kotlin.contains("internal fun parseBallRuns"),
+            "BallOutcome.kt no longer declares parseBallOutcome",
+            kotlin.contains("internal fun parseBallOutcome"),
         )
     }
 
@@ -68,17 +68,21 @@ class CommentaryRunsParityTest {
     }
 
     @Test
-    fun `match-sync writes the runs column beside the event column`() {
+    fun `match-sync writes the runs and extra columns beside the event column`() {
         // The Kotlin fallback exists for rows that predate the column. If the write is dropped it
         // becomes the ONLY source, silently, and every AI-rewritten line loses its pill again.
         val main = locate("appwrite/functions/match-sync/src/main.js").readText(Charsets.UTF_8)
         assertTrue(
-            "main.js no longer computes runs from the raw text",
-            main.contains("const runs = parseBallRuns(clean);"),
+            "main.js no longer computes the outcome from the raw text",
+            main.contains("const { runs, kind: extra } = parseBallOutcome(clean);"),
         )
         assertTrue(
             "main.js no longer writes the runs column",
             main.contains("...(runs === null ? {} : { runs }),"),
+        )
+        assertTrue(
+            "main.js no longer writes the extra column",
+            main.contains("...(extra === null ? {} : { extra }),"),
         )
     }
 
@@ -114,9 +118,14 @@ class CommentaryRunsParityTest {
             "NO_RUN" to """^no run$""",
             "OUTCOME_FOUR" to """^four$""",
             "OUTCOME_SIX" to """^six$""",
-            "OUTCOME_WICKET" to """^out\b""",
-            "EXTRA_RUNS" to """^(?:(\d{1,3})\s*)?(?:wd|wides?|nb|no.?balls?|lb|leg ?byes?|byes?|b)$""",
-            "EXTRA_FOLLOW_RUNS" to """^[^,]+,\s*[^,]+,\s*(\d{1,3}) runs?\b""",
+            "OUTCOME_WICKET" to """^(?:out\b|that'?s out\b)""",
+            "EXTRA_KIND" to
+                """^(?:(\d{1,3})\s*)?(wd|wides?|nb|no.?balls?|lb|leg ?byes?|byes?|b)$""",
+            "EXTRA_FOLLOW" to """^[^,]+,\s*[^,]+,\s*(?:(\d{1,3}) runs?|(four|six))\b""",
+            "KIND_WIDE" to """^(?:wd|wides?)$""",
+            "KIND_NOBALL" to """^(?:nb|no.?balls?)$""",
+            "KIND_LEGBYE" to """^(?:lb|leg ?byes?)$""",
+            "KIND_BYE" to """^(?:byes?|b)$""",
         )
     }
 }
