@@ -180,6 +180,63 @@ export function parseCommentary(html) {
     .filter((r) => r.commText.length > 5);
 }
 
+// ── Runs off the delivery, read from the RAW Cricbuzz text ───────────────────
+//
+// Same reasoning as classifyEvent, and the same failure it was written for. commText is
+// "<Bowler> to <Batter>, <outcome>[, description]" and that outcome clause is the only place the
+// number lives — the AI rewrite that follows turns "1 run" into "scampers through for a single"
+// and the digit is gone. `event` is four-valued (WICKET|SIX|FOUR|NONE) and cannot carry it, so the
+// device was left re-deriving runs from broadcast prose and defaulting to 0: every single rendered
+// as a dot ball, and an over of six of them rendered as a MAIDEN.
+//
+// Anchored to the clause on purpose. An unanchored /\b(\d+) runs?\b/ over the whole line — which is
+// what the device did — also matches "India need 42 runs from 30" and puts a 42 on a dot ball.
+//
+// Returns TOTAL runs off the delivery, extras included, because the commentary tab's over card sums
+// this for the over total and the maiden badge.
+//
+// null means "not recognised", never 0: absence and a genuine dot ball have to stay
+// distinguishable, or the device is back to inventing the figure this exists to stop it inventing.
+// Mirrored by parseBallRuns in CommentaryParsing.kt; CommentaryRunsParityTest fails the build on
+// a one-sided edit.
+const BALL_OUTCOME = /^[^,]+,\s*([^,]+)/;
+const TRAILING_PUNCTUATION = /[.!]+$/;
+const RUNS_OFF_BAT = /^(\d{1,3}) runs?$/i;
+const NO_RUN = /^no run$/i;
+const OUTCOME_FOUR = /^four$/i;
+const OUTCOME_SIX = /^six$/i;
+const OUTCOME_WICKET = /^out\b/i;
+// Extras, in Cricbuzz's own shorthand: "1 wd", "2 nb", "1 lb", "4 b", plus the bare word it uses
+// when the extra is worth one.
+const EXTRA_RUNS = /^(?:(\d{1,3})\s*)?(?:wd|wides?|nb|no.?balls?|lb|leg ?byes?|byes?|b)$/i;
+// Cricbuzz writes the bare-word extras with their runs in the NEXT segment — "leg byes, 4 runs" —
+// where the shorthand carries them in the same one ("4 lb"). Without this, every such delivery
+// scored 1: right for the common case and silently wrong for the rest.
+const EXTRA_FOLLOW_RUNS = /^[^,]+,\s*[^,]+,\s*(\d{1,3}) runs?\b/i;
+
+export function parseBallRuns(text) {
+  const m = String(text || "").match(BALL_OUTCOME);
+  // Trailing punctuation is trimmed because the clause is matched whole: the passthrough path
+  // writes Cricbuzz's text verbatim, but a "1 run." reaching an anchored `^(\d+) runs?$` would
+  // score null and lose a delivery the raw text names outright.
+  const clause = m ? m[1].trim().replace(TRAILING_PUNCTUATION, "") : "";
+  if (!clause) return null;
+  if (NO_RUN.test(clause)) return 0;
+  const offBat = clause.match(RUNS_OFF_BAT);
+  if (offBat) return Number(offBat[1]);
+  if (OUTCOME_FOUR.test(clause)) return 4;
+  if (OUTCOME_SIX.test(clause)) return 6;
+  // A dismissal's own clause carries no runs; a run-out's completed runs are not in it either.
+  if (OUTCOME_WICKET.test(clause)) return 0;
+  const extra = clause.match(EXTRA_RUNS);
+  if (extra) {
+    if (extra[1]) return Number(extra[1]);
+    const follow = String(text).match(EXTRA_FOLLOW_RUNS);
+    return follow ? Number(follow[1]) : 1;
+  }
+  return null;
+}
+
 function parseRecentBallsNext(html) {
   const data = [];
   forEachNextFlightPayload(html, (d) => collectKeyedPairs(d, "overSummary", "overNumber", data));

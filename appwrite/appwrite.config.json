@@ -718,6 +718,28 @@
                     "size": 40,
                     "default": "",
                     "array": false
+                },
+                {
+                    "key": "ai_generated",
+                    "type": "boolean",
+                    "required": false,
+                    "default": true,
+                    "array": false
+                },
+                {
+                    "key": "event",
+                    "type": "varchar",
+                    "required": false,
+                    "size": 8,
+                    "array": false
+                },
+                {
+                    "key": "runs",
+                    "type": "integer",
+                    "required": false,
+                    "min": 0,
+                    "max": 999,
+                    "array": false
                 }
             ],
             "indexes": [

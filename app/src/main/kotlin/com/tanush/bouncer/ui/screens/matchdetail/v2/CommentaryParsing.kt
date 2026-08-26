@@ -29,7 +29,13 @@ internal data class ParsedBall(
     val ballLabel: String?,
     val overNumber: Float,
     val ballText: String,
-    val runs: Int,
+    /**
+     * Total runs off the delivery, extras included, or null when nobody knows.
+     *
+     * Null is not zero, and the difference is the whole point: a null draws no result pill, where
+     * zero draws a dot. See [com.tanush.bouncer.data.remote.CommentaryEntry.runs].
+     */
+    val runs: Int?,
     val isWicket: Boolean,
     val isFour: Boolean,
     val isSix: Boolean,
@@ -47,7 +53,6 @@ internal data class ParsedBall(
  * bucket. Digit shape aligned with BallNotation.BALL_PREFIX, the canonical one.
  */
 private val OVER_REGEX = Regex("^(\\d{1,3}\\.\\d)\\s*:?\\s+(.*)", setOf(RegexOption.DOT_MATCHES_ALL))
-private val RUNS_REGEX = Regex("\\b(\\d+) runs?\\b")
 private val AI_FUSED_PREFIX = Regex("^\\[AI Fused\\]\\s*")
 private val BOUNDARY_EVENTS = setOf(TimelineEventType.SIX, TimelineEventType.FOUR)
 
@@ -106,25 +111,35 @@ internal fun CommentaryEntry.parseBall(): ParsedBall {
     val isWide = lower.contains("wide")
     val isNoBall = lower.contains("no ball") || lower.contains("no-ball")
 
-    val runs = runsFor(lower, isSix = isSix, isFour = isFour, isWicket = isWicket)
+    // The server's value first. The fallback only reaches raw Cricbuzz text — a passthrough row or
+    // an on-device scrape — because the number does not survive the AI rewrite at all.
+    val runs = this.runs ?: runsFor(ballText, isSix = isSix, isFour = isFour, isWicket = isWicket)
 
     return ParsedBall(ballLabel, overNumber, ballText, runs, isWicket, isFour, isSix, isWide, isNoBall)
 }
 
-private fun runsFor(lower: String, isSix: Boolean, isFour: Boolean, isWicket: Boolean): Int = when {
+private fun runsFor(text: String, isSix: Boolean, isFour: Boolean, isWicket: Boolean): Int? = when {
     isSix -> 6
     isFour -> 4
     isWicket -> 0
-    lower.contains("no run") -> 0
-    else -> RUNS_REGEX.find(lower)?.groupValues?.get(1)?.toIntOrNull() ?: 0
+    else -> parseBallRuns(text)
+        // The one outcome the rewrite tends to keep verbatim, and the only prose signal trusted
+        // here: a line that says "no run" is a dot ball. Nothing infers a SCORE from prose — that
+        // inference, defaulting to 0, is what put a dot on every single.
+        ?: 0.takeIf { NO_RUN_IN_PROSE.containsMatchIn(text) }
 }
 
-internal fun ParsedBall.toBallString(): String = when {
+/** "no run", but not "no run out" — a dropped run-out chance is not a verdict on the runs. */
+private val NO_RUN_IN_PROSE = Regex("\\bno run\\b(?!\\s+out)", RegexOption.IGNORE_CASE)
+
+/** The over strip's glyph, or null when the runs are unknown and nothing else names the ball. */
+internal fun ParsedBall.toBallString(): String? = when {
     isWicket -> "W"
     isSix -> "6"
     isFour -> "4"
     isWide -> "WD"
     isNoBall -> "NB"
+    runs == null -> null
     runs == 0 -> "."
     else -> runs.toString()
 }

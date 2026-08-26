@@ -49,6 +49,18 @@ data class CommentaryEntry(
      * from the table (the on-device scrape fallback), which sorts as newest.
      */
     val sortKey: Double? = null,
+    /**
+     * Total runs off the delivery, extras included — `bouncer-match-sync`'s reading of Cricbuzz's
+     * own outcome clause, taken before the line was rewritten.
+     *
+     * Null is **not** zero. It means no verdict: a row written before the column existed, a scrape
+     * fallback line, or a clause the server did not recognise. The commentary tab draws no result
+     * pill for a null, because the alternative is what this column was added to stop — the number
+     * does not survive the rewrite ("1 run" becomes "scampers through for a single"), `event` is
+     * four-valued and cannot carry it, and the device's prose fallback defaulted to 0, so every
+     * single rendered as a dot ball and an over of six of them rendered as a MAIDEN.
+     */
+    val runs: Int? = null,
 )
 
 data class CommentaryEvent(
@@ -57,6 +69,7 @@ data class CommentaryEvent(
     val sortKey: Double,
     val event: TimelineEventType?,
     val ball: String? = null,
+    val runs: Int? = null,
 )
 
 /**
@@ -119,6 +132,7 @@ object AppwriteMatchCommentaryClient : AppwriteTableClient("AppwriteMatchComment
                 event = parseCommentaryEvent(row.data["event"] as? String),
                 ball = (row.data["ball"] as? String)?.takeIf { it.isNotBlank() },
                 sortKey = (row.data["sort_key"] as? Number)?.toDouble(),
+                runs = (row.data["runs"] as? Number)?.toInt(),
             )
         }
     }
@@ -148,7 +162,8 @@ object AppwriteMatchCommentaryClient : AppwriteTableClient("AppwriteMatchComment
             val sortKey = (payload["sort_key"] as? Number)?.toDouble() ?: 0.0
             val event = parseCommentaryEvent(payload["event"] as? String)
             val ball = (payload["ball"] as? String)?.takeIf { it.isNotBlank() }
-            trySend(CommentaryEvent(matchId, commentary, sortKey, event, ball))
+            val runs = (payload["runs"] as? Number)?.toInt()
+            trySend(CommentaryEvent(matchId, commentary, sortKey, event, ball, runs))
         }
         awaitClose { handle.close() }
     }

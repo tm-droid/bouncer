@@ -51,6 +51,7 @@ import com.tanush.bouncer.models.TimelineEventType
 import com.tanush.bouncer.ui.components.v2.EmptyStateV2
 import com.tanush.bouncer.ui.components.v2.FilterChipRowV2
 import com.tanush.bouncer.ui.components.v2.ShimmerCommentaryList
+import com.tanush.bouncer.ui.theme.v2.BouncerColorsV2
 import com.tanush.bouncer.ui.theme.v2.BouncerSpacingV2
 import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 import com.tanush.bouncer.utils.TimelineEventExtractor
@@ -227,8 +228,8 @@ private fun OverSeparatorCard(overNumber: Int, balls: List<ParsedBall>) {
     val typography = BouncerThemeV2.typography
     val spacing = BouncerThemeV2.spacing
 
-    val totalRuns = balls.sumOf { it.runs }
-    val isMaiden = totalRuns == 0 && balls.isNotEmpty() && balls.none { it.isWide || it.isNoBall }
+    val totalRuns = overTotalRuns(balls)
+    val isMaiden = isMaidenOver(balls)
 
     Row(
         modifier = Modifier
@@ -277,18 +278,22 @@ private fun OverSeparatorCard(overNumber: Int, balls: List<ParsedBall>) {
                 }
             }
 
-            Text(
-                text = "$totalRuns run${if (totalRuns != 1) "s" else ""}",
-                style = typography.labelSmall,
-                color = colors.textSecondary,
-            )
+            if (totalRuns != null) {
+                Text(
+                    text = "$totalRuns run${if (totalRuns != 1) "s" else ""}",
+                    style = typography.labelSmall,
+                    color = colors.textSecondary,
+                )
+            }
         }
 
         if (balls.isNotEmpty()) {
             Spacer(Modifier.height(spacing.xs))
             Row(horizontalArrangement = Arrangement.spacedBy(spacing.xs)) {
                 balls.forEach { ball ->
-                    BallBadge(ball.toBallString(), size = 22.dp)
+                    // An en dash, not a dot: the over keeps its six positions, and an unknown ball
+                    // stays visibly distinct from one that was actually a dot.
+                    BallBadge(ball.toBallString() ?: "\u2013", size = 22.dp)
                 }
             }
         }
@@ -417,12 +422,16 @@ private fun NonBallLine(text: String) {
 
 // ── Small composables ────────────────────────────────────────────────────────
 
-@Composable
-private fun ResultPill(ball: ParsedBall) {
-    val colors = BouncerThemeV2.colors
-
+/**
+ * The delivery's outcome, or null when nobody knows what it was.
+ *
+ * Null is reached only when the `runs` column is absent — a row written before it existed, or a
+ * scrape fallback — and the raw clause was not there to fall back on. It draws no pill rather than
+ * a `·`, because a dot ball is a claim, and the claim was wrong: every single used to land here.
+ */
+private fun resultPillOf(ball: ParsedBall, colors: BouncerColorsV2): Triple<String, Color, Color>? {
     val cricket = colors.cricket
-    val (text, fg, bg) = when {
+    return when {
         ball.isWicket -> Triple("W", cricket.wicket, cricket.wicket.copy(alpha = 0.2f))
         ball.isSix -> Triple("6", cricket.six, cricket.six.copy(alpha = 0.2f))
         ball.isFour -> Triple("4", cricket.four, cricket.four.copy(alpha = 0.2f))
@@ -431,8 +440,23 @@ private fun ResultPill(ball: ParsedBall) {
         // textSecondary keeps dot/run balls visually quieter than boundaries
         // while staying above the 4.5:1 AA contrast floor (raw alpha dips failed it).
         ball.runs == 0 -> Triple("·", colors.textSecondary, colors.surfaceVariant)
-        else -> Triple(ball.runs.toString(), colors.onSurface, colors.surfaceVariant)
+        ball.runs != null -> Triple(ball.runs.toString(), colors.onSurface, colors.surfaceVariant)
+        else -> null
     }
+}
+
+@Composable
+private fun ResultPill(ball: ParsedBall) {
+    val colors = BouncerThemeV2.colors
+    val outcome = resultPillOf(ball, colors)
+
+    if (outcome == null) {
+        // Width still reserved: the ball label and text columns line up down the whole feed, and a
+        // feed that reflows around the unknown rows reads as a rendering fault.
+        Spacer(Modifier.size(24.dp))
+        return
+    }
+    val (text, fg, bg) = outcome
 
     Box(
         modifier = Modifier
@@ -461,7 +485,9 @@ private fun BallBadge(ball: String, size: Dp = 28.dp) {
         b == "4" -> cricket.four.copy(alpha = 0.2f) to cricket.four
         b.startsWith("WD") || b.startsWith("NB") || b.startsWith("LB") || b.startsWith("B") ->
             cricket.wide.copy(alpha = 0.15f) to cricket.wide
-        b == "." -> colors.surfaceVariant to colors.textSecondary
+        // "\u2013" is the over strip's unknown-ball placeholder; it is quiet for the same reason a
+        // dot is, and must not read as a scoring shot.
+        b == "." || b == "\u2013" -> colors.surfaceVariant to colors.textSecondary
         else -> colors.surfaceVariant to colors.onSurface
     }
 

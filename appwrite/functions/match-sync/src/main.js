@@ -25,6 +25,7 @@ import {
   liveScoresUrl,
   scorecardUrl,
   fetchHtml,
+  parseBallRuns,
   parseCommentary,
   parseLiveDetail,
   parseScorecard,
@@ -887,6 +888,11 @@ async function syncMatch({ db, matchId, title, commentaryCap, model, log, error 
     // ever match the passthrough rows. Always written, "NONE" included: an absent column means
     // "no verdict" to the device and sends it back to guessing from the prose.
     const event = classifyEvent(clean);
+    // Same source and the same reason as `event`: the number lives only in Cricbuzz's outcome
+    // clause and `line` is broadcast prose by now. Omitted rather than written as 0 when the clause
+    // is not recognised — the device draws no pill for an absent value and a fabricated dot ball is
+    // exactly the bug this column exists to end.
+    const runs = parseBallRuns(clean);
 
     try {
       await db.createDocument(
@@ -902,6 +908,7 @@ async function syncMatch({ db, matchId, title, commentaryCap, model, log, error 
           ai_generated: aiGenerated,
           created_at: new Date().toISOString(),
           event,
+          ...(runs === null ? {} : { runs }),
         },
         READ_ANY
       );
