@@ -229,6 +229,27 @@ moves, session-scoped. It used to come from `RetrofitClient.localApi` — `http:
 emulator-only dev mock — so on any real device it was a guaranteed CLEARTEXT failure per match open
 and the chart never rendered. That client is deleted; do not reintroduce a localhost API.
 
+**The commentary feed is chronological, and chronological is not cricket order.** Rows are ordered
+by `sort_key` (the Cricbuzz timestamp), so a Test's third-innings over 60 is genuinely newer than
+its second-innings over 80. `CommentaryTabV2` used to reconcile that by regrouping the whole feed
+with `groupBy { over }.toSortedMap(reverseOrder())`, which discards chronology — rendering over 89
+directly above over 83 as if overs 84–88 had been skipped, and a wicket at 60.2 above one at 80.5
+with nothing to explain it. `buildCommentaryBlocks` walks the feed **in order**, opens a block per
+over, and draws an innings divider where the innings changes: from the `innings` column, or — for
+rows written before that column could be trusted — from an over number that *rises* while walking
+back in time, which is the shape an innings boundary has. Never re-sort this feed.
+
+**An overturned review is not a wicket, and the outcome clause is what says so.** Cricbuzz writes
+the on-field decision and the review in one item ("…, no run, … given OUT LBW, but he reviews …
+survives"), so every dismissal pattern fires on it. `classifyEvent` (`llm.js`) and
+`TimelineEventExtractor.isWicketLine` both read `outcomeClause` — the field after
+"<Bowler> to <Batter>," — before any marker in the prose: a clause stating runs is a positive
+statement that nobody was dismissed. `outcomeClause` lives in `llm.js`, which `cricbuzz.js` imports,
+because llm.js is vendored byte-identically into `generate-commentary`, which has no `cricbuzz.js`.
+
+**Never state a figure for a partially-stored over.** `overTotalRuns`/`isMaidenOver` require six
+legal deliveries present. One stored dot ball rendered as "Over 89 · MAIDEN · 0 runs".
+
 **The commentary `ball` column is the over number.** `CommentaryEntry.ball` comes straight off the
 `match-commentary` row. The tab used to regex a leading `40.4` out of the prose, which only exists
 on lines the AI chain rewrote: the passthrough branch (`ai_generated = false`) writes raw Cricbuzz
@@ -240,13 +261,13 @@ over-shaped regex can match.
 
 **Appwrite project:** single database `bouncer-db`. Known tables: `ai-commentary-cache`, `highlights`, `highlights-meta`, `user-favourites`, `player-profiles`, `match-commentary`, `match-live-detail`, `match-scorecard`.
 
-**`match-commentary` table:** written by `bouncer-match-sync` (every minute). Columns: `match_id`, `innings`, `ball`, `sort_key` (timestamp, used for ordering), `commentary` (AI-rewritten line), `ai_generated` (boolean, default true), `created_at`. Read by `AppwriteMatchCommentaryClient` — newest-first 60 rows ordered by `sort_key` desc; Realtime subscription emits `CommentaryEvent` on create. **`ai_generated = false` means the row holds raw Cricbuzz text**: the provider chain returned nothing and match-sync wrote the scraped line rather than nothing. The device does not read the column — it exists so "is the stored commentary actually AI?" is answerable from the storage layer, which it was not when a dead chain and a working one produced identical-looking rows.
+**`match-commentary` table:** written by `bouncer-match-sync` (every minute). Columns: `match_id`, `innings`, `ball`, `sort_key` (timestamp, used for ordering), `commentary` (AI-rewritten line), `ai_generated` (boolean, default true), `created_at`. Read by `AppwriteMatchCommentaryClient` — newest-first 150 rows ordered by `sort_key` desc, with `getOlderThan(sortKey)` paging further back on a reader's tap; Realtime subscription emits `CommentaryEvent` on create. **`ai_generated = false` means the row holds raw Cricbuzz text**: either the provider chain returned nothing, or the delivery was past the run's LLM budget — which since 2026-08-27 is the common case, because storage is unconditional and rewriting is not. The device does not read the column — it exists so "is the stored commentary actually AI?" is answerable from the storage layer, which it was not when a dead chain and a working one produced identical-looking rows.
 
 **`match-live-detail` table:** written by `bouncer-match-sync` (every minute). One row per match, upserted. Columns: `match_id`, `payload` (JSON `MatchLiveDetailPayload`), `updated_at`. Row ID = sanitized `matchId`. Read by `AppwriteMatchDetailClient`; Realtime emits `DetailEvent` on create/update. Both clients use `appwriteAiCacheDbId` as their DB ID.
 
 **`match-scorecard` table:** written by `bouncer-match-sync` alongside the detail row. One row per match, row ID = sanitized `matchId`, columns `match_id`, `scorecard` (JSON `Scorecard`), `updated_at`. **No index** — read by `AppwriteMatchScorecardClient.getForMatch` (one `getRow` for first paint) then kept fresh by `observeMatch`, subscribed for the life of the detail screen. Exists because the scorecard measured 85–93% of the detail payload (4–9 KB of 4–9 KB) and was pushed to every subscriber of that row every minute; on its own row the live card's ~650-byte updates travel alone.
 
-**`bouncer-match-sync` Appwrite function:** scheduled `* * * * *`. Reads `live-matches.json` from `cricket-stats` bucket (written by `bouncer-poll-live-matches`); if file absent, returns 200 `{skipped:true}` (not an error). For each live match: fetches Cricbuzz live HTML + scorecard → upserts `match-live-detail` → generates AI commentary lines → writes to `match-commentary`. Up to 10 new rows/match/run, 12 matches max. Env vars: `APPWRITE_AI_CACHE_DB_ID`, `MATCH_COMMENTARY_COL_ID`, `MATCH_LIVE_DETAIL_COL_ID`, `MATCH_CACHE_BUCKET_ID`, `APPWRITE_API_KEY`, `GROQ_API_KEY` (+ fallbacks), `SENTRY_DSN` (optional — unset disables server-side reporting), `PROBE_SOURCES` (optional).
+**`bouncer-match-sync` Appwrite function:** scheduled `* * * * *`. Reads `live-matches.json` from `cricket-stats` bucket (written by `bouncer-poll-live-matches`); if file absent, returns 200 `{skipped:true}` (not an error). For each live match: fetches Cricbuzz live HTML + scorecard → upserts `match-live-detail` → writes EVERY new delivery to `match-commentary` → rewrites the oldest `commentaryCapFor` of them with the LLM. **Storage is not gated on a viewer; rewriting is.** It used to be the other way round, and a match nobody had open stored one ball per 45 minutes — so the commentary tab showed a sample of the match (overs missing outright, one boundary in an innings, a "recent" line hours old) rather than its commentary. `commentaryMatchSet` caps storage at 16 matches per run, viewers first; `commentaryCapFor` is 10 / 1 / 0 rewrites for viewed / slow-tier / idle. The watermark seeds from the newest `match-commentary` row (`limit(1)`, one billed read per cold container) and is no longer persisted to the detail row, because most live matches have no detail row. `innings` is stamped **per commentary item** from Cricbuzz's `inningsId`, falling back to the miniscore and then to the scorecard length — the old write-time stamp mislabelled an innings' tail as the next innings. Env vars: `APPWRITE_AI_CACHE_DB_ID`, `MATCH_COMMENTARY_COL_ID`, `MATCH_LIVE_DETAIL_COL_ID`, `MATCH_CACHE_BUCKET_ID`, `APPWRITE_API_KEY`, `GROQ_API_KEY` (+ fallbacks), `SENTRY_DSN` (optional — unset disables server-side reporting), `PROBE_SOURCES` (optional).
 
 **Server-side observability (`match-sync/src/observability.js`):** `@sentry/node`, initialized per container from `SENTRY_DSN` and flushed before every return (the container freezes on return, so an unflushed queue is lost). Reports: raw-text passthrough with the per-provider reasons from `generateLine`'s `attempts`, commentary write failures, a viewer-gated match that produced nothing, an unreadable `active-viewers` file (a 404 is normal and stays quiet), and read-budget 402s. Setting `PROBE_SOURCES=1` turns one execution into an upstream reachability probe (status + bytes + markup markers for Cricinfo and Cricbuzz, from inside the Appwrite container) and returns without syncing — that is the only way to answer whether Cricinfo is reachable server-side, which is a different question from whether it is reachable from a laptop or a phone.
 
