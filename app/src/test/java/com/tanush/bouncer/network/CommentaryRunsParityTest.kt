@@ -25,7 +25,14 @@ import org.junit.Test
 class CommentaryRunsParityTest {
 
     private val js by lazy {
-        locate("appwrite/functions/match-sync/src/cricbuzz.js").readText(Charsets.UTF_8)
+        // Two files, one source of truth. `BALL_OUTCOME` and `TRAILING_PUNCTUATION` moved to
+        // llm.js when classifyEvent started reading the outcome clause before the prose: llm.js is
+        // vendored byte-identically into `generate-commentary`, which has no cricbuzz.js, so the
+        // import has to run cricbuzz.js -> llm.js and not the other way. Both are declared Gradle
+        // test inputs, so an edit to either still invalidates this task.
+        locate("appwrite/functions/match-sync/src/cricbuzz.js").readText(Charsets.UTF_8) +
+            "\n" +
+            locate("appwrite/functions/match-sync/src/llm.js").readText(Charsets.UTF_8)
     }
     private val kotlin by lazy {
         locate(
@@ -37,7 +44,7 @@ class CommentaryRunsParityTest {
     fun `both sources are found and parsed, not silently skipped`() {
         // Guards the guard: a locator that quietly returned empty text would pass every comparison
         // below vacuously.
-        assertTrue("cricbuzz.js appears empty", js.length > 1000)
+        assertTrue("the JS sources appear empty", js.length > 1000)
         assertTrue("BallOutcome.kt appears empty", kotlin.length > 1000)
         assertTrue(
             "cricbuzz.js no longer exports parseBallOutcome",
@@ -89,7 +96,7 @@ class CommentaryRunsParityTest {
     /** `const NAME = /pattern/flags;` → the pattern, unescaped-as-written. */
     private fun jsRegex(name: String): String {
         val m = Regex("""const $name = /(.*?)/[gimsuy]*;""").find(js)
-            ?: error("cricbuzz.js has no `const $name = /…/`")
+            ?: error("neither cricbuzz.js nor llm.js has `const $name = /…/`")
         return m.groupValues[1]
     }
 

@@ -33,6 +33,37 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.util.Date
 
+/**
+ * The home screen's "All" status: not a Cricbuzz endpoint, a union of the three that are.
+ *
+ * It used to be a chip that mapped to "Live" — so tapping it moved the highlight to Live and
+ * changed nothing, which reads as a dead control. `AllMatchesScreenV2` dropped the chip rather
+ * than fix it; this makes it mean what it says.
+ */
+internal const val STATUS_ALL = "All"
+
+/** The statuses that have a URL of their own, in the order "All" presents them. */
+private val FETCHABLE_STATUSES = listOf("Live", "Upcoming", "Recent")
+
+/** Which statuses a selection has to fetch and poll. Only "All" needs more than itself. */
+internal fun statusesToFetch(status: String): List<String> =
+    if (status == STATUS_ALL) FETCHABLE_STATUSES else listOf(status)
+
+/**
+ * The cached list a selection should render, or null when nothing is cached for it yet.
+ *
+ * Null is the caller's "not ready" path everywhere, so "All" returns null until at least one of
+ * the three has landed rather than briefly emitting an empty list over a populated one.
+ */
+internal fun matchesForStatus(
+    cache: Map<String, List<CricketMatch>>,
+    status: String,
+): List<CricketMatch>? {
+    if (status != STATUS_ALL) return cache[status]
+    val parts = FETCHABLE_STATUSES.mapNotNull(cache::get)
+    return if (parts.isEmpty()) null else parts.flatten().distinctBy { it.id }
+}
+
 sealed class LoadingState {
     object Idle : LoadingState()
     object Refreshing : LoadingState()
@@ -287,11 +318,12 @@ class LiveActivityViewModel(
     fun setAndFetchMatches(status: String) {
         breadcrumb("user.action", "Status changed to: $status")
         _selectedStatus.value = status
-        cachedMatches[status]?.let { filterAndEmitMatches(it) }
+        matchesForStatus(cachedMatches, status)?.let { filterAndEmitMatches(it) }
 
-        if (!cachedMatches.containsKey(status)) {
+        val missing = statusesToFetch(status).filterNot(cachedMatches::containsKey)
+        if (missing.isNotEmpty()) {
             viewModelScope.launch(bouncerExceptionHandler) {
-                runCatching { updateMatches(status) }
+                missing.forEach { runCatching { updateMatches(it) } }
             }
         }
 
@@ -302,14 +334,14 @@ class LiveActivityViewModel(
         if (_selectedCompetitionType.value == type) return
         breadcrumb("user.action", "Competition type changed to: $type")
         _selectedCompetitionType.value = type
-        cachedMatches[_selectedStatus.value]?.let { filterAndEmitMatches(it) }
+        matchesForStatus(cachedMatches, _selectedStatus.value)?.let { filterAndEmitMatches(it) }
     }
 
     fun setGender(gender: String) {
         if (_selectedGender.value == gender) return
         breadcrumb("user.action", "Gender filter changed to: $gender")
         _selectedGender.value = gender
-        cachedMatches[_selectedStatus.value]?.let { filterAndEmitMatches(it) }
+        matchesForStatus(cachedMatches, _selectedStatus.value)?.let { filterAndEmitMatches(it) }
     }
 
     /**
@@ -365,10 +397,9 @@ class LiveActivityViewModel(
         if (!pollingTasks.containsKey("Live")) {
             startPollingForStatus("Live")
         }
-        val selectedStatus = _selectedStatus.value
-        if (selectedStatus != "Live" && !pollingTasks.containsKey(selectedStatus)) {
-            startPollingForStatus(selectedStatus)
-        }
+        statusesToFetch(_selectedStatus.value)
+            .filter { it != "Live" && !pollingTasks.containsKey(it) }
+            .forEach { startPollingForStatus(it) }
     }
 
     private fun runInitialFetch() {
@@ -403,12 +434,9 @@ class LiveActivityViewModel(
 
     private fun runFastResumeFetch() {
         // Fast resume path to avoid waiting for the next polling tick.
-        val selectedStatus = _selectedStatus.value
+        val targets = (listOf("Live") + statusesToFetch(_selectedStatus.value)).distinct()
         viewModelScope.launch(bouncerExceptionHandler) {
-            runCatching { updateMatches("Live") }
-            if (selectedStatus != "Live") {
-                runCatching { updateMatches(selectedStatus) }
-            }
+            targets.forEach { runCatching { updateMatches(it) } }
         }
     }
 
@@ -769,8 +797,9 @@ class LiveActivityViewModel(
         MatchCacheService.updateCache(matchesWithProbability, status)
         cachedMatches[status] = matchesWithProbability
 
-        if (status == _selectedStatus.value) {
-            filterAndEmitMatches(matchesWithProbability)
+        val selected = _selectedStatus.value
+        if (status == selected || selected == STATUS_ALL) {
+            matchesForStatus(cachedMatches, selected)?.let { filterAndEmitMatches(it) }
         }
 
         updateHomeMatches()
@@ -817,7 +846,7 @@ class LiveActivityViewModel(
 
     private suspend fun fetchMatchesInternal() {
         try {
-            updateMatches(_selectedStatus.value)
+            statusesToFetch(_selectedStatus.value).forEach { updateMatches(it) }
             _loadingState.value = LoadingState.Idle
         } catch (e: CancellationException) {
             throw e

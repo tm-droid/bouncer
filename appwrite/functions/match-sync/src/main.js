@@ -17,7 +17,7 @@
 //
 // The `--with-node-modules` flag is not optional here: this function has repeatedly failed to build
 // from a source-only archive (an Appwrite sidecar bug), which the VCS path could not do anyway.
-import { Client, Storage, Databases } from "node-appwrite";
+import { Client, Storage, Databases, Query } from "node-appwrite";
 import { InputFile } from "node-appwrite/file";
 import { createHash } from "crypto";
 import { parseJsonFile } from "./storageJson.js";
@@ -71,7 +71,12 @@ const VIEWER_TTL_MS = 4 * 60 * 1000;
 
 // Per-match per-run bounds (control LLM cost + stay within function timeout).
 const SCAN_NEWEST = 30; // how many newest commentary items to look at
-const MAX_NEW_PER_MATCH = 10; // max LLM-backed rows to write per match per run
+const MAX_NEW_PER_MATCH = 10; // max LLM-REWRITTEN rows per match per run
+// How many live matches get their commentary stored at all. Storing is cheap — a row per
+// delivery, no LLM — but it is unbounded in the number of live matches, and Cricbuzz's live list
+// runs to 30+ once domestic fixtures are counted. Viewed matches take the slots first, then the
+// slow tier, then whatever is left; 16 covers every list observed (11 live at 2026-08-27T12:10Z).
+const MAX_COMMENTARY_MATCHES = 16;
 const MAX_MATCHES = 12; // cap live matches processed per run
 // Pre-match costs no network call per fixture — the model is already in memory — so this is a cap
 // on the written file rather than on work. Today's list is 20; a long tour week is not much more.
@@ -378,7 +383,11 @@ async function handleRun({ req, res, log, error }) {
       cooldownUntil: budget402UntilMs,
     })
   );
-  log(`${allLive.length} live, ${live.length} with viewers, ${slowTier.size} on the slow tier`);
+  const commentaryMatches = commentaryMatchSet(allLive, viewed, slowTier);
+  log(
+    `${allLive.length} live, ${live.length} with viewers, ${slowTier.size} on the slow tier, ` +
+      `${commentaryMatches.size} storing commentary`
+  );
 
   // Process matches in parallel so per-ball LLM latency doesn't serialize across matches.
   await Promise.allSettled(
@@ -390,6 +399,7 @@ async function handleRun({ req, res, log, error }) {
           matchId,
           title: m.title ?? "",
           commentaryCap: commentaryCapFor(matchId, viewed, slowTier),
+          storeCommentary: commentaryMatches.has(matchId),
           model,
           log,
           error,
@@ -462,11 +472,39 @@ async function handleRun({ req, res, log, error }) {
   });
 }
 
-/** Rows this match may write this run: full for a viewer, a trickle for the slow tier, none else. */
+/**
+ * How many of this match's new deliveries get an LLM rewrite this run.
+ *
+ * This used to be the number of rows the match could WRITE, which made the viewer gate a storage
+ * gate: a match nobody had open stored one ball per 45 minutes, so its commentary feed was a
+ * sample and not a commentary. Overs 84-88 of match 163017 were never captured at all, its whole
+ * innings held one FOUR, and the Overview's newest line was hours old. Storage is now
+ * unconditional (see `commentaryMatchSet`) and costs no LLM call; this budget only decides which
+ * of those rows get broadcast prose instead of Cricbuzz's own words.
+ *
+ * A row that misses the budget is written with `ai_generated: false` — the same shape the
+ * passthrough path already produced, and fully filterable, because `event`/`runs`/`extra` are
+ * classified from the raw text either way.
+ */
 export function commentaryCapFor(matchId, viewed, slowTier) {
   if (viewed.has(matchId)) return MAX_NEW_PER_MATCH;
   if (slowTier.has(matchId)) return SLOW_MAX_NEW_PER_MATCH;
   return 0;
+}
+
+/**
+ * The live matches whose commentary is stored this run, viewed first, then slow tier, then the
+ * rest, capped at [MAX_COMMENTARY_MATCHES].
+ *
+ * Everything in the set stores EVERY new delivery. The cap exists only so an unusually long live
+ * list cannot make the per-run write count unbounded; in steady state the watermark bounds it to
+ * the balls actually bowled since the last run.
+ */
+export function commentaryMatchSet(allLive, viewed, slowTier) {
+  const rank = (id) => (viewed.has(id) ? 0 : slowTier.has(id) ? 1 : 2);
+  const ids = allLive.map((m) => String(m.id));
+  ids.sort((a, b) => rank(a) - rank(b));
+  return new Set(ids.slice(0, MAX_COMMENTARY_MATCHES));
 }
 
 /**
@@ -723,17 +761,20 @@ async function activeViewerIds({ storage, log, error }) {
   }
 }
 
-async function syncMatch({ db, matchId, title, commentaryCap, model, log, error }) {
+async function syncMatch({ db, matchId, title, commentaryCap, storeCommentary, model, log, error }) {
   // 2. Fetch live page, plus the scorecard only when we are going to use it. A match with no
-  // viewer needs the live page alone to produce a win probability.
+  // viewer needs the live page alone to produce a win probability — and, now, to store its
+  // commentary, which the live page alone carries.
   //
-  // `commentaryCap` is how many rows this match may write this run: 0 for a live match nobody is
-  // watching and that is not due a slow pass, SLOW_MAX_NEW_PER_MATCH for the slow tier,
-  // MAX_NEW_PER_MATCH when someone has it open. It replaces a `withCommentary` boolean — the tier
-  // and the cap are the same decision, and splitting them into two arguments is how they drift.
+  // Two independent decisions, deliberately two arguments:
+  //  - `commentaryCap` is the LLM budget (0 / SLOW_MAX_NEW_PER_MATCH / MAX_NEW_PER_MATCH) and is
+  //    also what puts this match in the DETAIL tier — scorecard fetch, detail row, scorecard row.
+  //  - `storeCommentary` says whether every new delivery is written to `match-commentary`. It is
+  //    true for essentially every live match, because a feed that skips balls is not a feed.
+  const detailTier = commentaryCap > 0;
   const [liveHtml, scoreHtml] = await Promise.all([
     fetchHtml(liveScoresUrl(matchId)),
-    commentaryCap > 0
+    detailTier
       ? fetchHtml(scorecardUrl(matchId)).catch((e) => { error(`Scorecard fetch failed for ${matchId}: ${e?.message}`); return null; })
       : Promise.resolve(null),
   ]);
@@ -753,9 +794,9 @@ async function syncMatch({ db, matchId, title, commentaryCap, model, log, error 
     detail.winProbabilityDraw = winProb.drawProbability;
   }
 
-  if (commentaryCap <= 0) {
-    // No viewer and not due a slow pass: the probability is the only product. No scorecard, no
-    // LLM, no DB write.
+  if (!detailTier && !storeCommentary) {
+    // No viewer, not due a slow pass, and beyond the commentary cap: the probability is the only
+    // product. No scorecard, no LLM, no DB write.
     return { status: winProb ? "winprob_only" : "winprob_undetermined", winProb };
   }
 
@@ -775,7 +816,10 @@ async function syncMatch({ db, matchId, title, commentaryCap, model, log, error 
     !!detail.status ||
     (detail.batsmen?.length || 0) > 0 ||
     (detail.scorecard?.innings?.length || 0) > 0;
-  if (detailHasContent) {
+  // Gated on the detail tier, not on storeCommentary: a match nobody has open stores its
+  // commentary but must NOT pay a live-detail write every minute — that is one row per live match
+  // per run, which is the write volume this whole change is budgeted against.
+  if (detailHasContent && detailTier) {
     await upsertDetail({ db, matchId, detail, error });
     // The scorecard now lives ONLY here. upsertDetail strips it from the detail payload, so this
     // write is the sole source for the Scorecard tab and for the Overview's scorecard-derived
@@ -783,11 +827,15 @@ async function syncMatch({ db, matchId, title, commentaryCap, model, log, error 
     if ((detail.scorecard?.innings?.length || 0) > 0) {
       await upsertScorecard({ db, matchId, scorecard: detail.scorecard, error });
     }
-  } else {
+  } else if (detailTier) {
     log(`Match ${matchId}: hollow live-detail, skipping upsert`);
   }
 
-  // 4. Commentary: newest-first, generate AI only for new ball lines.
+  if (!storeCommentary) {
+    return { status: { commentaryWritten: 0, skipped: "beyond commentary cap" }, winProb };
+  }
+
+  // 4. Commentary: store every new delivery, rewrite the first `commentaryCap` of them.
   const commentary = parseCommentary(liveHtml).slice(0, SCAN_NEWEST);
 
   // Dedupe against everything already written, via a high-water mark seeded from Appwrite exactly
@@ -800,24 +848,26 @@ async function syncMatch({ db, matchId, title, commentaryCap, model, log, error 
     log(`Match ${matchId}: seeded commentary watermark ${watermark} (cold)`);
   }
 
-  // Newly-written commentary belongs to the innings currently being batted. The scorecard
-  // carries one entry per innings played so far, so its length is the current innings number
-  // (1 during the 1st innings, 2 during the 2nd, etc). Falls back to 1 when the scorecard
-  // is unavailable. Replaces the previous hardcoded `innings: 1`.
-  const currentInnings = detail.scorecard?.innings?.length || 1;
+  // The innings each line belongs to. Preferred source is the commentary item itself, because the
+  // two write-time sources below are both a snapshot of the innings being batted WHEN THE ROW IS
+  // WRITTEN, not when the ball was bowled — which is how ball 89.3, the tail of match 163017's
+  // second innings, came to be stored as innings 3 and sorted above the third innings' over 60.
+  // The miniscore's inningsId comes off the live page, so it works for a match with no scorecard
+  // fetch (the whole no-viewer tier); the scorecard length is the last resort it replaced.
+  const fallbackInnings =
+    detail.situation?.inningsId || detail.scorecard?.innings?.length || 1;
 
-  // Oldest-first among items past the watermark. Order matters: the watermark can only advance
-  // contiguously from the bottom, so processing newest-first would strand every older unwritten
-  // item behind it permanently once `commentaryCap` truncated the run.
+  // Oldest-first among items past the watermark. Order matters twice over: the watermark can only
+  // advance contiguously from the bottom, and the LLM budget is spent in this order, so the oldest
+  // unrewritten deliveries are the ones that get broadcast prose rather than an arbitrary slice.
   const fresh = commentary
     .filter((i) => Number(i.timestamp) > watermark)
     .sort((a, b) => Number(a.timestamp) - Number(b.timestamp));
 
   let written = 0;
+  let rewritten = 0;
   let newWatermark = watermark;
   for (const item of fresh) {
-    // Checked before any work so the watermark stops at the last FULLY processed item.
-    if (written >= commentaryCap) break;
     const rowId = docId(`${matchId}:${item.timestamp}`);
     const itemTs = Number(item.timestamp);
 
@@ -827,12 +877,15 @@ async function syncMatch({ db, matchId, title, commentaryCap, model, log, error 
     const { clean, ball } = classified;
 
     let line = clean;
-    // False when the AI chain produced nothing and the row below carries the scraper's own words.
-    // The row is still written — a raw line beats an empty commentary tab — but "we wrote raw
-    // Cricbuzz text" and "we wrote generated commentary" were previously the same event, in the
-    // data and in the logs, so a dead provider chain was indistinguishable from a working one.
-    let aiGenerated = true;
-    {
+    // False when this row carries the scraper's own words — either the AI chain produced nothing,
+    // or this delivery was past the run's LLM budget. The row is written either way: a raw line
+    // beats a missing ball, and it is fully filterable because `event`/`runs`/`extra` below are
+    // read from the raw text regardless. "We wrote raw Cricbuzz text" and "we wrote generated
+    // commentary" were previously the same event in the data and in the logs, so a dead provider
+    // chain was indistinguishable from a working one.
+    let aiGenerated = false;
+    if (rewritten < commentaryCap) {
+      aiGenerated = true;
       // Ball-by-ball line → cinematic AI rewrite (mirror generateBallCommentary).
       const bowler = detail.bowler?.name ?? "";
       const batsman = detail.batsmen?.[0]?.name ?? "";
@@ -869,6 +922,7 @@ async function syncMatch({ db, matchId, title, commentaryCap, model, log, error 
       if (generated.line) {
         line = sanitize(stripPreamble(generated.line));
         if (line && !line.startsWith(ball)) line = `${ball}: ${line}`;
+        rewritten++;
       } else {
         aiGenerated = false;
         error(`[PASSTHROUGH] ${matchId}/${ball} (${generated.reason}): writing raw Cricbuzz text — ${attempts.join("; ")}`);
@@ -907,7 +961,7 @@ async function syncMatch({ db, matchId, title, commentaryCap, model, log, error 
         rowId,
         {
           match_id: matchId,
-          innings: currentInnings,
+          innings: item.innings ?? fallbackInnings,
           ball,
           sort_key: item.timestamp,
           commentary: line,
@@ -931,11 +985,12 @@ async function syncMatch({ db, matchId, title, commentaryCap, model, log, error 
     }
   }
 
-  if (newWatermark > watermark) {
-    watermarkByMatch.set(matchId, newWatermark);
-    await persistWatermark({ db, matchId, watermark: newWatermark, error });
-  }
-  log(`Match ${matchId}: ${written} new commentary rows`);
+  // The watermark is NOT persisted to the detail row any more. That was one extra write per match
+  // per run, and it is redundant now that `commentaryWatermark` seeds from the commentary table
+  // itself — which also works for a match that has no detail row, i.e. every match outside the
+  // detail tier.
+  if (newWatermark > watermark) watermarkByMatch.set(matchId, newWatermark);
+  log(`Match ${matchId}: ${written} new commentary rows (${rewritten} rewritten)`);
   return { status: { commentaryWritten: written }, winProb };
 }
 
@@ -1017,10 +1072,13 @@ function reportDeadProviders(error) {
 // match's own detail row. Called at most once per match per warm container (see watermarkByMatch),
 // NOT every run.
 //
-// This replaced a listDocuments(limit(SCAN_NEWEST)) over the commentary table. Appwrite bills one
-// read per document RETURNED, so that query cost up to 30 reads per match per cold container; a
-// getDocument on a row we are already writing every run costs exactly 1. The create-on-409 path
-// stays as the race backstop, so a missed or zero result only risks a redundant write.
+// One billed read per match per COLD container, and no more: Appwrite bills per document
+// RETURNED, so `limit(1)` on the [match_id, sort_key DESC] index costs exactly one — the same as
+// the `getDocument` on the detail row this replaced, and unlike the listDocuments(limit(30)) that
+// preceded that. Reading the commentary table rather than the detail row is what lets a match
+// outside the detail tier keep a watermark at all, now that every live match stores commentary and
+// most of them have no detail row. The create-on-409 path stays as the race backstop, so a missed
+// or zero result only risks a redundant write.
 async function commentaryWatermark({ db, matchId, error }) {
   if (++readsThisRun > READ_BUDGET_PER_RUN) {
     // Hard stop: with warm-container dedupe, seed reads/run should stay well under this.
@@ -1028,10 +1086,14 @@ async function commentaryWatermark({ db, matchId, error }) {
     throw new Error(`[READ-BUDGET-402] per-run read cap exceeded (${readsThisRun} > ${READ_BUDGET_PER_RUN}) — aborting`);
   }
   try {
-    const row = await db.getDocument(DB_ID, DETAIL_COL, sanitizeMatchId(matchId));
-    return Number(row?.last_commentary_sort_key) || 0;
+    const res = await db.listDocuments(DB_ID, COMMENTARY_COL, [
+      Query.equal("match_id", matchId),
+      Query.orderDesc("sort_key"),
+      Query.limit(1),
+    ]);
+    return Number(res?.documents?.[0]?.sort_key) || 0;
   } catch (e) {
-    // 404 = this match has no detail row yet, so nothing has been written for it either.
+    // 404 = the table has nothing for this match, so nothing has been written for it either.
     if (e?.code === 404) return 0;
     if (isBudget402(e)) {
       budget402UntilMs = Date.now() + READ_402_BACKOFF_MS;
@@ -1044,17 +1106,3 @@ async function commentaryWatermark({ db, matchId, error }) {
   }
 }
 
-// Persist the advanced watermark onto the detail row. Deliberately a separate, tiny update rather
-// than folding it into upsertDetail: that upsert runs BEFORE commentary is generated, and delaying
-// it until after would hold back the live-score realtime push by the whole LLM round-trip.
-// At most one extra write per viewed match per run, and only when new commentary was written.
-async function persistWatermark({ db, matchId, watermark, error }) {
-  try {
-    await db.updateDocument(DB_ID, DETAIL_COL, sanitizeMatchId(matchId), {
-      last_commentary_sort_key: watermark,
-    });
-  } catch (e) {
-    // Losing it only costs a re-scan on the next cold container — never fail the match for this.
-    error(`Watermark persist failed (${matchId}): ${e?.message}`);
-  }
-}

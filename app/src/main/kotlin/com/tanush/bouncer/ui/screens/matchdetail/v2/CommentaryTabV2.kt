@@ -3,6 +3,7 @@ package com.tanush.bouncer.ui.screens.matchdetail.v2
 import android.content.Intent
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -89,6 +90,9 @@ fun CommentaryTabV2(
     isLoading: Boolean = false,
     error: String? = null,
     onRetry: (() -> Unit)? = null,
+    hasOlder: Boolean = false,
+    isLoadingOlder: Boolean = false,
+    onLoadOlder: (() -> Unit)? = null,
 ) {
     val spacing = BouncerThemeV2.spacing
 
@@ -121,8 +125,8 @@ fun CommentaryTabV2(
         filterCommentary(commentary, selectedFilter)
     }
 
-    val parsedBalls = remember(filteredCommentary) {
-        filteredCommentary.map { it.parseBall() }
+    val blocks = remember(filteredCommentary) {
+        buildCommentaryBlocks(filteredCommentary.map { it.parseBall() })
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
@@ -141,63 +145,120 @@ fun CommentaryTabV2(
             contentPadding = PaddingValues(vertical = spacing.md),
         ) {
             commentaryFeedItems(
-                parsedBalls = parsedBalls,
+                blocks = blocks,
                 recentBalls = recentBalls,
                 selectedFilter = selectedFilter,
                 spacing = spacing,
+                // Offered only under All: a filtered view holds a handful of lines drawn from the
+                // whole loaded feed, so "load older" there would fetch a page and very likely add
+                // nothing visible to it.
+                onLoadOlder = onLoadOlder.takeIf { hasOlder && selectedFilter == CommentaryFilter.ALL },
+                isLoadingOlder = isLoadingOlder,
             )
         }
     }
 }
 
 private fun LazyListScope.commentaryFeedItems(
-    parsedBalls: List<ParsedBall>,
+    blocks: List<CommentaryBlock>,
     recentBalls: List<String>,
     selectedFilter: CommentaryFilter,
     spacing: BouncerSpacingV2,
+    onLoadOlder: (() -> Unit)?,
+    isLoadingOlder: Boolean,
 ) {
     // Current over ball strip
     if (recentBalls.isNotEmpty() && selectedFilter == CommentaryFilter.ALL) {
         item(key = "recent_strip") { ThisOverStrip(recentBalls) }
     }
 
-    if (selectedFilter == CommentaryFilter.ALL) {
-        // A delivery is anything carrying a ball label, which now comes from the server's own
-        // `ball` column rather than a regex over the prose. Splitting again on overNumber keeps
-        // The Hundred out of the over grouping: it counts 1..100 and has no overs to group by.
-        val (deliveries, nonBallLines) = parsedBalls.partition { it.ballLabel != null }
-        val (overBalls, countedBalls) = deliveries.partition { it.overNumber > 0f }
-        val grouped = overBalls
-            .groupBy { it.overNumber.toInt() }
-            .toSortedMap(reverseOrder())
-
-        // Non-ball lines (session notes, weather updates) at top
-        items(nonBallLines.size, key = { "nonball_$it" }) { idx ->
-            NonBallLine(nonBallLines[idx].ballText)
+    val showOverCards = selectedFilter == CommentaryFilter.ALL
+    // Keys carry the block index, never the scraped label alone: two innings of the same match
+    // hold the same over numbers, and a duplicate key throws (ANDROID-40).
+    blocks.forEachIndexed { blockIndex, block ->
+        if (block.startsInnings) {
+            item(key = "inns_$blockIndex") { InningsDivider(block.innings) }
         }
-
-        // Hundred deliveries: labelled, but with no over to sit under.
-        items(countedBalls.size, key = { "counted_$it" }) { idx ->
-            CommentaryLine(countedBalls[idx], modifier = Modifier.animateItem())
-        }
-
-        // Ball lines grouped by over with separator cards
-        grouped.forEach { (over, balls) ->
-            item(key = "sep_$over") {
-                OverSeparatorCard(overNumber = over, balls = balls)
-            }
-            items(balls.size, key = { "ball_${over}_$it" }) { idx ->
-                CommentaryLine(balls[idx], modifier = Modifier.animateItem())
+        // An over card is a statement about an over, so it is drawn only where the feed is showing
+        // whole overs. A filtered view holds one ball of each, and a card over it would read as a
+        // claim about the other five.
+        if (showOverCards && block.overNumber != null) {
+            item(key = "sep_${blockIndex}_${block.overNumber}") {
+                OverSeparatorCard(overNumber = block.overNumber, balls = block.balls)
             }
         }
-    } else {
-        // Filtered views: flat list without separators
-        items(parsedBalls.size, key = { "comm_${selectedFilter.name}_$it" }) { idx ->
-            CommentaryLine(parsedBalls[idx], modifier = Modifier.animateItem())
+        items(block.balls.size, key = { "ball_${blockIndex}_$it" }) { idx ->
+            val ball = block.balls[idx]
+            // Non-deliveries (session notes, weather) carry no ball label and get no pill.
+            if (ball.ballLabel == null) {
+                NonBallLine(ball.ballText)
+            } else {
+                CommentaryLine(ball, modifier = Modifier.animateItem())
+            }
         }
     }
 
+    if (onLoadOlder != null) {
+        item(key = "load_older") { LoadOlderRow(isLoadingOlder, onLoadOlder) }
+    }
+
     item(key = "bottom") { Spacer(Modifier.height(spacing.xxl)) }
+}
+
+/**
+ * Fetches the next page back, on a tap.
+ *
+ * Reader-driven rather than infinite scroll because Appwrite bills per row RETURNED: a page is 150
+ * billed reads, and a Test innings is several of them. Someone scrolling back through a session
+ * asks for it; someone glancing at the last over does not pay for it.
+ */
+@Composable
+private fun LoadOlderRow(isLoading: Boolean, onClick: () -> Unit) {
+    val colors = BouncerThemeV2.colors
+    val typography = BouncerThemeV2.typography
+    val spacing = BouncerThemeV2.spacing
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(enabled = !isLoading, onClick = onClick)
+            .padding(vertical = spacing.md),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = stringResource(
+                if (isLoading) R.string.commentary_loading_older else R.string.commentary_load_older
+            ),
+            style = typography.labelMedium,
+            // Gold is the interactive affordance; the loading state is not one.
+            color = if (isLoading) colors.textSecondary else colors.primaryText,
+        )
+    }
+}
+
+/**
+ * States an innings boundary instead of letting the feed imply one.
+ *
+ * Without this the tab had two bad options for a feed spanning innings: render it in wall-clock
+ * order, where a dismissal at 60.2 sits above one at 80.5 for no visible reason, or re-sort by over
+ * and lose the chronology outright. It renders neither a number it does not have — an unlabelled
+ * boundary says only that the innings changed.
+ */
+@Composable
+private fun InningsDivider(innings: Int?) {
+    val colors = BouncerThemeV2.colors
+    val typography = BouncerThemeV2.typography
+    val spacing = BouncerThemeV2.spacing
+    Column(modifier = Modifier.fillMaxWidth()) {
+        HorizontalDivider(color = colors.divider)
+        Text(
+            text = innings?.let { stringResource(R.string.commentary_innings, it) }
+                ?: stringResource(R.string.commentary_innings_change),
+            style = typography.labelMedium,
+            color = colors.textSecondary,
+            modifier = Modifier.padding(horizontal = spacing.lg, vertical = spacing.sm),
+        )
+        HorizontalDivider(color = colors.divider)
+    }
 }
 
 @Composable

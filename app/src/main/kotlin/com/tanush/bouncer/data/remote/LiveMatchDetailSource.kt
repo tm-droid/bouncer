@@ -20,6 +20,12 @@ interface LiveMatchDetailSource {
     suspend fun getCommentaryForMatch(matchId: String): List<CommentaryEntry>
 
     /**
+     * The page of commentary strictly older than [olderThan], newest-first, or empty when there is
+     * none. Fetched only when a reader asks for it — reads bill per row.
+     */
+    suspend fun getOlderCommentary(matchId: String, olderThan: Double): List<CommentaryEntry>
+
+    /**
      * The full scorecard, from its own table. Separate from [getForMatch] because it was 85-93% of
      * the detail payload and rode that row's realtime channel to every subscriber once a minute.
      * This is the first-paint read; [observeScorecard] carries every update after it.
@@ -48,6 +54,9 @@ object ProductionLiveDetailSource : LiveMatchDetailSource {
 
     override suspend fun getCommentaryForMatch(matchId: String): List<CommentaryEntry> =
         AppwriteMatchCommentaryClient.getForMatch(matchId)
+
+    override suspend fun getOlderCommentary(matchId: String, olderThan: Double): List<CommentaryEntry> =
+        AppwriteMatchCommentaryClient.getOlderThan(matchId, olderThan)
 
     override suspend fun getScorecardForMatch(matchId: String): com.tanush.bouncer.models.Scorecard? =
         AppwriteMatchScorecardClient.getForMatch(matchId)

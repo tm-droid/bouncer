@@ -160,9 +160,32 @@ class CommentaryRunsTest {
 
     @Test
     fun `a wide is an extra, so its over is not a maiden even at zero off the bat`() {
-        val over = List(5) { entry("18.$it: no run.", runs = 0).parseBall() } +
+        // Seven deliveries, six of them legal: a wide does not retire a ball, so an over that
+        // contains one is only complete at seven.
+        val over = List(6) { entry("18.$it: no run.", runs = 0).parseBall() } +
             entry("18.6: Starc to Smith, 1 wd, down the leg side.", runs = 1).parseBall()
         assertEquals(1, overTotalRuns(over))
         assertTrue(!isMaidenOver(over))
+    }
+
+    // ── A partial over is not an over ────────────────────────────────────────
+    //
+    // `match-commentary` is written from a rolling scan window, so the feed routinely holds only
+    // part of an over. Match 163017 stored exactly one delivery of its over 89 and the tab drew
+    // "Over 89 · MAIDEN · 0 runs" over it — a figure the app did not have, from five balls it had
+    // never seen.
+
+    @Test
+    fun `one stored ball states neither an over total nor a maiden`() {
+        val partial = listOf(entry("89.3: no run.", runs = 0).parseBall())
+        assertNull("a single stored dot ball was summed into an over total", overTotalRuns(partial))
+        assertTrue("a single stored dot ball was called a maiden", !isMaidenOver(partial))
+    }
+
+    @Test
+    fun `five of six deliveries is still incomplete`() {
+        val partial = List(5) { entry("89.$it: no run.", runs = 0).parseBall() }
+        assertNull(overTotalRuns(partial))
+        assertTrue(!isMaidenOver(partial))
     }
 }

@@ -65,6 +65,7 @@ class MatchDetailPresenceHeartbeatTest {
     private class SilentLiveSource : LiveMatchDetailSource {
         override suspend fun getForMatch(matchId: String): MatchLiveDetailPayload? = null
         override suspend fun getCommentaryForMatch(matchId: String): List<CommentaryEntry> = emptyList()
+        override suspend fun getOlderCommentary(matchId: String, olderThan: Double) = emptyList<CommentaryEntry>()
         override suspend fun getScorecardForMatch(matchId: String): Scorecard? = null
         override fun observeDetail(matchId: String): Flow<MatchLiveDetailPayload> = emptyFlow()
         override fun observeCommentary(matchId: String): Flow<CommentaryEvent> = emptyFlow()

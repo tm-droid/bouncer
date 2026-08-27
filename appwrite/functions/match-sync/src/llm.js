@@ -351,6 +351,7 @@ One word: PASS or FAIL.`;
 // deliberately CASE-SENSITIVE: `\bSIX\b` does not match "sixth", `\bFOUR\b` does not match "fourth",
 // and `\bOUT\b` does not match the "outside off" / "drove it out to deep cover" that appear on
 // almost every delivery. A case-insensitive version of these matches most of the innings.
+// The outcome clause is the structural half of this classifier; see classifyEvent.
 const UPPER_SIX_RE = /\bSIX\b/;
 const UPPER_FOUR_RE = /\bFOUR\b/;
 const UPPER_WICKET_RE = /\b(?:OUT|WICKET)\b/;
@@ -361,9 +362,17 @@ const UPPER_EVENT_RE = /\b(?:FOUR|SIX|OUT|WICKET)\b/;
 // is what carries the meaning — "out" alone is not enough to match.
 const DISMISSAL_RE = /\bout\s+(?:caught|bowled|lbw|stumped|run\s+out|hit\s+wicket|retired)\b/i;
 
-// Mirrors TimelineEventExtractor.wicketVetoPattern: a dropped catch, or a dismissal off a no-ball
-// or a free hit, is not a wicket.
-const WICKET_VETO_RE = /\b(?:dropped|drops\s+(?:it|him|her)|no\s*[- ]?ball|free\s*hit)\b/i;
+// Mirrors TimelineEventExtractor.wicketVetoPattern: a dropped catch, a dismissal off a no-ball or
+// a free hit, and an on-field OUT the batter reviewed their way out of, are all not wickets.
+//
+// The review clause is the one that reached production. Cricbuzz writes the on-field decision and
+// the review in the same item — "Pasindu Sooriyabandara has been given OUT LBW, but he reviews.
+// … good review and Sooriyabandara survives" — and `UPPER_WICKET_RE` fires on that `OUT`. Two
+// overturned LBWs were stored as `event: "WICKET"` on match 163017 and were the entire contents of
+// the commentary tab's Wickets filter. `isWicketLine` also drives the "Wicket!" push notification,
+// so the same false positive rings a phone.
+const WICKET_VETO_RE =
+  /\b(?:dropped|drops\s+(?:it|him|her)|no\s*[- ]?ball|free\s*hit|reviews?|reviewed|survives?|overturn(?:ed|s)?|reversed|not\s+out|reprieve)\b/i;
 
 /**
  * What actually happened on this delivery, read from the RAW Cricbuzz text.
@@ -391,9 +400,54 @@ const WICKET_VETO_RE = /\b(?:dropped|drops\s+(?:it|him|her)|no\s*[- ]?ball|free\
  */
 export function classifyEvent(text) {
   const t = String(text || "");
+  const clause = outcomeClause(t);
+  // The clause is checked BEFORE any marker in the prose, because the prose is where the false
+  // positives live. Cricbuzz writes an on-field decision and its review in one item — "Manav Suthar
+  // to Pasindu Sooriyabandara, no run, ... has been given OUT LBW, but he reviews ... and
+  // Sooriyabandara survives" — and `UPPER_WICKET_RE` fires on that OUT. Two overturned LBWs were
+  // stored as WICKET on match 163017 and were the whole contents of the Wickets filter. The clause
+  // on such a line is "no run", and a delivery whose clause states runs is not a dismissal,
+  // whatever the description goes on to say.
+  if (OUTCOME_WICKET_RE.test(clause)) return "WICKET";
+  if (SCORING_CLAUSE_RE.test(clause)) return clauseEvent(clause);
   if (!WICKET_VETO_RE.test(t) && (UPPER_WICKET_RE.test(t) || DISMISSAL_RE.test(t))) return "WICKET";
   if (UPPER_SIX_RE.test(t)) return "SIX";
   if (UPPER_FOUR_RE.test(t)) return "FOUR";
+  return "NONE";
+}
+
+// Clause forms. `OUTCOME_WICKET_RE` is the dismissal clause cricbuzz.js's parseBallOutcome also
+// reads; `SCORING_CLAUSE_RE` is every clause that states an outcome in runs, which is a positive
+// statement that the ball was NOT a dismissal.
+const OUTCOME_WICKET_RE = /^(?:out\b|that'?s out\b)/i;
+const SCORING_CLAUSE_RE = /^(?:no run|\d{1,3} runs?|four|six)$/i;
+
+const BALL_OUTCOME = /^[^,]+,\s*([^,]+)/;
+const TRAILING_PUNCTUATION = /[.!]+$/;
+
+/**
+ * Cricbuzz's outcome clause: the field after "<Bowler> to <Batter>," and before the description.
+ *
+ * The only STRUCTURAL statement of what a delivery was. Everything after it is prose, and prose
+ * about a delivery routinely contains the words for other deliveries.
+ *
+ * It lives HERE rather than in cricbuzz.js — which is its other caller, via parseBallOutcome —
+ * because this file is vendored byte-identically into `generate-commentary`, which has no
+ * cricbuzz.js. An import in this direction would break that deployment; the import goes the other
+ * way instead. Mirrored on the device by TimelineEventExtractor.outcomeClause.
+ *
+ * Trailing punctuation is trimmed because callers match the clause whole: the passthrough path
+ * writes Cricbuzz's text verbatim, and a "1 run." reaching an anchored `^(\d+) runs?$` would score
+ * null and lose a delivery the raw text names outright.
+ */
+export function outcomeClause(text) {
+  const m = String(text || "").match(BALL_OUTCOME);
+  return m ? m[1].trim().replace(TRAILING_PUNCTUATION, "") : "";
+}
+
+function clauseEvent(clause) {
+  if (/^six$/i.test(clause)) return "SIX";
+  if (/^four$/i.test(clause)) return "FOUR";
   return "NONE";
 }
 

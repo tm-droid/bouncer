@@ -4,6 +4,7 @@
 //   ScrapedBatsman, ScrapedBowler, Scorecard/Innings/BatsmanStats/BowlerStats/FallOfWicket.
 
 import * as cheerio from "cheerio";
+import { outcomeClause } from "./llm.js";
 import {
   CRICBUZZ_BASE,
   BLOCK_BACKOFF_MS,
@@ -140,7 +141,17 @@ function collectCommentaryItems(node, results) {
       const text = node.commText;
       const order = Number(node.timestamp);
       if (typeof text === "string" && text.trim() && !RSC_BACK_REFERENCE.test(text) && Number.isFinite(order)) {
-        results.push({ order, text, ballMetric: ballMetricOf(node.ballMetric) });
+        // `inningsId` when the node carries it. This is the only per-BALL innings there is: every
+        // other source is the innings being batted at write time, which mislabels the tail of an
+        // innings the moment the next one starts. null when absent — the caller falls back rather
+        // than borrowing a neighbour's number, same rule as ballMetric's "$undefined".
+        const innings = Number(node.inningsId);
+        results.push({
+          order,
+          text,
+          ballMetric: ballMetricOf(node.ballMetric),
+          innings: Number.isFinite(innings) && innings > 0 ? innings : null,
+        });
       }
     }
     for (const k of Object.keys(node)) collectCommentaryItems(node[k], results);
@@ -164,7 +175,7 @@ export function ballMetricOf(raw) {
   return null;
 }
 
-// Returns newest-first, de-duplicated by timestamp: [{ timestamp, commText, ballMetric }]
+// Returns newest-first, de-duplicated by timestamp: [{ timestamp, commText, ballMetric, innings }]
 export function parseCommentary(html) {
   const results = [];
   forEachNextFlightPayload(html, (d) => collectCommentaryItems(d, results));
@@ -176,7 +187,7 @@ export function parseCommentary(html) {
       seen.add(r.order);
       return true;
     })
-    .map((r) => ({ timestamp: r.order, commText: r.text, ballMetric: r.ballMetric }))
+    .map((r) => ({ timestamp: r.order, commText: r.text, ballMetric: r.ballMetric, innings: r.innings }))
     .filter((r) => r.commText.length > 5);
 }
 
@@ -199,8 +210,8 @@ export function parseCommentary(html) {
 // distinguishable, or the device is back to inventing the figure this exists to stop it inventing.
 // Mirrored by parseBallRuns in CommentaryParsing.kt; CommentaryRunsParityTest fails the build on
 // a one-sided edit.
-const BALL_OUTCOME = /^[^,]+,\s*([^,]+)/;
-const TRAILING_PUNCTUATION = /[.!]+$/;
+// The outcome clause parser lives in llm.js, which classifyEvent shares it with; see
+// outcomeClause there for why the import runs in this direction.
 const RUNS_OFF_BAT = /^(\d{1,3}) runs?$/i;
 const NO_RUN = /^no run$/i;
 const OUTCOME_FOUR = /^four$/i;
@@ -253,11 +264,7 @@ function followRunsOf(text) {
  * one of WIDE / NOBALL / BYE / LEGBYE, or null for an ordinary delivery.
  */
 export function parseBallOutcome(text) {
-  const m = String(text || "").match(BALL_OUTCOME);
-  // Trailing punctuation is trimmed because the clause is matched whole: the passthrough path
-  // writes Cricbuzz's text verbatim, but a "1 run." reaching an anchored `^(\d+) runs?$` would
-  // score null and lose a delivery the raw text names outright.
-  const clause = m ? m[1].trim().replace(TRAILING_PUNCTUATION, "") : "";
+  const clause = outcomeClause(text);
   if (!clause) return { runs: null, kind: null };
   if (NO_RUN.test(clause)) return { runs: 0, kind: null };
   const offBat = clause.match(RUNS_OFF_BAT);

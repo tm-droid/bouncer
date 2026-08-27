@@ -71,6 +71,21 @@ data class CommentaryEntry(
      * on every single. Only where this is null does the tab fall back to reading the text.
      */
     val extra: String? = null,
+    /**
+     * Which innings this delivery belongs to, from the row's `innings` column, or null for a line
+     * that did not come from the table.
+     *
+     * The feed is ordered by wall clock, which is correct and is not the same as cricket order: a
+     * Test's third innings over 60 is genuinely NEWER than its second innings over 80. Without this
+     * the commentary tab had nothing to say so with, and re-sorted the whole feed by over number to
+     * compensate — which is what put over 89 immediately above over 83 and a wicket at 60.2 above
+     * one at 80.5.
+     *
+     * Historical rows carry `bouncer-match-sync`'s write-time innings, which is the innings being
+     * batted when the row was WRITTEN, so an innings tail written after the change is mislabelled.
+     * Treat a change in this value as a divider, never as a sort key.
+     */
+    val innings: Int? = null,
 )
 
 data class CommentaryEvent(
@@ -81,6 +96,7 @@ data class CommentaryEvent(
     val ball: String? = null,
     val runs: Int? = null,
     val extra: String? = null,
+    val innings: Int? = null,
 )
 
 /**
@@ -102,32 +118,57 @@ internal fun parseCommentaryEvent(raw: String?): TimelineEventType? = when (raw)
 // The Realtime channel is table-wide (started once); ViewModels filter [events] by matchId.
 object AppwriteMatchCommentaryClient : AppwriteTableClient("AppwriteMatchCommentary") {
     private const val TABLE_ID = "match-commentary"
-    private const val FEED_LIMIT = 60
+    // A Test day is ~90 overs and `match-commentary` now stores every delivery, so 60 rows could
+    // not hold a session, let alone an innings — the tab showed a window narrower than the over
+    // groups it was drawing. Reads bill per row returned, and at ~2% of the plan's monthly read
+    // budget this is affordable; `olderThan` pages beyond it rather than raising it further.
+    private const val FEED_LIMIT = 150
 
     fun initialize() {
         initTable(ApiKeys.appwriteAiCacheDbId, TABLE_ID)
     }
 
     // Newest-first list of commentary lines for the match.
-    suspend fun getForMatch(matchId: String): List<CommentaryEntry> {
+    suspend fun getForMatch(matchId: String): List<CommentaryEntry> = fetchPage(matchId, olderThan = null)
+
+    /**
+     * The next page back, strictly older than [olderThan].
+     *
+     * Paged on `sort_key` rather than a cursor id: the id is `sha256("$matchId:$timestamp")` and
+     * means nothing in sort order, whereas the key the feed is ordered by is already in hand from
+     * the last row on screen. Reads bill per row, so a page is only fetched when a reader asks for
+     * one.
+     */
+    suspend fun getOlderThan(matchId: String, olderThan: Double): List<CommentaryEntry> =
+        fetchPage(matchId, olderThan)
+
+    private suspend fun fetchPage(matchId: String, olderThan: Double?): List<CommentaryEntry> {
         if (!isReady) return emptyList()
         return withContext(Dispatchers.IO) {
             // Server-side order needs a sort_key index; if that's missing the ordered query 400s.
             // Fall back to an unordered fetch + client-side sort so a missing index never blanks the feed.
             runCatching {
-                queryRows(matchId, ordered = true)
+                queryRows(matchId, ordered = true, olderThan = olderThan)
             }.recoverCatching { e ->
                 logSilentFailure("Commentary ordered fetch failed; retrying unordered", e)
-                queryRows(matchId, ordered = false)
+                // The unordered retry cannot page — a page is defined by the order — so it only
+                // ever serves the first one. A caller asking for older lines gets nothing rather
+                // than an arbitrary 150 rows presented as "older".
+                if (olderThan != null) emptyList() else queryRows(matchId, ordered = false, olderThan = null)
             }.onFailure { e ->
                 logSilentFailure("Commentary feed fetch failed", e)
             }.getOrDefault(emptyList())
         }
     }
 
-    private suspend fun queryRows(matchId: String, ordered: Boolean): List<CommentaryEntry> {
+    private suspend fun queryRows(
+        matchId: String,
+        ordered: Boolean,
+        olderThan: Double?,
+    ): List<CommentaryEntry> {
         val queries = buildList {
             add(Query.equal("match_id", matchId))
+            if (olderThan != null) add(Query.lessThan("sort_key", olderThan))
             if (ordered) add(Query.orderDesc("sort_key"))
             add(Query.limit(FEED_LIMIT))
         }
@@ -145,6 +186,7 @@ object AppwriteMatchCommentaryClient : AppwriteTableClient("AppwriteMatchComment
                 sortKey = (row.data["sort_key"] as? Number)?.toDouble(),
                 runs = (row.data["runs"] as? Number)?.toInt(),
                 extra = (row.data["extra"] as? String)?.takeIf { it.isNotBlank() },
+                innings = (row.data["innings"] as? Number)?.toInt(),
             )
         }
     }
@@ -176,7 +218,8 @@ object AppwriteMatchCommentaryClient : AppwriteTableClient("AppwriteMatchComment
             val ball = (payload["ball"] as? String)?.takeIf { it.isNotBlank() }
             val runs = (payload["runs"] as? Number)?.toInt()
             val extra = (payload["extra"] as? String)?.takeIf { it.isNotBlank() }
-            trySend(CommentaryEvent(matchId, commentary, sortKey, event, ball, runs, extra))
+            val innings = (payload["innings"] as? Number)?.toInt()
+            trySend(CommentaryEvent(matchId, commentary, sortKey, event, ball, runs, extra, innings))
         }
         awaitClose { handle.close() }
     }

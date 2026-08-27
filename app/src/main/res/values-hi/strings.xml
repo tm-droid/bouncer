@@ -295,6 +295,10 @@
     <string name="commentary_filter_wickets">विकेट</string>
     <string name="commentary_filter_boundaries">बाउंड्री</string>
     <string name="commentary_filter_milestones">माइलस्टोन</string>
+    <string name="commentary_innings">पारी %1$d</string>
+    <string name="commentary_innings_change">पिछली पारी</string>
+    <string name="commentary_load_older">पहले की कमेंट्री लोड करें</string>
+    <string name="commentary_loading_older">लोड हो रहा है…</string>
     <string name="stat_crr">CRR</string>
     <string name="stat_crr_value">CRR: %1$s</string>
     <string name="stat_rrr">RRR</string>

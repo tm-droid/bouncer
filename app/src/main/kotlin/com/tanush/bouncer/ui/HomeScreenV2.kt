@@ -61,6 +61,7 @@ import com.tanush.bouncer.ui.theme.v2.BouncerThemeV2
 import com.tanush.bouncer.ui.theme.v2.bouncerScreenBackground
 import com.tanush.bouncer.ui.screens.RefreshFailureSnackbarEffect
 import com.tanush.bouncer.viewmodels.LiveActivityViewModel
+import com.tanush.bouncer.viewmodels.STATUS_ALL
 import androidx.compose.ui.res.stringResource
 import com.tanush.bouncer.R
 
@@ -348,9 +349,12 @@ private fun mapStatus(vmStatus: String): String = when (vmStatus) {
     else -> "All"
 }
 
+// The chip label IS the ViewModel status, "All" included -- see STATUS_ALL. This used to map
+// "All" onto "Live", so the one chip that could not round-trip was also the one that looked
+// broken: the highlight jumped to Live and the feed never changed.
 private fun mapChipToStatus(chip: String): String = when (chip) {
     "Live" -> "Live"
     "Upcoming" -> "Upcoming"
     "Recent" -> "Recent"
-    else -> "Live" // Default to live matches
+    else -> STATUS_ALL
 }

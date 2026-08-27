@@ -256,6 +256,11 @@
     <string name="commentary_filter_wickets">Wickets</string>
     <string name="commentary_filter_boundaries">Boundaries</string>
     <string name="commentary_filter_milestones">Milestones</string>
+    <!-- Innings boundary inside the commentary feed, which is ordered by time and so can span innings. -->
+    <string name="commentary_innings">Innings %1$d</string>
+    <string name="commentary_innings_change">Earlier innings</string>
+    <string name="commentary_load_older">Load earlier commentary</string>
+    <string name="commentary_loading_older">Loading…</string>
     <string name="action_retry">Retry</string>
     <!-- Current and required run rate. Standard cricket abbreviations, said the same in Hindi. -->
     <string name="stat_crr_value" translatable="false">CRR: %1$s</string>

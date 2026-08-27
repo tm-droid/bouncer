@@ -363,6 +363,9 @@ fun MatchDetailViewV2(
                         isLoading = uiState.commentaryLoading,
                         error = uiState.commentaryError,
                         onRetry = vm::retryInitialLoad,
+                        hasOlder = uiState.hasOlderCommentary,
+                        isLoadingOlder = uiState.olderCommentaryLoading,
+                        onLoadOlder = vm::loadOlderCommentary,
                     )
                     R.string.tab_highlights -> HighlightsTabV2(highlights = highlights)
                     R.string.tab_info -> InfoTabV2(match = match, preMatchData = uiState.preMatchData)

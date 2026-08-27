@@ -48,6 +48,29 @@ object TimelineEventExtractor {
     private val wicketVetoPattern =
         Regex("""\b(dropped|drops\s+(it|him|her)|no\s*[- ]?ball|free\s*hit)\b""", RegexOption.IGNORE_CASE)
 
+    /**
+     * Cricbuzz's outcome clause: the field after "<Bowler> to <Batter>," and before the description.
+     *
+     * The clause is the only STRUCTURAL statement of what a delivery was; everything after it is
+     * prose, and prose about a delivery routinely contains the words for other deliveries. An
+     * on-field OUT the batter successfully reviewed reads "…, no run, … has been given OUT LBW, but
+     * he reviews … and Sooriyabandara survives" — every dismissal pattern below fires on that, and
+     * two such lines were the entire contents of the commentary tab's Wickets filter on match
+     * 163017. This also drives the "Wicket!" push notification, so the false positive rings a phone.
+     *
+     * Mirrors `outcomeClause` / `classifyEvent` in `match-sync/src/llm.js`.
+     */
+    private val ballOutcomeClause = Regex("""^[^,]+,\s*([^,]+)""")
+    private val trailingPunctuation = Regex("[.!]+$")
+
+    /** A clause that states an outcome in runs is a positive statement that nobody was dismissed. */
+    private val scoringClause =
+        Regex("""^(no run|\d{1,3} runs?|four|six)$""", RegexOption.IGNORE_CASE)
+    private val dismissalClause = Regex("""^(out\b|that'?s out\b)""", RegexOption.IGNORE_CASE)
+
+    private fun outcomeClause(line: String): String =
+        ballOutcomeClause.find(line)?.groupValues?.get(1)?.trim()?.replace(trailingPunctuation, "").orEmpty()
+
     private val fourPattern = Regex("\\bFOUR\\b", RegexOption.IGNORE_CASE)
     private val sixPattern = Regex("\\bSIX\\b", RegexOption.IGNORE_CASE)
 
@@ -99,21 +122,33 @@ object TimelineEventExtractor {
         return dropNearDuplicates(keepLongestPerBall(normalized, textOf), textOf)
     }
 
-    /** True when [line] announces a dismissal and nothing vetoes it. */
+    /** True when [line] announces a dismissal and neither its outcome clause nor a veto denies it. */
     fun isWicketLine(line: String): Boolean {
         val clean = normalize(line)
+        val clause = outcomeClause(clean)
+        if (dismissalClause.containsMatchIn(clause)) return true
+        if (scoringClause.matches(clause)) return false
         if (wicketVetoPattern.containsMatchIn(clean)) return false
         return wicketPatterns.any { it.containsMatchIn(clean) }
     }
 
     fun detectBallType(line: String): TimelineEventType? {
         val clean = normalize(line)
+        if (isWicketLine(clean)) return TimelineEventType.WICKET
+        val milestone = milestonePatterns.firstOrNull { it.containsMatchIn(clean) }?.let {
+            TimelineEventType.MILESTONE
+        }
+        // The clause outranks the prose for the same reason it does for a dismissal: a line whose
+        // clause reads "no run" is a dot ball however many boundaries its description reminisces
+        // about. A clause that states runs settles the delivery, so the prose is not consulted.
+        val clause = outcomeClause(clean)
         return when {
-            isWicketLine(clean) -> TimelineEventType.WICKET
+            clause.equals("six", ignoreCase = true) -> TimelineEventType.SIX
+            clause.equals("four", ignoreCase = true) -> TimelineEventType.FOUR
+            scoringClause.matches(clause) -> milestone
             sixPattern.containsMatchIn(clean) -> TimelineEventType.SIX
             fourPattern.containsMatchIn(clean) -> TimelineEventType.FOUR
-            milestonePatterns.any { it.containsMatchIn(clean) } -> TimelineEventType.MILESTONE
-            else -> null
+            else -> milestone
         }
     }
 

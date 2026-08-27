@@ -48,6 +48,8 @@ internal data class ParsedBall(
     val isSix: Boolean,
     val isWide: Boolean,
     val isNoBall: Boolean,
+    /** The innings this delivery belongs to; see [CommentaryEntry.innings]. */
+    val innings: Int?,
 )
 
 /**
@@ -129,6 +131,7 @@ internal fun CommentaryEntry.parseBall(): ParsedBall {
 
     return ParsedBall(
         ballLabel, overNumber, ballText, runs, extra, isWicket, isFour, isSix, isWide, isNoBall,
+        innings,
     )
 }
 
@@ -192,6 +195,85 @@ internal fun filterCommentary(
             CommentaryFilter.ALL -> true
         }
     }
+}
+
+/**
+ * One rendered run of the feed: the deliveries of a single over, or a single non-delivery line.
+ *
+ * [overNumber] is null for a non-delivery (session notes, weather) and for a ball-count format like
+ * The Hundred, which has no over to group by.
+ */
+@Immutable
+internal data class CommentaryBlock(
+    val innings: Int?,
+    val overNumber: Int?,
+    val balls: List<ParsedBall>,
+    /** True when this block opens an innings different from the block above it. */
+    val startsInnings: Boolean,
+)
+
+/**
+ * Group the feed into blocks **without reordering it**.
+ *
+ * The feed arrives ordered by `sort_key`, i.e. by wall clock, and that order is correct. What is
+ * not correct is treating it as cricket order: a Test's third-innings over 60 is genuinely newer
+ * than its second-innings over 80. The tab used to reconcile the two by regrouping everything with
+ * `groupBy { over }.toSortedMap(reverseOrder())`, which throws chronology away entirely — so a feed
+ * holding overs 89 and 83 of one innings and 60 of the next rendered 89, 83, … 60 as though it were
+ * one continuous innings running backwards, and the flat Wickets list showed a dismissal at 60.2
+ * above one at 80.5 with nothing to explain why.
+ *
+ * A sequential walk keeps the order the server gave and states the innings change instead of hiding
+ * it. Consecutive deliveries sharing an innings and an over form one block; anything else opens a
+ * new one.
+ */
+internal fun buildCommentaryBlocks(balls: List<ParsedBall>): List<CommentaryBlock> {
+    val blocks = mutableListOf<CommentaryBlock>()
+    var current = mutableListOf<ParsedBall>()
+
+    fun flush() {
+        if (current.isEmpty()) return
+        val head = current.first()
+        val previous = blocks.lastOrNull()
+        val over = head.overNumber.takeIf { it > 0f }?.toInt()
+        blocks += CommentaryBlock(
+            innings = head.innings,
+            overNumber = over,
+            balls = current.toList(),
+            startsInnings = previous != null && opensNewInnings(previous, head.innings, over),
+        )
+        current = mutableListOf()
+    }
+
+    for (ball in balls) {
+        if (current.isNotEmpty() && !sameBlock(current.first(), ball)) flush()
+        current += ball
+    }
+    flush()
+    return blocks
+}
+
+/** Two consecutive lines belong together only if both are deliveries of the same over and innings. */
+private fun sameBlock(a: ParsedBall, b: ParsedBall): Boolean {
+    if (a.ballLabel == null || b.ballLabel == null) return false
+    if (a.innings != b.innings) return false
+    if (a.overNumber <= 0f || b.overNumber <= 0f) return false
+    return a.overNumber.toInt() == b.overNumber.toInt()
+}
+
+/**
+ * Whether a block opens a new innings, given the block above it.
+ *
+ * The `innings` column settles it whenever both rows carry one. Historical rows do not — the column
+ * was written from the innings being batted at WRITE time, so an innings' tail can be stamped with
+ * the next innings' number — and a scrape-fallback line has no column at all. The fallback is the
+ * shape of the walk itself: the feed runs newest to oldest, so within one innings the over number
+ * can only fall. An over number that RISES as we go back in time is an innings boundary.
+ */
+private fun opensNewInnings(previous: CommentaryBlock, innings: Int?, over: Int?): Boolean {
+    if (previous.innings != null && innings != null) return previous.innings != innings
+    val above = previous.overNumber ?: return false
+    return over != null && over > above
 }
 
 internal fun buildShareText(ball: ParsedBall): String = when {

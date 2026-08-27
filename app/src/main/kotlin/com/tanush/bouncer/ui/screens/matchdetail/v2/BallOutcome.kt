@@ -1,5 +1,7 @@
 package com.tanush.bouncer.ui.screens.matchdetail.v2
 
+import com.tanush.bouncer.analysis.CricketConstants
+
 // ── What a delivery was worth, and what kind of delivery it was ──────────────
 //
 // Split from CommentaryParsing.kt, which owns the delivery's label and text. Same parsing
@@ -150,13 +152,27 @@ private fun followRunsOf(text: String): Int? {
 }
 
 /**
- * The over's total, or null when any ball in it has an unknown run value.
+ * Whether the feed holds the WHOLE over: six legal deliveries, extras on top.
  *
- * All-or-nothing on purpose: one unknown ball makes the sum a guess, and a guessed total reading 0
- * is what put a MAIDEN badge on an over of six singles.
+ * Neither a total nor a maiden badge can be stated about a partial over, and the feed is routinely
+ * partial — `match-commentary` is written from a 30-item scan window, so a match the sync missed
+ * for a while lands with holes. Match 163017 stored exactly one ball of its over 89 and the tab
+ * rendered "Over 89 · MAIDEN · 0 runs" off it, which is the app asserting a figure it does not have.
+ *
+ * Wides and no-balls do not count towards the six, which is what makes this the ball COUNT test and
+ * not a `size == 6` test.
+ */
+private fun isCompleteOver(balls: List<ParsedBall>): Boolean =
+    balls.count { !it.isWide && !it.isNoBall } >= CricketConstants.BALLS_PER_OVER
+
+/**
+ * The over's total, or null when the over is incomplete or any ball in it has an unknown run value.
+ *
+ * All-or-nothing on purpose: one unknown or missing ball makes the sum a guess, and a guessed total
+ * reading 0 is what put a MAIDEN badge on an over of six singles.
  */
 internal fun overTotalRuns(balls: List<ParsedBall>): Int? =
-    if (balls.all { it.runs != null }) balls.sumOf { it.runs ?: 0 } else null
+    if (isCompleteOver(balls) && balls.all { it.runs != null }) balls.sumOf { it.runs ?: 0 } else null
 
 /**
  * A maiden is an over with no runs charged to the BOWLER — which is not the same as an over worth
@@ -168,7 +184,8 @@ internal fun overTotalRuns(balls: List<ParsedBall>): Int? =
  * bye case wrong in the strictest possible way, by denying a bowler a maiden they had bowled.
  */
 internal fun isMaidenOver(balls: List<ParsedBall>): Boolean {
-    if (balls.isEmpty() || balls.any { it.runs == null }) return false
+    // A maiden is a claim about six deliveries. One stored dot ball out of six is not one.
+    if (!isCompleteOver(balls) || balls.any { it.runs == null }) return false
     if (balls.any { it.extra == BallExtra.WIDE || it.extra == BallExtra.NOBALL }) return false
     return balls.filter { it.extra != BallExtra.BYE && it.extra != BallExtra.LEGBYE }
         .sumOf { it.runs ?: 0 } == 0

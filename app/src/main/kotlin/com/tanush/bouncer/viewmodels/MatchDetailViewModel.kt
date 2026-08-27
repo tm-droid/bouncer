@@ -30,6 +30,7 @@ import com.tanush.bouncer.services.MatchPresenceReporter
 import com.tanush.bouncer.ui.components.BatsmanMilestoneInfo
 import com.tanush.bouncer.ui.components.MilestoneType
 import com.tanush.bouncer.utils.bouncerExceptionHandler
+import com.tanush.bouncer.utils.sentryBreadcrumb
 import com.tanush.bouncer.utils.sentryCaptureThrottled
 import io.sentry.Breadcrumb
 import io.sentry.Sentry
@@ -60,6 +61,15 @@ class MatchDetailViewModel(
         val scorecardLoading: Boolean = true,
         val commentary: List<CommentaryEntry> = emptyList(),
         val commentaryLoading: Boolean = true,
+        /** True while [loadOlderCommentary] is fetching the next page back. */
+        val olderCommentaryLoading: Boolean = false,
+        /**
+         * False once a page back comes up empty, so the tab stops offering to fetch nothing.
+         *
+         * Starts true even for a match with no commentary at all: the first page is the initial
+         * load, and one empty page is what settles it.
+         */
+        val hasOlderCommentary: Boolean = true,
         val liveTeam1Score: String = "",
         val liveTeam2Score: String = "",
         val liveTeam1Overs: String = "",
@@ -195,7 +205,13 @@ class MatchDetailViewModel(
         try {
             // Live snapshot (batsmen/bowler/score/scorecard) + commentary feed from Appwrite.
             val detail = withTimeoutOrNull(10_000L) { liveSource.getForMatch(match.id) }
-            if (detail == null) breadcrumb("scorecard", "Appwrite live-detail fetch timed out or returned null")
+            if (detail == null) {
+                sentryBreadcrumb(
+                    "match_detail_v2.scorecard",
+                    "Appwrite live-detail fetch timed out or returned null",
+                    SentryLevel.WARNING,
+                )
+            }
             applyDetail(detail)
             // Scorecard: one billed read for first paint, because the detail payload no longer
             // carries it and the row's realtime channel only speaks when match-sync next writes --
@@ -203,7 +219,11 @@ class MatchDetailViewModel(
             // over observeScorecard. The on-device CricBuzz scrape below stays as the last resort
             // for matches match-sync has not written (no live viewer, or not yet started).
             resolveScorecard(_uiState.value.scorecard, match.id, liveSource, matchRepository) { e ->
-                breadcrumb("scorecard_fallback", "On-device scorecard fetch failed: ${e.message}")
+                sentryBreadcrumb(
+                    "match_detail_v2.scorecard_fallback",
+                    "On-device scorecard fetch failed: ${e.message}",
+                    SentryLevel.WARNING,
+                )
                 Sentry.captureException(e)
             }?.let { sc -> _uiState.update { it.copy(scorecard = sc) } }
             loadCommentaryFeed()
@@ -226,7 +246,7 @@ class MatchDetailViewModel(
             val t1 = match.teams.getOrNull(0)?.name ?: return@runCatchingSuspend
             val t2 = match.teams.getOrNull(1)?.name ?: return@runCatchingSuspend
             H2HRepository.getH2H(t1, t2)?.let { h2h -> _uiState.update { it.copy(headToHead = h2h) } }
-        }.onError { breadcrumb("h2h", "H2H fetch failed: ${it.message}") }
+        }.onError { sentryBreadcrumb("match_detail_v2.h2h", "H2H fetch failed: ${it.message}", SentryLevel.WARNING) }
     }
 
     private suspend fun loadCommentaryFeed() {
@@ -235,7 +255,7 @@ class MatchDetailViewModel(
                 ?: emptyList()
             if (lines.isNotEmpty()) _uiState.update { it.copy(commentary = lines, commentaryError = null) }
         }.onError {
-            breadcrumb("commentary_load", "Commentary feed load failed: ${it.message}")
+            sentryBreadcrumb("match_detail_v2.commentary_load", "Commentary feed load failed: ${it.message}", SentryLevel.WARNING)
             _uiState.update { st ->
                 if (st.commentary.isEmpty()) {
                     st.copy(commentaryError = "Commentary feed unreachable — check your connection and retry.")
@@ -284,19 +304,11 @@ class MatchDetailViewModel(
             if (flow.drsReviews.isNotEmpty() || flow.powerplays.isNotEmpty() || flow.impactSubs.isNotEmpty()) {
                 _uiState.update { it.copy(matchFlow = flow) }
             }
-        }.onError { breadcrumb("matchflow", "Match flow fetch failed: ${it.message}") }
+        }.onError { sentryBreadcrumb("match_detail_v2.matchflow", "Match flow fetch failed: ${it.message}", SentryLevel.WARNING) }
         AppResult.runCatchingSuspend {
             val preMatch = matchRepository.fetchPreMatchData(url) ?: return@runCatchingSuspend
             _uiState.update { it.copy(preMatchData = preMatch) }
-        }.onError { breadcrumb("prematch", "Pre-match data fetch failed: ${it.message}") }
-    }
-
-    private fun breadcrumb(category: String, message: String) {
-        Sentry.addBreadcrumb(Breadcrumb().apply {
-            this.category = "match_detail_v2.$category"
-            this.message = message
-            level = SentryLevel.WARNING
-        })
+        }.onError { sentryBreadcrumb("match_detail_v2.prematch", "Pre-match data fetch failed: ${it.message}", SentryLevel.WARNING) }
     }
 
     /** Clears errors and re-runs the initial load (retry from the error state). */
@@ -355,11 +367,20 @@ class MatchDetailViewModel(
     private fun onNewCommentaryEvent(ev: CommentaryEvent) {
         var isNew = false
         _uiState.update { st ->
-            if (st.commentary.any { it.text == ev.commentary }) st
+            // Deduped on `sort_key` — the row's identity — and NOT on the prose. Two deliveries
+            // reading "Jadeja to Kumara, no run" are an ordinary pair of dot balls, and
+            // `match-sync` now stores every one of them rather than a 45-minute sample, so a
+            // text-equality test drops real balls out of the feed for looking like each other.
+            if (st.commentary.any { it.sortKey != null && it.sortKey == ev.sortKey }) st
             else {
                 isNew = true
-                val entry = CommentaryEntry(ev.commentary, ev.event, ev.ball, ev.sortKey, ev.runs, ev.extra)
-                st.copy(commentary = insertBySortKey(st.commentary, entry), commentaryError = null)
+                val entry = CommentaryEntry(
+                    ev.commentary, ev.event, ev.ball, ev.sortKey, ev.runs, ev.extra, ev.innings,
+                )
+                st.copy(
+                    commentary = insertBySortKey(st.commentary, entry).take(MAX_FEED_ENTRIES),
+                    commentaryError = null,
+                )
             }
         }
         if (!isNew) return
@@ -374,6 +395,36 @@ class MatchDetailViewModel(
             }
             delay(TYPEWRITER_HOLD_MS)
             _streamingCommentary.value = ""
+        }
+    }
+
+    /**
+     * Fetch the page of commentary below the oldest line on screen.
+     *
+     * Reader-driven rather than eager: reads bill per row returned, so a full Test innings is only
+     * paid for by someone who scrolls back through it. A page that comes back empty clears
+     * [UiState.hasOlderCommentary] and the affordance goes away.
+     */
+    fun loadOlderCommentary() {
+        val st = _uiState.value
+        if (st.olderCommentaryLoading || !st.hasOlderCommentary) return
+        val oldest = st.commentary.lastOrNull()?.sortKey ?: return
+        _uiState.update { it.copy(olderCommentaryLoading = true) }
+        viewModelScope.launch(bouncerExceptionHandler) {
+            val page = withTimeoutOrNull(COMMENTARY_FETCH_TIMEOUT_MS) {
+                liveSource.getOlderCommentary(match.id, oldest)
+            }.orEmpty()
+            _uiState.update { state ->
+                val known = state.commentary.mapNotNull { it.sortKey }.toSet()
+                val fresh = page.filter { it.sortKey != null && it.sortKey !in known }
+                state.copy(
+                    commentary = state.commentary + fresh,
+                    olderCommentaryLoading = false,
+                    // Judged on the page, not on `fresh`: a page that was entirely already-known
+                    // rows still proves there is more behind it.
+                    hasOlderCommentary = page.isNotEmpty(),
+                )
+            }
         }
     }
 
@@ -574,6 +625,13 @@ private const val PROBABILITY_HISTORY_MAX = 240
  * stored row, so the insert point is known exactly; an entry without one (the scrape fallback)
  * sorts as newest, which is what a locally scraped line is.
  */
+/**
+ * The feed's ceiling in memory. The initial fetch is capped by `FEED_LIMIT`, but realtime inserts
+ * were not capped at all: a Test left open for a session grew the list without bound, and every
+ * insert copies it.
+ */
+private const val MAX_FEED_ENTRIES = 400
+
 internal fun insertBySortKey(
     feed: List<CommentaryEntry>,
     entry: CommentaryEntry,

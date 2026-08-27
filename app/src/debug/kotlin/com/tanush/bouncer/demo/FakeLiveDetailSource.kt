@@ -25,6 +25,10 @@ internal class FakeLiveDetailSource(private val elapsed: () -> Long) : LiveMatch
     override suspend fun getCommentaryForMatch(matchId: String): List<CommentaryEntry> =
         ShowcaseScript.commentaryLines().map { CommentaryEntry(it, event = null) }
 
+    // The script is the whole feed; there is nothing behind it to page back to.
+    override suspend fun getOlderCommentary(matchId: String, olderThan: Double): List<CommentaryEntry> =
+        emptyList()
+
     // The scripted payload already carries the scorecard, so the split table adds nothing here.
     override suspend fun getScorecardForMatch(matchId: String): com.tanush.bouncer.models.Scorecard? =
         ShowcaseScript.detailPayloadAt(elapsed()).scorecard

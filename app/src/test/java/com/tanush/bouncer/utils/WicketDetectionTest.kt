@@ -128,6 +128,39 @@ class WicketDetectionTest {
         )
     }
 
+    // ── The review the batter won ────────────────────────────────────────────
+    //
+    // Cricbuzz writes the on-field decision and the review in one item, so the line says OUT and
+    // then says the batter survived. Both fixtures are verbatim rows from match 163017, where they
+    // were stored as `event: "WICKET"` and were the ENTIRE contents of the commentary tab's
+    // Wickets filter. The discriminator is the outcome clause — "no run" — which is a positive
+    // statement that nobody was dismissed, whatever the description goes on to say.
+
+    @Test
+    fun `an overturned LBW review is not a wicket`() {
+        assertFalse(
+            isWicket(
+                "Manav Suthar to Pasindu Sooriyabandara, no run, one gets two for Manav Suthar " +
+                    "or has he? Pasindu Sooriyabandara has been given OUT LBW, but he reviews." +
+                    "The line looks good, but is there an inside edge? Yes, a big spike when the " +
+                    "ball was next to bat - good review and Sooriyabandara survives",
+            ),
+        )
+        assertFalse(
+            isWicket(
+                "Saransh Jain to Lahiru Kumara, no run, Lahiru Kumara has been given OUT LBW, " +
+                    "but he's reviewed straightaway. Was there an inside edge? Looks like it has " +
+                    "and UltgraEdge confirms the same - the original call will be reversed.",
+            ),
+        )
+    }
+
+    @Test
+    fun `a dismissal clause is still a wicket however the description reads`() {
+        assertTrue(isWicket("60.2 Bumrah to Root, out Caught by Pant!! reviewed and upheld"))
+        assertTrue(isWicket("Moqim to Simmonds, THATS OUT!! Bowled!!"))
+    }
+
     @Test
     fun `extract emits no wicket event for descriptive prose`() {
         val events = TimelineEventExtractor.extract(
