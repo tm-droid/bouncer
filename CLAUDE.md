@@ -229,6 +229,28 @@ moves, session-scoped. It used to come from `RetrofitClient.localApi` — `http:
 emulator-only dev mock — so on any real device it was a guaranteed CLEARTEXT failure per match open
 and the chart never rendered. That client is deleted; do not reintroduce a localhost API.
 
+**A Test side's score is two innings, and the two data paths both used to drop one.** "266 & 83/2"
+is one side's score, and both producers collapsed it: the match list's `latestInnings` returned
+`inngs2` if present else `inngs1`, and `match-sync`'s `parseLiveDetail` read `inningsScoreList[0]`
+and `[1]` — innings by index, which is per-team only in a limited-overs match, so a Test's third and
+fourth entries went nowhere. `teamInningsScore` (`network/TeamInningsScore.kt`) and
+`teamInningsSides` (`match-sync/src/cricbuzz.js`) now aggregate per side and join with `" & "`,
+dropping the wicket count from a completed innings **in TEST/FC only** — limited-overs output is
+unchanged. Pinned on both sides by `MultiInningsScoreParityTest`. `parseScore` used to delete `&`
+outright, which left the joined string parsing as neither innings and every numeric consumer at
+zero; it reads the last segment (the innings being batted) and keeps the whole string for display.
+
+**The live payload is oriented to the first-innings side, and it is aligned by team id.** Everything
+`match-sync` publishes — both score slots and the win probability — belongs to the side that batted
+first, while `match.teams` is Cricbuzz's listing order; when the side batting second was listed
+first, every score and the probability bar sat against the wrong team. Do **not** align on the
+names: `inningsScoreList.batTeamName` is a short code ("EZONE" for Central Zone, "RSAA" for South
+Africa A) that matches no full name under `normalizeTeamName` or `codeMatchesName`, so a name-based
+swap silently never fires. The payload and the `live-winprob` entries carry `team1Id`,
+`CricketMatch.Team` carries `teamId`, and `viewmodels/MatchLiveDetailAlignment.kt` compares those.
+`battingTeamIsTeam1` is not a substitute: it is `current.inningsId === isl[0].inningsId`, so it is
+false for a side batting its *second* innings even though that side is team1.
+
 **The commentary feed is chronological, and chronological is not cricket order.** Rows are ordered
 by `sort_key` (the Cricbuzz timestamp), so a Test's third-innings over 60 is genuinely newer than
 its second-innings over 80. `CommentaryTabV2` used to reconcile that by regrouping the whole feed
