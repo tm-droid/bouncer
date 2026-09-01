@@ -123,6 +123,22 @@ class ScoreParsingTest {
     }
 
     @Test
+    fun `a Test score parses from the innings being batted`() {
+        val info = parseScore("266 & 83/2 (25.1)")
+        assertTrue(info.isValid)
+        assertEquals(83, info.runs)
+        assertEquals(2, info.wickets)
+        assertEquals("25.1", info.overs)
+        // The completed innings is part of the score, so display keeps both.
+        assertEquals("266 & 83/2", info.toDisplayString())
+    }
+
+    @Test
+    fun `a Test score with a dash separator still displays both innings`() {
+        assertEquals("266 & 83/2", parseScore("266 &amp; 83-2").toDisplayString())
+    }
+
+    @Test
     fun `parseRuns and parseWickets agree with parseScore`() {
         assertEquals(199, parseRuns("199/7 (20 Ov)"))
         assertEquals(7, parseWickets("199/7 (20 Ov)"))

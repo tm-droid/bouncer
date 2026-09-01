@@ -32,6 +32,11 @@ data class MatchLiveDetailPayload(
     val team1Overs: String? = null,
     val team2Score: String? = null,
     val team2Overs: String? = null,
+    // The side each of the pairs above belongs to. "team1" here is the FIRST-INNINGS batting side,
+    // which is not necessarily the match's teams[0] — without the names the device had no way to
+    // tell the two orders apart, and put each score against the wrong team whenever they differed.
+    val team1Name: String? = null,
+    val team2Name: String? = null,
     val currentRunRate: String? = null,
     val requiredRunRate: String? = null,
     val scorecard: Scorecard? = null,

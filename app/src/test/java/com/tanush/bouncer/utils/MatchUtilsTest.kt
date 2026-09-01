@@ -83,6 +83,16 @@ class MatchUtilsTest {
     }
 
     @Test
+    fun `parseScore reads the live innings of a Test score`() {
+        val score = parseScore("266 & 83/2 (25.1)")
+        assertTrue(score.isValid)
+        assertEquals(83, score.runs)
+        assertEquals(2, score.wickets)
+        assertEquals("266 & 83/2", score.toDisplayString())
+        assertEquals("266 & 83/2 (25.1)", score.toFullDisplayString())
+    }
+
+    @Test
     fun `parseScore runs only no wickets`() {
         val score = parseScore("350")
         assertEquals(350, score.runs)

@@ -18,6 +18,22 @@ private const val MAX_WICKETS = 10
 private val RUNS_WICKETS = """^(\d{1,3})\s*[/-]\s*(\d{1,3})\b""".toRegex()
 private val RUNS_ONLY = """^(\d{1,3})$""".toRegex()
 
+/**
+ * The separator Cricbuzz and Cricinfo both use between a side's innings: "266 & 83/2".
+ *
+ * A Test side bats twice, so its score is two innings joined, and the numeric consumers (run rate,
+ * projections, the win-probability inputs) all want the live one — the last segment.
+ */
+private const val INNINGS_SEPARATOR = "&"
+
+/** Innings of a score, oldest first: "266 & 83/2" is `["266", "83/2"]`, "199/7" is `["199/7"]`. */
+internal fun inningsSegments(cleanedScore: String): List<String> =
+    cleanedScore.split(INNINGS_SEPARATOR).map { it.trim() }.filter { it.isNotBlank() }
+
+/** The innings currently being batted, which is the one every rate and projection is about. */
+internal fun lastInningsSegment(cleanedScore: String): String =
+    inningsSegments(cleanedScore).lastOrNull() ?: cleanedScore.trim()
+
 /** Overs token inside parentheses ("(19.5 Ov)") or before a bare "ov". */
 private val OVERS_IN_PARENS = """\(([^)]*)\)""".toRegex()
 private val OVERS_TOKEN = """(\d{1,3}(?:\.\d)?)\s*(?:ov|over)""".toRegex(RegexOption.IGNORE_CASE)

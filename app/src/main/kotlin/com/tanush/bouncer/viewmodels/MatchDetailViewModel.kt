@@ -185,7 +185,7 @@ class MatchDetailViewModel(
             while (isActive && !isMatchOver(match, _uiState.value.liveStatus)) {
                 MatchPresenceReporter.ping(match.id)
                 WinProbabilityStore.refresh()
-                WinProbabilityStore.probabilityFor(match.id)?.let { probability ->
+                WinProbabilityStore.probabilityFor(match.id)?.alignedTo(match.teams)?.let { probability ->
                     _uiState.update {
                         it.copy(
                             liveWinProbability = probability.team1Percent,
@@ -323,8 +323,10 @@ class MatchDetailViewModel(
     }
 
     // Live snapshot updates (one-shot + Realtime) flow through here. Null fields keep prior values.
-    private fun applyDetail(p: MatchLiveDetailPayload?) {
-        if (p == null) return
+    private fun applyDetail(payload: MatchLiveDetailPayload?) {
+        // The server orients both team slots to the first-innings batting side; this screen is in
+        // Cricbuzz's listing order. See MatchLiveDetailAlignment.
+        val p = payload?.alignedTo(match.teams) ?: return
         _uiState.update { st ->
             st.copy(
                 loadError = null,

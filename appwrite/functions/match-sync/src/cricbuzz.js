@@ -609,8 +609,10 @@ export function parseLiveDetail(liveHtml) {
       score: null,
       team1Score: null,
       team1Overs: null,
+      team1Name: null,
       team2Score: null,
       team2Overs: null,
+      team2Name: null,
       currentRunRate: null,
       requiredRunRate: null,
       status: null,
@@ -626,8 +628,7 @@ export function parseLiveDetail(liveHtml) {
   const isl = [...(ms.matchScoreDetails?.inningsScoreList || [])].sort(
     (a, b) => a.inningsId - b.inningsId
   );
-  const fmt = (e) => (e ? `${e.score}/${e.wickets}` : null);
-  const ovs = (e) => (e ? s(e.overs, "") : null);
+  const sides = teamInningsSides(isl, ms.matchScoreDetails?.matchFormat);
   const batScore = ms.batTeam ? `${ms.batTeam.teamScore}/${ms.batTeam.teamWkts}` : null;
 
   return {
@@ -635,15 +636,61 @@ export function parseLiveDetail(liveHtml) {
     bowler: mapBowler(ms.bowlerStriker),
     recentBalls,
     score: batScore ? `${batScore} (${s(ms.overs, "")})` : null,
-    team1Score: fmt(isl[0]),
-    team1Overs: ovs(isl[0]),
-    team2Score: fmt(isl[1]),
-    team2Overs: ovs(isl[1]),
+    team1Score: sides[0]?.score ?? null,
+    team1Overs: sides[0]?.overs ?? null,
+    team1Name: sides[0]?.name ?? null,
+    team2Score: sides[1]?.score ?? null,
+    team2Overs: sides[1]?.overs ?? null,
+    team2Name: sides[1]?.name ?? null,
     currentRunRate: ms.currentRunRate != null ? String(ms.currentRunRate) : null,
     requiredRunRate: ms.requiredRunRate != null ? String(ms.requiredRunRate) : null,
     status: ms.status ? String(ms.status) : null,
     situation: liveSituation(ms, isl),
   };
+}
+
+/** Ten wickets ends an innings; a completed multi-day innings is then written as runs alone. */
+const ALL_OUT_WICKETS = 10;
+
+/** The formats in which a side bats twice, so its score is two innings joined. */
+const MULTI_DAY_FORMATS = new Set(["TEST", "FC"]);
+
+/**
+ * The two batting sides, each with every innings it has batted joined: "266 & 83/2".
+ *
+ * `inningsScoreList` is a flat list of innings, so reading it as [0]/[1] is per-team only in a
+ * limited-overs match. A Test has up to four entries and the third and fourth were dropped on the
+ * floor, so a side that had batted twice reached the device holding one of its two innings.
+ *
+ * The side order is first-innings side first, matching the team1/team2 convention the rest of this
+ * file uses; `name` is emitted so the device can align that on its own team order rather than
+ * assuming the first-innings side is the match's team1.
+ */
+export function teamInningsSides(isl, matchFormat) {
+  const multiDay = MULTI_DAY_FORMATS.has(String(matchFormat ?? "").toUpperCase());
+  const order = [];
+  const byName = new Map();
+  for (const entry of isl) {
+    const name = entry.batTeamName ? String(entry.batTeamName) : "";
+    if (!byName.has(name)) {
+      order.push(name);
+      byName.set(name, []);
+    }
+    byName.get(name).push(entry);
+  }
+  return order.slice(0, 2).map((name) => {
+    const entries = byName.get(name);
+    const last = entries[entries.length - 1];
+    return {
+      name: name || null,
+      score: entries
+        .map((e) =>
+          multiDay && Number(e.wickets) >= ALL_OUT_WICKETS ? `${e.score}` : `${e.score}/${e.wickets}`
+        )
+        .join(" & "),
+      overs: s(last.overs, ""),
+    };
+  });
 }
 
 /**

@@ -5,6 +5,7 @@ import com.tanush.bouncer.data.AppException
 import org.jsoup.HttpStatusException
 import org.jsoup.Jsoup
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -189,6 +190,56 @@ class CricBuzzScraperTest {
         val batsmen = parseScorecardBatsmen(content)
         assertEquals(1, batsmen.size)
         assertTrue(batsmen[0].dismissal.isNotEmpty())
+    }
+
+    // ── Test-match multi-innings scores ─────────────────────────────────────
+
+    private fun scoreObject(json: String) = com.google.gson.JsonParser.parseString(json).asJsonObject
+
+    @Test
+    fun `teamInningsScore joins both innings of a Test side`() {
+        val obj = scoreObject(
+            """
+            {"team1Score":{
+                "inngs1":{"inningsId":1,"runs":266,"wickets":10,"overs":89.2},
+                "inngs2":{"inningsId":3,"runs":83,"wickets":2,"overs":25.1}
+            }}
+            """
+        )
+        val side = teamInningsScore(obj, "team1Score", multiDay = true)
+        assertEquals("266 & 83/2", side.score)
+        // The overs belong to the innings being batted, which is the later one.
+        assertEquals("25.1", side.overs)
+    }
+
+    @Test
+    fun `teamInningsScore drops wickets only for a completed multi-day innings`() {
+        val obj = scoreObject("""{"team1Score":{"inngs1":{"runs":266,"wickets":10,"overs":89.2}}}""")
+        assertEquals("266", teamInningsScore(obj, "team1Score", multiDay = true).score)
+        // A limited-overs side all out keeps the shape it has always had.
+        assertEquals("266/10", teamInningsScore(obj, "team1Score", multiDay = false).score)
+    }
+
+    @Test
+    fun `teamInningsScore leaves a single limited-overs innings unchanged`() {
+        val obj = scoreObject("""{"team2Score":{"inngs1":{"runs":187,"wickets":8,"overs":35.1}}}""")
+        val side = teamInningsScore(obj, "team2Score", multiDay = false)
+        assertEquals("187/8", side.score)
+        assertEquals("35.1", side.overs)
+    }
+
+    @Test
+    fun `teamInningsScore is empty for a side that has not batted`() {
+        val obj = scoreObject("""{"team1Score":{"inngs1":{"runs":10,"wickets":0,"overs":2.0}}}""")
+        assertEquals(TeamInningsScore.EMPTY, teamInningsScore(obj, "team2Score", multiDay = true))
+    }
+
+    @Test
+    fun `isMultiDayFormat recognises the two formats where a side bats twice`() {
+        assertTrue(isMultiDayFormat("TEST"))
+        assertTrue(isMultiDayFormat("fc"))
+        assertFalse(isMultiDayFormat("ODI"))
+        assertFalse(isMultiDayFormat(null))
     }
 
     @Test

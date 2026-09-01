@@ -181,6 +181,10 @@ private val placeholderScores = setOf("Data Not Found", "-", "TBD")
  * - "199/7 (20.0)" or "199-7 (20.0)"
  * - "199/7 (20.0 Ov)"
  * - "&amp; 123/4" for second innings
+ * - "266 &amp; 83/2 (25.1)" for a Test side that has batted twice
+ *
+ * The numbers describe the innings being batted now, so a multi-innings score parses from its last
+ * segment; [rawScore] keeps the whole string, which is what the score cells render.
  * Returns ScoreInfo with rawScore as fallback for display
  */
 fun parseScore(score: String?): ScoreInfo {
@@ -191,18 +195,17 @@ fun parseScore(score: String?): ScoreInfo {
 
         val cleanedScore = score
             .replace("&amp;", "&")
-            .replace("& ", "")
-            .replace("&", "")
             .trim()
 
         if (cleanedScore.isBlank()) return ScoreInfo(0, 0, "", score, false)
 
         return try {
-            val overs = extractOvers(cleanedScore)
+            val liveInnings = lastInningsSegment(cleanedScore)
+            val overs = extractOvers(liveInnings)
             // Validity is decided by whether a score actually parsed, not by whether the string
             // happens to contain a separator. The old test — `contains("/") || contains("-")` —
             // made "Not-Started" a valid 0/0, which rendered as the score "0/0".
-            val parsed = parseRunsAndWickets(scorePartOf(cleanedScore))
+            val parsed = parseRunsAndWickets(scorePartOf(liveInnings))
                 ?: return ScoreInfo(0, 0, overs, score, false)
 
             ScoreInfo(parsed.first, parsed.second, overs, score, true)
@@ -233,7 +236,11 @@ fun parseWickets(score: String?): Int = parseScore(score).wickets
  */
 fun ScoreInfo.toDisplayString(): String {
     try {
+        val innings = inningsSegments(rawScore.replace("&amp;", "&").substringBefore("("))
         return when {
+            // A Test side's completed innings is part of its score, not decoration. Collapsing to
+            // the parsed numbers here would put "83/2" where "266 & 83/2" belongs.
+            innings.size > 1 -> innings.joinToString(" & ") { it.replace("-", "/").trim() }
             isValid -> "$runs/$wickets"
             rawScore.isNotBlank() && rawScore != "-" && rawScore != "Data Not Found" -> 
                 rawScore.replace("-", "/").substringBefore("(").trim()

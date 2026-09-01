@@ -411,29 +411,20 @@ class CricBuzzScraper {
     private fun parseMatchScoreFields(obj: JsonObject, info: JsonObject): MatchScoreFields {
         if (!obj.has("matchScore")) return MatchScoreFields.EMPTY
         val scoreObj = obj.getAsJsonObject("matchScore")
-        val s1 = latestInnings(scoreObj, "team1Score")
-        val s2 = latestInnings(scoreObj, "team2Score")
+        val multiDay = isMultiDayFormat(info.get("matchFormat")?.asString)
+        val s1 = teamInningsScore(scoreObj, "team1Score", multiDay)
+        val s2 = teamInningsScore(scoreObj, "team2Score", multiDay)
         val battingId = scoreObj.get("battingTeamId")?.asString
         val team1IsBatting = battingId != null && info.getAsJsonObject("team1").get("teamId")?.asString == battingId
         val team2IsBatting = battingId != null && info.getAsJsonObject("team2").get("teamId")?.asString == battingId
         return MatchScoreFields(
-            team1Score = s1?.let { "${it.get("runs")?.asString ?: ""}/${it.get("wickets")?.asString ?: "0"}" } ?: "",
-            team2Score = s2?.let { "${it.get("runs")?.asString ?: ""}/${it.get("wickets")?.asString ?: "0"}" } ?: "",
-            team1Overs = s1?.get("overs")?.asString ?: "",
-            team2Overs = s2?.get("overs")?.asString ?: "",
+            team1Score = s1.score,
+            team2Score = s2.score,
+            team1Overs = s1.overs,
+            team2Overs = s2.overs,
             team1IsBatting = team1IsBatting,
             team2IsBatting = team2IsBatting
         )
-    }
-
-    private fun latestInnings(scoreObj: JsonObject, key: String): JsonObject? {
-        if (!scoreObj.has(key)) return null
-        val t = scoreObj.getAsJsonObject(key)
-        return when {
-            t.has("inngs2") -> t.getAsJsonObject("inngs2")
-            t.has("inngs1") -> t.getAsJsonObject("inngs1")
-            else -> null
-        }
     }
 
     private fun buildMatchScore(fields: MatchScoreFields): CricketMatch.MatchScore {
